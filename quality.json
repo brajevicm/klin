@@ -1,0 +1,17 @@
+{
+  "project": "detent",
+  "doc_size": [
+    {
+      "file": "README.md",
+      "ceiling": 200
+    },
+    {
+      "file": "CONTEXT.md",
+      "ceiling": 250
+    },
+    {
+      "file": "AGENTS.md",
+      "ceiling": 350
+    }
+  ]
+}

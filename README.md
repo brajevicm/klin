@@ -13,8 +13,8 @@ baselines instead of the code. It supports Claude Code, Cursor and Codex CLI.
 
 ## Status
 
-Nothing works yet. This commit is the license, the glossary and two decision
-records. Code follows.
+Early. Config discovery and the doc-size gate run. The ratchet engine and the
+other gates follow.
 
 ## Origin
 
