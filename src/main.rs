@@ -1,6 +1,8 @@
 mod config;
 mod doc_size;
+mod escapes;
 mod guard;
+mod ratchet;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -18,6 +20,8 @@ struct Cli {
 enum Command {
     /// Fail when a document has grown past its ceiling
     DocSize(doc_size::Args),
+    /// Fail on a new escape site — a place where the code opts out of a check
+    Escapes(escapes::Args),
     /// Refuse an agent's tool call that would edit the configuration, a baseline or the hooks
     Guard,
 }
@@ -26,6 +30,7 @@ fn main() -> ExitCode {
     match &Cli::parse().command {
         Command::Guard => ExitCode::from(guard::run()),
         Command::DocSize(args) => gate(|start| doc_size::run(args, start)),
+        Command::Escapes(args) => gate(|start| escapes::run(args, start)),
     }
 }
 

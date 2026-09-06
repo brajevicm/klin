@@ -8,6 +8,8 @@ const REFUSAL: &str = "detent: refused — this would change the configuration (
 
 const WRITERS: &[&str] = &["tee", "cp", "mv", "rm", "truncate", "install"];
 const READERS: &[&str] = &["Read", "NotebookRead"];
+const HOOKS: &[&str] = &[".claude/settings", ".cursor/hooks", ".codex/config"];
+const RESTORERS: &[&str] = &["checkout", "restore"];
 
 pub fn run() -> u8 {
     let mut text = String::new();
@@ -37,7 +39,7 @@ pub fn run() -> u8 {
 
 fn guarded(path: &str) -> bool {
     let path = path.trim_matches(['\'', '"']);
-    if path.contains(".claude/settings") {
+    if HOOKS.iter().any(|hook| path.contains(hook)) {
         return true;
     }
     let name = basename(path);
@@ -58,7 +60,15 @@ fn command_writes_guarded(command: &str) -> bool {
 
 fn segment_writes_guarded(segment: &str) -> bool {
     let words: Vec<&str> = segment.split_whitespace().collect();
-    redirects_to_guarded(&words) || (writes(&words) && words.iter().any(|word| guarded(word)))
+    redirects_to_guarded(&words)
+        || (writes(&words) && words.iter().any(|word| guarded(word)))
+        || restores_a_tree(&words)
+}
+
+fn restores_a_tree(words: &[&str]) -> bool {
+    words.iter().any(|word| basename(word) == "git")
+        && words.iter().any(|word| RESTORERS.contains(word))
+        && words.iter().any(|word| *word == "." || word.ends_with('/'))
 }
 
 fn redirects_to_guarded(words: &[&str]) -> bool {
@@ -72,6 +82,10 @@ fn writes(words: &[&str]) -> bool {
     words.iter().enumerate().any(|(at, word)| {
         let name = basename(word);
         WRITERS.contains(&name)
+            || (name == "git"
+                && words[at..]
+                    .iter()
+                    .any(|subcommand| RESTORERS.contains(subcommand)))
             || (name == "sed"
                 && words[at..]
                     .iter()

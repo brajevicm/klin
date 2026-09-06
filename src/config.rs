@@ -44,6 +44,10 @@ impl Config {
         Ok(Config { file, root, data })
     }
 
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
     pub fn section(&self, name: &str) -> Result<&Value, Error> {
         self.data
             .get(name)

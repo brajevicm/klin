@@ -69,6 +69,52 @@ fn refuses_an_edit_of_the_configuration_a_baseline_or_the_hooks() {
 }
 
 #[test]
+fn refuses_git_putting_back_old_content_of_a_guarded_file() {
+    for command in [
+        "git checkout -- quality.json",
+        "git checkout HEAD~3 -- .claude/settings.json",
+        "git restore detent/escapes-baseline.json",
+        "git -C /repo restore --source=HEAD~1 quality.json",
+        "git restore .",
+        "git checkout .",
+        "git checkout HEAD -- detent/",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn allows_git_that_leaves_the_guarded_files_alone() {
+    for command in [
+        "git checkout feature-branch",
+        "git checkout -b quality-work",
+        "git restore src/main.rs",
+        "git log -- quality.json",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 0, "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn refuses_an_edit_of_the_hook_settings_of_cursor_and_codex() {
+    for (name, file) in [
+        ("Edit", "/repo/.cursor/hooks.json"),
+        ("Write", "/Users/someone/.cursor/hooks.json"),
+        ("Edit", "/repo/.codex/config.toml"),
+        ("Write", "/Users/someone/.codex/config.toml"),
+    ] {
+        let run = edit(name, file);
+        assert_eq!(run.code, 2, "{name} {file}: {}", run.out);
+        assert!(run.says("refused"), "{name} {file}: {}", run.out);
+    }
+    let run = bash("echo '{}' > .cursor/hooks.json");
+    assert_eq!(run.code, 2, "{}", run.out);
+}
+
+#[test]
 fn the_refusal_names_what_it_protects_and_never_the_command_that_rewrites_a_baseline() {
     let run = edit("Edit", "/repo/quality.json");
     assert!(run.says("quality.json"), "{}", run.out);
