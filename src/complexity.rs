@@ -13,6 +13,7 @@ const VERSION: &str = "1";
 
 struct Language {
     name: &'static str,
+    names: &'static [&'static str],
     extensions: &'static [&'static str],
     grammar: fn() -> tree_sitter::Language,
     functions: &'static [&'static str],
@@ -93,6 +94,7 @@ const FALL_THROUGH_ARMS: &[(&str, &str)] = &[
 const LANGUAGES: &[Language] = &[
     Language {
         name: "Rust",
+        names: &["rust"],
         extensions: &[".rs"],
         grammar: rust,
         functions: &["function_item"],
@@ -108,6 +110,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "Python",
+        names: &["python"],
         extensions: &[".py"],
         grammar: python,
         functions: &["function_definition"],
@@ -128,6 +131,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "TypeScript",
+        names: &["typescript"],
         extensions: &[".ts", ".mts", ".cts"],
         grammar: typescript,
         functions: ECMASCRIPT_FUNCTIONS,
@@ -136,6 +140,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "TSX",
+        names: &["typescript", "tsx"],
         extensions: &[".tsx"],
         grammar: tsx,
         functions: ECMASCRIPT_FUNCTIONS,
@@ -144,6 +149,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "JavaScript",
+        names: &["javascript"],
         extensions: &[".js", ".jsx", ".mjs", ".cjs"],
         grammar: javascript,
         functions: ECMASCRIPT_FUNCTIONS,
@@ -152,6 +158,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "Go",
+        names: &["go"],
         extensions: &[".go"],
         grammar: go,
         functions: &["function_declaration", "method_declaration", "func_literal"],
@@ -166,6 +173,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "Java",
+        names: &["java"],
         extensions: &[".java"],
         grammar: java,
         functions: &[
@@ -189,6 +197,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "Ruby",
+        names: &["ruby"],
         extensions: &[".rb"],
         grammar: ruby,
         functions: &["method", "singleton_method"],
@@ -213,6 +222,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "Swift",
+        names: &["swift"],
         extensions: &[".swift"],
         grammar: swift,
         functions: &[
@@ -243,6 +253,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         name: "Kotlin",
+        names: &["kotlin"],
         extensions: &[".kt", ".kts"],
         grammar: kotlin,
         functions: &[
@@ -319,8 +330,16 @@ struct Ceilings {
     lines: u64,
 }
 
+struct Selection {
+    languages: Vec<&'static Language>,
+    skip_dirs: Vec<String>,
+    exclude: Vec<String>,
+    exclude_except: Vec<PathBuf>,
+}
+
 struct Spec {
     sources: Vec<PathBuf>,
+    selection: Selection,
     ceilings: Ceilings,
     baseline: PathBuf,
     measured: Values,
@@ -330,7 +349,7 @@ struct Spec {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let spec = spec(&config)?;
-    let functions = measure(&spec.sources, config.root())?;
+    let functions = measure(&spec.sources, &spec.selection, config.root())?;
     let over: Vec<Finding> = functions
         .iter()
         .filter(|function| function.over(&spec.ceilings))
@@ -410,6 +429,7 @@ fn spec(config: &Config) -> Result<Spec, Error> {
         baseline: ratchet::baseline_path(config, SECTION, section)?,
         sources: files::roots(config, SECTION, section, "sources")?
             .ok_or_else(|| config.missing(SECTION, "sources"))?,
+        selection: selection(config, section)?,
         gate_text: format!(
             "over the complexity gate (cyclomatic > {} or body > {} lines)",
             ceilings.cc, ceilings.lines
@@ -417,6 +437,54 @@ fn spec(config: &Config) -> Result<Spec, Error> {
         ceilings,
         measured: ratchet::provenance(SECTION, VERSION, &Value::Object(gate_config)),
     })
+}
+
+fn selection(config: &Config, section: &Values) -> Result<Selection, Error> {
+    let named = files::strings(config, SECTION, section, "languages")?;
+    Ok(Selection {
+        languages: languages(config, &named)?,
+        skip_dirs: files::skip_dirs(config, SECTION, section)?,
+        exclude: files::strings(config, SECTION, section, "exclude")?,
+        exclude_except: files::roots(config, SECTION, section, "exclude_except")?
+            .unwrap_or_default(),
+    })
+}
+
+fn languages(config: &Config, named: &[String]) -> Result<Vec<&'static Language>, Error> {
+    if named.is_empty() {
+        return Ok(LANGUAGES.iter().collect());
+    }
+    let mut out: Vec<&'static Language> = Vec::new();
+    for name in named {
+        let matching = LANGUAGES
+            .iter()
+            .filter(|language| language.names.contains(&name.as_str()));
+        let mut found = false;
+        for language in matching {
+            found = true;
+            if !out.iter().any(|held| std::ptr::eq(*held, language)) {
+                out.push(language);
+            }
+        }
+        if !found {
+            return Err(unknown_language(config, name));
+        }
+    }
+    Ok(out)
+}
+
+fn unknown_language(config: &Config, name: &str) -> Error {
+    let mut known: Vec<&str> = LANGUAGES
+        .iter()
+        .flat_map(|language| language.names.iter().copied())
+        .collect();
+    known.sort_unstable();
+    known.dedup();
+    Error(format!(
+        "{}: \"{SECTION}\" measures no language called \"{name}\" — one of: {}",
+        config.file.display(),
+        known.join(", ")
+    ))
 }
 
 fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
@@ -441,8 +509,13 @@ fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
     })
 }
 
-fn measure(sources: &[PathBuf], repo_root: &Path) -> Result<Vec<Function>, Error> {
-    let extensions: Vec<&str> = LANGUAGES
+fn measure(
+    sources: &[PathBuf],
+    selection: &Selection,
+    repo_root: &Path,
+) -> Result<Vec<Function>, Error> {
+    let extensions: Vec<&str> = selection
+        .languages
         .iter()
         .flat_map(|language| language.extensions)
         .copied()
@@ -450,13 +523,14 @@ fn measure(sources: &[PathBuf], repo_root: &Path) -> Result<Vec<Function>, Error
     let mut out = Vec::new();
     let wanted = files::Wanted {
         extensions: &extensions,
-        skip_dirs: &[],
-        exclude: &[],
+        skip_dirs: &selection.skip_dirs,
+        exclude: &selection.exclude,
+        exclude_except: &selection.exclude_except,
         skip_hidden: true,
     };
     for file in files::under(sources, &wanted)? {
         let name = file.to_string_lossy().to_string();
-        let Some(language) = LANGUAGES.iter().find(|language| {
+        let Some(language) = selection.languages.iter().find(|language| {
             language
                 .extensions
                 .iter()

@@ -122,24 +122,6 @@ const PRELUDE: &[&str] = &[
     "block_comment",
     "doc_comment",
 ];
-const DEFAULT_SKIP_DIRS: &[&str] = &[
-    ".git",
-    "node_modules",
-    "vendor",
-    "build",
-    ".build",
-    "dist",
-    "target",
-    "__pycache__",
-    ".venv",
-    "venv",
-    "DerivedData",
-    "Pods",
-    "coverage",
-    ".next",
-    "out",
-    "fixtures",
-];
 
 #[derive(clap::Args, Default)]
 pub struct Args {
@@ -289,19 +271,16 @@ fn list_languages(out: &mut String) {
 }
 
 fn search(config: &Config, section: &Values) -> Result<Search, Error> {
-    let sets = sets(config, section)?;
-    let mut skip_dirs: Vec<String> = DEFAULT_SKIP_DIRS.iter().map(|s| s.to_string()).collect();
-    skip_dirs.extend(strings(config, section, "skip_dirs")?);
     Ok(Search {
-        sets,
-        skip_dirs,
-        exclude: strings(config, section, "exclude")?,
+        sets: sets(config, section)?,
+        skip_dirs: files::skip_dirs(config, SECTION, section)?,
+        exclude: files::strings(config, SECTION, section, "exclude")?,
         skip_rust_tests: flag(config, section, "skip_rust_tests")?,
     })
 }
 
 fn sets(config: &Config, section: &Values) -> Result<Vec<Set>, Error> {
-    let named = strings(config, section, "languages")?;
+    let named = files::strings(config, SECTION, section, "languages")?;
     let mut sets = language_sets(config, &named)?;
     let project = project_patterns(config, section)?;
     if named.is_empty() && project.is_empty() {
@@ -381,19 +360,6 @@ fn compiled(
         .collect()
 }
 
-fn strings(config: &Config, section: &Values, key: &str) -> Result<Vec<String>, Error> {
-    let Some(listed) = section.get(key) else {
-        return Ok(Vec::new());
-    };
-    let malformed = || config.malformed(SECTION, key, "a list of strings");
-    listed
-        .as_array()
-        .ok_or_else(malformed)?
-        .iter()
-        .map(|item| item.as_str().map(str::to_string).ok_or_else(malformed))
-        .collect()
-}
-
 fn flag(config: &Config, section: &Values, key: &str) -> Result<bool, Error> {
     match section.get(key) {
         None => Ok(true),
@@ -435,6 +401,7 @@ fn findings(
             extensions: &suffixes,
             skip_dirs: &search.skip_dirs,
             exclude: &search.exclude,
+            exclude_except: &[],
             skip_hidden: false,
         };
         for file in files::under(roots, &wanted)? {

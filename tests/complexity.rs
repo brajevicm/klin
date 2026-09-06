@@ -772,3 +772,137 @@ fn a_fall_through_arm_is_not_a_decision() {
     assert!(run.says("src/Pick.swift:1  cc 2"), "{}", run.out);
     assert!(run.says("src/Pick.kt:1  cc 2"), "{}", run.out);
 }
+
+#[test]
+fn a_vendored_directory_under_a_sources_root_is_not_measured() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["."], "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write(
+        "node_modules/dep/index.ts",
+        "function vendored() { return 1; }\n",
+    );
+    tree.write("web/app.ts", "function mine() { return 1; }\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("web/app.ts:1"), "{}", run.out);
+    assert!(!run.says("node_modules"), "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_vendored_directory_named_as_a_source_is_measured() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["node_modules/dep"], "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write(
+        "node_modules/dep/index.ts",
+        "function vendored() { return 1; }\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("node_modules/dep/index.ts:1"), "{}", run.out);
+}
+
+#[test]
+fn skip_dirs_adds_to_the_default_list() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["."], "skip_dirs": ["legacy"],
+             "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("legacy/old.rs", "fn old() {}\n");
+    tree.write("src/new.rs", "fn new() {}\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/new.rs:1"), "{}", run.out);
+    assert!(!run.says("legacy"), "{}", run.out);
+}
+
+#[test]
+fn only_the_named_languages_are_measured() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src"], "languages": ["rust"],
+             "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/a.rs", "fn a() {}\n");
+    tree.write("src/b.ts", "function b() { return 1; }\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/a.rs:1"), "{}", run.out);
+    assert!(!run.says("src/b.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_language_name_covers_every_grammar_the_escapes_gate_gives_it() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src"], "languages": ["typescript"],
+             "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/a.ts", "function a() { return 1; }\n");
+    tree.write("src/b.tsx", "function b() { return 1; }\n");
+    tree.write("src/c.js", "function c() { return 1; }\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/a.ts:1"), "{}", run.out);
+    assert!(run.says("src/b.tsx:1"), "{}", run.out);
+    assert!(!run.says("src/c.js"), "{}", run.out);
+}
+
+#[test]
+fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src"], "languages": ["cobol"],
+             "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/a.rs", "fn a() {}\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("cobol"), "{}", run.out);
+    assert!(run.says("rust"), "{}", run.out);
+}
+
+#[test]
+fn an_exclude_glob_drops_a_file_and_exclude_except_keeps_a_named_path_back() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src"], "exclude": ["*test*"],
+             "exclude_except": ["src/test-runner.ts"],
+             "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/app.ts", "function app() { return 1; }\n");
+    tree.write("src/app.test.ts", "function spec() { return 1; }\n");
+    tree.write("src/test-runner.ts", "function runner() { return 1; }\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/app.ts:1"), "{}", run.out);
+    assert!(run.says("src/test-runner.ts:1"), "{}", run.out);
+    assert!(!run.says("app.test.ts"), "{}", run.out);
+    assert!(run.says("2 new function(s)"), "{}", run.out);
+}

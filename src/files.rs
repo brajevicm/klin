@@ -4,6 +4,25 @@ use std::path::{Path, PathBuf};
 use crate::config::{Config, Error};
 use crate::ratchet::Values;
 
+const DEFAULT_SKIP_DIRS: &[&str] = &[
+    ".git",
+    "node_modules",
+    "vendor",
+    "build",
+    ".build",
+    "dist",
+    "target",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "DerivedData",
+    "Pods",
+    "coverage",
+    ".next",
+    "out",
+    "fixtures",
+];
+
 pub fn roots(
     config: &Config,
     section_name: &str,
@@ -28,10 +47,42 @@ pub fn roots(
         .map(Some)
 }
 
+pub fn strings(
+    config: &Config,
+    section_name: &str,
+    section: &Values,
+    key: &str,
+) -> Result<Vec<String>, Error> {
+    let Some(listed) = section.get(key) else {
+        return Ok(Vec::new());
+    };
+    let malformed = || config.malformed(section_name, key, "a list of strings");
+    listed
+        .as_array()
+        .ok_or_else(malformed)?
+        .iter()
+        .map(|item| item.as_str().map(str::to_string).ok_or_else(malformed))
+        .collect()
+}
+
+pub fn skip_dirs(
+    config: &Config,
+    section_name: &str,
+    section: &Values,
+) -> Result<Vec<String>, Error> {
+    let mut dirs: Vec<String> = DEFAULT_SKIP_DIRS
+        .iter()
+        .map(|dir| dir.to_string())
+        .collect();
+    dirs.extend(strings(config, section_name, section, "skip_dirs")?);
+    Ok(dirs)
+}
+
 pub struct Wanted<'a> {
     pub extensions: &'a [&'a str],
     pub skip_dirs: &'a [String],
     pub exclude: &'a [String],
+    pub exclude_except: &'a [PathBuf],
     pub skip_hidden: bool,
 }
 
@@ -44,11 +95,14 @@ impl Wanted<'_> {
     }
 
     fn descends(&self, name: &str) -> bool {
-        !(self.skip_hidden && (name.starts_with('.') || name == "target"))
+        !(self.skip_hidden && name.starts_with('.'))
             && !self.skip_dirs.iter().any(|skipped| skipped == name)
     }
 
     fn excluded(&self, path: &Path, name: &str) -> bool {
+        if self.exclude_except.iter().any(|kept| kept == path) {
+            return false;
+        }
         let whole = path.to_string_lossy();
         self.exclude.iter().any(|glob| {
             glob_matches(glob.as_bytes(), name.as_bytes())
