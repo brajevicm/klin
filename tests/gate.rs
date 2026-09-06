@@ -187,6 +187,25 @@ fn a_config_that_configures_no_gate_is_a_tool_error() {
 }
 
 #[test]
+fn a_section_named_after_the_command_is_a_tool_error() {
+    let tree = tree(r#"{ "project": "t", "doc-size": [{"file": "README.md", "ceiling": 1}] }"#);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"doc-size\" is what the command"), "{}", run.out);
+    assert!(run.says("\"doc_size\""), "{}", run.out);
+}
+
+#[test]
+fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
+    let tree = tree(r#"{ "project": "t" }"#);
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("configures no gate"), "{}", run.out);
+}
+
+#[test]
 fn strict_reaches_the_gates_that_take_it() {
     let tree = tree(EVERY_GATE);
     tree.write(

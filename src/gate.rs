@@ -28,18 +28,21 @@ pub struct Args {
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
+    if let Some((name, section)) = LADDER
+        .iter()
+        .find(|(name, section)| name != section && config.section(name).is_ok())
+    {
+        return Err(Error(format!(
+            "{}: \"{name}\" is what the command is called — the section it reads is \"{section}\"",
+            config.file.display()
+        )));
+    }
     let configured: Vec<&str> = LADDER
         .iter()
         .filter(|(_, section)| config.section(section).is_ok())
         .map(|(name, _)| *name)
         .collect();
     let wanted = select(&args.gates, &configured, &config)?;
-    if args.list {
-        for name in &wanted {
-            let _ = writeln!(out, "{name}");
-        }
-        return Ok(0);
-    }
     if wanted.is_empty() {
         return Err(Error(format!(
             "{} configures no gate — name at least one of: {}",
@@ -50,6 +53,12 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
                 .collect::<Vec<&str>>()
                 .join(", ")
         )));
+    }
+    if args.list {
+        for name in &wanted {
+            let _ = writeln!(out, "{name}");
+        }
+        return Ok(0);
     }
     let (mut failed, mut errored) = (0, 0);
     for name in &wanted {
