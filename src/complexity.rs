@@ -82,6 +82,14 @@ const ECMASCRIPT_DECISIONS: &[&str] = &[
 
 const ECMASCRIPT_OPERATORS: &[&str] = &["&&", "||", "??"];
 
+const ACCESSOR_HOLDERS: &[&str] = &["computed_property", "subscript_declaration"];
+
+const FALL_THROUGH_ARMS: &[(&str, &str)] = &[
+    ("switch_label", "default"),
+    ("switch_entry", "default_keyword"),
+    ("when_entry", "else"),
+];
+
 const LANGUAGES: &[Language] = &[
     Language {
         name: "Rust",
@@ -494,7 +502,7 @@ fn functions(path: &Path, repo_root: &Path, language: &Language) -> Result<Vec<F
 }
 
 fn collect(node: Node, language: &Language, file: &str, lines: &[&str], out: &mut Vec<Function>) {
-    if language.functions.contains(&node.kind()) {
+    if language.functions.contains(&node.kind()) && !holds_a_body(node, language) {
         let line = node.start_position().row as u64 + 1;
         out.push(Function {
             file: file.to_string(),
@@ -526,9 +534,26 @@ fn decisions(node: Node, language: &Language) -> u64 {
         } else {
             language.operators
         };
-        count += u64::from(table.contains(&child.kind())) + decisions(child, language);
+        count += u64::from(table.contains(&child.kind()) && !falls_through(child))
+            + decisions(child, language);
     }
     count
+}
+
+fn holds_a_body(node: Node, language: &Language) -> bool {
+    ACCESSOR_HOLDERS.contains(&node.kind())
+        && has_child(node, |kind| language.functions.contains(&kind))
+}
+
+fn falls_through(node: Node) -> bool {
+    FALL_THROUGH_ARMS
+        .iter()
+        .any(|(arm, marker)| node.kind() == *arm && has_child(node, |kind| kind == *marker))
+}
+
+fn has_child(node: Node, wanted: impl Fn(&str) -> bool) -> bool {
+    let mut cursor = node.walk();
+    node.children(&mut cursor).any(|child| wanted(child.kind()))
 }
 
 fn show(values: &Values) -> String {

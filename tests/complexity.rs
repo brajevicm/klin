@@ -611,7 +611,7 @@ fn java_functions_carry_their_hand_checked_numbers() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("src/Knot.java:2  cc 12, 18 lines  int tangled(int a, String[] b) {"),
+        run.says("src/Knot.java:2  cc 11, 18 lines  int tangled(int a, String[] b) {"),
         "{}",
         run.out
     );
@@ -657,7 +657,7 @@ fn swift_functions_carry_their_hand_checked_numbers() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(
-            "src/Knot.swift:1  cc 13, 19 lines  func tangled(_ a: Int, _ b: [String]) -> Int {"
+            "src/Knot.swift:1  cc 12, 19 lines  func tangled(_ a: Int, _ b: [String]) -> Int {"
         ),
         "{}",
         run.out
@@ -673,7 +673,7 @@ fn kotlin_functions_carry_their_hand_checked_numbers() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("src/Knot.kt:1  cc 12, 18 lines  fun tangled(a: Int, b: List<String>): Int {"),
+        run.says("src/Knot.kt:1  cc 11, 18 lines  fun tangled(a: Int, b: List<String>): Int {"),
         "{}",
         run.out
     );
@@ -729,4 +729,46 @@ fn an_accessor_or_initializer_body_is_measured_like_any_other_function() {
     assert!(run.says("src/Acc.swift:2  cc 2"), "{}", run.out);
     assert!(run.says("src/Acc.kt:2  cc 2"), "{}", run.out);
     assert!(run.says("src/Acc.java:3  cc 2"), "{}", run.out);
+}
+
+#[test]
+fn a_swift_accessor_is_measured_once_and_carries_its_own_branches() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/Prop.swift",
+        "struct S {\n    var total: Int {\n        get {\n            if a { return 1 }\n            return 2\n        }\n    }\n}\n",
+    );
+    tree.write(
+        "src/Sub.swift",
+        "struct T {\n    subscript(i: Int) -> Int {\n        get { return a[i] }\n        set { a[i] = newValue }\n    }\n}\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.out.matches("src/Prop.swift:").count(), 1, "{}", run.out);
+    assert!(run.says("src/Prop.swift:3  cc 2"), "{}", run.out);
+    assert_eq!(run.out.matches("src/Sub.swift:").count(), 2, "{}", run.out);
+    assert!(run.says("src/Sub.swift:3  cc 1"), "{}", run.out);
+    assert!(run.says("src/Sub.swift:4  cc 1"), "{}", run.out);
+}
+
+#[test]
+fn a_fall_through_arm_is_not_a_decision() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/Pick.java",
+        "class P {\n    int pick(int a) {\n        switch (a) {\n            case 1: return 1;\n            default: return 3;\n        }\n    }\n}\n",
+    );
+    tree.write(
+        "src/Pick.swift",
+        "func pick(_ a: Int) -> Int {\n    switch a {\n    case 1: return 1\n    default: return 3\n    }\n}\n",
+    );
+    tree.write(
+        "src/Pick.kt",
+        "fun pick(a: Int): Int {\n    return when (a) {\n        1 -> 1\n        else -> 3\n    }\n}\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert!(run.says("src/Pick.java:2  cc 2"), "{}", run.out);
+    assert!(run.says("src/Pick.swift:1  cc 2"), "{}", run.out);
+    assert!(run.says("src/Pick.kt:1  cc 2"), "{}", run.out);
 }
