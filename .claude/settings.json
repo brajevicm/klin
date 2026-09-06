@@ -1,5 +1,19 @@
 {
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && cargo run --quiet -- gate --hook --changed",
+            "timeout": 180,
+            "statusMessage": "detent: gating the changed files"
+          }
+        ]
+      }
+    ]
   }
 }
