@@ -236,7 +236,7 @@ fn the_config_flag_names_the_quality_json_every_gate_runs_under() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
 }
 
-const AN_ESCAPE: &str = "fn risky(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n";
+const AN_ESCAPE: &str = include_str!("fixtures/an_escape.rs");
 
 fn tangled(name: &str) -> String {
     let arms: String = (0..12)
