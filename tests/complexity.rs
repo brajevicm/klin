@@ -1026,3 +1026,28 @@ fn an_exclude_glob_drops_a_file_and_exclude_except_keeps_a_named_path_back() {
     assert!(!run.says("app.test.ts"), "{}", run.out);
     assert!(run.says("2 new function(s)"), "{}", run.out);
 }
+
+#[test]
+fn a_baseline_from_the_old_measure_version_is_a_note_locally_and_a_failure_under_strict() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/knot.rs", RUST);
+    tree.run(&["complexity", "--write-baseline"]);
+    let stored =
+        std::fs::read_to_string(tree.path("detent/complexity-baseline.json")).unwrap_or_default();
+    tree.write(
+        "detent/complexity-baseline.json",
+        &stored.replace("\"version\": \"2\"", "\"version\": \"1\""),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("measured by complexity 1, this run by 2"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("may not be comparable"), "{}", run.out);
+
+    let strict = tree.run(&["complexity", "--strict"]);
+    assert_eq!(strict.code, 1, "{}", strict.out);
+}
