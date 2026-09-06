@@ -1,5 +1,8 @@
 use std::fmt::Write;
+use std::io::{IsTerminal, Read};
 use std::path::{Path, PathBuf};
+
+use serde_json::Value;
 
 use crate::config::{Config, Error};
 use crate::{changed, complexity, doc_size, escapes};
@@ -27,9 +30,27 @@ pub struct Args {
     /// Judge only the files changed against the base — the fast loop; CI runs the full pass
     #[arg(long)]
     changed: bool,
+    /// Agent Stop hook mode: the failures to stderr, exit 2 to block the first stop
+    #[arg(long)]
+    hook: bool,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let outcome = judge(args, start, out);
+    if !args.hook {
+        return outcome;
+    }
+    let code = match outcome {
+        Ok(code) => code,
+        Err(problem) => {
+            let _ = writeln!(out, "FAIL: {problem}");
+            2
+        }
+    };
+    Ok(hook(code, &std::mem::take(out)))
+}
+
+fn judge(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let configured = configured(&config)?;
     let wanted = select(&args.gates, &configured, &config)?;
@@ -66,6 +87,40 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         summary(failed, errored)
     );
     Ok(code(failed, errored))
+}
+
+fn hook(code: u8, report: &str) -> u8 {
+    if code == 0 {
+        return 0;
+    }
+    let Some(event) = event() else {
+        eprint!("{report}");
+        return code;
+    };
+    let again = event
+        .get("stop_hook_active")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let tail = match again {
+        true => " — still, after one round of fixes:",
+        false => " — fix what each names, then stop again:",
+    };
+    eprintln!("detent: a quality gate failed{tail}");
+    eprint!("{report}");
+    if !again {
+        return 2;
+    }
+    eprintln!("detent: not blocking a second time; the failure stands and CI will refuse it.");
+    0
+}
+
+fn event() -> Option<Value> {
+    if std::io::stdin().is_terminal() {
+        return None;
+    }
+    let mut text = String::new();
+    std::io::stdin().read_to_string(&mut text).ok()?;
+    serde_json::from_str(&text).ok()
 }
 
 fn scope(args: &Args, config: &Config, out: &mut String) -> Result<Option<Vec<String>>, Error> {

@@ -345,3 +345,88 @@ fn changed_restricts_complexity_as_well_as_escapes() {
     assert!(scoped.says("src/new.rs:1"), "{}", scoped.out);
     assert!(!scoped.says("src/old.rs"), "{}", scoped.out);
 }
+
+const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
+const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
+
+fn stop(tree: &Tree, event: &str) -> harness::Run {
+    harness::feed(tree.root(), &["gate", "--hook"], event)
+}
+
+#[test]
+fn hook_blocks_the_first_stop_and_hands_the_failures_back() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("fix what each names, then stop again"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(
+        run.says("README.md is 30 words, over its ceiling of 10"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn hook_does_not_block_the_stop_after_that() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let run = stop(&tree, A_SECOND_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("still, after one round of fixes"), "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("not blocking a second time"), "{}", run.out);
+    assert!(!run.says("then stop again"), "{}", run.out);
+}
+
+#[test]
+fn hook_says_nothing_when_every_gate_passes() {
+    let tree = tree(EVERY_GATE);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.out, "", "{:?}", run.out);
+}
+
+#[test]
+fn hook_without_an_event_on_stdin_reports_but_does_not_block() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    for event in ["", "not json"] {
+        let run = stop(&tree, event);
+        assert_eq!(run.code, 1, "{event:?}: {}", run.out);
+        assert!(run.says("FAIL  doc-size"), "{event:?}: {}", run.out);
+        assert!(!run.says("stop again"), "{event:?}: {}", run.out);
+    }
+}
+
+#[test]
+fn hook_blocks_on_a_tool_error_too() {
+    let tree = tree(EVERY_GATE);
+    tree.write(
+        "detent/escapes-baseline.json",
+        r#"{ "entries": "not a list" }"#,
+    );
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("ERR   escapes"), "{}", run.out);
+}
+
+#[test]
+fn hook_without_an_event_still_reports_a_tool_error_as_one() {
+    let tree = tree(r#"{ "project": "t" }"#);
+
+    let run = stop(&tree, "");
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("configures no gate"), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}
