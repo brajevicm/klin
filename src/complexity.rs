@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
@@ -256,23 +257,23 @@ const LANGUAGES: &[Language] = &[
     },
 ];
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Default)]
 pub struct Args {
     /// The quality.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
-    config: Option<PathBuf>,
+    pub config: Option<PathBuf>,
     /// Print nothing on success
     #[arg(long)]
-    quiet: bool,
+    pub quiet: bool,
     /// Fail when the baseline is looser than the code — what CI runs
     #[arg(long)]
-    strict: bool,
+    pub strict: bool,
     /// Accept every function that is over the gate today
     #[arg(long)]
-    write_baseline: bool,
+    pub write_baseline: bool,
     /// Judge only these repo-relative files, against only their baseline entries
     #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
+    pub only: Option<Vec<String>>,
 }
 
 struct Function {
@@ -318,7 +319,7 @@ struct Spec {
     gate_text: String,
 }
 
-pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
+pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let spec = spec(&config)?;
     let functions = measure(&spec.sources, config.root())?;
@@ -330,14 +331,15 @@ pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
 
     if args.write_baseline {
         ratchet::write(&spec.baseline, &over, &spec.measured)?;
-        println!(
+        let _ = writeln!(
+            out,
             "baseline written: {} function(s) {}",
             over.len(),
             spec.gate_text
         );
         return Ok(0);
     }
-    assess(args, &spec, over, &functions)
+    assess(args, &spec, over, &functions, out)
 }
 
 fn assess(
@@ -345,6 +347,7 @@ fn assess(
     spec: &Spec,
     over: Vec<Finding>,
     measured: &[Function],
+    out: &mut String,
 ) -> Result<u8, Error> {
     let judged = match args.only.as_deref() {
         Some(only) => measured
@@ -374,18 +377,15 @@ fn assess(
     };
     let ok_line =
         format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline");
-    let mut out = String::new();
-    let code = ratchet::report(
+    Ok(ratchet::report(
         &verdict,
         &gate,
         baseline_size,
         &ok_line,
         args.quiet,
         args.strict,
-        &mut out,
-    );
-    print!("{out}");
-    Ok(code)
+        out,
+    ))
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {

@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
@@ -10,20 +11,20 @@ const REMEDY: &str = "An instruction that can be a gate costs no words — encod
     point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling \
     is a decision to say why in the commit.";
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Default)]
 pub struct Args {
     /// The quality.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
-    config: Option<PathBuf>,
+    pub config: Option<PathBuf>,
     /// Judge this one document instead of the config's list
     #[arg(long)]
-    file: Option<PathBuf>,
+    pub file: Option<PathBuf>,
     /// The ceiling for --file (default: its entry in the config)
     #[arg(long)]
-    ceiling: Option<u64>,
+    pub ceiling: Option<u64>,
     /// Print nothing on success
     #[arg(long)]
-    quiet: bool,
+    pub quiet: bool,
 }
 
 struct Document {
@@ -32,7 +33,7 @@ struct Document {
     name: String,
 }
 
-pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
+pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if let Some(named) = &args.file
         && !named.is_file()
     {
@@ -47,16 +48,22 @@ pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
         let (name, ceiling) = (&document.name, document.ceiling);
         if words > ceiling {
             over += 1;
-            println!("FAIL: {name} is {words} words, over its ceiling of {ceiling}.");
-            println!("{REMEDY}");
+            let _ = writeln!(
+                out,
+                "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
+            );
+            let _ = writeln!(out, "{REMEDY}");
             continue;
         }
         if !args.quiet {
-            println!("OK: {name} is {words} words, ceiling {ceiling}");
+            let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
         }
         let remaining = ceiling - words;
         if remaining as f64 <= ceiling as f64 * MARGIN_FRACTION {
-            println!("WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}.");
+            let _ = writeln!(
+                out,
+                "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
+            );
         }
     }
     Ok(if over > 0 { 1 } else { 0 })

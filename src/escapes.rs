@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use regex::Regex;
@@ -140,26 +141,26 @@ const DEFAULT_SKIP_DIRS: &[&str] = &[
     "fixtures",
 ];
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Default)]
 pub struct Args {
     /// The quality.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
-    config: Option<PathBuf>,
+    pub config: Option<PathBuf>,
     /// Print nothing on success
     #[arg(long)]
-    quiet: bool,
+    pub quiet: bool,
     /// Fail when the baseline is looser than the code — what CI runs
     #[arg(long)]
-    strict: bool,
+    pub strict: bool,
     /// Accept every escape site that exists today
     #[arg(long)]
-    write_baseline: bool,
+    pub write_baseline: bool,
     /// Print the built-in pattern sets and exit
     #[arg(long)]
-    list_languages: bool,
+    pub list_languages: bool,
     /// Judge only these repo-relative files, against only their baseline entries
     #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
+    pub only: Option<Vec<String>>,
 }
 
 struct Set {
@@ -180,9 +181,9 @@ struct Tally {
     count: u64,
 }
 
-pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
+pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.list_languages {
-        list_languages();
+        list_languages(out);
         return Ok(0);
     }
     let config = Config::load(args.config.as_deref(), start)?;
@@ -203,7 +204,11 @@ pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
 
     if args.write_baseline {
         ratchet::write(&baseline_path, &found, &measured)?;
-        println!("baseline written: {} escape site(s) accepted", found.len());
+        let _ = writeln!(
+            out,
+            "baseline written: {} escape site(s) accepted",
+            found.len()
+        );
         return Ok(0);
     }
 
@@ -226,18 +231,15 @@ pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
     let ok_line = format!("OK: {sites} escape site(s) in the tree, all in the baseline{aside}");
-    let mut out = String::new();
-    let code = ratchet::report(
+    Ok(ratchet::report(
         &verdict,
         &gate,
         baseline_size,
         &ok_line,
         args.quiet,
         args.strict,
-        &mut out,
-    );
-    print!("{out}");
-    Ok(code)
+        out,
+    ))
 }
 
 fn language(name: &str) -> Option<&'static Language> {
@@ -246,11 +248,16 @@ fn language(name: &str) -> Option<&'static Language> {
         .find(|language| language.names.contains(&name))
 }
 
-fn list_languages() {
+fn list_languages(out: &mut String) {
     for language in LANGUAGES {
         let mut escapes: Vec<&str> = language.patterns.iter().map(|(name, _)| *name).collect();
         escapes.sort_unstable();
-        println!("{:<22} {}", language.names.join(", "), escapes.join(", "));
+        let _ = writeln!(
+            out,
+            "{:<22} {}",
+            language.names.join(", "),
+            escapes.join(", ")
+        );
     }
 }
 
