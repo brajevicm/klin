@@ -41,32 +41,36 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let mut over = 0;
     for document in documents(args, start)? {
-        if !document.path.is_file() {
-            return Err(Error(format!("no such file: {}", document.path.display())));
-        }
-        let words = count_words(&document.path)?;
-        let (name, ceiling) = (&document.name, document.ceiling);
-        if words > ceiling {
-            over += 1;
-            let _ = writeln!(
-                out,
-                "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
-            );
-            let _ = writeln!(out, "{REMEDY}");
-            continue;
-        }
-        if !args.quiet {
-            let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
-        }
-        let remaining = ceiling - words;
-        if remaining as f64 <= ceiling as f64 * MARGIN_FRACTION {
-            let _ = writeln!(
-                out,
-                "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
-            );
-        }
+        over += usize::from(judge(&document, args.quiet, out)?);
     }
     Ok(if over > 0 { 1 } else { 0 })
+}
+
+fn judge(document: &Document, quiet: bool, out: &mut String) -> Result<bool, Error> {
+    if !document.path.is_file() {
+        return Err(Error(format!("no such file: {}", document.path.display())));
+    }
+    let words = count_words(&document.path)?;
+    let (name, ceiling) = (&document.name, document.ceiling);
+    if words > ceiling {
+        let _ = writeln!(
+            out,
+            "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
+        );
+        let _ = writeln!(out, "{REMEDY}");
+        return Ok(true);
+    }
+    if !quiet {
+        let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
+    }
+    let remaining = ceiling - words;
+    if remaining as f64 <= ceiling as f64 * MARGIN_FRACTION {
+        let _ = writeln!(
+            out,
+            "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
+        );
+    }
+    Ok(false)
 }
 
 fn documents(args: &Args, start: &Path) -> Result<Vec<Document>, Error> {

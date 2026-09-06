@@ -1,5 +1,16 @@
 {
   "project": "detent",
+  "complexity": {
+    "sources": [
+      "src",
+      "tests"
+    ],
+    "ceilings": {
+      "cc": 8,
+      "lines": 60
+    },
+    "baseline": "quality/complexity-baseline.json"
+  },
   "doc_size": [
     {
       "file": "README.md",
@@ -13,5 +24,15 @@
       "file": "AGENTS.md",
       "ceiling": 350
     }
-  ]
+  ],
+  "escapes": {
+    "roots": [
+      "src",
+      "tests"
+    ],
+    "languages": [
+      "rust"
+    ],
+    "baseline": "quality/escapes-baseline.json"
+  }
 }

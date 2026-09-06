@@ -1,0 +1,15 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release --locked
+      - run: cargo test --locked
+      - run: ./target/release/detent gate --strict

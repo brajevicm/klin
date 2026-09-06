@@ -168,6 +168,13 @@ struct Set {
     patterns: Vec<(String, Regex)>,
 }
 
+struct Spec {
+    baseline: PathBuf,
+    search: Search,
+    roots: Vec<PathBuf>,
+    measured: Values,
+}
+
 struct Search {
     sets: Vec<Set>,
     skip_dirs: Vec<String>,
@@ -187,23 +194,10 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         return Ok(0);
     }
     let config = Config::load(args.config.as_deref(), start)?;
-    let Some(section) = config.section(SECTION)?.as_object() else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must be an object",
-            config.file.display()
-        )));
-    };
-    let baseline_path = ratchet::baseline_path(&config, SECTION, section)?;
-    let search = search(&config, section)?;
-    let roots = files::roots(&config, SECTION, section, "roots")?
-        .unwrap_or_else(|| vec![config.root().to_path_buf()]);
-    let (found, skipped) = findings(&search, &roots, config.root())?;
-    let mut gate_config = section.clone();
-    gate_config.remove("baseline");
-    let measured = ratchet::provenance(SECTION, VERSION, &Value::Object(gate_config));
-
+    let spec = spec(&config)?;
+    let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
     if args.write_baseline {
-        ratchet::write(&baseline_path, &found, &measured)?;
+        ratchet::write(&spec.baseline, &found, &spec.measured)?;
         let _ = writeln!(
             out,
             "baseline written: {} escape site(s) accepted",
@@ -211,12 +205,45 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         );
         return Ok(0);
     }
+    report(args, &spec, found, skipped, out)
+}
 
-    let (entries, stored) = ratchet::read(&baseline_path)?;
+fn spec(config: &Config) -> Result<Spec, Error> {
+    let Some(section) = config.section(SECTION)?.as_object() else {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" must be an object",
+            config.file.display()
+        )));
+    };
+    let mut gate_config = section.clone();
+    gate_config.remove("baseline");
+    Ok(Spec {
+        baseline: ratchet::baseline_path(config, SECTION, section)?,
+        search: search(config, section)?,
+        roots: files::roots(config, SECTION, section, "roots")?
+            .unwrap_or_else(|| vec![config.root().to_path_buf()]),
+        measured: ratchet::provenance(SECTION, VERSION, &Value::Object(gate_config)),
+    })
+}
+
+fn report(
+    args: &Args,
+    spec: &Spec,
+    found: Vec<Finding>,
+    skipped: u64,
+    out: &mut String,
+) -> Result<u8, Error> {
+    let (entries, stored) = ratchet::read(&spec.baseline)?;
     let (found, entries) = ratchet::restrict(found, entries, args.only.as_deref());
     let sites = found.len();
     let baseline_size = entries.len();
-    let verdict = ratchet::judge(found, entries, &["count"], stored.as_ref(), Some(&measured));
+    let verdict = ratchet::judge(
+        found,
+        entries,
+        &["count"],
+        stored.as_ref(),
+        Some(&spec.measured),
+    );
     let gate = Gate {
         noun: "escape site(s)",
         over: "where the code opts out of a check",
@@ -262,20 +289,20 @@ fn list_languages(out: &mut String) {
 }
 
 fn search(config: &Config, section: &Values) -> Result<Search, Error> {
+    let sets = sets(config, section)?;
+    let mut skip_dirs: Vec<String> = DEFAULT_SKIP_DIRS.iter().map(|s| s.to_string()).collect();
+    skip_dirs.extend(strings(config, section, "skip_dirs")?);
+    Ok(Search {
+        sets,
+        skip_dirs,
+        exclude: strings(config, section, "exclude")?,
+        skip_rust_tests: flag(config, section, "skip_rust_tests")?,
+    })
+}
+
+fn sets(config: &Config, section: &Values) -> Result<Vec<Set>, Error> {
     let named = strings(config, section, "languages")?;
-    let mut sets = Vec::new();
-    for name in &named {
-        let set = language(name).ok_or_else(|| unknown_language(config, name))?;
-        sets.push(Set {
-            suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
-            patterns: compiled(
-                config,
-                set.patterns
-                    .iter()
-                    .map(|(name, regex)| (name.to_string(), regex.to_string())),
-            )?,
-        });
-    }
+    let mut sets = language_sets(config, &named)?;
     let project = project_patterns(config, section)?;
     if named.is_empty() && project.is_empty() {
         return Err(Error(format!(
@@ -284,24 +311,43 @@ fn search(config: &Config, section: &Values) -> Result<Search, Error> {
         )));
     }
     if !project.is_empty() {
-        let mut suffixes: Vec<String> = sets.iter().flat_map(|set| set.suffixes.clone()).collect();
-        suffixes.sort();
-        suffixes.dedup();
-        if suffixes.is_empty() {
-            suffixes.push(EVERY_FILE.to_string());
-        }
-        sets.push(Set {
-            suffixes,
-            patterns: compiled(config, project.into_iter())?,
-        });
+        sets.push(project_set(config, &sets, project)?);
     }
-    let mut skip_dirs: Vec<String> = DEFAULT_SKIP_DIRS.iter().map(|s| s.to_string()).collect();
-    skip_dirs.extend(strings(config, section, "skip_dirs")?);
-    Ok(Search {
-        sets,
-        skip_dirs,
-        exclude: strings(config, section, "exclude")?,
-        skip_rust_tests: flag(config, section, "skip_rust_tests")?,
+    Ok(sets)
+}
+
+fn language_sets(config: &Config, named: &[String]) -> Result<Vec<Set>, Error> {
+    named
+        .iter()
+        .map(|name| {
+            let set = language(name).ok_or_else(|| unknown_language(config, name))?;
+            Ok(Set {
+                suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
+                patterns: compiled(
+                    config,
+                    set.patterns
+                        .iter()
+                        .map(|(name, regex)| (name.to_string(), regex.to_string())),
+                )?,
+            })
+        })
+        .collect()
+}
+
+fn project_set(
+    config: &Config,
+    sets: &[Set],
+    project: Vec<(String, String)>,
+) -> Result<Set, Error> {
+    let mut suffixes: Vec<String> = sets.iter().flat_map(|set| set.suffixes.clone()).collect();
+    suffixes.sort();
+    suffixes.dedup();
+    if suffixes.is_empty() {
+        suffixes.push(EVERY_FILE.to_string());
+    }
+    Ok(Set {
+        suffixes,
+        patterns: compiled(config, project.into_iter())?,
     })
 }
 
@@ -395,27 +441,52 @@ fn findings(
             let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
             let text = String::from_utf8_lossy(&bytes).to_string();
             let rel = files::relative(&file, repo_root);
-            let lines: Vec<&str> = text.split('\n').collect();
-            let tests = match search.skip_rust_tests && rel.ends_with(".rs") {
-                true => ranges
-                    .entry(rel.clone())
-                    .or_insert_with(|| rust_test_ranges(&text))
-                    .clone(),
-                false => Vec::new(),
-            };
-            for (escape, regex) in &set.patterns {
-                for found in regex.find_iter(&text) {
-                    let line = text[..found.start()].matches('\n').count() as u64 + 1;
-                    if tests.iter().any(|(from, to)| *from <= line && line <= *to) {
-                        skipped += 1;
-                        continue;
-                    }
-                    let body = lines.get(line as usize - 1).unwrap_or(&"").trim();
-                    record(&mut seen, &rel, line, body, escape);
-                }
-            }
+            let tests = cached_test_ranges(search, &rel, &text, &mut ranges);
+            skipped += tally(set, &rel, &text, &tests, &mut seen);
         }
     }
+    Ok((collected(seen), skipped))
+}
+
+fn cached_test_ranges(
+    search: &Search,
+    rel: &str,
+    text: &str,
+    ranges: &mut BTreeMap<String, Vec<(u64, u64)>>,
+) -> Vec<(u64, u64)> {
+    if !(search.skip_rust_tests && rel.ends_with(".rs")) {
+        return Vec::new();
+    }
+    ranges
+        .entry(rel.to_string())
+        .or_insert_with(|| rust_test_ranges(text))
+        .clone()
+}
+
+fn tally(
+    set: &Set,
+    rel: &str,
+    text: &str,
+    tests: &[(u64, u64)],
+    seen: &mut BTreeMap<(String, String), Tally>,
+) -> u64 {
+    let lines: Vec<&str> = text.split('\n').collect();
+    let mut skipped = 0;
+    for (escape, regex) in &set.patterns {
+        for found in regex.find_iter(text) {
+            let line = text[..found.start()].matches('\n').count() as u64 + 1;
+            if tests.iter().any(|(from, to)| *from <= line && line <= *to) {
+                skipped += 1;
+                continue;
+            }
+            let body = lines.get(line as usize - 1).unwrap_or(&"").trim();
+            record(seen, rel, line, body, escape);
+        }
+    }
+    skipped
+}
+
+fn collected(seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
     let mut out: Vec<Finding> = seen
         .into_iter()
         .map(|((file, text), tally)| {
@@ -431,7 +502,7 @@ fn findings(
         })
         .collect();
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    Ok((out, skipped))
+    out
 }
 
 fn record(

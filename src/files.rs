@@ -1,3 +1,4 @@
+use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
 use crate::config::{Config, Error};
@@ -70,22 +71,27 @@ fn walk(root: &Path, wanted: &Wanted, into: &mut Vec<PathBuf>) -> Result<(), Err
     let listing = std::fs::read_dir(root).map_err(|why| Error::unreadable(root, why))?;
     for entry in listing {
         let entry = entry.map_err(|why| Error::unreadable(root, why))?;
-        let path = entry.path();
-        if entry
-            .file_type()
-            .map_err(|why| Error::unreadable(&path, why))?
-            .is_symlink()
-        {
-            continue;
+        visit(&entry, wanted, into)?;
+    }
+    Ok(())
+}
+
+fn visit(entry: &DirEntry, wanted: &Wanted, into: &mut Vec<PathBuf>) -> Result<(), Error> {
+    let path = entry.path();
+    if entry
+        .file_type()
+        .map_err(|why| Error::unreadable(&path, why))?
+        .is_symlink()
+    {
+        return Ok(());
+    }
+    let name = entry.file_name().to_string_lossy().to_string();
+    if path.is_dir() {
+        if wanted.descends(&name) {
+            walk(&path, wanted, into)?;
         }
-        let name = entry.file_name().to_string_lossy().to_string();
-        if path.is_dir() {
-            if wanted.descends(&name) {
-                walk(&path, wanted, into)?;
-            }
-        } else if wanted.keeps(&path, &name) {
-            into.push(path);
-        }
+    } else if wanted.keeps(&path, &name) {
+        into.push(path);
     }
     Ok(())
 }
@@ -93,24 +99,28 @@ fn walk(root: &Path, wanted: &Wanted, into: &mut Vec<PathBuf>) -> Result<(), Err
 fn glob_matches(glob: &[u8], text: &[u8]) -> bool {
     match glob.first() {
         None => text.is_empty(),
-        Some(b'*') => {
-            glob_matches(&glob[1..], text) || (!text.is_empty() && glob_matches(glob, &text[1..]))
-        }
+        Some(b'*') => star_matches(glob, text),
+        Some(b'[') => class_matches(glob, text),
         Some(b'?') => !text.is_empty() && glob_matches(&glob[1..], &text[1..]),
-        Some(b'[') => match class_end(glob) {
-            Some(end) => {
-                let (negated, set) = match glob[1] {
-                    b'!' => (true, &glob[2..end]),
-                    _ => (false, &glob[1..end]),
-                };
-                text.first()
-                    .is_some_and(|byte| in_class(set, *byte) != negated)
-                    && glob_matches(&glob[end + 1..], &text[1..])
-            }
-            None => text.first() == Some(&b'[') && glob_matches(&glob[1..], &text[1..]),
-        },
         Some(first) => text.first() == Some(first) && glob_matches(&glob[1..], &text[1..]),
     }
+}
+
+fn star_matches(glob: &[u8], text: &[u8]) -> bool {
+    glob_matches(&glob[1..], text) || (!text.is_empty() && glob_matches(glob, &text[1..]))
+}
+
+fn class_matches(glob: &[u8], text: &[u8]) -> bool {
+    let Some(end) = class_end(glob) else {
+        return text.first() == Some(&b'[') && glob_matches(&glob[1..], &text[1..]);
+    };
+    let (negated, set) = match glob[1] {
+        b'!' => (true, &glob[2..end]),
+        _ => (false, &glob[1..end]),
+    };
+    text.first()
+        .is_some_and(|byte| in_class(set, *byte) != negated)
+        && glob_matches(&glob[end + 1..], &text[1..])
 }
 
 fn class_end(glob: &[u8]) -> Option<usize> {

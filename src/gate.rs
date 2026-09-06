@@ -28,20 +28,7 @@ pub struct Args {
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
-    if let Some((name, section)) = LADDER
-        .iter()
-        .find(|(name, section)| name != section && config.section(name).is_ok())
-    {
-        return Err(Error(format!(
-            "{}: \"{name}\" is what the command is called — the section it reads is \"{section}\"",
-            config.file.display()
-        )));
-    }
-    let configured: Vec<&str> = LADDER
-        .iter()
-        .filter(|(_, section)| config.section(section).is_ok())
-        .map(|(name, _)| *name)
-        .collect();
+    let configured = configured(&config)?;
     let wanted = select(&args.gates, &configured, &config)?;
     if wanted.is_empty() {
         return Err(Error(format!(
@@ -60,9 +47,43 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         }
         return Ok(0);
     }
+    let (failed, errored) = each(&wanted, &config.file, args.strict, start, out);
+    let _ = writeln!(
+        out,
+        "detent: {} gate(s), {}",
+        wanted.len(),
+        summary(failed, errored)
+    );
+    Ok(code(failed, errored))
+}
+
+fn configured(config: &Config) -> Result<Vec<&'static str>, Error> {
+    if let Some((name, section)) = LADDER
+        .iter()
+        .find(|(name, section)| name != section && config.section(name).is_ok())
+    {
+        return Err(Error(format!(
+            "{}: \"{name}\" is what the command is called — the section it reads is \"{section}\"",
+            config.file.display()
+        )));
+    }
+    Ok(LADDER
+        .iter()
+        .filter(|(_, section)| config.section(section).is_ok())
+        .map(|(name, _)| *name)
+        .collect())
+}
+
+fn each(
+    wanted: &[&str],
+    config: &Path,
+    strict: bool,
+    start: &Path,
+    out: &mut String,
+) -> (usize, usize) {
     let (mut failed, mut errored) = (0, 0);
-    for name in &wanted {
-        let (code, text) = one(name, &config.file, args.strict, start);
+    for name in wanted {
+        let (code, text) = one(name, config, strict, start);
         match code {
             0 => (),
             1 => failed += 1,
@@ -73,19 +94,17 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
             let _ = writeln!(out, "        {line}");
         }
     }
-    let _ = writeln!(
-        out,
-        "detent: {} gate(s), {}",
-        wanted.len(),
-        summary(failed, errored)
-    );
-    Ok(if errored > 0 {
+    (failed, errored)
+}
+
+fn code(failed: usize, errored: usize) -> u8 {
+    if errored > 0 {
         2
     } else if failed > 0 {
         1
     } else {
         0
-    })
+    }
 }
 
 fn select(
