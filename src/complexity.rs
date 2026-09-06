@@ -9,7 +9,7 @@ use crate::files;
 use crate::ratchet::{self, Finding, Gate, Values};
 
 const SECTION: &str = "complexity";
-const VERSION: &str = "1";
+const VERSION: &str = "2";
 
 struct Language {
     name: &'static str,
@@ -83,13 +83,20 @@ const ECMASCRIPT_DECISIONS: &[&str] = &[
 
 const ECMASCRIPT_OPERATORS: &[&str] = &["&&", "||", "??"];
 
-const ACCESSOR_HOLDERS: &[&str] = &["computed_property", "subscript_declaration"];
+const ACCESSOR_HOLDERS: &[&str] = &[
+    "computed_property",
+    "subscript_declaration",
+    "property_declaration",
+    "willset_didset_block",
+];
 
 const FALL_THROUGH_ARMS: &[(&str, &str)] = &[
     ("switch_label", "default"),
     ("switch_entry", "default_keyword"),
     ("when_entry", "else"),
 ];
+
+const CATCH_ALL_PATTERNS: &[&str] = &["match_pattern", "case_pattern"];
 
 const LANGUAGES: &[Language] = &[
     Language {
@@ -638,17 +645,12 @@ fn functions(
 
 fn collect(node: Node, language: &Language, file: &str, lines: &[&str], out: &mut Vec<Function>) {
     if language.functions.contains(&node.kind()) && !holds_a_body(node, language) {
-        let line = node.start_position().row as u64 + 1;
         out.push(Function {
             file: file.to_string(),
-            line,
+            line: node.start_position().row as u64 + 1,
             end: node.end_position().row as u64 + 1,
             cc: 1 + decisions(node, language),
-            text: lines
-                .get(line as usize - 1)
-                .unwrap_or(&"")
-                .trim()
-                .to_string(),
+            text: site(node, lines),
         });
     }
     let mut cursor = node.walk();
@@ -684,6 +686,44 @@ fn falls_through(node: Node) -> bool {
     FALL_THROUGH_ARMS
         .iter()
         .any(|(arm, marker)| node.kind() == *arm && has_child(node, |kind| kind == *marker))
+        || catches_all(node)
+}
+
+fn catches_all(node: Node) -> bool {
+    let mut cursor = node.walk();
+    let mut patterns = node
+        .children(&mut cursor)
+        .filter(|child| CATCH_ALL_PATTERNS.contains(&child.kind()));
+    let Some(pattern) = patterns.next() else {
+        return false;
+    };
+    patterns.next().is_none()
+        && pattern.child_count() == 1
+        && pattern.child(0).is_some_and(|only| only.kind() == "_")
+}
+
+fn site(node: Node, lines: &[&str]) -> String {
+    let row = node.start_position().row;
+    match holder_row(node) {
+        Some(holder) if holder < row => {
+            format!("{} {}", line_at(lines, holder), line_at(lines, row))
+        }
+        _ => line_at(lines, row),
+    }
+}
+
+fn holder_row(node: Node) -> Option<usize> {
+    let mut row = None;
+    let mut above = node.parent();
+    while let Some(holder) = above.filter(|above| ACCESSOR_HOLDERS.contains(&above.kind())) {
+        row = Some(holder.start_position().row);
+        above = holder.parent();
+    }
+    row
+}
+
+fn line_at(lines: &[&str], row: usize) -> String {
+    lines.get(row).unwrap_or(&"").trim().to_string()
 }
 
 fn has_child(node: Node, wanted: impl Fn(&str) -> bool) -> bool {

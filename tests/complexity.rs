@@ -12,7 +12,7 @@ const RUST: &str = r##"fn tangled(a: i32) -> i32 {
     }
     match a {
         1 => 1,
-        _ => 0,
+        9 => 0,
     }
 }
 
@@ -812,11 +812,85 @@ fn a_fall_through_arm_is_not_a_decision() {
         "src/Pick.kt",
         "fun pick(a: Int): Int {\n    return when (a) {\n        1 -> 1\n        else -> 3\n    }\n}\n",
     );
+    tree.write(
+        "src/pick.rs",
+        "fn pick(n: i32) -> i32 {\n    match n {\n        1 => 1,\n        _ => 3,\n    }\n}\n",
+    );
+    tree.write(
+        "src/pick.py",
+        "def pick(n):\n    match n:\n        case 1:\n            return 1\n        case _:\n            return 3\n",
+    );
+    tree.write(
+        "src/pick.go",
+        "package main\n\nfunc pick(a int) int {\n\tswitch a {\n\tcase 1:\n\t\treturn 1\n\tdefault:\n\t\treturn 3\n\t}\n}\n",
+    );
+    tree.write(
+        "src/pick.ts",
+        "function pick(a: number): number {\n  switch (a) {\n    case 1: return 1;\n    default: return 3;\n  }\n}\n",
+    );
 
     let run = tree.run(&["complexity"]);
     assert!(run.says("src/Pick.java:2  cc 2"), "{}", run.out);
     assert!(run.says("src/Pick.swift:1  cc 2"), "{}", run.out);
     assert!(run.says("src/Pick.kt:1  cc 2"), "{}", run.out);
+    assert!(run.says("src/pick.rs:1  cc 2"), "{}", run.out);
+    assert!(run.says("src/pick.py:1  cc 2"), "{}", run.out);
+    assert!(run.says("src/pick.go:3  cc 2"), "{}", run.out);
+    assert!(run.says("src/pick.ts:1  cc 2"), "{}", run.out);
+}
+
+#[test]
+fn a_guarded_catch_all_arm_is_still_a_decision() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/guarded.rs",
+        "fn pick(n: i32) -> i32 {\n    match n {\n        _ if n > 2 => 1,\n        _ => 3,\n    }\n}\n",
+    );
+    tree.write(
+        "src/guarded.py",
+        "def pick(n):\n    match n:\n        case _ if n > 2:\n            return 1\n        case _:\n            return 3\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert!(run.says("src/guarded.rs:1  cc 2"), "{}", run.out);
+    assert!(run.says("src/guarded.py:1  cc 2"), "{}", run.out);
+}
+
+#[test]
+fn a_pattern_list_that_holds_a_wildcard_is_not_a_catch_all() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/pair.py",
+        "def pick(n):\n    match n:\n        case 1, _:\n            return 1\n        case _:\n            return 3\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert!(run.says("src/pair.py:1  cc 2"), "{}", run.out);
+}
+
+#[test]
+fn each_accessor_in_a_file_carries_its_own_site() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/Two.swift",
+        "struct S {\n    var area: Int {\n        get {\n            return 1\n        }\n    }\n    var size: Int {\n        get {\n            return 2\n        }\n    }\n}\n",
+    );
+    tree.write(
+        "src/Two.kt",
+        "class C {\n    var area: Int\n        get() {\n            return 1\n        }\n    var size: Int\n        get() {\n            return 2\n        }\n}\n",
+    );
+    tree.write(
+        "src/Sub.swift",
+        "struct T {\n    subscript(i: Int) -> Int {\n        get {\n            return a[i]\n        }\n        set {\n            a[i] = newValue\n        }\n    }\n}\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert!(run.says("var area: Int { get {"), "{}", run.out);
+    assert!(run.says("var size: Int { get {"), "{}", run.out);
+    assert!(run.says("var area: Int get() {"), "{}", run.out);
+    assert!(run.says("var size: Int get() {"), "{}", run.out);
+    assert!(run.says("subscript(i: Int) -> Int { get {"), "{}", run.out);
+    assert!(run.says("subscript(i: Int) -> Int { set {"), "{}", run.out);
 }
 
 #[test]
