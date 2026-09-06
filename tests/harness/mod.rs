@@ -59,6 +59,47 @@ impl Tree {
     pub fn run_without_path(&self, args: &[&str]) -> Run {
         spawn(self.root(), args, "", &[("PATH", "")])
     }
+
+    pub fn run_with(&self, environment: &[(&str, &str)], args: &[&str]) -> Run {
+        spawn(self.root(), args, "", environment)
+    }
+
+    pub fn git(&self, args: &[&str]) {
+        let outcome = Command::new("git")
+            .arg("-C")
+            .arg(self.root())
+            .args(args)
+            .output();
+        let Ok(done) = outcome else {
+            panic!("git {} could not run", args.join(" "))
+        };
+        assert!(
+            done.status.success(),
+            "git {}: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&done.stderr)
+        );
+    }
+
+    pub fn commit(&self, message: &str) {
+        self.git(&["add", "-A"]);
+        self.git(&[
+            "-c",
+            "user.name=detent",
+            "-c",
+            "user.email=detent@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "-m",
+            message,
+        ]);
+    }
+
+    pub fn repository(&self) {
+        self.git(&["init", "-q", "-b", "main"]);
+    }
 }
 
 pub fn run_from(cwd: &Path, args: &[&str]) -> Run {

@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use crate::config::{Config, Error};
-use crate::{complexity, doc_size, escapes};
+use crate::{changed, complexity, doc_size, escapes};
 
 const LADDER: &[(&str, &str)] = &[
     ("doc-size", "doc_size"),
@@ -24,6 +24,9 @@ pub struct Args {
     /// Print the configured gates and exit
     #[arg(long)]
     list: bool,
+    /// Judge only the files changed against the base — the fast loop; CI runs the full pass
+    #[arg(long)]
+    changed: bool,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -47,7 +50,15 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         }
         return Ok(0);
     }
-    let (failed, errored) = each(&wanted, &config.file, args.strict, start, out);
+    let scope = scope(args, &config, out)?;
+    let (failed, errored) = each(
+        &wanted,
+        &config.file,
+        args.strict,
+        start,
+        scope.as_deref(),
+        out,
+    );
     let _ = writeln!(
         out,
         "detent: {} gate(s), {}",
@@ -55,6 +66,20 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         summary(failed, errored)
     );
     Ok(code(failed, errored))
+}
+
+fn scope(args: &Args, config: &Config, out: &mut String) -> Result<Option<Vec<String>>, Error> {
+    if !args.changed {
+        return Ok(None);
+    }
+    let files = changed::files(config.root())?;
+    let _ = writeln!(
+        out,
+        "  changed: {} file(s) against the base — the scoped gates judge those; \
+         CI judges everything",
+        files.len()
+    );
+    Ok(Some(files))
 }
 
 fn configured(config: &Config) -> Result<Vec<&'static str>, Error> {
@@ -79,11 +104,12 @@ fn each(
     config: &Path,
     strict: bool,
     start: &Path,
+    scope: Option<&[String]>,
     out: &mut String,
 ) -> (usize, usize) {
     let (mut failed, mut errored) = (0, 0);
     for name in wanted {
-        let (code, text) = one(name, config, strict, start);
+        let (code, text) = one(name, config, strict, start, scope);
         match code {
             0 => (),
             1 => failed += 1,
@@ -132,9 +158,16 @@ fn select(
         .collect())
 }
 
-fn one(name: &str, config: &Path, strict: bool, start: &Path) -> (u8, String) {
+fn one(
+    name: &str,
+    config: &Path,
+    strict: bool,
+    start: &Path,
+    scope: Option<&[String]>,
+) -> (u8, String) {
     let mut text = String::new();
     let at = Some(config.to_path_buf());
+    let only = scope.map(|files| files.to_vec());
     let outcome = match name {
         "doc-size" => doc_size::run(
             &doc_size::Args {
@@ -150,6 +183,7 @@ fn one(name: &str, config: &Path, strict: bool, start: &Path) -> (u8, String) {
                 config: at,
                 quiet: true,
                 strict,
+                only,
                 ..Default::default()
             },
             start,
@@ -160,6 +194,7 @@ fn one(name: &str, config: &Path, strict: bool, start: &Path) -> (u8, String) {
                 config: at,
                 quiet: true,
                 strict,
+                only,
                 ..Default::default()
             },
             start,

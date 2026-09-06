@@ -235,3 +235,113 @@ fn the_config_flag_names_the_quality_json_every_gate_runs_under() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
 }
+
+const AN_ESCAPE: &str = "fn risky(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n";
+
+fn tangled(name: &str) -> String {
+    let arms: String = (0..12)
+        .map(|step| format!("        {step} => n + {step},\n"))
+        .collect();
+    format!("fn {name}(n: i32) -> i32 {{\n    match n {{\n{arms}        _ => n,\n    }}\n}}\n")
+}
+
+fn committed(config: &str) -> Tree {
+    let tree = tree(config);
+    tree.repository();
+    tree.commit("base");
+    tree
+}
+
+#[test]
+fn changed_scopes_the_scoped_gates_to_the_working_tree_and_untracked_files() {
+    let tree = committed(EVERY_GATE);
+    tree.write("src/old.rs", AN_ESCAPE);
+    tree.commit("old debt");
+    tree.write("src/new.rs", AN_ESCAPE);
+
+    let scoped = tree.run(&["gate", "--changed"]);
+    assert_eq!(scoped.code, 1, "{}", scoped.out);
+    assert!(scoped.says("changed: 1 file(s)"), "{}", scoped.out);
+    assert!(scoped.says("src/new.rs:2"), "{}", scoped.out);
+    assert!(!scoped.says("src/old.rs"), "{}", scoped.out);
+
+    let whole = tree.run(&["gate"]);
+    assert_eq!(whole.code, 1, "{}", whole.out);
+    assert!(whole.says("src/old.rs:2"), "{}", whole.out);
+    assert!(whole.says("src/new.rs:2"), "{}", whole.out);
+}
+
+#[test]
+fn a_gate_that_is_not_scoped_still_runs_over_everything() {
+    let tree = committed(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.commit("a long README");
+    tree.write("src/new.rs", CLEAN);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("README.md is 30 words"), "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+}
+
+#[test]
+fn a_baseline_entry_for_a_file_outside_the_changed_set_is_not_stale() {
+    let tree = committed(EVERY_GATE);
+    tree.write(
+        "detent/escapes-baseline.json",
+        r#"{ "entries": [{"file": "src/gone.rs", "text": "the line that held it", "line": 1,
+             "escape": "unwrap", "count": 1}] }"#,
+    );
+    tree.commit("an accepted escape");
+    tree.write("src/new.rs", CLEAN);
+
+    let scoped = tree.run(&["gate", "--changed", "--strict"]);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
+    assert!(!scoped.says("matched nothing this run"), "{}", scoped.out);
+
+    let whole = tree.run(&["gate"]);
+    assert_eq!(whole.code, 0, "{}", whole.out);
+    assert!(whole.says("matched nothing this run"), "{}", whole.out);
+}
+
+#[test]
+fn changed_diffs_against_the_pull_request_base_when_ci_names_one() {
+    let tree = committed(EVERY_GATE);
+    tree.git(&["update-ref", "refs/remotes/origin/release", "HEAD"]);
+    tree.write("src/new.rs", AN_ESCAPE);
+    tree.commit("work on the branch");
+
+    let in_ci = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["gate", "--changed"]);
+    assert_eq!(in_ci.code, 1, "{}", in_ci.out);
+    assert!(in_ci.says("src/new.rs:2"), "{}", in_ci.out);
+
+    let locally = tree.run(&["gate", "--changed"]);
+    assert_eq!(locally.code, 0, "{}", locally.out);
+    assert!(locally.says("changed: 0 file(s)"), "{}", locally.out);
+}
+
+#[test]
+fn changed_outside_a_repository_is_a_tool_error_rather_than_an_empty_pass() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/new.rs", AN_ESCAPE);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("--changed needs a git repository"), "{}", run.out);
+    assert!(!run.says("ok    escapes"), "{}", run.out);
+}
+
+#[test]
+fn changed_restricts_complexity_as_well_as_escapes() {
+    let tree = committed(EVERY_GATE);
+    tree.write("src/old.rs", &tangled("was_here"));
+    tree.commit("old debt");
+    tree.write("src/new.rs", &tangled("is_new"));
+
+    let scoped = tree.run(&["gate", "--changed"]);
+    assert_eq!(scoped.code, 1, "{}", scoped.out);
+    assert!(scoped.says("FAIL  complexity"), "{}", scoped.out);
+    assert!(scoped.says("src/new.rs:1"), "{}", scoped.out);
+    assert!(!scoped.says("src/old.rs"), "{}", scoped.out);
+}

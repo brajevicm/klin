@@ -1,3 +1,4 @@
+mod changed;
 mod complexity;
 mod config;
 mod doc_size;
