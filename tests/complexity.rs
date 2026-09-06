@@ -1,0 +1,384 @@
+mod harness;
+
+use harness::Tree;
+
+const RUST: &str = r##"fn tangled(a: i32) -> i32 {
+    if a > 0 && a < 10 {
+        for x in 0..a {
+            if x == 3 { return 1; }
+        }
+    } else if a == 0 || a == -1 {
+        return 2;
+    }
+    match a {
+        1 => 1,
+        _ => 0,
+    }
+}
+
+fn simple() -> i32 { 1 }
+
+fn quoted() -> &'static str {
+    r#"if a && b || c { match m { 1 => 1, _ => 0 } } x?"#
+}
+"##;
+
+const PYTHON: &str = r#"def tangled(a, b):
+    if a and b:
+        for x in b:
+            if x:
+                pass
+    elif a or b:
+        pass
+    try:
+        c = [y for y in b if y]
+    except ValueError:
+        c = None
+    return 1 if a else c
+
+
+def simple(a):
+    return a
+"#;
+
+fn config(ceilings: &str) -> String {
+    format!(
+        r#"{{ "project": "t", "complexity": {{ "sources": ["src"], "ceilings": {ceilings},
+             "baseline": "detent/complexity-baseline.json" }} }}"#
+    )
+}
+
+fn tree(ceilings: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("quality.json", &config(ceilings));
+    tree
+}
+
+fn baseline(entries: &str) -> String {
+    format!(r#"{{ "entries": [{entries}] }}"#)
+}
+
+fn entry(file: &str, text: &str, line: u64, cc: u64, lines: u64) -> String {
+    format!(
+        r#"{{"file": {file:?}, "text": {text:?}, "line": {line}, "cc": {cc}, "lines": {lines}}}"#
+    )
+}
+
+#[test]
+fn rust_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/knot.rs:1  cc 9, 13 lines  fn tangled(a: i32) -> i32 {"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("knot.rs:15"), "{}", run.out);
+    assert!(!run.says("knot.rs:17"), "{}", run.out);
+}
+
+#[test]
+fn python_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.py", PYTHON);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/knot.py:1  cc 11, 12 lines  def tangled(a, b):"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("knot.py:15"), "{}", run.out);
+}
+
+#[test]
+fn a_rust_raw_string_is_text_not_code_so_it_adds_no_branches() {
+    let tree = tree(r#"{"cc": 0, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+
+    let run = tree.run(&["complexity"]);
+    assert!(
+        run.says("src/knot.rs:17  cc 1, 3 lines  fn quoted() -> &'static str {"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_measurement_runs_in_process_so_an_empty_path_changes_nothing() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+    tree.write("src/knot.py", PYTHON);
+
+    let bare = tree.run_without_path(&["complexity"]);
+    assert_eq!(bare.code, 1, "{}", bare.out);
+    assert!(bare.says("src/knot.rs:1  cc 9"), "{}", bare.out);
+    assert!(bare.says("src/knot.py:1  cc 11"), "{}", bare.out);
+}
+
+#[test]
+fn a_function_over_the_length_ceiling_alone_fails() {
+    let tree = tree(r#"{"cc": 8, "lines": 5}"#);
+    tree.write(
+        "src/long.rs",
+        &format!("fn stretched() {{\n{}}}\n", "    let a = 1;\n".repeat(6)),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/long.rs:1  cc 1, 8 lines"), "{}", run.out);
+}
+
+#[test]
+fn write_baseline_accepts_what_is_over_the_gate_and_the_rerun_holds() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+    tree.write("src/knot.py", PYTHON);
+
+    let written = tree.run(&["complexity", "--write-baseline"]);
+    assert_eq!(written.code, 0, "{}", written.out);
+    assert!(written.says("2 function(s) over the"), "{}", written.out);
+
+    let stored =
+        std::fs::read_to_string(tree.path("detent/complexity-baseline.json")).expect("read");
+    assert!(stored.contains("fn tangled(a: i32) -> i32 {"), "{stored}");
+    assert!(stored.contains("\"cc\": 9"), "{stored}");
+    assert!(stored.contains("\"lines\": 13"), "{stored}");
+
+    let rerun = tree.run(&["complexity", "--strict"]);
+    assert_eq!(rerun.code, 0, "{}", rerun.out);
+    assert!(
+        rerun.says("OK: 5 function(s) judged, 2 over the gate"),
+        "{}",
+        rerun.out
+    );
+}
+
+#[test]
+fn a_baselined_function_that_moved_down_the_file_still_matches() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", &format!("// a header\n// and more\n{RUST}"));
+    tree.write(
+        "detent/complexity-baseline.json",
+        &baseline(&entry(
+            "src/knot.rs",
+            "fn tangled(a: i32) -> i32 {",
+            1,
+            9,
+            13,
+        )),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
+}
+
+#[test]
+fn a_baselined_function_whose_cyclomatic_grew_fails() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+    tree.write(
+        "detent/complexity-baseline.json",
+        &baseline(&entry(
+            "src/knot.rs",
+            "fn tangled(a: i32) -> i32 {",
+            1,
+            8,
+            13,
+        )),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(
+        run.says("cc 9, 13 lines, was cc 8, 13 lines"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("--write-baseline"), "{}", run.out);
+}
+
+#[test]
+fn a_baselined_function_whose_length_grew_fails_too() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+    tree.write(
+        "detent/complexity-baseline.json",
+        &baseline(&entry(
+            "src/knot.rs",
+            "fn tangled(a: i32) -> i32 {",
+            1,
+            9,
+            12,
+        )),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("cc 9, 13 lines, was cc 9, 12 lines"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_function_that_improved_is_a_note_locally_and_a_failure_under_strict() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", RUST);
+    tree.write(
+        "detent/complexity-baseline.json",
+        &baseline(&entry(
+            "src/knot.rs",
+            "fn tangled(a: i32) -> i32 {",
+            1,
+            12,
+            13,
+        )),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("cc 9, 13 lines, baseline says cc 12, 13 lines"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("detent complexity --write-baseline"),
+        "{}",
+        run.out
+    );
+
+    let strict = tree.run(&["complexity", "--strict"]);
+    assert_eq!(strict.code, 1, "{}", strict.out);
+}
+
+#[test]
+fn a_missing_key_is_a_tool_error_naming_it() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "ceilings": {"cc": 8, "lines": 60},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/knot.rs", RUST);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"sources\""), "{}", run.out);
+
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src"],
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    let missing_ceilings = tree.run(&["complexity"]);
+    assert_eq!(missing_ceilings.code, 2, "{}", missing_ceilings.out);
+    assert!(
+        missing_ceilings.says("\"ceilings\""),
+        "{}",
+        missing_ceilings.out
+    );
+}
+
+#[test]
+fn a_source_the_reader_cannot_open_is_a_tool_error_not_a_gate_failure() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not be read"), "{}", run.out);
+}
+
+#[test]
+fn a_file_the_grammar_cannot_parse_is_a_tool_error_not_a_silent_zero() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/bad.rs",
+        "%%% not rust %%%\nfn hidden() { if true {} }\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not parse this file"), "{}", run.out);
+    assert!(run.says("src/bad.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_nested_function_is_measured_on_its_own_not_folded_into_the_one_around_it() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/nest.rs",
+        "fn outer() {\n    fn inner(x: i32) -> i32 { if x > 0 { 1 } else { 0 } }\n    inner(1);\n}\n",
+    );
+    tree.write(
+        "src/nest.py",
+        "def outer():\n    def inner(x):\n        if x:\n            return 1\n        return 0\n    return inner\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert!(run.says("src/nest.rs:1  cc 1, 4 lines"), "{}", run.out);
+    assert!(run.says("src/nest.rs:2  cc 2, 1 lines"), "{}", run.out);
+    assert!(run.says("src/nest.py:1  cc 1, 6 lines"), "{}", run.out);
+    assert!(run.says("src/nest.py:2  cc 2, 4 lines"), "{}", run.out);
+}
+
+#[test]
+fn overlapping_sources_measure_each_file_once() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src", "src/deep"], "ceilings": {"cc": 0, "lines": 0},
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/deep/c.rs", "fn f() {}\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.out.matches("src/deep/c.rs:1").count(), 1, "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_directory_is_not_followed_so_a_loop_cannot_hang_the_run() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/c.rs", "fn f() {}\n");
+    std::os::unix::fs::symlink(tree.path("src"), tree.path("src/loop")).expect("symlink");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.out.matches("fn f() {}").count(), 1, "{}", run.out);
+}
+
+#[test]
+fn only_reports_a_judged_count_for_the_files_it_judged() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/a.rs", "fn a() {}\n");
+    tree.write("src/b.rs", "fn b() {}\nfn c() {}\n");
+    tree.run(&["complexity", "--write-baseline"]);
+
+    let run = tree.run(&["complexity", "--only", "src/a.rs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 1 function(s) judged"), "{}", run.out);
+}
+
+#[test]
+fn a_ceilings_key_of_the_wrong_shape_is_named_as_malformed_not_missing() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "complexity": { "sources": ["src"], "ceilings": 8,
+             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    tree.write("src/a.rs", "fn a() {}\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"ceilings\" must be"), "{}", run.out);
+}

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::config::{Config, Error};
+use crate::files;
 use crate::ratchet::{self, Finding, Gate, Values};
 
 const SECTION: &str = "escapes";
@@ -40,8 +41,9 @@ pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
             config.file.display()
         )));
     };
-    let baseline_path = baseline_path(&config, section)?;
-    let roots = roots(&config, section)?;
+    let baseline_path = ratchet::baseline_path(&config, SECTION, section)?;
+    let roots = files::roots(&config, SECTION, section, "roots")?
+        .unwrap_or_else(|| vec![config.root().to_path_buf()]);
     let found = findings(&roots, config.root())?;
     let mut gate_config = section.clone();
     gate_config.remove("baseline");
@@ -82,55 +84,12 @@ pub fn run(args: &Args, start: &Path) -> Result<u8, Error> {
     Ok(code)
 }
 
-fn baseline_path(config: &Config, section: &Values) -> Result<PathBuf, Error> {
-    let named = section
-        .get("baseline")
-        .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(SECTION, "baseline"))?;
-    let name = named.rsplit(['/', '\\']).next().unwrap_or(named);
-    if !name.contains("baseline") || !name.ends_with(".json") {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" names its baseline {named}, which the guard cannot recognise — \
-             the file name must contain \"baseline\" and end with .json",
-            config.file.display()
-        )));
-    }
-    Ok(config.path(named))
-}
-
-fn roots(config: &Config, section: &Values) -> Result<Vec<PathBuf>, Error> {
-    let Some(listed) = section.get("roots") else {
-        return Ok(vec![config.root().to_path_buf()]);
-    };
-    let malformed = || config.malformed(SECTION, "roots", "a list of paths");
-    let Some(listed) = listed.as_array() else {
-        return Err(malformed());
-    };
-    listed
-        .iter()
-        .map(|root| {
-            root.as_str()
-                .map(|name| config.path(name))
-                .ok_or_else(malformed)
-        })
-        .collect()
-}
-
 fn findings(roots: &[PathBuf], repo_root: &Path) -> Result<Vec<Finding>, Error> {
-    let mut files = Vec::new();
-    for root in roots {
-        collect_rust_files(root, &mut files)?;
-    }
-    files.sort();
     let mut out = Vec::new();
-    for file in files {
+    for file in files::under(roots, &[".rs"])? {
         let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
         let text = String::from_utf8_lossy(&bytes);
-        let rel = file
-            .strip_prefix(repo_root)
-            .unwrap_or(&file)
-            .display()
-            .to_string();
+        let rel = files::relative(&file, repo_root);
         for (index, line) in text.lines().enumerate() {
             let Some((kind, count)) = PATTERNS
                 .iter()
@@ -151,23 +110,6 @@ fn findings(roots: &[PathBuf], repo_root: &Path) -> Result<Vec<Finding>, Error> 
         }
     }
     Ok(out)
-}
-
-fn collect_rust_files(root: &Path, into: &mut Vec<PathBuf>) -> Result<(), Error> {
-    let listing = std::fs::read_dir(root).map_err(|why| Error::unreadable(root, why))?;
-    for entry in listing {
-        let entry = entry.map_err(|why| Error::unreadable(root, why))?;
-        let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_string();
-        if path.is_dir() {
-            if !name.starts_with('.') && name != "target" {
-                collect_rust_files(&path, into)?;
-            }
-        } else if name.ends_with(".rs") {
-            into.push(path);
-        }
-    }
-    Ok(())
 }
 
 fn show(values: &Values) -> String {

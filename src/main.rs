@@ -1,6 +1,8 @@
+mod complexity;
 mod config;
 mod doc_size;
 mod escapes;
+mod files;
 mod guard;
 mod ratchet;
 
@@ -18,6 +20,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Fail on a function over the cyclomatic or length ceiling that the baseline does not hold
+    Complexity(complexity::Args),
     /// Fail when a document has grown past its ceiling
     DocSize(doc_size::Args),
     /// Fail on a new escape site — a place where the code opts out of a check
@@ -29,6 +33,7 @@ enum Command {
 fn main() -> ExitCode {
     match &Cli::parse().command {
         Command::Guard => ExitCode::from(guard::run()),
+        Command::Complexity(args) => gate(|start| complexity::run(args, start)),
         Command::DocSize(args) => gate(|start| doc_size::run(args, start)),
         Command::Escapes(args) => gate(|start| escapes::run(args, start)),
     }

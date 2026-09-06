@@ -55,6 +55,10 @@ impl Tree {
     pub fn run(&self, args: &[&str]) -> Run {
         run_from(self.root(), args)
     }
+
+    pub fn run_without_path(&self, args: &[&str]) -> Run {
+        spawn(self.root(), args, "", &[("PATH", "")])
+    }
 }
 
 pub fn run_from(cwd: &Path, args: &[&str]) -> Run {
@@ -62,8 +66,13 @@ pub fn run_from(cwd: &Path, args: &[&str]) -> Run {
 }
 
 pub fn feed(cwd: &Path, args: &[&str], stdin: &str) -> Run {
+    spawn(cwd, args, stdin, &[])
+}
+
+fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
     let mut child = Command::new(env!("CARGO_BIN_EXE_detent"))
         .args(args)
+        .envs(environment.iter().copied())
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

@@ -1,12 +1,32 @@
 use std::collections::BTreeMap;
 use std::fmt::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::Error;
+use crate::config::{Config, Error};
 
 pub type Values = Map<String, Value>;
+
+pub fn baseline_path(
+    config: &Config,
+    section_name: &str,
+    section: &Values,
+) -> Result<PathBuf, Error> {
+    let named = section
+        .get("baseline")
+        .and_then(Value::as_str)
+        .ok_or_else(|| config.missing(section_name, "baseline"))?;
+    let name = named.rsplit(['/', '\\']).next().unwrap_or(named);
+    if !name.contains("baseline") || !name.ends_with(".json") {
+        return Err(Error(format!(
+            "{}: \"{section_name}\" names its baseline {named}, which the guard cannot recognise — \
+             the file name must contain \"baseline\" and end with .json",
+            config.file.display()
+        )));
+    }
+    Ok(config.path(named))
+}
 
 pub struct Finding {
     pub file: String,
@@ -274,11 +294,11 @@ pub fn judge(
     verdict
 }
 
-pub struct Gate {
-    pub noun: &'static str,
-    pub over: &'static str,
-    pub fix: &'static str,
-    pub remedy: &'static str,
+pub struct Gate<'a> {
+    pub noun: &'a str,
+    pub over: &'a str,
+    pub fix: &'a str,
+    pub remedy: &'a str,
     pub show: fn(&Values) -> String,
 }
 
