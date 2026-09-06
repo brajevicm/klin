@@ -330,6 +330,11 @@ struct Ceilings {
     lines: u64,
 }
 
+struct Unparsed {
+    file: String,
+    language: &'static str,
+}
+
 struct Selection {
     languages: Vec<&'static Language>,
     skip_dirs: Vec<String>,
@@ -349,7 +354,7 @@ struct Spec {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let spec = spec(&config)?;
-    let functions = measure(&spec.sources, &spec.selection, config.root())?;
+    let (functions, unparsed) = measure(&spec.sources, &spec.selection, config.root())?;
     let over: Vec<Finding> = functions
         .iter()
         .filter(|function| function.over(&spec.ceilings))
@@ -357,6 +362,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         .collect();
 
     if args.write_baseline {
+        if let Some(refusal) = refuse_to_write(&unparsed) {
+            return Err(refusal);
+        }
         ratchet::write(&spec.baseline, &over, &spec.measured)?;
         let _ = writeln!(
             out,
@@ -366,7 +374,58 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         );
         return Ok(0);
     }
-    assess(args, &spec, over, &functions, out)
+    let code = assess(args, &spec, over, &functions, &unparsed, out)?;
+    Ok(unread(&unparsed, args.only.as_deref(), code, out))
+}
+
+fn still_owed(entries: Vec<Values>, unparsed: &[Unparsed]) -> Vec<Values> {
+    entries
+        .into_iter()
+        .filter(|entry| {
+            let file = entry.get("file").and_then(Value::as_str).unwrap_or("");
+            !unparsed.iter().any(|gone| gone.file == file)
+        })
+        .collect()
+}
+
+fn refuse_to_write(unparsed: &[Unparsed]) -> Option<Error> {
+    if unparsed.is_empty() {
+        return None;
+    }
+    let named: Vec<&str> = unparsed.iter().map(|file| file.file.as_str()).collect();
+    Some(Error(format!(
+        "the grammar could not parse {}, so a baseline written now would drop whatever those \
+         files already hold. Update the grammar, or exclude them, then write the baseline.",
+        named.join(", ")
+    )))
+}
+
+fn unread(unparsed: &[Unparsed], only: Option<&[String]>, code: u8, out: &mut String) -> u8 {
+    let named: Vec<&Unparsed> = unparsed
+        .iter()
+        .filter(|file| only.is_none_or(|only| only.contains(&file.file)))
+        .collect();
+    if named.is_empty() {
+        return code;
+    }
+    let _ = writeln!(
+        out,
+        "FAIL: {} file(s) the grammar could not parse, so nothing in them was measured:",
+        named.len()
+    );
+    for file in named {
+        let _ = writeln!(
+            out,
+            "  {}  the {} grammar rejected it",
+            file.file, file.language
+        );
+    }
+    let _ = writeln!(
+        out,
+        "A file detent cannot read is a hole in the ratchet. Update the grammar, or exclude \
+         the file and accept that nothing measures it."
+    );
+    2
 }
 
 fn assess(
@@ -374,6 +433,7 @@ fn assess(
     spec: &Spec,
     over: Vec<Finding>,
     measured: &[Function],
+    unparsed: &[Unparsed],
     out: &mut String,
 ) -> Result<u8, Error> {
     let judged = match args.only.as_deref() {
@@ -385,6 +445,7 @@ fn assess(
     };
     let (entries, stored) = ratchet::read(&spec.baseline)?;
     let (over, entries) = ratchet::restrict(over, entries, args.only.as_deref());
+    let entries = still_owed(entries, unparsed);
     let count = over.len();
     let baseline_size = entries.len();
     let verdict = ratchet::judge(
@@ -513,7 +574,7 @@ fn measure(
     sources: &[PathBuf],
     selection: &Selection,
     repo_root: &Path,
-) -> Result<Vec<Function>, Error> {
+) -> Result<(Vec<Function>, Vec<Unparsed>), Error> {
     let extensions: Vec<&str> = selection
         .languages
         .iter()
@@ -521,6 +582,7 @@ fn measure(
         .copied()
         .collect();
     let mut out = Vec::new();
+    let mut unparsed = Vec::new();
     let wanted = files::Wanted {
         extensions: &extensions,
         skip_dirs: &selection.skip_dirs,
@@ -538,13 +600,18 @@ fn measure(
         }) else {
             continue;
         };
-        out.extend(functions(&file, repo_root, language)?);
+        out.extend(functions(&file, repo_root, language, &mut unparsed)?);
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    Ok(out)
+    Ok((out, unparsed))
 }
 
-fn functions(path: &Path, repo_root: &Path, language: &Language) -> Result<Vec<Function>, Error> {
+fn functions(
+    path: &Path,
+    repo_root: &Path,
+    language: &Language,
+    unparsed: &mut Vec<Unparsed>,
+) -> Result<Vec<Function>, Error> {
     let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
     let source = String::from_utf8_lossy(&bytes).to_string();
     let mut parser = Parser::new();
@@ -554,22 +621,16 @@ fn functions(path: &Path, repo_root: &Path, language: &Language) -> Result<Vec<F
             language.name
         ))
     })?;
-    let tree = parser.parse(&source, None).ok_or_else(|| {
-        Error(format!(
-            "{}: the {} parser produced no tree",
-            path.display(),
-            language.name
-        ))
-    })?;
-    if tree.root_node().has_error() {
-        return Err(Error(format!(
-            "{}: the {} grammar could not parse this file, so its functions cannot be measured",
-            path.display(),
-            language.name
-        )));
-    }
-    let lines: Vec<&str> = source.lines().collect();
     let file = files::relative(path, repo_root);
+    let tree = parser.parse(&source, None);
+    let Some(tree) = tree.filter(|tree| !tree.root_node().has_error()) else {
+        unparsed.push(Unparsed {
+            file,
+            language: language.name,
+        });
+        return Ok(Vec::new());
+    };
+    let lines: Vec<&str> = source.lines().collect();
     let mut out = Vec::new();
     collect(tree.root_node(), language, &file, &lines, &mut out);
     Ok(out)

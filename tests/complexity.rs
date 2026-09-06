@@ -438,17 +438,63 @@ fn a_source_the_reader_cannot_open_is_a_tool_error_not_a_gate_failure() {
 }
 
 #[test]
-fn a_file_the_grammar_cannot_parse_is_a_tool_error_not_a_silent_zero() {
+fn a_file_the_grammar_cannot_parse_is_named_while_the_rest_of_the_tree_is_still_judged() {
     let tree = tree(r#"{"cc": 0, "lines": 0}"#);
     tree.write(
         "src/bad.rs",
         "%%% not rust %%%\nfn hidden() { if true {} }\n",
     );
+    tree.write("src/good.rs", RUST);
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("could not parse this file"), "{}", run.out);
+    assert!(run.says("could not parse"), "{}", run.out);
     assert!(run.says("src/bad.rs"), "{}", run.out);
+    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(run.says("src/good.rs:1"), "{}", run.out);
+    assert!(!run.says("src/bad.rs:2"), "{}", run.out);
+}
+
+#[test]
+fn a_baseline_entry_for_an_unparseable_file_is_neither_stale_nor_lost() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/good.rs", "fn simple() -> i32 { 1 }\n");
+    tree.write("src/later.rs", "fn held() -> i32 { 2 }\n");
+    assert_eq!(tree.run(&["complexity", "--write-baseline"]).code, 0);
+    tree.write("src/later.rs", "%%% not rust %%%\n");
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(!run.says("matched nothing this run"), "{}", run.out);
+    assert!(!run.says("looser"), "{}", run.out);
+}
+
+#[test]
+fn writing_a_baseline_is_refused_while_a_file_goes_unparsed() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/good.rs", "fn simple() -> i32 { 1 }\n");
+    tree.write("src/bad.rs", "%%% not rust %%%\n");
+
+    let run = tree.run(&["complexity", "--write-baseline"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("src/bad.rs"), "{}", run.out);
+    assert!(
+        !tree.path("detent/complexity-baseline.json").exists(),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_file_the_grammar_cannot_parse_is_out_of_scope_when_only_names_other_files() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/bad.rs", "%%% not rust %%%\n");
+    tree.write("src/good.rs", "fn simple() -> i32 { 1 }\n");
+
+    let run = tree.run(&["complexity", "--only", "src/good.rs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/bad.rs"), "{}", run.out);
 }
 
 #[test]
