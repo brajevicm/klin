@@ -14,7 +14,7 @@ baselines instead of the code. It supports Claude Code, Cursor and Codex CLI.
 ## Status
 
 Early. Config discovery, the guard, the ratchet engine and three gates run:
-doc-size, escapes, and complexity over Rust and Python. The other gates follow.
+doc-size, escapes, and complexity over eight languages. The other gates follow.
 
 ## Origin
 

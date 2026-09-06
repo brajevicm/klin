@@ -100,7 +100,7 @@ const LANGUAGES: &[Language] = &[
     },
     Language {
         names: &["javascript", "typescript"],
-        suffixes: &[".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+        suffixes: &[".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
         patterns: &[
             ("any", r":\s*any\b|\bas\s+any\b|<any>"),
             ("ts-ignore", r"@ts-(?:ignore|expect-error|nocheck)"),

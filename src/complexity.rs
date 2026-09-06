@@ -51,6 +51,14 @@ fn ruby() -> tree_sitter::Language {
     tree_sitter_ruby::LANGUAGE.into()
 }
 
+fn swift() -> tree_sitter::Language {
+    tree_sitter_swift::LANGUAGE.into()
+}
+
+fn kotlin() -> tree_sitter::Language {
+    tree_sitter_kotlin_ng::LANGUAGE.into()
+}
+
 const ECMASCRIPT_FUNCTIONS: &[&str] = &[
     "function_declaration",
     "function_expression",
@@ -154,6 +162,8 @@ const LANGUAGES: &[Language] = &[
         functions: &[
             "method_declaration",
             "constructor_declaration",
+            "compact_constructor_declaration",
+            "static_initializer",
             "lambda_expression",
         ],
         decisions: &[
@@ -191,6 +201,58 @@ const LANGUAGES: &[Language] = &[
             "rescue_modifier",
         ],
         operators: &["&&", "||", "and", "or"],
+    },
+    Language {
+        name: "Swift",
+        extensions: &[".swift"],
+        grammar: swift,
+        functions: &[
+            "function_declaration",
+            "init_declaration",
+            "deinit_declaration",
+            "subscript_declaration",
+            "computed_property",
+            "computed_getter",
+            "computed_setter",
+            "willset_clause",
+            "didset_clause",
+        ],
+        decisions: &[
+            "if_statement",
+            "guard_statement",
+            "while_statement",
+            "repeat_while_statement",
+            "for_statement",
+            "switch_entry",
+            "catch_block",
+            "ternary_expression",
+            "conjunction_expression",
+            "disjunction_expression",
+            "nil_coalescing_expression",
+        ],
+        operators: &[],
+    },
+    Language {
+        name: "Kotlin",
+        extensions: &[".kt", ".kts"],
+        grammar: kotlin,
+        functions: &[
+            "function_declaration",
+            "anonymous_function",
+            "secondary_constructor",
+            "anonymous_initializer",
+            "getter",
+            "setter",
+        ],
+        decisions: &[
+            "if_expression",
+            "when_entry",
+            "while_statement",
+            "do_while_statement",
+            "for_statement",
+            "catch_block",
+        ],
+        operators: &["&&", "||", "?:"],
     },
 ];
 

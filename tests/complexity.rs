@@ -136,6 +136,51 @@ def simple(a)
 end
 "#;
 
+const SWIFT: &str = r#"func tangled(_ a: Int, _ b: [String]) -> Int {
+    if a > 0 && a < 10 {
+        for x in b {
+            if !x.isEmpty { return 1 }
+        }
+    } else if a == 0 || a == -1 {
+        switch a {
+        case 1: return 2
+        default: break
+        }
+    }
+    guard a > 0 else { return 3 }
+    do {
+        while a > 0 { break }
+    } catch {
+        return a > 0 ? 4 : 5
+    }
+    return b.count
+}
+
+func simple(_ a: Int) -> Int { return a }
+"#;
+
+const KOTLIN: &str = r#"fun tangled(a: Int, b: List<String>): Int {
+    if (a > 0 && a < 10) {
+        for (x in b) {
+            if (x.isNotEmpty()) return 1
+        }
+    } else if (a == 0 || a == -1) {
+        when (a) {
+            1 -> return 2
+            else -> return 3
+        }
+    }
+    try {
+        while (a > 0) break
+    } catch (e: Exception) {
+        return if (a > 0) 4 else 5
+    }
+    return b.size
+}
+
+fun simple(a: Int): Int = a
+"#;
+
 fn config(ceilings: &str) -> String {
     format!(
         r#"{{ "project": "t", "complexity": {{ "sources": ["src"], "ceilings": {ceilings},
@@ -534,7 +579,9 @@ fn typescript_functions_carry_their_hand_checked_numbers() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("src/knot.ts:1  cc 11, 18 lines  function tangled(a: number, b: string[]): number {"),
+        run.says(
+            "src/knot.ts:1  cc 11, 18 lines  function tangled(a: number, b: string[]): number {"
+        ),
         "{}",
         run.out
     );
@@ -590,10 +637,7 @@ fn ruby_functions_carry_their_hand_checked_numbers() {
 fn every_ecmascript_extension_is_measured_by_the_grammar_that_fits_it() {
     let tree = tree(r#"{"cc": 0, "lines": 0}"#);
     tree.write("src/a.ts", "function a(): number { return 1 as number; }\n");
-    tree.write(
-        "src/b.tsx",
-        "function b(): unknown { return <p>hi</p>; }\n",
-    );
+    tree.write("src/b.tsx", "function b(): unknown { return <p>hi</p>; }\n");
     tree.write("src/c.jsx", "function c() { return <p>hi</p>; }\n");
     tree.write("src/d.mjs", "export function d() { return 1; }\n");
 
@@ -602,4 +646,87 @@ fn every_ecmascript_extension_is_measured_by_the_grammar_that_fits_it() {
     for file in ["src/a.ts:1", "src/b.tsx:1", "src/c.jsx:1", "src/d.mjs:1"] {
         assert!(run.says(file), "{}", run.out);
     }
+}
+
+#[test]
+fn swift_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/Knot.swift", SWIFT);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says(
+            "src/Knot.swift:1  cc 13, 19 lines  func tangled(_ a: Int, _ b: [String]) -> Int {"
+        ),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("Knot.swift:21"), "{}", run.out);
+}
+
+#[test]
+fn kotlin_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/Knot.kt", KOTLIN);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/Knot.kt:1  cc 12, 18 lines  fun tangled(a: Int, b: List<String>): Int {"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("Knot.kt:20"), "{}", run.out);
+}
+
+#[test]
+fn a_kotlin_script_is_measured_like_any_other_kotlin_file() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/build.kts", "fun one(): Int = 1\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/build.kts:1"), "{}", run.out);
+}
+
+#[test]
+fn a_trailing_lambda_is_part_of_the_call_not_a_function_of_its_own() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write(
+        "src/build.kts",
+        "plugins { id(\"a\") }\nfun one(): Int = 1\n",
+    );
+    tree.write(
+        "src/View.swift",
+        "func body() -> Int {\n    return count(items) { x in x + 1 }\n}\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert!(!run.says("src/build.kts:1"), "{}", run.out);
+    assert!(run.says("src/build.kts:2"), "{}", run.out);
+    assert_eq!(run.out.matches("src/View.swift:").count(), 1, "{}", run.out);
+}
+
+#[test]
+fn an_accessor_or_initializer_body_is_measured_like_any_other_function() {
+    let tree = tree(r#"{"cc": 1, "lines": 60}"#);
+    tree.write(
+        "src/Acc.swift",
+        "struct S {\n    var score: Int {\n        if stored > 0 { return 1 }\n        return 0\n    }\n}\n",
+    );
+    tree.write(
+        "src/Acc.kt",
+        "class C(val a: Int) {\n    init { if (a > 0) println(a) }\n}\n",
+    );
+    tree.write(
+        "src/Acc.java",
+        "class J {\n    static int s;\n    static { if (s > 0) s = 1; }\n}\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/Acc.swift:2  cc 2"), "{}", run.out);
+    assert!(run.says("src/Acc.kt:2  cc 2"), "{}", run.out);
+    assert!(run.says("src/Acc.java:3  cc 2"), "{}", run.out);
 }

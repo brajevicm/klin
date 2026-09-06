@@ -722,3 +722,20 @@ fn every_alternative_inside_a_pattern_matches_too() {
         assert!(run.says(expected), "missing {expected}\n{}", run.out);
     }
 }
+
+#[test]
+fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/a.mts", "const a: any = 1;\n");
+    tree.write("src/b.cts", "const b: any = 1;\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/a.mts:1"), "{}", run.out);
+    assert!(run.says("src/b.cts:1"), "{}", run.out);
+}
