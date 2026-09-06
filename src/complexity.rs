@@ -12,10 +12,11 @@ const VERSION: &str = "1";
 
 struct Language {
     name: &'static str,
-    extension: &'static str,
+    extensions: &'static [&'static str],
     grammar: fn() -> tree_sitter::Language,
     functions: &'static [&'static str],
     decisions: &'static [&'static str],
+    operators: &'static [&'static str],
 }
 
 fn rust() -> tree_sitter::Language {
@@ -26,10 +27,56 @@ fn python() -> tree_sitter::Language {
     tree_sitter_python::LANGUAGE.into()
 }
 
+fn typescript() -> tree_sitter::Language {
+    tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
+}
+
+fn tsx() -> tree_sitter::Language {
+    tree_sitter_typescript::LANGUAGE_TSX.into()
+}
+
+fn javascript() -> tree_sitter::Language {
+    tree_sitter_javascript::LANGUAGE.into()
+}
+
+fn go() -> tree_sitter::Language {
+    tree_sitter_go::LANGUAGE.into()
+}
+
+fn java() -> tree_sitter::Language {
+    tree_sitter_java::LANGUAGE.into()
+}
+
+fn ruby() -> tree_sitter::Language {
+    tree_sitter_ruby::LANGUAGE.into()
+}
+
+const ECMASCRIPT_FUNCTIONS: &[&str] = &[
+    "function_declaration",
+    "function_expression",
+    "generator_function",
+    "generator_function_declaration",
+    "arrow_function",
+    "method_definition",
+];
+
+const ECMASCRIPT_DECISIONS: &[&str] = &[
+    "if_statement",
+    "while_statement",
+    "do_statement",
+    "for_statement",
+    "for_in_statement",
+    "switch_case",
+    "catch_clause",
+    "ternary_expression",
+];
+
+const ECMASCRIPT_OPERATORS: &[&str] = &["&&", "||", "??"];
+
 const LANGUAGES: &[Language] = &[
     Language {
         name: "Rust",
-        extension: ".rs",
+        extensions: &[".rs"],
         grammar: rust,
         functions: &["function_item"],
         decisions: &[
@@ -39,13 +86,12 @@ const LANGUAGES: &[Language] = &[
             "for_expression",
             "match_arm",
             "try_expression",
-            "&&",
-            "||",
         ],
+        operators: &["&&", "||"],
     },
     Language {
         name: "Python",
-        extension: ".py",
+        extensions: &[".py"],
         grammar: python,
         functions: &["function_definition"],
         decisions: &[
@@ -61,6 +107,90 @@ const LANGUAGES: &[Language] = &[
             "boolean_operator",
             "assert_statement",
         ],
+        operators: &[],
+    },
+    Language {
+        name: "TypeScript",
+        extensions: &[".ts", ".mts", ".cts"],
+        grammar: typescript,
+        functions: ECMASCRIPT_FUNCTIONS,
+        decisions: ECMASCRIPT_DECISIONS,
+        operators: ECMASCRIPT_OPERATORS,
+    },
+    Language {
+        name: "TSX",
+        extensions: &[".tsx"],
+        grammar: tsx,
+        functions: ECMASCRIPT_FUNCTIONS,
+        decisions: ECMASCRIPT_DECISIONS,
+        operators: ECMASCRIPT_OPERATORS,
+    },
+    Language {
+        name: "JavaScript",
+        extensions: &[".js", ".jsx", ".mjs", ".cjs"],
+        grammar: javascript,
+        functions: ECMASCRIPT_FUNCTIONS,
+        decisions: ECMASCRIPT_DECISIONS,
+        operators: ECMASCRIPT_OPERATORS,
+    },
+    Language {
+        name: "Go",
+        extensions: &[".go"],
+        grammar: go,
+        functions: &["function_declaration", "method_declaration", "func_literal"],
+        decisions: &[
+            "if_statement",
+            "for_statement",
+            "expression_case",
+            "type_case",
+            "communication_case",
+        ],
+        operators: &["&&", "||"],
+    },
+    Language {
+        name: "Java",
+        extensions: &[".java"],
+        grammar: java,
+        functions: &[
+            "method_declaration",
+            "constructor_declaration",
+            "lambda_expression",
+        ],
+        decisions: &[
+            "if_statement",
+            "while_statement",
+            "do_statement",
+            "for_statement",
+            "enhanced_for_statement",
+            "switch_label",
+            "catch_clause",
+            "ternary_expression",
+        ],
+        operators: &["&&", "||"],
+    },
+    Language {
+        name: "Ruby",
+        extensions: &[".rb"],
+        grammar: ruby,
+        functions: &["method", "singleton_method"],
+        decisions: &[
+            "if",
+            "elsif",
+            "unless",
+            "while",
+            "until",
+            "for",
+            "when",
+            "in_clause",
+            "rescue",
+            "conditional",
+            "if_modifier",
+            "unless_modifier",
+            "while_modifier",
+            "until_modifier",
+            "rescue_modifier",
+        ],
+        operators: &["&&", "||", "and", "or"],
     },
 ];
 
@@ -244,7 +374,8 @@ fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
 fn measure(sources: &[PathBuf], repo_root: &Path) -> Result<Vec<Function>, Error> {
     let extensions: Vec<&str> = LANGUAGES
         .iter()
-        .map(|language| language.extension)
+        .flat_map(|language| language.extensions)
+        .copied()
         .collect();
     let mut out = Vec::new();
     let wanted = files::Wanted {
@@ -255,10 +386,12 @@ fn measure(sources: &[PathBuf], repo_root: &Path) -> Result<Vec<Function>, Error
     };
     for file in files::under(sources, &wanted)? {
         let name = file.to_string_lossy().to_string();
-        let Some(language) = LANGUAGES
-            .iter()
-            .find(|language| name.ends_with(language.extension))
-        else {
+        let Some(language) = LANGUAGES.iter().find(|language| {
+            language
+                .extensions
+                .iter()
+                .any(|extension| name.ends_with(extension))
+        }) else {
             continue;
         };
         out.extend(functions(&file, repo_root, language)?);
@@ -326,7 +459,12 @@ fn decisions(node: Node, language: &Language) -> u64 {
         if language.functions.contains(&child.kind()) {
             continue;
         }
-        count += u64::from(language.decisions.contains(&child.kind())) + decisions(child, language);
+        let table = if child.is_named() {
+            language.decisions
+        } else {
+            language.operators
+        };
+        count += u64::from(table.contains(&child.kind())) + decisions(child, language);
     }
     count
 }

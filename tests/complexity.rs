@@ -41,6 +41,101 @@ def simple(a):
     return a
 "#;
 
+const TYPESCRIPT: &str = r#"function tangled(a: number, b: string[]): number {
+  if (a > 0 && a < 10) {
+    for (const x of b) {
+      if (x) { return 1; }
+    }
+  } else if (a === 0 || a === -1) {
+    switch (a) {
+      case 1: return 2;
+      default: break;
+    }
+  }
+  try {
+    while (a) { a -= 1; }
+  } catch (e) {
+    return a ? 3 : 4;
+  }
+  return b.filter((x) => x.length > 0).length;
+}
+
+function simple(a: number): number { return a; }
+"#;
+
+const GO: &str = r#"package main
+
+func tangled(a int, b []string) int {
+	if a > 0 && a < 10 {
+		for _, x := range b {
+			if x != "" && len(x) > 1 {
+				return 1
+			}
+		}
+	} else if a == 0 || a == -1 {
+		switch a {
+		case 1:
+			return 2
+		default:
+			return 3
+		}
+	}
+	return len(b)
+}
+
+func simple(a int) int { return a }
+"#;
+
+const JAVA: &str = r#"class Knot {
+    int tangled(int a, String[] b) {
+        if (a > 0 && a < 10) {
+            for (String x : b) {
+                if (!x.isEmpty()) { return 1; }
+            }
+        } else if (a == 0 || a == -1) {
+            switch (a) {
+                case 1: return 2;
+                default: break;
+            }
+        }
+        try {
+            while (a > 0) { a -= 1; }
+        } catch (RuntimeException e) {
+            return a > 0 ? 3 : 4;
+        }
+        return b.length;
+    }
+
+    int simple(int a) { return a; }
+}
+"#;
+
+const RUBY: &str = r#"def tangled(a, b)
+  if a && b
+    b.each do |x|
+      return 1 if x
+    end
+  elsif a || b
+    case a
+    when 1 then return 2
+    else return 3
+    end
+  end
+  begin
+    while a
+      a -= 1
+    end
+  rescue StandardError
+    return a ? 4 : 5
+  end
+  b.length
+end
+
+def simple(a)
+  a
+end
+"#;
+
 fn config(ceilings: &str) -> String {
     format!(
         r#"{{ "project": "t", "complexity": {{ "sources": ["src"], "ceilings": {ceilings},
@@ -429,4 +524,82 @@ fn a_shared_value_keeps_a_moved_twin_matched_over_a_nearer_entry() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn typescript_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.ts", TYPESCRIPT);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/knot.ts:1  cc 11, 18 lines  function tangled(a: number, b: string[]): number {"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("knot.ts:20"), "{}", run.out);
+}
+
+#[test]
+fn go_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.go", GO);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/knot.go:3  cc 9, 17 lines  func tangled(a int, b []string) int {"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("knot.go:21"), "{}", run.out);
+}
+
+#[test]
+fn java_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/Knot.java", JAVA);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/Knot.java:2  cc 12, 18 lines  int tangled(int a, String[] b) {"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("Knot.java:21"), "{}", run.out);
+}
+
+#[test]
+fn ruby_functions_carry_their_hand_checked_numbers() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rb", RUBY);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/knot.rb:1  cc 10, 20 lines  def tangled(a, b)"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("knot.rb:22"), "{}", run.out);
+}
+
+#[test]
+fn every_ecmascript_extension_is_measured_by_the_grammar_that_fits_it() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/a.ts", "function a(): number { return 1 as number; }\n");
+    tree.write(
+        "src/b.tsx",
+        "function b(): unknown { return <p>hi</p>; }\n",
+    );
+    tree.write("src/c.jsx", "function c() { return <p>hi</p>; }\n");
+    tree.write("src/d.mjs", "export function d() { return 1; }\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    for file in ["src/a.ts:1", "src/b.tsx:1", "src/c.jsx:1", "src/d.mjs:1"] {
+        assert!(run.says(file), "{}", run.out);
+    }
 }
