@@ -382,3 +382,51 @@ fn a_ceilings_key_of_the_wrong_shape_is_named_as_malformed_not_missing() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"ceilings\" must be"), "{}", run.out);
 }
+
+#[test]
+fn an_inserted_third_twin_is_the_new_one_not_a_neighbour() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    tree.write("src/lib.rs", "fn f() {}\n// a\n// b\n// c\nfn f() {}\n");
+    tree.run(&["complexity", "--write-baseline"]);
+    tree.write(
+        "src/lib.rs",
+        "fn f() {}\n// a\nfn f() {}\n// b\n// c\nfn f() {}\n",
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:3"), "{}", run.out);
+    assert!(!run.says("matched nothing"), "{}", run.out);
+    assert!(!run.says("worse"), "{}", run.out);
+}
+
+#[test]
+fn a_shared_value_keeps_a_moved_twin_matched_over_a_nearer_entry() {
+    let tree = tree(r#"{"cc": 0, "lines": 0}"#);
+    let twin = ["fn twin() -> i32 {", "    if 1 > 0 { 1 } else { 0 }", "}"];
+    let lines: Vec<&str> = std::iter::repeat_n("// pad", 18)
+        .chain(twin)
+        .chain(std::iter::repeat_n("// pad", 28))
+        .chain(twin)
+        .collect();
+    tree.write("src/lib.rs", &(lines.join("\n") + "\n"));
+    tree.write(
+        "detent/complexity-baseline.json",
+        &baseline(&format!(
+            "{}, {}",
+            entry("src/lib.rs", "fn twin() -> i32 {", 3, 2, 3),
+            entry("src/lib.rs", "fn twin() -> i32 {", 20, 1, 3)
+        )),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("src/lib.rs:50"), "{}", run.out);
+    assert!(
+        !run.says("src/lib.rs:19  cc 2, 3 lines, was"),
+        "{}",
+        run.out
+    );
+}

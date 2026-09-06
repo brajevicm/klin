@@ -247,7 +247,13 @@ fn measure(sources: &[PathBuf], repo_root: &Path) -> Result<Vec<Function>, Error
         .map(|language| language.extension)
         .collect();
     let mut out = Vec::new();
-    for file in files::under(sources, &extensions)? {
+    let wanted = files::Wanted {
+        extensions: &extensions,
+        skip_dirs: &[],
+        exclude: &[],
+        skip_hidden: true,
+    };
+    for file in files::under(sources, &wanted)? {
         let name = file.to_string_lossy().to_string();
         let Some(language) = LANGUAGES
             .iter()

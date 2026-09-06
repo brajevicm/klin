@@ -4,7 +4,7 @@ use harness::Tree;
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "baseline": "detent/escapes-baseline.json" }
+  "escapes": { "roots": ["src"], "languages": ["rust"], "baseline": "detent/escapes-baseline.json" }
 }"#;
 
 fn tree() -> Tree {
@@ -144,7 +144,7 @@ fn a_value_the_entry_never_recorded_is_not_compared() {
 }
 
 #[test]
-fn a_line_with_two_escape_kinds_counts_only_the_recorded_kind() {
+fn a_line_carrying_two_escape_kinds_counts_both_under_the_first() {
     let tree = tree();
     tree.write("src/lib.rs", "a.unwrap(); b.expect(\"x\");\n");
     tree.write(
@@ -154,7 +154,7 @@ fn a_line_with_two_escape_kinds_counts_only_the_recorded_kind() {
             "a.unwrap(); b.expect(\"x\");",
             1,
             "unwrap",
-            1,
+            2,
         )),
     );
 
@@ -186,48 +186,6 @@ fn failure_output_never_prints_the_command_that_rewrites_a_baseline() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("Fix what the escape hides"), "{}", run.out);
     assert!(!run.says("--write-baseline"), "{}", run.out);
-}
-
-#[test]
-fn an_inserted_third_twin_is_the_new_one_not_a_neighbour() {
-    let tree = tree();
-    let twins = "x.unwrap();\nfn a() {}\nfn b() {}\nfn c() {}\nx.unwrap();\n";
-    tree.write("src/lib.rs", twins);
-    tree.run(&["escapes", "--write-baseline"]);
-    let inserted = "x.unwrap();\nfn a() {}\nx.unwrap();\nfn b() {}\nfn c() {}\nx.unwrap();\n";
-    tree.write("src/lib.rs", inserted);
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 new escape site(s)"), "{}", run.out);
-    assert!(run.says("src/lib.rs:3"), "{}", run.out);
-    assert!(!run.says("matched nothing"), "{}", run.out);
-    assert!(!run.says("worse"), "{}", run.out);
-}
-
-#[test]
-fn a_shared_value_keeps_a_moved_twin_matched_over_a_nearer_entry() {
-    let tree = tree();
-    let lines: Vec<&str> = std::iter::repeat_n("fn pad() {}", 18)
-        .chain(["a.unwrap(); b.unwrap();"])
-        .chain(std::iter::repeat_n("fn pad() {}", 30))
-        .chain(["a.unwrap(); b.unwrap();"])
-        .collect();
-    tree.write("src/lib.rs", &(lines.join("\n") + "\n"));
-    tree.write(
-        "detent/escapes-baseline.json",
-        &baseline(&format!(
-            "{}, {}",
-            entry("src/lib.rs", "a.unwrap(); b.unwrap();", 3, "unwrap", 2),
-            entry("src/lib.rs", "a.unwrap(); b.unwrap();", 20, "unwrap", 1)
-        )),
-    );
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("got worse"), "{}", run.out);
-    assert!(run.says("src/lib.rs:50"), "{}", run.out);
-    assert!(!run.says("src/lib.rs:19  unwrap x2, was"), "{}", run.out);
 }
 
 #[test]
@@ -321,4 +279,446 @@ fn a_clean_quiet_run_prints_nothing() {
     let run = tree.run(&["escapes", "--quiet", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out, "", "{}", run.out);
+}
+
+fn spread() -> Tree {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "project": "t",
+             "escapes": { "roots": ["src"],
+                          "languages": ["python", "typescript", "swift", "rust", "go",
+                                        "kotlin", "java", "ruby", "shell"],
+                          "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write(
+        "src/thing.py",
+        "x = 1  # type: ignore\ny = 1  # noqa\nz = 1  # pragma: no cover\n@skip\ndef f():\n    try:\n        pass\n    except:\n        pass\n",
+    );
+    tree.write(
+        "src/thing.ts",
+        "const a: any = 1;\n// @ts-ignore\nconst b = a!.c;\nit.skip('x', () => {});\n// eslint-disable-next-line\n",
+    );
+    tree.write(
+        "src/thing.swift",
+        "let a = try! f()\nlet b = c as! D\nlet d = e!.f\n// swiftlint:disable all\nlet g: @unchecked Sendable = h\ntry XCTSkip(\"no\")\n",
+    );
+    tree.write(
+        "src/thing.rs",
+        "let a = b.unwrap();\nlet c = d.expect(\"no\");\nunsafe {\n}\n#[allow(dead_code)]\ntodo!();\n#[ignore]\n",
+    );
+    tree.write("src/thing.go", "// nolint\nt.Skip()\n");
+    tree.write("src/thing.kt", "val a = b!!\n@Suppress(\"x\")\n@Ignore\n");
+    tree.write("src/thing.java", "@SuppressWarnings(\"x\")\n@Disabled\n");
+    tree.write("src/thing.rb", "# rubocop:disable Style\nskip\n");
+    tree.write(
+        "src/go.sh",
+        "rm -f x || true\n# shellcheck disable=SC2086\n",
+    );
+    tree
+}
+
+#[test]
+fn every_built_in_language_finds_and_names_its_escapes() {
+    let tree = spread();
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    for expected in [
+        "src/thing.py:1  type ignore",
+        "src/thing.py:2  noqa",
+        "src/thing.py:3  no cover",
+        "src/thing.py:4  skipped test",
+        "src/thing.py:8  bare except",
+        "src/thing.ts:1  any",
+        "src/thing.ts:2  ts-ignore",
+        "src/thing.ts:3  non-null assertion",
+        "src/thing.ts:4  skipped test",
+        "src/thing.ts:5  eslint-disable",
+        "src/thing.swift:1  force try",
+        "src/thing.swift:2  force cast",
+        "src/thing.swift:3  force unwrap",
+        "src/thing.swift:4  swiftlint:disable",
+        "src/thing.swift:5  unchecked Sendable",
+        "src/thing.swift:6  skipped test",
+        "src/thing.rs:1  unwrap",
+        "src/thing.rs:2  expect",
+        "src/thing.rs:3  unsafe",
+        "src/thing.rs:5  allow",
+        "src/thing.rs:6  todo",
+        "src/thing.rs:7  skipped test",
+        "src/thing.go:1  nolint",
+        "src/thing.go:2  skipped test",
+        "src/thing.kt:1  not-null assertion",
+        "src/thing.kt:2  suppress",
+        "src/thing.kt:3  skipped test",
+        "src/thing.java:1  suppress warnings",
+        "src/thing.java:2  skipped test",
+        "src/thing.rb:1  rubocop:disable",
+        "src/thing.rb:2  skipped test",
+        "src/go.sh:1  errors ignored",
+        "src/go.sh:2  shellcheck disable",
+    ] {
+        assert!(run.says(expected), "missing {expected}\n{}", run.out);
+    }
+}
+
+#[test]
+fn list_languages_prints_the_built_in_pattern_sets() {
+    let tree = Tree::new();
+
+    let run = tree.run(&["escapes", "--list-languages"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    for expected in [
+        "go",
+        "java",
+        "kotlin",
+        "python",
+        "ruby",
+        "rust",
+        "shell",
+        "swift",
+        "typescript",
+        "force unwrap",
+        "bare except",
+        "nolint",
+    ] {
+        assert!(run.says(expected), "missing {expected}\n{}", run.out);
+    }
+}
+
+#[test]
+fn a_site_shifted_by_an_edit_above_it_still_matches_by_its_line_text() {
+    let tree = tree();
+    tree.write("src/lib.rs", "fn f() {\n    a.unwrap();\n}\n");
+    tree.run(&["escapes", "--write-baseline"]);
+    tree.write(
+        "src/lib.rs",
+        "// a header\n// and more\nfn f() {\n    a.unwrap();\n}\n",
+    );
+
+    let run = tree.run(&["escapes", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
+}
+
+#[test]
+fn the_same_line_twice_in_one_file_is_one_entry_whose_count_ratchets() {
+    let tree = tree();
+    tree.write("src/lib.rs", "a.unwrap();\nfn pad() {}\n");
+    let written = tree.run(&["escapes", "--write-baseline"]);
+    assert!(written.says("1 escape site(s) accepted"), "{}", written.out);
+
+    tree.write("src/lib.rs", "a.unwrap();\nfn pad() {}\na.unwrap();\n");
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("unwrap x2, was unwrap"), "{}", run.out);
+    assert!(!run.says("new escape site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_project_pattern_is_read_alongside_the_built_in_sets() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"],
+             "patterns": {"todo bang": "TODO!"},
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/lib.rs", "a.unwrap();\n// TODO! later\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:1  unwrap"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  todo bang"), "{}", run.out);
+}
+
+#[test]
+fn a_project_pattern_alone_reads_every_file_under_the_roots() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "patterns": {"todo bang": "TODO!"},
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/notes.txt", "TODO! later\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/notes.txt:1  todo bang"), "{}", run.out);
+}
+
+#[test]
+fn a_default_skipped_directory_is_not_read_and_skip_dirs_adds_to_the_list() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["."], "languages": ["typescript"],
+             "skip_dirs": ["legacy"], "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("node_modules/dep/index.ts", "const z: any = 1;\n");
+    tree.write("legacy/old.ts", "const y: any = 1;\n");
+    tree.write("web/new.ts", "const x: any = 1;\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("web/new.ts:1  any"), "{}", run.out);
+    assert!(!run.says("node_modules"), "{}", run.out);
+    assert!(!run.says("legacy"), "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_file_matching_an_exclude_glob_is_not_read() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
+             "exclude": ["*.test.ts", "*/generated/*"],
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/thing.ts", "const a: any = 1;\n");
+    tree.write("src/thing.test.ts", "const b: any = 1;\n");
+    tree.write("src/generated/api.ts", "const c: any = 1;\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/thing.ts:1"), "{}", run.out);
+    assert!(!run.says("thing.test.ts"), "{}", run.out);
+    assert!(!run.says("generated"), "{}", run.out);
+}
+
+const CFG_TEST: &str = r#"pub fn read() -> i32 {
+    let v: Result<i32, ()> = Ok(1);
+    v.unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn t() {
+        let x: Result<i32, ()> = Ok(1);
+        x.unwrap();
+        x.expect("no");
+    }
+}
+
+pub fn after() -> i32 {
+    let v: Result<i32, ()> = Ok(1);
+    v.expect("appended below the tests")
+}
+"#;
+
+#[test]
+fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
+    let tree = tree();
+    tree.write("src/lib.rs", CFG_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:3  unwrap"), "{}", run.out);
+    assert!(run.says("src/lib.rs:18  expect"), "{}", run.out);
+    assert!(!run.says("src/lib.rs:11"), "{}", run.out);
+    assert!(!run.says("src/lib.rs:12"), "{}", run.out);
+
+    tree.run(&["escapes", "--write-baseline"]);
+    let rerun = tree.run(&["escapes"]);
+    assert_eq!(rerun.code, 0, "{}", rerun.out);
+    assert!(
+        rerun.says("(2 in inline Rust tests skipped)"),
+        "{}",
+        rerun.out
+    );
+}
+
+#[test]
+fn skip_rust_tests_turned_off_judges_the_test_module_too() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"], "skip_rust_tests": false,
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/lib.rs", CFG_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+    assert!(run.says("src/lib.rs:12"), "{}", run.out);
+    assert!(!run.says("in inline Rust tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["cobol"],
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("cobol"), "{}", run.out);
+    assert!(run.says("python"), "{}", run.out);
+}
+
+#[test]
+fn a_section_naming_nothing_to_look_for_is_refused() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("nothing to look for"), "{}", run.out);
+}
+
+#[test]
+fn a_project_pattern_that_is_not_a_regex_is_refused_naming_it() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "patterns": {"broken": "([unclosed"},
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("broken"), "{}", run.out);
+}
+
+#[test]
+fn javascript_is_read_by_the_typescript_set() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript"],
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/thing.js", "it.only('x', () => {});\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/thing.js:1  skipped test"), "{}", run.out);
+}
+
+#[test]
+fn a_cfg_test_module_behind_stacked_attributes_is_still_a_test_module() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        "#[cfg(test)]\n#[allow(clippy::all)]\nmod tests {\n    fn t() {\n        x.unwrap();\n    }\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(2 in inline Rust tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        "#[cfg(test)]\n// a note about the tests\nmod tests {\n    fn t() {\n        x.unwrap();\n    }\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(1 in inline Rust tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn a_hidden_directory_is_read_unless_the_default_list_or_skip_dirs_names_it() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["."], "languages": ["shell"],
+             "skip_dirs": ["scripts"], "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write(".github/workflows/ci.sh", "make test || true\n");
+    tree.write(".git/hooks/pre-commit.sh", "lint || true\n");
+    tree.write(".config/scripts/setup.sh", "install || true\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says(".github/workflows/ci.sh:1"), "{}", run.out);
+    assert!(!run.says(".git/hooks"), "{}", run.out);
+    assert!(!run.says("setup.sh"), "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+}
+
+#[test]
+fn an_exclude_glob_honours_a_character_class() {
+    let tree = Tree::new();
+    tree.write(
+        "quality.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
+             "exclude": ["*.spec.[jt]s", "[!a]?.gen.ts"],
+             "baseline": "detent/escapes-baseline.json" } }"#,
+    );
+    tree.write("src/a.spec.ts", "const a: any = 1;\n");
+    tree.write("src/b.spec.js", "const b: any = 1;\n");
+    tree.write("src/c.spec.tsx", "const c: any = 1;\n");
+    tree.write("src/zz.gen.ts", "const z: any = 1;\n");
+    tree.write("src/aa.gen.ts", "const y: any = 1;\n");
+    tree.write("src/plain.ts", "const p: any = 1;\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/plain.ts:1"), "{}", run.out);
+    assert!(run.says("src/aa.gen.ts:1"), "{}", run.out);
+    assert!(run.says("src/c.spec.tsx:1"), "{}", run.out);
+    assert!(!run.says("a.spec.ts"), "{}", run.out);
+    assert!(!run.says("b.spec.js"), "{}", run.out);
+    assert!(!run.says("zz.gen.ts"), "{}", run.out);
+    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+}
+
+#[test]
+fn every_alternative_inside_a_pattern_matches_too() {
+    let tree = spread();
+    tree.write(
+        "src/alt.py",
+        "@pytest.mark.skip\ndef a():\n    pass\npytest.skip(\"x\")\n@unittest.skip(\"y\")\ndef b():\n    pass\n",
+    );
+    tree.write(
+        "src/alt.ts",
+        "const a = b as any;\nconst c = <any>d;\nxit('x', () => {});\ndescribe.only('y', () => {});\ntest.skip('z', () => {});\n",
+    );
+    tree.write("src/alt.rs", "unimplemented!();\n#![allow(dead_code)]\n");
+    tree.write("src/alt.go", "t.SkipNow()\nt.Skipf(\"x\")\n");
+    tree.write("src/alt.rb", "xit 'x'\npending 'y'\n");
+    tree.write("src/alt.sh", "set +e\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    for expected in [
+        "src/alt.py:1  skipped test",
+        "src/alt.py:4  skipped test",
+        "src/alt.py:5  skipped test",
+        "src/alt.ts:1  any",
+        "src/alt.ts:2  any",
+        "src/alt.ts:3  skipped test",
+        "src/alt.ts:4  skipped test",
+        "src/alt.ts:5  skipped test",
+        "src/alt.rs:1  todo",
+        "src/alt.rs:2  allow",
+        "src/alt.go:1  skipped test",
+        "src/alt.go:2  skipped test",
+        "src/alt.rb:1  skipped test",
+        "src/alt.rb:2  skipped test",
+        "src/alt.sh:1  errors ignored",
+    ] {
+        assert!(run.says(expected), "missing {expected}\n{}", run.out);
+    }
 }

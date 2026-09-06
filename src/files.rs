@@ -27,17 +27,46 @@ pub fn roots(
         .map(Some)
 }
 
-pub fn under(roots: &[PathBuf], extensions: &[&str]) -> Result<Vec<PathBuf>, Error> {
+pub struct Wanted<'a> {
+    pub extensions: &'a [&'a str],
+    pub skip_dirs: &'a [String],
+    pub exclude: &'a [String],
+    pub skip_hidden: bool,
+}
+
+impl Wanted<'_> {
+    fn keeps(&self, path: &Path, name: &str) -> bool {
+        self.extensions
+            .iter()
+            .any(|extension| name.ends_with(extension))
+            && !self.excluded(path, name)
+    }
+
+    fn descends(&self, name: &str) -> bool {
+        !(self.skip_hidden && (name.starts_with('.') || name == "target"))
+            && !self.skip_dirs.iter().any(|skipped| skipped == name)
+    }
+
+    fn excluded(&self, path: &Path, name: &str) -> bool {
+        let whole = path.to_string_lossy();
+        self.exclude.iter().any(|glob| {
+            glob_matches(glob.as_bytes(), name.as_bytes())
+                || glob_matches(glob.as_bytes(), whole.as_bytes())
+        })
+    }
+}
+
+pub fn under(roots: &[PathBuf], wanted: &Wanted) -> Result<Vec<PathBuf>, Error> {
     let mut files = Vec::new();
     for root in roots {
-        walk(root, extensions, &mut files)?;
+        walk(root, wanted, &mut files)?;
     }
     files.sort();
     files.dedup();
     Ok(files)
 }
 
-fn walk(root: &Path, extensions: &[&str], into: &mut Vec<PathBuf>) -> Result<(), Error> {
+fn walk(root: &Path, wanted: &Wanted, into: &mut Vec<PathBuf>) -> Result<(), Error> {
     let listing = std::fs::read_dir(root).map_err(|why| Error::unreadable(root, why))?;
     for entry in listing {
         let entry = entry.map_err(|why| Error::unreadable(root, why))?;
@@ -51,14 +80,64 @@ fn walk(root: &Path, extensions: &[&str], into: &mut Vec<PathBuf>) -> Result<(),
         }
         let name = entry.file_name().to_string_lossy().to_string();
         if path.is_dir() {
-            if !name.starts_with('.') && name != "target" {
-                walk(&path, extensions, into)?;
+            if wanted.descends(&name) {
+                walk(&path, wanted, into)?;
             }
-        } else if extensions.iter().any(|extension| name.ends_with(extension)) {
+        } else if wanted.keeps(&path, &name) {
             into.push(path);
         }
     }
     Ok(())
+}
+
+fn glob_matches(glob: &[u8], text: &[u8]) -> bool {
+    match glob.first() {
+        None => text.is_empty(),
+        Some(b'*') => {
+            glob_matches(&glob[1..], text) || (!text.is_empty() && glob_matches(glob, &text[1..]))
+        }
+        Some(b'?') => !text.is_empty() && glob_matches(&glob[1..], &text[1..]),
+        Some(b'[') => match class_end(glob) {
+            Some(end) => {
+                let (negated, set) = match glob[1] {
+                    b'!' => (true, &glob[2..end]),
+                    _ => (false, &glob[1..end]),
+                };
+                text.first()
+                    .is_some_and(|byte| in_class(set, *byte) != negated)
+                    && glob_matches(&glob[end + 1..], &text[1..])
+            }
+            None => text.first() == Some(&b'[') && glob_matches(&glob[1..], &text[1..]),
+        },
+        Some(first) => text.first() == Some(first) && glob_matches(&glob[1..], &text[1..]),
+    }
+}
+
+fn class_end(glob: &[u8]) -> Option<usize> {
+    let opens = match glob.get(1) {
+        Some(b'!') => 2,
+        _ => 1,
+    };
+    glob[opens..]
+        .iter()
+        .position(|byte| *byte == b']')
+        .map(|at| at + opens)
+        .filter(|end| *end > opens)
+}
+
+fn in_class(set: &[u8], byte: u8) -> bool {
+    let mut at = 0;
+    while at < set.len() {
+        let ranged = at + 2 < set.len() && set[at + 1] == b'-';
+        if ranged && (set[at]..=set[at + 2]).contains(&byte) {
+            return true;
+        }
+        if !ranged && set[at] == byte {
+            return true;
+        }
+        at += if ranged { 3 } else { 1 };
+    }
+    false
 }
 
 pub fn relative(path: &Path, repo_root: &Path) -> String {
