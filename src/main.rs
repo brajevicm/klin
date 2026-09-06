@@ -1,6 +1,8 @@
 mod config;
 mod doc_size;
+mod guard;
 
+use std::path::Path;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
@@ -9,17 +11,25 @@ use clap::{Parser, Subcommand};
 #[command(name = "detent", about = "A quality ratchet for AI-driven development")]
 struct Cli {
     #[command(subcommand)]
-    gate: Gate,
+    command: Command,
 }
 
 #[derive(Subcommand)]
-enum Gate {
+enum Command {
     /// Fail when a document has grown past its ceiling
     DocSize(doc_size::Args),
+    /// Refuse an agent's tool call that would edit the configuration, a baseline or the hooks
+    Guard,
 }
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    match &Cli::parse().command {
+        Command::Guard => ExitCode::from(guard::run()),
+        Command::DocSize(args) => gate(|start| doc_size::run(args, start)),
+    }
+}
+
+fn gate(run: impl FnOnce(&Path) -> Result<u8, config::Error>) -> ExitCode {
     let start = match std::env::current_dir() {
         Ok(directory) => directory,
         Err(why) => {
@@ -27,10 +37,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let outcome = match &cli.gate {
-        Gate::DocSize(args) => doc_size::run(args, &start),
-    };
-    match outcome {
+    match run(&start) {
         Ok(code) => ExitCode::from(code),
         Err(problem) => {
             eprintln!("FAIL: {problem}");

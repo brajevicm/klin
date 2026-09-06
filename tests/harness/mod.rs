@@ -1,6 +1,9 @@
+#![allow(dead_code)]
+
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 pub struct Tree {
     dir: tempfile::TempDir,
@@ -55,11 +58,25 @@ impl Tree {
 }
 
 pub fn run_from(cwd: &Path, args: &[&str]) -> Run {
-    let done = Command::new(env!("CARGO_BIN_EXE_detent"))
+    feed(cwd, args, "")
+}
+
+pub fn feed(cwd: &Path, args: &[&str], stdin: &str) -> Run {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_detent"))
         .args(args)
         .current_dir(cwd)
-        .output()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .expect("run detent");
+    child
+        .stdin
+        .take()
+        .expect("stdin")
+        .write_all(stdin.as_bytes())
+        .expect("write stdin");
+    let done = child.wait_with_output().expect("wait for detent");
     Run {
         code: done.status.code().expect("exit code"),
         out: String::from_utf8_lossy(&done.stdout).to_string()

@@ -13,8 +13,8 @@ baselines instead of the code. It supports Claude Code, Cursor and Codex CLI.
 
 ## Status
 
-Early. Config discovery and the doc-size gate run. The ratchet engine and the
-other gates follow.
+Early. Config discovery, the doc-size gate and the guard run. The ratchet
+engine and the other gates follow.
 
 ## Origin
 
