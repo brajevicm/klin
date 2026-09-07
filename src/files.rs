@@ -23,6 +23,14 @@ const DEFAULT_SKIP_DIRS: &[&str] = &[
     "fixtures",
 ];
 
+/// The directories every gate skips, for a survey that has no section to read.
+pub fn default_skip_dirs() -> Vec<String> {
+    DEFAULT_SKIP_DIRS
+        .iter()
+        .map(|dir| dir.to_string())
+        .collect()
+}
+
 pub fn roots(
     config: &Config,
     section_name: &str,

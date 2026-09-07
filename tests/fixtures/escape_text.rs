@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! The sources these tests plant in a temporary tree. They live under `fixtures/`, which the
 //! escapes gate skips, so a test's own data is not an escape site in this repository.
 

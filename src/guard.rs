@@ -61,6 +61,12 @@ fn segment_writes_guarded(segment: &str) -> bool {
     redirects_to_guarded(&words)
         || (writes(&words) && words.iter().any(|word| guarded(word)))
         || restores_a_tree(&words)
+        || fills_in_the_configuration(&words)
+}
+
+/// `init --add` rewrites the configuration, so it is a person's command, like an edit to it.
+fn fills_in_the_configuration(words: &[&str]) -> bool {
+    words.contains(&"init") && words.contains(&"--add")
 }
 
 fn restores_a_tree(words: &[&str]) -> bool {

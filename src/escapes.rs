@@ -263,6 +263,33 @@ fn evaluator() -> Evaluator<'static> {
     }
 }
 
+/// Every suffix a built-in pattern set reads, so a survey can find a tree's sources.
+pub fn suffixes() -> impl Iterator<Item = &'static str> {
+    LANGUAGES
+        .iter()
+        .flat_map(|language| language.suffixes.iter().copied())
+}
+
+/// The language a file belongs to, named as the "languages" key names it.
+pub fn language_of(file: &str) -> Option<&'static str> {
+    let named = |language: &'static Language| match language.names {
+        ["javascript", "typescript"] => match file.rsplit('.').next() {
+            Some("ts" | "tsx" | "mts" | "cts") => "typescript",
+            _ => "javascript",
+        },
+        _ => language.names[0],
+    };
+    LANGUAGES
+        .iter()
+        .find(|language| {
+            language
+                .suffixes
+                .iter()
+                .any(|suffix| file.ends_with(suffix))
+        })
+        .map(named)
+}
+
 fn language(name: &str) -> Option<&'static Language> {
     LANGUAGES
         .iter()

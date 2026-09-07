@@ -108,6 +108,20 @@ fn the_refusal_names_what_it_protects() {
 }
 
 #[test]
+fn refuses_the_command_that_fills_in_the_configuration() {
+    for command in [
+        "klin init --add",
+        "cd repo && target/debug/klin init --add --config klin.json",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+    let allowed = bash("klin init");
+    assert_eq!(allowed.code, 0, "{}", allowed.out);
+}
+
+#[test]
 fn allows_a_command_naming_a_file_that_used_to_be_a_baseline() {
     for command in [
         "rm quality/escapes-baseline.json",

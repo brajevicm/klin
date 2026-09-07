@@ -7,6 +7,7 @@ mod escapes;
 mod files;
 mod gate;
 mod guard;
+mod init;
 mod ratchet;
 
 use std::path::Path;
@@ -31,6 +32,8 @@ enum Command {
     Escapes(escapes::Args),
     /// Run every gate the configuration names, cheapest first
     Gate(gate::Args),
+    /// Survey the tree and write the configuration it can say for itself
+    Init(init::Args),
     /// Refuse an agent's tool call that would edit the configuration or the hooks
     Guard,
 }
@@ -42,6 +45,7 @@ fn main() -> ExitCode {
         Command::DocSize(args) => report(|start, out| doc_size::run(args, start, out)),
         Command::Escapes(args) => report(|start, out| escapes::run(args, start, out)),
         Command::Gate(args) => report(|start, out| gate::run(args, start, out)),
+        Command::Init(args) => report(|start, out| init::run(args, start, out)),
     }
 }
 
