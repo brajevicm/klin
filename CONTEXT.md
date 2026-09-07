@@ -6,8 +6,12 @@ what is already wrong, and refuses anything newly wrong.
 ## Language
 
 **Gate**:
-A check that inspects the codebase and either passes or fails the build.
+One configured instance of a check, which passes or fails the build.
 _Avoid_: rule, lint, policy
+
+**Check**:
+The measurement and judgment behind a gate, shared by every gate that uses it.
+_Avoid_: gate, checker
 
 **Baseline**:
 The recorded set of findings a person has accepted. Only a person changes it.
@@ -27,7 +31,8 @@ The value a measure may reach before its gate fails.
 _Avoid_: limit, threshold, budget
 
 **Escape**:
-A construct that switches a check off, such as `any`, `unwrap()`, or `.skip`.
+A construct that opts out of a safety the language or its tools provide, such
+as `any`, `unwrap()`, or `.skip`.
 _Avoid_: suppression, override, bypass
 
 **Provenance**:
