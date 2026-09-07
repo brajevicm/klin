@@ -1,13 +1,13 @@
-# Working on detent
+# Working on klin
 
-detent is a Rust rewrite of cleat, a quality-ratchet tool. Read `CONTEXT.md`
+klin is a Rust rewrite of cleat, a quality-ratchet tool. Read `CONTEXT.md`
 for the vocabulary and `docs/adr/` for decisions that are already made.
 
 ## The reference implementation
 
 cleat is the behavioural specification. Find it at `$CLEAT_SRC`, defaulting to
 `../cleat` beside this repository. It is not vendored here and must not be:
-detent gates itself, and a vendored Python tree would be scanned and baselined.
+klin gates itself, and a vendored Python tree would be scanned and baselined.
 
 That checkout is indexed with CodeGraph, so use it instead of grep:
 
@@ -27,7 +27,7 @@ That is good Python. Transliterated it is bad Rust, where the same thing is an
 enum and a `match`. Take the behaviour from the test that covers it, then write
 Rust.
 
-detent's numbers are not required to match cleat's. A ratchet compares today's
+klin's numbers are not required to match cleat's. A ratchet compares today's
 measurement against yesterday's measurement from the same tool, so being
 self-consistent is the whole requirement. See ADR 0001.
 
@@ -38,7 +38,7 @@ One seam: the binary's command line. Build a throwaway tree, write a
 and the printed text. Do not reach inside. The matching logic is the most
 likely thing to be rewritten, so nothing should be coupled to its shape.
 
-## The rules detent enforces on itself
+## The rules klin enforces on itself
 
 Do not edit `klin.json`, a baseline, or the hooks to make a gate pass, and
 do not run `--write-baseline`. A baseline records debt a person accepted. Only

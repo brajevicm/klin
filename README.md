@@ -1,4 +1,4 @@
-# detent
+# klin
 
 Quality ratchets for AI-driven development, in one binary. It records today's
 debt, then fails the build on anything new. Supports Claude Code, Cursor and
@@ -21,7 +21,7 @@ and the config under CODEOWNERS. ADR 0008 and 0009 record why.
 ## Accepting debt
 
 A person adds one line to the `accepted` list in the config, in a reviewed
-commit. Nothing else records debt, and detent writes no files.
+commit. Nothing else records debt, and klin writes no files.
 
 ## Origin and license
 

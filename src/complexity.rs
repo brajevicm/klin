@@ -459,7 +459,7 @@ fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u
     }
     let _ = writeln!(
         out,
-        "A file detent cannot read is a hole in the ratchet. Update the grammar, or exclude \
+        "A file klin cannot read is a hole in the ratchet. Update the grammar, or exclude \
          the file and accept that nothing measures it."
     );
     2
@@ -474,7 +474,7 @@ fn evaluator<'a>(spec: &'a Spec, held_out: &'a [String]) -> Evaluator<'a> {
         condition: &spec.gate_text,
         fix_advice: "Split the function so each piece is under the gate. Accepting new debt into \
                      the baseline is a policy decision for a person, not a fix.",
-        tighten_command: "detent complexity --write-baseline",
+        tighten_command: "klin complexity --write-baseline",
         format_metrics: show,
         held_out,
     }

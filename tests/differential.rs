@@ -151,7 +151,7 @@ fn agree(tree: &Tree, cleat: &Path) {
 }
 
 fn same_verdict(mine: &Run, theirs: &Run, headlines: fn(&str) -> Vec<&str>) {
-    let why = format!("detent said:\n{}\ncleat said:\n{}", mine.out, theirs.out);
+    let why = format!("klin said:\n{}\ncleat said:\n{}", mine.out, theirs.out);
     assert_eq!(mine.code, theirs.code, "{why}");
     assert_eq!(rows(&mine.out), rows(&theirs.out), "{why}");
     assert_eq!(headlines(&mine.out), headlines(&theirs.out), "{why}");

@@ -184,7 +184,7 @@ fun simple(a: Int): Int = a
 fn config(ceilings: &str) -> String {
     format!(
         r#"{{ "project": "t", "complexity": {{ "sources": ["src"], "ceilings": {ceilings},
-             "baseline": "detent/complexity-baseline.json" }} }}"#
+             "baseline": "klin/complexity-baseline.json" }} }}"#
     )
 }
 
@@ -283,8 +283,7 @@ fn write_baseline_accepts_what_is_over_the_gate_and_the_rerun_holds() {
     assert_eq!(written.code, 0, "{}", written.out);
     assert!(written.says("2 function(s) over the"), "{}", written.out);
 
-    let stored =
-        std::fs::read_to_string(tree.path("detent/complexity-baseline.json")).expect("read");
+    let stored = std::fs::read_to_string(tree.path("klin/complexity-baseline.json")).expect("read");
     assert!(stored.contains("fn tangled(a: i32) -> i32 {"), "{stored}");
     assert!(stored.contains("\"cc\": 9"), "{stored}");
     assert!(stored.contains("\"lines\": 13"), "{stored}");
@@ -303,7 +302,7 @@ fn a_baselined_function_that_moved_down_the_file_still_matches() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/knot.rs", &format!("// a header\n// and more\n{RUST}"));
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         &baseline(&entry(
             "src/knot.rs",
             "fn tangled(a: i32) -> i32 {",
@@ -323,7 +322,7 @@ fn a_baselined_function_whose_cyclomatic_grew_fails() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/knot.rs", RUST);
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         &baseline(&entry(
             "src/knot.rs",
             "fn tangled(a: i32) -> i32 {",
@@ -349,7 +348,7 @@ fn a_baselined_function_whose_length_grew_fails_too() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/knot.rs", RUST);
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         &baseline(&entry(
             "src/knot.rs",
             "fn tangled(a: i32) -> i32 {",
@@ -373,7 +372,7 @@ fn a_function_that_improved_is_a_note_locally_and_a_failure_under_strict() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/knot.rs", RUST);
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         &baseline(&entry(
             "src/knot.rs",
             "fn tangled(a: i32) -> i32 {",
@@ -390,11 +389,7 @@ fn a_function_that_improved_is_a_note_locally_and_a_failure_under_strict() {
         "{}",
         run.out
     );
-    assert!(
-        run.says("detent complexity --write-baseline"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("klin complexity --write-baseline"), "{}", run.out);
 
     let strict = tree.run(&["complexity", "--strict"]);
     assert_eq!(strict.code, 1, "{}", strict.out);
@@ -406,7 +401,7 @@ fn a_missing_key_is_a_tool_error_naming_it() {
     tree.write(
         "klin.json",
         r#"{ "complexity": { "ceilings": {"cc": 8, "lines": 60},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/knot.rs", RUST);
 
@@ -417,7 +412,7 @@ fn a_missing_key_is_a_tool_error_naming_it() {
     tree.write(
         "klin.json",
         r#"{ "complexity": { "sources": ["src"],
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     let missing_ceilings = tree.run(&["complexity"]);
     assert_eq!(missing_ceilings.code, 2, "{}", missing_ceilings.out);
@@ -480,7 +475,7 @@ fn writing_a_baseline_is_refused_while_a_file_goes_unparsed() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("src/bad.rs"), "{}", run.out);
     assert!(
-        !tree.path("detent/complexity-baseline.json").exists(),
+        !tree.path("klin/complexity-baseline.json").exists(),
         "{}",
         run.out
     );
@@ -522,7 +517,7 @@ fn overlapping_sources_measure_each_file_once() {
     tree.write(
         "klin.json",
         r#"{ "complexity": { "sources": ["src", "src/deep"], "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/deep/c.rs", "fn f() {}\n");
 
@@ -560,7 +555,7 @@ fn a_ceilings_key_of_the_wrong_shape_is_named_as_malformed_not_missing() {
     tree.write(
         "klin.json",
         r#"{ "complexity": { "sources": ["src"], "ceilings": 8,
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
 
@@ -598,7 +593,7 @@ fn a_shared_value_keeps_a_moved_twin_matched_over_a_nearer_entry() {
         .collect();
     tree.write("src/lib.rs", &(lines.join("\n") + "\n"));
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         &baseline(&format!(
             "{}, {}",
             entry("src/lib.rs", "fn twin() -> i32 {", 3, 2, 3),
@@ -899,7 +894,7 @@ fn a_vendored_directory_under_a_sources_root_is_not_measured() {
     tree.write(
         "klin.json",
         r#"{ "complexity": { "sources": ["."], "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write(
         "node_modules/dep/index.ts",
@@ -920,7 +915,7 @@ fn a_vendored_directory_named_as_a_source_is_measured() {
     tree.write(
         "klin.json",
         r#"{ "complexity": { "sources": ["node_modules/dep"], "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write(
         "node_modules/dep/index.ts",
@@ -939,7 +934,7 @@ fn skip_dirs_adds_to_the_default_list() {
         "klin.json",
         r#"{ "complexity": { "sources": ["."], "skip_dirs": ["legacy"],
              "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("legacy/old.rs", "fn old() {}\n");
     tree.write("src/new.rs", "fn new() {}\n");
@@ -957,7 +952,7 @@ fn only_the_named_languages_are_measured() {
         "klin.json",
         r#"{ "complexity": { "sources": ["src"], "languages": ["rust"],
              "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
     tree.write("src/b.ts", "function b() { return 1; }\n");
@@ -975,7 +970,7 @@ fn a_language_name_covers_every_grammar_the_escapes_gate_gives_it() {
         "klin.json",
         r#"{ "complexity": { "sources": ["src"], "languages": ["typescript"],
              "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/a.ts", "function a() { return 1; }\n");
     tree.write("src/b.tsx", "function b() { return 1; }\n");
@@ -995,7 +990,7 @@ fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
         "klin.json",
         r#"{ "complexity": { "sources": ["src"], "languages": ["cobol"],
              "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
 
@@ -1013,7 +1008,7 @@ fn an_exclude_glob_drops_a_file_and_exclude_except_keeps_a_named_path_back() {
         r#"{ "complexity": { "sources": ["src"], "exclude": ["*test*"],
              "exclude_except": ["src/test-runner.ts"],
              "ceilings": {"cc": 0, "lines": 0},
-             "baseline": "detent/complexity-baseline.json" } }"#,
+             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     tree.write("src/app.ts", "function app() { return 1; }\n");
     tree.write("src/app.test.ts", "function spec() { return 1; }\n");
@@ -1033,9 +1028,9 @@ fn a_baseline_from_the_old_measure_version_is_a_note_locally_and_a_failure_under
     tree.write("src/knot.rs", RUST);
     tree.run(&["complexity", "--write-baseline"]);
     let stored =
-        std::fs::read_to_string(tree.path("detent/complexity-baseline.json")).unwrap_or_default();
+        std::fs::read_to_string(tree.path("klin/complexity-baseline.json")).unwrap_or_default();
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         &stored.replace("\"version\": \"2\"", "\"version\": \"1\""),
     );
 

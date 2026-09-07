@@ -4,8 +4,8 @@
       "count": 1,
       "escape": "expect",
       "file": "tests/complexity.rs",
-      "line": 287,
-      "text": "std::fs::read_to_string(tree.path(\"detent/complexity-baseline.json\")).expect(\"read\");"
+      "line": 286,
+      "text": "let stored = std::fs::read_to_string(tree.path(\"klin/complexity-baseline.json\")).expect(\"read\");"
     },
     {
       "count": 1,
@@ -54,7 +54,7 @@
       "escape": "expect",
       "file": "tests/escapes.rs",
       "line": 61,
-      "text": "let stored = std::fs::read_to_string(tree.path(\"detent/escapes-baseline.json\")).expect(\"read\");"
+      "text": "let stored = std::fs::read_to_string(tree.path(\"klin/escapes-baseline.json\")).expect(\"read\");"
     },
     {
       "count": 4,
@@ -278,7 +278,7 @@
       "escape": "expect",
       "file": "tests/harness/mod.rs",
       "line": 81,
-      "text": ".expect(\"run detent\");"
+      "text": ".expect(\"run klin\");"
     },
     {
       "count": 1,
@@ -299,7 +299,7 @@
       "escape": "expect",
       "file": "tests/harness/mod.rs",
       "line": 88,
-      "text": "let done = child.wait_with_output().expect(\"wait for detent\");"
+      "text": "let done = child.wait_with_output().expect(\"wait for klin\");"
     },
     {
       "count": 1,

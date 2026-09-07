@@ -1,4 +1,4 @@
-# detent
+# klin
 
 A quality ratchet for AI-driven development. It measures a codebase, records
 what is already wrong, and refuses anything newly wrong.

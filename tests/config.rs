@@ -135,19 +135,14 @@ fn a_tilde_path_in_the_config_expands_to_the_home_directory() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "~/detent-no-such-document.md", "ceiling": 10}]}"#,
+        r#"{"doc_size": [{"file": "~/klin-no-such-document.md", "ceiling": 10}]}"#,
     );
     let home = std::env::home_dir().expect("a home directory");
 
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
-        run.says(
-            &home
-                .join("detent-no-such-document.md")
-                .display()
-                .to_string()
-        ),
+        run.says(&home.join("klin-no-such-document.md").display().to_string()),
         "{}",
         run.out
     );

@@ -2,7 +2,7 @@ use std::io::Read;
 
 use serde_json::Value;
 
-const REFUSAL: &str = "detent: refused — this would change the configuration (klin.json), a \
+const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json), a \
     baseline, or the hooks. Fix the code the gate names instead. Only a person changes those, in a \
     reviewed commit.";
 

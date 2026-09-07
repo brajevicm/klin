@@ -25,8 +25,8 @@ fn edit(name: &str, file: &str) -> Run {
 #[test]
 fn refuses_a_command_that_writes_a_baseline() {
     for command in [
-        "detent escapes --write-baseline",
-        "cd repo && detent complexity --quiet --write-baseline",
+        "klin escapes --write-baseline",
+        "cd repo && klin complexity --quiet --write-baseline",
     ] {
         let run = bash(command);
         assert_eq!(run.code, 2, "{command}: {}", run.out);
@@ -38,9 +38,9 @@ fn refuses_a_command_that_writes_a_baseline() {
 fn refuses_a_command_that_edits_the_configuration_a_baseline_or_the_hooks() {
     for command in [
         "cd /x && sed -i '' 's/8/80/' klin.json",
-        "echo '[]' > detent/escapes-baseline.json",
+        "echo '[]' > klin/escapes-baseline.json",
         "echo '[]' >>klin.json",
-        "cp /tmp/loose.json detent/complexity-baseline.json",
+        "cp /tmp/loose.json klin/complexity-baseline.json",
         "rm klin.json",
         "mv klin.json klin.json.bak",
         "truncate -s 0 klin.json",
@@ -56,7 +56,7 @@ fn refuses_a_command_that_edits_the_configuration_a_baseline_or_the_hooks() {
 fn refuses_an_edit_of_the_configuration_a_baseline_or_the_hooks() {
     for (name, file) in [
         ("Edit", "/repo/klin.json"),
-        ("Write", "/repo/detent/escapes-baseline.json"),
+        ("Write", "/repo/klin/escapes-baseline.json"),
         ("Edit", "/repo/.claude/settings.json"),
         ("Write", "klin.json"),
     ] {
@@ -73,11 +73,11 @@ fn refuses_git_putting_back_old_content_of_a_guarded_file() {
     for command in [
         "git checkout -- klin.json",
         "git checkout HEAD~3 -- .claude/settings.json",
-        "git restore detent/escapes-baseline.json",
+        "git restore klin/escapes-baseline.json",
         "git -C /repo restore --source=HEAD~1 klin.json",
         "git restore .",
         "git checkout .",
-        "git checkout HEAD -- detent/",
+        "git checkout HEAD -- klin/",
     ] {
         let run = bash(command);
         assert_eq!(run.code, 2, "{command}: {}", run.out);
@@ -125,10 +125,10 @@ fn the_refusal_names_what_it_protects_and_never_the_command_that_rewrites_a_base
 #[test]
 fn allows_a_command_that_only_reads_what_is_guarded() {
     for command in [
-        "detent doc-size --quiet",
+        "klin doc-size --quiet",
         "cat klin.json",
         "cat klin.json > /tmp/copy.json",
-        "git diff detent/",
+        "git diff klin/",
         "sed -n '1,5p' klin.json",
         "grep -rn baseline src/",
         "rm /tmp/scratch.json && cat klin.json",

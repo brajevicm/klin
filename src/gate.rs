@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 use crate::config::{Config, Error, Flags, Records};
 use crate::{changed, complexity, doc_size, escapes};
 
-const BUILD_BLOCKED: &str = ".detent-build-blocked";
+const BUILD_BLOCKED: &str = ".klin-build-blocked";
 const GATES: &str = "gates";
 
 struct Check {
@@ -148,7 +148,7 @@ fn accounted(args: &Args, plan: &Plan, config: &Config) -> Result<(), Error> {
         return Ok(());
     }
     Err(Error(format!(
-        "{} leaves these gates unaccounted for: {} — under --strict every gate detent offers \
+        "{} leaves these gates unaccounted for: {} — under --strict every gate klin offers \
          takes a decision, so configure each one, or set its section to false to exclude it",
         config.file.display(),
         plan.unaccounted.join(", ")
@@ -169,7 +169,7 @@ fn finish(
         count => format!("{count} excluded, "),
     };
     let line = format!(
-        "detent: {gates} gate(s), {excluded}{}",
+        "klin: {gates} gate(s), {excluded}{}",
         summary(failed, errored)
     );
     if !args.json {
@@ -208,11 +208,7 @@ fn refused(
     let mut records = Records::default();
     records.findings.push(problem_record(&problem.to_string()));
     out.clear();
-    let _ = writeln!(
-        out,
-        "{}",
-        as_json(2, &format!("detent: {problem}"), records)
-    );
+    let _ = writeln!(out, "{}", as_json(2, &format!("klin: {problem}"), records));
     Ok((0, 1))
 }
 
@@ -241,12 +237,12 @@ fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
     };
-    eprintln!("detent: {}{tail}", lead(failed, errored));
+    eprintln!("klin: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
         return 2;
     }
-    eprintln!("detent: not blocking a second time; the failure stands and CI will refuse it.");
+    eprintln!("klin: not blocking a second time; the failure stands and CI will refuse it.");
     0
 }
 

@@ -250,7 +250,7 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
         fix_advice: "Fix what the escape hides: handle the error instead of unwrapping it, \
                      address the lint instead of allowing it. Accepting a new escape into the \
                      baseline is a policy decision for a person.",
-        tighten_command: "detent escapes --write-baseline",
+        tighten_command: "klin escapes --write-baseline",
         format_metrics: show,
         held_out: &[],
     }

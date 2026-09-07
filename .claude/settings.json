@@ -8,9 +8,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 1; [ -t 0 ] || event=$(cat); build=$(cargo build --quiet --all-targets </dev/null 2>&1) || { printf 'detent: the tree does not build, so no gate ran (every stop blocks until it does):\n%s\n' \"$build\" >&2; : > .detent-build-blocked; exit 2; }; printf '%s' \"$event\" | cargo run --quiet -- gate --hook --changed",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 1; [ -t 0 ] || event=$(cat); build=$(cargo build --quiet --all-targets </dev/null 2>&1) || { printf 'klin: the tree does not build, so no gate ran (every stop blocks until it does):\n%s\n' \"$build\" >&2; : > .klin-build-blocked; exit 2; }; printf '%s' \"$event\" | cargo run --quiet -- gate --hook --changed",
             "timeout": 900,
-            "statusMessage": "detent: gating the changed files"
+            "statusMessage": "klin: gating the changed files"
           }
         ]
       }
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ -x target/debug/detent ]; then target/debug/detent guard; else cargo run --quiet -- guard; fi",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ -x target/debug/klin ]; then target/debug/klin guard; else cargo run --quiet -- guard; fi",
             "timeout": 60
           }
         ]

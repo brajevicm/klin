@@ -8,9 +8,9 @@ const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const EVERY_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "escapes": { "roots": ["src"], "languages": ["rust"], "baseline": "detent/escapes-baseline.json" },
+  "escapes": { "roots": ["src"], "languages": ["rust"], "baseline": "klin/escapes-baseline.json" },
   "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                  "baseline": "detent/complexity-baseline.json" }
+                  "baseline": "klin/complexity-baseline.json" }
 }"#;
 
 fn tree(config: &str) -> Tree {
@@ -106,7 +106,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     tree.words("README.md", 30);
     std::fs::remove_file(tree.path("src/lib.rs")).expect("remove");
     tree.write(
-        "detent/complexity-baseline.json",
+        "klin/complexity-baseline.json",
         r#"{ "entries": "not a list" }"#,
     );
 
@@ -125,7 +125,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
 fn a_tool_error_alone_exits_two() {
     let tree = tree(EVERY_GATE);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": "not a list" }"#,
     );
 
@@ -210,7 +210,7 @@ fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
 fn strict_reaches_the_gates_that_take_it() {
     let tree = tree(EVERY_GATE);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": [{"file": "src/gone.rs", "text": "x.unwrap();", "line": 1,
              "escape": "unwrap", "count": 1}] }"#,
     );
@@ -290,7 +290,7 @@ fn a_gate_that_is_not_scoped_still_runs_over_everything() {
 fn a_baseline_entry_for_a_file_outside_the_changed_set_is_not_stale() {
     let tree = committed(EVERY_GATE);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": [{"file": "src/gone.rs", "text": "the line that held it", "line": 1,
              "escape": "unwrap", "count": 1}] }"#,
     );
@@ -414,7 +414,7 @@ fn hook_without_an_event_on_stdin_reports_but_does_not_block() {
 fn hook_blocks_on_a_tool_error_too() {
     let tree = tree(EVERY_GATE);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": "not a list" }"#,
     );
 
@@ -435,7 +435,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": "not a list" }"#,
     );
 
@@ -459,7 +459,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
 fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
     let tree = tree(EVERY_GATE);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": "not a list" }"#,
     );
 
@@ -479,7 +479,7 @@ fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
-const BUILD_BLOCKED: &str = ".detent-build-blocked";
+const BUILD_BLOCKED: &str = ".klin-build-blocked";
 
 fn wrapper() -> String {
     let at = concat!(env!("CARGO_MANIFEST_DIR"), "/.claude/settings.json");
@@ -577,12 +577,12 @@ fn the_ladder_writes_no_baseline_where_the_config_names_one() {
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        !tree.path("detent/escapes-baseline.json").exists(),
+        !tree.path("klin/escapes-baseline.json").exists(),
         "{}",
         run.out
     );
     assert!(
-        !tree.path("detent/complexity-baseline.json").exists(),
+        !tree.path("klin/complexity-baseline.json").exists(),
         "{}",
         run.out
     );
@@ -592,7 +592,7 @@ fn the_ladder_writes_no_baseline_where_the_config_names_one() {
 fn the_ladder_leaves_a_baseline_looser_than_the_code_byte_identical() {
     let tree = tree(EVERY_GATE);
     tree.write("src/lib.rs", AN_ESCAPE);
-    let stored = tree.write("detent/escapes-baseline.json", A_LOOSE_ENTRY);
+    let stored = tree.write("klin/escapes-baseline.json", A_LOOSE_ENTRY);
     tree.words("README.md", 30);
 
     let run = tree.run(&["gate", "--strict"]);
@@ -694,7 +694,7 @@ fn a_json_record_names_no_column_and_no_violation() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
     tree.write("src/lib.rs", AN_ESCAPE);
-    tree.write("detent/escapes-baseline.json", A_LOOSE_BASELINE);
+    tree.write("klin/escapes-baseline.json", A_LOOSE_BASELINE);
 
     let run = tree.run(&["gate", "--json", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -716,7 +716,7 @@ fn a_json_record_names_no_column_and_no_violation() {
 fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
     let tree = tree(EVERY_GATE);
     tree.write("src/lib.rs", AN_ESCAPE);
-    tree.write("detent/escapes-baseline.json", A_LOOSE_BASELINE);
+    tree.write("klin/escapes-baseline.json", A_LOOSE_BASELINE);
 
     let run = tree.run(&["gate", "--json", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -735,7 +735,7 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
 fn a_gate_that_could_not_run_is_a_json_finding_too() {
     let tree = tree(EVERY_GATE);
     tree.write(
-        "detent/escapes-baseline.json",
+        "klin/escapes-baseline.json",
         r#"{ "entries": "not a list" }"#,
     );
 
@@ -810,8 +810,8 @@ const WORKFLOW: &str = include_str!("../.github/workflows/quality.yml");
 fn ci_arguments() -> Vec<&'static str> {
     WORKFLOW
         .lines()
-        .find(|line| line.contains("detent gate"))
-        .unwrap_or_else(|| panic!("no detent gate line in:\n{WORKFLOW}"))
+        .find(|line| line.contains("klin gate"))
+        .unwrap_or_else(|| panic!("no klin gate line in:\n{WORKFLOW}"))
         .split_whitespace()
         .skip_while(|word| *word != "gate")
         .collect()
@@ -829,7 +829,7 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
         r#"{ "project": "t",
              "doc_size": [{"file": "README.md", "ceiling": 10}],
              "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                             "baseline": "detent/complexity-baseline.json" } }"#,
+                             "baseline": "klin/complexity-baseline.json" } }"#,
     );
     let deleted = tree.run(&ci_arguments());
     assert_eq!(deleted.code, 2, "{}", deleted.out);
@@ -841,10 +841,10 @@ const TWO_COMPLEXITY_GATES: &str = r#"{
   "gates": [
     {"name": "complexity-src", "check": "complexity",
      "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-              "baseline": "detent/src-baseline.json"}},
+              "baseline": "klin/src-baseline.json"}},
     {"name": "complexity-tests", "check": "complexity",
      "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60},
-              "baseline": "detent/tests-baseline.json"}}
+              "baseline": "klin/tests-baseline.json"}}
   ]
 }"#;
 
@@ -853,7 +853,7 @@ const AN_EXCLUDED_GATE: &str = r#"{
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "escapes": false,
   "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                  "baseline": "detent/complexity-baseline.json" }
+                  "baseline": "klin/complexity-baseline.json" }
 }"#;
 
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{

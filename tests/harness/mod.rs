@@ -85,9 +85,9 @@ impl Tree {
         self.git(&["add", "-A"]);
         self.git(&[
             "-c",
-            "user.name=detent",
+            "user.name=klin",
             "-c",
-            "user.email=detent@example.com",
+            "user.email=klin@example.com",
             "-c",
             "commit.gpgsign=false",
             "commit",
@@ -111,7 +111,7 @@ pub fn feed(cwd: &Path, args: &[&str], stdin: &str) -> Run {
 }
 
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_detent"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_klin"))
         .args(args)
         .envs(environment.iter().copied())
         .current_dir(cwd)
@@ -119,14 +119,14 @@ fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("run detent");
+        .expect("run klin");
     child
         .stdin
         .take()
         .expect("stdin")
         .write_all(stdin.as_bytes())
         .expect("write stdin");
-    let done = child.wait_with_output().expect("wait for detent");
+    let done = child.wait_with_output().expect("wait for klin");
     Run {
         code: done.status.code().expect("exit code"),
         out: String::from_utf8_lossy(&done.stdout).to_string()

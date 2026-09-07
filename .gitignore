@@ -1,4 +1,4 @@
 /target
 .env
 .codegraph
-.detent-build-blocked
+.klin-build-blocked
