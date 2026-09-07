@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::config::{Config, Error};
+use crate::config::{Config, Error, Flags};
 
 const SECTION: &str = "doc_size";
 const MARGIN_FRACTION: f64 = 0.02;
@@ -11,20 +11,20 @@ const REMEDY: &str = "An instruction that can be a gate costs no words — encod
     point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling \
     is a decision to say why in the commit.";
 
-#[derive(clap::Args, Default)]
+#[derive(clap::Args)]
 pub struct Args {
     /// The quality.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
-    pub config: Option<PathBuf>,
+    config: Option<PathBuf>,
     /// Judge this one document instead of the config's list
     #[arg(long)]
-    pub file: Option<PathBuf>,
+    file: Option<PathBuf>,
     /// The ceiling for --file (default: its entry in the config)
     #[arg(long)]
-    pub ceiling: Option<u64>,
+    ceiling: Option<u64>,
     /// Print nothing on success
     #[arg(long)]
-    pub quiet: bool,
+    quiet: bool,
 }
 
 struct Document {
@@ -39,9 +39,32 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
+    evaluate(&flags(args), args.file.as_deref(), args.ceiling, start, out)
+}
+
+pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
+    evaluate(flags, None, None, start, out)
+}
+
+fn flags(args: &Args) -> Flags {
+    Flags {
+        config: args.config.clone(),
+        quiet: args.quiet,
+        strict: false,
+        only: None,
+    }
+}
+
+fn evaluate(
+    flags: &Flags,
+    named: Option<&Path>,
+    ceiling: Option<u64>,
+    start: &Path,
+    out: &mut String,
+) -> Result<u8, Error> {
     let mut over = 0;
-    for document in documents(args, start)? {
-        over += usize::from(judge(&document, args.quiet, out)?);
+    for document in documents(flags, named, ceiling, start)? {
+        over += usize::from(judge(&document, flags.quiet, out)?);
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
@@ -73,17 +96,22 @@ fn judge(document: &Document, quiet: bool, out: &mut String) -> Result<bool, Err
     Ok(false)
 }
 
-fn documents(args: &Args, start: &Path) -> Result<Vec<Document>, Error> {
-    if let (Some(named), Some(ceiling)) = (&args.file, args.ceiling) {
+fn documents(
+    flags: &Flags,
+    named: Option<&Path>,
+    ceiling: Option<u64>,
+    start: &Path,
+) -> Result<Vec<Document>, Error> {
+    if let (Some(named), Some(ceiling)) = (named, ceiling) {
         return Ok(vec![Document {
-            path: named.clone(),
+            path: named.to_path_buf(),
             ceiling,
             name: named.display().to_string(),
         }]);
     }
-    let config = Config::load(args.config.as_deref(), start)?;
+    let config = Config::load(flags.config.as_deref(), start)?;
     let listed = listed_documents(&config)?;
-    let Some(named) = &args.file else {
+    let Some(named) = named else {
         return Ok(listed);
     };
     let wanted = identity(named);

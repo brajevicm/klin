@@ -1,8 +1,8 @@
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
-use crate::config::{Config, Error};
 use crate::baseline::Values;
+use crate::config::{Config, Error};
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[
     ".git",

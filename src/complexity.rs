@@ -283,23 +283,23 @@ const LANGUAGES: &[Language] = &[
     },
 ];
 
-#[derive(clap::Args, Default)]
+#[derive(clap::Args)]
 pub struct Args {
     /// The quality.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
-    pub config: Option<PathBuf>,
+    config: Option<PathBuf>,
     /// Print nothing on success
     #[arg(long)]
-    pub quiet: bool,
+    quiet: bool,
     /// Fail when the baseline is looser than the code — what CI runs
     #[arg(long)]
-    pub strict: bool,
+    strict: bool,
     /// Accept every function that is over the gate today
     #[arg(long)]
-    pub write_baseline: bool,
+    write_baseline: bool,
     /// Judge only these repo-relative files, against only their baseline entries
     #[arg(long, num_args = 0.., value_name = "FILE")]
-    pub only: Option<Vec<String>>,
+    only: Option<Vec<String>>,
 }
 
 struct Function {
@@ -359,11 +359,23 @@ struct Spec {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let flags = flags(args);
+    evaluate(&flags(args), args.write_baseline, start, out)
+}
+
+pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
+    evaluate(flags, false, start, out)
+}
+
+fn evaluate(
+    flags: &Flags,
+    write_baseline: bool,
+    start: &Path,
+    out: &mut String,
+) -> Result<u8, Error> {
     let config = Config::load(flags.config.as_deref(), start)?;
     let spec = spec(&config)?;
     let (functions, unparsed) = measure(&spec.sources, &spec.selection, config.root())?;
-    if let Some(refusal) = refuse_to_write(args.write_baseline, &unparsed) {
+    if let Some(refusal) = refuse_to_write(write_baseline, &unparsed) {
         return Err(refusal);
     }
     let over: Vec<Finding> = functions
@@ -376,13 +388,13 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         over.len(),
         spec.gate_text
     );
-    let judged = scoped(functions.iter().map(|function| &function.file), &flags);
-    let count = scoped(over.iter().map(|finding| &finding.file), &flags);
+    let judged = scoped(functions.iter().map(|function| &function.file), flags);
+    let count = scoped(over.iter().map(|finding| &finding.file), flags);
     let held_out: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
     let code = check(&spec, &held_out).evaluate(
         over,
-        &flags,
-        args.write_baseline,
+        flags,
+        write_baseline,
         &format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline"),
         &written,
         out,

@@ -123,26 +123,26 @@ const PRELUDE: &[&str] = &[
     "doc_comment",
 ];
 
-#[derive(clap::Args, Default)]
+#[derive(clap::Args)]
 pub struct Args {
     /// The quality.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
-    pub config: Option<PathBuf>,
+    config: Option<PathBuf>,
     /// Print nothing on success
     #[arg(long)]
-    pub quiet: bool,
+    quiet: bool,
     /// Fail when the baseline is looser than the code — what CI runs
     #[arg(long)]
-    pub strict: bool,
+    strict: bool,
     /// Accept every escape site that exists today
     #[arg(long)]
-    pub write_baseline: bool,
+    write_baseline: bool,
     /// Print the built-in pattern sets and exit
     #[arg(long)]
-    pub list_languages: bool,
+    list_languages: bool,
     /// Judge only these repo-relative files, against only their baseline entries
     #[arg(long, num_args = 0.., value_name = "FILE")]
-    pub only: Option<Vec<String>>,
+    only: Option<Vec<String>>,
 }
 
 struct Set {
@@ -175,7 +175,19 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         list_languages(out);
         return Ok(0);
     }
-    let flags = flags(args);
+    evaluate(&flags(args), args.write_baseline, start, out)
+}
+
+pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
+    evaluate(flags, false, start, out)
+}
+
+fn evaluate(
+    flags: &Flags,
+    write_baseline: bool,
+    start: &Path,
+    out: &mut String,
+) -> Result<u8, Error> {
     let config = Config::load(flags.config.as_deref(), start)?;
     let spec = spec(&config)?;
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
@@ -187,8 +199,8 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     };
     check(&spec).evaluate(
         found,
-        &flags,
-        args.write_baseline,
+        flags,
+        write_baseline,
         &format!("OK: {sites} escape site(s) in the tree, all in the baseline{aside}"),
         &accepted,
         out,

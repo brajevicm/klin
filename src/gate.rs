@@ -4,15 +4,37 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::config::{Config, Error};
+use crate::config::{Config, Error, Flags};
 use crate::{changed, complexity, doc_size, escapes};
 
 const BUILD_BLOCKED: &str = ".detent-build-blocked";
 
-const LADDER: &[(&str, &str)] = &[
-    ("doc-size", "doc_size"),
-    ("escapes", "escapes"),
-    ("complexity", "complexity"),
+struct Gate {
+    name: &'static str,
+    section: &'static str,
+    run: fn(&Flags, &Path, &mut String) -> Result<u8, Error>,
+    holds_baseline: bool,
+}
+
+const GATES: &[Gate] = &[
+    Gate {
+        name: "doc-size",
+        section: "doc_size",
+        run: doc_size::gate,
+        holds_baseline: false,
+    },
+    Gate {
+        name: "escapes",
+        section: "escapes",
+        run: escapes::gate,
+        holds_baseline: true,
+    },
+    Gate {
+        name: "complexity",
+        section: "complexity",
+        run: complexity::gate,
+        holds_baseline: true,
+    },
 ];
 
 #[derive(clap::Args)]
@@ -65,16 +87,12 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
         return Err(Error(format!(
             "{} configures no gate — name at least one of: {}",
             config.file.display(),
-            LADDER
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<&str>>()
-                .join(", ")
+            names(GATES.iter())
         )));
     }
     if args.list {
-        for name in &wanted {
-            let _ = writeln!(out, "{name}");
+        for gate in &wanted {
+            let _ = writeln!(out, "{}", gate.name);
         }
         return Ok((0, 0));
     }
@@ -164,25 +182,33 @@ fn scope(args: &Args, config: &Config, out: &mut String) -> Result<Option<Vec<St
     Ok(Some(files))
 }
 
-fn configured(config: &Config) -> Result<Vec<&'static str>, Error> {
-    if let Some((name, section)) = LADDER
+fn names<'a>(gates: impl Iterator<Item = &'a Gate>) -> String {
+    gates
+        .map(|gate| gate.name)
+        .collect::<Vec<&str>>()
+        .join(", ")
+}
+
+fn configured(config: &Config) -> Result<Vec<&'static Gate>, Error> {
+    if let Some(gate) = GATES
         .iter()
-        .find(|(name, section)| name != section && config.section(name).is_ok())
+        .find(|gate| gate.name != gate.section && config.section(gate.name).is_ok())
     {
         return Err(Error(format!(
-            "{}: \"{name}\" is what the command is called — the section it reads is \"{section}\"",
-            config.file.display()
+            "{}: \"{}\" is what the command is called — the section it reads is \"{}\"",
+            config.file.display(),
+            gate.name,
+            gate.section
         )));
     }
-    Ok(LADDER
+    Ok(GATES
         .iter()
-        .filter(|(_, section)| config.section(section).is_ok())
-        .map(|(name, _)| *name)
+        .filter(|gate| config.section(gate.section).is_ok())
         .collect())
 }
 
 fn each(
-    wanted: &[&str],
+    wanted: &[&'static Gate],
     config: &Path,
     strict: bool,
     start: &Path,
@@ -190,14 +216,14 @@ fn each(
     out: &mut String,
 ) -> (usize, usize) {
     let (mut failed, mut errored) = (0, 0);
-    for name in wanted {
-        let (code, text) = one(name, config, strict, start, scope);
+    for gate in wanted {
+        let (code, text) = one(gate, config, strict, start, scope);
         match code {
             0 => (),
             1 => failed += 1,
             _ => errored += 1,
         }
-        let _ = writeln!(out, "  {}  {name}", status(code));
+        let _ = writeln!(out, "  {}  {}", status(code), gate.name);
         for line in text.lines() {
             let _ = writeln!(out, "        {line}");
         }
@@ -217,74 +243,46 @@ fn code(failed: usize, errored: usize) -> u8 {
 
 fn select(
     named: &[String],
-    configured: &[&'static str],
+    configured: &[&'static Gate],
     config: &Config,
-) -> Result<Vec<&'static str>, Error> {
+) -> Result<Vec<&'static Gate>, Error> {
     if let Some(name) = named
         .iter()
-        .find(|name| !configured.contains(&name.as_str()))
+        .find(|name| !configured.iter().any(|gate| gate.name == name.as_str()))
     {
         return Err(Error(format!(
             "no gate named {name} — {} configures: {}",
             config.file.display(),
             match configured.is_empty() {
                 true => "nothing".to_string(),
-                false => configured.join(", "),
+                false => names(configured.iter().copied()),
             }
         )));
     }
     Ok(configured
         .iter()
         .copied()
-        .filter(|name| named.is_empty() || named.iter().any(|wanted| wanted == name))
+        .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == gate.name))
         .collect())
 }
 
 fn one(
-    name: &str,
+    gate: &Gate,
     config: &Path,
     strict: bool,
     start: &Path,
     scope: Option<&[String]>,
 ) -> (u8, String) {
     let mut text = String::new();
-    let at = Some(config.to_path_buf());
-    let only = scope.map(|files| files.to_vec());
-    let outcome = match name {
-        "doc-size" => doc_size::run(
-            &doc_size::Args {
-                config: at,
-                quiet: true,
-                ..Default::default()
-            },
-            start,
-            &mut text,
-        ),
-        "escapes" => escapes::run(
-            &escapes::Args {
-                config: at,
-                quiet: true,
-                strict,
-                only,
-                ..Default::default()
-            },
-            start,
-            &mut text,
-        ),
-        "complexity" => complexity::run(
-            &complexity::Args {
-                config: at,
-                quiet: true,
-                strict,
-                only,
-                ..Default::default()
-            },
-            start,
-            &mut text,
-        ),
-        _ => Err(Error(format!("the ladder names {name}, nothing runs it"))),
+    let flags = Flags {
+        config: Some(config.to_path_buf()),
+        quiet: true,
+        strict: strict && gate.holds_baseline,
+        only: scope
+            .filter(|_| gate.holds_baseline)
+            .map(<[String]>::to_vec),
     };
-    match outcome {
+    match (gate.run)(&flags, start, &mut text) {
         Ok(code) => (code, text),
         Err(problem) => (2, text + &format!("FAIL: {problem}")),
     }
