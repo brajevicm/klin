@@ -13,7 +13,7 @@ const REMEDY: &str = "An instruction that can be a gate costs no words — encod
 
 #[derive(clap::Args)]
 pub struct Args {
-    /// The quality.json to run under (default: the nearest one above the working directory)
+    /// The klin.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
     /// Judge this one document instead of the config's list

@@ -3,5 +3,5 @@
 /.github/CODEOWNERS    @brajevicm
 /.github/workflows/    @brajevicm
 /.claude/settings.json @brajevicm
-/quality.json          @brajevicm
+/klin.json             @brajevicm
 /quality/              @brajevicm

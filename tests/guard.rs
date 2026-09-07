@@ -37,13 +37,13 @@ fn refuses_a_command_that_writes_a_baseline() {
 #[test]
 fn refuses_a_command_that_edits_the_configuration_a_baseline_or_the_hooks() {
     for command in [
-        "cd /x && sed -i '' 's/8/80/' quality.json",
+        "cd /x && sed -i '' 's/8/80/' klin.json",
         "echo '[]' > detent/escapes-baseline.json",
-        "echo '[]' >>quality.json",
+        "echo '[]' >>klin.json",
         "cp /tmp/loose.json detent/complexity-baseline.json",
-        "rm quality.json",
-        "mv quality.json quality.json.bak",
-        "truncate -s 0 quality.json",
+        "rm klin.json",
+        "mv klin.json klin.json.bak",
+        "truncate -s 0 klin.json",
         "tee .claude/settings.json < /tmp/loose.json",
     ] {
         let run = bash(command);
@@ -55,26 +55,26 @@ fn refuses_a_command_that_edits_the_configuration_a_baseline_or_the_hooks() {
 #[test]
 fn refuses_an_edit_of_the_configuration_a_baseline_or_the_hooks() {
     for (name, file) in [
-        ("Edit", "/repo/quality.json"),
+        ("Edit", "/repo/klin.json"),
         ("Write", "/repo/detent/escapes-baseline.json"),
         ("Edit", "/repo/.claude/settings.json"),
-        ("Write", "quality.json"),
+        ("Write", "klin.json"),
     ] {
         let run = edit(name, file);
         assert_eq!(run.code, 2, "{name} {file}: {}", run.out);
         assert!(run.says("refused"), "{name} {file}: {}", run.out);
     }
-    let run = tool("NotebookEdit", "notebook_path", "/repo/quality.json");
+    let run = tool("NotebookEdit", "notebook_path", "/repo/klin.json");
     assert_eq!(run.code, 2, "{}", run.out);
 }
 
 #[test]
 fn refuses_git_putting_back_old_content_of_a_guarded_file() {
     for command in [
-        "git checkout -- quality.json",
+        "git checkout -- klin.json",
         "git checkout HEAD~3 -- .claude/settings.json",
         "git restore detent/escapes-baseline.json",
-        "git -C /repo restore --source=HEAD~1 quality.json",
+        "git -C /repo restore --source=HEAD~1 klin.json",
         "git restore .",
         "git checkout .",
         "git checkout HEAD -- detent/",
@@ -89,9 +89,9 @@ fn refuses_git_putting_back_old_content_of_a_guarded_file() {
 fn allows_git_that_leaves_the_guarded_files_alone() {
     for command in [
         "git checkout feature-branch",
-        "git checkout -b quality-work",
+        "git checkout -b klin-work",
         "git restore src/main.rs",
-        "git log -- quality.json",
+        "git log -- klin.json",
     ] {
         let run = bash(command);
         assert_eq!(run.code, 0, "{command}: {}", run.out);
@@ -116,8 +116,8 @@ fn refuses_an_edit_of_the_hook_settings_of_cursor_and_codex() {
 
 #[test]
 fn the_refusal_names_what_it_protects_and_never_the_command_that_rewrites_a_baseline() {
-    let run = edit("Edit", "/repo/quality.json");
-    assert!(run.says("quality.json"), "{}", run.out);
+    let run = edit("Edit", "/repo/klin.json");
+    assert!(run.says("klin.json"), "{}", run.out);
     assert!(run.says("baseline"), "{}", run.out);
     assert!(!run.says("--write-baseline"), "{}", run.out);
 }
@@ -126,12 +126,12 @@ fn the_refusal_names_what_it_protects_and_never_the_command_that_rewrites_a_base
 fn allows_a_command_that_only_reads_what_is_guarded() {
     for command in [
         "detent doc-size --quiet",
-        "cat quality.json",
-        "cat quality.json > /tmp/copy.json",
+        "cat klin.json",
+        "cat klin.json > /tmp/copy.json",
         "git diff detent/",
-        "sed -n '1,5p' quality.json",
+        "sed -n '1,5p' klin.json",
         "grep -rn baseline src/",
-        "rm /tmp/scratch.json && cat quality.json",
+        "rm /tmp/scratch.json && cat klin.json",
         "cargo test > /tmp/out.txt",
     ] {
         let run = bash(command);
@@ -142,9 +142,9 @@ fn allows_a_command_that_only_reads_what_is_guarded() {
 #[test]
 fn allows_a_tool_call_that_leaves_the_guarded_files_alone() {
     for (name, file) in [
-        ("Edit", "/repo/src/quality_of_life.rs"),
-        ("Write", "/repo/docs/quality.md"),
-        ("Read", "/repo/quality.json"),
+        ("Edit", "/repo/src/klin_of_life.rs"),
+        ("Write", "/repo/docs/klin.md"),
+        ("Read", "/repo/klin.json"),
     ] {
         let run = edit(name, file);
         assert_eq!(run.code, 0, "{name} {file}: {}", run.out);
@@ -159,7 +159,7 @@ fn an_event_it_cannot_read_is_allowed_through() {
         "{}",
         r#"{"tool_name": "Bash"}"#,
         r#"{"tool_name": "Bash", "tool_input": {"command": null}}"#,
-        r#"{"tool_input": {"pattern": "quality.json"}}"#,
+        r#"{"tool_input": {"pattern": "klin.json"}}"#,
     ] {
         let run = guard(event);
         assert_eq!(run.code, 0, "{event}: {}", run.out);
@@ -169,7 +169,7 @@ fn an_event_it_cannot_read_is_allowed_through() {
 #[test]
 fn it_never_reads_the_configuration() {
     let tree = Tree::new();
-    tree.write("quality.json", "{not json at all");
+    tree.write("klin.json", "{not json at all");
 
     let allowed = feed(
         tree.root(),
@@ -182,7 +182,7 @@ fn it_never_reads_the_configuration() {
     let refused = feed(
         tree.root(),
         &["guard"],
-        r#"{"tool_name": "Edit", "tool_input": {"file_path": "quality.json"}}"#,
+        r#"{"tool_name": "Edit", "tool_input": {"file_path": "klin.json"}}"#,
     );
     assert_eq!(refused.code, 2, "{}", refused.out);
     assert!(refused.says("refused"), "{}", refused.out);

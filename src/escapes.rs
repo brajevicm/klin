@@ -125,7 +125,7 @@ const PRELUDE: &[&str] = &[
 
 #[derive(clap::Args)]
 pub struct Args {
-    /// The quality.json to run under (default: the nearest one above the working directory)
+    /// The klin.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
     /// Print nothing on success

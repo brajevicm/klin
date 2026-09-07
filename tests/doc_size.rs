@@ -145,7 +145,7 @@ fn a_config_of_two_documents_names_only_the_one_over_its_ceiling() {
     tree.words("small.md", 5);
     tree.words("big.md", 7);
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{"doc_size": [{"file": "small.md", "ceiling": 10}, {"file": "big.md", "ceiling": 6}]}"#,
     );
 
@@ -169,7 +169,7 @@ fn file_without_ceiling_takes_the_ceiling_from_the_config() {
     let tree = Tree::new();
     let doc = tree.words("small.md", 5);
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{"doc_size": [{"file": "small.md", "ceiling": 10}]}"#,
     );
 
@@ -183,7 +183,7 @@ fn file_the_config_does_not_list_is_a_tool_error_naming_it() {
     let tree = Tree::new();
     let doc = tree.words("stray.md", 5);
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{"doc_size": [{"file": "small.md", "ceiling": 10}]}"#,
     );
 
@@ -197,7 +197,7 @@ fn file_the_config_does_not_list_is_a_tool_error_naming_it() {
 fn a_document_the_config_lists_but_the_tree_lacks_is_a_tool_error() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{"doc_size": [{"file": "gone.md", "ceiling": 10}]}"#,
     );
     let run = tree.run(&["doc-size"]);
@@ -208,7 +208,7 @@ fn a_document_the_config_lists_but_the_tree_lacks_is_a_tool_error() {
 #[test]
 fn an_empty_list_of_documents_passes() {
     let tree = Tree::new();
-    tree.write("quality.json", r#"{"doc_size": []}"#);
+    tree.write("klin.json", r#"{"doc_size": []}"#);
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-const FILENAME: &str = "quality.json";
+const FILENAME: &str = "klin.json";
 
 #[derive(Debug)]
 pub struct Error(pub String);

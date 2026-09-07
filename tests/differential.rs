@@ -103,21 +103,21 @@ fn configure(tree: &Tree, language: &str) {
                              {{"file": "long.md", "ceiling": 100}}]}}"#
         )
     };
-    tree.write("quality.json", &config("escapes-baseline.json"));
-    tree.write("cleat-quality.json", &config("cleat-escapes-baseline.json"));
+    tree.write("klin.json", &config("escapes-baseline.json"));
+    tree.write("cleat-klin.json", &config("cleat-escapes-baseline.json"));
     tree.words("short.md", 5);
     tree.words("near.md", 99);
     tree.words("long.md", 101);
 }
 
 fn accept(tree: &Tree, cleat: &Path) {
-    let mine = tree.run(&["escapes", "--config", "quality.json", "--write-baseline"]);
+    let mine = tree.run(&["escapes", "--config", "klin.json", "--write-baseline"]);
     assert_eq!(mine.code, 0, "{}", mine.out);
     let theirs = cleat_run(
         tree,
         cleat,
         "check-escapes.py",
-        &["--config", "cleat-quality.json", "--write-baseline"],
+        &["--config", "cleat-klin.json", "--write-baseline"],
     );
     assert_eq!(theirs.code, 0, "{}", theirs.out);
     let mine = json(&tree.path("escapes-baseline.json"));
@@ -132,20 +132,20 @@ fn accept(tree: &Tree, cleat: &Path) {
 
 fn agree(tree: &Tree, cleat: &Path) {
     for extra in [Vec::new(), vec!["--strict"]] {
-        let mut mine = vec!["escapes", "--config", "quality.json"];
+        let mut mine = vec!["escapes", "--config", "klin.json"];
         mine.extend(extra.iter().copied());
-        let mut theirs = vec!["--config", "cleat-quality.json"];
+        let mut theirs = vec!["--config", "cleat-klin.json"];
         theirs.extend(extra.iter().copied());
         let mine = tree.run(&mine);
         let theirs = cleat_run(tree, cleat, "check-escapes.py", &theirs);
         same_verdict(&mine, &theirs, kinds);
     }
-    let mine = tree.run(&["doc-size", "--config", "quality.json"]);
+    let mine = tree.run(&["doc-size", "--config", "klin.json"]);
     let theirs = cleat_run(
         tree,
         cleat,
         "check-doc-size.py",
-        &["--config", "cleat-quality.json"],
+        &["--config", "cleat-klin.json"],
     );
     same_verdict(&mine, &theirs, markers);
 }
