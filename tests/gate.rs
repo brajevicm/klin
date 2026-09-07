@@ -804,3 +804,34 @@ fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
         run.out
     );
 }
+
+const WORKFLOW: &str = include_str!("../.github/workflows/quality.yml");
+
+fn ci_arguments() -> Vec<&'static str> {
+    WORKFLOW
+        .lines()
+        .find(|line| line.contains("detent gate"))
+        .unwrap_or_else(|| panic!("no detent gate line in:\n{WORKFLOW}"))
+        .split_whitespace()
+        .skip_while(|word| *word != "gate")
+        .collect()
+}
+
+#[test]
+fn deleting_a_section_makes_the_ci_invocation_exit_two() {
+    let tree = tree(EVERY_GATE);
+
+    let whole = tree.run(&ci_arguments());
+    assert_eq!(whole.code, 0, "{}", whole.out);
+
+    tree.write(
+        "quality.json",
+        r#"{ "project": "t",
+             "doc_size": [{"file": "README.md", "ceiling": 10}],
+             "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
+                             "baseline": "detent/complexity-baseline.json" } }"#,
+    );
+    let deleted = tree.run(&ci_arguments());
+    assert_eq!(deleted.code, 2, "{}", deleted.out);
+    assert!(deleted.says("no gate named escapes"), "{}", deleted.out);
+}

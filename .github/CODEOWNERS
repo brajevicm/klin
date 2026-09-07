@@ -1,0 +1,7 @@
+# The controls a gate answers to. Loosening any of them takes a review.
+
+/.github/CODEOWNERS    @brajevicm
+/.github/workflows/    @brajevicm
+/.claude/settings.json @brajevicm
+/quality.json          @brajevicm
+/quality/              @brajevicm

@@ -2,29 +2,32 @@
 
 Quality ratchets for AI-driven development, in a single binary.
 
-A detent is the catch that holds a ratchet in position and stops it slipping
-back. That is the idea here: every measure detent takes can tighten and never
-loosen. It baselines the debt already in the tree once, then fails the build on
-anything new.
+A detent stops a ratchet slipping back. Every measure detent takes can tighten
+and never loosen: it records the debt in the tree today, then fails the build
+on anything new.
 
-detent runs inside the agent loop. A failing gate goes back to the agent as the
-next thing to fix, and a guard refuses the agent's attempts to edit the
-baselines instead of the code. It supports Claude Code, Cursor and Codex CLI.
+detent runs inside the agent loop. A failing gate goes back to the agent to
+fix, and a guard refuses the agent's edits to the config, the baselines and
+the hooks. Supports Claude Code, Cursor and Codex CLI.
 
 ## Status
 
 Early. Config discovery, the guard, the ratchet engine and three gates run,
-cheapest first: doc-size, escapes, and complexity over eight languages. The
-other gates follow.
+cheapest first: doc-size, escapes, and complexity over eight languages.
+
+## Holding the ratchet
+
+A section deleted from the config runs no gate, and the run still reads green.
+Name every gate on the CI command line, and put the workflow and the config
+under CODEOWNERS.
 
 ## Origin
 
 detent is a Rust rewrite of [cleat](https://github.com/svetdev/cleat) by Andrey
-Kasatkin, MIT licensed. The gate designs, the ratchet model and the baseline
-format all come from that project. This is a hard fork and does not track
-upstream.
+Kasatkin, MIT licensed. The gate designs and the ratchet model come from that
+project, which this fork does not track.
 
-See `docs/adr/` for what changed and why.
+`docs/adr/` records what changed.
 
 ## License
 
