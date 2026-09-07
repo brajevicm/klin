@@ -6,7 +6,7 @@ use tree_sitter::{Node, Parser};
 
 use crate::config::{Config, Error};
 use crate::files;
-use crate::ratchet::{self, Finding, Gate, Values};
+use crate::baseline::{self, Finding, Gate, Values};
 
 const SECTION: &str = "complexity";
 const VERSION: &str = "2";
@@ -372,7 +372,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         if let Some(refusal) = refuse_to_write(&unparsed) {
             return Err(refusal);
         }
-        ratchet::write(&spec.baseline, &over, &spec.measured)?;
+        baseline::write(&spec.baseline, &over, &spec.measured)?;
         let _ = writeln!(
             out,
             "baseline written: {} function(s) {}",
@@ -450,12 +450,12 @@ fn assess(
             .count(),
         None => measured.len(),
     };
-    let (entries, stored) = ratchet::read(&spec.baseline)?;
-    let (over, entries) = ratchet::restrict(over, entries, args.only.as_deref());
+    let (entries, stored) = baseline::read(&spec.baseline)?;
+    let (over, entries) = baseline::restrict(over, entries, args.only.as_deref());
     let entries = still_owed(entries, unparsed);
     let count = over.len();
     let baseline_size = entries.len();
-    let verdict = ratchet::judge(
+    let verdict = baseline::judge(
         over,
         entries,
         &["cc", "lines"],
@@ -472,7 +472,7 @@ fn assess(
     };
     let ok_line =
         format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline");
-    Ok(ratchet::report(
+    Ok(baseline::report(
         &verdict,
         &gate,
         baseline_size,
@@ -494,7 +494,7 @@ fn spec(config: &Config) -> Result<Spec, Error> {
     let mut gate_config = section.clone();
     gate_config.remove("baseline");
     Ok(Spec {
-        baseline: ratchet::baseline_path(config, SECTION, section)?,
+        baseline: baseline::baseline_path(config, SECTION, section)?,
         sources: files::roots(config, SECTION, section, "sources")?
             .ok_or_else(|| config.missing(SECTION, "sources"))?,
         selection: selection(config, section)?,
@@ -503,7 +503,7 @@ fn spec(config: &Config) -> Result<Spec, Error> {
             ceilings.cc, ceilings.lines
         ),
         ceilings,
-        measured: ratchet::provenance(SECTION, VERSION, &Value::Object(gate_config)),
+        measured: baseline::provenance(SECTION, VERSION, &Value::Object(gate_config)),
     })
 }
 

@@ -8,7 +8,7 @@ use tree_sitter::{Node, Parser};
 
 use crate::config::{Config, Error};
 use crate::files;
-use crate::ratchet::{self, Finding, Gate, Values};
+use crate::baseline::{self, Finding, Gate, Values};
 
 const SECTION: &str = "escapes";
 const VERSION: &str = "1";
@@ -179,7 +179,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let spec = spec(&config)?;
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
     if args.write_baseline {
-        ratchet::write(&spec.baseline, &found, &spec.measured)?;
+        baseline::write(&spec.baseline, &found, &spec.measured)?;
         let _ = writeln!(
             out,
             "baseline written: {} escape site(s) accepted",
@@ -200,11 +200,11 @@ fn spec(config: &Config) -> Result<Spec, Error> {
     let mut gate_config = section.clone();
     gate_config.remove("baseline");
     Ok(Spec {
-        baseline: ratchet::baseline_path(config, SECTION, section)?,
+        baseline: baseline::baseline_path(config, SECTION, section)?,
         search: search(config, section)?,
         roots: files::roots(config, SECTION, section, "roots")?
             .unwrap_or_else(|| vec![config.root().to_path_buf()]),
-        measured: ratchet::provenance(SECTION, VERSION, &Value::Object(gate_config)),
+        measured: baseline::provenance(SECTION, VERSION, &Value::Object(gate_config)),
     })
 }
 
@@ -215,11 +215,11 @@ fn report(
     skipped: u64,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let (entries, stored) = ratchet::read(&spec.baseline)?;
-    let (found, entries) = ratchet::restrict(found, entries, args.only.as_deref());
+    let (entries, stored) = baseline::read(&spec.baseline)?;
+    let (found, entries) = baseline::restrict(found, entries, args.only.as_deref());
     let sites = found.len();
     let baseline_size = entries.len();
-    let verdict = ratchet::judge(
+    let verdict = baseline::judge(
         found,
         entries,
         &["count"],
@@ -240,7 +240,7 @@ fn report(
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
     let ok_line = format!("OK: {sites} escape site(s) in the tree, all in the baseline{aside}");
-    Ok(ratchet::report(
+    Ok(baseline::report(
         &verdict,
         &gate,
         baseline_size,

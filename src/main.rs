@@ -1,3 +1,4 @@
+mod baseline;
 mod changed;
 mod complexity;
 mod config;
@@ -6,7 +7,6 @@ mod escapes;
 mod files;
 mod gate;
 mod guard;
-mod ratchet;
 
 use std::path::Path;
 use std::process::ExitCode;
