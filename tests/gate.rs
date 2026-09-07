@@ -18,6 +18,8 @@ fn tree(config: &str) -> Tree {
     tree.write("klin.json", config);
     tree.words("README.md", 5);
     tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree.write("src/work.rs", CLEAN);
     tree
 }
 
@@ -246,18 +248,21 @@ fn tangled(name: &str) -> String {
     format!("fn {name}(n: i32) -> i32 {{\n    match n {{\n{arms}        _ => n,\n    }}\n}}\n")
 }
 
-fn committed(config: &str) -> Tree {
-    let tree = tree(config);
-    tree.repository();
-    tree.commit("base");
+fn based(config: &str, files: &[(&str, &str)]) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", config);
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", CLEAN);
+    for (name, text) in files {
+        tree.write(name, text);
+    }
+    tree.base();
     tree
 }
 
 #[test]
 fn changed_scopes_the_scoped_gates_to_the_working_tree_and_untracked_files() {
-    let tree = committed(EVERY_GATE);
-    tree.write("src/old.rs", AN_ESCAPE);
-    tree.commit("old debt");
+    let tree = based(EVERY_GATE, &[("src/old.rs", AN_ESCAPE)]);
     tree.write("src/new.rs", AN_ESCAPE);
 
     let scoped = tree.run(&["gate", "--changed"]);
@@ -274,9 +279,8 @@ fn changed_scopes_the_scoped_gates_to_the_working_tree_and_untracked_files() {
 
 #[test]
 fn a_gate_that_is_not_scoped_still_runs_over_everything() {
-    let tree = committed(EVERY_GATE);
+    let tree = based(EVERY_GATE, &[]);
     tree.words("README.md", 30);
-    tree.commit("a long README");
     tree.write("src/new.rs", CLEAN);
 
     let run = tree.run(&["gate", "--changed"]);
@@ -288,13 +292,14 @@ fn a_gate_that_is_not_scoped_still_runs_over_everything() {
 
 #[test]
 fn a_baseline_entry_for_a_file_outside_the_changed_set_is_not_stale() {
-    let tree = committed(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": [{"file": "src/gone.rs", "text": "the line that held it", "line": 1,
+    let tree = based(
+        EVERY_GATE,
+        &[(
+            "klin/escapes-baseline.json",
+            r#"{ "entries": [{"file": "src/gone.rs", "text": "the line that held it", "line": 1,
              "escape": "unwrap", "count": 1}] }"#,
+        )],
     );
-    tree.commit("an accepted escape");
     tree.write("src/new.rs", CLEAN);
 
     let scoped = tree.run(&["gate", "--changed", "--strict"]);
@@ -308,36 +313,38 @@ fn a_baseline_entry_for_a_file_outside_the_changed_set_is_not_stale() {
 
 #[test]
 fn changed_diffs_against_the_pull_request_base_when_ci_names_one() {
-    let tree = committed(EVERY_GATE);
-    tree.git(&["update-ref", "refs/remotes/origin/release", "HEAD"]);
+    let tree = based(EVERY_GATE, &[]);
     tree.write("src/new.rs", AN_ESCAPE);
     tree.commit("work on the branch");
+    tree.git(&["update-ref", "refs/remotes/origin/release", "HEAD"]);
+    tree.write("src/newer.rs", AN_ESCAPE);
 
     let in_ci = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["gate", "--changed"]);
     assert_eq!(in_ci.code, 1, "{}", in_ci.out);
-    assert!(in_ci.says("src/new.rs:2"), "{}", in_ci.out);
+    assert!(in_ci.says("src/newer.rs:2"), "{}", in_ci.out);
+    assert!(!in_ci.says("src/new.rs:2"), "{}", in_ci.out);
 
     let locally = tree.run(&["gate", "--changed"]);
-    assert_eq!(locally.code, 0, "{}", locally.out);
-    assert!(locally.says("changed: 0 file(s)"), "{}", locally.out);
+    assert_eq!(locally.code, 1, "{}", locally.out);
+    assert!(locally.says("src/new.rs:2"), "{}", locally.out);
 }
 
 #[test]
 fn changed_outside_a_repository_is_a_tool_error_rather_than_an_empty_pass() {
-    let tree = tree(EVERY_GATE);
+    let tree = Tree::new();
+    tree.write("klin.json", EVERY_GATE);
+    tree.words("README.md", 5);
     tree.write("src/new.rs", AN_ESCAPE);
 
     let run = tree.run(&["gate", "--changed"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("--changed needs a git repository"), "{}", run.out);
+    assert!(run.says("no base commit"), "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
 }
 
 #[test]
 fn changed_restricts_complexity_as_well_as_escapes() {
-    let tree = committed(EVERY_GATE);
-    tree.write("src/old.rs", &tangled("was_here"));
-    tree.commit("old debt");
+    let tree = based(EVERY_GATE, &[("src/old.rs", &tangled("was_here"))]);
     tree.write("src/new.rs", &tangled("is_new"));
 
     let scoped = tree.run(&["gate", "--changed"]);

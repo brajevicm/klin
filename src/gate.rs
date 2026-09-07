@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::base::{self, Base};
 use crate::config::{Config, Error, Flags, Records};
 use crate::{changed, complexity, doc_size, escapes};
 
@@ -116,11 +117,36 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
     }
     let wanted = select(&args.gates, &plan, &config)?;
     accounted(args, &plan, &config)?;
-    let scope = scope(args, &config, out)?;
+    let base = base(args, &wanted, &config, out)?;
+    let scope = scope(args, &config, base.as_ref(), out)?;
     let (failed, errored, records) =
         each(args, &wanted, &config.file, start, scope.as_deref(), out);
-    finish(args, &plan, wanted.len(), (failed, errored), records, out);
+    finish(
+        args,
+        &plan,
+        wanted.len(),
+        (failed, errored),
+        records,
+        base.as_ref(),
+        out,
+    );
     Ok((failed, errored))
+}
+
+fn base(
+    args: &Args,
+    wanted: &[&Gate],
+    config: &Config,
+    out: &mut String,
+) -> Result<Option<Base>, Error> {
+    if !args.changed && !wanted.iter().any(|gate| gate.check.compares_to_base) {
+        return Ok(None);
+    }
+    let base = base::choose(config.root())?;
+    if !args.json {
+        let _ = writeln!(out, "  {}", base.line());
+    }
+    Ok(Some(base))
 }
 
 fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<(usize, usize), Error> {
@@ -161,6 +187,7 @@ fn finish(
     gates: usize,
     tally: (usize, usize),
     records: Records,
+    base: Option<&Base>,
     out: &mut String,
 ) {
     let (failed, errored) = tally;
@@ -177,10 +204,14 @@ fn finish(
         return;
     }
     out.clear();
-    let _ = writeln!(out, "{}", as_json(code(failed, errored), &line, records));
+    let _ = writeln!(
+        out,
+        "{}",
+        as_json(code(failed, errored), &line, records, base)
+    );
 }
 
-fn as_json(code: u8, tally: &str, records: Records) -> String {
+fn as_json(code: u8, tally: &str, records: Records, base: Option<&Base>) -> String {
     let status = match code {
         0 => "PASS",
         1 => "FAIL",
@@ -189,6 +220,9 @@ fn as_json(code: u8, tally: &str, records: Records) -> String {
     let mut out = Map::new();
     out.insert("status".into(), status.into());
     out.insert("summary".into(), tally.into());
+    if let Some(base) = base {
+        out.insert("base".into(), base.line().into());
+    }
     out.insert("findings".into(), Value::Array(records.findings));
     out.insert("notes".into(), Value::Array(records.notes));
     Value::Object(out).to_string()
@@ -208,7 +242,11 @@ fn refused(
     let mut records = Records::default();
     records.findings.push(problem_record(&problem.to_string()));
     out.clear();
-    let _ = writeln!(out, "{}", as_json(2, &format!("klin: {problem}"), records));
+    let _ = writeln!(
+        out,
+        "{}",
+        as_json(2, &format!("klin: {problem}"), records, None)
+    );
     Ok((0, 1))
 }
 
@@ -273,17 +311,28 @@ fn event() -> Option<Value> {
     serde_json::from_str(&text).ok()
 }
 
-fn scope(args: &Args, config: &Config, out: &mut String) -> Result<Option<Vec<String>>, Error> {
+fn scope(
+    args: &Args,
+    config: &Config,
+    base: Option<&Base>,
+    out: &mut String,
+) -> Result<Option<Vec<String>>, Error> {
     if !args.changed {
         return Ok(None);
     }
-    let files = changed::files(config.root())?;
+    let base = base.expect("--changed chooses a base");
+    let changes = changed::files(config.root(), &base.commit)?;
+    let files: Vec<String> = changes
+        .iter()
+        .flat_map(|change| [Some(change.path.clone()), change.was.clone()])
+        .flatten()
+        .collect();
     if !args.json {
         let _ = writeln!(
             out,
             "  changed: {} file(s) against the base — the scoped gates judge those; \
              CI judges everything",
-            files.len()
+            changes.len()
         );
     }
     Ok(Some(files))

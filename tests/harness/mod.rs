@@ -81,6 +81,22 @@ impl Tree {
         );
     }
 
+    pub fn revision(&self, reference: &str) -> String {
+        let done = Command::new("git")
+            .arg("-C")
+            .arg(self.root())
+            .args(["rev-parse", reference])
+            .output()
+            .expect("git rev-parse");
+        String::from_utf8_lossy(&done.stdout).trim().to_string()
+    }
+
+    pub fn base(&self) {
+        self.repository();
+        self.commit("base");
+        self.git(&["checkout", "-q", "-b", "work"]);
+    }
+
     pub fn commit(&self, message: &str) {
         self.git(&["add", "-A"]);
         self.git(&[
