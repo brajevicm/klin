@@ -74,21 +74,23 @@ impl Finding {
 }
 
 #[derive(Default)]
-struct Verdict {
-    new: Vec<Finding>,
-    worsened: Vec<(Finding, Values)>,
-    improved: Vec<(Finding, Values)>,
-    stale: Vec<Values>,
-    drift: Option<String>,
+struct Comparison {
+    unmatched_findings: Vec<Finding>,
+    rose: Vec<(Finding, Values)>,
+    fell: Vec<(Finding, Values)>,
+    unmatched_entries: Vec<Values>,
+    provenance_change: Option<String>,
 }
 
-impl Verdict {
+impl Comparison {
     fn failed(&self) -> bool {
-        !self.new.is_empty() || !self.worsened.is_empty()
+        !self.unmatched_findings.is_empty() || !self.rose.is_empty()
     }
 
     fn loose(&self) -> bool {
-        !self.stale.is_empty() || !self.improved.is_empty() || self.drift.is_some()
+        !self.unmatched_entries.is_empty()
+            || !self.fell.is_empty()
+            || self.provenance_change.is_some()
     }
 }
 
@@ -162,7 +164,7 @@ fn config_hash(config: &Value) -> String {
     format!("{hash:016x}")
 }
 
-fn drift_between(stored: Option<&Values>, current: Option<&Values>) -> Option<String> {
+fn compare_provenance(stored: Option<&Values>, current: Option<&Values>) -> Option<String> {
     let stored = stored?;
     let current = current?;
     let text = |map: &Values, key: &str| map.get(key).and_then(Value::as_str).map(str::to_string);
@@ -212,8 +214,8 @@ fn restrict(
 }
 
 enum Outcome {
-    Worsened,
-    Improved,
+    Rose,
+    Fell,
     Held,
 }
 
@@ -228,10 +230,10 @@ fn compare(finding: &Finding, entry: &Values, metrics: &[&str]) -> Outcome {
         })
         .collect();
     if comparable.iter().any(|(now, was)| now > was) {
-        return Outcome::Worsened;
+        return Outcome::Rose;
     }
     if comparable.iter().any(|(now, was)| now < was) {
-        return Outcome::Improved;
+        return Outcome::Fell;
     }
     Outcome::Held
 }
@@ -273,9 +275,9 @@ fn match_group(
             pairs.push((finding, entry));
         }
     }
-    let unmatched = findings.into_iter().flatten().collect();
-    let stale = entries.into_iter().flatten().collect();
-    (pairs, unmatched, stale)
+    let unmatched_findings = findings.into_iter().flatten().collect();
+    let unmatched_entries = entries.into_iter().flatten().collect();
+    (pairs, unmatched_findings, unmatched_entries)
 }
 
 fn judge(
@@ -284,10 +286,10 @@ fn judge(
     metrics: &[&str],
     stored: Option<&Values>,
     current: Option<&Values>,
-) -> Verdict {
-    let mut verdict = Verdict {
-        drift: drift_between(stored, current),
-        ..Verdict::default()
+) -> Comparison {
+    let mut comparison = Comparison {
+        provenance_change: compare_provenance(stored, current),
+        ..Comparison::default()
     };
     let mut groups: BTreeMap<(String, String), (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
     for entry in entries {
@@ -299,22 +301,23 @@ fn judge(
         groups.entry(key).or_default().0.push(finding);
     }
     for (group_findings, group_entries) in groups.into_values() {
-        let (mut pairs, unmatched, stale) = match_group(group_findings, group_entries, metrics);
+        let (mut pairs, findings_left, entries_left) =
+            match_group(group_findings, group_entries, metrics);
         pairs.sort_by_key(|(finding, _)| finding.line);
         for (finding, entry) in pairs {
             match compare(&finding, &entry, metrics) {
-                Outcome::Worsened => verdict.worsened.push((finding, entry)),
-                Outcome::Improved => verdict.improved.push((finding, entry)),
+                Outcome::Rose => comparison.rose.push((finding, entry)),
+                Outcome::Fell => comparison.fell.push((finding, entry)),
                 Outcome::Held => {}
             }
         }
-        verdict.new.extend(unmatched);
-        verdict.stale.extend(stale);
+        comparison.unmatched_findings.extend(findings_left);
+        comparison.unmatched_entries.extend(entries_left);
     }
-    verdict
-        .new
+    comparison
+        .unmatched_findings
         .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    verdict
+    comparison
 }
 
 pub struct Check<'a> {
@@ -348,7 +351,7 @@ impl Check<'_> {
         let (findings, entries) = restrict(findings, entries, flags.only.as_deref());
         let entries = still_owed(entries, self.held_out);
         let baseline_size = entries.len();
-        let verdict = judge(
+        let comparison = judge(
             findings,
             entries,
             self.metrics,
@@ -356,7 +359,7 @@ impl Check<'_> {
             Some(self.provenance),
         );
         Ok(report(
-            &verdict,
+            &comparison,
             self,
             baseline_size,
             ok_line,
@@ -378,7 +381,7 @@ fn still_owed(entries: Vec<Values>, held_out: &[String]) -> Vec<Values> {
 }
 
 fn report(
-    verdict: &Verdict,
+    comparison: &Comparison,
     check: &Check,
     baseline_size: usize,
     ok_line: &str,
@@ -386,16 +389,16 @@ fn report(
     strict: bool,
     out: &mut String,
 ) -> u8 {
-    if verdict.failed() {
-        failures(verdict, check, baseline_size, out);
-        notes(verdict, check, false, out);
+    if comparison.failed() {
+        failures(comparison, check, baseline_size, out);
+        notes(comparison, check, false, out);
         return 1;
     }
     if !quiet {
         let _ = writeln!(out, "{ok_line}");
     }
-    notes(verdict, check, true, out);
-    if strict && verdict.loose() {
+    notes(comparison, check, true, out);
+    if strict && comparison.loose() {
         let _ = writeln!(
             out,
             "FAIL: the baseline is looser than the code — under --strict it must match exactly. \
@@ -406,17 +409,17 @@ fn report(
     0
 }
 
-fn failures(verdict: &Verdict, check: &Check, baseline_size: usize, out: &mut String) {
-    if !verdict.new.is_empty() {
+fn failures(comparison: &Comparison, check: &Check, baseline_size: usize, out: &mut String) {
+    if !comparison.unmatched_findings.is_empty() {
         let _ = writeln!(
             out,
             "FAIL: {} new {} {}, beyond the {} the baseline holds:",
-            verdict.new.len(),
+            comparison.unmatched_findings.len(),
             check.unit,
             check.condition,
             baseline_size
         );
-        for finding in &verdict.new {
+        for finding in &comparison.unmatched_findings {
             let _ = writeln!(
                 out,
                 "  {}:{}  {}  {}",
@@ -427,14 +430,14 @@ fn failures(verdict: &Verdict, check: &Check, baseline_size: usize, out: &mut St
             );
         }
     }
-    if !verdict.worsened.is_empty() {
+    if !comparison.rose.is_empty() {
         let _ = writeln!(
             out,
             "FAIL: {} baselined {} got worse — the ratchet only tightens:",
-            verdict.worsened.len(),
+            comparison.rose.len(),
             check.unit
         );
-        for (finding, entry) in &verdict.worsened {
+        for (finding, entry) in &comparison.rose {
             let _ = writeln!(
                 out,
                 "  {}:{}  {}, was {}  {}",
@@ -457,9 +460,9 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(verdict: &Verdict, check: &Check, offer_remedy: bool, out: &mut String) {
-    if !verdict.stale.is_empty() {
-        let count = verdict.stale.len();
+fn notes(comparison: &Comparison, check: &Check, offer_remedy: bool, out: &mut String) {
+    if !comparison.unmatched_entries.is_empty() {
+        let count = comparison.unmatched_entries.len();
         let plural = if count == 1 { "y" } else { "ies" };
         listed(
             out,
@@ -467,8 +470,8 @@ fn notes(verdict: &Verdict, check: &Check, offer_remedy: bool, out: &mut String)
                 "NOTE: {count} baseline entr{plural} matched nothing this run — fixed, split, \
                  renamed or deleted:"
             ),
-            verdict
-                .stale
+            comparison
+                .unmatched_entries
                 .iter()
                 .map(|entry| {
                     format!(
@@ -481,16 +484,16 @@ fn notes(verdict: &Verdict, check: &Check, offer_remedy: bool, out: &mut String)
                 .collect(),
         );
     }
-    if !verdict.improved.is_empty() {
+    if !comparison.fell.is_empty() {
         listed(
             out,
             &format!(
                 "NOTE: {} baselined {} improved — the baseline still records the old value:",
-                verdict.improved.len(),
+                comparison.fell.len(),
                 check.unit
             ),
-            verdict
-                .improved
+            comparison
+                .fell
                 .iter()
                 .map(|(finding, entry)| {
                     format!(
@@ -505,10 +508,10 @@ fn notes(verdict: &Verdict, check: &Check, offer_remedy: bool, out: &mut String)
                 .collect(),
         );
     }
-    if let Some(drift) = &verdict.drift {
-        let _ = writeln!(out, "NOTE: {drift} — its numbers may not be comparable.");
+    if let Some(change) = &comparison.provenance_change {
+        let _ = writeln!(out, "NOTE: {change} — its numbers may not be comparable.");
     }
-    if verdict.loose() && offer_remedy {
+    if comparison.loose() && offer_remedy {
         let _ = writeln!(
             out,
             "Tighten the baseline (this only ever lowers it): {}",

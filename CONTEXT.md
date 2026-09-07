@@ -9,10 +9,6 @@ what is already wrong, and refuses anything newly wrong.
 A check that inspects the codebase and either passes or fails the build.
 _Avoid_: rule, lint, policy
 
-**Ratchet**:
-A gate that records the violations already present and fails only on new ones.
-_Avoid_: threshold, budget
-
 **Baseline**:
 The recorded set of findings a person has accepted. Only a person changes it.
 _Avoid_: allowlist, exemption, suppression
@@ -37,10 +33,6 @@ _Avoid_: suppression, override, bypass
 **Provenance**:
 The tool and version that produced a baseline, stored beside it.
 _Avoid_: metadata, fingerprint
-
-**Drift**:
-Disagreement between a stored baseline and what the current code produces.
-_Avoid_: staleness, rot
 
 **Guard**:
 The hook mode that refuses an agent's edits to the config, the baselines, or the
