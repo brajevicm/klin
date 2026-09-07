@@ -54,6 +54,30 @@ fn refuses_an_edit_of_the_configuration_or_the_hooks() {
     assert_eq!(run.code, 2, "{}", run.out);
 }
 
+/// GitHub reads the code owners from three places, so guarding one spelling guards nothing.
+#[test]
+fn refuses_an_edit_of_the_code_owners_wherever_they_sit() {
+    for at in [
+        "CODEOWNERS",
+        ".github/CODEOWNERS",
+        "docs/CODEOWNERS",
+        "/repo/CODEOWNERS",
+    ] {
+        let run = edit("Write", at);
+        assert_eq!(run.code, 2, "{at}: {}", run.out);
+        assert!(run.says("refused"), "{at}: {}", run.out);
+
+        let run = bash(&format!("echo '* @me' > {at}"));
+        assert_eq!(run.code, 2, "{at}: {}", run.out);
+    }
+}
+
+#[test]
+fn allows_reading_the_code_owners() {
+    let run = bash("cat docs/CODEOWNERS");
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
 #[test]
 fn refuses_git_putting_back_old_content_of_a_guarded_file() {
     for command in [
@@ -81,6 +105,16 @@ fn allows_git_that_leaves_the_guarded_files_alone() {
         let run = bash(command);
         assert_eq!(run.code, 0, "{command}: {}", run.out);
     }
+}
+
+#[test]
+fn refuses_an_edit_of_codeowners() {
+    let run = edit("Edit", "/repo/.github/CODEOWNERS");
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("refused"), "{}", run.out);
+
+    let run = bash("echo '* @someone' >> .github/CODEOWNERS");
+    assert_eq!(run.code, 2, "{}", run.out);
 }
 
 #[test]
@@ -140,7 +174,8 @@ fn allows_a_command_that_only_reads_what_is_guarded() {
         "cat klin.json",
         "cat klin.json > /tmp/copy.json",
         "git diff klin/",
-        "sed -n '1,5p' klin.json",
+        "grep klin.json src/",
+        "rg klin.json",
         "grep -rn baseline src/",
         "rm /tmp/scratch.json && cat klin.json",
         "cargo test > /tmp/out.txt",
@@ -148,6 +183,57 @@ fn allows_a_command_that_only_reads_what_is_guarded() {
         let run = bash(command);
         assert_eq!(run.code, 0, "{command}: {}", run.out);
     }
+}
+
+#[test]
+fn allows_git_add_and_commit_naming_the_config() {
+    for command in ["git add klin.json", "git commit klin.json -m 'wip'"] {
+        let run = bash(command);
+        assert_eq!(run.code, 0, "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn allows_a_commit_message_that_mentions_the_config() {
+    let run = bash("git commit -am 'fix the parser that reads klin.json'");
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn refuses_echo_naming_the_config() {
+    let run = bash("echo klin.json");
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("refused"), "{}", run.out);
+}
+
+#[test]
+fn refuses_every_route_an_allowlist_of_writers_missed() {
+    for command in [
+        "perl -i -pe 's/a/b/' klin.json",
+        "python3 - <<'EOF'\nopen('klin.json', 'w').write('{}')\nEOF",
+        "ed klin.json",
+        "awk '{ print }' notes.txt > klin.json",
+        "patch -p1 klin.json < fix.diff",
+        "git apply klin.json",
+        "git stash pop klin.json",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn allows_a_line_continued_reader_command_that_names_the_config() {
+    let run = bash("git commit \\\n  -m 'mentions klin.json' \\\n  -m 'a second paragraph'");
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn refuses_a_heredoc_body_that_names_a_guarded_file() {
+    let run = bash("cat <<'EOF' > /tmp/notes\nsee klin.json for details\nEOF");
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("refused"), "{}", run.out);
 }
 
 #[test]

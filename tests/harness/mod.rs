@@ -177,13 +177,18 @@ pub fn feed(cwd: &Path, args: &[&str], stdin: &str) -> Run {
 }
 
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_klin"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_klin"));
+    command
         .args(args)
-        .envs(environment.iter().copied())
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
+        command.env_remove(name);
+    }
+    let mut child = command
+        .envs(environment.iter().copied())
         .spawn()
         .expect("run klin");
     child

@@ -8,8 +8,10 @@ use serde_json::{Map, Value};
 use crate::base::{self, Base, Prior};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error, Flags, Records};
-use crate::{complexity, doc_size, escapes};
+use crate::{build, complexity, doc_size, escapes};
 
+/// Where klin records that a build failed, so the stop that follows knows the turn's gate
+/// block is still unspent. Not under `target/`, which an agent empties as a matter of routine.
 const BUILD_BLOCKED: &str = ".klin-build-blocked";
 const GATES: &str = "gates";
 
@@ -91,23 +93,95 @@ pub struct Args {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let outcome = refused(args, judge(args, start, out), out);
-    if !args.hook {
-        return outcome.map(|(failed, errored)| code(failed, errored));
+    if args.hook {
+        match built(args, start) {
+            Ok(Some((root, failure))) => return Ok(does_not_build(args, &root, &failure, out)),
+            Err(problem) => return Ok(handed(args, start, Err(problem), out)),
+            Ok(None) => (),
+        }
     }
-    let (failed, errored) = match outcome {
+    let judged = judge(args, start, out);
+    if !args.hook {
+        return refused(args, judged, out).map(|(failed, errored)| code(failed, errored));
+    }
+    Ok(handed(args, start, judged, out))
+}
+
+/// What the hook does with a run it finished: report it, and block the stop or let it end.
+fn handed(
+    args: &Args,
+    start: &Path,
+    outcome: Result<(usize, usize), Error>,
+    out: &mut String,
+) -> u8 {
+    let (failed, errored) = match refused(args, outcome, out) {
         Ok(tally) => tally,
         Err(problem) => {
             let _ = writeln!(out, "FAIL: {problem}");
             (0, 1)
         }
     };
-    Ok(hook(
-        failed,
-        errored,
-        &std::mem::take(out),
-        &root(args, start),
-    ))
+    hook(failed, errored, &std::mem::take(out), &root(args, start))
+}
+
+const DOES_NOT_BUILD: &str =
+    "the tree does not build, so no gate ran (every stop blocks until it does)";
+
+fn does_not_build(args: &Args, root: &Path, failure: &str, out: &mut String) -> u8 {
+    let _ = std::fs::write(root.join(BUILD_BLOCKED), "");
+    if args.json {
+        let mut records = Records::default();
+        records
+            .findings
+            .push(problem_record(&format!("{DOES_NOT_BUILD}:\n{failure}")));
+        out.clear();
+        let _ = writeln!(
+            out,
+            "{}",
+            as_json(2, &format!("klin: {DOES_NOT_BUILD}."), records, None)
+        );
+        return 2;
+    }
+    eprintln!("klin: {DOES_NOT_BUILD}:");
+    eprint!("{failure}");
+    2
+}
+
+/// The build the config names, run before any gate judges the tree it produces. The key
+/// belongs to the hook, so a config with no "build" builds nothing and that is not an error.
+fn built(args: &Args, start: &Path) -> Result<Option<(PathBuf, String)>, Error> {
+    let Ok(config) = Config::load(args.config.as_deref(), start) else {
+        return Ok(None);
+    };
+    let entries = build::entries(&config)?;
+    if entries.is_empty() {
+        return Ok(None);
+    }
+    let changes = scoped(args, &config, &entries)?;
+    let failure = build::failure(config.root(), &build::wanted(&entries, changes.as_deref()));
+    Ok(failure.map(|text| (config.root().to_path_buf(), text)))
+}
+
+fn root(args: &Args, start: &Path) -> PathBuf {
+    Config::load(args.config.as_deref(), start)
+        .map(|config| config.root().to_path_buf())
+        .unwrap_or_else(|_| start.to_path_buf())
+}
+
+fn build_blocked(root: &Path) -> bool {
+    std::fs::remove_file(root.join(BUILD_BLOCKED)).is_ok()
+}
+
+fn scoped(
+    args: &Args,
+    config: &Config,
+    entries: &[build::Entry],
+) -> Result<Option<Vec<Change>>, Error> {
+    if !args.changed || entries.iter().all(|entry| entry.root.is_none()) {
+        return Ok(None);
+    }
+    let base = base::choose(config.root())?;
+    changed::files(config.root(), &base.commit).map(Some)
 }
 
 fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), Error> {
@@ -321,16 +395,6 @@ fn lead(failed: usize, errored: usize) -> &'static str {
         (true, false) => "a quality gate failed",
         _ => "could not run a quality gate",
     }
-}
-
-fn root(args: &Args, start: &Path) -> PathBuf {
-    Config::load(args.config.as_deref(), start)
-        .map(|config| config.root().to_path_buf())
-        .unwrap_or_else(|_| start.to_path_buf())
-}
-
-fn build_blocked(root: &Path) -> bool {
-    std::fs::remove_file(root.join(BUILD_BLOCKED)).is_ok()
 }
 
 fn event() -> Option<Value> {
