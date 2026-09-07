@@ -10,7 +10,6 @@ use serde_json::Value;
 const BEFORE: &str = include_str!("fixtures/differential/before.py");
 const SHIFTED: &str = include_str!("fixtures/differential/shifted.py");
 const MORE: &str = include_str!("fixtures/differential/more.py");
-const FEWER: &str = include_str!("fixtures/differential/fewer.py");
 const INLINE_TESTS: &str = include_str!("fixtures/differential/inline_tests.rs");
 
 const MARKERS: &[&str] = &["OK:", "FAIL:", "WARN:", "NOTE:"];
@@ -35,17 +34,6 @@ fn two_identical_declarations_ratchet_as_one_count_in_both() {
     tree.write("src/sites.py", BEFORE);
     accept(&tree, &cleat);
     tree.write("src/sites.py", MORE);
-    agree(&tree, &cleat);
-}
-
-#[test]
-fn a_baseline_looser_than_the_code_reads_the_same_to_both() {
-    let Some(cleat) = cleat() else { return };
-    let tree = Tree::new();
-    configure(&tree, "python");
-    tree.write("src/sites.py", BEFORE);
-    accept(&tree, &cleat);
-    tree.write("src/sites.py", FEWER);
     agree(&tree, &cleat);
 }
 
@@ -96,23 +84,24 @@ fn skipped(why: &str) -> Option<PathBuf> {
 fn configure(tree: &Tree, language: &str) {
     let config = |baseline: &str| {
         format!(
-            r#"{{"escapes": {{"roots": ["src"], "languages": ["{language}"],
-                              "baseline": "{baseline}"}},
+            r#"{{"escapes": {{"roots": ["src"], "languages": ["{language}"]{baseline}}},
                 "doc_size": [{{"file": "short.md", "ceiling": 10}},
                              {{"file": "near.md", "ceiling": 100}},
                              {{"file": "long.md", "ceiling": 100}}]}}"#
         )
     };
-    tree.write("klin.json", &config("escapes-baseline.json"));
-    tree.write("cleat-klin.json", &config("cleat-escapes-baseline.json"));
+    tree.write("klin.json", &config(""));
+    tree.write(
+        "cleat-klin.json",
+        &config(r#", "baseline": "cleat-escapes-baseline.json""#),
+    );
     tree.words("short.md", 5);
     tree.words("near.md", 99);
     tree.words("long.md", 101);
 }
 
+/// cleat records the tree it accepts in a file, klin records it as the base commit.
 fn accept(tree: &Tree, cleat: &Path) {
-    let mine = tree.run(&["escapes", "--config", "klin.json", "--write-baseline"]);
-    assert_eq!(mine.code, 0, "{}", mine.out);
     let theirs = cleat_run(
         tree,
         cleat,
@@ -120,14 +109,9 @@ fn accept(tree: &Tree, cleat: &Path) {
         &["--config", "cleat-klin.json", "--write-baseline"],
     );
     assert_eq!(theirs.code, 0, "{}", theirs.out);
-    let mine = json(&tree.path("escapes-baseline.json"));
-    let theirs = json(&tree.path("cleat-escapes-baseline.json"));
-    assert_eq!(mine["entries"], theirs["entries"]);
-    assert_eq!(mine["provenance"]["tool"], theirs["provenance"]["tool"]);
-    assert_eq!(
-        mine["provenance"]["version"],
-        theirs["provenance"]["version"]
-    );
+    let recorded = json(&tree.path("cleat-escapes-baseline.json"));
+    assert!(recorded["entries"].is_array(), "{recorded}");
+    tree.base();
 }
 
 fn agree(tree: &Tree, cleat: &Path) {

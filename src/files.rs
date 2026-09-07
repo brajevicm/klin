@@ -1,8 +1,9 @@
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
-use crate::baseline::Values;
+use crate::changed::git;
 use crate::config::{Config, Error};
+use crate::ratchet::Values;
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[
     ".git",
@@ -22,6 +23,14 @@ const DEFAULT_SKIP_DIRS: &[&str] = &[
     "out",
     "fixtures",
 ];
+
+/// The directories every gate skips, for a survey that has no section to read.
+pub fn default_skip_dirs() -> Vec<String> {
+    DEFAULT_SKIP_DIRS
+        .iter()
+        .map(|dir| dir.to_string())
+        .collect()
+}
 
 pub fn roots(
     config: &Config,
@@ -114,35 +123,67 @@ impl Wanted<'_> {
 pub fn under(roots: &[PathBuf], wanted: &Wanted) -> Result<Vec<PathBuf>, Error> {
     let mut files = Vec::new();
     for root in roots {
-        walk(root, wanted, &mut files)?;
+        walk(root, wanted, &ignored(root), &mut files)?;
     }
     files.sort();
     files.dedup();
     Ok(files)
 }
 
-fn walk(root: &Path, wanted: &Wanted, into: &mut Vec<PathBuf>) -> Result<(), Error> {
+/// What git ignores under a root. A gate judges the tree git describes, so a generated file
+/// beside it is not measured: the base commit holds no copy of it to ratchet against.
+fn ignored(root: &Path) -> Vec<PathBuf> {
+    let listed = git(
+        root,
+        &[
+            "ls-files",
+            "--others",
+            "--ignored",
+            "--exclude-standard",
+            "--directory",
+        ],
+    );
+    listed
+        .unwrap_or_default()
+        .lines()
+        .filter(|name| !name.is_empty())
+        .map(|name| root.join(name.trim_end_matches('/')))
+        .collect()
+}
+
+fn walk(
+    root: &Path,
+    wanted: &Wanted,
+    ignored: &[PathBuf],
+    into: &mut Vec<PathBuf>,
+) -> Result<(), Error> {
     let listing = std::fs::read_dir(root).map_err(|why| Error::unreadable(root, why))?;
     for entry in listing {
         let entry = entry.map_err(|why| Error::unreadable(root, why))?;
-        visit(&entry, wanted, into)?;
+        visit(&entry, wanted, ignored, into)?;
     }
     Ok(())
 }
 
-fn visit(entry: &DirEntry, wanted: &Wanted, into: &mut Vec<PathBuf>) -> Result<(), Error> {
+fn visit(
+    entry: &DirEntry,
+    wanted: &Wanted,
+    ignored: &[PathBuf],
+    into: &mut Vec<PathBuf>,
+) -> Result<(), Error> {
     let path = entry.path();
     if entry
         .file_type()
         .map_err(|why| Error::unreadable(&path, why))?
         .is_symlink()
+        || ignored.iter().any(|gone| *gone == path)
     {
         return Ok(());
     }
     let name = entry.file_name().to_string_lossy().to_string();
     if path.is_dir() {
         if wanted.descends(&name) {
-            walk(&path, wanted, into)?;
+            walk(&path, wanted, ignored, into)?;
         }
     } else if wanted.keeps(&path, &name) {
         into.push(path);

@@ -13,8 +13,14 @@ _Avoid_: rule, lint, policy
 The measurement and judgment behind a gate, shared by every gate that uses it.
 _Avoid_: gate, checker
 
-**Baseline**:
-The recorded set of findings a person has accepted. Only a person changes it.
+**Base**:
+The commit a run measures the working tree against. A finding the base holds is
+debt the branch inherited, not debt it added.
+_Avoid_: baseline, snapshot, reference
+
+**Accepted**:
+The list in the config where a person records debt they allow, in a reviewed
+commit. Only a person writes it.
 _Avoid_: allowlist, exemption, suppression
 
 **Finding**:
@@ -35,11 +41,7 @@ A construct that opts out of a safety the language or its tools provide, such
 as `any`, `unwrap()`, or `.skip`.
 _Avoid_: suppression, override, bypass
 
-**Provenance**:
-The tool and version that produced a baseline, stored beside it.
-_Avoid_: metadata, fingerprint
-
 **Guard**:
-The hook mode that refuses an agent's edits to the config, the baselines, or the
-hooks themselves.
+The hook mode that refuses an agent's edits to the config or the hooks
+themselves.
 _Avoid_: lock, protection, shield

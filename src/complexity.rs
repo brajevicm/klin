@@ -4,12 +4,12 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
-use crate::baseline::{self, Evaluator, Finding, Values};
+use crate::base;
 use crate::config::{Config, Error, Flags};
 use crate::files;
+use crate::ratchet::{self, Evaluator, Finding, Values};
 
 const SECTION: &str = "complexity";
-const VERSION: &str = "2";
 
 struct Language {
     name: &'static str,
@@ -291,13 +291,10 @@ pub struct Args {
     /// Print nothing on success
     #[arg(long)]
     quiet: bool,
-    /// Fail when the baseline is looser than the code — what CI runs
+    /// Fail when an accepted entry matches nothing — what CI runs
     #[arg(long)]
     strict: bool,
-    /// Accept every function that is over the gate today
-    #[arg(long)]
-    write_baseline: bool,
-    /// Judge only these repo-relative files, against only their baseline entries
+    /// Judge only these repo-relative files, against only their functions at the base
     #[arg(long, num_args = 0.., value_name = "FILE")]
     only: Option<Vec<String>>,
 }
@@ -353,58 +350,70 @@ struct Spec {
     sources: Vec<PathBuf>,
     selection: Selection,
     ceilings: Ceilings,
-    baseline: PathBuf,
-    measured: Values,
     gate_text: String,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(&flags(args), args.write_baseline, start, out)
+    evaluate(&flags(args), start, out)
 }
 
 pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(flags, false, start, out)
+    evaluate(flags, start, out)
 }
 
-fn evaluate(
-    flags: &Flags,
-    write_baseline: bool,
-    start: &Path,
-    out: &mut String,
-) -> Result<u8, Error> {
+fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
     let (functions, unparsed) = measure(&spec.sources, &spec.selection, config.root())?;
-    if let Some(refusal) = refuse_to_write(write_baseline, &unparsed) {
-        return Err(refusal);
-    }
-    let over: Vec<Finding> = functions
+    let now = over(&functions, &spec);
+    let judged = scoped(functions.iter().map(|function| &function.file), flags);
+    let count = scoped(now.iter().map(|finding| &finding.file), flags);
+    let code = evaluator(&spec).evaluate(
+        now,
+        at_the_base(&config, &spec, flags, out)?,
+        ratchet::accepted(&config, &flags.gate, evaluator(&spec).metrics)?,
+        flags,
+        &format!("OK: {judged} function(s) judged, {count} over the gate, all held at the base"),
+        out,
+    );
+    Ok(unread(&unparsed, flags, code, out))
+}
+
+fn at_the_base(
+    config: &Config,
+    spec: &Spec,
+    flags: &Flags,
+    out: &mut String,
+) -> Result<Vec<Finding>, Error> {
+    let owned;
+    let prior = match flags.prior.as_deref() {
+        Some(dir) => dir,
+        None => {
+            owned = base::own(config, flags, out)?;
+            owned.root()
+        }
+    };
+    let (before, _) = measure(
+        &base::roots(&spec.sources, config, prior)?,
+        &spec.selection,
+        prior,
+    )?;
+    Ok(over(&before, spec))
+}
+
+fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
+    functions
         .iter()
         .filter(|function| function.over(&spec.ceilings))
         .map(Function::finding)
-        .collect();
-    let written = format!(
-        "baseline written: {} function(s) {}",
-        over.len(),
-        spec.gate_text
-    );
-    let judged = scoped(functions.iter().map(|function| &function.file), flags);
-    let count = scoped(over.iter().map(|finding| &finding.file), flags);
-    let held_out: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
-    let code = evaluator(&spec, &held_out).evaluate(
-        over,
-        flags,
-        write_baseline,
-        &format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline"),
-        &written,
-        out,
-    )?;
-    Ok(unread(&unparsed, flags, code, out))
+        .collect()
 }
 
 fn flags(args: &Args) -> Flags {
     Flags {
         config: args.config.clone(),
+        gate: SECTION.to_string(),
+        prior: None,
         quiet: args.quiet,
         strict: args.strict,
         only: args.only.clone(),
@@ -418,18 +427,6 @@ fn scoped<'a>(files: impl Iterator<Item = &'a String>, flags: &Flags) -> usize {
         Some(only) => files.filter(|file| only.contains(file)).count(),
         None => files.count(),
     }
-}
-
-fn refuse_to_write(write_baseline: bool, unparsed: &[Unparsed]) -> Option<Error> {
-    if !write_baseline || unparsed.is_empty() {
-        return None;
-    }
-    let named: Vec<&str> = unparsed.iter().map(|file| file.file.as_str()).collect();
-    Some(Error(format!(
-        "the grammar could not parse {}, so a baseline written now would drop whatever those \
-         files already hold. Update the grammar, or exclude them, then write the baseline.",
-        named.join(", ")
-    )))
 }
 
 fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u8 {
@@ -465,23 +462,19 @@ fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u
     2
 }
 
-fn evaluator<'a>(spec: &'a Spec, held_out: &'a [String]) -> Evaluator<'a> {
+fn evaluator(spec: &Spec) -> Evaluator<'_> {
     Evaluator {
-        path: &spec.baseline,
-        provenance: &spec.measured,
         metrics: &["cc", "lines"],
         unit: "function(s)",
         condition: &spec.gate_text,
-        fix_advice: "Split the function so each piece is under the gate. Accepting new debt into \
-                     the baseline is a policy decision for a person, not a fix.",
-        tighten_command: "klin complexity --write-baseline",
+        fix_advice: "Split the function so each piece is under the gate. Accepting new debt is a \
+                     policy decision for a person, in the config, in a reviewed commit.",
         format_metrics: show,
-        held_out,
     }
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
-    let section = baseline::section(config, SECTION, VERSION)?;
+    let section = ratchet::section(config, SECTION)?;
     let values = &section.values;
     let ceilings = ceilings(section.config, values)?;
     Ok(Spec {
@@ -493,8 +486,6 @@ fn spec(config: &Config) -> Result<Spec, Error> {
             ceilings.cc, ceilings.lines
         ),
         ceilings,
-        baseline: section.baseline,
-        measured: section.provenance,
     })
 }
 

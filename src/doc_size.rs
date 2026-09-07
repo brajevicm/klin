@@ -49,6 +49,8 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
 fn flags(args: &Args) -> Flags {
     Flags {
         config: args.config.clone(),
+        gate: SECTION.to_string(),
+        prior: None,
         quiet: args.quiet,
         strict: false,
         only: None,
@@ -182,6 +184,11 @@ fn field<'a>(config: &Config, entry: &'a Value, key: &str) -> Result<&'a Value, 
 
 fn identity(path: &Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// The word count a ceiling is measured against, so a survey can write one a document meets.
+pub fn words(path: &Path) -> Result<u64, Error> {
+    count_words(path)
 }
 
 fn count_words(path: &Path) -> Result<u64, Error> {

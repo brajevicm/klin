@@ -1,10 +1,13 @@
 mod harness;
 
+#[path = "fixtures/escape_text.rs"]
+mod text;
+
 use harness::Tree;
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"], "baseline": "klin/escapes-baseline.json" }
+  "escapes": { "roots": ["src"], "languages": ["rust"] }
 }"#;
 
 fn tree() -> Tree {
@@ -13,21 +16,17 @@ fn tree() -> Tree {
     tree
 }
 
-fn baseline(entries: &str) -> String {
-    format!(r#"{{ "entries": [{entries}] }}"#)
-}
-
-fn entry(file: &str, text: &str, line: u64, escape: &str, count: u64) -> String {
+fn accepted(entries: &str) -> String {
     format!(
-        r#"{{"file": {file:?}, "text": {text:?}, "line": {line}, "escape": {escape:?}, "count": {count}}}"#
+        r#"{{ "project": "t", "accepted": [{entries}],
+             "escapes": {{ "roots": ["src"], "languages": ["rust"] }} }}"#
     )
 }
 
 #[test]
-fn a_site_not_in_the_baseline_is_new_and_fails() {
+fn a_site_the_base_does_not_hold_is_new_and_fails() {
     let tree = tree();
     tree.write("src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
-    tree.write("klin/escapes-baseline.json", &baseline(""));
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -37,7 +36,7 @@ fn a_site_not_in_the_baseline_is_new_and_fails() {
 }
 
 #[test]
-fn a_missing_baseline_reads_as_empty_so_every_site_is_new() {
+fn a_base_that_holds_no_source_makes_every_site_new() {
     let tree = tree();
     tree.write("src/lib.rs", "x.expect(\"boom\");\n");
 
@@ -47,41 +46,30 @@ fn a_missing_baseline_reads_as_empty_so_every_site_is_new() {
 }
 
 #[test]
-fn write_baseline_accepts_what_exists_today_and_the_rerun_holds() {
+fn the_sites_the_base_holds_pass() {
     let tree = tree();
     tree.write(
         "src/lib.rs",
         "fn f() {\n    a.unwrap();\n    b.expect(\"no\");\n    #[allow(dead_code)]\n}\n",
     );
+    tree.base();
 
-    let written = tree.run(&["escapes", "--write-baseline"]);
-    assert_eq!(written.code, 0, "{}", written.out);
-    assert!(written.says("3 escape site(s) accepted"), "{}", written.out);
-
-    let stored = std::fs::read_to_string(tree.path("klin/escapes-baseline.json")).expect("read");
-    assert!(stored.contains("\"provenance\""), "{stored}");
-    assert!(stored.contains("\"entries\""), "{stored}");
-    assert!(stored.contains("\"escape\""), "{stored}");
-    assert!(stored.contains("\"count\""), "{stored}");
-
-    let rerun = tree.run(&["escapes"]);
-    assert_eq!(rerun.code, 0, "{}", rerun.out);
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        rerun.says("OK: 3 escape site(s) in the tree"),
+        run.says("OK: 3 escape site(s) in the tree, all held at the base"),
         "{}",
-        rerun.out
+        run.out
     );
-    assert!(!rerun.says("NOTE"), "{}", rerun.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
 }
 
 #[test]
-fn a_ratcheted_count_that_rose_is_worse_and_fails() {
+fn a_ratcheted_count_that_rose_since_the_base_is_worse_and_fails() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap().unwrap();\n");
-    tree.write(
-        "klin/escapes-baseline.json",
-        &baseline(&entry("src/lib.rs", "a.unwrap().unwrap();", 1, "unwrap", 1)),
-    );
+    tree.write("src/lib.rs", text::DOUBLED);
+    tree.base();
+    tree.write("src/lib.rs", text::DOUBLED_TWICE);
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -90,191 +78,169 @@ fn a_ratcheted_count_that_rose_is_worse_and_fails() {
         "{}",
         run.out
     );
-    assert!(run.says("unwrap x2, was unwrap"), "{}", run.out);
+    assert!(run.says("unwrap x4, was unwrap x2"), "{}", run.out);
 }
 
 #[test]
-fn a_count_that_fell_is_improved_a_note_locally_and_a_failure_under_strict() {
+fn a_count_that_fell_since_the_base_passes_with_nothing_to_say() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\n");
-    tree.write(
-        "klin/escapes-baseline.json",
-        &baseline(&entry("src/lib.rs", "a.unwrap();", 1, "unwrap", 3)),
-    );
+    tree.write("src/lib.rs", text::DOUBLED_TWICE);
+    tree.base();
+    tree.write("src/lib.rs", text::DOUBLED_PADDED);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["escapes", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("improved"), "{}", run.out);
-    assert!(run.says("klin escapes --write-baseline"), "{}", run.out);
-
-    let strict = tree.run(&["escapes", "--strict"]);
-    assert_eq!(strict.code, 1, "{}", strict.out);
-    assert!(strict.says("looser than the code"), "{}", strict.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
 }
 
 #[test]
-fn an_entry_no_finding_matched_is_stale_a_note_locally_and_a_failure_under_strict() {
+fn an_accepted_escape_holds_at_its_count_and_fails_above_it() {
     let tree = tree();
-    tree.write("src/lib.rs", "fn f() {\n    a.unwrap();\n}\n");
-    tree.run(&["escapes", "--write-baseline"]);
-    tree.write("src/lib.rs", "fn f() {\n}\n");
+    tree.write(
+        "klin.json",
+        &accepted(&format!(
+            r#"{{"gate": "escapes", "file": "src/lib.rs", "text": {:?}, "count": 1}}"#,
+            text::ONE_SITE
+        )),
+    );
+    tree.write("src/lib.rs", text::ONE);
+
+    let held = tree.run(&["escapes"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+
+    tree.write("src/lib.rs", text::TWO_ON_TWO_LINES);
+    let worse = tree.run(&["escapes"]);
+    assert_eq!(worse.code, 1, "{}", worse.out);
+    assert!(worse.says("got worse"), "{}", worse.out);
+}
+
+#[test]
+fn an_accepted_escape_that_matches_nothing_is_a_note_and_a_strict_failure() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        &accepted(&format!(
+            r#"{{"gate": "escapes", "file": "src/gone.rs", "text": {:?}, "count": 1}}"#,
+            text::ONE_SITE
+        )),
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
+    assert!(run.says("src/gone.rs"), "{}", run.out);
 
     let strict = tree.run(&["escapes", "--strict"]);
     assert_eq!(strict.code, 1, "{}", strict.out);
+    assert!(strict.says("Delete the line"), "{}", strict.out);
 }
 
 #[test]
-fn a_value_the_entry_never_recorded_is_not_compared() {
+fn a_site_the_base_held_and_the_code_fixed_passes_with_nothing_to_say() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap().unwrap();\n");
-    tree.write(
-        "klin/escapes-baseline.json",
-        &baseline(
-            r#"{"file": "src/lib.rs", "text": "a.unwrap().unwrap();", "line": 1, "escape": "unwrap"}"#,
-        ),
-    );
+    tree.write("src/lib.rs", text::WRAPPED);
+    tree.base();
+    tree.write("src/lib.rs", "fn f() {\n}\n");
 
     let run = tree.run(&["escapes", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("worse"), "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_that_names_no_value_is_a_tool_error() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        &accepted(&format!(
+            r#"{{"gate": "escapes", "file": "src/lib.rs", "text": {:?}}}"#,
+            text::DOUBLED_SITE
+        )),
+    );
+    tree.write("src/lib.rs", text::DOUBLED);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("names none of the values"), "{}", run.out);
+    assert!(run.says("count"), "{}", run.out);
+}
+
+#[test]
+fn a_file_git_ignores_is_not_judged_because_the_base_holds_no_copy_of_it() {
+    let tree = tree();
+    tree.write(".gitignore", "src/generated.rs\n");
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.base();
+    tree.write("src/generated.rs", text::ONE);
+
+    let whole = tree.run(&["escapes"]);
+    assert_eq!(whole.code, 0, "{}", whole.out);
+    assert!(!whole.says("src/generated.rs"), "{}", whole.out);
+
+    let scoped = tree.run(&["escapes", "--only", "src/generated.rs"]);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
+}
+
+#[test]
+fn one_language_named_twice_is_read_once_and_counted_once() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript", "typescript"] } }"#,
+    );
+    tree.write("src/c.ts", "const c: any = 3;\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/c.ts:1  any  "), "{}", run.out);
+    assert!(!run.says("any x2"), "{}", run.out);
 }
 
 #[test]
 fn a_line_carrying_two_escape_kinds_counts_both_under_the_first() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap(); b.expect(\"x\");\n");
-    tree.write(
-        "klin/escapes-baseline.json",
-        &baseline(&entry(
-            "src/lib.rs",
-            "a.unwrap(); b.expect(\"x\");",
-            1,
-            "unwrap",
-            2,
-        )),
-    );
+    tree.write("src/lib.rs", text::TWO_KINDS);
+    tree.base();
 
     let run = tree.run(&["escapes", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 1 escape site(s)"), "{}", run.out);
 }
 
 #[test]
-fn a_bare_list_baseline_is_not_supported() {
+fn failure_output_names_the_fix_and_no_command_that_records_debt() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\n");
-    tree.write("klin/escapes-baseline.json", "[]");
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("provenance"), "{}", run.out);
-}
-
-#[test]
-fn failure_output_never_prints_the_command_that_rewrites_a_baseline() {
-    let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\nb.unwrap();\n");
-    tree.write(
-        "klin/escapes-baseline.json",
-        &baseline(&entry("src/lib.rs", "z.unwrap();", 9, "unwrap", 1)),
-    );
+    tree.write("src/lib.rs", text::TWO_FILES);
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("Fix what the escape hides"), "{}", run.out);
     assert!(!run.says("--write-baseline"), "{}", run.out);
+    assert!(!run.says("Tighten"), "{}", run.out);
 }
 
 #[test]
-fn only_restricts_findings_and_entries_so_untouched_files_are_not_stale() {
+fn only_restricts_findings_and_the_base_so_untouched_files_are_out_of_scope() {
     let tree = tree();
-    tree.write("src/a.rs", "a.unwrap();\n");
-    tree.write("src/b.rs", "b.unwrap();\n");
-    tree.run(&["escapes", "--write-baseline"]);
-    tree.write("src/a.rs", "fn fixed() {}\n");
+    tree.write("src/a.rs", text::ONE);
+    tree.write("src/b.rs", text::OTHER);
+    tree.base();
+    tree.write("src/a.rs", text::FIXED_AND_BOTH);
 
-    let all = tree.run(&["escapes", "--strict"]);
+    let all = tree.run(&["escapes"]);
     assert_eq!(all.code, 1, "{}", all.out);
 
-    let only = tree.run(&["escapes", "--strict", "--only", "src/b.rs"]);
+    let only = tree.run(&["escapes", "--only", "src/b.rs"]);
     assert_eq!(only.code, 0, "{}", only.out);
-    assert!(!only.says("matched nothing"), "{}", only.out);
-}
-
-#[test]
-fn provenance_drift_names_what_changed_a_note_locally_and_a_failure_under_strict() {
-    let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\n");
-    tree.run(&["escapes", "--write-baseline"]);
-    let stored = std::fs::read_to_string(tree.path("klin/escapes-baseline.json")).expect("read");
-    tree.write(
-        "klin/escapes-baseline.json",
-        &stored.replace("\"version\": \"1\"", "\"version\": \"0\""),
-    );
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("measured by escapes 0, this run by 1"),
-        "{}",
-        run.out
-    );
-    assert!(run.says("may not be comparable"), "{}", run.out);
-
-    let strict = tree.run(&["escapes", "--strict"]);
-    assert_eq!(strict.code, 1, "{}", strict.out);
-}
-
-#[test]
-fn a_config_change_drifts() {
-    let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\n");
-    tree.run(&["escapes", "--write-baseline"]);
-    tree.write(
-        "klin.json",
-        &CONFIG.replace(r#"["src"]"#, r#"["src", "lib"]"#),
-    );
-    tree.write("lib/other.rs", "fn f() {}\n");
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("different gate configuration"), "{}", run.out);
-}
-
-#[test]
-fn a_missing_baseline_key_is_a_tool_error_naming_it() {
-    let tree = Tree::new();
-    tree.write("klin.json", r#"{"escapes": {"roots": ["src"]}}"#);
-    tree.write("src/lib.rs", "fn f() {}\n");
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("baseline"), "{}", run.out);
-}
-
-#[test]
-fn a_baseline_name_the_guard_cannot_recognise_is_refused() {
-    let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"escapes": {"roots": ["src"], "baseline": "klin/debt.json"}}"#,
-    );
-    tree.write("src/lib.rs", "fn f() {}\n");
-
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("guard"), "{}", run.out);
-    assert!(run.says("baseline"), "{}", run.out);
 }
 
 #[test]
 fn a_clean_quiet_run_prints_nothing() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\n");
-    tree.run(&["escapes", "--write-baseline"]);
+    tree.write("src/lib.rs", text::ONE);
+    tree.base();
 
     let run = tree.run(&["escapes", "--quiet", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -288,8 +254,7 @@ fn spread() -> Tree {
         r#"{ "project": "t",
              "escapes": { "roots": ["src"],
                           "languages": ["python", "typescript", "swift", "rust", "go",
-                                        "kotlin", "java", "ruby", "shell"],
-                          "baseline": "klin/escapes-baseline.json" } }"#,
+                                        "kotlin", "java", "ruby", "shell"] } }"#,
     );
     tree.write(
         "src/thing.py",
@@ -390,8 +355,8 @@ fn list_languages_prints_the_built_in_pattern_sets() {
 #[test]
 fn a_site_shifted_by_an_edit_above_it_still_matches_by_its_line_text() {
     let tree = tree();
-    tree.write("src/lib.rs", "fn f() {\n    a.unwrap();\n}\n");
-    tree.run(&["escapes", "--write-baseline"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+    tree.base();
     tree.write(
         "src/lib.rs",
         "// a header\n// and more\nfn f() {\n    a.unwrap();\n}\n",
@@ -403,13 +368,24 @@ fn a_site_shifted_by_an_edit_above_it_still_matches_by_its_line_text() {
 }
 
 #[test]
-fn the_same_line_twice_in_one_file_is_one_entry_whose_count_ratchets() {
+fn a_renamed_file_is_measured_at_its_old_path() {
     let tree = tree();
-    tree.write("src/lib.rs", "a.unwrap();\nfn pad() {}\n");
-    let written = tree.run(&["escapes", "--write-baseline"]);
-    assert!(written.says("1 escape site(s) accepted"), "{}", written.out);
+    tree.write("src/lib.rs", text::WRAPPED);
+    tree.base();
+    tree.git(&["mv", "src/lib.rs", "src/moved.rs"]);
 
-    tree.write("src/lib.rs", "a.unwrap();\nfn pad() {}\na.unwrap();\n");
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/moved.rs"), "{}", run.out);
+}
+
+#[test]
+fn the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets() {
+    let tree = tree();
+    tree.write("src/lib.rs", text::ONE_PADDED);
+    tree.base();
+    tree.write("src/lib.rs", text::TWO_PADDED);
+
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("got worse"), "{}", run.out);
@@ -423,8 +399,7 @@ fn a_project_pattern_is_read_alongside_the_built_in_sets() {
     tree.write(
         "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["rust"],
-             "patterns": {"todo bang": "TODO!"},
-             "baseline": "klin/escapes-baseline.json" } }"#,
+             "patterns": {"todo bang": "TODO!"} } }"#,
     );
     tree.write("src/lib.rs", "a.unwrap();\n// TODO! later\n");
 
@@ -439,8 +414,7 @@ fn a_project_pattern_alone_reads_every_file_under_the_roots() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "patterns": {"todo bang": "TODO!"},
-             "baseline": "klin/escapes-baseline.json" } }"#,
+        r#"{ "escapes": { "roots": ["src"], "patterns": {"todo bang": "TODO!"} } }"#,
     );
     tree.write("src/notes.txt", "TODO! later\n");
 
@@ -455,7 +429,7 @@ fn a_default_skipped_directory_is_not_read_and_skip_dirs_adds_to_the_list() {
     tree.write(
         "klin.json",
         r#"{ "escapes": { "roots": ["."], "languages": ["typescript"],
-             "skip_dirs": ["legacy"], "baseline": "klin/escapes-baseline.json" } }"#,
+             "skip_dirs": ["legacy"] } }"#,
     );
     tree.write("node_modules/dep/index.ts", "const z: any = 1;\n");
     tree.write("legacy/old.ts", "const y: any = 1;\n");
@@ -475,8 +449,7 @@ fn a_file_matching_an_exclude_glob_is_not_read() {
     tree.write(
         "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
-             "exclude": ["*.test.ts", "*/generated/*"],
-             "baseline": "klin/escapes-baseline.json" } }"#,
+             "exclude": ["*.test.ts", "*/generated/*"] } }"#,
     );
     tree.write("src/thing.ts", "const a: any = 1;\n");
     tree.write("src/thing.test.ts", "const b: any = 1;\n");
@@ -524,7 +497,7 @@ fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
     assert!(!run.says("src/lib.rs:11"), "{}", run.out);
     assert!(!run.says("src/lib.rs:12"), "{}", run.out);
 
-    tree.run(&["escapes", "--write-baseline"]);
+    tree.base();
     let rerun = tree.run(&["escapes"]);
     assert_eq!(rerun.code, 0, "{}", rerun.out);
     assert!(
@@ -539,8 +512,7 @@ fn skip_rust_tests_turned_off_judges_the_test_module_too() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"], "skip_rust_tests": false,
-             "baseline": "klin/escapes-baseline.json" } }"#,
+        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"], "skip_rust_tests": false } }"#,
     );
     tree.write("src/lib.rs", CFG_TEST);
 
@@ -556,8 +528,7 @@ fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["cobol"],
-             "baseline": "klin/escapes-baseline.json" } }"#,
+        r#"{ "escapes": { "roots": ["src"], "languages": ["cobol"] } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
@@ -570,10 +541,7 @@ fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
 #[test]
 fn a_section_naming_nothing_to_look_for_is_refused() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "baseline": "klin/escapes-baseline.json" } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "roots": ["src"] } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);
@@ -586,8 +554,7 @@ fn a_project_pattern_that_is_not_a_regex_is_refused_naming_it() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "patterns": {"broken": "([unclosed"},
-             "baseline": "klin/escapes-baseline.json" } }"#,
+        r#"{ "escapes": { "roots": ["src"], "patterns": {"broken": "([unclosed"} } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
@@ -601,8 +568,7 @@ fn javascript_is_read_by_the_typescript_set() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript"],
-             "baseline": "klin/escapes-baseline.json" } }"#,
+        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript"] } }"#,
     );
     tree.write("src/thing.js", "it.only('x', () => {});\n");
 
@@ -643,7 +609,7 @@ fn a_hidden_directory_is_read_unless_the_default_list_or_skip_dirs_names_it() {
     tree.write(
         "klin.json",
         r#"{ "escapes": { "roots": ["."], "languages": ["shell"],
-             "skip_dirs": ["scripts"], "baseline": "klin/escapes-baseline.json" } }"#,
+             "skip_dirs": ["scripts"] } }"#,
     );
     tree.write(".github/workflows/ci.sh", "make test || true\n");
     tree.write(".git/hooks/pre-commit.sh", "lint || true\n");
@@ -663,8 +629,7 @@ fn an_exclude_glob_honours_a_character_class() {
     tree.write(
         "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
-             "exclude": ["*.spec.[jt]s", "[!a]?.gen.ts"],
-             "baseline": "klin/escapes-baseline.json" } }"#,
+             "exclude": ["*.spec.[jt]s", "[!a]?.gen.ts"] } }"#,
     );
     tree.write("src/a.spec.ts", "const a: any = 1;\n");
     tree.write("src/b.spec.js", "const b: any = 1;\n");
@@ -728,8 +693,7 @@ fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
-             "baseline": "klin/escapes-baseline.json" } }"#,
+        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"] } }"#,
     );
     tree.write("src/a.mts", "const a: any = 1;\n");
     tree.write("src/b.cts", "const b: any = 1;\n");

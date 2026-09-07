@@ -23,24 +23,11 @@ fn edit(name: &str, file: &str) -> Run {
 }
 
 #[test]
-fn refuses_a_command_that_writes_a_baseline() {
-    for command in [
-        "klin escapes --write-baseline",
-        "cd repo && klin complexity --quiet --write-baseline",
-    ] {
-        let run = bash(command);
-        assert_eq!(run.code, 2, "{command}: {}", run.out);
-        assert!(run.says("refused"), "{command}: {}", run.out);
-    }
-}
-
-#[test]
-fn refuses_a_command_that_edits_the_configuration_a_baseline_or_the_hooks() {
+fn refuses_a_command_that_edits_the_configuration_or_the_hooks() {
     for command in [
         "cd /x && sed -i '' 's/8/80/' klin.json",
-        "echo '[]' > klin/escapes-baseline.json",
         "echo '[]' >>klin.json",
-        "cp /tmp/loose.json klin/complexity-baseline.json",
+        "cp /tmp/loose.json klin.json",
         "rm klin.json",
         "mv klin.json klin.json.bak",
         "truncate -s 0 klin.json",
@@ -53,10 +40,9 @@ fn refuses_a_command_that_edits_the_configuration_a_baseline_or_the_hooks() {
 }
 
 #[test]
-fn refuses_an_edit_of_the_configuration_a_baseline_or_the_hooks() {
+fn refuses_an_edit_of_the_configuration_or_the_hooks() {
     for (name, file) in [
         ("Edit", "/repo/klin.json"),
-        ("Write", "/repo/klin/escapes-baseline.json"),
         ("Edit", "/repo/.claude/settings.json"),
         ("Write", "klin.json"),
     ] {
@@ -73,7 +59,6 @@ fn refuses_git_putting_back_old_content_of_a_guarded_file() {
     for command in [
         "git checkout -- klin.json",
         "git checkout HEAD~3 -- .claude/settings.json",
-        "git restore klin/escapes-baseline.json",
         "git -C /repo restore --source=HEAD~1 klin.json",
         "git restore .",
         "git checkout .",
@@ -115,11 +100,37 @@ fn refuses_an_edit_of_the_hook_settings_of_cursor_and_codex() {
 }
 
 #[test]
-fn the_refusal_names_what_it_protects_and_never_the_command_that_rewrites_a_baseline() {
+fn the_refusal_names_what_it_protects() {
     let run = edit("Edit", "/repo/klin.json");
     assert!(run.says("klin.json"), "{}", run.out);
-    assert!(run.says("baseline"), "{}", run.out);
-    assert!(!run.says("--write-baseline"), "{}", run.out);
+    assert!(run.says("hooks"), "{}", run.out);
+    assert!(!run.says("baseline"), "{}", run.out);
+}
+
+#[test]
+fn refuses_the_command_that_fills_in_the_configuration() {
+    for command in [
+        "klin init --add",
+        "cd repo && target/debug/klin init --add --config klin.json",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+    let allowed = bash("klin init");
+    assert_eq!(allowed.code, 0, "{}", allowed.out);
+}
+
+#[test]
+fn allows_a_command_naming_a_file_that_used_to_be_a_baseline() {
+    for command in [
+        "rm quality/escapes-baseline.json",
+        "git rm quality/complexity-baseline.json",
+        "klin escapes --write-baseline",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 0, "{command}: {}", run.out);
+    }
 }
 
 #[test]

@@ -8,9 +8,26 @@ const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const EVERY_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "escapes": { "roots": ["src"], "languages": ["rust"], "baseline": "klin/escapes-baseline.json" },
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                  "baseline": "klin/complexity-baseline.json" }
+  "escapes": { "roots": ["src"], "languages": ["rust"] },
+  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+}"#;
+
+/// A config whose escapes gate names a language klin has no patterns for, so that gate errors.
+const A_BROKEN_GATE: &str = r#"{
+  "project": "t",
+  "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "escapes": { "roots": ["src"], "languages": ["cobol"] },
+  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+}"#;
+
+/// A config holding one accepted escape that no site in the tree matches.
+const AN_UNMATCHED_ACCEPTED: &str = r#"{
+  "project": "t",
+  "accepted": [{"gate": "escapes", "file": "src/gone.rs", "text": "the line that held it",
+                "count": 1}],
+  "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "escapes": { "roots": ["src"], "languages": ["rust"] },
+  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 fn tree(config: &str) -> Tree {
@@ -18,6 +35,8 @@ fn tree(config: &str) -> Tree {
     tree.write("klin.json", config);
     tree.words("README.md", 5);
     tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree.write("src/work.rs", CLEAN);
     tree
 }
 
@@ -102,18 +121,13 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
 
 #[test]
 fn a_tool_error_is_distinguishable_from_a_gate_failure() {
-    let tree = tree(EVERY_GATE);
+    let tree = tree(A_BROKEN_GATE);
     tree.words("README.md", 30);
-    std::fs::remove_file(tree.path("src/lib.rs")).expect("remove");
-    tree.write(
-        "klin/complexity-baseline.json",
-        r#"{ "entries": "not a list" }"#,
-    );
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
-    assert!(run.says("ERR   complexity"), "{}", run.out);
+    assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
         run.says("3 gate(s), 1 failed, 1 tool error."),
         "{}",
@@ -123,11 +137,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
 
 #[test]
 fn a_tool_error_alone_exits_two() {
-    let tree = tree(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": "not a list" }"#,
-    );
+    let tree = tree(A_BROKEN_GATE);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -208,12 +218,7 @@ fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
 
 #[test]
 fn strict_reaches_the_gates_that_take_it() {
-    let tree = tree(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": [{"file": "src/gone.rs", "text": "x.unwrap();", "line": 1,
-             "escape": "unwrap", "count": 1}] }"#,
-    );
+    let tree = tree(AN_UNMATCHED_ACCEPTED);
 
     let loose = tree.run(&["gate"]);
     assert_eq!(loose.code, 0, "{}", loose.out);
@@ -246,18 +251,21 @@ fn tangled(name: &str) -> String {
     format!("fn {name}(n: i32) -> i32 {{\n    match n {{\n{arms}        _ => n,\n    }}\n}}\n")
 }
 
-fn committed(config: &str) -> Tree {
-    let tree = tree(config);
-    tree.repository();
-    tree.commit("base");
+fn based(config: &str, files: &[(&str, &str)]) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", config);
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", CLEAN);
+    for (name, text) in files {
+        tree.write(name, text);
+    }
+    tree.base();
     tree
 }
 
 #[test]
 fn changed_scopes_the_scoped_gates_to_the_working_tree_and_untracked_files() {
-    let tree = committed(EVERY_GATE);
-    tree.write("src/old.rs", AN_ESCAPE);
-    tree.commit("old debt");
+    let tree = based(EVERY_GATE, &[("src/old.rs", AN_ESCAPE)]);
     tree.write("src/new.rs", AN_ESCAPE);
 
     let scoped = tree.run(&["gate", "--changed"]);
@@ -268,15 +276,14 @@ fn changed_scopes_the_scoped_gates_to_the_working_tree_and_untracked_files() {
 
     let whole = tree.run(&["gate"]);
     assert_eq!(whole.code, 1, "{}", whole.out);
-    assert!(whole.says("src/old.rs:2"), "{}", whole.out);
     assert!(whole.says("src/new.rs:2"), "{}", whole.out);
+    assert!(!whole.says("src/old.rs"), "{}", whole.out);
 }
 
 #[test]
 fn a_gate_that_is_not_scoped_still_runs_over_everything() {
-    let tree = committed(EVERY_GATE);
+    let tree = based(EVERY_GATE, &[]);
     tree.words("README.md", 30);
-    tree.commit("a long README");
     tree.write("src/new.rs", CLEAN);
 
     let run = tree.run(&["gate", "--changed"]);
@@ -287,14 +294,8 @@ fn a_gate_that_is_not_scoped_still_runs_over_everything() {
 }
 
 #[test]
-fn a_baseline_entry_for_a_file_outside_the_changed_set_is_not_stale() {
-    let tree = committed(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": [{"file": "src/gone.rs", "text": "the line that held it", "line": 1,
-             "escape": "unwrap", "count": 1}] }"#,
-    );
-    tree.commit("an accepted escape");
+fn an_accepted_entry_for_a_file_outside_the_changed_set_is_not_judged() {
+    let tree = based(AN_UNMATCHED_ACCEPTED, &[]);
     tree.write("src/new.rs", CLEAN);
 
     let scoped = tree.run(&["gate", "--changed", "--strict"]);
@@ -308,36 +309,38 @@ fn a_baseline_entry_for_a_file_outside_the_changed_set_is_not_stale() {
 
 #[test]
 fn changed_diffs_against_the_pull_request_base_when_ci_names_one() {
-    let tree = committed(EVERY_GATE);
-    tree.git(&["update-ref", "refs/remotes/origin/release", "HEAD"]);
+    let tree = based(EVERY_GATE, &[]);
     tree.write("src/new.rs", AN_ESCAPE);
     tree.commit("work on the branch");
+    tree.git(&["update-ref", "refs/remotes/origin/release", "HEAD"]);
+    tree.write("src/newer.rs", AN_ESCAPE);
 
     let in_ci = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["gate", "--changed"]);
     assert_eq!(in_ci.code, 1, "{}", in_ci.out);
-    assert!(in_ci.says("src/new.rs:2"), "{}", in_ci.out);
+    assert!(in_ci.says("src/newer.rs:2"), "{}", in_ci.out);
+    assert!(!in_ci.says("src/new.rs:2"), "{}", in_ci.out);
 
     let locally = tree.run(&["gate", "--changed"]);
-    assert_eq!(locally.code, 0, "{}", locally.out);
-    assert!(locally.says("changed: 0 file(s)"), "{}", locally.out);
+    assert_eq!(locally.code, 1, "{}", locally.out);
+    assert!(locally.says("src/new.rs:2"), "{}", locally.out);
 }
 
 #[test]
-fn changed_outside_a_repository_is_a_tool_error_rather_than_an_empty_pass() {
-    let tree = tree(EVERY_GATE);
+fn a_run_outside_a_repository_is_a_tool_error_rather_than_an_empty_pass() {
+    let tree = Tree::bare();
+    tree.write("klin.json", EVERY_GATE);
+    tree.words("README.md", 5);
     tree.write("src/new.rs", AN_ESCAPE);
 
     let run = tree.run(&["gate", "--changed"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("--changed needs a git repository"), "{}", run.out);
+    assert!(run.says("no base commit"), "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
 }
 
 #[test]
 fn changed_restricts_complexity_as_well_as_escapes() {
-    let tree = committed(EVERY_GATE);
-    tree.write("src/old.rs", &tangled("was_here"));
-    tree.commit("old debt");
+    let tree = based(EVERY_GATE, &[("src/old.rs", &tangled("was_here"))]);
     tree.write("src/new.rs", &tangled("is_new"));
 
     let scoped = tree.run(&["gate", "--changed"]);
@@ -412,11 +415,7 @@ fn hook_without_an_event_on_stdin_reports_but_does_not_block() {
 
 #[test]
 fn hook_blocks_on_a_tool_error_too() {
-    let tree = tree(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": "not a list" }"#,
-    );
+    let tree = tree(A_BROKEN_GATE);
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -432,12 +431,8 @@ fn hook_blocks_on_a_tool_error_too() {
 
 #[test]
 fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
-    let tree = tree(EVERY_GATE);
+    let tree = tree(A_BROKEN_GATE);
     tree.words("README.md", 30);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": "not a list" }"#,
-    );
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -457,11 +452,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
 
 #[test]
 fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
-    let tree = tree(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": "not a list" }"#,
-    );
+    let tree = tree(A_BROKEN_GATE);
 
     let run = stop(&tree, A_SECOND_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -566,47 +557,20 @@ fn a_stamp_an_abandoned_turn_left_changes_nothing_at_the_next_first_stop() {
     assert!(!tree.path(BUILD_BLOCKED).exists());
 }
 
-const A_LOOSE_ENTRY: &str = include_str!("fixtures/a_loose_entry.json");
-
 #[test]
-fn the_ladder_writes_no_baseline_where_the_config_names_one() {
+fn the_ladder_writes_nothing() {
     let tree = tree(EVERY_GATE);
     tree.write("src/lib.rs", AN_ESCAPE);
     tree.words("README.md", 30);
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(
-        !tree.path("klin/escapes-baseline.json").exists(),
-        "{}",
-        run.out
-    );
-    assert!(
-        !tree.path("klin/complexity-baseline.json").exists(),
-        "{}",
-        run.out
-    );
-}
-
-#[test]
-fn the_ladder_leaves_a_baseline_looser_than_the_code_byte_identical() {
-    let tree = tree(EVERY_GATE);
-    tree.write("src/lib.rs", AN_ESCAPE);
-    let stored = tree.write("klin/escapes-baseline.json", A_LOOSE_ENTRY);
-    tree.words("README.md", 30);
-
-    let run = tree.run(&["gate", "--strict"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("looser than the code"), "{}", run.out);
+    let dirty = tree.status();
     assert_eq!(
-        std::fs::read(&stored).ok(),
-        Some(A_LOOSE_ENTRY.as_bytes().to_vec()),
-        "{}",
-        run.out
+        dirty, " M README.md\n M src/lib.rs\n?? src/work.rs\n",
+        "the run touched the tree: {dirty}"
     );
 }
-
-const A_LOOSE_BASELINE: &str = include_str!("fixtures/a_loose_baseline.json");
 
 fn json(run: &harness::Run) -> Value {
     match serde_json::from_str(&run.out) {
@@ -691,10 +655,9 @@ fn a_json_finding_carries_the_site_the_values_and_the_advice() {
 
 #[test]
 fn a_json_record_names_no_column_and_no_violation() {
-    let tree = tree(EVERY_GATE);
+    let tree = tree(AN_UNMATCHED_ACCEPTED);
     tree.words("README.md", 30);
     tree.write("src/lib.rs", AN_ESCAPE);
-    tree.write("klin/escapes-baseline.json", A_LOOSE_BASELINE);
 
     let run = tree.run(&["gate", "--json", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -714,9 +677,7 @@ fn a_json_record_names_no_column_and_no_violation() {
 
 #[test]
 fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
-    let tree = tree(EVERY_GATE);
-    tree.write("src/lib.rs", AN_ESCAPE);
-    tree.write("klin/escapes-baseline.json", A_LOOSE_BASELINE);
+    let tree = tree(AN_UNMATCHED_ACCEPTED);
 
     let run = tree.run(&["gate", "--json", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -725,7 +686,7 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert_eq!(
         outcomes(list(&report, "notes")),
-        [("escapes", "improved"), ("escapes", "unmatched")],
+        [("escapes", "unmatched")],
         "{}",
         run.out
     );
@@ -733,11 +694,7 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
 
 #[test]
 fn a_gate_that_could_not_run_is_a_json_finding_too() {
-    let tree = tree(EVERY_GATE);
-    tree.write(
-        "klin/escapes-baseline.json",
-        r#"{ "entries": "not a list" }"#,
-    );
+    let tree = tree(A_BROKEN_GATE);
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -746,11 +703,7 @@ fn a_gate_that_could_not_run_is_a_json_finding_too() {
     let finding = &list(&report, "findings")[0];
     assert_eq!(field(finding, "gate"), "escapes", "{}", run.out);
     assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
-    assert!(
-        field(finding, "text").contains("another shape"),
-        "{}",
-        run.out
-    );
+    assert!(field(finding, "text").contains("cobol"), "{}", run.out);
 }
 
 #[test]
@@ -828,8 +781,7 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
         "klin.json",
         r#"{ "project": "t",
              "doc_size": [{"file": "README.md", "ceiling": 10}],
-             "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                             "baseline": "klin/complexity-baseline.json" } }"#,
+             "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} } }"#,
     );
     let deleted = tree.run(&ci_arguments());
     assert_eq!(deleted.code, 2, "{}", deleted.out);
@@ -840,11 +792,9 @@ const TWO_COMPLEXITY_GATES: &str = r#"{
   "project": "t",
   "gates": [
     {"name": "complexity-src", "check": "complexity",
-     "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-              "baseline": "klin/src-baseline.json"}},
+     "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60}}},
     {"name": "complexity-tests", "check": "complexity",
-     "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60},
-              "baseline": "klin/tests-baseline.json"}}
+     "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60}}}
   ]
 }"#;
 
@@ -852,8 +802,7 @@ const AN_EXCLUDED_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "escapes": false,
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                  "baseline": "klin/complexity-baseline.json" }
+  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{

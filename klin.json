@@ -5,8 +5,7 @@
     "ceilings": {
       "cc": 8,
       "lines": 60
-    },
-    "baseline": "quality/complexity-baseline.json"
+    }
   },
   "doc_size": [
     {
@@ -24,7 +23,6 @@
   ],
   "escapes": {
     "roots": ["src", "tests"],
-    "languages": ["rust"],
-    "baseline": "quality/escapes-baseline.json"
+    "languages": ["rust"]
   }
 }

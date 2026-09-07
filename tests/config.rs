@@ -164,3 +164,20 @@ fn a_key_of_the_wrong_type_says_it_is_malformed_not_absent() {
     assert!(run.says("whole number"), "{}", run.out);
     assert!(!run.says("has no"), "{}", run.out);
 }
+
+#[test]
+fn a_section_naming_a_baseline_says_the_key_is_not_one_klin_reads() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"escapes": {"roots": ["src"], "languages": ["rust"],
+             "baseline": "quality/escapes-baseline.json"}}"#,
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"baseline\""), "{}", run.out);
+    assert!(run.says("not a key klin reads"), "{}", run.out);
+    assert!(run.says("\"accepted\""), "{}", run.out);
+}

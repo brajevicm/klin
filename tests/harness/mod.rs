@@ -21,7 +21,18 @@ impl Run {
 }
 
 impl Tree {
+    /// A tree inside a repository whose base commit holds nothing, so every finding is new.
     pub fn new() -> Tree {
+        let tree = Tree::bare();
+        tree.repository();
+        tree.commit_empty("an empty base");
+        tree.git(&["checkout", "-q", "-B", "work"]);
+        tree.commit_empty("on the branch");
+        tree
+    }
+
+    /// A tree that is not a repository.
+    pub fn bare() -> Tree {
         Tree {
             dir: tempfile::tempdir().expect("temporary directory"),
         }
@@ -79,6 +90,61 @@ impl Tree {
             args.join(" "),
             String::from_utf8_lossy(&done.stderr)
         );
+    }
+
+    pub fn revision(&self, reference: &str) -> String {
+        let done = Command::new("git")
+            .arg("-C")
+            .arg(self.root())
+            .args(["rev-parse", "--verify", "--quiet", reference])
+            .output();
+        match done {
+            Ok(done) if done.status.success() => {
+                String::from_utf8_lossy(&done.stdout).trim().to_string()
+            }
+            _ => String::new(),
+        }
+    }
+
+    /// What git sees as changed in the working tree, so a test can pin that klin wrote nothing.
+    pub fn status(&self) -> String {
+        let done = Command::new("git")
+            .arg("-C")
+            .arg(self.root())
+            .args(["status", "--porcelain"])
+            .output();
+        match done {
+            Ok(done) => String::from_utf8_lossy(&done.stdout).to_string(),
+            Err(why) => panic!("git status could not run: {why}"),
+        }
+    }
+
+    pub fn base(&self) {
+        if !self.path(".git").is_dir() {
+            self.repository();
+        }
+        if !self.revision("main").is_empty() {
+            self.git(&["checkout", "-q", "main"]);
+        }
+        self.commit("the base");
+        self.git(&["checkout", "-q", "-B", "work"]);
+        self.commit_empty("on the branch");
+    }
+
+    fn commit_empty(&self, message: &str) {
+        self.git(&[
+            "-c",
+            "user.name=klin",
+            "-c",
+            "user.email=klin@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            message,
+        ]);
     }
 
     pub fn commit(&self, message: &str) {

@@ -1,4 +1,4 @@
-mod baseline;
+mod base;
 mod changed;
 mod complexity;
 mod config;
@@ -7,6 +7,8 @@ mod escapes;
 mod files;
 mod gate;
 mod guard;
+mod init;
+mod ratchet;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -22,7 +24,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Fail on a function over the cyclomatic or length ceiling that the baseline does not hold
+    /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
     Complexity(complexity::Args),
     /// Fail when a document has grown past its ceiling
     DocSize(doc_size::Args),
@@ -30,7 +32,9 @@ enum Command {
     Escapes(escapes::Args),
     /// Run every gate the configuration names, cheapest first
     Gate(gate::Args),
-    /// Refuse an agent's tool call that would edit the configuration, a baseline or the hooks
+    /// Survey the tree and write the configuration it can say for itself
+    Init(init::Args),
+    /// Refuse an agent's tool call that would edit the configuration or the hooks
     Guard,
 }
 
@@ -41,6 +45,7 @@ fn main() -> ExitCode {
         Command::DocSize(args) => report(|start, out| doc_size::run(args, start, out)),
         Command::Escapes(args) => report(|start, out| escapes::run(args, start, out)),
         Command::Gate(args) => report(|start, out| gate::run(args, start, out)),
+        Command::Init(args) => report(|start, out| init::run(args, start, out)),
     }
 }
 
