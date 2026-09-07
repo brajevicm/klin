@@ -28,7 +28,7 @@ enum Command {
     DocSize(doc_size::Args),
     /// Fail on a new escape site — a place where the code opts out of a check
     Escapes(escapes::Args),
-    /// Run every gate the configuration names, in ladder order
+    /// Run every gate the configuration names, cheapest first
     Gate(gate::Args),
     /// Refuse an agent's tool call that would edit the configuration, a baseline or the hooks
     Guard,
