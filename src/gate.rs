@@ -7,6 +7,8 @@ use serde_json::Value;
 use crate::config::{Config, Error};
 use crate::{changed, complexity, doc_size, escapes};
 
+const BUILD_BLOCKED: &str = "target/.detent-build-blocked";
+
 const LADDER: &[(&str, &str)] = &[
     ("doc-size", "doc_size"),
     ("escapes", "escapes"),
@@ -47,7 +49,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
             (0, 1)
         }
     };
-    Ok(hook(failed, errored, &std::mem::take(out)))
+    Ok(hook(failed, errored, &std::mem::take(out), start))
 }
 
 fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), Error> {
@@ -89,7 +91,8 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
     Ok((failed, errored))
 }
 
-fn hook(failed: usize, errored: usize, report: &str) -> u8 {
+fn hook(failed: usize, errored: usize, report: &str, start: &Path) -> u8 {
+    let unspent = build_blocked(start);
     if failed == 0 && errored == 0 {
         return 0;
     }
@@ -97,10 +100,11 @@ fn hook(failed: usize, errored: usize, report: &str) -> u8 {
         eprint!("{report}");
         return 1;
     };
-    let again = event
-        .get("stop_hook_active")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
+    let again = !unspent
+        && event
+            .get("stop_hook_active")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
     let tail = match again {
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
@@ -120,6 +124,10 @@ fn lead(failed: usize, errored: usize) -> &'static str {
         (true, false) => "a quality gate failed",
         _ => "could not run a quality gate",
     }
+}
+
+fn build_blocked(start: &Path) -> bool {
+    std::fs::remove_file(start.join(BUILD_BLOCKED)).is_ok()
 }
 
 fn event() -> Option<Value> {

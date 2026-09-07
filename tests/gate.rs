@@ -469,13 +469,87 @@ fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
 }
 
 #[test]
-fn hook_without_an_event_reports_a_tool_error_without_blocking_any_stop() {
+fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
     let tree = tree(r#"{ "project": "t" }"#);
 
-    for round in 1..=2 {
-        let run = stop(&tree, "");
-        assert_eq!(run.code, 1, "stop {round}: {}", run.out);
-        assert!(run.says("configures no gate"), "stop {round}: {}", run.out);
-        assert!(!run.says("stop again"), "stop {round}: {}", run.out);
-    }
+    let run = stop(&tree, "");
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("configures no gate"), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}
+
+const BUILD_BLOCKED: &str = "target/.detent-build-blocked";
+
+fn wrapper() -> String {
+    let at = concat!(env!("CARGO_MANIFEST_DIR"), "/.claude/settings.json");
+    std::fs::read_to_string(at).unwrap_or_default()
+}
+
+#[test]
+fn the_wrapper_writes_the_stamp_the_binary_reads() {
+    let settings = wrapper();
+    assert!(settings.contains(BUILD_BLOCKED), "{settings}");
+}
+
+#[test]
+fn the_wrapper_does_not_read_stop_hook_active() {
+    let settings = wrapper();
+    assert!(!settings.is_empty());
+    assert!(!settings.contains("stop_hook_active"), "{settings}");
+}
+
+#[test]
+fn hook_blocks_the_stop_after_a_build_failure_spent_the_turns_block() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write(BUILD_BLOCKED, "");
+
+    let blocked = stop(&tree, A_SECOND_STOP);
+    assert_eq!(blocked.code, 2, "{}", blocked.out);
+    assert!(blocked.says("FAIL  doc-size"), "{}", blocked.out);
+    assert!(
+        blocked.says("fix what each names, then stop again"),
+        "{}",
+        blocked.out
+    );
+    assert!(
+        !blocked.says("not blocking a second time"),
+        "{}",
+        blocked.out
+    );
+
+    let after = stop(&tree, A_SECOND_STOP);
+    assert_eq!(after.code, 0, "{}", after.out);
+    assert!(after.says("not blocking a second time"), "{}", after.out);
+}
+
+#[test]
+fn a_passing_stop_spends_the_stamp_too() {
+    let tree = tree(EVERY_GATE);
+    tree.write(BUILD_BLOCKED, "");
+
+    let passed = stop(&tree, A_SECOND_STOP);
+    assert_eq!(passed.code, 0, "{}", passed.out);
+    assert!(!tree.path(BUILD_BLOCKED).exists());
+
+    tree.words("README.md", 30);
+    let failed = stop(&tree, A_SECOND_STOP);
+    assert_eq!(failed.code, 0, "{}", failed.out);
+    assert!(failed.says("not blocking a second time"), "{}", failed.out);
+}
+
+#[test]
+fn a_stamp_an_abandoned_turn_left_changes_nothing_at_the_next_first_stop() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write(BUILD_BLOCKED, "");
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("fix what each names, then stop again"),
+        "{}",
+        run.out
+    );
+    assert!(!tree.path(BUILD_BLOCKED).exists());
 }
