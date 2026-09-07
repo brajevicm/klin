@@ -2,14 +2,22 @@ use std::io::Read;
 
 use serde_json::Value;
 
-const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json) or the \
-    hooks. Fix the code the gate names instead. Only a person changes those, in a reviewed \
-    commit.";
+const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json), the \
+    hooks, or the code owners. Fix the code the gate names instead. Only a person changes those, \
+    in a reviewed commit.";
 
-const WRITERS: &[&str] = &["tee", "cp", "mv", "rm", "truncate", "install"];
-const READERS: &[&str] = &["Read", "NotebookRead"];
-const HOOKS: &[&str] = &[".claude/settings", ".cursor/hooks", ".codex/config"];
+const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
+const HOOKS: &[&str] = &[
+    ".claude/settings",
+    ".cursor/hooks",
+    ".codex/config",
+    ".github/CODEOWNERS",
+];
 const RESTORERS: &[&str] = &["checkout", "restore"];
+const READERS: &[&str] = &[
+    "cat", "head", "tail", "less", "grep", "rg", "diff", "wc", "stat", "ls", "file", "jq",
+];
+const GIT_READERS: &[&str] = &["diff", "show", "log", "status", "blame", "add", "commit"];
 
 pub fn run() -> u8 {
     let mut text = String::new();
@@ -27,9 +35,9 @@ pub fn run() -> u8 {
             .unwrap_or("")
     };
     let tool = event.get("tool_name").and_then(Value::as_str).unwrap_or("");
-    let edits = !READERS.contains(&tool);
+    let edits = !READ_TOOLS.contains(&tool);
     if (edits && (guarded(field("file_path")) || guarded(field("notebook_path"))))
-        || command_writes_guarded(field("command"))
+        || command_touches_guarded(field("command"))
     {
         eprintln!("{REFUSAL}");
         return 2;
@@ -49,19 +57,20 @@ fn basename(path: &str) -> &str {
     path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
-fn command_writes_guarded(command: &str) -> bool {
+fn command_touches_guarded(command: &str) -> bool {
     command
+        .replace("\\\n", " ")
         .replace('>', " > ")
         .split([';', '&', '|', '\n'])
-        .any(segment_writes_guarded)
+        .any(segment_touches_guarded)
 }
 
-fn segment_writes_guarded(segment: &str) -> bool {
+fn segment_touches_guarded(segment: &str) -> bool {
     let words: Vec<&str> = segment.split_whitespace().collect();
     redirects_to_guarded(&words)
-        || (writes(&words) && words.iter().any(|word| guarded(word)))
         || restores_a_tree(&words)
         || fills_in_the_configuration(&words)
+        || (!segment_is_a_reader(&words) && path_tokens(segment).any(guarded))
 }
 
 /// `init --add` rewrites the configuration, so it is a person's command, like an edit to it.
@@ -82,17 +91,27 @@ fn redirects_to_guarded(words: &[&str]) -> bool {
         .any(|(at, word)| *word == ">" && words.get(at + 1).is_some_and(|target| guarded(target)))
 }
 
-fn writes(words: &[&str]) -> bool {
-    words.iter().enumerate().any(|(at, word)| {
-        let name = basename(word);
-        WRITERS.contains(&name)
-            || (name == "git"
-                && words[at..]
-                    .iter()
-                    .any(|subcommand| RESTORERS.contains(subcommand)))
-            || (name == "sed"
-                && words[at..]
-                    .iter()
-                    .any(|flag| flag.starts_with('-') && flag.contains('i')))
-    })
+/// A guarded name may appear as an argument to one of these, and nowhere else. `git` is a
+/// reader only for the subcommands that change no content. An interpreter is never a reader,
+/// so its inline script and its heredoc body are held to the same rule as any other command.
+fn segment_is_a_reader(words: &[&str]) -> bool {
+    let Some(command) = words.first() else {
+        return false;
+    };
+    let name = basename(command);
+    if name == "git" {
+        return words[1..]
+            .iter()
+            .find(|word| !word.starts_with('-'))
+            .is_some_and(|sub| GIT_READERS.contains(sub));
+    }
+    READERS.contains(&name)
+}
+
+/// Path-shaped tokens, split on the punctuation a shell, a heredoc body, or an interpreter's
+/// inline script wraps a filename in, so `open('klin.json')` names it as plainly as `cat` does.
+fn path_tokens(segment: &str) -> impl Iterator<Item = &str> {
+    segment
+        .split(|c: char| !(c.is_alphanumeric() || matches!(c, '.' | '/' | '\\' | '_' | '-')))
+        .filter(|token| !token.is_empty())
 }
