@@ -422,11 +422,13 @@ fn hook_blocks_on_a_tool_error_too() {
 }
 
 #[test]
-fn hook_without_an_event_still_reports_a_tool_error_as_one() {
+fn hook_without_an_event_reports_a_tool_error_without_blocking_any_stop() {
     let tree = tree(r#"{ "project": "t" }"#);
 
-    let run = stop(&tree, "");
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("configures no gate"), "{}", run.out);
-    assert!(!run.says("stop again"), "{}", run.out);
+    for round in 1..=2 {
+        let run = stop(&tree, "");
+        assert_eq!(run.code, 1, "stop {round}: {}", run.out);
+        assert!(run.says("configures no gate"), "stop {round}: {}", run.out);
+        assert!(!run.says("stop again"), "stop {round}: {}", run.out);
+    }
 }

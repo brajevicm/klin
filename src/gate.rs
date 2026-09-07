@@ -95,7 +95,7 @@ fn hook(code: u8, report: &str) -> u8 {
     }
     let Some(event) = event() else {
         eprint!("{report}");
-        return code;
+        return 1;
     };
     let again = event
         .get("stop_hook_active")
