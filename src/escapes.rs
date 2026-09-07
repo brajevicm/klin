@@ -191,20 +191,14 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
-    let Some(section) = config.section(SECTION)?.as_object() else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must be an object",
-            config.file.display()
-        )));
-    };
-    let mut gate_config = section.clone();
-    gate_config.remove("baseline");
+    let section = baseline::section(config, SECTION, VERSION)?;
+    let values = &section.values;
     Ok(Spec {
-        baseline: baseline::baseline_path(config, SECTION, section)?,
-        search: search(config, section)?,
-        roots: files::roots(config, SECTION, section, "roots")?
-            .unwrap_or_else(|| vec![config.root().to_path_buf()]),
-        measured: baseline::provenance(SECTION, VERSION, &Value::Object(gate_config)),
+        search: search(section.config, values)?,
+        roots: files::roots(section.config, section.name, values, "roots")?
+            .unwrap_or_else(|| vec![section.config.root().to_path_buf()]),
+        baseline: section.baseline,
+        measured: section.provenance,
     })
 }
 

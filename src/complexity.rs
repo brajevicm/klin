@@ -484,26 +484,20 @@ fn assess(
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
-    let Some(section) = config.section(SECTION)?.as_object() else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must be an object",
-            config.file.display()
-        )));
-    };
-    let ceilings = ceilings(config, section)?;
-    let mut gate_config = section.clone();
-    gate_config.remove("baseline");
+    let section = baseline::section(config, SECTION, VERSION)?;
+    let values = &section.values;
+    let ceilings = ceilings(section.config, values)?;
     Ok(Spec {
-        baseline: baseline::baseline_path(config, SECTION, section)?,
-        sources: files::roots(config, SECTION, section, "sources")?
-            .ok_or_else(|| config.missing(SECTION, "sources"))?,
-        selection: selection(config, section)?,
+        sources: files::roots(section.config, section.name, values, "sources")?
+            .ok_or_else(|| section.config.missing(section.name, "sources"))?,
+        selection: selection(section.config, values)?,
         gate_text: format!(
             "over the complexity gate (cyclomatic > {} or body > {} lines)",
             ceilings.cc, ceilings.lines
         ),
         ceilings,
-        measured: baseline::provenance(SECTION, VERSION, &Value::Object(gate_config)),
+        baseline: section.baseline,
+        measured: section.provenance,
     })
 }
 

@@ -8,11 +8,34 @@ use crate::config::{Config, Error};
 
 pub type Values = Map<String, Value>;
 
-pub fn baseline_path(
-    config: &Config,
-    section_name: &str,
-    section: &Values,
-) -> Result<PathBuf, Error> {
+pub struct Section<'a> {
+    pub config: &'a Config,
+    pub name: &'a str,
+    pub values: Values,
+    pub baseline: PathBuf,
+    pub provenance: Values,
+}
+
+pub fn section<'a>(config: &'a Config, name: &'a str, version: &str) -> Result<Section<'a>, Error> {
+    let Some(values) = config.section(name)?.as_object() else {
+        return Err(Error(format!(
+            "{}: \"{name}\" must be an object",
+            config.file.display()
+        )));
+    };
+    let baseline = baseline_path(config, name, values)?;
+    let mut hashed = values.clone();
+    hashed.remove("baseline");
+    Ok(Section {
+        config,
+        name,
+        provenance: provenance(name, version, &Value::Object(hashed)),
+        values: values.clone(),
+        baseline,
+    })
+}
+
+fn baseline_path(config: &Config, section_name: &str, section: &Values) -> Result<PathBuf, Error> {
     let named = section
         .get("baseline")
         .and_then(Value::as_str)
@@ -122,7 +145,7 @@ pub fn write(path: &Path, findings: &[Finding], provenance: &Values) -> Result<(
     std::fs::write(path, text + "\n").map_err(|why| unwritable(&why))
 }
 
-pub fn provenance(tool: &str, version: &str, config: &Value) -> Values {
+fn provenance(tool: &str, version: &str, config: &Value) -> Values {
     let mut out = Values::new();
     out.insert("tool".into(), tool.into());
     out.insert("version".into(), version.into());
