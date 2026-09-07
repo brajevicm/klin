@@ -20,6 +20,13 @@ impl Error {
     }
 }
 
+pub struct Flags {
+    pub config: Option<PathBuf>,
+    pub quiet: bool,
+    pub strict: bool,
+    pub only: Option<Vec<String>>,
+}
+
 pub struct Config {
     pub file: PathBuf,
     root: PathBuf,

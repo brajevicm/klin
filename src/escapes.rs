@@ -6,9 +6,9 @@ use regex::Regex;
 use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
-use crate::config::{Config, Error};
+use crate::baseline::{self, Check, Finding, Values};
+use crate::config::{Config, Error, Flags};
 use crate::files;
-use crate::baseline::{self, Finding, Gate, Values};
 
 const SECTION: &str = "escapes";
 const VERSION: &str = "1";
@@ -175,19 +175,43 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         list_languages(out);
         return Ok(0);
     }
-    let config = Config::load(args.config.as_deref(), start)?;
+    let flags = flags(args);
+    let config = Config::load(flags.config.as_deref(), start)?;
     let spec = spec(&config)?;
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
-    if args.write_baseline {
-        baseline::write(&spec.baseline, &found, &spec.measured)?;
-        let _ = writeln!(
-            out,
-            "baseline written: {} escape site(s) accepted",
-            found.len()
-        );
-        return Ok(0);
+    let accepted = format!("baseline written: {} escape site(s) accepted", found.len());
+    let sites = scoped(&found, flags.only.as_deref());
+    let aside = match skipped {
+        0 => String::new(),
+        count => format!(" ({count} in inline Rust tests skipped)"),
+    };
+    check(&spec).evaluate(
+        found,
+        &flags,
+        args.write_baseline,
+        &format!("OK: {sites} escape site(s) in the tree, all in the baseline{aside}"),
+        &accepted,
+        out,
+    )
+}
+
+fn flags(args: &Args) -> Flags {
+    Flags {
+        config: args.config.clone(),
+        quiet: args.quiet,
+        strict: args.strict,
+        only: args.only.clone(),
     }
-    report(args, &spec, found, skipped, out)
+}
+
+fn scoped(found: &[Finding], only: Option<&[String]>) -> usize {
+    match only {
+        Some(only) => found
+            .iter()
+            .filter(|site| only.contains(&site.file))
+            .count(),
+        None => found.len(),
+    }
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
@@ -202,47 +226,20 @@ fn spec(config: &Config) -> Result<Spec, Error> {
     })
 }
 
-fn report(
-    args: &Args,
-    spec: &Spec,
-    found: Vec<Finding>,
-    skipped: u64,
-    out: &mut String,
-) -> Result<u8, Error> {
-    let (entries, stored) = baseline::read(&spec.baseline)?;
-    let (found, entries) = baseline::restrict(found, entries, args.only.as_deref());
-    let sites = found.len();
-    let baseline_size = entries.len();
-    let verdict = baseline::judge(
-        found,
-        entries,
-        &["count"],
-        stored.as_ref(),
-        Some(&spec.measured),
-    );
-    let gate = Gate {
-        noun: "escape site(s)",
-        over: "where the code opts out of a check",
-        fix: "Fix what the escape hides: handle the error instead of unwrapping it, address the \
-              lint instead of allowing it. Accepting a new escape into the baseline is a policy \
-              decision for a person.",
-        remedy: "detent escapes --write-baseline",
-        show,
-    };
-    let aside = match skipped {
-        0 => String::new(),
-        count => format!(" ({count} in inline Rust tests skipped)"),
-    };
-    let ok_line = format!("OK: {sites} escape site(s) in the tree, all in the baseline{aside}");
-    Ok(baseline::report(
-        &verdict,
-        &gate,
-        baseline_size,
-        &ok_line,
-        args.quiet,
-        args.strict,
-        out,
-    ))
+fn check(spec: &Spec) -> Check<'_> {
+    Check {
+        path: &spec.baseline,
+        provenance: &spec.measured,
+        metrics: &["count"],
+        unit: "escape site(s)",
+        condition: "where the code opts out of a check",
+        fix_advice: "Fix what the escape hides: handle the error instead of unwrapping it, \
+                     address the lint instead of allowing it. Accepting a new escape into the \
+                     baseline is a policy decision for a person.",
+        tighten_command: "detent escapes --write-baseline",
+        format_metrics: show,
+        held_out: &[],
+    }
 }
 
 fn language(name: &str) -> Option<&'static Language> {

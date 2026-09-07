@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::{Config, Error};
+use crate::config::{Config, Error, Flags};
 
 pub type Values = Map<String, Value>;
 
@@ -317,17 +317,69 @@ pub fn judge(
     verdict
 }
 
-pub struct Gate<'a> {
-    pub noun: &'a str,
-    pub over: &'a str,
-    pub fix: &'a str,
-    pub remedy: &'a str,
-    pub show: fn(&Values) -> String,
+pub struct Check<'a> {
+    pub path: &'a Path,
+    pub provenance: &'a Values,
+    pub metrics: &'a [&'a str],
+    pub unit: &'a str,
+    pub condition: &'a str,
+    pub fix_advice: &'a str,
+    pub tighten_command: &'a str,
+    pub format_metrics: fn(&Values) -> String,
+    pub held_out: &'a [String],
+}
+
+impl Check<'_> {
+    pub fn evaluate(
+        &self,
+        findings: Vec<Finding>,
+        flags: &Flags,
+        write_baseline: bool,
+        ok_line: &str,
+        written_line: &str,
+        out: &mut String,
+    ) -> Result<u8, Error> {
+        if write_baseline {
+            write(self.path, &findings, self.provenance)?;
+            let _ = writeln!(out, "{written_line}");
+            return Ok(0);
+        }
+        let (entries, stored) = read(self.path)?;
+        let (findings, entries) = restrict(findings, entries, flags.only.as_deref());
+        let entries = still_owed(entries, self.held_out);
+        let baseline_size = entries.len();
+        let verdict = judge(
+            findings,
+            entries,
+            self.metrics,
+            stored.as_ref(),
+            Some(self.provenance),
+        );
+        Ok(report(
+            &verdict,
+            self,
+            baseline_size,
+            ok_line,
+            flags.quiet,
+            flags.strict,
+            out,
+        ))
+    }
+}
+
+pub fn still_owed(entries: Vec<Values>, held_out: &[String]) -> Vec<Values> {
+    entries
+        .into_iter()
+        .filter(|entry| {
+            let file = entry.get("file").and_then(Value::as_str).unwrap_or("");
+            !held_out.iter().any(|gone| gone == file)
+        })
+        .collect()
 }
 
 pub fn report(
     verdict: &Verdict,
-    gate: &Gate,
+    check: &Check,
     baseline_size: usize,
     ok_line: &str,
     quiet: bool,
@@ -335,14 +387,14 @@ pub fn report(
     out: &mut String,
 ) -> u8 {
     if verdict.failed() {
-        failures(verdict, gate, baseline_size, out);
-        notes(verdict, gate, false, out);
+        failures(verdict, check, baseline_size, out);
+        notes(verdict, check, false, out);
         return 1;
     }
     if !quiet {
         let _ = writeln!(out, "{ok_line}");
     }
-    notes(verdict, gate, true, out);
+    notes(verdict, check, true, out);
     if strict && verdict.loose() {
         let _ = writeln!(
             out,
@@ -354,14 +406,14 @@ pub fn report(
     0
 }
 
-fn failures(verdict: &Verdict, gate: &Gate, baseline_size: usize, out: &mut String) {
+fn failures(verdict: &Verdict, check: &Check, baseline_size: usize, out: &mut String) {
     if !verdict.new.is_empty() {
         let _ = writeln!(
             out,
             "FAIL: {} new {} {}, beyond the {} the baseline holds:",
             verdict.new.len(),
-            gate.noun,
-            gate.over,
+            check.unit,
+            check.condition,
             baseline_size
         );
         for finding in &verdict.new {
@@ -370,7 +422,7 @@ fn failures(verdict: &Verdict, gate: &Gate, baseline_size: usize, out: &mut Stri
                 "  {}:{}  {}  {}",
                 finding.file,
                 finding.line,
-                (gate.show)(&finding.values),
+                (check.format_metrics)(&finding.values),
                 clip(&finding.text)
             );
         }
@@ -380,7 +432,7 @@ fn failures(verdict: &Verdict, gate: &Gate, baseline_size: usize, out: &mut Stri
             out,
             "FAIL: {} baselined {} got worse — the ratchet only tightens:",
             verdict.worsened.len(),
-            gate.noun
+            check.unit
         );
         for (finding, entry) in &verdict.worsened {
             let _ = writeln!(
@@ -388,13 +440,13 @@ fn failures(verdict: &Verdict, gate: &Gate, baseline_size: usize, out: &mut Stri
                 "  {}:{}  {}, was {}  {}",
                 finding.file,
                 finding.line,
-                (gate.show)(&finding.values),
-                (gate.show)(entry),
+                (check.format_metrics)(&finding.values),
+                (check.format_metrics)(entry),
                 clip(&finding.text)
             );
         }
     }
-    let _ = writeln!(out, "{}", gate.fix);
+    let _ = writeln!(out, "{}", check.fix_advice);
 }
 
 fn text(entry: &Values, key: &str) -> String {
@@ -405,7 +457,7 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(verdict: &Verdict, gate: &Gate, offer_remedy: bool, out: &mut String) {
+fn notes(verdict: &Verdict, check: &Check, offer_remedy: bool, out: &mut String) {
     if !verdict.stale.is_empty() {
         let count = verdict.stale.len();
         let plural = if count == 1 { "y" } else { "ies" };
@@ -422,7 +474,7 @@ fn notes(verdict: &Verdict, gate: &Gate, offer_remedy: bool, out: &mut String) {
                     format!(
                         "{}  {}  {}",
                         text(entry, "file"),
-                        (gate.show)(entry),
+                        (check.format_metrics)(entry),
                         clip(&text(entry, "text"))
                     )
                 })
@@ -435,7 +487,7 @@ fn notes(verdict: &Verdict, gate: &Gate, offer_remedy: bool, out: &mut String) {
             &format!(
                 "NOTE: {} baselined {} improved — the baseline still records the old value:",
                 verdict.improved.len(),
-                gate.noun
+                check.unit
             ),
             verdict
                 .improved
@@ -445,8 +497,8 @@ fn notes(verdict: &Verdict, gate: &Gate, offer_remedy: bool, out: &mut String) {
                         "{}:{}  {}, baseline says {}  {}",
                         finding.file,
                         finding.line,
-                        (gate.show)(&finding.values),
-                        (gate.show)(entry),
+                        (check.format_metrics)(&finding.values),
+                        (check.format_metrics)(entry),
                         clip(&finding.text)
                     )
                 })
@@ -460,7 +512,7 @@ fn notes(verdict: &Verdict, gate: &Gate, offer_remedy: bool, out: &mut String) {
         let _ = writeln!(
             out,
             "Tighten the baseline (this only ever lowers it): {}",
-            gate.remedy
+            check.tighten_command
         );
     }
 }

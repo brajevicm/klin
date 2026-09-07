@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
+use crate::baseline::{self, Check, Finding, Values};
 use crate::config::{Config, Error};
 use crate::files;
-use crate::baseline::{self, Finding, Gate, Values};
 
 const SECTION: &str = "complexity";
 const VERSION: &str = "2";
@@ -385,16 +385,6 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     Ok(unread(&unparsed, args.only.as_deref(), code, out))
 }
 
-fn still_owed(entries: Vec<Values>, unparsed: &[Unparsed]) -> Vec<Values> {
-    entries
-        .into_iter()
-        .filter(|entry| {
-            let file = entry.get("file").and_then(Value::as_str).unwrap_or("");
-            !unparsed.iter().any(|gone| gone.file == file)
-        })
-        .collect()
-}
-
 fn refuse_to_write(unparsed: &[Unparsed]) -> Option<Error> {
     if unparsed.is_empty() {
         return None;
@@ -450,37 +440,46 @@ fn assess(
             .count(),
         None => measured.len(),
     };
-    let (entries, stored) = baseline::read(&spec.baseline)?;
+    let held_out: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
+    let check = check(spec, &held_out);
+    let (entries, stored) = baseline::read(check.path)?;
     let (over, entries) = baseline::restrict(over, entries, args.only.as_deref());
-    let entries = still_owed(entries, unparsed);
+    let entries = baseline::still_owed(entries, check.held_out);
     let count = over.len();
     let baseline_size = entries.len();
     let verdict = baseline::judge(
         over,
         entries,
-        &["cc", "lines"],
+        check.metrics,
         stored.as_ref(),
-        Some(&spec.measured),
+        Some(check.provenance),
     );
-    let gate = Gate {
-        noun: "function(s)",
-        over: &spec.gate_text,
-        fix: "Split the function so each piece is under the gate. Accepting new debt into the \
-              baseline is a policy decision for a person, not a fix.",
-        remedy: "detent complexity --write-baseline",
-        show,
-    };
     let ok_line =
         format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline");
     Ok(baseline::report(
         &verdict,
-        &gate,
+        &check,
         baseline_size,
         &ok_line,
         args.quiet,
         args.strict,
         out,
     ))
+}
+
+fn check<'a>(spec: &'a Spec, held_out: &'a [String]) -> Check<'a> {
+    Check {
+        path: &spec.baseline,
+        provenance: &spec.measured,
+        metrics: &["cc", "lines"],
+        unit: "function(s)",
+        condition: &spec.gate_text,
+        fix_advice: "Split the function so each piece is under the gate. Accepting new debt into \
+                     the baseline is a policy decision for a person, not a fix.",
+        tighten_command: "detent complexity --write-baseline",
+        format_metrics: show,
+        held_out,
+    }
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
