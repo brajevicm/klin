@@ -61,12 +61,13 @@ fn change(line: &str) -> Option<Change> {
     }
 }
 
-/// The bytes a file held at a commit, or None when the commit does not hold it.
+/// The bytes a file held at a commit, or None when the commit does not hold it. The path is
+/// relative to `root`, which is what the changed set reports, so it is named that way to git.
 pub fn blob(root: &Path, commit: &str, path: &str) -> Option<Vec<u8>> {
     let done = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args(["show", &format!("{commit}:{path}")])
+        .args(["show", &format!("{commit}:./{path}")])
         .output()
         .ok()?;
     done.status.success().then_some(done.stdout)

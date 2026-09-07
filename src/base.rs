@@ -1,6 +1,5 @@
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
 
@@ -13,48 +12,51 @@ const EMPTY: &str = "0000000000000000000000000000000000000000";
 /// working tree. A whole run checks the base out in a detached worktree. A scoped run writes
 /// only the changed files, each at the path it has today, so a rename is not a tree of new debt.
 pub struct Prior {
-    dir: PathBuf,
+    dir: tempfile::TempDir,
+    /// Where the configuration's own directory sits inside that tree.
+    root: PathBuf,
     from_worktree: Option<PathBuf>,
 }
 
 impl Prior {
-    pub fn dir(&self) -> &Path {
-        &self.dir
+    /// The base's copy of the directory the configuration sits in, which paths are relative to.
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 }
 
 impl Drop for Prior {
     fn drop(&mut self) {
-        match &self.from_worktree {
-            Some(root) => {
-                git(
-                    root,
-                    &["worktree", "remove", "--force", &self.dir.to_string_lossy()],
-                );
-            }
-            None => {
-                let _ = std::fs::remove_dir_all(&self.dir);
-            }
-        }
+        let Some(repository) = &self.from_worktree else {
+            return;
+        };
+        git(
+            repository,
+            &[
+                "worktree",
+                "remove",
+                "--force",
+                &self.dir.path().to_string_lossy(),
+            ],
+        );
+        git(repository, &["worktree", "prune"]);
     }
 }
 
-pub fn materialize(root: &Path, base: &Base, scope: Option<&[Change]>) -> Result<Prior, Error> {
-    let dir = std::env::temp_dir().join(format!(
-        "klin-base-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|since| since.as_nanos())
-            .unwrap_or_default()
-    ));
+pub fn materialize(config: &Config, base: &Base, scope: Option<&[Change]>) -> Result<Prior, Error> {
+    let dir = tempfile::Builder::new()
+        .prefix("klin-base-")
+        .tempdir()
+        .map_err(|why| Error(format!("a directory for the base could not be made: {why}")))?;
     match scope {
-        Some(changes) => written(root, base, changes, dir),
-        None => checked_out(root, base, dir),
+        Some(changes) => written(config, base, changes, dir),
+        None => checked_out(config, base, dir),
     }
 }
 
-fn checked_out(root: &Path, base: &Base, dir: PathBuf) -> Result<Prior, Error> {
+fn checked_out(config: &Config, base: &Base, dir: tempfile::TempDir) -> Result<Prior, Error> {
+    let root = config.root();
+    let inside = under_the_repository(root)?;
     git(
         root,
         &[
@@ -62,7 +64,7 @@ fn checked_out(root: &Path, base: &Base, dir: PathBuf) -> Result<Prior, Error> {
             "add",
             "--detach",
             "--quiet",
-            &dir.to_string_lossy(),
+            &dir.path().to_string_lossy(),
             &base.commit,
         ],
     )
@@ -74,6 +76,7 @@ fn checked_out(root: &Path, base: &Base, dir: PathBuf) -> Result<Prior, Error> {
         ))
     })?;
     let prior = Prior {
+        root: dir.path().join(inside),
         dir,
         from_worktree: Some(root.to_path_buf()),
     };
@@ -81,42 +84,73 @@ fn checked_out(root: &Path, base: &Base, dir: PathBuf) -> Result<Prior, Error> {
         let Some(was) = change.was.filter(|was| *was != change.path) else {
             continue;
         };
-        move_within(prior.dir(), &was, &change.path);
+        move_within(prior.root(), &was, &change.path)?;
     }
     Ok(prior)
 }
 
-fn move_within(dir: &Path, was: &str, now: &str) {
-    let (from, to) = (dir.join(was), dir.join(now));
-    if let Some(parent) = to.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::rename(from, to);
+/// Where the configuration sits inside the repository, since a worktree holds the whole tree.
+fn under_the_repository(root: &Path) -> Result<PathBuf, Error> {
+    let named = git(root, &["rev-parse", "--show-toplevel"])
+        .map(|found| PathBuf::from(found.trim()))
+        .ok_or_else(|| {
+            Error(format!(
+                "{} is not inside a git repository, and klin measures the working tree against a \
+                 base commit",
+                root.display()
+            ))
+        })?;
+    let top = named.canonicalize().unwrap_or(named);
+    let here = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    Ok(here
+        .strip_prefix(&top)
+        .unwrap_or(Path::new(""))
+        .to_path_buf())
 }
 
-fn written(root: &Path, base: &Base, changes: &[Change], dir: PathBuf) -> Result<Prior, Error> {
+fn move_within(root: &Path, was: &str, now: &str) -> Result<(), Error> {
+    let (from, to) = (root.join(was), root.join(now));
+    if !from.is_file() {
+        return Ok(());
+    }
+    let moved = || Error(format!("the base's {was} could not be read at {now}"));
+    if let Some(parent) = to.parent() {
+        std::fs::create_dir_all(parent).map_err(|_| moved())?;
+    }
+    std::fs::rename(from, to).map_err(|_| moved())
+}
+
+fn written(
+    config: &Config,
+    base: &Base,
+    changes: &[Change],
+    dir: tempfile::TempDir,
+) -> Result<Prior, Error> {
+    let root = config.root();
     let prior = Prior {
+        root: dir.path().to_path_buf(),
         dir,
         from_worktree: None,
     };
-    std::fs::create_dir_all(prior.dir()).map_err(|why| {
-        Error(format!(
-            "{} could not be written: {why}",
-            prior.dir().display()
-        ))
-    })?;
     for change in changes {
         let Some(was) = &change.was else {
             continue;
         };
-        let Some(bytes) = changed::blob(root, &base.commit, was) else {
-            continue;
+        let bytes = changed::blob(root, &base.commit, was).ok_or_else(|| {
+            Error(format!(
+                "the base commit {} holds no {was}, which git says it changed — the base and the \
+                 working tree disagree, so klin cannot judge this run",
+                &base.commit[..7.min(base.commit.len())]
+            ))
+        })?;
+        let path = prior.root().join(&change.path);
+        let unwritable = |why: &dyn std::fmt::Display| {
+            Error(format!("{} could not be written: {why}", path.display()))
         };
-        let path = prior.dir().join(&change.path);
         if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            std::fs::create_dir_all(parent).map_err(|why| unwritable(&why))?;
         }
-        let _ = std::fs::write(path, bytes);
+        std::fs::write(&path, bytes).map_err(|why| unwritable(&why))?;
     }
     Ok(prior)
 }
@@ -127,19 +161,26 @@ pub fn own(config: &Config, flags: &Flags, out: &mut String) -> Result<Prior, Er
     if !flags.quiet {
         let _ = writeln!(out, "{}", base.line());
     }
-    materialize(config.root(), &base, None)
+    materialize(config, &base, None)
 }
 
 /// Where a gate's roots are in the base tree. A root the base does not hold measures nothing.
-pub fn roots(roots: &[PathBuf], config: &Config, prior: &Path) -> Vec<PathBuf> {
+pub fn roots(roots: &[PathBuf], config: &Config, prior: &Path) -> Result<Vec<PathBuf>, Error> {
     roots
         .iter()
-        .map(|root| match root.strip_prefix(config.root()) {
-            Ok(inside) => prior.join(inside),
-            Err(_) => root.to_path_buf(),
-        })
-        .inspect(|root| {
-            let _ = std::fs::create_dir_all(root);
+        .map(|root| {
+            let inside = root.strip_prefix(config.root()).map_err(|_| {
+                Error(format!(
+                    "{}: the root {} is outside the tree klin compares, so no base of it exists \
+                     — name a root under {}",
+                    config.file.display(),
+                    root.display(),
+                    config.root().display()
+                ))
+            })?;
+            let at = prior.join(inside);
+            let _ = std::fs::create_dir_all(&at);
+            Ok(at)
         })
         .collect()
 }

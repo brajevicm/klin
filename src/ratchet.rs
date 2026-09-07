@@ -62,8 +62,9 @@ impl Finding {
     }
 }
 
-/// The debt a person accepted in the config, as prior entries for one gate.
-pub fn accepted(config: &Config, gate: &str) -> Result<Vec<Values>, Error> {
+/// The debt a person accepted in the config, as prior entries for one gate. An entry must carry
+/// a value the gate measures, or it would hold a site at any value it grows to.
+pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Values>, Error> {
     let Ok(listed) = config.section(ACCEPTED) else {
         return Ok(Vec::new());
     };
@@ -83,6 +84,16 @@ pub fn accepted(config: &Config, gate: &str) -> Result<Vec<Values>, Error> {
             .ok_or_else(shape)?;
         if named != gate {
             continue;
+        }
+        if !metrics.is_empty() && !metrics.iter().any(|metric| entry.contains_key(*metric)) {
+            return Err(Error(format!(
+                "{}: the accepted entry for {} in {} names none of the values {gate} measures \
+                 ({}) — an entry with no value would hold that site however far it grows",
+                config.file.display(),
+                text(&entry, "text"),
+                text(&entry, "file"),
+                metrics.join(", ")
+            )));
         }
         entry.insert(ACCEPTED.into(), true.into());
         out.push(entry);

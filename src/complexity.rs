@@ -371,7 +371,7 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let code = evaluator(&spec).evaluate(
         now,
         at_the_base(&config, &spec, flags, out)?,
-        ratchet::accepted(&config, &flags.gate)?,
+        ratchet::accepted(&config, &flags.gate, evaluator(&spec).metrics)?,
         flags,
         &format!("OK: {judged} function(s) judged, {count} over the gate, all held at the base"),
         out,
@@ -390,11 +390,11 @@ fn at_the_base(
         Some(dir) => dir,
         None => {
             owned = base::own(config, flags, out)?;
-            owned.dir()
+            owned.root()
         }
     };
     let (before, _) = measure(
-        &base::roots(&spec.sources, config, prior),
+        &base::roots(&spec.sources, config, prior)?,
         &spec.selection,
         prior,
     )?;

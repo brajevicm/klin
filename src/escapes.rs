@@ -189,7 +189,7 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     Ok(evaluator().evaluate(
         found,
         at_the_base(&config, &spec, flags, out)?,
-        ratchet::accepted(&config, &flags.gate)?,
+        ratchet::accepted(&config, &flags.gate, evaluator().metrics)?,
         flags,
         &format!("OK: {sites} escape site(s) in the tree, all held at the base{aside}"),
         out,
@@ -207,12 +207,12 @@ fn at_the_base(
         Some(dir) => dir,
         None => {
             owned = base::own(config, flags, out)?;
-            owned.dir()
+            owned.root()
         }
     };
     let (before, _) = findings(
         &spec.search,
-        &base::roots(&spec.roots, config, prior),
+        &base::roots(&spec.roots, config, prior)?,
         prior,
     )?;
     Ok(before)
@@ -334,11 +334,19 @@ fn sets(config: &Config, section: &Values) -> Result<Vec<Set>, Error> {
     Ok(sets)
 }
 
+/// One set per language, however many names the config gives it. Two names for one set, such as
+/// javascript and typescript, would otherwise read every file twice and double every count.
 fn language_sets(config: &Config, named: &[String]) -> Result<Vec<Set>, Error> {
-    named
-        .iter()
-        .map(|name| {
-            let set = language(name).ok_or_else(|| unknown_language(config, name))?;
+    let mut wanted: Vec<&'static Language> = Vec::new();
+    for name in named {
+        let set = language(name).ok_or_else(|| unknown_language(config, name))?;
+        if !wanted.iter().any(|held| std::ptr::eq(*held, set)) {
+            wanted.push(set);
+        }
+    }
+    wanted
+        .into_iter()
+        .map(|set| {
             Ok(Set {
                 suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
                 patterns: compiled(

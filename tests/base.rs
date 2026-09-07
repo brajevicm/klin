@@ -145,3 +145,57 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("base:"), "{}", run.out);
 }
+
+/// A repository whose klin.json sits in a subdirectory, with the debt already at the base.
+fn in_a_subdirectory() -> Tree {
+    let tree = Tree::bare();
+    tree.write("proj/klin.json", CONFIG);
+    tree.write("proj/src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
+    tree.write("README.md", "the tree above the project\n");
+    tree.base();
+    tree
+}
+
+fn in_the_project(tree: &Tree, args: &[&str]) -> harness::Run {
+    harness::run_from(&tree.path("proj"), args)
+}
+
+#[test]
+fn a_config_below_the_repository_root_holds_the_debt_the_base_holds() {
+    let tree = in_a_subdirectory();
+    tree.write("proj/src/other.rs", CLEAN);
+
+    let whole = in_the_project(&tree, &["gate"]);
+    assert_eq!(whole.code, 0, "{}", whole.out);
+    assert!(!whole.says("src/lib.rs"), "{}", whole.out);
+}
+
+#[test]
+fn a_config_below_the_repository_root_scopes_a_changed_run_the_same_way() {
+    let tree = in_a_subdirectory();
+    tree.write(
+        "proj/src/lib.rs",
+        "fn f() {\n    x.unwrap();\n    // and a note\n}\n",
+    );
+
+    let scoped = in_the_project(&tree, &["gate", "--changed"]);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
+    assert!(!scoped.says("src/lib.rs:2"), "{}", scoped.out);
+}
+
+#[test]
+fn a_root_outside_the_tree_klin_compares_is_a_tool_error() {
+    let tree = Tree::new();
+    let elsewhere = Tree::bare();
+    elsewhere.write("far/lib.rs", CLEAN);
+    let outside = elsewhere.at("far");
+    tree.write(
+        "klin.json",
+        &format!(r#"{{ "escapes": {{ "roots": [{outside:?}], "languages": ["rust"] }} }}"#),
+    );
+    tree.write("src/lib.rs", CLEAN);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("outside the tree klin compares"), "{}", run.out);
+}

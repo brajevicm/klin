@@ -143,7 +143,7 @@ struct Against {
 
 impl Against {
     fn dir(&self) -> Option<&Path> {
-        self.prior.as_ref().map(Prior::dir)
+        self.prior.as_ref().map(Prior::root)
     }
 }
 
@@ -350,7 +350,7 @@ fn prior(
     let Some(base) = base else {
         return Ok(None);
     };
-    base::materialize(config.root(), base, changes).map(Some)
+    base::materialize(config, base, changes).map(Some)
 }
 
 fn changes(

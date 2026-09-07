@@ -149,7 +149,7 @@ fn a_site_the_base_held_and_the_code_fixed_passes_with_nothing_to_say() {
 }
 
 #[test]
-fn a_value_the_accepted_entry_never_recorded_is_not_compared() {
+fn an_accepted_entry_that_names_no_value_is_a_tool_error() {
     let tree = tree();
     tree.write(
         "klin.json",
@@ -160,9 +160,42 @@ fn a_value_the_accepted_entry_never_recorded_is_not_compared() {
     );
     tree.write("src/lib.rs", text::DOUBLED);
 
-    let run = tree.run(&["escapes", "--strict"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("worse"), "{}", run.out);
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("names none of the values"), "{}", run.out);
+    assert!(run.says("count"), "{}", run.out);
+}
+
+#[test]
+fn a_file_git_ignores_is_not_judged_because_the_base_holds_no_copy_of_it() {
+    let tree = tree();
+    tree.write(".gitignore", "src/generated.rs\n");
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.base();
+    tree.write("src/generated.rs", text::ONE);
+
+    let whole = tree.run(&["escapes"]);
+    assert_eq!(whole.code, 0, "{}", whole.out);
+    assert!(!whole.says("src/generated.rs"), "{}", whole.out);
+
+    let scoped = tree.run(&["escapes", "--only", "src/generated.rs"]);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
+}
+
+#[test]
+fn one_language_named_twice_is_read_once_and_counted_once() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript", "typescript"] } }"#,
+    );
+    tree.write("src/c.ts", "const c: any = 3;\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/c.ts:1  any  "), "{}", run.out);
+    assert!(!run.says("any x2"), "{}", run.out);
 }
 
 #[test]
