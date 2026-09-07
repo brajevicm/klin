@@ -54,6 +54,30 @@ fn refuses_an_edit_of_the_configuration_or_the_hooks() {
     assert_eq!(run.code, 2, "{}", run.out);
 }
 
+/// GitHub reads the code owners from three places, so guarding one spelling guards nothing.
+#[test]
+fn refuses_an_edit_of_the_code_owners_wherever_they_sit() {
+    for at in [
+        "CODEOWNERS",
+        ".github/CODEOWNERS",
+        "docs/CODEOWNERS",
+        "/repo/CODEOWNERS",
+    ] {
+        let run = edit("Write", at);
+        assert_eq!(run.code, 2, "{at}: {}", run.out);
+        assert!(run.says("refused"), "{at}: {}", run.out);
+
+        let run = bash(&format!("echo '* @me' > {at}"));
+        assert_eq!(run.code, 2, "{at}: {}", run.out);
+    }
+}
+
+#[test]
+fn allows_reading_the_code_owners() {
+    let run = bash("cat docs/CODEOWNERS");
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
 #[test]
 fn refuses_git_putting_back_old_content_of_a_guarded_file() {
     for command in [

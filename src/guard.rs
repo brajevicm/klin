@@ -7,12 +7,10 @@ const REFUSAL: &str = "klin: refused — this would change the configuration (kl
     in a reviewed commit.";
 
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
-const HOOKS: &[&str] = &[
-    ".claude/settings",
-    ".cursor/hooks",
-    ".codex/config",
-    ".github/CODEOWNERS",
-];
+const HOOKS: &[&str] = &[".claude/settings", ".cursor/hooks", ".codex/config"];
+/// Guarded wherever they sit. GitHub honours the code owners at the root of the tree, under
+/// `.github/` and under `docs/`, so a path that names one of those is not enough.
+const NAMES: &[&str] = &["klin.json", "CODEOWNERS"];
 const RESTORERS: &[&str] = &["checkout", "restore"];
 const READERS: &[&str] = &[
     "cat", "head", "tail", "less", "grep", "rg", "diff", "wc", "stat", "ls", "file", "jq",
@@ -50,7 +48,7 @@ fn guarded(path: &str) -> bool {
     if HOOKS.iter().any(|hook| path.contains(hook)) {
         return true;
     }
-    basename(path) == "klin.json"
+    NAMES.contains(&basename(path))
 }
 
 fn basename(path: &str) -> &str {
