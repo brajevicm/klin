@@ -15,6 +15,7 @@ const RESTORERS: &[&str] = &["checkout", "restore"];
 const READERS: &[&str] = &[
     "cat", "head", "tail", "less", "grep", "rg", "diff", "wc", "stat", "ls", "file", "jq",
 ];
+const GIT_VALUE_FLAGS: &[&str] = &["-C", "-c", "--git-dir", "--work-tree", "--exec-path"];
 const GIT_READERS: &[&str] = &["diff", "show", "log", "status", "blame", "add", "commit"];
 
 pub fn run() -> u8 {
@@ -48,7 +49,11 @@ fn guarded(path: &str) -> bool {
     if HOOKS.iter().any(|hook| path.contains(hook)) {
         return true;
     }
-    NAMES.contains(&basename(path))
+    let name = basename(path);
+    if let Some(prefix) = name.split('*').next().filter(|_| name.contains('*')) {
+        return NAMES.iter().any(|guarded| guarded.starts_with(prefix));
+    }
+    NAMES.contains(&name)
 }
 
 fn basename(path: &str) -> &str {
@@ -59,6 +64,8 @@ fn command_touches_guarded(command: &str) -> bool {
     command
         .replace("\\\n", " ")
         .replace('>', " > ")
+        .replace("$(", " ; ")
+        .replace('`', " ; ")
         .split([';', '&', '|', '\n'])
         .any(segment_touches_guarded)
 }
@@ -98,18 +105,29 @@ fn segment_is_a_reader(words: &[&str]) -> bool {
     };
     let name = basename(command);
     if name == "git" {
-        return words[1..]
-            .iter()
-            .find(|word| !word.starts_with('-'))
-            .is_some_and(|sub| GIT_READERS.contains(sub));
+        return git_subcommand(&words[1..]).is_some_and(|sub| GIT_READERS.contains(&sub));
     }
     READERS.contains(&name)
+}
+
+/// The global flags in `GIT_VALUE_FLAGS` take a value, so the word after one is not the
+/// subcommand. Without this, `git -C sub add` reads as `sub` and a reader is refused.
+fn git_subcommand<'a>(words: &[&'a str]) -> Option<&'a str> {
+    let mut rest = words.iter();
+    while let Some(word) = rest.next() {
+        if GIT_VALUE_FLAGS.contains(word) {
+            rest.next();
+        } else if !word.starts_with('-') {
+            return Some(word);
+        }
+    }
+    None
 }
 
 /// Path-shaped tokens, split on the punctuation a shell, a heredoc body, or an interpreter's
 /// inline script wraps a filename in, so `open('klin.json')` names it as plainly as `cat` does.
 fn path_tokens(segment: &str) -> impl Iterator<Item = &str> {
     segment
-        .split(|c: char| !(c.is_alphanumeric() || matches!(c, '.' | '/' | '\\' | '_' | '-')))
+        .split(|c: char| !(c.is_alphanumeric() || matches!(c, '.' | '/' | '\\' | '_' | '-' | '*')))
         .filter(|token| !token.is_empty())
 }
