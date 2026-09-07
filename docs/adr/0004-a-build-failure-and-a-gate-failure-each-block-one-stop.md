@@ -23,12 +23,18 @@ to match by hand. Matching it by hand is also where a bug lived: the wrapper
 stripped spaces and newlines from the payload first, so a tab-indented or CRLF
 event defeated the match.
 
-When the wrapper blocks for the build it writes `target/.detent-build-blocked`.
-`detent gate --hook` deletes that file on every run, and when the file was
-there, treats the turn's gate block as unspent. It blocks even though
-`stop_hook_active` is true. The delete happens on every run, a passing one
-included, so a stop that passes ends the stamp's life and a later failure in the
-same turn gets no extra block.
+When the wrapper blocks for the build it writes `.detent-build-blocked` beside
+`quality.json`. `detent gate --hook` deletes that file on every run, and when
+the file was there, treats the turn's gate block as unspent. It blocks even
+though `stop_hook_active` is true. The delete happens on every run, a passing
+one included, so a stop that passes ends the stamp's life and a later failure in
+the same turn gets no extra block.
+
+The stamp does not live in `target/`. An agent that meets a build error it
+cannot read runs `cargo clean`, and that would delete the stamp and hand the
+turn the free pass this record exists to close. `detent guard` does not protect
+the stamp either, so keeping it out of the directory an agent empties as a
+matter of routine is what makes it survive the turn.
 
 ## Why the logic spans a wrapper and a binary
 
@@ -52,6 +58,17 @@ A stamp an abandoned turn left behind changes nothing. It matters only when
 `stop_hook_active` is true, and at a fresh turn's first stop the flag is false.
 detent blocks on that stop regardless, and deletes the stamp as it goes.
 
-The path is written twice, once in the wrapper and once in `src/gate.rs`. A test
-reads `.claude/settings.json` and asserts that both name the same file, so the
-two cannot disagree without a test failing.
+A gate failure can block twice in one turn, so a turn can reach three blocks:
+the gate fails and blocks, the fix breaks the build, the build failure blocks,
+and the repaired build meets the same failing gate. `unspent` records that a
+build failed, not that the gate has yet to block, and telling those apart needs
+a second piece of state on disk. The eight-block cap bounds the turn, and the
+cost is that the second gate block repeats the first-time wording rather than
+the wording for a stop that follows a round of fixes.
+
+The path is written twice, once in the wrapper and once in `src/gate.rs`. The
+wrapper writes it under `$CLAUDE_PROJECT_DIR`, and detent reads it under the
+directory that holds `quality.json`. Those are the same directory here, and
+they stay the same when `detent gate --hook` runs from a subdirectory. A test
+reads `.claude/settings.json` and asserts that the wrapper and the binary name
+the same file, so the two cannot disagree without a test failing.

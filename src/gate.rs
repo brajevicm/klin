@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::config::{Config, Error};
 use crate::{changed, complexity, doc_size, escapes};
 
-const BUILD_BLOCKED: &str = "target/.detent-build-blocked";
+const BUILD_BLOCKED: &str = ".detent-build-blocked";
 
 const LADDER: &[(&str, &str)] = &[
     ("doc-size", "doc_size"),
@@ -49,7 +49,12 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
             (0, 1)
         }
     };
-    Ok(hook(failed, errored, &std::mem::take(out), start))
+    Ok(hook(
+        failed,
+        errored,
+        &std::mem::take(out),
+        &root(args, start),
+    ))
 }
 
 fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), Error> {
@@ -91,8 +96,8 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
     Ok((failed, errored))
 }
 
-fn hook(failed: usize, errored: usize, report: &str, start: &Path) -> u8 {
-    let unspent = build_blocked(start);
+fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
+    let unspent = build_blocked(root);
     if failed == 0 && errored == 0 {
         return 0;
     }
@@ -126,8 +131,14 @@ fn lead(failed: usize, errored: usize) -> &'static str {
     }
 }
 
-fn build_blocked(start: &Path) -> bool {
-    std::fs::remove_file(start.join(BUILD_BLOCKED)).is_ok()
+fn root(args: &Args, start: &Path) -> PathBuf {
+    Config::load(args.config.as_deref(), start)
+        .map(|config| config.root().to_path_buf())
+        .unwrap_or_else(|_| start.to_path_buf())
+}
+
+fn build_blocked(root: &Path) -> bool {
+    std::fs::remove_file(root.join(BUILD_BLOCKED)).is_ok()
 }
 
 fn event() -> Option<Value> {

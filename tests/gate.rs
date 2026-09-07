@@ -478,7 +478,7 @@ fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
-const BUILD_BLOCKED: &str = "target/.detent-build-blocked";
+const BUILD_BLOCKED: &str = ".detent-build-blocked";
 
 fn wrapper() -> String {
     let at = concat!(env!("CARGO_MANIFEST_DIR"), "/.claude/settings.json");
@@ -536,6 +536,17 @@ fn a_passing_stop_spends_the_stamp_too() {
     let failed = stop(&tree, A_SECOND_STOP);
     assert_eq!(failed.code, 0, "{}", failed.out);
     assert!(failed.says("not blocking a second time"), "{}", failed.out);
+}
+
+#[test]
+fn the_stamp_sits_beside_the_config_rather_than_the_working_directory() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write(BUILD_BLOCKED, "");
+
+    let run = harness::feed(&tree.path("src"), &["gate", "--hook"], A_SECOND_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(!tree.path(BUILD_BLOCKED).exists());
 }
 
 #[test]
