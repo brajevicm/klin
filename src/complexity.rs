@@ -5,7 +5,7 @@ use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
 use crate::baseline::{self, Check, Finding, Values};
-use crate::config::{Config, Error};
+use crate::config::{Config, Error, Flags};
 use crate::files;
 
 const SECTION: &str = "complexity";
@@ -359,34 +359,55 @@ struct Spec {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::load(args.config.as_deref(), start)?;
+    let flags = flags(args);
+    let config = Config::load(flags.config.as_deref(), start)?;
     let spec = spec(&config)?;
     let (functions, unparsed) = measure(&spec.sources, &spec.selection, config.root())?;
+    if let Some(refusal) = refuse_to_write(args.write_baseline, &unparsed) {
+        return Err(refusal);
+    }
     let over: Vec<Finding> = functions
         .iter()
         .filter(|function| function.over(&spec.ceilings))
         .map(Function::finding)
         .collect();
-
-    if args.write_baseline {
-        if let Some(refusal) = refuse_to_write(&unparsed) {
-            return Err(refusal);
-        }
-        baseline::write(&spec.baseline, &over, &spec.measured)?;
-        let _ = writeln!(
-            out,
-            "baseline written: {} function(s) {}",
-            over.len(),
-            spec.gate_text
-        );
-        return Ok(0);
-    }
-    let code = assess(args, &spec, over, &functions, &unparsed, out)?;
-    Ok(unread(&unparsed, args.only.as_deref(), code, out))
+    let written = format!(
+        "baseline written: {} function(s) {}",
+        over.len(),
+        spec.gate_text
+    );
+    let judged = scoped(functions.iter().map(|function| &function.file), &flags);
+    let count = scoped(over.iter().map(|finding| &finding.file), &flags);
+    let held_out: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
+    let code = check(&spec, &held_out).evaluate(
+        over,
+        &flags,
+        args.write_baseline,
+        &format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline"),
+        &written,
+        out,
+    )?;
+    Ok(unread(&unparsed, flags.only.as_deref(), code, out))
 }
 
-fn refuse_to_write(unparsed: &[Unparsed]) -> Option<Error> {
-    if unparsed.is_empty() {
+fn flags(args: &Args) -> Flags {
+    Flags {
+        config: args.config.clone(),
+        quiet: args.quiet,
+        strict: args.strict,
+        only: args.only.clone(),
+    }
+}
+
+fn scoped<'a>(files: impl Iterator<Item = &'a String>, flags: &Flags) -> usize {
+    match flags.only.as_deref() {
+        Some(only) => files.filter(|file| only.contains(file)).count(),
+        None => files.count(),
+    }
+}
+
+fn refuse_to_write(write_baseline: bool, unparsed: &[Unparsed]) -> Option<Error> {
+    if !write_baseline || unparsed.is_empty() {
         return None;
     }
     let named: Vec<&str> = unparsed.iter().map(|file| file.file.as_str()).collect();
@@ -423,48 +444,6 @@ fn unread(unparsed: &[Unparsed], only: Option<&[String]>, code: u8, out: &mut St
          the file and accept that nothing measures it."
     );
     2
-}
-
-fn assess(
-    args: &Args,
-    spec: &Spec,
-    over: Vec<Finding>,
-    measured: &[Function],
-    unparsed: &[Unparsed],
-    out: &mut String,
-) -> Result<u8, Error> {
-    let judged = match args.only.as_deref() {
-        Some(only) => measured
-            .iter()
-            .filter(|function| only.contains(&function.file))
-            .count(),
-        None => measured.len(),
-    };
-    let held_out: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
-    let check = check(spec, &held_out);
-    let (entries, stored) = baseline::read(check.path)?;
-    let (over, entries) = baseline::restrict(over, entries, args.only.as_deref());
-    let entries = baseline::still_owed(entries, check.held_out);
-    let count = over.len();
-    let baseline_size = entries.len();
-    let verdict = baseline::judge(
-        over,
-        entries,
-        check.metrics,
-        stored.as_ref(),
-        Some(check.provenance),
-    );
-    let ok_line =
-        format!("OK: {judged} function(s) judged, {count} over the gate, all in the baseline");
-    Ok(baseline::report(
-        &verdict,
-        &check,
-        baseline_size,
-        &ok_line,
-        args.quiet,
-        args.strict,
-        out,
-    ))
 }
 
 fn check<'a>(spec: &'a Spec, held_out: &'a [String]) -> Check<'a> {

@@ -74,25 +74,25 @@ impl Finding {
 }
 
 #[derive(Default)]
-pub struct Verdict {
-    pub new: Vec<Finding>,
-    pub worsened: Vec<(Finding, Values)>,
-    pub improved: Vec<(Finding, Values)>,
-    pub stale: Vec<Values>,
-    pub drift: Option<String>,
+struct Verdict {
+    new: Vec<Finding>,
+    worsened: Vec<(Finding, Values)>,
+    improved: Vec<(Finding, Values)>,
+    stale: Vec<Values>,
+    drift: Option<String>,
 }
 
 impl Verdict {
-    pub fn failed(&self) -> bool {
+    fn failed(&self) -> bool {
         !self.new.is_empty() || !self.worsened.is_empty()
     }
 
-    pub fn loose(&self) -> bool {
+    fn loose(&self) -> bool {
         !self.stale.is_empty() || !self.improved.is_empty() || self.drift.is_some()
     }
 }
 
-pub fn read(path: &Path) -> Result<(Vec<Values>, Option<Values>), Error> {
+fn read(path: &Path) -> Result<(Vec<Values>, Option<Values>), Error> {
     if !path.is_file() {
         return Ok((Vec::new(), None));
     }
@@ -124,7 +124,7 @@ pub fn read(path: &Path) -> Result<(Vec<Values>, Option<Values>), Error> {
     Ok((entries, provenance))
 }
 
-pub fn write(path: &Path, findings: &[Finding], provenance: &Values) -> Result<(), Error> {
+fn write(path: &Path, findings: &[Finding], provenance: &Values) -> Result<(), Error> {
     let mut data = Values::new();
     data.insert("provenance".into(), Value::Object(provenance.clone()));
     data.insert(
@@ -185,7 +185,7 @@ fn drift_between(stored: Option<&Values>, current: Option<&Values>) -> Option<St
     None
 }
 
-pub fn restrict(
+fn restrict(
     findings: Vec<Finding>,
     entries: Vec<Values>,
     only: Option<&[String]>,
@@ -278,7 +278,7 @@ fn match_group(
     (pairs, unmatched, stale)
 }
 
-pub fn judge(
+fn judge(
     findings: Vec<Finding>,
     entries: Vec<Values>,
     metrics: &[&str],
@@ -367,7 +367,7 @@ impl Check<'_> {
     }
 }
 
-pub fn still_owed(entries: Vec<Values>, held_out: &[String]) -> Vec<Values> {
+fn still_owed(entries: Vec<Values>, held_out: &[String]) -> Vec<Values> {
     entries
         .into_iter()
         .filter(|entry| {
@@ -377,7 +377,7 @@ pub fn still_owed(entries: Vec<Values>, held_out: &[String]) -> Vec<Values> {
         .collect()
 }
 
-pub fn report(
+fn report(
     verdict: &Verdict,
     check: &Check,
     baseline_size: usize,
