@@ -7,7 +7,7 @@ const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"], "baseline": "quality/escapes-baseline.json" }
+  "escapes": { "roots": ["src"], "languages": ["rust"] }
 }"#;
 
 fn tree() -> Tree {

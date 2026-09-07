@@ -781,8 +781,7 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
         "klin.json",
         r#"{ "project": "t",
              "doc_size": [{"file": "README.md", "ceiling": 10}],
-             "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                             "baseline": "klin/complexity-baseline.json" } }"#,
+             "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} } }"#,
     );
     let deleted = tree.run(&ci_arguments());
     assert_eq!(deleted.code, 2, "{}", deleted.out);
@@ -793,11 +792,9 @@ const TWO_COMPLEXITY_GATES: &str = r#"{
   "project": "t",
   "gates": [
     {"name": "complexity-src", "check": "complexity",
-     "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-              "baseline": "klin/src-baseline.json"}},
+     "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60}}},
     {"name": "complexity-tests", "check": "complexity",
-     "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60},
-              "baseline": "klin/tests-baseline.json"}}
+     "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60}}}
   ]
 }"#;
 
@@ -805,8 +802,7 @@ const AN_EXCLUDED_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "escapes": false,
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
-                  "baseline": "klin/complexity-baseline.json" }
+  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{

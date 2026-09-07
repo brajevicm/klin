@@ -5,6 +5,9 @@ use serde_json::{Map, Value};
 
 use crate::config::{Config, Error, Flags, Records};
 
+/// The engine every ratcheting gate judges through. It exposes six items: `Values`, `Section`
+/// and `section`, `Finding`, `accepted`, and `Evaluator` with its `evaluate` call. Everything
+/// else here, the matcher and the reporter included, is private.
 pub type Values = Map<String, Value>;
 
 const ACCEPTED: &str = "accepted";
@@ -22,6 +25,14 @@ pub fn section<'a>(config: &'a Config, name: &'a str) -> Result<Section<'a>, Err
             config.file.display()
         )));
     };
+    if values.contains_key("baseline") {
+        return Err(Error(format!(
+            "{}: \"{name}\" names a \"baseline\", which is not a key klin reads — a run \
+             compares the working tree against the base commit, and a person accepts debt in \
+             the \"accepted\" list. Delete the key and the file it names.",
+            config.file.display()
+        )));
+    }
     Ok(Section {
         config,
         name,

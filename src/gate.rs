@@ -70,7 +70,7 @@ pub struct Args {
     /// The klin.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
-    /// Fail when a baseline is looser than the code — what CI runs
+    /// Fail when a gate is unaccounted for or an accepted entry matches nothing — what CI runs
     #[arg(long)]
     strict: bool,
     /// Run only this gate (repeatable)

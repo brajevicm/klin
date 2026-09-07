@@ -2,9 +2,9 @@ use std::io::Read;
 
 use serde_json::Value;
 
-const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json), a \
-    baseline, or the hooks. Fix the code the gate names instead. Only a person changes those, in a \
-    reviewed commit.";
+const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json) or the \
+    hooks. Fix the code the gate names instead. Only a person changes those, in a reviewed \
+    commit.";
 
 const WRITERS: &[&str] = &["tee", "cp", "mv", "rm", "truncate", "install"];
 const READERS: &[&str] = &["Read", "NotebookRead"];
@@ -42,8 +42,7 @@ fn guarded(path: &str) -> bool {
     if HOOKS.iter().any(|hook| path.contains(hook)) {
         return true;
     }
-    let name = basename(path);
-    name == "klin.json" || (name.contains("baseline") && name.ends_with(".json"))
+    basename(path) == "klin.json"
 }
 
 fn basename(path: &str) -> &str {
@@ -51,11 +50,10 @@ fn basename(path: &str) -> &str {
 }
 
 fn command_writes_guarded(command: &str) -> bool {
-    command.contains("--write-baseline")
-        || command
-            .replace('>', " > ")
-            .split([';', '&', '|', '\n'])
-            .any(segment_writes_guarded)
+    command
+        .replace('>', " > ")
+        .split([';', '&', '|', '\n'])
+        .any(segment_writes_guarded)
 }
 
 fn segment_writes_guarded(segment: &str) -> bool {

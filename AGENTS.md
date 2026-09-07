@@ -7,7 +7,7 @@ for the vocabulary and `docs/adr/` for decisions that are already made.
 
 cleat is the behavioural specification. Find it at `$CLEAT_SRC`, defaulting to
 `../cleat` beside this repository. It is not vendored here and must not be:
-klin gates itself, and a vendored Python tree would be scanned and baselined.
+klin gates itself, and a vendored Python tree would be scanned as its own debt.
 
 That checkout is indexed with CodeGraph, so use it instead of grep:
 
@@ -34,12 +34,15 @@ self-consistent is the whole requirement. See ADR 0001.
 ## Tests
 
 One seam: the binary's command line. Build a throwaway tree, write a
-`klin.json` and any baseline, run the real binary, assert on the exit code
-and the printed text. Do not reach inside. The matching logic is the most
-likely thing to be rewritten, so nothing should be coupled to its shape.
+`klin.json`, commit a base, run the real binary, assert on the exit code and
+the printed text. Do not reach inside. The matching logic is the most likely
+thing to be rewritten, so nothing should be coupled to its shape.
+
+The harness gives every tree a repository whose base holds nothing, so every
+finding is new. `tree.base()` makes the tree as it stands the base.
 
 ## The rules klin enforces on itself
 
-Do not edit `klin.json`, a baseline, or the hooks to make a gate pass, and
-do not run `--write-baseline`. A baseline records debt a person accepted. Only
-a person loosens it, in a reviewed commit.
+Do not edit `klin.json` or the hooks to make a gate pass, and do not add an
+entry to the `accepted` list. That list records debt a person accepted. Only a
+person writes it, in a reviewed commit. A gate that fails names code to fix.

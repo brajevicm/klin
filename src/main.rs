@@ -23,7 +23,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Fail on a function over the cyclomatic or length ceiling that the baseline does not hold
+    /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
     Complexity(complexity::Args),
     /// Fail when a document has grown past its ceiling
     DocSize(doc_size::Args),
@@ -31,7 +31,7 @@ enum Command {
     Escapes(escapes::Args),
     /// Run every gate the configuration names, cheapest first
     Gate(gate::Args),
-    /// Refuse an agent's tool call that would edit the configuration, a baseline or the hooks
+    /// Refuse an agent's tool call that would edit the configuration or the hooks
     Guard,
 }
 
