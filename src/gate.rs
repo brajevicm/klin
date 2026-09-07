@@ -105,7 +105,11 @@ fn hook(code: u8, report: &str) -> u8 {
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
     };
-    eprintln!("detent: a quality gate failed{tail}");
+    let lead = match code {
+        1 => "a quality gate failed",
+        _ => "could not run a quality gate",
+    };
+    eprintln!("detent: {lead}{tail}");
     eprint!("{report}");
     if !again {
         return 2;

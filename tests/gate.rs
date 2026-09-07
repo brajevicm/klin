@@ -360,6 +360,7 @@ fn hook_blocks_the_first_stop_and_hands_the_failures_back() {
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("a quality gate failed"), "{}", run.out);
     assert!(
         run.says("fix what each names, then stop again"),
         "{}",
@@ -419,6 +420,27 @@ fn hook_blocks_on_a_tool_error_too() {
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
+    assert!(run.says("could not run a quality gate"), "{}", run.out);
+    assert!(!run.says("a quality gate failed"), "{}", run.out);
+    assert!(
+        run.says("fix what each names, then stop again"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
+    let tree = tree(EVERY_GATE);
+    tree.write(
+        "detent/escapes-baseline.json",
+        r#"{ "entries": "not a list" }"#,
+    );
+
+    let run = stop(&tree, A_SECOND_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("could not run a quality gate"), "{}", run.out);
+    assert!(run.says("still, after one round of fixes"), "{}", run.out);
 }
 
 #[test]
