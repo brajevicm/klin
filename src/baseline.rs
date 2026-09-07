@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::{Config, Error, Flags};
+use crate::config::{Config, Error, Flags, Records};
 
 pub type Values = Map<String, Value>;
 
@@ -320,7 +320,7 @@ fn judge(
     comparison
 }
 
-pub struct Check<'a> {
+pub struct Evaluator<'a> {
     pub path: &'a Path,
     pub provenance: &'a Values,
     pub metrics: &'a [&'a str],
@@ -332,7 +332,7 @@ pub struct Check<'a> {
     pub held_out: &'a [String],
 }
 
-impl Check<'_> {
+impl Evaluator<'_> {
     pub fn evaluate(
         &self,
         findings: Vec<Finding>,
@@ -363,8 +363,7 @@ impl Check<'_> {
             self,
             baseline_size,
             ok_line,
-            flags.quiet,
-            flags.strict,
+            flags,
             out,
         ))
     }
@@ -382,23 +381,23 @@ fn still_owed(entries: Vec<Values>, held_out: &[String]) -> Vec<Values> {
 
 fn report(
     comparison: &Comparison,
-    check: &Check,
+    evaluator: &Evaluator,
     baseline_size: usize,
     ok_line: &str,
-    quiet: bool,
-    strict: bool,
+    flags: &Flags,
     out: &mut String,
 ) -> u8 {
+    flags.record(|records| collect(comparison, evaluator, records));
     if comparison.failed() {
-        failures(comparison, check, baseline_size, out);
-        notes(comparison, check, false, out);
+        failures(comparison, evaluator, baseline_size, out);
+        notes(comparison, evaluator, false, out);
         return 1;
     }
-    if !quiet {
+    if !flags.quiet {
         let _ = writeln!(out, "{ok_line}");
     }
-    notes(comparison, check, true, out);
-    if strict && comparison.loose() {
+    notes(comparison, evaluator, true, out);
+    if flags.strict && comparison.loose() {
         let _ = writeln!(
             out,
             "FAIL: the baseline is looser than the code — under --strict it must match exactly. \
@@ -409,14 +408,19 @@ fn report(
     0
 }
 
-fn failures(comparison: &Comparison, check: &Check, baseline_size: usize, out: &mut String) {
+fn failures(
+    comparison: &Comparison,
+    evaluator: &Evaluator,
+    baseline_size: usize,
+    out: &mut String,
+) {
     if !comparison.unmatched_findings.is_empty() {
         let _ = writeln!(
             out,
             "FAIL: {} new {} {}, beyond the {} the baseline holds:",
             comparison.unmatched_findings.len(),
-            check.unit,
-            check.condition,
+            evaluator.unit,
+            evaluator.condition,
             baseline_size
         );
         for finding in &comparison.unmatched_findings {
@@ -425,7 +429,7 @@ fn failures(comparison: &Comparison, check: &Check, baseline_size: usize, out: &
                 "  {}:{}  {}  {}",
                 finding.file,
                 finding.line,
-                (check.format_metrics)(&finding.values),
+                (evaluator.format_metrics)(&finding.values),
                 clip(&finding.text)
             );
         }
@@ -435,7 +439,7 @@ fn failures(comparison: &Comparison, check: &Check, baseline_size: usize, out: &
             out,
             "FAIL: {} baselined {} got worse — the ratchet only tightens:",
             comparison.rose.len(),
-            check.unit
+            evaluator.unit
         );
         for (finding, entry) in &comparison.rose {
             let _ = writeln!(
@@ -443,13 +447,13 @@ fn failures(comparison: &Comparison, check: &Check, baseline_size: usize, out: &
                 "  {}:{}  {}, was {}  {}",
                 finding.file,
                 finding.line,
-                (check.format_metrics)(&finding.values),
-                (check.format_metrics)(entry),
+                (evaluator.format_metrics)(&finding.values),
+                (evaluator.format_metrics)(entry),
                 clip(&finding.text)
             );
         }
     }
-    let _ = writeln!(out, "{}", check.fix_advice);
+    let _ = writeln!(out, "{}", evaluator.fix_advice);
 }
 
 fn text(entry: &Values, key: &str) -> String {
@@ -460,7 +464,7 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(comparison: &Comparison, check: &Check, offer_remedy: bool, out: &mut String) {
+fn notes(comparison: &Comparison, evaluator: &Evaluator, offer_remedy: bool, out: &mut String) {
     if !comparison.unmatched_entries.is_empty() {
         let count = comparison.unmatched_entries.len();
         let plural = if count == 1 { "y" } else { "ies" };
@@ -477,7 +481,7 @@ fn notes(comparison: &Comparison, check: &Check, offer_remedy: bool, out: &mut S
                     format!(
                         "{}  {}  {}",
                         text(entry, "file"),
-                        (check.format_metrics)(entry),
+                        (evaluator.format_metrics)(entry),
                         clip(&text(entry, "text"))
                     )
                 })
@@ -490,7 +494,7 @@ fn notes(comparison: &Comparison, check: &Check, offer_remedy: bool, out: &mut S
             &format!(
                 "NOTE: {} baselined {} improved — the baseline still records the old value:",
                 comparison.fell.len(),
-                check.unit
+                evaluator.unit
             ),
             comparison
                 .fell
@@ -500,8 +504,8 @@ fn notes(comparison: &Comparison, check: &Check, offer_remedy: bool, out: &mut S
                         "{}:{}  {}, baseline says {}  {}",
                         finding.file,
                         finding.line,
-                        (check.format_metrics)(&finding.values),
-                        (check.format_metrics)(entry),
+                        (evaluator.format_metrics)(&finding.values),
+                        (evaluator.format_metrics)(entry),
                         clip(&finding.text)
                     )
                 })
@@ -515,7 +519,7 @@ fn notes(comparison: &Comparison, check: &Check, offer_remedy: bool, out: &mut S
         let _ = writeln!(
             out,
             "Tighten the baseline (this only ever lowers it): {}",
-            check.tighten_command
+            evaluator.tighten_command
         );
     }
 }
@@ -532,4 +536,60 @@ fn listed(out: &mut String, heading: &str, rows: Vec<String>) {
 
 fn clip(text: &str) -> String {
     text.chars().take(70).collect()
+}
+
+fn collect(comparison: &Comparison, evaluator: &Evaluator, records: &mut Records) {
+    let failing = |outcome, finding: &Finding| {
+        let mut out = site(outcome, &finding.file, Some(finding.line), &finding.text);
+        out.insert("values".into(), Value::Object(finding.values.clone()));
+        out.insert("condition".into(), evaluator.condition.into());
+        out.insert("fix_advice".into(), evaluator.fix_advice.into());
+        Value::Object(out)
+    };
+    for finding in &comparison.unmatched_findings {
+        records.findings.push(failing("new", finding));
+    }
+    for (finding, _) in &comparison.rose {
+        records.findings.push(failing("worsened", finding));
+    }
+    for (finding, _) in &comparison.fell {
+        let mut out = site("improved", &finding.file, Some(finding.line), &finding.text);
+        out.insert("values".into(), Value::Object(finding.values.clone()));
+        records.notes.push(Value::Object(out));
+    }
+    for entry in &comparison.unmatched_entries {
+        records.notes.push(Value::Object(unmatched_record(entry)));
+    }
+    if let Some(change) = &comparison.provenance_change {
+        let mut out = Values::new();
+        out.insert("outcome".into(), "provenance".into());
+        out.insert("text".into(), change.clone().into());
+        records.notes.push(Value::Object(out));
+    }
+}
+
+fn site(outcome: &str, file: &str, line: Option<u64>, text: &str) -> Values {
+    let mut out = Values::new();
+    out.insert("outcome".into(), outcome.into());
+    out.insert("file".into(), file.into());
+    if let Some(line) = line {
+        out.insert("line".into(), line.into());
+    }
+    out.insert("text".into(), text.into());
+    out
+}
+
+fn unmatched_record(entry: &Values) -> Values {
+    let mut values = entry.clone();
+    for key in ["file", "text", "line"] {
+        values.remove(key);
+    }
+    let mut out = site(
+        "unmatched",
+        &text(entry, "file"),
+        entry.get("line").and_then(Value::as_u64),
+        &text(entry, "text"),
+    );
+    out.insert("values".into(), Value::Object(values));
+    out
 }

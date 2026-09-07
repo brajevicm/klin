@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -20,11 +21,26 @@ impl Error {
     }
 }
 
+#[derive(Default)]
+pub struct Records {
+    pub findings: Vec<Value>,
+    pub notes: Vec<Value>,
+}
+
 pub struct Flags {
     pub config: Option<PathBuf>,
     pub quiet: bool,
     pub strict: bool,
     pub only: Option<Vec<String>>,
+    pub records: Option<RefCell<Records>>,
+}
+
+impl Flags {
+    pub fn record(&self, add: impl FnOnce(&mut Records)) {
+        if let Some(records) = &self.records {
+            add(&mut records.borrow_mut());
+        }
+    }
 }
 
 pub struct Config {

@@ -1,0 +1,4 @@
+{ "entries": [
+  {"file": "src/lib.rs", "text": "x.unwrap()", "line": 2, "escape": "unwrap", "count": 3},
+  {"file": "src/gone.rs", "text": "y.unwrap()", "line": 9, "escape": "unwrap", "count": 1}
+] }

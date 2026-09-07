@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::config::{Config, Error, Flags};
 
@@ -52,6 +52,7 @@ fn flags(args: &Args) -> Flags {
         quiet: args.quiet,
         strict: false,
         only: None,
+        records: None,
     }
 }
 
@@ -64,12 +65,12 @@ fn evaluate(
 ) -> Result<u8, Error> {
     let mut over = 0;
     for document in documents(flags, named, ceiling, start)? {
-        over += usize::from(judge(&document, flags.quiet, out)?);
+        over += usize::from(judge(&document, flags, out)?);
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
 
-fn judge(document: &Document, quiet: bool, out: &mut String) -> Result<bool, Error> {
+fn judge(document: &Document, flags: &Flags, out: &mut String) -> Result<bool, Error> {
     if !document.path.is_file() {
         return Err(Error(format!("no such file: {}", document.path.display())));
     }
@@ -81,9 +82,15 @@ fn judge(document: &Document, quiet: bool, out: &mut String) -> Result<bool, Err
             "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
         );
         let _ = writeln!(out, "{REMEDY}");
+        flags.record(|records| {
+            let mut over = site("new", name, words, ceiling);
+            over.insert("condition".into(), "over its word ceiling".into());
+            over.insert("fix_advice".into(), REMEDY.into());
+            records.findings.push(Value::Object(over));
+        });
         return Ok(true);
     }
-    if !quiet {
+    if !flags.quiet {
         let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
     }
     let remaining = ceiling - words;
@@ -92,8 +99,24 @@ fn judge(document: &Document, quiet: bool, out: &mut String) -> Result<bool, Err
             out,
             "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
         );
+        flags.record(|records| {
+            records
+                .notes
+                .push(Value::Object(site("near-ceiling", name, words, ceiling)));
+        });
     }
     Ok(false)
+}
+
+fn site(outcome: &str, name: &str, words: u64, ceiling: u64) -> Map<String, Value> {
+    let mut values = Map::new();
+    values.insert("words".into(), words.into());
+    values.insert("ceiling".into(), ceiling.into());
+    let mut out = Map::new();
+    out.insert("outcome".into(), outcome.into());
+    out.insert("file".into(), name.into());
+    out.insert("values".into(), Value::Object(values));
+    out
 }
 
 fn documents(

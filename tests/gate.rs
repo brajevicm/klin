@@ -1,6 +1,7 @@
 mod harness;
 
 use harness::Tree;
+use serde_json::Value;
 
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
@@ -600,6 +601,205 @@ fn the_ladder_leaves_a_baseline_looser_than_the_code_byte_identical() {
     assert_eq!(
         std::fs::read(&stored).ok(),
         Some(A_LOOSE_ENTRY.as_bytes().to_vec()),
+        "{}",
+        run.out
+    );
+}
+
+const A_LOOSE_BASELINE: &str = include_str!("fixtures/a_loose_baseline.json");
+
+fn json(run: &harness::Run) -> Value {
+    match serde_json::from_str(&run.out) {
+        Ok(report) => report,
+        Err(why) => panic!("{why} — the run printed:\n{}", run.out),
+    }
+}
+
+fn field<'a>(record: &'a Value, key: &str) -> &'a str {
+    record.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn list<'a>(report: &'a Value, key: &str) -> &'a [Value] {
+    match report.get(key).and_then(Value::as_array) {
+        Some(records) => records.as_slice(),
+        None => panic!("no {key} array in {report}"),
+    }
+}
+
+fn outcomes(records: &[Value]) -> Vec<(&str, &str)> {
+    records
+        .iter()
+        .map(|record| (field(record, "gate"), field(record, "outcome")))
+        .collect()
+}
+
+#[test]
+fn json_prints_one_object_holding_every_failing_finding() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write("src/lib.rs", AN_ESCAPE);
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = json(&run);
+    assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
+    assert!(
+        field(&report, "summary").contains("2 failed"),
+        "{}",
+        run.out
+    );
+    let findings = list(&report, "findings");
+    assert_eq!(
+        outcomes(findings),
+        [("doc-size", "new"), ("escapes", "new")],
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_json_finding_carries_the_site_the_values_and_the_advice() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/lib.rs", AN_ESCAPE);
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = json(&run);
+    let finding = &list(&report, "findings")[0];
+    assert_eq!(field(finding, "file"), "src/lib.rs", "{}", run.out);
+    assert_eq!(finding.get("line"), Some(&Value::from(2)), "{}", run.out);
+    assert!(field(finding, "text").contains("unwrap"), "{}", run.out);
+    assert_eq!(
+        finding
+            .get("values")
+            .and_then(|values| values.get("escape")),
+        Some(&Value::from("unwrap")),
+        "{}",
+        run.out
+    );
+    assert!(
+        field(finding, "condition").contains("opts out"),
+        "{}",
+        run.out
+    );
+    assert!(
+        field(finding, "fix_advice").contains("escape"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_json_record_names_no_column_and_no_violation() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write("src/lib.rs", AN_ESCAPE);
+    tree.write("detent/escapes-baseline.json", A_LOOSE_BASELINE);
+
+    let run = tree.run(&["gate", "--json", "--strict"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = json(&run);
+    let banned = ["column", "violation", "invariant"];
+    assert!(!list(&report, "findings").is_empty(), "{}", run.out);
+    assert!(!list(&report, "notes").is_empty(), "{}", run.out);
+    for record in list(&report, "findings")
+        .iter()
+        .chain(list(&report, "notes"))
+    {
+        for key in banned {
+            assert_eq!(record.get(key), None, "{key} is in {record}");
+        }
+    }
+}
+
+#[test]
+fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/lib.rs", AN_ESCAPE);
+    tree.write("detent/escapes-baseline.json", A_LOOSE_BASELINE);
+
+    let run = tree.run(&["gate", "--json", "--strict"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = json(&run);
+    assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
+    assert!(list(&report, "findings").is_empty(), "{}", run.out);
+    assert_eq!(
+        outcomes(list(&report, "notes")),
+        [("escapes", "improved"), ("escapes", "unmatched")],
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_gate_that_could_not_run_is_a_json_finding_too() {
+    let tree = tree(EVERY_GATE);
+    tree.write(
+        "detent/escapes-baseline.json",
+        r#"{ "entries": "not a list" }"#,
+    );
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = json(&run);
+    assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
+    let finding = &list(&report, "findings")[0];
+    assert_eq!(field(finding, "gate"), "escapes", "{}", run.out);
+    assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
+    assert!(
+        field(finding, "text").contains("another shape"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_passing_json_run_holds_no_findings() {
+    let tree = tree(EVERY_GATE);
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = json(&run);
+    assert_eq!(field(&report, "status"), "PASS", "{}", run.out);
+    assert!(list(&report, "findings").is_empty(), "{}", run.out);
+    assert!(list(&report, "notes").is_empty(), "{}", run.out);
+    assert!(!run.says("ok    escapes"), "{}", run.out);
+}
+
+#[test]
+fn a_config_the_run_cannot_read_is_a_json_object_too() {
+    let tree = tree(EVERY_GATE);
+
+    let run = tree.run(&["gate", "--json", "--config", "absent.json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = json(&run);
+    assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
+    let finding = &list(&report, "findings")[0];
+    assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
+    assert!(
+        field(finding, "text").contains("could not be read"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.rs", "fn ( { ) unbalanced");
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = json(&run);
+    assert_eq!(
+        outcomes(list(&report, "findings")),
+        [("complexity", "unparsed")],
+        "{}",
+        run.out
+    );
+    assert_eq!(
+        field(&list(&report, "findings")[0], "file"),
+        "src/broken.rs",
         "{}",
         run.out
     );

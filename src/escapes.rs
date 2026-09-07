@@ -6,7 +6,7 @@ use regex::Regex;
 use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
-use crate::baseline::{self, Check, Finding, Values};
+use crate::baseline::{self, Evaluator, Finding, Values};
 use crate::config::{Config, Error, Flags};
 use crate::files;
 
@@ -197,7 +197,7 @@ fn evaluate(
         0 => String::new(),
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
-    check(&spec).evaluate(
+    evaluator(&spec).evaluate(
         found,
         flags,
         write_baseline,
@@ -213,6 +213,7 @@ fn flags(args: &Args) -> Flags {
         quiet: args.quiet,
         strict: args.strict,
         only: args.only.clone(),
+        records: None,
     }
 }
 
@@ -238,8 +239,8 @@ fn spec(config: &Config) -> Result<Spec, Error> {
     })
 }
 
-fn check(spec: &Spec) -> Check<'_> {
-    Check {
+fn evaluator(spec: &Spec) -> Evaluator<'_> {
+    Evaluator {
         path: &spec.baseline,
         provenance: &spec.measured,
         metrics: &["count"],

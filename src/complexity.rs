@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
-use crate::baseline::{self, Check, Finding, Values};
+use crate::baseline::{self, Evaluator, Finding, Values};
 use crate::config::{Config, Error, Flags};
 use crate::files;
 
@@ -391,7 +391,7 @@ fn evaluate(
     let judged = scoped(functions.iter().map(|function| &function.file), flags);
     let count = scoped(over.iter().map(|finding| &finding.file), flags);
     let held_out: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
-    let code = check(&spec, &held_out).evaluate(
+    let code = evaluator(&spec, &held_out).evaluate(
         over,
         flags,
         write_baseline,
@@ -399,7 +399,7 @@ fn evaluate(
         &written,
         out,
     )?;
-    Ok(unread(&unparsed, flags.only.as_deref(), code, out))
+    Ok(unread(&unparsed, flags, code, out))
 }
 
 fn flags(args: &Args) -> Flags {
@@ -408,6 +408,7 @@ fn flags(args: &Args) -> Flags {
         quiet: args.quiet,
         strict: args.strict,
         only: args.only.clone(),
+        records: None,
     }
 }
 
@@ -430,7 +431,8 @@ fn refuse_to_write(write_baseline: bool, unparsed: &[Unparsed]) -> Option<Error>
     )))
 }
 
-fn unread(unparsed: &[Unparsed], only: Option<&[String]>, code: u8, out: &mut String) -> u8 {
+fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u8 {
+    let only = flags.only.as_deref();
     let named: Vec<&Unparsed> = unparsed
         .iter()
         .filter(|file| only.is_none_or(|only| only.contains(&file.file)))
@@ -444,11 +446,15 @@ fn unread(unparsed: &[Unparsed], only: Option<&[String]>, code: u8, out: &mut St
         named.len()
     );
     for file in named {
-        let _ = writeln!(
-            out,
-            "  {}  the {} grammar rejected it",
-            file.file, file.language
-        );
+        let rejected = format!("the {} grammar rejected it", file.language);
+        let _ = writeln!(out, "  {}  {rejected}", file.file);
+        flags.record(|records| {
+            let mut out = Values::new();
+            out.insert("outcome".into(), "unparsed".into());
+            out.insert("file".into(), file.file.clone().into());
+            out.insert("text".into(), rejected.clone().into());
+            records.findings.push(Value::Object(out));
+        });
     }
     let _ = writeln!(
         out,
@@ -458,8 +464,8 @@ fn unread(unparsed: &[Unparsed], only: Option<&[String]>, code: u8, out: &mut St
     2
 }
 
-fn check<'a>(spec: &'a Spec, held_out: &'a [String]) -> Check<'a> {
-    Check {
+fn evaluator<'a>(spec: &'a Spec, held_out: &'a [String]) -> Evaluator<'a> {
+    Evaluator {
         path: &spec.baseline,
         provenance: &spec.measured,
         metrics: &["cc", "lines"],

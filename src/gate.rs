@@ -1,10 +1,11 @@
+use std::cell::RefCell;
 use std::fmt::Write;
 use std::io::{IsTerminal, Read};
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
-use crate::config::{Config, Error, Flags};
+use crate::config::{Config, Error, Flags, Records};
 use crate::{changed, complexity, doc_size, escapes};
 
 const BUILD_BLOCKED: &str = ".detent-build-blocked";
@@ -57,10 +58,13 @@ pub struct Args {
     /// Agent Stop hook mode: the failures to stderr, exit 2 to block the first stop
     #[arg(long)]
     hook: bool,
+    /// Print one JSON object for the run instead of the human report
+    #[arg(long)]
+    json: bool,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let outcome = judge(args, start, out);
+    let outcome = refused(args, judge(args, start, out), out);
     if !args.hook {
         return outcome.map(|(failed, errored)| code(failed, errored));
     }
@@ -97,21 +101,64 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
         return Ok((0, 0));
     }
     let scope = scope(args, &config, out)?;
-    let (failed, errored) = each(
-        &wanted,
-        &config.file,
-        args.strict,
-        start,
-        scope.as_deref(),
-        out,
-    );
+    let (failed, errored, records) =
+        each(args, &wanted, &config.file, start, scope.as_deref(), out);
+    finish(args, wanted.len(), (failed, errored), records, out);
+    Ok((failed, errored))
+}
+
+fn finish(args: &Args, gates: usize, tally: (usize, usize), records: Records, out: &mut String) {
+    let (failed, errored) = tally;
+    let line = format!("detent: {gates} gate(s), {}", summary(failed, errored));
+    if !args.json {
+        let _ = writeln!(out, "{line}");
+        return;
+    }
+    out.clear();
+    let _ = writeln!(out, "{}", as_json(code(failed, errored), &line, records));
+}
+
+fn as_json(code: u8, tally: &str, records: Records) -> String {
+    let status = match code {
+        0 => "PASS",
+        1 => "FAIL",
+        _ => "ERROR",
+    };
+    let mut out = Map::new();
+    out.insert("status".into(), status.into());
+    out.insert("summary".into(), tally.into());
+    out.insert("findings".into(), Value::Array(records.findings));
+    out.insert("notes".into(), Value::Array(records.notes));
+    Value::Object(out).to_string()
+}
+
+fn refused(
+    args: &Args,
+    outcome: Result<(usize, usize), Error>,
+    out: &mut String,
+) -> Result<(usize, usize), Error> {
+    let Err(problem) = outcome else {
+        return outcome;
+    };
+    if !args.json {
+        return Err(problem);
+    }
+    let mut records = Records::default();
+    records.findings.push(problem_record(&problem.to_string()));
+    out.clear();
     let _ = writeln!(
         out,
-        "detent: {} gate(s), {}",
-        wanted.len(),
-        summary(failed, errored)
+        "{}",
+        as_json(2, &format!("detent: {problem}"), records)
     );
-    Ok((failed, errored))
+    Ok((0, 1))
+}
+
+fn problem_record(text: &str) -> Value {
+    let mut out = Map::new();
+    out.insert("outcome".into(), "error".into());
+    out.insert("text".into(), text.trim_end().into());
+    Value::Object(out)
 }
 
 fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
@@ -173,12 +220,14 @@ fn scope(args: &Args, config: &Config, out: &mut String) -> Result<Option<Vec<St
         return Ok(None);
     }
     let files = changed::files(config.root())?;
-    let _ = writeln!(
-        out,
-        "  changed: {} file(s) against the base — the scoped gates judge those; \
-         CI judges everything",
-        files.len()
-    );
+    if !args.json {
+        let _ = writeln!(
+            out,
+            "  changed: {} file(s) against the base — the scoped gates judge those; \
+             CI judges everything",
+            files.len()
+        );
+    }
     Ok(Some(files))
 }
 
@@ -208,16 +257,17 @@ fn configured(config: &Config) -> Result<Vec<&'static Gate>, Error> {
 }
 
 fn each(
+    args: &Args,
     wanted: &[&'static Gate],
     config: &Path,
-    strict: bool,
     start: &Path,
     scope: Option<&[String]>,
     out: &mut String,
-) -> (usize, usize) {
+) -> (usize, usize, Records) {
     let (mut failed, mut errored) = (0, 0);
+    let mut totals = Records::default();
     for gate in wanted {
-        let (code, text) = one(gate, config, strict, start, scope);
+        let (code, text, records) = one(args, gate, config, start, scope);
         match code {
             0 => (),
             1 => failed += 1,
@@ -227,8 +277,22 @@ fn each(
         for line in text.lines() {
             let _ = writeln!(out, "        {line}");
         }
+        gather(&mut totals, records, gate.name, code, &text);
     }
-    (failed, errored)
+    (failed, errored, totals)
+}
+
+fn gather(totals: &mut Records, mut records: Records, name: &str, code: u8, text: &str) {
+    if code == 2 && records.findings.is_empty() {
+        records.findings.push(problem_record(text));
+    }
+    for record in records.findings.iter_mut().chain(records.notes.iter_mut()) {
+        if let Some(fields) = record.as_object_mut() {
+            fields.insert("gate".into(), name.into());
+        }
+    }
+    totals.findings.append(&mut records.findings);
+    totals.notes.append(&mut records.notes);
 }
 
 fn code(failed: usize, errored: usize) -> u8 {
@@ -267,25 +331,28 @@ fn select(
 }
 
 fn one(
+    args: &Args,
     gate: &Gate,
     config: &Path,
-    strict: bool,
     start: &Path,
     scope: Option<&[String]>,
-) -> (u8, String) {
+) -> (u8, String, Records) {
     let mut text = String::new();
     let flags = Flags {
         config: Some(config.to_path_buf()),
         quiet: true,
-        strict: strict && gate.holds_baseline,
+        strict: args.strict && gate.holds_baseline,
         only: scope
             .filter(|_| gate.holds_baseline)
             .map(<[String]>::to_vec),
+        records: args.json.then(|| RefCell::new(Records::default())),
     };
-    match (gate.run)(&flags, start, &mut text) {
+    let (code, text) = match (gate.run)(&flags, start, &mut text) {
         Ok(code) => (code, text),
         Err(problem) => (2, text + &format!("FAIL: {problem}")),
-    }
+    };
+    let records = flags.records.map(RefCell::into_inner).unwrap_or_default();
+    (code, text, records)
 }
 
 fn status(code: u8) -> &'static str {
