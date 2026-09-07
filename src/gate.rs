@@ -38,19 +38,19 @@ pub struct Args {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let outcome = judge(args, start, out);
     if !args.hook {
-        return outcome;
+        return outcome.map(|(failed, errored)| code(failed, errored));
     }
-    let code = match outcome {
-        Ok(code) => code,
+    let (failed, errored) = match outcome {
+        Ok(tally) => tally,
         Err(problem) => {
             let _ = writeln!(out, "FAIL: {problem}");
-            2
+            (0, 1)
         }
     };
-    Ok(hook(code, &std::mem::take(out)))
+    Ok(hook(failed, errored, &std::mem::take(out)))
 }
 
-fn judge(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let configured = configured(&config)?;
     let wanted = select(&args.gates, &configured, &config)?;
@@ -69,7 +69,7 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         for name in &wanted {
             let _ = writeln!(out, "{name}");
         }
-        return Ok(0);
+        return Ok((0, 0));
     }
     let scope = scope(args, &config, out)?;
     let (failed, errored) = each(
@@ -86,11 +86,11 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         wanted.len(),
         summary(failed, errored)
     );
-    Ok(code(failed, errored))
+    Ok((failed, errored))
 }
 
-fn hook(code: u8, report: &str) -> u8 {
-    if code == 0 {
+fn hook(failed: usize, errored: usize, report: &str) -> u8 {
+    if failed == 0 && errored == 0 {
         return 0;
     }
     let Some(event) = event() else {
@@ -105,17 +105,21 @@ fn hook(code: u8, report: &str) -> u8 {
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
     };
-    let lead = match code {
-        1 => "a quality gate failed",
-        _ => "could not run a quality gate",
-    };
-    eprintln!("detent: {lead}{tail}");
+    eprintln!("detent: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
         return 2;
     }
     eprintln!("detent: not blocking a second time; the failure stands and CI will refuse it.");
     0
+}
+
+fn lead(failed: usize, errored: usize) -> &'static str {
+    match (failed > 0, errored > 0) {
+        (true, true) => "a quality gate failed, and another could not run",
+        (true, false) => "a quality gate failed",
+        _ => "could not run a quality gate",
+    }
 }
 
 fn event() -> Option<Value> {

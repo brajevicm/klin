@@ -430,6 +430,31 @@ fn hook_blocks_on_a_tool_error_too() {
 }
 
 #[test]
+fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write(
+        "detent/escapes-baseline.json",
+        r#"{ "entries": "not a list" }"#,
+    );
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("a quality gate failed, and another could not run"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("ERR   escapes"), "{}", run.out);
+    assert!(
+        run.says("3 gate(s), 1 failed, 1 tool error."),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
     let tree = tree(EVERY_GATE);
     tree.write(
