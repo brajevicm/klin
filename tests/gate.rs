@@ -564,3 +564,43 @@ fn a_stamp_an_abandoned_turn_left_changes_nothing_at_the_next_first_stop() {
     );
     assert!(!tree.path(BUILD_BLOCKED).exists());
 }
+
+const A_LOOSE_ENTRY: &str = include_str!("fixtures/a_loose_entry.json");
+
+#[test]
+fn the_ladder_writes_no_baseline_where_the_config_names_one() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/lib.rs", AN_ESCAPE);
+    tree.words("README.md", 30);
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        !tree.path("detent/escapes-baseline.json").exists(),
+        "{}",
+        run.out
+    );
+    assert!(
+        !tree.path("detent/complexity-baseline.json").exists(),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_ladder_leaves_a_baseline_looser_than_the_code_byte_identical() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/lib.rs", AN_ESCAPE);
+    let stored = tree.write("detent/escapes-baseline.json", A_LOOSE_ENTRY);
+    tree.words("README.md", 30);
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("looser than the code"), "{}", run.out);
+    assert_eq!(
+        std::fs::read(&stored).ok(),
+        Some(A_LOOSE_ENTRY.as_bytes().to_vec()),
+        "{}",
+        run.out
+    );
+}
