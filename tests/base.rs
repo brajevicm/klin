@@ -1,5 +1,8 @@
 mod harness;
 
+#[path = "fixtures/escape_text.rs"]
+mod text;
+
 use harness::Tree;
 use serde_json::Value;
 
@@ -150,7 +153,7 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
 fn in_a_subdirectory() -> Tree {
     let tree = Tree::bare();
     tree.write("proj/klin.json", CONFIG);
-    tree.write("proj/src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
+    tree.write("proj/src/lib.rs", text::WRAPPED);
     tree.write("README.md", "the tree above the project\n");
     tree.base();
     tree
@@ -173,10 +176,7 @@ fn a_config_below_the_repository_root_holds_the_debt_the_base_holds() {
 #[test]
 fn a_config_below_the_repository_root_scopes_a_changed_run_the_same_way() {
     let tree = in_a_subdirectory();
-    tree.write(
-        "proj/src/lib.rs",
-        "fn f() {\n    x.unwrap();\n    // and a note\n}\n",
-    );
+    tree.write("proj/src/lib.rs", text::WRAPPED_WITH_A_NOTE);
 
     let scoped = in_the_project(&tree, &["gate", "--changed"]);
     assert_eq!(scoped.code, 0, "{}", scoped.out);

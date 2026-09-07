@@ -11,6 +11,7 @@ pub const DOUBLED: &str = "a.unwrap().unwrap();\n";
 pub const DOUBLED_PADDED: &str = "a.unwrap().unwrap();\nfn pad() {}\n";
 pub const DOUBLED_TWICE: &str = "a.unwrap().unwrap();\nfn pad() {}\na.unwrap().unwrap();\n";
 pub const WRAPPED: &str = "fn f() {\n    a.unwrap();\n}\n";
+pub const WRAPPED_WITH_A_NOTE: &str = "fn f() {\n    a.unwrap();\n    // a note\n}\n";
 pub const TWO_KINDS: &str = "a.unwrap(); b.expect(\"x\");\n";
 pub const TWO_FILES: &str = "a.unwrap();\nb.unwrap();\n";
 pub const OTHER: &str = "b.unwrap();\n";

@@ -28,11 +28,7 @@ pub struct Args {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let file = match &args.config {
-        Some(named) if named.is_absolute() => named.clone(),
-        Some(named) => start.join(named),
-        None => start.join(FILENAME),
-    };
+    let file = wanted(args, start);
     let held = read(&file)?;
     if held.is_some() && !args.add {
         let _ = writeln!(
@@ -46,16 +42,27 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let root = file.parent().unwrap_or(start);
     let (config, written) = surveyed(root, held.unwrap_or_default())?;
     write(&file, &config)?;
-    let _ = writeln!(
-        out,
+    let _ = writeln!(out, "{}", said(&file, &written));
+    Ok(0)
+}
+
+fn wanted(args: &Args, start: &Path) -> PathBuf {
+    match &args.config {
+        Some(named) if named.is_absolute() => named.clone(),
+        Some(named) => start.join(named),
+        None => start.join(FILENAME),
+    }
+}
+
+fn said(file: &Path, written: &[String]) -> String {
+    format!(
         "{}: wrote {}. Read it before you commit it: klin gates what it names, and nothing else.",
         file.display(),
         match written.is_empty() {
             true => "nothing this tree could not already say".to_string(),
             false => written.join(", "),
         }
-    );
-    Ok(0)
+    )
 }
 
 fn read(file: &Path) -> Result<Option<Map<String, Value>>, Error> {
