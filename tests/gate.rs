@@ -835,3 +835,202 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
     assert_eq!(deleted.code, 2, "{}", deleted.out);
     assert!(deleted.says("no gate named escapes"), "{}", deleted.out);
 }
+
+const TWO_COMPLEXITY_GATES: &str = r#"{
+  "project": "t",
+  "gates": [
+    {"name": "complexity-src", "check": "complexity",
+     "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
+              "baseline": "detent/src-baseline.json"}},
+    {"name": "complexity-tests", "check": "complexity",
+     "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60},
+              "baseline": "detent/tests-baseline.json"}}
+  ]
+}"#;
+
+const AN_EXCLUDED_GATE: &str = r#"{
+  "project": "t",
+  "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "escapes": false,
+  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
+                  "baseline": "detent/complexity-baseline.json" }
+}"#;
+
+const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
+  "project": "t",
+  "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "complexity": false
+}"#;
+
+#[test]
+fn one_check_backs_two_gates_over_different_sources() {
+    let tree = tree(TWO_COMPLEXITY_GATES);
+    tree.write("tests/big.rs", &tangled("big"));
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("ok    complexity-src"), "{}", run.out);
+    assert!(run.says("FAIL  complexity-tests"), "{}", run.out);
+    assert!(run.says("2 gate(s), 1 failed."), "{}", run.out);
+}
+
+#[test]
+fn a_named_gate_runs_alone_when_the_command_line_names_it() {
+    let tree = tree(TWO_COMPLEXITY_GATES);
+    tree.write("tests/big.rs", &tangled("big"));
+
+    let run = tree.run(&["gate", "--gate", "complexity-src"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ok    complexity-src"), "{}", run.out);
+    assert!(!run.says("complexity-tests"), "{}", run.out);
+    assert!(run.says("1 gate(s), all passed."), "{}", run.out);
+}
+
+#[test]
+fn a_gates_entry_naming_no_check_is_a_tool_error() {
+    let tree = tree(
+        r#"{ "project": "t",
+              "gates": [{"name": "n", "check": "spelling", "with": {}}] }"#,
+    );
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no check called \"spelling\""), "{}", run.out);
+    assert!(run.says("complexity"), "{}", run.out);
+}
+
+#[test]
+fn two_gates_of_one_name_are_a_tool_error() {
+    let tree = tree(
+        r#"{ "project": "t",
+              "doc_size": [{"file": "README.md", "ceiling": 10}],
+              "gates": [{"name": "doc-size", "check": "doc-size", "with": []}] }"#,
+    );
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("two gates are named doc-size"), "{}", run.out);
+}
+
+#[test]
+fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
+    let tree = tree(AN_EXCLUDED_GATE);
+    tree.write("src/risky.rs", AN_ESCAPE);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("escapes"), "{}", run.out);
+    assert!(
+        run.says("2 gate(s), 1 excluded, all passed."),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn list_names_the_excluded_gates() {
+    let tree = tree(AN_EXCLUDED_GATE);
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        run.out, "doc-size\ncomplexity\nescapes — excluded\n",
+        "{:?}",
+        run.out
+    );
+}
+
+#[test]
+fn list_names_an_available_gate_the_config_does_not_mention() {
+    let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("escapes — available, not configured"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_gate_entry_set_off_is_excluded_too() {
+    let tree = tree(
+        r#"{ "project": "t",
+              "doc_size": [{"file": "README.md", "ceiling": 10}],
+              "gates": [{"name": "complexity-tests", "check": "complexity", "off": true}] }"#,
+    );
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("complexity-tests — excluded"), "{}", run.out);
+}
+
+#[test]
+fn naming_an_excluded_gate_is_a_tool_error() {
+    let tree = tree(AN_EXCLUDED_GATE);
+
+    let run = tree.run(&["gate", "--gate", "escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("named escapes is excluded"), "{}", run.out);
+}
+
+#[test]
+fn strict_refuses_a_gate_the_config_neither_configures_nor_excludes() {
+    let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let loose = tree.run(&["gate"]);
+    assert_eq!(loose.code, 0, "{}", loose.out);
+
+    let strict = tree.run(&["gate", "--strict"]);
+    assert_eq!(strict.code, 2, "{}", strict.out);
+    assert!(
+        strict.says("leaves these gates unaccounted for: escapes"),
+        "{}",
+        strict.out
+    );
+    assert!(strict.says("configure each one"), "{}", strict.out);
+    assert!(strict.says("set its section to false"), "{}", strict.out);
+}
+
+#[test]
+fn strict_passes_once_the_unaccounted_gate_is_set_to_false() {
+    let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
+    tree.write(
+        "quality.json",
+        r#"{ "project": "t",
+              "doc_size": [{"file": "README.md", "ceiling": 10}],
+              "complexity": false,
+              "escapes": false }"#,
+    );
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 gate(s), 2 excluded, all passed."),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn list_names_the_exclusions_when_every_gate_is_excluded() {
+    let tree =
+        tree(r#"{ "project": "t", "doc_size": false, "escapes": false, "complexity": false }"#);
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        run.out, "doc-size — excluded\nescapes — excluded\ncomplexity — excluded\n",
+        "{:?}",
+        run.out
+    );
+
+    let judged = tree.run(&["gate"]);
+    assert_eq!(judged.code, 2, "{}", judged.out);
+    assert!(
+        judged.says("excludes every gate it names: doc-size, escapes, complexity"),
+        "{}",
+        judged.out
+    );
+}

@@ -33,6 +33,7 @@ pub struct Flags {
     pub strict: bool,
     pub only: Option<Vec<String>>,
     pub records: Option<RefCell<Records>>,
+    pub with: Option<(String, Value)>,
 }
 
 impl Flags {
@@ -65,6 +66,16 @@ impl Config {
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
         Ok(Config { file, root, data })
+    }
+
+    pub fn open(flags: &Flags, start: &Path) -> Result<Config, Error> {
+        let mut config = Config::load(flags.config.as_deref(), start)?;
+        if let Some((section, values)) = &flags.with
+            && let Some(data) = config.data.as_object_mut()
+        {
+            data.insert(section.clone(), values.clone());
+        }
+        Ok(config)
     }
 
     pub fn root(&self) -> &Path {

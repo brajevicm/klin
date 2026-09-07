@@ -53,6 +53,7 @@ fn flags(args: &Args) -> Flags {
         strict: false,
         only: None,
         records: None,
+        with: None,
     }
 }
 
@@ -132,7 +133,7 @@ fn documents(
             name: named.display().to_string(),
         }]);
     }
-    let config = Config::load(flags.config.as_deref(), start)?;
+    let config = Config::open(flags, start)?;
     let listed = listed_documents(&config)?;
     let Some(named) = named else {
         return Ok(listed);

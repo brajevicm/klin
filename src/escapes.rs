@@ -188,7 +188,7 @@ fn evaluate(
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let config = Config::load(flags.config.as_deref(), start)?;
+    let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
     let accepted = format!("baseline written: {} escape site(s) accepted", found.len());
@@ -214,6 +214,7 @@ fn flags(args: &Args) -> Flags {
         strict: args.strict,
         only: args.only.clone(),
         records: None,
+        with: None,
     }
 }
 

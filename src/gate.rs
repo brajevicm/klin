@@ -9,34 +9,59 @@ use crate::config::{Config, Error, Flags, Records};
 use crate::{changed, complexity, doc_size, escapes};
 
 const BUILD_BLOCKED: &str = ".detent-build-blocked";
+const GATES: &str = "gates";
 
-struct Gate {
+struct Check {
     name: &'static str,
     section: &'static str,
     run: fn(&Flags, &Path, &mut String) -> Result<u8, Error>,
-    holds_baseline: bool,
+    compares_to_base: bool,
+    takes_scope: bool,
 }
 
-const GATES: &[Gate] = &[
-    Gate {
+const CHECKS: &[Check] = &[
+    Check {
         name: "doc-size",
         section: "doc_size",
         run: doc_size::gate,
-        holds_baseline: false,
+        compares_to_base: false,
+        takes_scope: false,
     },
-    Gate {
+    Check {
         name: "escapes",
         section: "escapes",
         run: escapes::gate,
-        holds_baseline: true,
+        compares_to_base: true,
+        takes_scope: true,
     },
-    Gate {
+    Check {
         name: "complexity",
         section: "complexity",
         run: complexity::gate,
-        holds_baseline: true,
+        compares_to_base: true,
+        takes_scope: true,
     },
 ];
+
+struct Gate {
+    name: String,
+    check: &'static Check,
+    with: Option<Value>,
+}
+
+#[derive(Default)]
+struct Plan {
+    gates: Vec<Gate>,
+    excluded: Vec<String>,
+    unaccounted: Vec<&'static str>,
+}
+
+struct Entry {
+    name: String,
+    check: String,
+    with: Option<Value>,
+    off: bool,
+}
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -49,7 +74,7 @@ pub struct Args {
     /// Run only this gate (repeatable)
     #[arg(long = "gate", value_name = "NAME")]
     gates: Vec<String>,
-    /// Print the configured gates and exit
+    /// Print the gates this config runs, excludes and leaves unaccounted, then exit
     #[arg(long)]
     list: bool,
     /// Judge only the files changed against the base — the fast loop; CI runs the full pass
@@ -85,31 +110,68 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 
 fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), Error> {
     let config = Config::load(args.config.as_deref(), start)?;
-    let configured = configured(&config)?;
-    let wanted = select(&args.gates, &configured, &config)?;
-    if wanted.is_empty() {
-        return Err(Error(format!(
-            "{} configures no gate — name at least one of: {}",
-            config.file.display(),
-            names(GATES.iter())
-        )));
-    }
+    let plan = plan(&config)?;
     if args.list {
-        for gate in &wanted {
-            let _ = writeln!(out, "{}", gate.name);
-        }
-        return Ok((0, 0));
+        return listed(&config, &plan, out);
     }
+    let wanted = select(&args.gates, &plan, &config)?;
+    accounted(args, &plan, &config)?;
     let scope = scope(args, &config, out)?;
     let (failed, errored, records) =
         each(args, &wanted, &config.file, start, scope.as_deref(), out);
-    finish(args, wanted.len(), (failed, errored), records, out);
+    finish(args, &plan, wanted.len(), (failed, errored), records, out);
     Ok((failed, errored))
 }
 
-fn finish(args: &Args, gates: usize, tally: (usize, usize), records: Records, out: &mut String) {
+fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<(usize, usize), Error> {
+    if plan.gates.is_empty() && plan.excluded.is_empty() {
+        return Err(no_gate(config, plan));
+    }
+    list(plan, out);
+    Ok((0, 0))
+}
+
+fn list(plan: &Plan, out: &mut String) {
+    for gate in &plan.gates {
+        let _ = writeln!(out, "{}", gate.name);
+    }
+    for name in &plan.excluded {
+        let _ = writeln!(out, "{name} — excluded");
+    }
+    for name in &plan.unaccounted {
+        let _ = writeln!(out, "{name} — available, not configured");
+    }
+}
+
+fn accounted(args: &Args, plan: &Plan, config: &Config) -> Result<(), Error> {
+    if !args.strict || plan.unaccounted.is_empty() {
+        return Ok(());
+    }
+    Err(Error(format!(
+        "{} leaves these gates unaccounted for: {} — under --strict every gate detent offers \
+         takes a decision, so configure each one, or set its section to false to exclude it",
+        config.file.display(),
+        plan.unaccounted.join(", ")
+    )))
+}
+
+fn finish(
+    args: &Args,
+    plan: &Plan,
+    gates: usize,
+    tally: (usize, usize),
+    records: Records,
+    out: &mut String,
+) {
     let (failed, errored) = tally;
-    let line = format!("detent: {gates} gate(s), {}", summary(failed, errored));
+    let excluded = match plan.excluded.len() {
+        0 => String::new(),
+        count => format!("{count} excluded, "),
+    };
+    let line = format!(
+        "detent: {gates} gate(s), {excluded}{}",
+        summary(failed, errored)
+    );
     if !args.json {
         let _ = writeln!(out, "{line}");
         return;
@@ -231,34 +293,162 @@ fn scope(args: &Args, config: &Config, out: &mut String) -> Result<Option<Vec<St
     Ok(Some(files))
 }
 
-fn names<'a>(gates: impl Iterator<Item = &'a Gate>) -> String {
-    gates
-        .map(|gate| gate.name)
-        .collect::<Vec<&str>>()
-        .join(", ")
+fn names<'a>(named: impl Iterator<Item = &'a str>) -> String {
+    named.collect::<Vec<&str>>().join(", ")
 }
 
-fn configured(config: &Config) -> Result<Vec<&'static Gate>, Error> {
-    if let Some(gate) = GATES
-        .iter()
-        .find(|gate| gate.name != gate.section && config.section(gate.name).is_ok())
-    {
-        return Err(Error(format!(
-            "{}: \"{}\" is what the command is called — the section it reads is \"{}\"",
+fn every_check() -> String {
+    names(CHECKS.iter().map(|check| check.name))
+}
+
+fn no_gate(config: &Config, plan: &Plan) -> Error {
+    if !plan.excluded.is_empty() {
+        return Error(format!(
+            "{} excludes every gate it names: {} — a run that measures nothing cannot pass, \
+             so lift one exclusion",
             config.file.display(),
-            gate.name,
-            gate.section
+            names(plan.excluded.iter().map(String::as_str))
+        ));
+    }
+    Error(format!(
+        "{} configures no gate — name at least one of: {}",
+        config.file.display(),
+        every_check()
+    ))
+}
+
+fn plan(config: &Config) -> Result<Plan, Error> {
+    named_after_a_command(config)?;
+    let entries = entries(config)?;
+    let mut plan = Plan::default();
+    for check in CHECKS {
+        add(config, check, &entries, &mut plan);
+    }
+    distinct(config, &plan)?;
+    Ok(plan)
+}
+
+fn named_after_a_command(config: &Config) -> Result<(), Error> {
+    let named = CHECKS
+        .iter()
+        .find(|check| check.name != check.section && config.section(check.name).is_ok());
+    let Some(check) = named else {
+        return Ok(());
+    };
+    Err(Error(format!(
+        "{}: \"{}\" is what the command is called — the section it reads is \"{}\"",
+        config.file.display(),
+        check.name,
+        check.section
+    )))
+}
+
+fn add(config: &Config, check: &'static Check, entries: &[Entry], plan: &mut Plan) {
+    let mine: Vec<&Entry> = entries
+        .iter()
+        .filter(|entry| entry.check == check.name)
+        .collect();
+    let section = config.section(check.section).ok();
+    if section.is_none() && mine.is_empty() {
+        plan.unaccounted.push(check.name);
+    }
+    from_section(check, section, plan);
+    for entry in mine {
+        from_entry(check, entry, plan);
+    }
+}
+
+fn from_section(check: &'static Check, section: Option<&Value>, plan: &mut Plan) {
+    match section {
+        Some(Value::Bool(false)) => plan.excluded.push(check.name.to_string()),
+        Some(_) => plan.gates.push(Gate {
+            name: check.name.to_string(),
+            check,
+            with: None,
+        }),
+        None => (),
+    }
+}
+
+fn from_entry(check: &'static Check, entry: &Entry, plan: &mut Plan) {
+    if entry.off {
+        plan.excluded.push(entry.name.clone());
+        return;
+    }
+    plan.gates.push(Gate {
+        name: entry.name.clone(),
+        check,
+        with: entry.with.clone(),
+    });
+}
+
+fn distinct(config: &Config, plan: &Plan) -> Result<(), Error> {
+    let mut seen: Vec<&str> = Vec::new();
+    let named = plan
+        .gates
+        .iter()
+        .map(|gate| gate.name.as_str())
+        .chain(plan.excluded.iter().map(String::as_str));
+    for name in named {
+        if seen.contains(&name) {
+            return Err(Error(format!(
+                "{}: two gates are named {name} — a name selects one gate, so each must differ",
+                config.file.display()
+            )));
+        }
+        seen.push(name);
+    }
+    Ok(())
+}
+
+fn entries(config: &Config) -> Result<Vec<Entry>, Error> {
+    let Ok(named) = config.section(GATES) else {
+        return Ok(Vec::new());
+    };
+    let shape = || {
+        Error(format!(
+            "{}: \"{GATES}\" is a list of {{\"name\", \"check\", \"with\"}} entries",
+            config.file.display()
+        ))
+    };
+    let mut out = Vec::new();
+    for item in named.as_array().ok_or_else(shape)? {
+        out.push(entry(config, item.as_object().ok_or_else(shape)?)?);
+    }
+    Ok(out)
+}
+
+fn entry(config: &Config, item: &Map<String, Value>) -> Result<Entry, Error> {
+    let text = |key: &str| {
+        item.get(key)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .ok_or_else(|| config.missing(GATES, key))
+    };
+    let entry = Entry {
+        name: text("name")?,
+        check: text("check")?,
+        with: item.get("with").cloned(),
+        off: item.get("off").and_then(Value::as_bool).unwrap_or(false),
+    };
+    if !CHECKS.iter().any(|check| check.name == entry.check) {
+        return Err(Error(format!(
+            "{}: the gate {} names no check called \"{}\" — one of: {}",
+            config.file.display(),
+            entry.name,
+            entry.check,
+            every_check()
         )));
     }
-    Ok(GATES
-        .iter()
-        .filter(|gate| config.section(gate.section).is_ok())
-        .collect())
+    if entry.with.is_none() && !entry.off {
+        return Err(config.missing(GATES, "with"));
+    }
+    Ok(entry)
 }
 
 fn each(
     args: &Args,
-    wanted: &[&'static Gate],
+    wanted: &[&Gate],
     config: &Path,
     start: &Path,
     scope: Option<&[String]>,
@@ -277,7 +467,7 @@ fn each(
         for line in text.lines() {
             let _ = writeln!(out, "        {line}");
         }
-        gather(&mut totals, records, gate.name, code, &text);
+        gather(&mut totals, records, &gate.name, code, &text);
     }
     (failed, errored, totals)
 }
@@ -305,29 +495,40 @@ fn code(failed: usize, errored: usize) -> u8 {
     }
 }
 
-fn select(
-    named: &[String],
-    configured: &[&'static Gate],
-    config: &Config,
-) -> Result<Vec<&'static Gate>, Error> {
-    if let Some(name) = named
+fn select<'a>(named: &[String], plan: &'a Plan, config: &Config) -> Result<Vec<&'a Gate>, Error> {
+    for name in named {
+        known(name, plan, config)?;
+    }
+    let wanted: Vec<&Gate> = plan
+        .gates
         .iter()
-        .find(|name| !configured.iter().any(|gate| gate.name == name.as_str()))
-    {
+        .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == &gate.name))
+        .collect();
+    if wanted.is_empty() {
+        return Err(no_gate(config, plan));
+    }
+    Ok(wanted)
+}
+
+fn known(name: &str, plan: &Plan, config: &Config) -> Result<(), Error> {
+    if plan.gates.iter().any(|gate| gate.name == name) {
+        return Ok(());
+    }
+    if plan.excluded.iter().any(|excluded| excluded == name) {
         return Err(Error(format!(
-            "no gate named {name} — {} configures: {}",
-            config.file.display(),
-            match configured.is_empty() {
-                true => "nothing".to_string(),
-                false => names(configured.iter().copied()),
-            }
+            "the gate named {name} is excluded in {} — naming a gate is a claim that it runs, \
+             so lift the exclusion or drop --gate {name}",
+            config.file.display()
         )));
     }
-    Ok(configured
-        .iter()
-        .copied()
-        .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == gate.name))
-        .collect())
+    Err(Error(format!(
+        "no gate named {name} — {} configures: {}",
+        config.file.display(),
+        match plan.gates.is_empty() {
+            true => "nothing".to_string(),
+            false => names(plan.gates.iter().map(|gate| gate.name.as_str())),
+        }
+    )))
 }
 
 fn one(
@@ -341,13 +542,17 @@ fn one(
     let flags = Flags {
         config: Some(config.to_path_buf()),
         quiet: true,
-        strict: args.strict && gate.holds_baseline,
+        strict: args.strict && gate.check.compares_to_base,
         only: scope
-            .filter(|_| gate.holds_baseline)
+            .filter(|_| gate.check.takes_scope)
             .map(<[String]>::to_vec),
         records: args.json.then(|| RefCell::new(Records::default())),
+        with: gate
+            .with
+            .clone()
+            .map(|values| (gate.check.section.to_string(), values)),
     };
-    let (code, text) = match (gate.run)(&flags, start, &mut text) {
+    let (code, text) = match (gate.check.run)(&flags, start, &mut text) {
         Ok(code) => (code, text),
         Err(problem) => (2, text + &format!("FAIL: {problem}")),
     };

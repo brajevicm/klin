@@ -372,7 +372,7 @@ fn evaluate(
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let config = Config::load(flags.config.as_deref(), start)?;
+    let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
     let (functions, unparsed) = measure(&spec.sources, &spec.selection, config.root())?;
     if let Some(refusal) = refuse_to_write(write_baseline, &unparsed) {
@@ -409,6 +409,7 @@ fn flags(args: &Args) -> Flags {
         strict: args.strict,
         only: args.only.clone(),
         records: None,
+        with: None,
     }
 }
 
