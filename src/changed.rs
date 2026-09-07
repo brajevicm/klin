@@ -61,6 +61,17 @@ fn change(line: &str) -> Option<Change> {
     }
 }
 
+/// The bytes a file held at a commit, or None when the commit does not hold it.
+pub fn blob(root: &Path, commit: &str, path: &str) -> Option<Vec<u8>> {
+    let done = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["show", &format!("{commit}:{path}")])
+        .output()
+        .ok()?;
+    done.status.success().then_some(done.stdout)
+}
+
 pub fn git(root: &Path, args: &[&str]) -> Option<String> {
     let done = Command::new("git")
         .arg("-C")

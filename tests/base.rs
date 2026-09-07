@@ -11,7 +11,7 @@ const CONFIG: &str = r#"{
 }"#;
 
 fn tree() -> Tree {
-    let tree = Tree::new();
+    let tree = Tree::bare();
     tree.write("klin.json", CONFIG);
     tree.write("src/lib.rs", CLEAN);
     tree
@@ -19,6 +19,7 @@ fn tree() -> Tree {
 
 fn on_a_branch() -> Tree {
     let tree = tree();
+    tree.repository();
     tree.base();
     tree.write("src/work.rs", CLEAN);
     tree
@@ -40,8 +41,10 @@ fn the_json_run_names_the_base_too() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let report: Value = serde_json::from_str(run.out.trim()).expect("one JSON object");
-    let base = report["base"].as_str().expect("a base field");
+    let Ok(report) = serde_json::from_str::<Value>(run.out.trim()) else {
+        panic!("not one JSON object: {}", run.out)
+    };
+    let base = report["base"].as_str().unwrap_or_default();
     assert!(base.contains("the merge-base with main"), "{base}");
 }
 
@@ -131,7 +134,7 @@ fn a_push_event_naming_no_previous_commit_falls_back_to_the_branch() {
 
 #[test]
 fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
-    let tree = Tree::new();
+    let tree = Tree::bare();
     tree.write(
         "klin.json",
         r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#,

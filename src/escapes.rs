@@ -6,12 +6,12 @@ use regex::Regex;
 use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
-use crate::baseline::{self, Evaluator, Finding, Values};
+use crate::base;
 use crate::config::{Config, Error, Flags};
 use crate::files;
+use crate::ratchet::{self, Evaluator, Finding, Values};
 
 const SECTION: &str = "escapes";
-const VERSION: &str = "1";
 
 struct Language {
     names: &'static [&'static str],
@@ -131,16 +131,13 @@ pub struct Args {
     /// Print nothing on success
     #[arg(long)]
     quiet: bool,
-    /// Fail when the baseline is looser than the code — what CI runs
+    /// Fail when an accepted entry matches nothing — what CI runs
     #[arg(long)]
     strict: bool,
-    /// Accept every escape site that exists today
-    #[arg(long)]
-    write_baseline: bool,
     /// Print the built-in pattern sets and exit
     #[arg(long)]
     list_languages: bool,
-    /// Judge only these repo-relative files, against only their baseline entries
+    /// Judge only these repo-relative files, against only their sites at the base
     #[arg(long, num_args = 0.., value_name = "FILE")]
     only: Option<Vec<String>>,
 }
@@ -151,10 +148,8 @@ struct Set {
 }
 
 struct Spec {
-    baseline: PathBuf,
     search: Search,
     roots: Vec<PathBuf>,
-    measured: Values,
 }
 
 struct Search {
@@ -175,41 +170,59 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         list_languages(out);
         return Ok(0);
     }
-    evaluate(&flags(args), args.write_baseline, start, out)
+    evaluate(&flags(args), start, out)
 }
 
 pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(flags, false, start, out)
+    evaluate(flags, start, out)
 }
 
-fn evaluate(
-    flags: &Flags,
-    write_baseline: bool,
-    start: &Path,
-    out: &mut String,
-) -> Result<u8, Error> {
+fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
-    let accepted = format!("baseline written: {} escape site(s) accepted", found.len());
     let sites = scoped(&found, flags.only.as_deref());
     let aside = match skipped {
         0 => String::new(),
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
-    evaluator(&spec).evaluate(
+    Ok(evaluator().evaluate(
         found,
+        at_the_base(&config, &spec, flags, out)?,
+        ratchet::accepted(&config, &flags.gate)?,
         flags,
-        write_baseline,
-        &format!("OK: {sites} escape site(s) in the tree, all in the baseline{aside}"),
-        &accepted,
+        &format!("OK: {sites} escape site(s) in the tree, all held at the base{aside}"),
         out,
-    )
+    ))
+}
+
+fn at_the_base(
+    config: &Config,
+    spec: &Spec,
+    flags: &Flags,
+    out: &mut String,
+) -> Result<Vec<Finding>, Error> {
+    let owned;
+    let prior = match flags.prior.as_deref() {
+        Some(dir) => dir,
+        None => {
+            owned = base::own(config, flags, out)?;
+            owned.dir()
+        }
+    };
+    let (before, _) = findings(
+        &spec.search,
+        &base::roots(&spec.roots, config, prior),
+        prior,
+    )?;
+    Ok(before)
 }
 
 fn flags(args: &Args) -> Flags {
     Flags {
         config: args.config.clone(),
+        gate: SECTION.to_string(),
+        prior: None,
         quiet: args.quiet,
         strict: args.strict,
         only: args.only.clone(),
@@ -229,30 +242,24 @@ fn scoped(found: &[Finding], only: Option<&[String]>) -> usize {
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
-    let section = baseline::section(config, SECTION, VERSION)?;
+    let section = ratchet::section(config, SECTION)?;
     let values = &section.values;
     Ok(Spec {
         search: search(section.config, values)?,
         roots: files::roots(section.config, section.name, values, "roots")?
             .unwrap_or_else(|| vec![section.config.root().to_path_buf()]),
-        baseline: section.baseline,
-        measured: section.provenance,
     })
 }
 
-fn evaluator(spec: &Spec) -> Evaluator<'_> {
+fn evaluator() -> Evaluator<'static> {
     Evaluator {
-        path: &spec.baseline,
-        provenance: &spec.measured,
         metrics: &["count"],
         unit: "escape site(s)",
         condition: "where the code opts out of a check",
         fix_advice: "Fix what the escape hides: handle the error instead of unwrapping it, \
-                     address the lint instead of allowing it. Accepting a new escape into the \
-                     baseline is a policy decision for a person.",
-        tighten_command: "klin escapes --write-baseline",
+                     address the lint instead of allowing it. Accepting a new escape is a policy \
+                     decision for a person, in the config, in a reviewed commit.",
         format_metrics: show,
-        held_out: &[],
     }
 }
 

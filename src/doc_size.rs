@@ -49,6 +49,8 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
 fn flags(args: &Args) -> Flags {
     Flags {
         config: args.config.clone(),
+        gate: SECTION.to_string(),
+        prior: None,
         quiet: args.quiet,
         strict: false,
         only: None,

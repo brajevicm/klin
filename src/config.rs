@@ -29,6 +29,10 @@ pub struct Records {
 
 pub struct Flags {
     pub config: Option<PathBuf>,
+    /// The name of the gate being run, which the accepted list names.
+    pub gate: String,
+    /// The base commit, already laid out as a directory by the runner.
+    pub prior: Option<PathBuf>,
     pub quiet: bool,
     pub strict: bool,
     pub only: Option<Vec<String>>,

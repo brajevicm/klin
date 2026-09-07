@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::base::{self, Base};
+use crate::base::{self, Base, Prior};
+use crate::changed::{self, Change};
 use crate::config::{Config, Error, Flags, Records};
-use crate::{changed, complexity, doc_size, escapes};
+use crate::{complexity, doc_size, escapes};
 
 const BUILD_BLOCKED: &str = ".klin-build-blocked";
 const GATES: &str = "gates";
@@ -117,20 +118,50 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
     }
     let wanted = select(&args.gates, &plan, &config)?;
     accounted(args, &plan, &config)?;
-    let base = base(args, &wanted, &config, out)?;
-    let scope = scope(args, &config, base.as_ref(), out)?;
-    let (failed, errored, records) =
-        each(args, &wanted, &config.file, start, scope.as_deref(), out);
+    let against = against(args, &wanted, &config, out)?;
+    let (failed, errored, records) = each(args, &wanted, &config.file, start, &against, out);
     finish(
         args,
         &plan,
         wanted.len(),
         (failed, errored),
         records,
-        base.as_ref(),
+        &against,
         out,
     );
     Ok((failed, errored))
+}
+
+/// What this run judges the working tree against: the base commit, laid out, and the files
+/// a scoped run looks at.
+#[derive(Default)]
+struct Against {
+    base: Option<Base>,
+    scope: Option<Vec<String>>,
+    prior: Option<Prior>,
+}
+
+impl Against {
+    fn dir(&self) -> Option<&Path> {
+        self.prior.as_ref().map(Prior::dir)
+    }
+}
+
+fn against(
+    args: &Args,
+    wanted: &[&Gate],
+    config: &Config,
+    out: &mut String,
+) -> Result<Against, Error> {
+    let base = base(args, wanted, config, out)?;
+    let changes = changes(args, config, base.as_ref(), out)?;
+    Ok(Against {
+        scope: changes
+            .as_ref()
+            .map(|changed| changed.iter().map(|change| change.path.clone()).collect()),
+        prior: prior(config, base.as_ref(), changes.as_deref())?,
+        base,
+    })
 }
 
 fn base(
@@ -187,7 +218,7 @@ fn finish(
     gates: usize,
     tally: (usize, usize),
     records: Records,
-    base: Option<&Base>,
+    against: &Against,
     out: &mut String,
 ) {
     let (failed, errored) = tally;
@@ -207,7 +238,7 @@ fn finish(
     let _ = writeln!(
         out,
         "{}",
-        as_json(code(failed, errored), &line, records, base)
+        as_json(code(failed, errored), &line, records, against.base.as_ref())
     );
 }
 
@@ -311,31 +342,36 @@ fn event() -> Option<Value> {
     serde_json::from_str(&text).ok()
 }
 
-fn scope(
+fn prior(
+    config: &Config,
+    base: Option<&Base>,
+    changes: Option<&[Change]>,
+) -> Result<Option<Prior>, Error> {
+    let Some(base) = base else {
+        return Ok(None);
+    };
+    base::materialize(config.root(), base, changes).map(Some)
+}
+
+fn changes(
     args: &Args,
     config: &Config,
     base: Option<&Base>,
     out: &mut String,
-) -> Result<Option<Vec<String>>, Error> {
-    if !args.changed {
+) -> Result<Option<Vec<Change>>, Error> {
+    let (true, Some(base)) = (args.changed, base) else {
         return Ok(None);
-    }
-    let base = base.expect("--changed chooses a base");
-    let changes = changed::files(config.root(), &base.commit)?;
-    let files: Vec<String> = changes
-        .iter()
-        .flat_map(|change| [Some(change.path.clone()), change.was.clone()])
-        .flatten()
-        .collect();
+    };
+    let changed = changed::files(config.root(), &base.commit)?;
     if !args.json {
         let _ = writeln!(
             out,
             "  changed: {} file(s) against the base — the scoped gates judge those; \
              CI judges everything",
-            changes.len()
+            changed.len()
         );
     }
-    Ok(Some(files))
+    Ok(Some(changed))
 }
 
 fn names<'a>(named: impl Iterator<Item = &'a str>) -> String {
@@ -496,13 +532,13 @@ fn each(
     wanted: &[&Gate],
     config: &Path,
     start: &Path,
-    scope: Option<&[String]>,
+    against: &Against,
     out: &mut String,
 ) -> (usize, usize, Records) {
     let (mut failed, mut errored) = (0, 0);
     let mut totals = Records::default();
     for gate in wanted {
-        let (code, text, records) = one(args, gate, config, start, scope);
+        let (code, text, records) = one(args, gate, config, start, against);
         match code {
             0 => (),
             1 => failed += 1,
@@ -581,14 +617,18 @@ fn one(
     gate: &Gate,
     config: &Path,
     start: &Path,
-    scope: Option<&[String]>,
+    against: &Against,
 ) -> (u8, String, Records) {
     let mut text = String::new();
     let flags = Flags {
         config: Some(config.to_path_buf()),
+        gate: gate.name.clone(),
+        prior: against.dir().map(Path::to_path_buf),
         quiet: true,
         strict: args.strict && gate.check.compares_to_base,
-        only: scope
+        only: against
+            .scope
+            .as_deref()
             .filter(|_| gate.check.takes_scope)
             .map(<[String]>::to_vec),
         records: args.json.then(|| RefCell::new(Records::default())),
