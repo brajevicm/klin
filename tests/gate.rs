@@ -15,7 +15,7 @@ const EVERY_GATE: &str = r#"{
 
 fn tree(config: &str) -> Tree {
     let tree = Tree::new();
-    tree.write("quality.json", config);
+    tree.write("klin.json", config);
     tree.words("README.md", 5);
     tree.write("src/lib.rs", CLEAN);
     tree
@@ -226,13 +226,13 @@ fn strict_reaches_the_gates_that_take_it() {
 }
 
 #[test]
-fn the_config_flag_names_the_quality_json_every_gate_runs_under() {
+fn the_config_flag_names_the_klin_json_every_gate_runs_under() {
     let tree = tree(EVERY_GATE);
-    tree.write("elsewhere/quality.json", EVERY_GATE);
+    tree.write("elsewhere/klin.json", EVERY_GATE);
     tree.words("elsewhere/README.md", 30);
     tree.write("elsewhere/src/lib.rs", CLEAN);
 
-    let run = tree.run(&["gate", "--config", &tree.at("elsewhere/quality.json")]);
+    let run = tree.run(&["gate", "--config", &tree.at("elsewhere/klin.json")]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
 }
@@ -825,7 +825,7 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
     assert_eq!(whole.code, 0, "{}", whole.out);
 
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "project": "t",
              "doc_size": [{"file": "README.md", "ceiling": 10}],
              "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60},
@@ -997,7 +997,7 @@ fn strict_refuses_a_gate_the_config_neither_configures_nor_excludes() {
 fn strict_passes_once_the_unaccounted_gate_is_set_to_false() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "project": "t",
               "doc_size": [{"file": "README.md", "ceiling": 10}],
               "complexity": false,

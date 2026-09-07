@@ -2,7 +2,7 @@ use std::io::Read;
 
 use serde_json::Value;
 
-const REFUSAL: &str = "detent: refused — this would change the configuration (quality.json), a \
+const REFUSAL: &str = "detent: refused — this would change the configuration (klin.json), a \
     baseline, or the hooks. Fix the code the gate names instead. Only a person changes those, in a \
     reviewed commit.";
 
@@ -43,7 +43,7 @@ fn guarded(path: &str) -> bool {
         return true;
     }
     let name = basename(path);
-    name == "quality.json" || (name.contains("baseline") && name.ends_with(".json"))
+    name == "klin.json" || (name.contains("baseline") && name.ends_with(".json"))
 }
 
 fn basename(path: &str) -> &str {

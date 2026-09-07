@@ -9,7 +9,7 @@ const CONFIG: &str = r#"{
 
 fn tree() -> Tree {
     let tree = Tree::new();
-    tree.write("quality.json", CONFIG);
+    tree.write("klin.json", CONFIG);
     tree
 }
 
@@ -234,7 +234,7 @@ fn a_config_change_drifts() {
     tree.write("src/lib.rs", "a.unwrap();\n");
     tree.run(&["escapes", "--write-baseline"]);
     tree.write(
-        "quality.json",
+        "klin.json",
         &CONFIG.replace(r#"["src"]"#, r#"["src", "lib"]"#),
     );
     tree.write("lib/other.rs", "fn f() {}\n");
@@ -247,7 +247,7 @@ fn a_config_change_drifts() {
 #[test]
 fn a_missing_baseline_key_is_a_tool_error_naming_it() {
     let tree = Tree::new();
-    tree.write("quality.json", r#"{"escapes": {"roots": ["src"]}}"#);
+    tree.write("klin.json", r#"{"escapes": {"roots": ["src"]}}"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);
@@ -259,7 +259,7 @@ fn a_missing_baseline_key_is_a_tool_error_naming_it() {
 fn a_baseline_name_the_guard_cannot_recognise_is_refused() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{"escapes": {"roots": ["src"], "baseline": "detent/debt.json"}}"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
@@ -284,7 +284,7 @@ fn a_clean_quiet_run_prints_nothing() {
 fn spread() -> Tree {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "project": "t",
              "escapes": { "roots": ["src"],
                           "languages": ["python", "typescript", "swift", "rust", "go",
@@ -421,7 +421,7 @@ fn the_same_line_twice_in_one_file_is_one_entry_whose_count_ratchets() {
 fn a_project_pattern_is_read_alongside_the_built_in_sets() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["rust"],
              "patterns": {"todo bang": "TODO!"},
              "baseline": "detent/escapes-baseline.json" } }"#,
@@ -438,7 +438,7 @@ fn a_project_pattern_is_read_alongside_the_built_in_sets() {
 fn a_project_pattern_alone_reads_every_file_under_the_roots() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "patterns": {"todo bang": "TODO!"},
              "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -453,7 +453,7 @@ fn a_project_pattern_alone_reads_every_file_under_the_roots() {
 fn a_default_skipped_directory_is_not_read_and_skip_dirs_adds_to_the_list() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["."], "languages": ["typescript"],
              "skip_dirs": ["legacy"], "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -473,7 +473,7 @@ fn a_default_skipped_directory_is_not_read_and_skip_dirs_adds_to_the_list() {
 fn a_file_matching_an_exclude_glob_is_not_read() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
              "exclude": ["*.test.ts", "*/generated/*"],
              "baseline": "detent/escapes-baseline.json" } }"#,
@@ -538,7 +538,7 @@ fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
 fn skip_rust_tests_turned_off_judges_the_test_module_too() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["rust"], "skip_rust_tests": false,
              "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -555,7 +555,7 @@ fn skip_rust_tests_turned_off_judges_the_test_module_too() {
 fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["cobol"],
              "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -571,7 +571,7 @@ fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
 fn a_section_naming_nothing_to_look_for_is_refused() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "baseline": "detent/escapes-baseline.json" } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
@@ -585,7 +585,7 @@ fn a_section_naming_nothing_to_look_for_is_refused() {
 fn a_project_pattern_that_is_not_a_regex_is_refused_naming_it() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "patterns": {"broken": "([unclosed"},
              "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -600,7 +600,7 @@ fn a_project_pattern_that_is_not_a_regex_is_refused_naming_it() {
 fn javascript_is_read_by_the_typescript_set() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["javascript"],
              "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -641,7 +641,7 @@ fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
 fn a_hidden_directory_is_read_unless_the_default_list_or_skip_dirs_names_it() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["."], "languages": ["shell"],
              "skip_dirs": ["scripts"], "baseline": "detent/escapes-baseline.json" } }"#,
     );
@@ -661,7 +661,7 @@ fn a_hidden_directory_is_read_unless_the_default_list_or_skip_dirs_names_it() {
 fn an_exclude_glob_honours_a_character_class() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
              "exclude": ["*.spec.[jt]s", "[!a]?.gen.ts"],
              "baseline": "detent/escapes-baseline.json" } }"#,
@@ -727,7 +727,7 @@ fn every_alternative_inside_a_pattern_matches_too() {
 fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
     let tree = Tree::new();
     tree.write(
-        "quality.json",
+        "klin.json",
         r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
              "baseline": "detent/escapes-baseline.json" } }"#,
     );

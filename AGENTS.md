@@ -34,12 +34,12 @@ self-consistent is the whole requirement. See ADR 0001.
 ## Tests
 
 One seam: the binary's command line. Build a throwaway tree, write a
-`quality.json` and any baseline, run the real binary, assert on the exit code
+`klin.json` and any baseline, run the real binary, assert on the exit code
 and the printed text. Do not reach inside. The matching logic is the most
 likely thing to be rewritten, so nothing should be coupled to its shape.
 
 ## The rules detent enforces on itself
 
-Do not edit `quality.json`, a baseline, or the hooks to make a gate pass, and
+Do not edit `klin.json`, a baseline, or the hooks to make a gate pass, and
 do not run `--write-baseline`. A baseline records debt a person accepted. Only
 a person loosens it, in a reviewed commit.
