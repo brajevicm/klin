@@ -1,5 +1,9 @@
 # A build failure and a gate failure each block one stop
 
+> ADR 0012 supersedes the section "Why the logic spans a wrapper and a binary".
+> The build is a config key and klin runs it, so there is no wrapper. The
+> policy below, and the argument for where the stamp lives, still hold.
+
 detent's Stop hook is a shell wrapper. It builds the tree, and it runs
 `detent gate --hook --changed` only when the build succeeded. Claude Code sends
 the hook a `stop_hook_active` flag, true once the hook has already blocked the
@@ -66,9 +70,6 @@ a second piece of state on disk. The eight-block cap bounds the turn, and the
 cost is that the second gate block repeats the first-time wording rather than
 the wording for a stop that follows a round of fixes.
 
-The path is written twice, once in the wrapper and once in `src/gate.rs`. The
-wrapper writes it under `$CLAUDE_PROJECT_DIR`, and detent reads it under the
-directory that holds `quality.json`. Those are the same directory here, and
-they stay the same when `detent gate --hook` runs from a subdirectory. A test
-reads `.claude/settings.json` and asserts that the wrapper and the binary name
-the same file, so the two cannot disagree without a test failing.
+The path is written once, in `src/gate.rs`, under the directory that holds the
+configuration. That stays the right directory when `klin gate --hook` runs from
+a subdirectory.

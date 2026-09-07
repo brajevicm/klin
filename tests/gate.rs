@@ -472,22 +472,18 @@ fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
 
 const BUILD_BLOCKED: &str = ".klin-build-blocked";
 
-fn wrapper() -> String {
+fn settings() -> String {
     let at = concat!(env!("CARGO_MANIFEST_DIR"), "/.claude/settings.json");
     std::fs::read_to_string(at).unwrap_or_default()
 }
 
 #[test]
-fn the_wrapper_writes_the_stamp_the_binary_reads() {
-    let settings = wrapper();
-    assert!(settings.contains(BUILD_BLOCKED), "{settings}");
-}
-
-#[test]
-fn the_wrapper_does_not_read_stop_hook_active() {
-    let settings = wrapper();
-    assert!(!settings.is_empty());
-    assert!(!settings.contains("stop_hook_active"), "{settings}");
+fn the_stop_hook_is_one_line_that_runs_the_binary() {
+    let settings = settings();
+    assert!(settings.contains("gate --hook --changed"), "{settings}");
+    for wrapper in [BUILD_BLOCKED, "stop_hook_active", "cargo build"] {
+        assert!(!settings.contains(wrapper), "{wrapper}: {settings}");
+    }
 }
 
 #[test]

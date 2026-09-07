@@ -1,5 +1,6 @@
 {
   "project": "klin",
+  "build": "cargo build --quiet --all-targets",
   "complexity": {
     "sources": ["src", "tests"],
     "ceilings": {
