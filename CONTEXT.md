@@ -42,6 +42,6 @@ as `any`, `unwrap()`, or `.skip`.
 _Avoid_: suppression, override, bypass
 
 **Guard**:
-The hook mode that refuses an agent's edits to the config or the hooks
-themselves.
+The hook mode that refuses an agent's edits to the config, the hooks
+themselves, and the code owners.
 _Avoid_: lock, protection, shield

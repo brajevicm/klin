@@ -6,10 +6,11 @@ Codex CLI.
 
 ## Only CI is authoritative
 
-The guard refuses the agent's edits to the config and the hooks. It is feedback
+The guard refuses the agent's edits to the config, the hooks and CODEOWNERS.
+It is feedback
 and cannot stop an agent that works around it. It sees none of these routes:
 
-- the binary, which a PATH shim replaces and `chmod -x` disables
+- the binary, which a PATH shim or `chmod -x` defeats
 - a deleted test, the cheapest route to green
 - a moved local ref, which moves the base a local run compares against
 - a deleted config section, which runs no gate and reads green

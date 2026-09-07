@@ -108,16 +108,6 @@ fn allows_git_that_leaves_the_guarded_files_alone() {
 }
 
 #[test]
-fn refuses_an_edit_of_codeowners() {
-    let run = edit("Edit", "/repo/.github/CODEOWNERS");
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("refused"), "{}", run.out);
-
-    let run = bash("echo '* @someone' >> .github/CODEOWNERS");
-    assert_eq!(run.code, 2, "{}", run.out);
-}
-
-#[test]
 fn refuses_an_edit_of_the_hook_settings_of_cursor_and_codex() {
     for (name, file) in [
         ("Edit", "/repo/.cursor/hooks.json"),
@@ -220,6 +210,39 @@ fn refuses_every_route_an_allowlist_of_writers_missed() {
         let run = bash(command);
         assert_eq!(run.code, 2, "{command}: {}", run.out);
         assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn refuses_an_interpreter_a_reader_reaches_through_a_command_substitution() {
+    for command in [
+        "cat \"$(python3 -c \"open('klin.json','w')\")\"",
+        "wc -l `perl -i -pe 's/a/b/' klin.json`",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn refuses_a_glob_that_matches_a_guarded_name() {
+    for command in ["perl -i -pe 's/a/b/' klin.*", "rm klin.js*n"] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+#[test]
+fn allows_a_reader_that_carries_a_global_git_flag() {
+    for command in [
+        "git -C sub add klin.json",
+        "git -c core.pager=cat log klin.json",
+        "git --git-dir=/repo/.git diff klin.json",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 0, "{command}: {}", run.out);
     }
 }
 

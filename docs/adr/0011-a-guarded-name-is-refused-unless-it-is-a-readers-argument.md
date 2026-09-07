@@ -58,3 +58,12 @@ in the config by a name the guard would otherwise never see as guarded.
 The tokenizer that looks for a guarded name splits on the punctuation a
 shell, a heredoc body, or an interpreter's inline script wraps a filename
 in, so `open('klin.json')` names the file as plainly as a bare word does.
+
+Three details follow from the rule rather than sitting beside it. A command
+substitution starts a new command, so `$(` and a backtick end a segment the
+same way `;` does, and the interpreter inside one is read as the command it
+is instead of borrowing the reader that wraps it. A glob is guarded when a
+guarded name matches it, because `klin.*` reaches the file a bare name
+would. A git global flag that takes a value — `-C`, `-c`, `--git-dir`,
+`--work-tree`, `--exec-path` — is skipped with its value when the
+subcommand is picked, so `git -C sub add` reads as `add`.
