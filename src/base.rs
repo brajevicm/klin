@@ -305,10 +305,18 @@ fn cannot_tell(strict: bool, base: Base, why: &str) -> Result<Base, Error> {
 /// The tip of the remote's default branch, which says what the remote already has.
 fn remote_tip(root: &Path) -> Option<(String, String)> {
     default_branches(root).into_iter().find_map(|branch| {
-        let remote = branch.strip_prefix("origin/")?;
-        let commit = resolve(root, &format!("refs/remotes/origin/{remote}"))?;
+        let commit = resolve(root, &remote_reference(&branch)?)?;
         Some((branch, commit))
     })
+}
+
+/// The remote-tracking reference that a name such as `origin/main` abbreviates. A local branch
+/// may carry that literal name, and git resolves it first, so klin never calls a base remote
+/// on the strength of the short name alone.
+fn remote_reference(branch: &str) -> Option<String> {
+    branch
+        .strip_prefix("origin/")
+        .map(|remote| format!("refs/remotes/origin/{remote}"))
 }
 
 fn dirty(root: &Path) -> bool {
@@ -319,7 +327,7 @@ fn candidates(root: &Path) -> Vec<(String, String, Source)> {
     let mut out = Vec::new();
     if let Some(target) = environment("GITHUB_BASE_REF") {
         for (reference, source) in [
-            (format!("origin/{target}"), Source::Remote),
+            (format!("refs/remotes/origin/{target}"), Source::Remote),
             (target.clone(), Source::Local),
         ] {
             out.push((
@@ -337,12 +345,12 @@ fn candidates(root: &Path) -> Vec<(String, String, Source)> {
         ));
     }
     for branch in default_branches(root) {
-        let source = match branch.starts_with("origin/") {
-            true => Source::Remote,
-            false => Source::Local,
+        let (reference, source) = match remote_reference(&branch) {
+            Some(remote) => (remote, Source::Remote),
+            None => (branch.clone(), Source::Local),
         };
         out.push((
-            format!("{branch}...HEAD"),
+            format!("{reference}...HEAD"),
             format!("the merge-base with {branch}"),
             source,
         ));

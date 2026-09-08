@@ -101,6 +101,22 @@ fn a_base_that_resolves_to_head_with_no_remote_tip_is_a_strict_failure_only() {
 }
 
 #[test]
+fn a_local_branch_named_like_a_remote_one_does_not_count_as_the_remote() {
+    let tree = tree();
+    tree.repository();
+    tree.commit("everything on the default branch");
+    tree.git(&["branch", "origin/main"]);
+
+    let strict = tree.run(&["escapes", "--strict"]);
+    assert_eq!(strict.code, 2, "{}", strict.out);
+    assert!(
+        strict.says("no remote default branch resolves"),
+        "{}",
+        strict.out
+    );
+}
+
+#[test]
 fn a_dirty_tree_whose_base_resolves_to_head_runs_the_gates() {
     let tree = tree();
     tree.repository();
