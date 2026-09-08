@@ -1,5 +1,9 @@
 # A base equal to HEAD is refused only when work is hidden
 
+> ADR 0017 takes `--hook` mode out of this record. The hook compares against
+> the turn stamp and never reaches the rule below. `klin gate` by hand and CI
+> still follow it.
+
 ADR 0009 made a base equal to HEAD a tool error, flat, with no exception. The
 rule fired on an honest case. A session works on the default branch, changes
 nothing, and HEAD already sits at the remote tip. Nothing is hidden there, and

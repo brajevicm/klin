@@ -45,3 +45,28 @@ _Avoid_: suppression, override, bypass
 The hook mode that refuses an agent's edits to the config, the hooks
 themselves, and the code owners.
 _Avoid_: lock, protection, shield
+
+**Turn**:
+The window between one message from the person and the next. Everything inside
+it is work the agent chose.
+_Avoid_: session, iteration, round
+
+**Radius**:
+How far one turn's changes spread: the lines, the share of them that is
+formatting or moved code, and the directories touched.
+_Avoid_: churn, diff size, blast radius
+
+**Note**:
+Something klin reports and never fails on. A note carries no ceiling, because
+nothing about it can be exceeded.
+_Avoid_: warning, advisory, info
+
+**Window**:
+The pair of trees a run compares, and where each came from. Three kinds: turn,
+branch, push.
+_Avoid_: scope, range, diff
+
+**Derived**:
+A value klin computed from one commit because the config did not pin it, and
+printed as such.
+_Avoid_: default, inferred, guessed

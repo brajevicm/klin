@@ -1,5 +1,8 @@
 # The Claude Code plugin ships no binary
 
+> Superseded by ADR 0023. The plugin ships a wrapper that fetches the pinned
+> binary, and falls back to PATH where `bin/` is unavailable.
+
 A Claude Code plugin may include a `bin/` directory whose contents are added to
 the Bash tool's PATH while the plugin is enabled. detent does not use it. The
 plugin ships hooks, one skill and the slash commands, and expects `detent` to

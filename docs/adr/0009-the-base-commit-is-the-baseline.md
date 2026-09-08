@@ -2,6 +2,10 @@
 
 > ADR 0013 supersedes the paragraph in "Which two trees" that makes a base
 > equal to HEAD a tool error with no exception.
+>
+> ADR 0017 supersedes "Locally the base is the merge-base" for `--hook` mode,
+> where the base is the turn stamp. `klin gate` by hand and CI keep the bases
+> below.
 
 Until now a gate that ratchets held a committed JSON file: the findings a
 person accepted, with the tool, version and config hash that produced them. A

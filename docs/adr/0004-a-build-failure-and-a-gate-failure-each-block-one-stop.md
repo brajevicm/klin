@@ -3,6 +3,10 @@
 > ADR 0012 supersedes the section "Why the logic spans a wrapper and a binary".
 > The build is a config key and klin runs it, so there is no wrapper. The
 > policy below, and the argument for where the stamp lives, still hold.
+>
+> ADR 0022 amends the reliance on Claude Code's eight-block cap. klin bounds
+> its own build blocks at eight per turn. ADR 0019 moves the stamp into the
+> git directory.
 
 detent's Stop hook is a shell wrapper. It builds the tree, and it runs
 `detent gate --hook --changed` only when the build succeeded. Claude Code sends

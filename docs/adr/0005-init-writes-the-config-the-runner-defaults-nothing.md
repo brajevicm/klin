@@ -1,5 +1,9 @@
 # `init` writes every section it can infer, and the runner defaults nothing
 
+> Superseded by ADR 0016. The config is optional, a missing value is derived
+> from the derivation commit and printed, and `init` pins what the run would
+> derive. The `false` exclusion below stands.
+
 Two rules pull against each other. A key a gate needs and does not find is an
 error naming the key, never a default, and
 `a_missing_key_is_an_error_naming_the_key_not_a_default` pins it. At the same

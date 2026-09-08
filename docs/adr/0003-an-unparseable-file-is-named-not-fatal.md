@@ -1,5 +1,8 @@
 # An unparseable file is named, not fatal
 
+> ADR 0021 amends this record. In `--hook` mode an unreadable file is a note
+> and does not block. Under `--strict` the exit 2 below stands.
+
 A grammar rejects a file more often than it looks. Flow-typed `.js` is ordinary
 in a React Native tree and the JavaScript grammar refuses it. A grammar one
 release behind its language refuses whatever the language added. detent reads

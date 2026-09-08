@@ -1,5 +1,8 @@
 # Config keys match cleat's, and diverging takes its own ADR
 
+> Superseded by ADR 0018. Every section uses one key vocabulary, and the
+> differential test is retired.
+
 The differential test writes one config body and drives both implementations
 from it, changing only the baseline path. That is what makes it evidence: the
 two tools read the same keys, so a disagreement in their output is a

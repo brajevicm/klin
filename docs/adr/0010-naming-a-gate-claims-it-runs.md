@@ -1,5 +1,9 @@
 # Naming a gate claims it runs, and `--strict` decides every gate
 
+> ADR 0016 retires the second rule below. A derivable gate runs whether or
+> not the config names it, so it cannot be unaccounted. The first rule, that
+> naming an excluded gate is exit 2, stands.
+
 A gate is excluded by setting its section to `false`. ADR 0005 chose that over
 deleting the section so `init --add` leaves the decision alone. Two rules follow,
 and both close the same hole: a run that prints green while measuring less than
