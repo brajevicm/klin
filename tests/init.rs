@@ -93,6 +93,12 @@ fn init_writes_every_section_it_can_infer() {
             >= 400,
         "{config}"
     );
+    assert_eq!(config["doc_citations"][0]["file"], "README.md", "{config}");
+    assert_eq!(
+        config["doc_citations"][0]["roots"],
+        serde_json::json!(["."]),
+        "{config}"
+    );
 }
 
 #[test]
@@ -177,6 +183,7 @@ fn add_fills_in_the_sections_the_config_does_not_name() {
     assert_eq!(config["doc_size"][0]["ceiling"], 900, "{config}");
     assert!(config["escapes"].is_object(), "{config}");
     assert!(config["complexity"].is_object(), "{config}");
+    assert!(config["doc_citations"].is_array(), "{config}");
 }
 
 #[test]
