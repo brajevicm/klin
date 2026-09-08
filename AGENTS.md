@@ -19,7 +19,7 @@ outcomes outright, and the suites under `quality/tests/` pin every edge case.
 
 **Read cleat's implementation only when behaviour is ambiguous**, and never
 port it line by line. It is idiomatic Python and the idioms do not carry. For
-example `ratchet.py` dispatches to a field by string name:
+example `$CLEAT_SRC/quality/bin/ratchet.py` dispatches to a field by string name:
 
     getattr(verdict, compare(finding, entry, metrics)).append((finding, entry))
 
