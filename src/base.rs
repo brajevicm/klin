@@ -304,13 +304,11 @@ fn cannot_tell(strict: bool, base: Base, why: &str) -> Result<Base, Error> {
 
 /// The tip of the remote's default branch, which says what the remote already has.
 fn remote_tip(root: &Path) -> Option<(String, String)> {
-    default_branches(root)
-        .into_iter()
-        .filter_map(|branch| {
-            let remote = branch.strip_prefix("origin/")?;
-            resolve(root, &format!("refs/remotes/origin/{remote}"))
-                .map(|commit| (branch, commit))
-        })
+    default_branches(root).into_iter().find_map(|branch| {
+        let remote = branch.strip_prefix("origin/")?;
+        let commit = resolve(root, &format!("refs/remotes/origin/{remote}"))?;
+        Some((branch, commit))
+    })
 }
 
 fn dirty(root: &Path) -> bool {
