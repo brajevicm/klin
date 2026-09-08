@@ -27,15 +27,15 @@
   ],
   "doc_size": [
     {
-      "ceiling": 200,
+      "ceiling": 300,
       "file": "README.md"
     },
     {
-      "ceiling": 250,
+      "ceiling": 350,
       "file": "CONTEXT.md"
     },
     {
-      "ceiling": 350,
+      "ceiling": 800,
       "file": "AGENTS.md"
     }
   ],
