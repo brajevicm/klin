@@ -157,7 +157,7 @@ fn written(
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
 pub fn own(config: &Config, flags: &Flags, out: &mut String) -> Result<Prior, Error> {
-    let base = choose(config.root())?;
+    let base = choose(config.root(), flags.strict)?;
     if !flags.quiet {
         let _ = writeln!(out, "{}", base.line());
     }
@@ -200,10 +200,10 @@ impl Base {
     }
 }
 
-pub fn choose(root: &Path) -> Result<Base, Error> {
+pub fn choose(root: &Path, strict: bool) -> Result<Base, Error> {
     let head = resolve(root, "HEAD");
     let mut tried: Vec<String> = Vec::new();
-    for (reference, how) in candidates(root) {
+    for (reference, how, source) in candidates(root) {
         tried.push(
             reference
                 .split("...")
@@ -214,13 +214,11 @@ pub fn choose(root: &Path) -> Result<Base, Error> {
         let Some(commit) = resolve(root, &reference) else {
             continue;
         };
-        if head.as_deref() == Some(commit.as_str()) && !dirty(root) {
-            return Err(Error(format!(
-                "the base is HEAD ({how}) and the working tree matches it, so a run would \
-                 measure nothing — work on a branch, or let CI name the base in its event data"
-            )));
+        let base = Base { commit, how };
+        if head.as_deref() == Some(base.commit.as_str()) && !dirty(root) {
+            return equal_to_head(root, strict, source, base);
         }
-        return Ok(Base { commit, how });
+        return Ok(base);
     }
     Err(Error(format!(
         "no base commit to compare against in {} — klin measures the working tree against a \
@@ -233,27 +231,119 @@ pub fn choose(root: &Path) -> Result<Base, Error> {
     )))
 }
 
+/// Where a base candidate came from, which decides whether a base equal to HEAD hides work.
+#[derive(Clone, Copy, PartialEq)]
+enum Source {
+    /// A remote reference or a push event's commit. The remote agrees with HEAD.
+    Remote,
+    /// A local reference, which says nothing about what the remote has.
+    Local,
+}
+
+/// A clean working tree whose base is HEAD measures nothing. That is a refusal only when klin
+/// can show that commits are hidden from the remote, or when it cannot tell and CI is asking.
+fn equal_to_head(root: &Path, strict: bool, source: Source, base: Base) -> Result<Base, Error> {
+    if source == Source::Remote {
+        return Ok(base);
+    }
+    let Some((name, tip)) = remote_tip(root) else {
+        return cannot_tell(strict, base, "no remote default branch resolves");
+    };
+    let Some(unpushed) = git(
+        root,
+        &[
+            "log",
+            "--oneline",
+            "-n",
+            &SHOWN.to_string(),
+            &format!("{tip}..HEAD"),
+        ],
+    ) else {
+        return cannot_tell(
+            strict,
+            base,
+            &format!("git could not list what {name} is missing"),
+        );
+    };
+    let unpushed: Vec<&str> = unpushed.lines().filter(|line| !line.is_empty()).collect();
+    if unpushed.is_empty() {
+        return Ok(base);
+    }
+    Err(Error(format!(
+        "the base is HEAD ({}) and the working tree matches it, so a run would measure nothing, \
+         and {} on this branch that {name} does not hold:\n{}\nPush this branch, or fetch the \
+         remote reference the base names, so a run has a real diff to measure.",
+        base.how,
+        match unpushed.len() < SHOWN {
+            true => format!("these {} commit(s) sit", unpushed.len()),
+            false => format!("at least these {SHOWN} commits sit"),
+        },
+        unpushed
+            .iter()
+            .map(|line| format!("  {line}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    )))
+}
+
+/// How many unpushed commits an error names, so a long-lived branch is not a wall of text.
+const SHOWN: usize = 10;
+
+/// klin cannot see whether the work is pushed. CI asks for the refusal, a local run for its gates.
+fn cannot_tell(strict: bool, base: Base, why: &str) -> Result<Base, Error> {
+    if !strict {
+        return Ok(base);
+    }
+    Err(Error(format!(
+        "the base is HEAD ({}) and the working tree matches it, so a run would measure nothing, \
+         and {why}, so klin cannot tell whether these commits are pushed — fetch the remote, or \
+         drop --strict",
+        base.how
+    )))
+}
+
+/// The tip of the remote's default branch, which says what the remote already has.
+fn remote_tip(root: &Path) -> Option<(String, String)> {
+    default_branches(root)
+        .into_iter()
+        .filter(|branch| branch.starts_with("origin/"))
+        .find_map(|branch| resolve(root, &branch).map(|commit| (branch, commit)))
+}
+
 fn dirty(root: &Path) -> bool {
     git(root, &["status", "--porcelain"]).is_some_and(|listed| !listed.trim().is_empty())
 }
 
-fn candidates(root: &Path) -> Vec<(String, String)> {
+fn candidates(root: &Path) -> Vec<(String, String, Source)> {
     let mut out = Vec::new();
     if let Some(target) = environment("GITHUB_BASE_REF") {
-        for reference in [format!("origin/{target}"), target.clone()] {
+        for (reference, source) in [
+            (format!("origin/{target}"), Source::Remote),
+            (target.clone(), Source::Local),
+        ] {
             out.push((
                 reference,
                 format!("the tip of {target}, the pull request target"),
+                source,
             ));
         }
     }
     if let Some(before) = pushed_from() {
-        out.push((before, "the commit this push started from".to_string()));
+        out.push((
+            before,
+            "the commit this push started from".to_string(),
+            Source::Remote,
+        ));
     }
     for branch in default_branches(root) {
+        let source = match branch.starts_with("origin/") {
+            true => Source::Remote,
+            false => Source::Local,
+        };
         out.push((
             format!("{branch}...HEAD"),
             format!("the merge-base with {branch}"),
+            source,
         ));
     }
     out

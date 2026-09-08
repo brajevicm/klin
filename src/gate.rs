@@ -180,7 +180,7 @@ fn scoped(
     if !args.changed || entries.iter().all(|entry| entry.root.is_none()) {
         return Ok(None);
     }
-    let base = base::choose(config.root())?;
+    let base = base::choose(config.root(), args.strict)?;
     changed::files(config.root(), &base.commit).map(Some)
 }
 
@@ -247,7 +247,7 @@ fn base(
     if !args.changed && !wanted.iter().any(|gate| gate.check.compares_to_base) {
         return Ok(None);
     }
-    let base = base::choose(config.root())?;
+    let base = base::choose(config.root(), args.strict)?;
     if !args.json {
         let _ = writeln!(out, "  {}", base.line());
     }
