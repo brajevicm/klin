@@ -7,6 +7,24 @@
     },
     "sources": ["src", "tests"]
   },
+  "doc_citations": [
+    {
+      "file": "AGENTS.md",
+      "roots": ["."]
+    },
+    {
+      "file": "CLAUDE.md",
+      "roots": ["."]
+    },
+    {
+      "file": "CONTEXT.md",
+      "roots": ["."]
+    },
+    {
+      "file": "README.md",
+      "roots": ["."]
+    }
+  ],
   "doc_size": [
     {
       "ceiling": 200,
