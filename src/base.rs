@@ -306,8 +306,11 @@ fn cannot_tell(strict: bool, base: Base, why: &str) -> Result<Base, Error> {
 fn remote_tip(root: &Path) -> Option<(String, String)> {
     default_branches(root)
         .into_iter()
-        .filter(|branch| branch.starts_with("origin/"))
-        .find_map(|branch| resolve(root, &branch).map(|commit| (branch, commit)))
+        .filter_map(|branch| {
+            let remote = branch.strip_prefix("origin/")?;
+            resolve(root, &format!("refs/remotes/origin/{remote}"))
+                .map(|commit| (branch, commit))
+        })
 }
 
 fn dirty(root: &Path) -> bool {
