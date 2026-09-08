@@ -3,6 +3,7 @@ mod build;
 mod changed;
 mod complexity;
 mod config;
+mod doc_citations;
 mod doc_size;
 mod escapes;
 mod files;
@@ -27,6 +28,8 @@ struct Cli {
 enum Command {
     /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
     Complexity(complexity::Args),
+    /// Fail when a document cites a file that resolves nowhere under its roots
+    DocCitations(doc_citations::Args),
     /// Fail when a document has grown past its ceiling
     DocSize(doc_size::Args),
     /// Fail on a new escape site — a place where the code opts out of a check
@@ -43,6 +46,7 @@ fn main() -> ExitCode {
     match &Cli::parse().command {
         Command::Guard => ExitCode::from(guard::run()),
         Command::Complexity(args) => report(|start, out| complexity::run(args, start, out)),
+        Command::DocCitations(args) => report(|start, out| doc_citations::run(args, start, out)),
         Command::DocSize(args) => report(|start, out| doc_size::run(args, start, out)),
         Command::Escapes(args) => report(|start, out| escapes::run(args, start, out)),
         Command::Gate(args) => report(|start, out| gate::run(args, start, out)),

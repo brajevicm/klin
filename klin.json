@@ -1,29 +1,48 @@
 {
-  "project": "klin",
   "build": "cargo build --quiet --all-targets",
   "complexity": {
-    "sources": ["src", "tests"],
     "ceilings": {
       "cc": 8,
       "lines": 60
-    }
+    },
+    "sources": ["src", "tests"]
   },
-  "doc_size": [
+  "doc_citations": [
     {
-      "file": "README.md",
-      "ceiling": 200
+      "file": "AGENTS.md",
+      "roots": ["."]
+    },
+    {
+      "file": "CLAUDE.md",
+      "roots": ["."]
     },
     {
       "file": "CONTEXT.md",
-      "ceiling": 250
+      "roots": ["."]
     },
     {
-      "file": "AGENTS.md",
-      "ceiling": 350
+      "file": "README.md",
+      "roots": ["."]
+    }
+  ],
+  "doc_size": [
+    {
+      "ceiling": 200,
+      "file": "README.md"
+    },
+    {
+      "ceiling": 250,
+      "file": "CONTEXT.md"
+    },
+    {
+      "ceiling": 350,
+      "file": "AGENTS.md"
     }
   ],
   "escapes": {
-    "roots": ["src", "tests"],
-    "languages": ["rust"]
-  }
+    "languages": ["rust"],
+    "roots": ["src", "tests"]
+  },
+  "project": "klin",
+  "version": "0.1.0"
 }

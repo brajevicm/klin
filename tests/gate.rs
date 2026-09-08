@@ -8,6 +8,7 @@ const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const EVERY_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": { "roots": ["src"], "languages": ["rust"] },
   "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
@@ -26,6 +27,7 @@ const AN_UNMATCHED_ACCEPTED: &str = r#"{
   "accepted": [{"gate": "escapes", "file": "src/gone.rs", "text": "the line that held it",
                 "count": 1}],
   "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": { "roots": ["src"], "languages": ["rust"] },
   "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
@@ -52,7 +54,16 @@ fn every_configured_gate_runs_in_ladder_order() {
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(at(&run, "doc-size") < at(&run, "escapes"), "{}", run.out);
+    assert!(
+        at(&run, "doc-size") < at(&run, "doc-citations"),
+        "{}",
+        run.out
+    );
+    assert!(
+        at(&run, "doc-citations") < at(&run, "escapes"),
+        "{}",
+        run.out
+    );
     assert!(at(&run, "escapes") < at(&run, "complexity"), "{}", run.out);
 }
 
@@ -75,9 +86,10 @@ fn a_status_row_per_gate_and_a_summary_line() {
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
+    assert!(run.says("ok    doc-citations"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("3 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("4 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -102,7 +114,7 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
         "{}",
         run.out
     );
-    assert!(run.says("3 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("4 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -116,7 +128,7 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("3 gate(s), 2 failed."), "{}", run.out);
+    assert!(run.says("4 gate(s), 2 failed."), "{}", run.out);
 }
 
 #[test]
@@ -152,7 +164,11 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.out, "doc-size\nescapes\ncomplexity\n", "{:?}", run.out);
+    assert_eq!(
+        run.out, "doc-size\ndoc-citations\nescapes\ncomplexity\n",
+        "{:?}",
+        run.out
+    );
 }
 
 #[test]
@@ -797,6 +813,7 @@ const TWO_COMPLEXITY_GATES: &str = r#"{
 const AN_EXCLUDED_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": false,
   "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
@@ -804,6 +821,7 @@ const AN_EXCLUDED_GATE: &str = r#"{
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "complexity": false
 }"#;
 
@@ -866,7 +884,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
-        run.says("2 gate(s), 1 excluded, all passed."),
+        run.says("3 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
@@ -879,7 +897,7 @@ fn list_names_the_excluded_gates() {
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
-        run.out, "doc-size\ncomplexity\nescapes — excluded\n",
+        run.out, "doc-size\ndoc-citations\ncomplexity\nescapes — excluded\n",
         "{:?}",
         run.out
     );
@@ -945,6 +963,7 @@ fn strict_passes_once_the_unaccounted_gate_is_set_to_false() {
         "klin.json",
         r#"{ "project": "t",
               "doc_size": [{"file": "README.md", "ceiling": 10}],
+              "doc_citations": false,
               "complexity": false,
               "escapes": false }"#,
     );
@@ -952,7 +971,7 @@ fn strict_passes_once_the_unaccounted_gate_is_set_to_false() {
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 gate(s), 2 excluded, all passed."),
+        run.says("1 gate(s), 3 excluded, all passed."),
         "{}",
         run.out
     );
@@ -960,13 +979,17 @@ fn strict_passes_once_the_unaccounted_gate_is_set_to_false() {
 
 #[test]
 fn list_names_the_exclusions_when_every_gate_is_excluded() {
-    let tree =
-        tree(r#"{ "project": "t", "doc_size": false, "escapes": false, "complexity": false }"#);
+    let tree = tree(
+        r#"{ "project": "t", "doc_size": false, "doc_citations": false, "escapes": false,
+              "complexity": false }"#,
+    );
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
-        run.out, "doc-size — excluded\nescapes — excluded\ncomplexity — excluded\n",
+        run.out,
+        "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
+         complexity — excluded\n",
         "{:?}",
         run.out
     );
@@ -974,7 +997,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let judged = tree.run(&["gate"]);
     assert_eq!(judged.code, 2, "{}", judged.out);
     assert!(
-        judged.says("excludes every gate it names: doc-size, escapes, complexity"),
+        judged.says("excludes every gate it names: doc-size, doc-citations, escapes, complexity"),
         "{}",
         judged.out
     );

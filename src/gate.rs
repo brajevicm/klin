@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 use crate::base::{self, Base, Prior};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error, Flags, Records};
-use crate::{build, complexity, doc_size, escapes};
+use crate::{build, complexity, doc_citations, doc_size, escapes};
 
 /// Where klin records that a build failed, so the stop that follows knows the turn's gate
 /// block is still unspent. Not under `target/`, which an agent empties as a matter of routine.
@@ -28,6 +28,13 @@ const CHECKS: &[Check] = &[
         name: "doc-size",
         section: "doc_size",
         run: doc_size::gate,
+        compares_to_base: false,
+        takes_scope: false,
+    },
+    Check {
+        name: "doc-citations",
+        section: "doc_citations",
+        run: doc_citations::gate,
         compares_to_base: false,
         takes_scope: false,
     },

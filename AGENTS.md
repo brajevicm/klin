@@ -14,12 +14,12 @@ That checkout is indexed with CodeGraph, so use it instead of grep:
     codegraph explore "<symbols or question>" --project $CLEAT_SRC
 
 **Read cleat's tests and docstrings freely.** They are the specification.
-`quality/bin/ratchet.py`'s module docstring states the five outcomes outright,
-and the suites under `quality/tests/` pin every edge case.
+Cleat's `$CLEAT_SRC/quality/bin/` ratchet.py docstring states the five
+outcomes outright, and the suites under `quality/tests/` pin every edge case.
 
 **Read cleat's implementation only when behaviour is ambiguous**, and never
 port it line by line. It is idiomatic Python and the idioms do not carry. For
-example `ratchet.py` dispatches to a field by string name:
+example ratchet.py dispatches to a field by string name:
 
     getattr(verdict, compare(finding, entry, metrics)).append((finding, entry))
 

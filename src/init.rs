@@ -116,6 +116,12 @@ fn surveyed(
         (!documents.is_empty()).then(|| Value::Array(documents.clone())),
         format!("doc_size over {} document(s)", documents.len()),
     );
+    let citations = citation_entries(&documents);
+    add(
+        "doc_citations",
+        (!citations.is_empty()).then_some(Value::Array(citations)),
+        format!("doc_citations over {} document(s)", documents.len()),
+    );
     add(
         "escapes",
         escapes_section(&sources),
@@ -235,6 +241,21 @@ fn documents(root: &Path) -> Result<Vec<Value>, Error> {
 
 fn ceiling(words: u64) -> u64 {
     (words / CEILING_STEP + 1) * CEILING_STEP
+}
+
+/// One entry per document `doc_size` already surveyed, over the tree root — the same place its
+/// own citations would resolve, since nothing here is nested.
+fn citation_entries(documents: &[Value]) -> Vec<Value> {
+    documents
+        .iter()
+        .filter_map(|entry| entry.get("file").and_then(Value::as_str))
+        .map(|file| {
+            let mut entry = Map::new();
+            entry.insert("file".into(), file.into());
+            entry.insert("roots".into(), list(&[".".to_string()]));
+            Value::Object(entry)
+        })
+        .collect()
 }
 
 /// One build entry per manifest. A single manifest at the top of the tree is one command.

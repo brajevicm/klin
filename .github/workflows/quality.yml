@@ -14,4 +14,4 @@ jobs:
           fetch-depth: 0
       - run: cargo build --release --locked
       - run: cargo test --locked
-      - run: ./target/release/klin gate --strict --gate doc-size --gate escapes --gate complexity
+      - run: ./target/release/klin gate --strict --gate doc-size --gate escapes --gate complexity --gate doc-citations
