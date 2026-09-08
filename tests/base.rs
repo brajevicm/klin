@@ -51,15 +51,81 @@ fn the_json_run_names_the_base_too() {
     assert!(base.contains("the merge-base with main"), "{base}");
 }
 
+/// A tree on the default branch, whose one commit the remote already has.
+fn at_the_remote_tip() -> Tree {
+    let tree = tree();
+    tree.repository();
+    tree.commit("everything on the default branch");
+    tree.git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    tree
+}
+
 #[test]
-fn a_base_that_resolves_to_head_is_a_tool_error() {
+fn a_base_that_resolves_to_head_at_the_remote_tip_runs_the_gates() {
+    let tree = at_the_remote_tip();
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+}
+
+#[test]
+fn a_base_that_resolves_to_head_ahead_of_the_remote_tip_is_a_tool_error() {
+    let tree = at_the_remote_tip();
+    tree.git(&["checkout", "-q", "-b", "trunk"]);
+    tree.write("src/work.rs", CLEAN);
+    tree.commit("a commit the remote does not have");
+
+    let run = tree.run_with(&[("GITHUB_BASE_REF", "trunk")], &["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("origin/main does not hold"), "{}", run.out);
+    assert!(run.says("a commit the remote does not have"), "{}", run.out);
+}
+
+#[test]
+fn a_base_that_resolves_to_head_with_no_remote_tip_is_a_strict_failure_only() {
     let tree = tree();
     tree.repository();
     tree.commit("everything on the default branch");
 
+    let loose = tree.run(&["escapes"]);
+    assert_eq!(loose.code, 0, "{}", loose.out);
+
+    let strict = tree.run(&["escapes", "--strict"]);
+    assert_eq!(strict.code, 2, "{}", strict.out);
+    assert!(
+        strict.says("no remote default branch resolves"),
+        "{}",
+        strict.out
+    );
+}
+
+#[test]
+fn a_local_branch_named_like_a_remote_one_does_not_count_as_the_remote() {
+    let tree = tree();
+    tree.repository();
+    tree.commit("everything on the default branch");
+    tree.git(&["branch", "origin/main"]);
+
+    let strict = tree.run(&["escapes", "--strict"]);
+    assert_eq!(strict.code, 2, "{}", strict.out);
+    assert!(
+        strict.says("no remote default branch resolves"),
+        "{}",
+        strict.out
+    );
+}
+
+#[test]
+fn a_dirty_tree_whose_base_resolves_to_head_runs_the_gates() {
+    let tree = tree();
+    tree.repository();
+    tree.commit("everything on the default branch");
+    tree.write("src/work.rs", CLEAN);
+
     let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("the base is HEAD"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
 }
 
 #[test]
