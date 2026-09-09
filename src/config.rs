@@ -149,7 +149,7 @@ impl Config {
     /// every one of them derives nothing, so nothing walks the tree for it.
     pub fn derives_anything(&self) -> bool {
         survey::derivable().any(|name| match self.data.get(name) {
-            Some(pinned) => !pinned_whole(pinned, survey::keys(name).unwrap_or_default()),
+            Some(pinned) => !survey::pinned_whole(name, pinned),
             None => true,
         })
     }
@@ -199,11 +199,11 @@ impl Config {
     /// the key. Spec 5.1, 5.2.
     pub fn section(&self, name: &str) -> Result<&Value, Error> {
         let missing = || Error(format!("{} has no \"{name}\" section", self.file.display()));
-        let Some(supplies) = survey::keys(name) else {
+        if survey::keys(name).is_none() {
             return self.data.get(name).ok_or_else(missing);
-        };
+        }
         if let Some(pinned) = self.data.get(name)
-            && pinned_whole(pinned, supplies)
+            && survey::pinned_whole(name, pinned)
         {
             return Ok(pinned);
         }
@@ -314,15 +314,6 @@ fn names(line: &str, section: &str) -> bool {
     line.split_once(": ")
         .and_then(|(_, rest)| rest.strip_prefix(section))
         .is_some_and(|rest| rest.starts_with(' '))
-}
-
-/// A section the config states in full, so the survey does not have to run for it. A section
-/// that is not an object — a list, a command, or `false` — states itself.
-fn pinned_whole(pinned: &Value, supplies: &[&str]) -> bool {
-    match pinned.as_object() {
-        Some(fields) => supplies.iter().all(|key| fields.contains_key(*key)),
-        None => true,
-    }
 }
 
 /// The file this run reads, and `None` when there is none to read. An explicit `--config` that

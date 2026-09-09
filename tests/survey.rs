@@ -7,6 +7,7 @@ use harness::{Run, Tree};
 
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const TANGLED: &str = "fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
+const MIDDLING: &str = "fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    0\n}\n";
 const MANIFEST: &str = "[package]\nname = \"t\"\nversion = \"0.1.0\"\n";
 
 /// A project klin can survey whole: source, a test root, a document and a manifest, with the
@@ -84,11 +85,8 @@ fn a_key_the_config_pins_prints_as_pinned_beside_the_derived_ones() {
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("pinned: complexity ceilings {\"cc\":12,\"lines\":90}"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("pinned: complexity cc 12"), "{}", run.out);
+    assert!(run.says("pinned: complexity lines 90"), "{}", run.out);
     assert!(
         run.says("derived: complexity roots src, tests"),
         "{}",
@@ -279,6 +277,8 @@ fn the_survey_is_cached_under_the_derivation_commit_and_read_back() {
 
     let held = std::fs::read_to_string(&file).unwrap_or_default();
     assert!(held.contains("\"survey\""), "{held}");
+    assert!(held.contains("\"complexity\""), "{held}");
+    assert!(held.contains("\"doc_size\""), "{held}");
     assert!(held.contains(env!("CARGO_PKG_VERSION")), "{held}");
 
     written(
@@ -388,4 +388,214 @@ fn a_baseline_key_is_still_an_error_saying_the_key_is_gone() {
     let run = gate(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("names a \"baseline\""), "{}", run.out);
+}
+
+/// One copy of a function per name, so a base can hold as many as a percentile needs.
+fn many(source: &str, count: usize) -> String {
+    (0..count)
+        .map(|at| source.replacen("fn ", &format!("fn at{at}_"), 1))
+        .collect()
+}
+
+fn short(tree: &Tree) -> String {
+    tree.revision("HEAD")[..7].to_string()
+}
+
+/// The ceiling is the nearest-rank 95th percentile of the derivation commit's own functions,
+/// and the floor wins wherever that percentile falls below it. Fifty functions of three
+/// complexities put a different value at each neighbouring rank, so a rank one out fails.
+#[test]
+fn a_derived_ceiling_is_the_percentile_of_the_derivation_commit() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("src/clean.rs", &many(CLEAN, 47));
+    tree.write("src/mid.rs", MIDDLING);
+    tree.write("src/knot.rs", &many(TANGLED, 2));
+    tree.base();
+    let at = short(&tree);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "derived: complexity cc 9 (95th percentile of 50 functions at {at}, floor 5)"
+        )),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says(&format!(
+            "derived: complexity lines 25 (the floor of 25, over 50 function(s) at {at})"
+        )),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn below_fifty_functions_the_floor_is_the_ceiling() {
+    let tree = project();
+    let at = short(&tree);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "derived: complexity cc 5 (the floor of 5, over 2 function(s) at {at})"
+        )),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says(&format!(
+            "derived: complexity lines 25 (the floor of 25, over 2 function(s) at {at})"
+        )),
+        "{}",
+        run.out
+    );
+}
+
+/// A function the derivation commit does not hold never enters the percentile, so a directory
+/// an agent makes a root cannot raise the ceiling that judges what it holds.
+#[test]
+fn a_function_only_in_the_working_tree_does_not_move_the_percentile() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.base();
+    tree.write("extra/knot.rs", &many(TANGLED, 50));
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("FAIL  complexity"), "{}", run.out);
+}
+
+/// A document the derivation commit lacks has no ceiling that is not read out of the working
+/// tree, so klin names it and judges nothing, until the commit holds it.
+#[test]
+fn a_document_the_derivation_commit_lacks_is_a_note_and_is_not_judged() {
+    let tree = project();
+    tree.words("CHANGELOG.md", 400);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: doc_size CHANGELOG.md is 400 words and is not judged"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("CHANGELOG.md is 400 words, over"), "{}", run.out);
+
+    tree.write(
+        "klin.json",
+        r#"{ "doc_size": [{"file": "CHANGELOG.md", "ceiling": 900}] }"#,
+    );
+    let stated = gate(&tree);
+    assert_eq!(stated.code, 0, "{}", stated.out);
+    assert!(
+        !stated.says("NOTE: doc_size CHANGELOG.md"),
+        "{}",
+        stated.out
+    );
+    tree.remove("klin.json");
+
+    tree.commit("the derivation commit holds it now");
+    let held = tree.run(&["doc-size"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(
+        held.says("CHANGELOG.md is 400 words, ceiling 450"),
+        "{}",
+        held.out
+    );
+}
+
+/// Pinning one ceiling and leaving the other to the survey is allowed, and the run says which
+/// is which.
+#[test]
+fn a_ceiling_pinned_beside_a_derived_one_is_used_as_written() {
+    let tree = project();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "ceilings": {"cc": 12} } }"#,
+    );
+    tree.write("src/knot.rs", TANGLED);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("pinned: complexity cc 12"), "{}", run.out);
+    assert!(
+        run.says("derived: complexity lines 25 (the floor of 25, over 2 function(s) at"),
+        "{}",
+        run.out
+    );
+
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "roots": ["src"], "ceilings": {"cc": 12} } }"#,
+    );
+    let beside_a_pinned_root = gate(&tree);
+    assert_eq!(beside_a_pinned_root.code, 0, "{}", beside_a_pinned_root.out);
+    assert!(
+        beside_a_pinned_root.says("derived: complexity lines 25 (the floor of 25"),
+        "{}",
+        beside_a_pinned_root.out
+    );
+}
+
+#[test]
+fn a_new_function_over_the_derived_ceiling_fails() {
+    let tree = project();
+    tree.write("src/knot.rs", TANGLED);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  complexity"), "{}", run.out);
+    assert!(run.says("src/knot.rs:1  cc 12, 17 lines"), "{}", run.out);
+}
+
+/// A tree whose documents the derivation commit all lacks still has a doc-size gate, so a run
+/// under `--strict` has its decision for it and no ceiling is read out of the working tree.
+#[test]
+fn a_tree_whose_documents_are_all_new_still_gates_on_doc_size() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree.words("README.md", 80);
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ok    doc-size"), "{}", run.out);
+    assert!(
+        run.says("NOTE: doc_size README.md is 80 words"),
+        "{}",
+        run.out
+    );
+}
+
+/// A file the gate never judges must not set the ceiling the judged files are held to, or
+/// excluding generated code would loosen the gate instead of narrowing it.
+#[test]
+fn a_file_the_section_excludes_is_out_of_the_percentile_too() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("src/big.rs", &many(TANGLED, 50));
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "exclude": ["big.rs"] } }"#,
+    );
+    tree.base();
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        "{}",
+        run.out
+    );
 }

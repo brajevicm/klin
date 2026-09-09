@@ -645,6 +645,19 @@ fn functions(
 ) -> Result<Vec<Function>, Error> {
     let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
     let source = String::from_utf8_lossy(&bytes).to_string();
+    let file = files::relative(path, repo_root);
+    let Some(found) = parsed(&source, &file, language)? else {
+        unparsed.push(Unparsed {
+            file,
+            language: language.name,
+        });
+        return Ok(Vec::new());
+    };
+    Ok(found)
+}
+
+/// Every function one source text holds, and `None` when the grammar rejects the text.
+fn parsed(source: &str, file: &str, language: &Language) -> Result<Option<Vec<Function>>, Error> {
     let mut parser = Parser::new();
     parser.set_language(&(language.grammar)()).map_err(|why| {
         Error(format!(
@@ -652,19 +665,61 @@ fn functions(
             language.name
         ))
     })?;
-    let file = files::relative(path, repo_root);
-    let tree = parser.parse(&source, None);
+    let tree = parser.parse(source, None);
     let Some(tree) = tree.filter(|tree| !tree.root_node().has_error()) else {
-        unparsed.push(Unparsed {
-            file,
-            language: language.name,
-        });
-        return Ok(Vec::new());
+        return Ok(None);
     };
     let lines: Vec<&str> = source.lines().collect();
     let mut out = Vec::new();
-    collect(tree.root_node(), language, &file, &lines, &mut out);
-    Ok(out)
+    collect(tree.root_node(), language, file, &lines, &mut out);
+    Ok(Some(out))
+}
+
+/// The file extensions the named languages carry, and every language's when none are named, so
+/// a survey samples exactly the files this gate would measure. Spec 5.4.
+pub fn extensions(named: &[String]) -> Vec<&'static str> {
+    LANGUAGES
+        .iter()
+        .filter(|language| {
+            named.is_empty()
+                || language
+                    .names
+                    .iter()
+                    .any(|name| named.iter().any(|want| want == name))
+        })
+        .flat_map(|language| language.extensions.iter().copied())
+        .collect()
+}
+
+/// What one function comes to under this check, for a caller that measures a tree it does not
+/// judge. The two numbers a ceiling names, and nothing about where the function sits.
+pub struct Measured {
+    pub cc: u64,
+    pub lines: u64,
+}
+
+/// The cyclomatic complexity and body length of every function in one source text, for the
+/// percentile the survey takes over the derivation commit. Nothing for a path no grammar here
+/// reads, and nothing for a text the grammar rejects. Spec 5.4.
+pub fn measured(path: &str, source: &str) -> Vec<Measured> {
+    let Some(language) = LANGUAGES.iter().find(|language| {
+        language
+            .extensions
+            .iter()
+            .any(|extension| path.ends_with(extension))
+    }) else {
+        return Vec::new();
+    };
+    parsed(source, path, language)
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+        .iter()
+        .map(|function| Measured {
+            cc: function.cc,
+            lines: function.length(),
+        })
+        .collect()
 }
 
 fn collect(node: Node, language: &Language, file: &str, lines: &[&str], out: &mut Vec<Function>) {

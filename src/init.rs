@@ -141,7 +141,7 @@ fn surveyed(root: &Path, mut config: Map<String, Value>) -> Result<Surveyed, Err
         "escapes",
         "complexity",
     ] {
-        let section = found.sections.get(name).cloned();
+        let section = found.sections.get(name).cloned().filter(stated);
         add(name, section, name.to_string());
     }
     let derived = match radius::history(root, None) {
@@ -163,6 +163,13 @@ fn surveyed(root: &Path, mut config: Map<String, Value>) -> Result<Surveyed, Err
         written,
         derived: found.lines.into_iter().chain(derived).collect(),
     })
+}
+
+/// A section worth writing down. An empty list is what a survey says when it found the
+/// documents but the derivation commit holds none of them, and pinning that would gate nothing
+/// for ever.
+fn stated(section: &Value) -> bool {
+    !section.as_array().is_some_and(|entries| entries.is_empty())
 }
 
 /// The section ADR 0014 pins: how wide this project's usual commit is, so the report on a

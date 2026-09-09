@@ -423,11 +423,8 @@ fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("derived: complexity roots src"), "{}", run.out);
-    assert!(
-        run.says("pinned: complexity ceilings {\"cc\":8,\"lines\":60}"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
+    assert!(run.says("pinned: complexity lines 60"), "{}", run.out);
 
     tree.write("klin.json", r#"{ "complexity": { "roots": ["src"] } }"#);
     let derived_ceilings = tree.run(&["complexity"]);
@@ -438,7 +435,7 @@ fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
         derived_ceilings.out
     );
     assert!(
-        derived_ceilings.says("derived: complexity ceilings"),
+        derived_ceilings.says("derived: complexity cc 5 (the floor of 5"),
         "{}",
         derived_ceilings.out
     );
