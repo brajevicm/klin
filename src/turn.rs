@@ -22,6 +22,18 @@ const REFERENCE: &str = "refs/worktree/klin/turn";
 #[derive(clap::Args)]
 pub struct Args {}
 
+#[derive(clap::Args)]
+pub struct Moved {
+    #[command(subcommand)]
+    which: Which,
+}
+
+#[derive(clap::Subcommand)]
+enum Which {
+    /// Move the stamp to the working tree, whatever verdict the last stop left
+    Reset,
+}
+
 /// Where the turn's window opens: the stamped commit, the HEAD it was taken over, when it was
 /// taken, the verdict of the last stop, and how many prompts this worktree has seen.
 pub struct Stamp {
@@ -74,6 +86,25 @@ fn next(
         note(out, GONE);
     }
     Some(Stamp { prompts, ..held })
+}
+
+/// The third route out of a red window: a person moves the stamp to the working tree, so the
+/// debt behind it stops reading as new. The fresh stamp is red like any other, so the next
+/// prompt leaves it where the reset put it until a stop judges the tree, and the counter
+/// carries over, because the turn did not end. Spec 6.2.
+pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let Which::Reset = args.which;
+    let at = state::ready(start).map_err(Error)?;
+    let prompts = read(&at).map_or(0, |held| held.prompts);
+    let Some(stamp) = taken(start, &at, prompts, out) else {
+        return Err(Error("git could not stamp this tree".to_string()));
+    };
+    write(&at, &stamp, out);
+    let _ = writeln!(
+        out,
+        "klin: a person moved the turn stamp to the working tree."
+    );
+    Ok(0)
 }
 
 fn read(at: &Path) -> Option<Stamp> {

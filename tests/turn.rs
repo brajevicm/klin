@@ -279,3 +279,64 @@ fn outside_a_repository_the_stamp_says_nothing_and_blocks_nothing() {
     let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
 }
+
+#[test]
+fn a_person_resets_the_stamp_after_a_red_stop() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    let first = field(&tree, "commit");
+    verdict(&tree, "red");
+    tree.write("src/lib.rs", "fn abandoned() {}\n");
+
+    let run = tree.run(&["turn", "reset"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("a person moved"), "{}", run.out);
+    assert_ne!(
+        field(&tree, "commit"),
+        first,
+        "the reset left the stamp put"
+    );
+    assert_eq!(field(&tree, "verdict"), "red");
+    assert_eq!(
+        git_out(tree.root(), &["show", "refs/worktree/klin/turn:src/lib.rs"]),
+        "fn abandoned() {}"
+    );
+}
+
+#[test]
+fn a_reset_after_a_green_stop_leaves_a_red_stamp_the_next_prompt_keeps() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    verdict(&tree, "green");
+
+    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
+    assert_eq!(field(&tree, "verdict"), "red");
+    let moved = field(&tree, "commit");
+    tree.write("src/lib.rs", "fn after_the_reset() {}\n");
+
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    assert_eq!(
+        field(&tree, "commit"),
+        moved,
+        "the prompt after a reset moved the stamp over an unjudged tree"
+    );
+}
+
+#[test]
+fn a_reset_keeps_the_prompt_counter() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+
+    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
+    assert_eq!(field(&tree, "prompts"), "2");
+}
+
+#[test]
+fn a_reset_outside_a_repository_says_why() {
+    let tree = Tree::bare();
+
+    let run = tree.run(&["turn", "reset"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("git repository"), "{}", run.out);
+}

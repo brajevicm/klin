@@ -49,6 +49,8 @@ enum Command {
     Cache(cache::Args),
     /// Move the turn stamp by its one rule, on a session start and on every prompt
     Radius(turn::Args),
+    /// Move the turn stamp to the working tree, which only a person does
+    Turn(turn::Moved),
 }
 
 fn main() -> ExitCode {
@@ -76,7 +78,8 @@ fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8,
         | Command::Init(_)
         | Command::Cache(_)
         | Command::Guard(_)
-        | Command::Radius(_) => {
+        | Command::Radius(_)
+        | Command::Turn(_) => {
             return None;
         }
     })
@@ -89,6 +92,7 @@ fn tool(command: &Command, start: &Path, out: &mut String) -> Result<u8, config:
         Command::Init(args) => init::run(args, start, out),
         Command::Cache(args) => cache::run(args, start, out),
         Command::Radius(args) => turn::run(args, start, out),
+        Command::Turn(args) => turn::moved(args, start, out),
         Command::Guard(args) => Ok(guard::run(args)),
         _ => Ok(0),
     }

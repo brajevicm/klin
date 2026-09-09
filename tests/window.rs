@@ -272,3 +272,16 @@ fn a_run_by_hand_keeps_the_branch_window_the_stamp_did_not_touch() {
         "a run by hand wrote a verdict"
     );
 }
+
+#[test]
+fn a_stop_after_a_reset_compares_against_the_moved_stamp() {
+    let tree = stamped();
+    tree.write("src/lib.rs", text::WRAPPED);
+    let failed = stop(&tree);
+    assert_eq!(failed.code, 2, "{}", failed.out);
+    assert!(!failed.says("turn reset"), "{}", failed.out);
+
+    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
+    let run = stop(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
