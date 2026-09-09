@@ -76,7 +76,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let tree = tree(start, &at);
     let held = held(start, &at, out);
     if prompt {
-        radius::spread(start, opened.as_deref(), tree.as_deref(), out);
+        radius::spread(start, &at, opened.as_deref(), tree.as_deref(), out);
     }
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     let mark = tree.as_deref().and_then(|tree| marked(start, tree));
@@ -102,6 +102,16 @@ pub fn mark(root: &Path, at: &Path) -> Option<String> {
         .and_then(|held| held.mark)
         .filter(|mark| resolve(root, mark).is_some());
     held.or_else(|| resolve(root, MARK))
+}
+
+/// The commit every derived value comes from: the stamp's parent, which is the HEAD the stamp
+/// was taken over, so a commit inside an open turn does not move it. HEAD when no stamp is
+/// readable, and `None` outside a repository. Spec 6.6.
+pub fn derivation(root: &Path, at: Option<&Path>) -> Option<String> {
+    at.and_then(read)
+        .and_then(|held| held.parent)
+        .filter(|parent| resolve(root, parent).is_some())
+        .or_else(|| resolve(root, "HEAD"))
 }
 
 /// The mark this event leaves for the next prompt to measure from. It moves on a session start

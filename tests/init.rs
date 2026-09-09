@@ -214,3 +214,43 @@ fn init_infers_no_section_for_a_gate_it_cannot_survey() {
     assert_eq!(config.get("sarif"), None, "{config}");
     assert_eq!(config.get("manifests"), None, "{config}");
 }
+
+/// `init` pins what history says, so a person can see the two numbers, edit them and put them
+/// under review. The lines name them as derived and never as a gate. #92.
+#[test]
+fn init_pins_the_radius_values_history_derives() {
+    let tree = harness::history(43, 6);
+
+    let run = tree.run(&["init"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let config = config(&tree);
+    assert_eq!(config["radius"]["lines"], 30, "{config}");
+    assert_eq!(config["radius"]["directories"], 3, "{config}");
+    assert!(
+        run.says("derived: radius lines 30, the 90th percentile of the last 50 non-merge commits"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("derived: radius directories 3, the 90th percentile"),
+        "{}",
+        run.out
+    );
+
+    let listed = tree.run(&["gate", "--list"]);
+    assert!(!listed.says("radius"), "{}", listed.out);
+}
+
+#[test]
+fn init_writes_no_radius_section_below_fifty_commits() {
+    let tree = harness::history(42, 6);
+
+    let run = tree.run(&["init"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(config(&tree)["radius"], Value::Null, "{}", run.out);
+    assert!(
+        run.says("derived: no \"radius\" section, because 49 non-merge commit(s) reach"),
+        "{}",
+        run.out
+    );
+}

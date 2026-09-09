@@ -189,6 +189,47 @@ impl Tree {
     }
 }
 
+/// A history whose percentile has a known answer: an opening commit of three lines in one
+/// directory, then `small` commits that add one line in one directory, then `big` commits that
+/// add ten lines in each of three. #92.
+pub fn history(small: usize, big: usize) -> Tree {
+    let tree = Tree::bare();
+    tree.repository();
+    tree.write("README.md", "one\ntwo\nthree\n");
+    tree.commit("a first commit");
+    small_commits(&tree, small);
+    big_commits(&tree, big);
+    tree
+}
+
+/// The same two kinds the other way round, so the big commits are the oldest and a sample that
+/// stops short of them does not hold them.
+pub fn history_from(big: usize, small: usize) -> Tree {
+    let tree = Tree::bare();
+    tree.repository();
+    tree.write("README.md", "one\ntwo\nthree\n");
+    tree.commit("a first commit");
+    big_commits(&tree, big);
+    small_commits(&tree, small);
+    tree
+}
+
+fn small_commits(tree: &Tree, many: usize) {
+    for at in 0..many {
+        tree.write(&format!("small/{at}.txt"), "one line\n");
+        tree.commit("a small commit");
+    }
+}
+
+fn big_commits(tree: &Tree, many: usize) {
+    for at in 0..many {
+        for under in ["a", "b", "c"] {
+            tree.write(&format!("{under}/{at}.txt"), &"line\n".repeat(10));
+        }
+        tree.commit("a big commit");
+    }
+}
+
 pub fn run_from(cwd: &Path, args: &[&str]) -> Run {
     feed(cwd, args, "")
 }

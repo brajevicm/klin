@@ -1,5 +1,10 @@
 # The turn is the window, and radius only reports
 
+> ADR 0016 amends this record. The two values are derived at run time, by the
+> rule below, from the commit of spec 6.6, and cached under it. `init` pins what
+> that derivation says rather than owning it. A config that pins neither key no
+> longer silences the report, because a missing value is derived.
+
 > ADR 0024 amends this record. The report measures a prompt mark of its own,
 > not the turn stamp, because the stamp waits for a green stop and the report
 > must not.

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::config::Error;
-use crate::{escapes, files};
+use crate::{escapes, files, radius};
 
 const FILENAME: &str = "klin.json";
 const CEILINGS: (u64, u64) = (8, 60);
@@ -41,9 +41,12 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         inert(&root, out);
         return Ok(0);
     }
-    let (config, written) = surveyed(&root, held.unwrap_or_default())?;
-    write(&file, &config)?;
-    let _ = writeln!(out, "{}", said(&file, &written));
+    let surveyed = surveyed(&root, held.unwrap_or_default())?;
+    write(&file, &surveyed.config)?;
+    let _ = writeln!(out, "{}", said(&file, &surveyed.written));
+    for line in surveyed.derived {
+        let _ = writeln!(out, "{line}");
+    }
     inert(&root, out);
     Ok(0)
 }
@@ -115,12 +118,16 @@ fn write(file: &Path, config: &Map<String, Value>) -> Result<(), Error> {
     std::fs::write(file, text + "\n").map_err(|why| unwritable(&why))
 }
 
-/// Every section the tree can say for itself. A key the configuration already holds stays as it
-/// is, so a gate a person excluded with `false` is left alone.
-fn surveyed(
-    root: &Path,
-    mut config: Map<String, Value>,
-) -> Result<(Map<String, Value>, Vec<String>), Error> {
+/// Every section the tree can say for itself, what it wrote, and one `derived:` line per value
+/// history produced. A key the configuration already holds stays as it is, so a gate a person
+/// excluded with `false` is left alone.
+struct Surveyed {
+    config: Map<String, Value>,
+    written: Vec<String>,
+    derived: Vec<String>,
+}
+
+fn surveyed(root: &Path, mut config: Map<String, Value>) -> Result<Surveyed, Error> {
     let sources = sources(root)?;
     let mut written = Vec::new();
     let mut add = |key: &str, value: Option<Value>, said: String| {
@@ -159,8 +166,30 @@ fn surveyed(
         complexity_section(&sources),
         format!("complexity over {}", named(&sources.roots)),
     );
-    Ok((config, written))
+    let derived = match radius::history(root, None) {
+        Ok(found) => {
+            add(
+                SECTION,
+                Some(radius::section(&found)),
+                format!("{SECTION} over {} commit(s)", found.commits),
+            );
+            vec![
+                radius::derived_line("lines", found.lines, found.commits),
+                radius::derived_line("directories", found.directories, found.commits),
+            ]
+        }
+        Err(why) => vec![format!("derived: no \"{SECTION}\" section, because {why}")],
+    };
+    Ok(Surveyed {
+        config,
+        written,
+        derived,
+    })
 }
+
+/// The section ADR 0014 pins: how wide this project's usual commit is, so the report on a
+/// prompt has something to read a turn against. It is not a gate and it fails nothing.
+const SECTION: &str = "radius";
 
 fn named(roots: &[String]) -> String {
     match roots.is_empty() {
