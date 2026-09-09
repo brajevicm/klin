@@ -1,14 +1,15 @@
 use std::cell::RefCell;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde_json::{Map, Value};
 
-use crate::base::{self, Base, Prior};
+use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
-use crate::{build, complexity, doc_citations, doc_size, escapes, state};
+use crate::{build, complexity, doc_citations, doc_size, escapes, state, turn};
 
 /// Where klin records that a build failed, so the stop that follows knows the turn's gate
 /// block is still unspent. In the state directory, which an agent does not empty. ADR 0019.
@@ -103,18 +104,52 @@ pub struct Args {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    if args.hook {
-        match built(args, start) {
-            Ok(Some((root, failure))) => return Ok(does_not_build(args, &root, &failure, out)),
-            Err(problem) => return Ok(handed(args, start, Err(problem), out)),
-            Ok(None) => (),
-        }
-    }
-    let judged = judge(args, start, out);
     if !args.hook {
+        let judged = judge(args, start, None, out);
         return refused(args, judged, out).map(code);
     }
-    Ok(handed(args, start, judged, out))
+    Ok(stopped(args, start, out))
+}
+
+/// How long a stop waits for the stop before it to finish. A fraction of the hook's five
+/// seconds, because the stop still has a build and every gate to run inside them. Spec 13.
+const BUDGET: Duration = Duration::from_secs(1);
+
+/// One stop in the hook: the lock, the turn window, the build, the gates, and the verdict the
+/// next prompt reads. The lock is held from before the run measures until after the verdict is
+/// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
+fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
+    let root = root(args, start);
+    let lost = matches!(
+        state::ready(&root).ok().map(|at| state::lock(&at, BUDGET)),
+        Some(None)
+    );
+    let window = turn::window(&root, out).ok();
+    let (code, green) = ran(args, start, window.as_ref(), out);
+    if lost {
+        eprintln!(
+            "klin: NOTE: another stop in this worktree held the state directory for the whole \
+             {} ms klin waits, so this stop wrote no verdict and the window stays as it is.",
+            BUDGET.as_millis()
+        );
+        return code;
+    }
+    let mut said = String::new();
+    turn::verdict(&root, green, &mut said);
+    eprint!("{said}");
+    code
+}
+
+fn ran(args: &Args, start: &Path, window: Option<&Window>, out: &mut String) -> (u8, bool) {
+    match built(args, start, window) {
+        Ok(Some((root, failure))) => (does_not_build(args, &root, &failure, window, out), false),
+        Err(problem) => (handed(args, start, Err(problem), out), false),
+        Ok(None) => {
+            let judged = judge(args, start, window, out);
+            let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
+            (handed(args, start, judged, out), green)
+        }
+    }
 }
 
 /// What the hook does with a run it finished: report it, and block the stop or let it end.
@@ -144,7 +179,13 @@ struct Tally {
 const DOES_NOT_BUILD: &str =
     "the tree does not build, so no gate ran (every stop blocks until it does)";
 
-fn does_not_build(args: &Args, root: &Path, failure: &str, out: &mut String) -> u8 {
+fn does_not_build(
+    args: &Args,
+    root: &Path,
+    failure: &str,
+    window: Option<&Window>,
+    out: &mut String,
+) -> u8 {
     match state::ready(root) {
         Ok(state) => {
             let _ = std::fs::write(state.join(BUILD_BLOCKED), "");
@@ -160,7 +201,7 @@ fn does_not_build(args: &Args, root: &Path, failure: &str, out: &mut String) -> 
         let _ = writeln!(
             out,
             "{}",
-            as_json(2, &format!("klin: {DOES_NOT_BUILD}."), records, None)
+            as_json(2, &format!("klin: {DOES_NOT_BUILD}."), records, window)
         );
         return 2;
     }
@@ -171,7 +212,11 @@ fn does_not_build(args: &Args, root: &Path, failure: &str, out: &mut String) -> 
 
 /// The build the config names, run before any gate judges the tree it produces. The key
 /// belongs to the hook, so a config with no "build" builds nothing and that is not an error.
-fn built(args: &Args, start: &Path) -> Result<Option<(PathBuf, String)>, Error> {
+fn built(
+    args: &Args,
+    start: &Path,
+    window: Option<&Window>,
+) -> Result<Option<(PathBuf, String)>, Error> {
     let Ok(config) = Config::load(args.config.as_deref(), start) else {
         return Ok(None);
     };
@@ -179,7 +224,7 @@ fn built(args: &Args, start: &Path) -> Result<Option<(PathBuf, String)>, Error> 
     if entries.is_empty() {
         return Ok(None);
     }
-    let changes = scoped(args, &config, &entries)?;
+    let changes = scoped(args, &config, &entries, window)?;
     let failure = build::failure(config.root(), &build::wanted(&entries, changes.as_deref()));
     Ok(failure.map(|text| (config.root().to_path_buf(), text)))
 }
@@ -198,15 +243,21 @@ fn scoped(
     args: &Args,
     config: &Config,
     entries: &[build::Entry],
+    window: Option<&Window>,
 ) -> Result<Option<Vec<Change>>, Error> {
     if !args.changed || entries.iter().all(|entry| entry.root.is_none()) {
         return Ok(None);
     }
-    let base = base::choose(config.root(), args.strict)?;
-    changed::files(config.root(), &base.commit).map(Some)
+    let base = chosen(window, config, args.strict)?;
+    changed::files(config.root(), &base.before).map(Some)
 }
 
-fn judge(args: &Args, start: &Path, out: &mut String) -> Result<Tally, Error> {
+fn judge(
+    args: &Args,
+    start: &Path,
+    window: Option<&Window>,
+    out: &mut String,
+) -> Result<Tally, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let note = version(args, &config, out);
     let plan = plan(&config)?;
@@ -215,7 +266,7 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<Tally, Error> {
     }
     let wanted = select(&args.gates, &plan, &config)?;
     accounted(args, &plan, &config)?;
-    let against = against(args, &wanted, &config, out)?;
+    let against = against(args, &wanted, &config, window, out)?;
     let (tally, mut records) = each(args, &wanted, &config.file, start, &against, out);
     records.notes.extend(note);
     finish(args, &plan, wanted.len(), tally, records, &against, out);
@@ -226,7 +277,7 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<Tally, Error> {
 /// a scoped run looks at.
 #[derive(Default)]
 struct Against {
-    base: Option<Base>,
+    base: Option<Window>,
     scope: Option<Vec<String>>,
     prior: Option<Prior>,
 }
@@ -241,9 +292,10 @@ fn against(
     args: &Args,
     wanted: &[&Gate],
     config: &Config,
+    window: Option<&Window>,
     out: &mut String,
 ) -> Result<Against, Error> {
-    let base = base(args, wanted, config, out)?;
+    let base = base(args, wanted, config, window, out)?;
     let changes = changes(args, config, base.as_ref(), out)?;
     Ok(Against {
         scope: changes
@@ -258,16 +310,26 @@ fn base(
     args: &Args,
     wanted: &[&Gate],
     config: &Config,
+    window: Option<&Window>,
     out: &mut String,
-) -> Result<Option<Base>, Error> {
+) -> Result<Option<Window>, Error> {
     if !args.changed && !wanted.iter().any(|gate| gate.check.compares_to_base) {
         return Ok(None);
     }
-    let base = base::choose(config.root(), args.strict)?;
+    let base = chosen(window, config, args.strict)?;
     if !args.json {
         let _ = writeln!(out, "  {}", base.line());
     }
     Ok(Some(base))
+}
+
+/// The window the run judges: the one the hook already read, or the base a run by hand and CI
+/// choose for themselves. Spec 6.1, 6.3.
+fn chosen(window: Option<&Window>, config: &Config, strict: bool) -> Result<Window, Error> {
+    match window {
+        Some(window) => Ok(window.clone()),
+        None => base::choose(config.root(), strict),
+    }
 }
 
 fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<Tally, Error> {
@@ -335,7 +397,7 @@ fn finish(
     );
 }
 
-fn as_json(code: u8, tally: &str, records: Records, base: Option<&Base>) -> String {
+fn as_json(code: u8, tally: &str, records: Records, base: Option<&Window>) -> String {
     let status = match code {
         0 => "PASS",
         1 => "FAIL",
@@ -345,7 +407,7 @@ fn as_json(code: u8, tally: &str, records: Records, base: Option<&Base>) -> Stri
     out.insert("status".into(), status.into());
     out.insert("summary".into(), tally.into());
     if let Some(base) = base {
-        out.insert("base".into(), base.line().into());
+        out.insert("window".into(), base.record());
     }
     out.insert("findings".into(), Value::Array(records.findings));
     out.insert("notes".into(), Value::Array(records.notes));
@@ -430,8 +492,8 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
 fn unwritable(root: &Path) {
     if let Err(why) = state::ready(root) {
         eprintln!(
-            "klin: NOTE: {why} — the window comes from HEAD, and a state klin cannot keep \
-             blocks nothing."
+            "klin: NOTE: {why} — so this stop wrote no verdict, and a state klin cannot \
+             keep blocks nothing."
         );
     }
 }
@@ -446,7 +508,7 @@ fn lead(failed: usize, errored: usize) -> &'static str {
 
 fn prior(
     config: &Config,
-    base: Option<&Base>,
+    base: Option<&Window>,
     changes: Option<&[Change]>,
 ) -> Result<Option<Prior>, Error> {
     let Some(base) = base else {
@@ -458,13 +520,13 @@ fn prior(
 fn changes(
     args: &Args,
     config: &Config,
-    base: Option<&Base>,
+    base: Option<&Window>,
     out: &mut String,
 ) -> Result<Option<Vec<Change>>, Error> {
     let (true, Some(base)) = (args.changed, base) else {
         return Ok(None);
     };
-    let changed = changed::files(config.root(), &base.commit)?;
+    let changed = changed::files(config.root(), &base.before)?;
     if !args.json {
         let _ = writeln!(
             out,
@@ -731,7 +793,7 @@ fn one(
         config: Some(config.to_path_buf()),
         gate: gate.name.clone(),
         prior: against.dir().map(Path::to_path_buf),
-        base: against.base.as_ref().map(|base| base.commit.clone()),
+        base: against.base.as_ref().map(|base| base.before.clone()),
         quiet: true,
         strict: args.strict && gate.check.compares_to_base,
         hook: args.hook,

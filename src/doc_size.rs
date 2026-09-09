@@ -120,7 +120,7 @@ fn commit(config: &Config, flags: &Flags, out: &mut String) -> Option<String> {
     if !flags.quiet {
         let _ = writeln!(out, "{}", base.line());
     }
-    Some(base.commit)
+    Some(base.before)
 }
 
 /// Whether the base holds this document over the same ceiling. A ceiling a person lowers must

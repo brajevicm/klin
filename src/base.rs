@@ -1,14 +1,14 @@
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::changed::{self, Change, git};
 use crate::config::{Config, Error, Flags};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
-/// The base commit, laid out as a directory, so a gate measures it the way it measures the
+/// The `before` tree, laid out as a directory, so a gate measures it the way it measures the
 /// working tree. A whole run checks the base out in a detached worktree. A scoped run writes
 /// only the changed files, each at the path it has today, so a rename is not a tree of new debt.
 pub struct Prior {
@@ -43,7 +43,11 @@ impl Drop for Prior {
     }
 }
 
-pub fn materialize(config: &Config, base: &Base, scope: Option<&[Change]>) -> Result<Prior, Error> {
+pub fn materialize(
+    config: &Config,
+    base: &Window,
+    scope: Option<&[Change]>,
+) -> Result<Prior, Error> {
     let dir = tempfile::Builder::new()
         .prefix("klin-base-")
         .tempdir()
@@ -54,7 +58,7 @@ pub fn materialize(config: &Config, base: &Base, scope: Option<&[Change]>) -> Re
     }
 }
 
-fn checked_out(config: &Config, base: &Base, dir: tempfile::TempDir) -> Result<Prior, Error> {
+fn checked_out(config: &Config, base: &Window, dir: tempfile::TempDir) -> Result<Prior, Error> {
     let root = config.root();
     let inside = under_the_repository(root)?;
     git(
@@ -65,14 +69,14 @@ fn checked_out(config: &Config, base: &Base, dir: tempfile::TempDir) -> Result<P
             "--detach",
             "--quiet",
             &dir.path().to_string_lossy(),
-            &base.commit,
+            &base.before,
         ],
     )
     .ok_or_else(|| {
         Error(format!(
             "the base commit {} could not be checked out to measure it — fetch history, or \
              give CI the full clone",
-            &base.commit[..7.min(base.commit.len())]
+            base.short()
         ))
     })?;
     let prior = Prior {
@@ -80,7 +84,7 @@ fn checked_out(config: &Config, base: &Base, dir: tempfile::TempDir) -> Result<P
         dir,
         from_worktree: Some(root.to_path_buf()),
     };
-    for change in changed::files(root, &base.commit)? {
+    for change in changed::files(root, &base.before)? {
         let Some(was) = change.was.filter(|was| *was != change.path) else {
             continue;
         };
@@ -122,7 +126,7 @@ fn move_within(root: &Path, was: &str, now: &str) -> Result<(), Error> {
 
 fn written(
     config: &Config,
-    base: &Base,
+    base: &Window,
     changes: &[Change],
     dir: tempfile::TempDir,
 ) -> Result<Prior, Error> {
@@ -136,11 +140,11 @@ fn written(
         let Some(was) = &change.was else {
             continue;
         };
-        let bytes = changed::blob(root, &base.commit, was).ok_or_else(|| {
+        let bytes = changed::blob(root, &base.before, was).ok_or_else(|| {
             Error(format!(
                 "the base commit {} holds no {was}, which git says it changed — the base and the \
                  working tree disagree, so klin cannot judge this run",
-                &base.commit[..7.min(base.commit.len())]
+                base.short()
             ))
         })?;
         let path = prior.root().join(&change.path);
@@ -156,7 +160,7 @@ fn written(
 }
 
 /// The base a gate the runner did not lay out chooses for itself, named once in the report.
-pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Base, Error> {
+pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Window, Error> {
     let base = choose(root, flags.strict)?;
     if !flags.quiet {
         let _ = writeln!(out, "{}", base.line());
@@ -191,25 +195,62 @@ pub fn roots(roots: &[PathBuf], config: &Config, prior: &Path) -> Result<Vec<Pat
         .collect()
 }
 
-pub struct Base {
-    pub commit: String,
+/// The pair of trees a run compares: which of the three kinds of 4.2 it is, the base commit
+/// `before` names, and how that commit was chosen. `after` is the working tree.
+#[derive(Clone)]
+pub struct Window {
+    pub kind: Kind,
+    pub before: String,
     pub how: String,
 }
 
-impl Base {
-    pub fn line(&self) -> String {
-        format!(
-            "base: {} — {}",
-            &self.commit[..7.min(self.commit.len())],
-            self.how
-        )
+/// The three window kinds of section 4.2. The hook judges a turn, `klin gate` by hand and CI
+/// on a pull request judge a branch, and CI on a push judges the push.
+#[derive(Clone, Copy)]
+pub enum Kind {
+    Turn,
+    Branch,
+    Push,
+}
+
+impl Kind {
+    fn name(self) -> &'static str {
+        match self {
+            Kind::Turn => "turn",
+            Kind::Branch => "branch",
+            Kind::Push => "push",
+        }
     }
 }
 
-pub fn choose(root: &Path, strict: bool) -> Result<Base, Error> {
+impl Window {
+    pub fn short(&self) -> &str {
+        &self.before[..7.min(self.before.len())]
+    }
+
+    pub fn line(&self) -> String {
+        format!(
+            "window: {} — base {}, {}",
+            self.kind.name(),
+            self.short(),
+            self.how
+        )
+    }
+
+    pub fn record(&self) -> Value {
+        let mut out = Map::new();
+        out.insert("kind".into(), self.kind.name().into());
+        out.insert("before".into(), self.before.clone().into());
+        out.insert("after".into(), "the working tree".into());
+        out.insert("how".into(), self.how.clone().into());
+        Value::Object(out)
+    }
+}
+
+pub fn choose(root: &Path, strict: bool) -> Result<Window, Error> {
     let head = resolve(root, "HEAD");
     let mut tried: Vec<String> = Vec::new();
-    for (reference, how, source) in candidates(root) {
+    for (reference, how, kind, source) in candidates(root) {
         tried.push(
             reference
                 .split("...")
@@ -220,8 +261,12 @@ pub fn choose(root: &Path, strict: bool) -> Result<Base, Error> {
         let Some(commit) = resolve(root, &reference) else {
             continue;
         };
-        let base = Base { commit, how };
-        if head.as_deref() == Some(base.commit.as_str()) && !dirty(root) {
+        let base = Window {
+            kind,
+            before: commit,
+            how,
+        };
+        if head.as_deref() == Some(base.before.as_str()) && !dirty(root) {
             return equal_to_head(root, strict, source, base);
         }
         return Ok(base);
@@ -248,7 +293,7 @@ enum Source {
 
 /// A clean working tree whose base is HEAD measures nothing. That is a refusal only when klin
 /// can show that commits are hidden from the remote, or when it cannot tell and CI is asking.
-fn equal_to_head(root: &Path, strict: bool, source: Source, base: Base) -> Result<Base, Error> {
+fn equal_to_head(root: &Path, strict: bool, source: Source, base: Window) -> Result<Window, Error> {
     if source == Source::Remote {
         return Ok(base);
     }
@@ -296,7 +341,7 @@ fn equal_to_head(root: &Path, strict: bool, source: Source, base: Base) -> Resul
 const SHOWN: usize = 10;
 
 /// klin cannot see whether the work is pushed. CI asks for the refusal, a local run for its gates.
-fn cannot_tell(strict: bool, base: Base, why: &str) -> Result<Base, Error> {
+fn cannot_tell(strict: bool, base: Window, why: &str) -> Result<Window, Error> {
     if !strict {
         return Ok(base);
     }
@@ -329,7 +374,7 @@ fn dirty(root: &Path) -> bool {
     git(root, &["status", "--porcelain"]).is_some_and(|listed| !listed.trim().is_empty())
 }
 
-fn candidates(root: &Path) -> Vec<(String, String, Source)> {
+fn candidates(root: &Path) -> Vec<(String, String, Kind, Source)> {
     let mut out = Vec::new();
     if let Some(target) = environment("GITHUB_BASE_REF") {
         for (reference, source) in [
@@ -339,6 +384,7 @@ fn candidates(root: &Path) -> Vec<(String, String, Source)> {
             out.push((
                 reference,
                 format!("the tip of {target}, the pull request target"),
+                Kind::Branch,
                 source,
             ));
         }
@@ -347,6 +393,7 @@ fn candidates(root: &Path) -> Vec<(String, String, Source)> {
         out.push((
             before,
             "the commit this push started from".to_string(),
+            Kind::Push,
             Source::Remote,
         ));
     }
@@ -358,6 +405,7 @@ fn candidates(root: &Path) -> Vec<(String, String, Source)> {
         out.push((
             format!("{reference}...HEAD"),
             format!("the merge-base with {branch}"),
+            Kind::Branch,
             source,
         ));
     }

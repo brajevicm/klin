@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
+use crate::base::{self, Kind, Window};
 use crate::config::Error;
 use crate::state;
 
@@ -43,7 +44,7 @@ pub fn run(_args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         }
     };
     let never = !at.join(INDEX).exists();
-    let held = read(&at);
+    let held = held(start, &at, out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     if let Some(stamp) = next(start, &at, never, held, prompts, out) {
         write(&at, &stamp, out);
@@ -115,24 +116,39 @@ fn taken(root: &Path, at: &Path, prompts: u64, out: &mut String) -> Option<Stamp
     })
 }
 
-/// A `turn` file that is gone. The ref is the recovery copy, and a stamp restored from it is
-/// red, so the next stop judges everything since it. With the ref gone too the stamp was
-/// deleted, and a fresh stamp would photograph whatever the deletion hid. Spec 6.2.
-fn restored(root: &Path, at: &Path, never: bool, prompts: u64, out: &mut String) -> Option<Stamp> {
-    if let Some(commit) = resolve(root, REFERENCE) {
-        note(
-            out,
-            "the turn file was gone and the ref still held the stamp, so klin restored it with \
-             a red verdict",
-        );
-        return Some(Stamp {
-            parent: resolve(root, &format!("{commit}^")),
-            commit: Some(commit),
-            time: now(),
-            green: false,
-            prompts,
-        });
+/// The stamp a prompt and a stop read alike: the `turn` file, or the ref as the recovery copy
+/// when that file is gone. A stamp restored from the ref is red, so the next stop judges
+/// everything since it, and a NOTE says the restore happened. Spec 6.2, 16.1.
+fn held(root: &Path, at: &Path, out: &mut String) -> Option<Stamp> {
+    if let Some(stamp) = read(at) {
+        return Some(stamp);
     }
+    let stamp = kept(root)?;
+    note(
+        out,
+        "the turn file was gone and the ref still held the stamp, so klin restored it with \
+         a red verdict",
+    );
+    write(at, &stamp, out);
+    Some(stamp)
+}
+
+/// The stamp the ref holds, which is the recovery copy of the `turn` file. Red, because a stop
+/// that reads it judges everything since the stamp. Spec 6.5.
+fn kept(root: &Path) -> Option<Stamp> {
+    let commit = resolve(root, REFERENCE)?;
+    Some(Stamp {
+        parent: resolve(root, &format!("{commit}^")),
+        commit: Some(commit),
+        time: now(),
+        green: false,
+        prompts: 0,
+    })
+}
+
+/// A stamp neither the file nor the ref holds. With the ref gone the stamp was deleted, and a
+/// fresh stamp would photograph whatever the deletion hid. Spec 6.2.
+fn restored(root: &Path, at: &Path, never: bool, prompts: u64, out: &mut String) -> Option<Stamp> {
     if never {
         return taken(root, at, prompts, out);
     }
@@ -146,8 +162,90 @@ fn restored(root: &Path, at: &Path, never: bool, prompts: u64, out: &mut String)
     })
 }
 
+/// The window a stop in the hook judges: the turn stamp, or the whole branch when the stamp
+/// was deleted, which the stop then writes as the stamp so the window stops widening. A state
+/// directory klin cannot keep costs the same widening and nothing else. Spec 6.2, 14, 16.1.
+pub fn window(root: &Path, out: &mut String) -> Result<Window, Error> {
+    let Ok(at) = state::ready(root) else {
+        return match kept(root) {
+            Some(stamp) => Ok(turn(&stamp)),
+            None => branch(root, out),
+        };
+    };
+    let held = held(root, &at, out);
+    if let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) {
+        return Ok(turn(stamp));
+    }
+    note(out, GONE_ON_A_STOP);
+    let base = branch(root, out)?;
+    write(
+        &at,
+        &Stamp {
+            commit: Some(base.before.clone()),
+            parent: Some(base.before.clone()),
+            time: now(),
+            green: false,
+            prompts: held.map_or(0, |held| held.prompts),
+        },
+        out,
+    );
+    Ok(base)
+}
+
+/// The window the stamp itself is, once a stop has one to read.
+fn turn(stamp: &Stamp) -> Window {
+    Window {
+        kind: Kind::Turn,
+        before: stamp.commit.clone().unwrap_or_default(),
+        how: format!("the turn stamp, taken {}", ago(stamp.time)),
+    }
+}
+
+/// The base `klin gate` would choose by hand, and HEAD when none resolves. Spec 6.3.
+fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
+    base::choose(root, false).or_else(|problem| {
+        let Some(head) = resolve(root, "HEAD") else {
+            return Err(problem);
+        };
+        note(
+            out,
+            "no base resolves, so this stop judges the tree against HEAD",
+        );
+        Ok(Window {
+            kind: Kind::Branch,
+            before: head,
+            how: "HEAD, because no base resolves".to_string(),
+        })
+    })
+}
+
+/// The verdict this stop leaves for the next prompt to read. Green lets the stamp move, red
+/// keeps it, so the debt stays new until a person fixes, accepts or resets it. Spec 6.2.
+pub fn verdict(root: &Path, green: bool, out: &mut String) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let Some(held) = read(&at) else {
+        return;
+    };
+    write(&at, &Stamp { green, ..held }, out);
+}
+
+/// How long ago the stamp was taken, from the time the stamp holds. An age rather than a date,
+/// because it answers the only question a person reading a stop's report asks of it.
+fn ago(time: u64) -> String {
+    let seconds = now().saturating_sub(time);
+    match seconds {
+        0..60 => "just now".to_string(),
+        60..3600 => format!("{} minute(s) ago", seconds / 60),
+        _ => format!("{} hour(s) ago", seconds / 3600),
+    }
+}
+
 const GONE: &str = "the turn stamp and its ref are both gone, so klin wrote no fresh stamp and \
                     the next stop judges the whole branch";
+const GONE_ON_A_STOP: &str = "the turn stamp and its ref are both gone, so this stop judges the \
+                              whole branch and writes the base it judged against as the stamp";
 
 /// The stamp: a commit over a tree of everything `.gitignore` does not exclude, with HEAD as
 /// its parent, held under a ref so `git gc` does not prune it. Spec 6.5. The index starts

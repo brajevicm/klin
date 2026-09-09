@@ -168,7 +168,7 @@ fn show(values: &Values) -> String {
 fn commit(flags: &Flags, root: &Path, out: &mut String) -> Result<String, Error> {
     match &flags.base {
         Some(commit) => Ok(commit.clone()),
-        None => Ok(base::announced(root, flags, out)?.commit),
+        None => Ok(base::announced(root, flags, out)?.before),
     }
 }
 

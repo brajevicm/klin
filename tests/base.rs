@@ -29,17 +29,17 @@ fn on_a_branch() -> Tree {
 }
 
 #[test]
-fn a_run_names_the_base_it_compares_against() {
+fn a_run_names_the_window_it_compares_against() {
     let tree = on_a_branch();
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("base: "), "{}", run.out);
+    assert!(run.says("window: branch — base "), "{}", run.out);
     assert!(run.says("the merge-base with main"), "{}", run.out);
 }
 
 #[test]
-fn the_json_run_names_the_base_too() {
+fn the_json_run_names_the_window_too() {
     let tree = on_a_branch();
 
     let run = tree.run(&["gate", "--json"]);
@@ -47,8 +47,16 @@ fn the_json_run_names_the_base_too() {
     let Ok(report) = serde_json::from_str::<Value>(run.out.trim()) else {
         panic!("not one JSON object: {}", run.out)
     };
-    let base = report["base"].as_str().unwrap_or_default();
-    assert!(base.contains("the merge-base with main"), "{base}");
+    let window = report["window"].clone();
+    assert_eq!(window["kind"], "branch", "{window}");
+    assert_eq!(window["before"], tree.revision("main"), "{window}");
+    assert!(
+        window["how"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("the merge-base with main"),
+        "{window}"
+    );
 }
 
 /// A tree on the default branch, whose one commit the remote already has.
@@ -212,7 +220,7 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("base:"), "{}", run.out);
+    assert!(!run.says("window:"), "{}", run.out);
 }
 
 /// A repository whose klin.json sits in a subdirectory, with the debt already at the base.

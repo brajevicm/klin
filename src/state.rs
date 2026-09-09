@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 /// klin's own state: the build stamp, and later the turn stamp and the survey cache. It lives
 /// under the git directory, which git never tracks, never lists and never cleans, so klin
@@ -70,4 +71,39 @@ fn hash(bytes: &[u8]) -> u64 {
         sum = sum.wrapping_mul(0x100_0000_01b3);
     }
     sum
+}
+
+/// The advisory lock one stop holds over the state directory, from before it measures until
+/// after it writes its verdict, so two stops in one worktree run in order and the last verdict
+/// describes the last tree. Dropping it unlocks. Spec 6.5.
+pub struct Lock(std::fs::File);
+
+impl Drop for Lock {
+    fn drop(&mut self) {
+        let _ = self.0.unlock();
+    }
+}
+
+const LOCK: &str = "lock";
+const WAITED: Duration = Duration::from_millis(25);
+
+/// The lock, or `None` when another stop still held it when the budget ran out. A caller that
+/// gets `None` measures anyway and writes no verdict.
+pub fn lock(at: &Path, budget: Duration) -> Option<Lock> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(at.join(LOCK))
+        .ok()?;
+    let until = Instant::now() + budget;
+    loop {
+        if file.try_lock().is_ok() {
+            return Some(Lock(file));
+        }
+        if Instant::now() >= until {
+            return None;
+        }
+        std::thread::sleep(WAITED);
+    }
 }

@@ -155,7 +155,7 @@ fn an_unwritable_state_directory_says_why_and_blocks_nothing() {
     let run = tree.run_with(&[("KLIN_STATE_DIR", file.as_str())], &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
-    assert!(run.says("window comes from HEAD"), "{}", run.out);
+    assert!(run.says("wrote no verdict"), "{}", run.out);
 }
 
 #[test]
