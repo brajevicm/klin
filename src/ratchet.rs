@@ -101,6 +101,17 @@ pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Val
     Ok(out)
 }
 
+/// How many of a gate's findings a scoped run judges, which is what its OK line counts.
+pub fn scoped(found: &[Finding], only: Option<&[String]>) -> usize {
+    match only {
+        Some(only) => found
+            .iter()
+            .filter(|site| only.contains(&site.file))
+            .count(),
+        None => found.len(),
+    }
+}
+
 #[derive(Default)]
 struct Comparison {
     unmatched_findings: Vec<Finding>,

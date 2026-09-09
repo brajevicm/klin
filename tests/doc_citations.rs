@@ -2,6 +2,8 @@ mod harness;
 
 use harness::Tree;
 
+const CONFIG: &str = r#"{"doc_citations": [{"file": "docs/arch.md", "roots": ["."]}]}"#;
+
 #[test]
 fn citations_that_resolve_pass_counting_them() {
     let tree = Tree::new();
@@ -22,7 +24,11 @@ fn citations_that_resolve_pass_counting_them() {
         &tree.at(""),
     ]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("all 3 cited path(s) resolve"), "{}", run.out);
+    assert!(
+        run.says("OK: 0 citation(s) resolve nowhere, all held at the base"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -51,15 +57,13 @@ fn a_moved_file_fails_naming_the_document_the_line_and_the_path() {
     let run = tree.run(&["doc-citations", "--file", &name, "--root", &tree.at("")]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says(&format!("{name}:1  `src/store.py` — not under the roots")),
+        run.says(&format!(
+            "{name}:1  not under the roots — likely src/data/store.py  src/store.py"
+        )),
         "{}",
         run.out
     );
-    assert!(
-        run.says("1 path(s) that resolve nowhere under"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("1 new citation(s)"), "{}", run.out);
 }
 
 #[test]
@@ -90,9 +94,9 @@ fn a_bare_filename_resolves_when_exactly_one_file_under_the_roots_has_that_name(
         &tree.at(""),
     ]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(!run.says("`store.py`"), "{}", run.out);
+    assert!(run.says("1 new citation(s)"), "{}", run.out);
     assert!(
-        run.says("`nowhere.py` — no file of that name under the roots"),
+        run.says("no file of that name under the roots  nowhere.py"),
         "{}",
         run.out
     );
@@ -112,7 +116,7 @@ fn two_candidates_is_ambiguity_reported_with_both() {
         &tree.at(""),
     ]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("`store.py` — ambiguous"), "{}", run.out);
+    assert!(run.says("ambiguous — cite one"), "{}", run.out);
     assert!(run.says("lib/store.py"), "{}", run.out);
     assert!(run.says("src/store.py"), "{}", run.out);
 }
@@ -132,7 +136,7 @@ fn a_span_that_is_not_a_path_is_not_read() {
         &tree.at(""),
     ]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("all 0 cited path(s) resolve"), "{}", run.out);
+    assert!(run.says("OK: 0 citation(s) resolve nowhere"), "{}", run.out);
 }
 
 #[test]
@@ -178,8 +182,7 @@ fn the_configs_list_judges_each_document_against_its_roots() {
 
     let run = tree.run(&["doc-citations"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("OK: docs/arch.md"), "{}", run.out);
-    assert!(run.says("OK: README.md — all 0"), "{}", run.out);
+    assert!(run.says("OK: 0 citation(s) resolve nowhere"), "{}", run.out);
 }
 
 #[test]
@@ -187,14 +190,11 @@ fn a_file_alone_reads_that_documents_config_entry() {
     let tree = Tree::new();
     tree.write("src/store.py", "x = 1\n");
     let doc = tree.write("docs/arch.md", "The store is `src/store.py`.\n");
-    tree.write(
-        "klin.json",
-        r#"{"doc_citations": [{"file": "docs/arch.md", "roots": ["."]}]}"#,
-    );
+    tree.write("klin.json", CONFIG);
 
     let run = tree.run(&["doc-citations", "--file", &doc.display().to_string()]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("all 1 cited path(s) resolve"), "{}", run.out);
+    assert!(run.says("OK: 0 citation(s) resolve nowhere"), "{}", run.out);
 }
 
 #[test]
@@ -221,5 +221,193 @@ fn extensions_key_replaces_the_default_list_rather_than_adding_to_it() {
 
     let run = tree.run(&["doc-citations"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("all 1 cited path(s) resolve"), "{}", run.out);
+    assert!(run.says("OK: 0 citation(s) resolve nowhere"), "{}", run.out);
+}
+
+#[test]
+fn a_stale_citation_the_base_holds_is_held_and_the_run_passes() {
+    let tree = Tree::new();
+    tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("\"status\":\"PASS\""), "{}", run.out);
+    assert!(!run.says("src/store.py"), "{}", run.out);
+}
+
+#[test]
+fn a_citation_added_in_the_working_tree_that_resolves_nowhere_fails() {
+    let tree = Tree::new();
+    tree.write("docs/arch.md", "Nothing is cited here.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.write(
+        "docs/arch.md",
+        "Nothing is cited here.\nThe store is `src/store.py`.\n",
+    );
+
+    let run = tree.run(&["doc-citations"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("docs/arch.md:2  not under the roots  src/store.py"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_citation_whose_target_moved_fails_and_the_remedy_names_the_moved_file() {
+    let tree = Tree::new();
+    tree.write("src/store.py", "x = 1\n");
+    tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.remove("src/store.py");
+    tree.write("src/data/store.py", "x = 1\n");
+
+    let run = tree.run(&["doc-citations"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("docs/arch.md:1  not under the roots — likely src/data/store.py  src/store.py"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_stale_citation_moved_to_another_line_is_held() {
+    let tree = Tree::new();
+    tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.write("docs/arch.md", "One.\nTwo.\nThe store is `src/store.py`.\n");
+
+    let run = tree.run(&["doc-citations"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 1 citation(s) resolve nowhere"), "{}", run.out);
+}
+
+#[test]
+fn the_same_stale_string_cited_once_more_is_worsened_with_the_count() {
+    let tree = Tree::new();
+    tree.write(
+        "docs/arch.md",
+        "The store is `src/store.py`, and again `src/store.py`.\n",
+    );
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.write(
+        "docs/arch.md",
+        "The store is `src/store.py`, and again `src/store.py`.\nOnce more: `src/store.py`.\n",
+    );
+
+    let run = tree.run(&["doc-citations"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 citation(s) got worse"), "{}", run.out);
+    assert!(
+        run.says("not under the roots x3, was not under the roots x2"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_stale_citation_fixed_in_the_working_tree_prints_nothing() {
+    let tree = Tree::new();
+    tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.write("src/store.py", "x = 1\n");
+
+    let run = tree.run(&["doc-citations", "--quiet"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.out, "", "{:?}", run.out);
+}
+
+#[test]
+fn under_changed_a_document_the_window_did_not_touch_is_out_of_scope() {
+    let tree = Tree::new();
+    tree.write("docs/held.md", "The store is `src/store.py`.\n");
+    tree.write("docs/edited.md", "Nothing here.\n");
+    tree.write(
+        "klin.json",
+        r#"{"doc_citations": [{"file": "docs/held.md", "roots": ["."]},
+                               {"file": "docs/edited.md", "roots": ["."]}]}"#,
+    );
+    tree.base();
+    tree.write("docs/edited.md", "Nothing here.\nNow `src/gone.py`.\n");
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("docs/edited.md:2"), "{}", run.out);
+    assert!(!run.says("docs/held.md"), "{}", run.out);
+}
+
+#[test]
+fn a_document_the_window_added_has_no_base_and_its_stale_citations_are_new() {
+    let tree = Tree::new();
+    tree.write("docs/arch.md", "Nothing here.\n");
+    tree.write(
+        "klin.json",
+        r#"{"doc_citations": [{"file": "docs/arch.md", "roots": ["."]},
+                               {"file": "docs/new.md", "roots": ["."]}]}"#,
+    );
+    tree.base();
+    tree.write("docs/new.md", "The store is `src/store.py`.\n");
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("docs/new.md:1"), "{}", run.out);
+}
+
+#[test]
+fn under_changed_the_base_side_reads_the_whole_base_tree_not_only_the_changed_files() {
+    let tree = Tree::new();
+    tree.write("src/store.py", "x = 1\n");
+    tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.remove("src/store.py");
+    tree.write("docs/arch.md", "A word.\nThe store is `src/store.py`.\n");
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new citation(s)"), "{}", run.out);
+}
+
+#[test]
+fn file_and_root_by_hand_judge_that_document_against_the_base() {
+    let tree = Tree::new();
+    let doc = tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.base();
+
+    let run = tree.run(&[
+        "doc-citations",
+        "--file",
+        &doc.display().to_string(),
+        "--root",
+        &tree.at(""),
+    ]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 1 citation(s) resolve nowhere"), "{}", run.out);
+}
+
+#[test]
+fn a_base_listing_git_refuses_is_a_tool_error_not_a_green_run() {
+    let tree = Tree::new();
+    let outside = Tree::bare();
+    let doc = tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.base();
+
+    let run = tree.run(&[
+        "doc-citations",
+        "--file",
+        &doc.display().to_string(),
+        "--root",
+        &outside.at(""),
+    ]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not be listed under"), "{}", run.out);
 }

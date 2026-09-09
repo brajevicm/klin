@@ -181,7 +181,7 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
-    let sites = scoped(&found, flags.only.as_deref());
+    let sites = ratchet::scoped(&found, flags.only.as_deref());
     let aside = match skipped {
         0 => String::new(),
         count => format!(" ({count} in inline Rust tests skipped)"),
@@ -223,21 +223,12 @@ fn flags(args: &Args) -> Flags {
         config: args.config.clone(),
         gate: SECTION.to_string(),
         prior: None,
+        base: None,
         quiet: args.quiet,
         strict: args.strict,
         only: args.only.clone(),
         records: None,
         with: None,
-    }
-}
-
-fn scoped(found: &[Finding], only: Option<&[String]>) -> usize {
-    match only {
-        Some(only) => found
-            .iter()
-            .filter(|site| only.contains(&site.file))
-            .count(),
-        None => found.len(),
     }
 }
 

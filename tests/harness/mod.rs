@@ -59,6 +59,11 @@ impl Tree {
         path
     }
 
+    pub fn remove(&self, relative: &str) {
+        let path = self.path(relative);
+        assert!(fs::remove_file(&path).is_ok(), "remove {}", path.display());
+    }
+
     pub fn words(&self, relative: &str, count: usize) -> PathBuf {
         self.write(relative, &(vec!["word"; count].join(" ") + "\n"))
     }

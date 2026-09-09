@@ -33,6 +33,8 @@ pub struct Flags {
     pub gate: String,
     /// The base commit, already laid out as a directory by the runner.
     pub prior: Option<PathBuf>,
+    /// The base commit the runner chose, for a gate that reads the base tree out of git.
+    pub base: Option<String>,
     pub quiet: bool,
     pub strict: bool,
     pub only: Option<Vec<String>>,

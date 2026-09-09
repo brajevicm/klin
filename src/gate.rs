@@ -35,8 +35,8 @@ const CHECKS: &[Check] = &[
         name: "doc-citations",
         section: "doc_citations",
         run: doc_citations::gate,
-        compares_to_base: false,
-        takes_scope: false,
+        compares_to_base: true,
+        takes_scope: true,
     },
     Check {
         name: "escapes",
@@ -710,6 +710,7 @@ fn one(
         config: Some(config.to_path_buf()),
         gate: gate.name.clone(),
         prior: against.dir().map(Path::to_path_buf),
+        base: against.base.as_ref().map(|base| base.commit.clone()),
         quiet: true,
         strict: args.strict && gate.check.compares_to_base,
         only: against

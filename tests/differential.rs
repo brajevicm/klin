@@ -13,11 +13,7 @@ const MORE: &str = include_str!("fixtures/differential/more.py");
 const INLINE_TESTS: &str = include_str!("fixtures/differential/inline_tests.rs");
 
 const MARKERS: &[&str] = &["OK:", "FAIL:", "WARN:", "NOTE:"];
-const SCRIPTS: &[&str] = &[
-    "check-doc-size.py",
-    "check-escapes.py",
-    "check-doc-citations.py",
-];
+const SCRIPTS: &[&str] = &["check-doc-size.py", "check-escapes.py"];
 
 #[test]
 fn a_shifted_declaration_keeps_its_site_in_both() {
@@ -39,29 +35,6 @@ fn two_identical_declarations_ratchet_as_one_count_in_both() {
     accept(&tree, &cleat);
     tree.write("src/sites.py", MORE);
     agree(&tree, &cleat);
-}
-
-#[test]
-fn a_documents_citations_agree_in_both_a_resolved_and_a_missing_one() {
-    let Some(cleat) = cleat() else { return };
-    let tree = Tree::new();
-    tree.write("src/store.py", "x = 1\n");
-    tree.write(
-        "docs/arch.md",
-        "The store is `src/store.py`. `nowhere.py` is not cited anywhere.\n",
-    );
-    let config = r#"{"doc_citations": [{"file": "docs/arch.md", "roots": ["."]}]}"#;
-    tree.write("klin.json", config);
-    tree.write("cleat-klin.json", config);
-
-    let mine = tree.run(&["doc-citations", "--config", "klin.json"]);
-    let theirs = cleat_run(
-        &tree,
-        &cleat,
-        "check-doc-citations.py",
-        &["--config", "cleat-klin.json"],
-    );
-    same_verdict(&mine, &theirs, kinds);
 }
 
 #[test]

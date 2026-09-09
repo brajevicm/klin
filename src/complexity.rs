@@ -414,6 +414,7 @@ fn flags(args: &Args) -> Flags {
         config: args.config.clone(),
         gate: SECTION.to_string(),
         prior: None,
+        base: None,
         quiet: args.quiet,
         strict: args.strict,
         only: args.only.clone(),

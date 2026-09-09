@@ -155,12 +155,18 @@ fn written(
     Ok(prior)
 }
 
-/// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
-pub fn own(config: &Config, flags: &Flags, out: &mut String) -> Result<Prior, Error> {
-    let base = choose(config.root(), flags.strict)?;
+/// The base a gate the runner did not lay out chooses for itself, named once in the report.
+pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Base, Error> {
+    let base = choose(root, flags.strict)?;
     if !flags.quiet {
         let _ = writeln!(out, "{}", base.line());
     }
+    Ok(base)
+}
+
+/// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
+pub fn own(config: &Config, flags: &Flags, out: &mut String) -> Result<Prior, Error> {
+    let base = announced(config.root(), flags, out)?;
     materialize(config, &base, None)
 }
 
