@@ -191,7 +191,7 @@ fn visit(
     Ok(())
 }
 
-fn glob_matches(glob: &[u8], text: &[u8]) -> bool {
+pub fn glob_matches(glob: &[u8], text: &[u8]) -> bool {
     match glob.first() {
         None => text.is_empty(),
         Some(b'*') => star_matches(glob, text),

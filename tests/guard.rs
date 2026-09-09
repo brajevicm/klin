@@ -227,7 +227,70 @@ fn refuses_an_interpreter_a_reader_reaches_through_a_command_substitution() {
 
 #[test]
 fn refuses_a_glob_that_matches_a_guarded_name() {
-    for command in ["perl -i -pe 's/a/b/' klin.*", "rm klin.js*n"] {
+    for command in [
+        "perl -i -pe 's/a/b/' klin.*",
+        "rm klin.js*n",
+        "rm *.json",
+        "rm CODEOWNER*",
+        "rm ?lin.json",
+        "rm klin.jso[n]",
+        "rm C?DEOWNERS",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+/// A `*` with nothing before it names no guarded file, so it must not stand for one.
+#[test]
+fn allows_a_glob_with_nothing_before_the_star() {
+    for command in [
+        "ffmpeg *.rs out",
+        "ffmpeg src/a.rs out",
+        "find src tests -name '*.rs' | sort",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 0, "{command}: {}", run.out);
+    }
+}
+
+/// A quoted separator is a character in an argument, not the end of a command, so the reader
+/// at the front of the command keeps its exemption.
+#[test]
+fn allows_a_reader_whose_argument_quotes_a_separator() {
+    for command in [
+        r#"grep -rn "aaa\|bbb" --include=*.rs ."#,
+        r#"grep -rn "aaa" --include=*.rs ."#,
+        r#"grep -rn "aaa\|bbb" src"#,
+        "grep -rn 'a;b' --include=*.rs .",
+        r#"cat "a|klin.json""#,
+        "cat 'a;klin.json'",
+    ] {
+        let run = bash(command);
+        assert_eq!(run.code, 0, "{command}: {}", run.out);
+    }
+}
+
+/// The quote-blind split tears `git` off the front and loses the restore, so only the pass that
+/// honours the quoting sees the whole command.
+#[test]
+fn refuses_a_whole_tree_restore_whose_argument_quotes_a_separator() {
+    for command in [r#"git checkout "a|b" ."#, "git restore 'a;b' ."] {
+        let run = bash(command);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(run.says("refused"), "{command}: {}", run.out);
+    }
+}
+
+/// An unbalanced quote says nothing about where an argument ends, so the guard falls back to
+/// splitting on every separator rather than trusting the quote.
+#[test]
+fn refuses_a_left_open_quote_that_hides_a_separator() {
+    for command in [
+        "cat \"unclosed | rm klin.json",
+        "cat 'unclosed ; rm CODEOWNERS",
+    ] {
         let run = bash(command);
         assert_eq!(run.code, 2, "{command}: {}", run.out);
         assert!(run.says("refused"), "{command}: {}", run.out);
