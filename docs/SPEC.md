@@ -155,7 +155,9 @@ Nine components, in one binary.
 3. **Window Chooser** picks the two trees a run compares and says which.
    Section 6.
 4. **Checks** measure one tree each and return Findings with a Site identity
-   and values. A check knows nothing about the other tree.
+   and values. A check knows nothing about the other tree. `inventory` is the
+   one exception: its measure of `after` reads the `before` sites, because
+   the value it ratchets is whether a site still exists (16.4).
 5. **Ratchet Engine** matches Findings between the two trees plus the accepted
    list, and sorts each into new, worsened or held (ADR 0009).
 6. **Gate Runner** runs every applicable gate cheapest first, prints a status
@@ -221,7 +223,9 @@ The identity a Finding is keyed by. A site is a file plus the text of its
 declaration line, with the line number as a tie-breaker only (ADR 0008). A
 check MAY define a different identity when a declaration line does not exist,
 and MUST document it. Moving code within a file MUST NOT create a new site.
-Renaming a file MUST NOT create new sites (ADR 0009).
+Renaming a file MUST NOT create new sites (ADR 0009). A finding MAY name a
+site that `after` no longer holds, when the check ratchets existence (8.2).
+Its `file` and `text` are then the `before` site's.
 
 A function moved between files with its body unchanged SHOULD match its old
 site. The RECOMMENDED second pass matches unmatched findings to unmatched
@@ -236,7 +240,9 @@ One site with the values a check measured there. Fields:
 - `line` (integer) 1-based, REQUIRED where a line exists
 - `text` (string) the declaration line, REQUIRED, part of the identity
 - `values` (object) metric name to number or string, REQUIRED
-- `outcome` (`new` | `worsened` | `held`) set by the engine, never by a check
+- `outcome` (`new` | `worsened` | `held`) set by the engine, never by a check.
+  A note about a site, such as an unmatched accepted entry or an unparsed
+  file, carries `outcome: note` and is not a finding.
 
 A value the check ratchets on is one where higher is worse. A check MUST name
 those values. A value that is not ratcheted is carried for the report only.
@@ -645,8 +651,10 @@ A check earns a place when all four hold:
 
 ### 8.2 Tier 1: build these
 
-Every check here compares two trees. "New against `before`" means a site
-present in `after` and absent in `before` fails, and a site in both is held.
+Every check here except `sarif` compares two trees. "New against `before`"
+means a site present in `after` and absent in `before` fails, and a site in
+both is held. `inventory` runs the other way: a site in `before` and gone
+from `after` fails, as a rise of its `missing` value from 0 to 1.
 
 | Check | Agent failure it names | Identity | Judgement | Derivable | Status |
 |---|---|---|---|---|---|
@@ -656,24 +664,30 @@ present in `after` and absent in `before` fails, and a site in both is held.
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
-| `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | in `before`, gone from `after` | yes | #45, #69 |
+| `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | #45, #69 |
 | `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | new against `before` | yes | #58 |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | #47, section 8.3 |
 
 `inventory` has two identities. A test file is keyed by path. A test function
 is keyed like a complexity site, file plus declaration line, and only
 functions the language's test convention marks count, such as a `#[test]`
-item, a `test_` function or an `it(` call. A site in `before` with no match
-in `after` fails, with the remedy to restore the test or say in the accepted
-list why it went. The second pass of 4.4 matches a renamed test by body hash
-before it fails, so a rename with the body unchanged is `held`. A rename that
-also edits the body fails, and the remedy names the vanished site so a person
-can accept it. A deletion that removed the subject too is a NOTE: for a file,
-the subject file went in the same window, and for a function, the file that
-held it went. The subject match is by basename with the language's test
-affixes stripped, and the exact rule is implementation-defined. Deleting a
-test that fails is the cheapest route to green in section 1, and the
-file-level inventory alone does not close it.
+item, a `test_` function or an `it(` call. It ratchets one value, `missing`,
+which is 0 for every test site in `before` and 1 for a site `after` no longer
+holds, so a vanished site is `worsened` under the one judge of 16.4. The
+remedy names the vanished site and says to restore the test, or to record in
+the accepted list why it went, and a person writes that entry. The second
+pass of 4.4 matches a renamed test by body hash before it counts as missing,
+so a rename with the body unchanged is `held`. A rename that also edits the
+body is `worsened`. A deletion that removed the subject too is a NOTE: for a
+file, the subject file went in the same window, and for a function, the file
+that held it went. The subject of a test file is the file in `before` whose
+path equals the test's path with the test affixes stripped: a `test_` or
+`spec_` prefix, a `_test`, `_spec`, `.test` or `.spec` suffix before the
+extension, and a `tests/`, `test/`, `spec/` or `__tests__/` directory
+segment. The table is fixed in the binary and printed with the NOTE.
+Deleting a test that fails is the cheapest route to green in section 1, and
+the file-level inventory alone does not close it.
+
 
 `lockfile` proves one thing: every dependency the manifest names has an entry
 in the lockfile beside it, and no pin the base held is gone. It cannot prove
