@@ -206,6 +206,21 @@ fn a_document_the_config_lists_but_the_tree_lacks_is_a_tool_error() {
 }
 
 #[test]
+fn a_missing_document_does_not_hide_the_failure_of_one_before_it() {
+    let tree = Tree::new();
+    tree.words("over.md", 5);
+    tree.write(
+        "klin.json",
+        r#"{"doc_size": [{"file": "over.md", "ceiling": 3}, {"file": "gone.md", "ceiling": 10}]}"#,
+    );
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL: over.md is 5 words"), "{}", run.out);
+    assert!(run.says("no such file"), "{}", run.out);
+}
+
+#[test]
 fn an_empty_list_of_documents_passes() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"doc_size": []}"#);

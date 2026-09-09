@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::base;
+use crate::ceiling::{self, Ceiling};
+use crate::changed;
 use crate::config::{Config, Error, Flags};
 
 const SECTION: &str = "doc_size";
@@ -29,8 +32,11 @@ pub struct Args {
 
 struct Document {
     path: PathBuf,
-    ceiling: u64,
+    ceiling: Ceiling,
     name: String,
+    /// Where the base's copy of this document sits, and `None` for a document outside the tree
+    /// klin compares, which has no base copy to hold it.
+    relative: Option<PathBuf>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -68,49 +74,118 @@ fn evaluate(
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
+    let documents = documents(flags, named, ceiling, start)?;
+    let against = against(flags, &documents, start, out)?;
     let mut over = 0;
-    for document in documents(flags, named, ceiling, start)? {
-        over += usize::from(judge(&document, flags, out)?);
+    for document in &documents {
+        if !document.path.is_file() {
+            return Err(Error(format!("no such file: {}", document.path.display())));
+        }
+        let words = count_words(&document.path)?;
+        over += usize::from(judge(
+            document,
+            words,
+            held(&against, document, words),
+            flags,
+            out,
+        ));
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
 
-fn judge(document: &Document, flags: &Flags, out: &mut String) -> Result<bool, Error> {
-    if !document.path.is_file() {
-        return Err(Error(format!("no such file: {}", document.path.display())));
+/// The base commit a document is compared against, and the directory its path is relative to.
+/// `None` outside a repository and wherever no base resolves, and then the ceiling judges the
+/// working tree alone.
+fn against(
+    flags: &Flags,
+    documents: &[Document],
+    start: &Path,
+    out: &mut String,
+) -> Result<Option<(String, PathBuf)>, Error> {
+    if !documents.iter().any(|document| document.relative.is_some()) {
+        return Ok(None);
     }
-    let words = count_words(&document.path)?;
-    let (name, ceiling) = (&document.name, document.ceiling);
-    if words > ceiling {
-        let _ = writeln!(
-            out,
-            "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
-        );
-        let _ = writeln!(out, "{REMEDY}");
-        flags.record(|records| {
-            let mut over = site("new", name, words, ceiling);
-            over.insert("condition".into(), "over its word ceiling".into());
-            over.insert("fix_advice".into(), REMEDY.into());
-            records.findings.push(Value::Object(over));
-        });
-        return Ok(true);
+    let config = Config::open(flags, start)?;
+    let Some(commit) = commit(&config, flags, out) else {
+        return Ok(None);
+    };
+    Ok(Some((commit, config.root().to_path_buf())))
+}
+
+fn commit(config: &Config, flags: &Flags, out: &mut String) -> Option<String> {
+    if let Some(named) = &flags.base {
+        return Some(named.clone());
+    }
+    let base = base::choose(config.root(), flags.strict).ok()?;
+    if !flags.quiet {
+        let _ = writeln!(out, "{}", base.line());
+    }
+    Some(base.commit)
+}
+
+/// Whether the base holds this document over the same ceiling. A ceiling a person lowers must
+/// fail no document the base holds, so a document over the ceiling in both trees that did not
+/// grow is held, whatever the ceiling is. A document the base holds under another path reads as
+/// new debt, and the commit that renames it edits this gate's list anyway.
+fn held(against: &Option<(String, PathBuf)>, document: &Document, words: u64) -> bool {
+    if words <= document.ceiling.value {
+        return false;
+    }
+    let (Some((commit, root)), Some(relative)) = (against, &document.relative) else {
+        return false;
+    };
+    let Some(text) = changed::blob(root, commit, &relative.to_string_lossy()) else {
+        return false;
+    };
+    let before = words_in(&text);
+    before > document.ceiling.value && words <= before
+}
+
+fn judge(document: &Document, words: u64, held: bool, flags: &Flags, out: &mut String) -> bool {
+    let (name, ceiling) = (&document.name, &document.ceiling);
+    if words > ceiling.value {
+        if !held {
+            return failed(document, words, flags, out);
+        }
+        if !flags.quiet {
+            let _ = writeln!(
+                out,
+                "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base"
+            );
+        }
+        return false;
     }
     if !flags.quiet {
         let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
     }
-    let remaining = ceiling - words;
-    if remaining as f64 <= ceiling as f64 * MARGIN_FRACTION {
+    let remaining = ceiling.value - words;
+    if remaining as f64 <= ceiling.value as f64 * MARGIN_FRACTION {
         let _ = writeln!(
             out,
             "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
         );
         flags.record(|records| {
-            records
-                .notes
-                .push(Value::Object(site("near-ceiling", name, words, ceiling)));
+            let near = site("near-ceiling", name, words, ceiling.value);
+            records.notes.push(Value::Object(near));
         });
     }
-    Ok(false)
+    false
+}
+
+fn failed(document: &Document, words: u64, flags: &Flags, out: &mut String) -> bool {
+    let (name, ceiling) = (&document.name, &document.ceiling);
+    let _ = writeln!(
+        out,
+        "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
+    );
+    let _ = writeln!(out, "{REMEDY}");
+    flags.record(|records| {
+        let mut over = site("new", name, words, ceiling.value);
+        over.insert("condition".into(), "over its word ceiling".into());
+        over.insert("fix_advice".into(), REMEDY.into());
+        records.findings.push(Value::Object(over));
+    });
+    true
 }
 
 fn site(outcome: &str, name: &str, words: u64, ceiling: u64) -> Map<String, Value> {
@@ -133,8 +208,12 @@ fn documents(
     if let (Some(named), Some(ceiling)) = (named, ceiling) {
         return Ok(vec![Document {
             path: named.to_path_buf(),
-            ceiling,
+            ceiling: Ceiling {
+                value: ceiling,
+                step: None,
+            },
             name: named.display().to_string(),
+            relative: None,
         }]);
     }
     let config = Config::open(flags, start)?;
@@ -168,11 +247,17 @@ fn listed_documents(config: &Config) -> Result<Vec<Document>, Error> {
             let name = field(config, entry, "file")?
                 .as_str()
                 .ok_or_else(|| config.malformed(SECTION, "file", "a path"))?;
-            let ceiling = field(config, entry, "ceiling")?
-                .as_u64()
-                .ok_or_else(|| config.malformed(SECTION, "ceiling", "a whole number of words"))?;
+            let ceiling = ceiling::read(
+                config,
+                SECTION,
+                "ceiling",
+                field(config, entry, "ceiling")?,
+                "a whole number of words",
+            )?;
+            let path = config.path(name);
             Ok(Document {
-                path: config.path(name),
+                relative: path.strip_prefix(config.root()).ok().map(Path::to_path_buf),
+                path,
                 ceiling,
                 name: name.to_string(),
             })
@@ -195,5 +280,9 @@ pub fn words(path: &Path) -> Result<u64, Error> {
 
 fn count_words(path: &Path) -> Result<u64, Error> {
     let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
-    Ok(String::from_utf8_lossy(&bytes).split_whitespace().count() as u64)
+    Ok(words_in(&bytes))
+}
+
+fn words_in(bytes: &[u8]) -> u64 {
+    String::from_utf8_lossy(bytes).split_whitespace().count() as u64
 }

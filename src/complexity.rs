@@ -5,6 +5,7 @@ use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
 use crate::base;
+use crate::ceiling::{self, Ceiling};
 use crate::config::{Config, Error, Flags, UNPARSED};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
@@ -313,7 +314,7 @@ impl Function {
     }
 
     fn over(&self, ceilings: &Ceilings) -> bool {
-        self.cc > ceilings.cc || self.length() > ceilings.lines
+        self.cc > ceilings.cc.value || self.length() > ceilings.lines.value
     }
 
     fn finding(&self) -> Finding {
@@ -330,8 +331,8 @@ impl Function {
 }
 
 struct Ceilings {
-    cc: u64,
-    lines: u64,
+    cc: Ceiling,
+    lines: Ceiling,
 }
 
 struct Unparsed {
@@ -373,7 +374,10 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
         at_the_base(&config, &spec, flags, out)?,
         ratchet::accepted(&config, &flags.gate, evaluator(&spec).metrics)?,
         flags,
-        &format!("OK: {judged} function(s) judged, {count} over the gate, all held at the base"),
+        &format!(
+            "OK: {judged} function(s) judged, {count} over the gate{}, all held at the base",
+            ceiling::in_force(&[("cc", &spec.ceilings.cc), ("lines", &spec.ceilings.lines)])
+        ),
         out,
     );
     Ok(unread(&unparsed, flags, code, out))
@@ -515,8 +519,11 @@ fn spec(config: &Config) -> Result<Spec, Error> {
             .ok_or_else(|| section.config.missing(section.name, "roots"))?,
         selection: selection(section.config, values)?,
         gate_text: format!(
-            "over the complexity gate (cyclomatic > {} or body > {} lines)",
-            ceilings.cc, ceilings.lines
+            "over the complexity gate (cyclomatic > {}{} or body > {} lines{})",
+            ceilings.cc.value,
+            ceilings.cc.note(),
+            ceilings.lines.value,
+            ceilings.lines.note()
         ),
         ceilings,
     })
@@ -580,11 +587,10 @@ fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
         })?;
     let ceiling = |key: &str| {
         let named = format!("ceilings.{key}");
-        listed
+        let value = listed
             .get(key)
-            .ok_or_else(|| config.missing(SECTION, &named))?
-            .as_u64()
-            .ok_or_else(|| config.malformed(SECTION, &named, "a whole number"))
+            .ok_or_else(|| config.missing(SECTION, &named))?;
+        ceiling::read(config, SECTION, &named, value, "a whole number")
     };
     Ok(Ceilings {
         cc: ceiling("cc")?,

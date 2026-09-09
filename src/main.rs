@@ -1,6 +1,7 @@
 mod base;
 mod build;
 mod cache;
+mod ceiling;
 mod changed;
 mod complexity;
 mod config;
