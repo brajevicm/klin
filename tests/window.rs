@@ -134,6 +134,25 @@ fn a_stamp_and_a_ref_that_are_both_gone_widen_the_window_to_the_branch() {
 }
 
 #[test]
+fn a_deleted_stamp_falls_back_to_head_when_no_base_resolves() {
+    let tree = Tree::bare();
+    tree.git(&["init", "-q", "-b", "work"]);
+    tree.write("klin.json", CONFIG);
+    tree.write("src/lib.rs", CLEAN);
+    tree.commit("the only commit, on a branch no base names");
+    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    tree.remove(".git/klin/turn");
+    tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no base resolves"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+    assert_eq!(field(&tree, "commit"), tree.revision("HEAD"));
+}
+
+#[test]
 fn a_stop_that_cannot_take_the_lock_writes_no_verdict_and_says_so() {
     let tree = stamped();
     assert_eq!(stop(&tree).code, 0);
