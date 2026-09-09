@@ -16,6 +16,7 @@ mod init;
 mod radius;
 mod ratchet;
 mod state;
+mod survey;
 mod turn;
 
 use std::path::Path;

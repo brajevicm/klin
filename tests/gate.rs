@@ -17,6 +17,7 @@ const EVERY_GATE: &str = r#"{
 const A_BROKEN_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "doc_citations": false,
   "escapes": { "roots": ["src"], "languages": ["cobol"] },
   "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
@@ -39,6 +40,24 @@ fn tree(config: &str) -> Tree {
     tree.write("src/lib.rs", CLEAN);
     tree.base();
     tree.write("src/work.rs", CLEAN);
+    tree
+}
+
+/// A repository the survey finds nothing in: no source, no document and no manifest, so no
+/// gate is derivable and the config alone says what runs.
+fn nothing_to_survey(config: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", config);
+    tree
+}
+
+/// A repository with a document and no source, so the survey supplies the document gates and
+/// cannot supply escapes or complexity.
+fn without_source(config: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", config);
+    tree.words("README.md", 5);
+    tree.base();
     tree
 }
 
@@ -68,15 +87,29 @@ fn every_configured_gate_runs_in_ladder_order() {
 }
 
 #[test]
-fn a_gate_the_config_does_not_name_does_not_run() {
+fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     let tree = tree(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("doc-size"), "{}", run.out);
+    assert!(run.says("ok    doc-size"), "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+    assert!(run.says("ok    complexity"), "{}", run.out);
+    assert!(run.says("derived: escapes roots src"), "{}", run.out);
+    assert!(run.says("4 gate(s), all passed."), "{}", run.out);
+}
+
+#[test]
+fn a_gate_the_survey_cannot_supply_does_not_run() {
+    let tree =
+        without_source(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(!run.says("complexity"), "{}", run.out);
-    assert!(run.says("1 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("2 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -141,7 +174,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("3 gate(s), 1 failed, 1 tool error."),
+        run.says("3 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -154,7 +187,11 @@ fn a_tool_error_alone_exits_two() {
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
-    assert!(run.says("3 gate(s), 1 tool error."), "{}", run.out);
+    assert!(
+        run.says("3 gate(s), 1 excluded, 1 tool error."),
+        "{}",
+        run.out
+    );
 }
 
 /// What --list says about the gates, without the state directory line that follows them.
@@ -206,7 +243,8 @@ fn gate_by_name_is_repeatable_and_keeps_ladder_order() {
 
 #[test]
 fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
-    let tree = tree(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
+    let tree =
+        without_source(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
 
     let run = tree.run(&["gate", "--gate", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -216,7 +254,7 @@ fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
 
 #[test]
 fn a_config_that_configures_no_gate_is_a_tool_error() {
-    let tree = tree(r#"{ "project": "t" }"#);
+    let tree = nothing_to_survey(r#"{ "project": "t" }"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -235,7 +273,7 @@ fn a_section_named_after_the_command_is_a_tool_error() {
 
 #[test]
 fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
-    let tree = tree(r#"{ "project": "t" }"#);
+    let tree = nothing_to_survey(r#"{ "project": "t" }"#);
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -470,7 +508,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("3 gate(s), 1 failed, 1 tool error."),
+        run.says("3 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -488,7 +526,7 @@ fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
 
 #[test]
 fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
-    let tree = tree(r#"{ "project": "t" }"#);
+    let tree = nothing_to_survey(r#"{ "project": "t" }"#);
 
     let run = stop(&tree, "");
     assert_eq!(run.code, 1, "{}", run.out);
@@ -769,7 +807,7 @@ fn ci_arguments() -> Vec<&'static str> {
 }
 
 #[test]
-fn deleting_a_section_makes_the_ci_invocation_exit_two() {
+fn deleting_a_section_leaves_the_gate_running_over_a_derived_section() {
     let tree = tree(EVERY_GATE);
 
     let whole = tree.run(&ci_arguments());
@@ -782,8 +820,12 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
              "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} } }"#,
     );
     let deleted = tree.run(&ci_arguments());
-    assert_eq!(deleted.code, 2, "{}", deleted.out);
-    assert!(deleted.says("no gate named escapes"), "{}", deleted.out);
+    assert_eq!(deleted.code, 0, "{}", deleted.out);
+    assert!(
+        deleted.says("derived: escapes roots src"),
+        "{}",
+        deleted.out
+    );
 }
 
 const TWO_COMPLEXITY_GATES: &str = r#"{
@@ -820,7 +862,8 @@ fn one_check_backs_two_gates_over_different_roots() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("ok    complexity-src"), "{}", run.out);
     assert!(run.says("FAIL  complexity-tests"), "{}", run.out);
-    assert!(run.says("2 gate(s), 1 failed."), "{}", run.out);
+    assert!(!run.says("ok    complexity\n"), "{}", run.out);
+    assert!(run.says("5 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -891,8 +934,8 @@ fn list_names_the_excluded_gates() {
 }
 
 #[test]
-fn list_names_an_available_gate_the_config_does_not_mention() {
-    let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
+fn list_names_an_available_gate_the_survey_cannot_supply_either() {
+    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -901,6 +944,16 @@ fn list_names_an_available_gate_the_config_does_not_mention() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn list_names_a_gate_the_survey_supplies_as_one_that_runs() {
+    let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("available, not configured"), "{}", run.out);
+    assert!(gates(&run).contains("escapes\n"), "{}", run.out);
 }
 
 #[test]
@@ -926,8 +979,17 @@ fn naming_an_excluded_gate_is_a_tool_error() {
 }
 
 #[test]
-fn strict_refuses_a_gate_the_config_neither_configures_nor_excludes() {
+fn strict_accounts_for_a_gate_the_survey_supplies() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let strict = tree.run(&["gate", "--strict"]);
+    assert_eq!(strict.code, 0, "{}", strict.out);
+    assert!(strict.says("ok    escapes"), "{}", strict.out);
+}
+
+#[test]
+fn strict_refuses_a_gate_neither_the_config_nor_the_survey_accounts_for() {
+    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
     let loose = tree.run(&["gate"]);
     assert_eq!(loose.code, 0, "{}", loose.out);
@@ -1058,7 +1120,7 @@ fn a_version_the_binary_does_not_carry_is_a_note_and_nothing_else() {
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("0.0.1"), "{}", run.out);
     assert!(run.says(env!("CARGO_PKG_VERSION")), "{}", run.out);
-    assert!(run.says("1 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("4 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]

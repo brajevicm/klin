@@ -180,6 +180,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
 fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
+    config.say(flags, SECTION, out);
     let (found, skipped) = findings(&spec.search, &spec.roots, config.root())?;
     let sites = ratchet::scoped(&found, flags.only.as_deref());
     let aside = match skipped {
@@ -210,11 +211,12 @@ fn at_the_base(
             owned.root()
         }
     };
-    let (before, _) = findings(
+    let (mut before, _) = findings(
         &spec.search,
         &base::roots(&spec.roots, config, prior)?,
         prior,
     )?;
+    before.retain(|finding| config.was_held(&finding.file));
     Ok(before)
 }
 

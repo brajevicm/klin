@@ -101,6 +101,9 @@ fn evaluate(
     out: &mut String,
 ) -> Result<u8, Error> {
     let listing = listing(flags, named, roots, start)?;
+    if let Some(config) = &listing.config {
+        config.say(flags, SECTION, out);
+    }
     let commit = commit(flags, &listing.root, out)?;
     let (now, before) = sides(&listing, &commit)?;
     let sites = ratchet::scoped(&now, flags.only.as_deref());

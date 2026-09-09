@@ -409,7 +409,8 @@ fn judge(
     let wanted = select(&args.gates, &plan, &config)?;
     accounted(args, &plan, &config)?;
     let against = against(args, &wanted, &config, window, out)?;
-    let (tally, mut records) = each(args, &wanted, &config.file, start, &against, out);
+    said(args, &config, out);
+    let (tally, mut records) = each(args, &wanted, &config, start, &against, out);
     records.notes.extend(note);
     finish(args, &plan, wanted.len(), tally, records, &against, out);
     Ok(tally)
@@ -537,6 +538,17 @@ fn finish(
         "{}",
         as_json(code(tally), &line, records, against.base.as_ref())
     );
+}
+
+/// Every value this run derived and every one the config pinned beside it, printed once for
+/// the whole run. Spec 4.3.
+fn said(args: &Args, config: &Config, out: &mut String) {
+    if args.json || !config.derives_anything() {
+        return;
+    }
+    for line in config.derived_said() {
+        let _ = writeln!(out, "  {line}");
+    }
 }
 
 fn as_json(code: u8, tally: &str, records: Records, base: Option<&Window>) -> String {
@@ -726,6 +738,16 @@ fn no_gate(config: &Config, plan: &Plan) -> Error {
             names(plan.excluded.iter().map(String::as_str))
         ));
     }
+    if !config.written() {
+        return Error(format!(
+            "{} does not exist and the survey of {} found no source root, no document and no \
+             manifest, so there is nothing to gate — run klin from the tree you mean to measure, \
+             or write the file naming one of: {}",
+            config.file.display(),
+            config.root().display(),
+            every_check()
+        ));
+    }
     Error(format!(
         "{} configures no gate — name at least one of: {}",
         config.file.display(),
@@ -743,12 +765,18 @@ fn plan(config: &Config) -> Result<Plan, Error> {
     Ok(plan)
 }
 
+/// A check's gates: the one its section names, and one per `gates` entry that names it. A
+/// `gates` entry is the person's statement of how that check runs, so klin derives no section
+/// beside it and the whole tree is not measured twice. Spec 5.2.
 fn add(config: &Config, check: &'static Check, entries: &[Entry], plan: &mut Plan) {
     let mine: Vec<&Entry> = entries
         .iter()
         .filter(|entry| entry.check == check.name)
         .collect();
-    let section = config.section(check.section).ok();
+    let section = match mine.is_empty() {
+        true => config.section(check.section).ok(),
+        false => config.pinned(check.section),
+    };
     if section.is_none() && mine.is_empty() {
         plan.unaccounted.push(check.name);
     }
@@ -849,7 +877,7 @@ fn entry(config: &Config, item: &Map<String, Value>) -> Result<Entry, Error> {
 fn each(
     args: &Args,
     wanted: &[&Gate],
-    config: &Path,
+    config: &Config,
     start: &Path,
     against: &Against,
     out: &mut String,
@@ -939,13 +967,13 @@ fn known(name: &str, plan: &Plan, config: &Config) -> Result<(), Error> {
 fn one(
     args: &Args,
     gate: &Gate,
-    config: &Path,
+    config: &Config,
     start: &Path,
     against: &Against,
 ) -> (u8, String, Records) {
     let mut text = String::new();
     let flags = Flags {
-        config: Some(config.to_path_buf()),
+        config: config.written().then(|| config.file.clone()),
         gate: gate.name.clone(),
         prior: against.dir().map(Path::to_path_buf),
         base: against.base.as_ref().map(|base| base.before.clone()),

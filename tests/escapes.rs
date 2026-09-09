@@ -541,7 +541,10 @@ fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
 #[test]
 fn a_section_naming_nothing_to_look_for_is_refused() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{ "escapes": { "roots": ["src"] } }"#);
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": [] } }"#,
+    );
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);

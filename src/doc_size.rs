@@ -74,7 +74,7 @@ fn evaluate(
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let documents = documents(flags, named, ceiling, start)?;
+    let documents = documents(flags, named, ceiling, start, out)?;
     let against = against(flags, &documents, start, out)?;
     let mut over = 0;
     for document in &documents {
@@ -204,6 +204,7 @@ fn documents(
     named: Option<&Path>,
     ceiling: Option<u64>,
     start: &Path,
+    out: &mut String,
 ) -> Result<Vec<Document>, Error> {
     if let (Some(named), Some(ceiling)) = (named, ceiling) {
         return Ok(vec![Document {
@@ -218,6 +219,7 @@ fn documents(
     }
     let config = Config::open(flags, start)?;
     let listed = listed_documents(&config)?;
+    config.say(flags, SECTION, out);
     let Some(named) = named else {
         return Ok(listed);
     };

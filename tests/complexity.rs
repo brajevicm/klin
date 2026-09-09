@@ -412,7 +412,7 @@ fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_strict_failure() {
 }
 
 #[test]
-fn a_missing_key_is_a_tool_error_naming_it() {
+fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
@@ -421,16 +421,26 @@ fn a_missing_key_is_a_tool_error_naming_it() {
     tree.write("src/knot.rs", RUST);
 
     let run = tree.run(&["complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"roots\""), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("derived: complexity roots src"), "{}", run.out);
+    assert!(
+        run.says("pinned: complexity ceilings {\"cc\":8,\"lines\":60}"),
+        "{}",
+        run.out
+    );
 
     tree.write("klin.json", r#"{ "complexity": { "roots": ["src"] } }"#);
-    let missing_ceilings = tree.run(&["complexity"]);
-    assert_eq!(missing_ceilings.code, 2, "{}", missing_ceilings.out);
+    let derived_ceilings = tree.run(&["complexity"]);
+    assert_eq!(derived_ceilings.code, 1, "{}", derived_ceilings.out);
     assert!(
-        missing_ceilings.says("\"ceilings\""),
+        derived_ceilings.says("pinned: complexity roots src"),
         "{}",
-        missing_ceilings.out
+        derived_ceilings.out
+    );
+    assert!(
+        derived_ceilings.says("derived: complexity ceilings"),
+        "{}",
+        derived_ceilings.out
     );
 }
 
