@@ -101,6 +101,15 @@ finding id under a rename (11.2), the report path under `.gitignore` (8.3),
 the report age check as the second clock (12), and the per-worktree survey
 cache (6.6).
 
+A fifth pass on 2026-09-09 tidied every open ticket against this draft and
+settled the readings the tickets had made where the draft was silent. Seven
+went into the text: the `Test` and `Tests` affixes (8.2), the empty document
+ceiling (5.4), what `init --force` keeps (5.7), `--sarif PATH` (11.3), the
+heredoc body as data (9.4), the tools out of scope for `compare` (8.3), and
+the name-based resolution rule with its first languages (8.4). One check
+left: `test-hygiene` is an escapes `patterns` row over the test roots, and
+its schedule was the forced paydown 7.3 refuses (8.4).
+
 ## 1. Problem Statement
 
 A coding agent optimizes for a green result at the end of its turn. The
@@ -377,7 +386,9 @@ Each check documents its rule. The rules for the shipped checks:
 - `doc_size`: every Markdown file at the tree root, in the derivation commit
   and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
-  50. A document the derivation commit lacks is not judged on that run. A
+  50 and never below 50, so an empty document gets 50 rather than a ceiling
+  its first word breaks. A document the derivation commit lacks is not judged
+  on that run. A
   NOTE names it and its word count, and it gets a ceiling when the stamp
   moves and the derivation commit holds it. Any other rule would read the
   ceiling from `after`, which 4.3 forbids.
@@ -434,7 +445,9 @@ on the command line is exit 2.
 It MUST write only the config. It MUST NOT overwrite an existing config
 without `--force`. `init --add` fills in missing sections and leaves `false`
 alone. `init --force` re-pins every derivable section from today's tree, which
-is how a person re-pins after the tree improved. The guard denies `init` in
+is how a person re-pins after the tree improved. It keeps what klin cannot
+derive: the `accepted` list and any dated schedule, because a schedule is the
+tightening a person pinned once (7.3). The guard denies `init` in
 every form from an agent, so `--force` is a person's flag. `init` MUST NOT
 edit `.gitignore`, because klin writes nothing that git could see.
 
@@ -727,8 +740,9 @@ file, the subject file went in the same window, and for a function, the file
 that held it went. The subject of a test file is the file in `before` whose
 path equals the test's path with the test affixes stripped: a `test_` or
 `spec_` prefix, a `_test`, `_spec`, `.test` or `.spec` suffix before the
-extension, and a `tests/`, `test/`, `spec/` or `__tests__/` directory
-segment. The table is fixed in the binary and printed with the NOTE.
+extension, a `Test` or `Tests` suffix on the basename as in `FooTest.java`
+or `FooTests.swift`, and a `tests/`, `test/`, `spec/` or `__tests__/`
+directory segment. The table is fixed in the binary and printed with the NOTE.
 Deleting a test that fails is the cheapest route to green in section 1, and
 the file-level inventory alone does not close it.
 
@@ -820,15 +834,31 @@ finding that moved. It is deferred for a reason the review stated: the
 `before` worktree has no installed dependencies, and a symlink of today's
 dependencies runs today's tool over old source, which is not a pure function
 of the `before` commit and breaks section 12. A design for step two MUST
-solve that before it is written.
+solve that before it is written. A tool that compiles the tree, such as
+clippy or `tsc`, is out of scope for `compare`: a bare `before` worktree
+would fetch dependencies, which section 12 forbids, and a build is outside
+the budget of section 13. The first candidate is a tool that is one binary
+and reads no project dependencies, such as ruff.
 
 ### 8.4 Tier 2: build when tier 1 is green
 
 `conventions` with structural rules (#42, ADR 0006), `public-api` (#46),
 `dead-symbols` and `reachability` over one reference extractor (#49, #52,
 #51), `changed-coverage` and `crap` over one coverage reader with a postflight
-run (#53, #54, #55, #70), `hotspots` as a report (#60), `test-hygiene`
-(#86), SARIF output (#65).
+run (#53, #54, #55, #70), `hotspots` as a report (#60), SARIF output (#65).
+
+The reference extractor resolves a reference by name to every declaration of
+that name under the roots. That errs toward "referenced", so `dead-symbols`
+and `reachability` fail less, never more. Rust, TypeScript and Python come
+first, and a file in a language the extractor has no table for is counted as
+not measured on the coverage line of 8.6, so a green run over such a tree is
+visibly a run over nothing.
+
+A `test-hygiene` check, a count of habits across the test roots against a
+dated ceiling, was considered and is not a check. A habit that rose is an
+escapes `patterns` row with `roots` set to the test roots, and a schedule on
+a whole-tree total fails a tree nobody changed, which is the forced paydown
+7.3 refuses.
 
 ### 8.5 Tier 3: defer with a reason
 
@@ -971,7 +1001,10 @@ silent act. No `deny` is needed for them.
 
 A glob matches a guarded name only when the glob, read as a pattern, matches
 it. An empty prefix MUST NOT match. Splitting a command into segments MUST
-honor single and double quotes (issue #90).
+honor single and double quotes (issue #90). The body of a heredoc is data:
+the guard matches the command words and every redirect target, including a
+command after the heredoc's terminator, and does not match the text between
+the delimiter and the terminator.
 
 The guard MUST NOT read the configuration. It runs before the config loads.
 It MAY read `KLIN_STATE_DIR` and run `git rev-parse --git-dir` to learn the
@@ -1041,8 +1074,10 @@ A finding has no column, so the JSON carries none rather than a wrong one.
 
 ### 11.3 SARIF
 
-`--sarif` writes SARIF 2.1.0 with one rule per gate and one result per failing
-finding (#65). Text output is unchanged by the flag.
+`--sarif PATH` writes SARIF 2.1.0 to the file `PATH` names, with one rule per
+gate and one result per failing finding (#65). Text output on stdout is
+unchanged by the flag, which is why the log goes to a file and not to stdout
+the way `--json` does. `--sarif` with `--json` is a usage error.
 
 ## 12. Determinism
 
