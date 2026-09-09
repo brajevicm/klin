@@ -194,3 +194,19 @@ fn a_tree_that_is_no_repository_has_no_state_even_under_the_override() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("no git repository here"), "{}", run.out);
 }
+
+#[test]
+fn the_override_keeps_the_build_stamp_in_the_directory_it_names() {
+    let tree = tree("\"build\": \"false\",");
+    let cache = Tree::bare();
+    let under = cache.root().display().to_string();
+    let environment = [("KLIN_STATE_DIR", under.as_str())];
+
+    let run = tree.run_with(&environment, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
+    let mine = Path::new(mine.trim_start_matches("state: "));
+    assert!(mine.starts_with(&under), "{}", mine.display());
+    assert!(mine.join("build-blocked").is_file(), "{}", run.out);
+    assert!(!tree.state("build-blocked").exists(), "{}", run.out);
+}
