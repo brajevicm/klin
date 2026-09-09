@@ -120,7 +120,7 @@ fn taken(root: &Path, at: &Path, prompts: u64, out: &mut String) -> Option<Stamp
 /// when that file is gone. A stamp restored from the ref is red, so the next stop judges
 /// everything since it, and a NOTE says the restore happened. Spec 6.2, 16.1.
 fn held(root: &Path, at: &Path, out: &mut String) -> Option<Stamp> {
-    if let Some(stamp) = read(at) {
+    if let Some(stamp) = read(at).filter(|stamp| resolves(root, stamp)) {
         return Some(stamp);
     }
     let stamp = kept(root)?;
@@ -131,6 +131,17 @@ fn held(root: &Path, at: &Path, out: &mut String) -> Option<Stamp> {
     );
     write(at, &stamp, out);
     Some(stamp)
+}
+
+/// A stamp whose commit git still holds. A commit reachable only from a per-worktree ref can
+/// be pruned by a `git gc` in a sibling worktree, and a base klin cannot check out ends a stop
+/// at exit 2 with no route to green, so a stamp that does not resolve counts as deleted. A
+/// stamp that names no commit is the record of a deletion, and it has no commit to lose.
+fn resolves(root: &Path, stamp: &Stamp) -> bool {
+    match stamp.commit.as_deref() {
+        Some(commit) => resolve(root, commit).is_some(),
+        None => true,
+    }
 }
 
 /// The stamp the ref holds, which is the recovery copy of the `turn` file. Red, because a stop
@@ -244,8 +255,9 @@ fn ago(time: u64) -> String {
 
 const GONE: &str = "the turn stamp and its ref are both gone, so klin wrote no fresh stamp and \
                     the next stop judges the whole branch";
-const GONE_ON_A_STOP: &str = "the turn stamp and its ref are both gone, so this stop judges the \
-                              whole branch and writes the base it judged against as the stamp";
+const GONE_ON_A_STOP: &str = "no turn stamp resolves, in the turn file or in the ref, so this \
+                              stop judges the whole branch and writes the base it judged \
+                              against as the stamp";
 
 /// The stamp: a commit over a tree of everything `.gitignore` does not exclude, with HEAD as
 /// its parent, held under a ref so `git gc` does not prune it. Spec 6.5. The index starts

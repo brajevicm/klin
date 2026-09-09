@@ -126,7 +126,7 @@ fn a_stamp_and_a_ref_that_are_both_gone_widen_the_window_to_the_branch() {
 
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("both gone"), "{}", run.out);
+    assert!(run.says("no turn stamp resolves"), "{}", run.out);
     assert!(run.says("window: branch"), "{}", run.out);
     assert!(run.says("src/lib.rs"), "{}", run.out);
     assert_eq!(field(&tree, "commit"), tree.revision("main"));
@@ -151,6 +151,44 @@ fn a_stop_that_cannot_take_the_lock_writes_no_verdict_and_says_so() {
         "green",
         "a stop without the lock wrote over the verdict"
     );
+}
+
+/// A commit only a per-worktree ref reaches, which a sibling worktree's `git gc` can prune.
+fn pruned(tree: &Tree) {
+    let text = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    let mut held: Value = serde_json::from_str(&text).unwrap_or_default();
+    held["commit"] = "0".repeat(40).into();
+    tree.write(".git/klin/turn", &held.to_string());
+}
+
+#[test]
+fn a_stamp_commit_git_no_longer_holds_comes_back_from_the_ref() {
+    let tree = stamped();
+    let ref_holds = tree.revision("refs/worktree/klin/turn");
+    tree.write("src/lib.rs", text::WRAPPED);
+    pruned(&tree);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("restored"), "{}", run.out);
+    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(field(&tree, "commit"), ref_holds);
+}
+
+#[test]
+fn a_stamp_commit_no_reference_holds_widens_the_window_to_the_branch() {
+    let tree = stamped();
+    tree.write("src/lib.rs", text::WRAPPED);
+    tree.commit("the debt a prune would have forgiven");
+    pruned(&tree);
+    tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no turn stamp resolves"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+    assert!(run.says("src/lib.rs"), "{}", run.out);
+    assert_eq!(field(&tree, "commit"), tree.revision("main"));
 }
 
 #[test]
