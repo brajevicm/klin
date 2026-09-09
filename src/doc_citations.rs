@@ -123,11 +123,13 @@ fn sides(listing: &Listing, commit: &str) -> Result<(Vec<Finding>, Vec<Finding>)
     let mut trees: HashMap<Vec<PathBuf>, Index> = HashMap::new();
     let mut priors: HashMap<Vec<PathBuf>, Index> = HashMap::new();
     for document in &listing.documents {
-        readable(document)?;
-        let text =
-            std::fs::read(&document.path).map_err(|why| Error::unreadable(&document.path, why))?;
-        let index = cached(&mut trees, &document.roots, || working(&document.roots))?;
-        now.extend(found(document, &String::from_utf8_lossy(&text), index));
+        roots_exist(document)?;
+        if document.path.exists() {
+            let text = std::fs::read(&document.path)
+                .map_err(|why| Error::unreadable(&document.path, why))?;
+            let index = cached(&mut trees, &document.roots, || working(&document.roots))?;
+            now.extend(found(document, &String::from_utf8_lossy(&text), index));
+        }
         let repo = repo_path(&document.path, &listing.root);
         let Some(was) = changed::blob(&listing.root, commit, &repo) else {
             continue;
@@ -169,10 +171,7 @@ fn commit(flags: &Flags, root: &Path, out: &mut String) -> Result<String, Error>
     }
 }
 
-fn readable(document: &Document) -> Result<(), Error> {
-    if !document.path.is_file() {
-        return Err(Error(format!("no such file: {}", document.path.display())));
-    }
+fn roots_exist(document: &Document) -> Result<(), Error> {
     for root in &document.roots {
         if !root.is_dir() {
             return Err(Error(format!("no such directory: {}", root.display())));

@@ -411,3 +411,16 @@ fn a_base_listing_git_refuses_is_a_tool_error_not_a_green_run() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("could not be listed under"), "{}", run.out);
 }
+
+#[test]
+fn a_document_deleted_in_the_window_neither_fails_nor_errors() {
+    let tree = Tree::new();
+    tree.write("docs/arch.md", "The store is `src/store.py`.\n");
+    tree.write("klin.json", CONFIG);
+    tree.base();
+    tree.remove("docs/arch.md");
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("no such file"), "{}", run.out);
+}
