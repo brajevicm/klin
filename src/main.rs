@@ -15,6 +15,7 @@ mod host;
 mod init;
 mod ratchet;
 mod state;
+mod turn;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -46,6 +47,8 @@ enum Command {
     Guard(guard::Args),
     /// Remove the survey cache klin keeps for this tree, or every orphaned one
     Cache(cache::Args),
+    /// Move the turn stamp by its one rule, on a session start and on every prompt
+    Radius(turn::Args),
 }
 
 fn main() -> ExitCode {
@@ -69,7 +72,11 @@ fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8,
         Command::DocCitations(args) => doc_citations::run(args, start, out),
         Command::DocSize(args) => doc_size::run(args, start, out),
         Command::Escapes(args) => escapes::run(args, start, out),
-        Command::Gate(_) | Command::Init(_) | Command::Cache(_) | Command::Guard(_) => {
+        Command::Gate(_)
+        | Command::Init(_)
+        | Command::Cache(_)
+        | Command::Guard(_)
+        | Command::Radius(_) => {
             return None;
         }
     })
@@ -81,6 +88,7 @@ fn tool(command: &Command, start: &Path, out: &mut String) -> Result<u8, config:
         Command::Gate(args) => gate::run(args, start, out),
         Command::Init(args) => init::run(args, start, out),
         Command::Cache(args) => cache::run(args, start, out),
+        Command::Radius(args) => turn::run(args, start, out),
         Command::Guard(args) => Ok(guard::run(args)),
         _ => Ok(0),
     }
