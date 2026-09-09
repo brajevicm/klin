@@ -145,10 +145,13 @@ Nine components, in one binary.
    directory, and rejects a key klin does not know.
 2. **Survey** derives every value the config does not pin: source roots,
    languages, documents, manifests, test roots, and ceilings. Every number
-   comes from the `before` tree, so an agent cannot move a ceiling by editing
-   the `after` tree. Roots, languages and documents come from both trees, so
-   a new directory or a first file in a new language is measured on the turn
-   that adds it. Discovering more never loosens a gate.
+   comes from the derivation commit of 6.6, over the paths that commit's own
+   survey holds, so an agent cannot move a ceiling by editing the `after`
+   tree. Roots, languages, documents and manifests are the union of that
+   survey and a walk over the `after` tree, so a new directory or a first
+   file in a new language is measured on the turn that adds it. Discovering
+   more never loosens a gate, because a site under a path the derivation
+   commit's survey did not hold is `new` (7.1).
 3. **Window Chooser** picks the two trees a run compares and says which.
    Section 6.
 4. **Checks** measure one tree each and return Findings with a Site identity
@@ -196,9 +199,21 @@ Every JSON report MUST carry it.
 
 A value klin computed from the tree because the config did not pin it. Every
 derived value MUST be printed with the word `derived` and the rule that
-produced it, on the run that uses it. A derived value MUST be a pure function
-of one commit, the derivation commit of 6.6, and the binary version, so it is
-cached by commit id.
+produced it, on the run that uses it. Two kinds exist.
+
+A derived number, such as a ceiling, a radius percentile or a build command,
+MUST be a pure function of one commit, the derivation commit of 6.6, and the
+binary version, so it is cached by commit id. It is computed over the paths
+that commit's own survey holds, never over a path found only in `after`.
+
+A derived path set, such as `roots`, `languages`, the documents of
+`doc_size` or the manifests of `build`, is the union of the derivation
+commit's survey and a discovery walk over the `after` tree. The walk reads
+names and extensions only, prunes the default skip set and every path
+`.gitignore` excludes, and is not cached. Between the two trees a path set
+MAY only grow. Where a number is needed for a path the derivation commit's
+survey did not hold, the check's floor applies (5.4). A site under such a
+path is `new` (7.1).
 
 ### 4.4 Site
 
@@ -319,24 +334,30 @@ Each check documents its rule. The rules for the shipped checks:
 
 - `roots`: directories under the tree root that hold source files of a known
   language, excluding the default skip set, merged up to the shallowest
-  directory that holds nothing but source. The set is the union over both
-  trees. Test roots are the subset whose name or files match the language's
-  test convention.
-- `languages`: the languages of the files under `roots`, in both trees.
-- `doc_size`: every Markdown file at the tree root, in both trees. The
+  directory that holds nothing but source. The set is the union of the
+  derivation commit's survey and the `after` walk (4.3). Test roots are the
+  subset whose name or files match the language's test convention.
+- `languages`: the languages of the files under `roots`, in the derivation
+  commit and in `after`.
+- `doc_size`: every Markdown file at the tree root, in the derivation commit
+  and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
   50. A document the derivation commit lacks is not judged on that run. A
   NOTE names it and its word count, and it gets a ceiling when the stamp
   moves and the derivation commit holds it. Any other rule would read the
   ceiling from `after`, which 4.3 forbids.
 - `complexity.ceilings`: the 95th percentile of `cc` and of `lines` over
-  every function at the derivation commit, rounded up to the next whole
-  number, with a floor of `cc 5` and `lines 25` so a small clean tree is not
-  held to a ceiling of 1. Below 50 functions the floor is the ceiling. A
-  language the derivation commit lacks has the floor as its ceiling.
+  every function under the derivation commit's own roots at that commit,
+  rounded up to the next whole number, with a floor of `cc 5` and `lines 25`
+  so a small clean tree is not held to a ceiling of 1. Below 50 functions the
+  floor is the ceiling. A root or a language the derivation commit lacks has
+  the floor as its ceiling, and a function found only in `after` never
+  enters the percentile.
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
-- `build`: one entry per manifest, per ADR 0012.
+- `build`: one entry per manifest, per ADR 0012. Manifests are a path set.
+  A manifest the derivation commit lacks gets its entry from the fixed table
+  on the turn that adds it.
 
 A derived ceiling is not monotone. A percentile falls when simple functions
 arrive and rises when simple functions leave. A tree of 96 simple functions
@@ -506,8 +527,10 @@ the stamp, because a stamp is a new commit on every turn and a cache keyed by
 it would never hit.
 
 The survey MUST cache its result under `survey/<commit>.json` in the state
-directory, because it is a pure function of the derivation commit and the
-binary version. The first stop after a commit pays one whole-tree parse.
+directory, because its numbers and its path sets at that commit are a pure
+function of the derivation commit and the binary version. The `after` walk
+of 4.3 is not cached and is unioned in at run time. The first stop after a
+commit pays one whole-tree parse.
 Every stop between two commits reads the cache. Worktrees of one repository
 MAY share the survey cache, because a commit id means the same thing in each.
 
@@ -532,6 +555,11 @@ Three outcomes (ADR 0009):
 Below the ceiling nothing is judged. An accepted entry is a `before` entry. A
 finding matches at most one entry. Identical sites in one file match by line
 order, then by closest value.
+
+A site under a path the derivation commit's survey did not hold is `new`,
+whatever `before` holds there. A path that was not measured was never held,
+so a directory that becomes a root, or a file that becomes a known language,
+cannot bring inherited debt with it.
 
 ### 7.2 Scope
 
@@ -624,7 +652,7 @@ present in `after` and absent in `before` fails, and a site in both is held.
 |---|---|---|---|---|---|
 | `escapes` | silenced check, swallowed error, skipped test | file + line text | `count` rises | yes | shipped |
 | `complexity` | tangled function written in a hurry | file + declaration | `cc`, `lines` rise | yes | shipped |
-| `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from `before` | yes | shipped |
+| `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
@@ -951,8 +979,9 @@ finding (#65). Text output is unchanged by the flag.
   `KLIN_TODAY` overrides it.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
-- A derived value is a pure function of the `before` commit and the binary
-  version (4.3).
+- A derived number is a pure function of the derivation commit and the binary
+  version. A derived path set is the union of that commit's survey and the
+  `after` tree (4.3).
 
 ## 13. Performance Budget
 
@@ -1092,7 +1121,8 @@ evaluate(check, section, window, scope):
   before = check.measure(window.before, section) if check.compares_to_base else []
   entries = before + accepted(config, check.name)
   (after, entries) = restrict(after, entries, scope)
-  ceiling = section.ceiling            # derived from before, or pinned, or dated
+  ceiling = section.ceiling            # derived from the derivation commit, or pinned, or dated
+
   after = [f for f in after if over(f, ceiling)]
   before_over = [e for e in entries if over(e, ceiling) or e.accepted]
   return judge(after, before_over, check.ratcheted)
@@ -1143,7 +1173,10 @@ Core:
   a tree with no config and existing debt of this check's kind is green, a
   new root added in the window is measured, a first file in a new language
   is held to the floor, a new document is a NOTE with its word count and is
-  judged once the stamp moves.
+  judged once the stamp moves, a directory that becomes a root in the window
+  brings no held sites with it, and a function under an `after`-only root
+  does not move the derived ceiling.
+
 - `inventory`: a deleted test file whose subject was deleted too is a NOTE, a
   deleted test function fails, a renamed test function with its body
   unchanged is held, a deleted test function whose file went too is a NOTE.
@@ -1222,8 +1255,10 @@ Core, in this order:
 - [ ] The guard denies writes to the state directory, `refs/worktree/klin` and
       `turn reset`, and asks on the verification files of 9.4
 - [ ] Survey at run time from the derivation commit, cached by it, derived
-      values printed. Roots, languages and documents are the union over both
-      trees.
+      values printed. Derived numbers come from the derivation commit's own
+      paths. Roots, languages, documents and manifests are the union of that
+      survey and the `after` walk, and a site under a path the survey did not
+      hold is `new`.
 - [ ] `doc-citations` and every other derivable check compare to `before`
 - [ ] No source root is exit 2 under `--strict`
 - [ ] Derived complexity ceilings, floor and minimum sample, floor for a new
