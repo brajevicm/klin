@@ -214,7 +214,8 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
     let tree = Tree::bare();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#,
+        r#"{ "project": "t", "doc_citations": false,
+             "doc_size": [{"file": "README.md", "ceiling": 10}] }"#,
     );
     tree.words("README.md", 5);
 

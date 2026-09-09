@@ -24,6 +24,11 @@ const DEFAULT_SKIP_DIRS: &[&str] = &[
     "fixtures",
 ];
 
+/// Whether a directory of this name is one every gate skips, without building the list.
+pub fn skipped(name: &str) -> bool {
+    DEFAULT_SKIP_DIRS.contains(&name)
+}
+
 /// The directories every gate skips, for a survey that has no section to read.
 pub fn default_skip_dirs() -> Vec<String> {
     DEFAULT_SKIP_DIRS

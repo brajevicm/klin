@@ -365,6 +365,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
 fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
+    config.say(flags, SECTION, out);
     let (functions, unparsed) = measure(&spec.roots, &spec.selection, config.root())?;
     let now = over(&functions, &spec);
     let judged = scoped(functions.iter().map(|function| &function.file), flags);
@@ -402,7 +403,9 @@ fn at_the_base(
         &spec.selection,
         prior,
     )?;
-    Ok(over(&before, spec))
+    let mut found = over(&before, spec);
+    found.retain(|finding| config.was_held(&finding.file));
+    Ok(found)
 }
 
 fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
