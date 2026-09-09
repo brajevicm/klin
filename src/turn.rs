@@ -107,8 +107,10 @@ pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> 
     Ok(0)
 }
 
-/// The prompt counter the stamp holds, which the build stamp keys its count to. Zero when no
-/// stamp is readable, so a stop with no stamp still has one budget of its own. Spec 9.3.
+/// The prompt counter the stamp holds, which the build stamp keys its count to. Only `klin
+/// radius` raises it, on a session start and on a prompt submitted. Zero when no stamp is
+/// readable, and zero for as long as it stays unreadable, so a worktree whose prompt hook
+/// never runs holds one budget rather than one for each turn. Spec 9.3.
 pub fn prompts(at: &Path) -> u64 {
     read(at).map_or(0, |held| held.prompts)
 }

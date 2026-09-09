@@ -289,3 +289,35 @@ fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
         "{report}"
     );
 }
+
+#[test]
+fn a_build_count_klin_cannot_write_reports_the_failure_and_blocks_nothing() {
+    let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
+    let held = tree.path(BUILD_BLOCKED);
+    assert!(std::fs::create_dir_all(&held).is_ok(), "{}", held.display());
+
+    for at in 1..=3 {
+        let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+        assert_eq!(run.code, 0, "stop {at}: {}", run.out);
+        assert!(run.says("the-compiler-spoke"), "stop {at}: {}", run.out);
+        assert!(run.says("blocks nothing"), "stop {at}: {}", run.out);
+    }
+}
+
+#[test]
+fn a_passing_stop_leaves_the_gates_one_block_unspent() {
+    let tree = tree(r#""build": "test ! -f fails","#);
+    tree.write("fails", "");
+
+    let build = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(build.code, 2, "{}", build.out);
+
+    tree.remove("fails");
+    let green = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(green.code, 0, "{}", green.out);
+
+    tree.words("README.md", 30);
+    let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(gate.code, 2, "{}", gate.out);
+    assert!(!gate.says("not blocking a second time"), "{}", gate.out);
+}

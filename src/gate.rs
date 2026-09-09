@@ -181,10 +181,21 @@ struct Tally {
     unread: usize,
 }
 
-const DOES_NOT_BUILD: &str = "the tree does not build, so no gate ran (each stop blocks until \
-                              it does, up to eight in one turn)";
-const STOPPED_BLOCKING: &str = "the build has blocked eight stops under this prompt, so klin \
-                                stops blocking; the failure stands and CI will refuse it.";
+/// What the hook says about a tree that does not build. Both messages name the bound from
+/// `BLOCKS`, so the cap and the words for it cannot drift apart.
+fn does_not_build_said() -> String {
+    format!(
+        "the tree does not build, so no gate ran (each stop blocks until it does, up to \
+         {BLOCKS} in one turn)"
+    )
+}
+
+fn stopped_blocking() -> String {
+    format!(
+        "the build has blocked {BLOCKS} stops under this prompt, so klin stops blocking; the \
+         failure stands and CI will refuse it."
+    )
+}
 
 /// The build stamp: one record per prompt. The prompt counter of the turn file it was taken
 /// under, how many stops a build failure already blocked, and whether the turn's one gate
@@ -215,7 +226,9 @@ fn count(at: &Path) -> Count {
     }
 }
 
-fn counted(at: &Path, count: &Count) {
+/// Whether the record reached the disk. A count klin cannot write bounds nothing, so the
+/// caller reports the build failure and does not block on it. Spec 14.
+fn counted(at: &Path, count: &Count) -> bool {
     let text = serde_json::json!({
         "prompt": count.prompt,
         "builds": count.builds,
@@ -227,9 +240,10 @@ fn counted(at: &Path, count: &Count) {
     if std::fs::write(&writing, text).is_ok()
         && std::fs::rename(&writing, at.join(BUILD_BLOCKED)).is_ok()
     {
-        return;
+        return true;
     }
     let _ = std::fs::remove_file(&writing);
+    false
 }
 
 fn does_not_build(
@@ -239,49 +253,70 @@ fn does_not_build(
     window: Option<&Window>,
     out: &mut String,
 ) -> u8 {
-    let builds = state::ready(root).ok().map(|at| {
-        let held = count(&at);
-        let count = Count {
-            builds: held.builds + 1,
-            ..held
-        };
-        counted(&at, &count);
-        count.builds
-    });
+    let builds = raised(root);
     let stopped = builds.is_some_and(|builds| builds > BLOCKS);
     reported(args, failure, window, stopped, out);
-    if builds.is_none() {
-        unwritable(root);
-    }
     match builds {
         Some(builds) if builds <= BLOCKS => 2,
         _ => 0,
     }
 }
 
+/// The block this build failure spends, or `None` when klin could not record it, either
+/// because the state directory is gone or because the record itself would not write. Neither
+/// count could bound the blocks, so the NOTE names the write that failed and the stop is not
+/// blocked. Spec 14.
+fn raised(root: &Path) -> Option<u64> {
+    let at = match state::ready(root) {
+        Ok(at) => at,
+        Err(why) => return unbounded(&why),
+    };
+    let held = count(&at);
+    let count = Count {
+        builds: held.builds + 1,
+        ..held
+    };
+    match counted(&at, &count) {
+        true => Some(count.builds),
+        false => unbounded(&format!(
+            "{} could not be written",
+            at.join(BUILD_BLOCKED).display()
+        )),
+    }
+}
+
+fn unbounded(why: &str) -> Option<u64> {
+    eprintln!(
+        "klin: NOTE: {why} — so no count could bound the build blocks, and this build failure \
+         blocks nothing."
+    );
+    None
+}
+
 /// The build failure as a person and an agent read it, and as `--json` records it. The note
 /// says that klin stopped blocking, because the exit code alone no longer says it. Spec 11.
 fn reported(args: &Args, failure: &str, window: Option<&Window>, stopped: bool, out: &mut String) {
+    let said = does_not_build_said();
     if !args.json {
-        eprintln!("klin: {DOES_NOT_BUILD}:");
+        eprintln!("klin: {said}:");
         eprint!("{failure}");
         if stopped {
-            eprintln!("klin: {STOPPED_BLOCKING}");
+            eprintln!("klin: {}", stopped_blocking());
         }
         return;
     }
     let mut records = Records::default();
     records
         .findings
-        .push(record("error", &format!("{DOES_NOT_BUILD}:\n{failure}")));
+        .push(record("error", &format!("{said}:\n{failure}")));
     if stopped {
-        records.notes.push(record("note", STOPPED_BLOCKING));
+        records.notes.push(record("note", &stopped_blocking()));
     }
     out.clear();
     let _ = writeln!(
         out,
         "{}",
-        as_json(2, &format!("klin: {DOES_NOT_BUILD}."), records, window)
+        as_json(2, &format!("klin: {said}."), records, window)
     );
 }
 
