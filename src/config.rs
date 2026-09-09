@@ -21,6 +21,10 @@ impl Error {
     }
 }
 
+/// The outcome of a file no grammar reads. The hook counts these to report the holes a
+/// person must close, and nothing else in a run turns on it.
+pub const UNPARSED: &str = "unparsed";
+
 #[derive(Default)]
 pub struct Records {
     pub findings: Vec<Value>,
@@ -37,6 +41,8 @@ pub struct Flags {
     pub base: Option<String>,
     pub quiet: bool,
     pub strict: bool,
+    /// The Stop hook runs this gate, so a hole the agent cannot fix is a note, not a failure.
+    pub hook: bool,
     pub only: Option<Vec<String>>,
     pub records: Option<RefCell<Records>>,
     pub with: Option<(String, Value)>,

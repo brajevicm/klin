@@ -54,6 +54,7 @@ fn flags(args: &Args) -> Flags {
         base: None,
         quiet: args.quiet,
         strict: false,
+        hook: false,
         only: None,
         records: None,
         with: None,

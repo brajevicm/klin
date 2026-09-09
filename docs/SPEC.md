@@ -1446,7 +1446,7 @@ Core, in this order:
       printed
 - [x] One key vocabulary, old names print the new one, differential test
       retired
-- [ ] Unreadable file is a NOTE in the hook
+- [x] Unreadable file is a NOTE in the hook
 - [ ] Coverage counts on every `OK:` line, matched site and both values on
       every failure, a finding `id`, all in the JSON, and the coverage
       regression NOTE and strict failure

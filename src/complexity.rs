@@ -5,7 +5,7 @@ use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
 use crate::base;
-use crate::config::{Config, Error, Flags};
+use crate::config::{Config, Error, Flags, UNPARSED};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
@@ -417,6 +417,7 @@ fn flags(args: &Args) -> Flags {
         base: None,
         quiet: args.quiet,
         strict: args.strict,
+        hook: false,
         only: args.only.clone(),
         records: None,
         with: None,
@@ -439,28 +440,59 @@ fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u
     if named.is_empty() {
         return code;
     }
+    match flags.hook {
+        true => {
+            noted(&named, flags, out);
+            code
+        }
+        false => {
+            refused(&named, flags, out);
+            2
+        }
+    }
+}
+
+fn noted(named: &[&Unparsed], flags: &Flags, out: &mut String) {
+    let _ = writeln!(
+        out,
+        "NOTE: {} file(s) the grammar could not parse, so nothing in them was measured:",
+        named.len()
+    );
+    for file in named {
+        let rejected = rejected(file);
+        let _ = writeln!(out, "  {}  {rejected}", file.file);
+        flags.record(|records| records.notes.push(unparsed_site(file, &rejected)));
+    }
+    let _ = writeln!(out, "{REMEDY}");
+}
+
+fn refused(named: &[&Unparsed], flags: &Flags, out: &mut String) {
     let _ = writeln!(
         out,
         "FAIL: {} file(s) the grammar could not parse, so nothing in them was measured:",
         named.len()
     );
     for file in named {
-        let rejected = format!("the {} grammar rejected it", file.language);
+        let rejected = rejected(file);
         let _ = writeln!(out, "  {}  {rejected}", file.file);
-        flags.record(|records| {
-            let mut out = Values::new();
-            out.insert("outcome".into(), "unparsed".into());
-            out.insert("file".into(), file.file.clone().into());
-            out.insert("text".into(), rejected.clone().into());
-            records.findings.push(Value::Object(out));
-        });
+        flags.record(|records| records.findings.push(unparsed_site(file, &rejected)));
     }
-    let _ = writeln!(
-        out,
-        "A file klin cannot read is a hole in the ratchet. Update the grammar, or exclude \
-         the file and accept that nothing measures it."
-    );
-    2
+    let _ = writeln!(out, "{REMEDY}");
+}
+
+const REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the grammar, or \
+                      exclude the file and accept that nothing measures it.";
+
+fn rejected(file: &Unparsed) -> String {
+    format!("the {} grammar rejected it", file.language)
+}
+
+fn unparsed_site(file: &Unparsed, rejected: &str) -> Value {
+    let mut out = Values::new();
+    out.insert("outcome".into(), UNPARSED.into());
+    out.insert("file".into(), file.file.clone().into());
+    out.insert("text".into(), rejected.into());
+    Value::Object(out)
 }
 
 fn evaluator(spec: &Spec) -> Evaluator<'_> {

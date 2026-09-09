@@ -990,3 +990,14 @@ fn an_exclude_glob_drops_a_file_and_exclude_except_keeps_a_named_path_back() {
     assert!(!run.says("app.test.ts"), "{}", run.out);
     assert!(run.says("2 new function(s)"), "{}", run.out);
 }
+
+#[test]
+fn a_file_the_grammar_cannot_parse_is_exit_two_under_strict_too() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/bad.rs", "%%% not rust %%%\n");
+    tree.write("src/good.rs", "fn simple() -> i32 { 1 }\n");
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("src/bad.rs"), "{}", run.out);
+}

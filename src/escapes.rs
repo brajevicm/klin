@@ -226,6 +226,7 @@ fn flags(args: &Args) -> Flags {
         base: None,
         quiet: args.quiet,
         strict: args.strict,
+        hook: false,
         only: args.only.clone(),
         records: None,
         with: None,

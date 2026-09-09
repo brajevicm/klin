@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::base::{self, Base, Prior};
 use crate::changed::{self, Change};
-use crate::config::{Config, Error, Flags, Records};
+use crate::config::{Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::{build, complexity, doc_citations, doc_size, escapes, state};
 
@@ -112,32 +112,33 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let judged = judge(args, start, out);
     if !args.hook {
-        return refused(args, judged, out).map(|(failed, errored)| code(failed, errored));
+        return refused(args, judged, out).map(code);
     }
     Ok(handed(args, start, judged, out))
 }
 
 /// What the hook does with a run it finished: report it, and block the stop or let it end.
-fn handed(
-    args: &Args,
-    start: &Path,
-    outcome: Result<(usize, usize), Error>,
-    out: &mut String,
-) -> u8 {
-    let (failed, errored) = match refused(args, outcome, out) {
+fn handed(args: &Args, start: &Path, outcome: Result<Tally, Error>, out: &mut String) -> u8 {
+    let tally = match refused(args, outcome, out) {
         Ok(tally) => tally,
         Err(problem) => {
             let _ = writeln!(out, "FAIL: {problem}");
-            (0, 1)
+            Tally {
+                errored: 1,
+                ..Tally::default()
+            }
         }
     };
-    hook(
-        args,
-        failed,
-        errored,
-        &std::mem::take(out),
-        &root(args, start),
-    )
+    hook(args, tally, &std::mem::take(out), &root(args, start))
+}
+
+/// What one run came to: the gates that failed, the gates that could not run, and the files
+/// no grammar read, which fail nothing in the hook and still reach a person.
+#[derive(Default, Clone, Copy)]
+struct Tally {
+    failed: usize,
+    errored: usize,
+    unread: usize,
 }
 
 const DOES_NOT_BUILD: &str =
@@ -205,7 +206,7 @@ fn scoped(
     changed::files(config.root(), &base.commit).map(Some)
 }
 
-fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), Error> {
+fn judge(args: &Args, start: &Path, out: &mut String) -> Result<Tally, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let plan = plan(&config)?;
     if args.list {
@@ -214,17 +215,9 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<(usize, usize), 
     let wanted = select(&args.gates, &plan, &config)?;
     accounted(args, &plan, &config)?;
     let against = against(args, &wanted, &config, out)?;
-    let (failed, errored, records) = each(args, &wanted, &config.file, start, &against, out);
-    finish(
-        args,
-        &plan,
-        wanted.len(),
-        (failed, errored),
-        records,
-        &against,
-        out,
-    );
-    Ok((failed, errored))
+    let (tally, records) = each(args, &wanted, &config.file, start, &against, out);
+    finish(args, &plan, wanted.len(), tally, records, &against, out);
+    Ok(tally)
 }
 
 /// What this run judges the working tree against: the base commit, laid out, and the files
@@ -275,7 +268,7 @@ fn base(
     Ok(Some(base))
 }
 
-fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<(usize, usize), Error> {
+fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<Tally, Error> {
     if plan.gates.is_empty() && plan.excluded.is_empty() {
         return Err(no_gate(config, plan));
     }
@@ -283,7 +276,7 @@ fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<(usize, usiz
     if let Some(at) = state::dir(config.root()) {
         let _ = writeln!(out, "state: {}", at.display());
     }
-    Ok((0, 0))
+    Ok(Tally::default())
 }
 
 fn list(plan: &Plan, out: &mut String) {
@@ -314,12 +307,12 @@ fn finish(
     args: &Args,
     plan: &Plan,
     gates: usize,
-    tally: (usize, usize),
+    tally: Tally,
     records: Records,
     against: &Against,
     out: &mut String,
 ) {
-    let (failed, errored) = tally;
+    let (failed, errored) = (tally.failed, tally.errored);
     let excluded = match plan.excluded.len() {
         0 => String::new(),
         count => format!("{count} excluded, "),
@@ -336,7 +329,7 @@ fn finish(
     let _ = writeln!(
         out,
         "{}",
-        as_json(code(failed, errored), &line, records, against.base.as_ref())
+        as_json(code(tally), &line, records, against.base.as_ref())
     );
 }
 
@@ -357,11 +350,7 @@ fn as_json(code: u8, tally: &str, records: Records, base: Option<&Base>) -> Stri
     Value::Object(out).to_string()
 }
 
-fn refused(
-    args: &Args,
-    outcome: Result<(usize, usize), Error>,
-    out: &mut String,
-) -> Result<(usize, usize), Error> {
+fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Result<Tally, Error> {
     let Err(problem) = outcome else {
         return outcome;
     };
@@ -376,7 +365,10 @@ fn refused(
         "{}",
         as_json(2, &format!("klin: {problem}"), records, None)
     );
-    Ok((0, 1))
+    Ok(Tally {
+        errored: 1,
+        ..Tally::default()
+    })
 }
 
 fn problem_record(text: &str) -> Value {
@@ -386,11 +378,17 @@ fn problem_record(text: &str) -> Value {
     Value::Object(out)
 }
 
-fn hook(args: &Args, failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
+fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
+    let (failed, errored) = (tally.failed, tally.errored);
     let unspent = build_blocked(root);
     unwritable(root);
     if failed == 0 && errored == 0 {
-        return 0;
+        if tally.unread == 0 {
+            return 0;
+        }
+        eprintln!("klin: nothing blocks the stop, and the run left a note:");
+        eprint!("{report}");
+        return 1;
     }
     let Some(event) = host::read(args.host.as_deref()) else {
         eprint!("{report}");
@@ -620,15 +618,15 @@ fn each(
     start: &Path,
     against: &Against,
     out: &mut String,
-) -> (usize, usize, Records) {
-    let (mut failed, mut errored) = (0, 0);
+) -> (Tally, Records) {
+    let mut tally = Tally::default();
     let mut totals = Records::default();
     for gate in wanted {
         let (code, text, records) = one(args, gate, config, start, against);
         match code {
             0 => (),
-            1 => failed += 1,
-            _ => errored += 1,
+            1 => tally.failed += 1,
+            _ => tally.errored += 1,
         }
         let _ = writeln!(out, "  {}  {}", status(code), gate.name);
         for line in text.lines() {
@@ -636,7 +634,12 @@ fn each(
         }
         gather(&mut totals, records, &gate.name, code, &text);
     }
-    (failed, errored, totals)
+    tally.unread = totals.notes.iter().filter(|note| unread(note)).count();
+    (tally, totals)
+}
+
+fn unread(note: &Value) -> bool {
+    note.get("outcome").and_then(Value::as_str) == Some(UNPARSED)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str, code: u8, text: &str) {
@@ -652,10 +655,10 @@ fn gather(totals: &mut Records, mut records: Records, name: &str, code: u8, text
     totals.notes.append(&mut records.notes);
 }
 
-fn code(failed: usize, errored: usize) -> u8 {
-    if errored > 0 {
+fn code(tally: Tally) -> u8 {
+    if tally.errored > 0 {
         2
-    } else if failed > 0 {
+    } else if tally.failed > 0 {
         1
     } else {
         0
@@ -713,12 +716,13 @@ fn one(
         base: against.base.as_ref().map(|base| base.commit.clone()),
         quiet: true,
         strict: args.strict && gate.check.compares_to_base,
+        hook: args.hook,
         only: against
             .scope
             .as_deref()
             .filter(|_| gate.check.takes_scope)
             .map(<[String]>::to_vec),
-        records: args.json.then(|| RefCell::new(Records::default())),
+        records: Some(RefCell::new(Records::default())),
         with: gate
             .with
             .clone()

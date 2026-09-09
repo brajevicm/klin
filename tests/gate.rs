@@ -595,7 +595,11 @@ fn the_ladder_writes_nothing() {
 }
 
 fn json(run: &harness::Run) -> Value {
-    match serde_json::from_str(&run.out) {
+    object(&run.out, run)
+}
+
+fn object(text: &str, run: &harness::Run) -> Value {
+    match serde_json::from_str(text) {
         Ok(report) => report,
         Err(why) => panic!("{why} — the run printed:\n{}", run.out),
     }
@@ -1012,4 +1016,57 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
         "{}",
         judged.out
     );
+}
+
+#[test]
+fn hook_notes_a_file_no_grammar_reads_and_does_not_block_the_stop() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/flow.rs", "%%% not rust %%%\n");
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("NOTE:"), "{}", run.out);
+    assert!(run.says("src/flow.rs"), "{}", run.out);
+    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}
+
+#[test]
+fn hook_still_blocks_on_a_gate_failure_beside_the_note() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/flow.rs", "%%% not rust %%%\n");
+    tree.words("README.md", 30);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("a quality gate failed"), "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("src/flow.rs"), "{}", run.out);
+    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+}
+
+#[test]
+fn hook_says_nothing_for_a_note_no_grammar_hole_left() {
+    let tree = tree(AN_UNMATCHED_ACCEPTED);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.out, "", "{:?}", run.out);
+}
+
+#[test]
+fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.rs", "fn ( { ) unbalanced");
+
+    let run = harness::feed(tree.root(), &["gate", "--hook", "--json"], A_STOP);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let report = object(run.out.lines().last().unwrap_or_default(), &run);
+    assert_eq!(
+        outcomes(list(&report, "notes")),
+        [("complexity", "unparsed")],
+        "{}",
+        run.out
+    );
+    assert!(list(&report, "findings").is_empty(), "{}", run.out);
 }
