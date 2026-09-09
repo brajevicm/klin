@@ -515,11 +515,32 @@ whole branch. When no base of 6.3 resolves either, the stop judges from HEAD
 and says so.
 
 The stamp holds the stamped commit id, the time, the verdict of the last
-stop, and a prompt counter. `klin gate --hook` writes the verdict. `klin
-radius` applies the rule above and raises the counter by one on every
-session start and prompt submitted, whether or not the stamp moved. The
-counter is what makes "once per turn" in 9.3 literal, because the stamp
-itself moves only after a green stop. The stamp is guarded (9.4).
+stop, a prompt counter, and the prompt mark of 6.2.1. `klin gate --hook`
+writes the verdict. `klin radius` applies the rule above and raises the
+counter by one on every session start and prompt submitted, whether or not
+the stamp moved. The counter is what makes "once per turn" in 9.3 literal,
+because the stamp itself moves only after a green stop. The stamp is
+guarded (9.4).
+
+#### 6.2.1 The prompt mark
+
+The stamp waits for a green stop, and the radius report cannot. Keyed to a
+frozen stamp, the report measures one window that grows with every prompt,
+calls it the turn that just ended, and prints on every prompt once that
+window passes its value. ADR 0024.
+
+So klin takes a second mark. The prompt mark is a commit over the same tree
+the stamp commits, with HEAD as its parent, under `refs/worktree/klin/mark`.
+It moves on every session start and on every prompt submitted, whatever
+verdict the last stop left. It is held in the `turn` file beside the stamp and
+written in the same atomic write.
+
+The prompt mark is the window the radius report measures, and nothing else
+reads it. A stop judges the stamp, `klin turn reset` moves the stamp, and the
+derivation commit of 6.6 comes from the stamp. A mark the `turn` file has lost
+is read from the ref. With neither, the report prints nothing, which is what
+it does with any window it cannot measure. Deleting the mark costs a report
+and no block, so the mark needs no recovery beyond its ref.
 
 ### 6.3 `klin gate` by hand and in CI
 
@@ -662,10 +683,10 @@ report exists to discourage.
 Nothing into the working tree. `init` writes `klin.json` and hook files, and
 only when a person runs it.
 
-klin's own state is three things: the turn stamp, the build stamp, and the
-survey cache. All are per working tree. The cache is safe to delete. The two
-stamps are in the guarded set (9.4), because each holds a fact that keeps a
-block alive. Deleting the turn stamp buys nothing, because a stop without one
+klin's own state is three things: the turn stamp with the prompt mark of
+6.2.1, the build stamp, and the survey cache. All are per working tree. The
+cache is safe to delete. The two stamps are in the guarded set (9.4), because
+each holds a fact that keeps a block alive. Deleting the turn stamp buys nothing, because a stop without one
 judges the whole branch (6.2). They live in the state directory:
 
 - By default, `klin/` under the directory `git rev-parse --git-dir` returns.
@@ -925,9 +946,9 @@ that reads a host's JSON.
 
 | Event | Command | Blocks | Writes |
 |---|---|---|---|
-| session start | `klin radius` | never | `turn` per 6.2, and its prompt counter |
+| session start | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
 | pre-tool | `klin guard` | deny or ask | nothing |
-| prompt submitted | `klin radius` | never | `turn` per 6.2, and its prompt counter |
+| prompt submitted | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
 | stop | `klin gate --hook --changed` | each stop while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
 
 The hook lines are the same on every host and call `klin` from PATH:
@@ -1195,21 +1216,31 @@ hook_window():
 
 on_session_start_or_prompt():          # one rule for both events
   stamp = read_stamp()
-  if event == PROMPT: report_radius(stamp)         # before the move, never on a session start
-  if stamp is None and not exists(state): move_stamp()       # first session here
-  elif stamp is not None and stamp.last_verdict == GREEN: move_stamp()
+  tree  = write_tree(index=state/index, add_all=True)
+  if event == PROMPT: report_radius(read_mark(), tree)   # 6.2.1, never on a session start
+  if stamp is None and not exists(state): move_stamp(tree)   # first session here
+  elif stamp is not None and stamp.last_verdict == GREEN: move_stamp(tree)
   elif stamp is None: note("stamp deleted, the next stop judges the branch")
+  move_mark(tree)                                  # 6.2.1, on both events, whatever the verdict
   if exists(state/turn): bump_prompt(state/turn)   # prompt += 1, whether or not the stamp moved
 
 turn_reset():                          # a person's command, denied by the guard
-  move_stamp(); print("a person moved the window")
+  tree = write_tree(index=state/index, add_all=True)
+  move_stamp(tree); move_mark(tree); print("a person moved the window")
 
-move_stamp():
-  tree   = write_tree(index=state/index, add_all=True)
+move_stamp(tree):
   commit = commit_tree(tree, parent=HEAD)
   update_ref("refs/worktree/klin/turn", commit)
   write_atomic(state/turn, commit=commit, parent=HEAD, time=now, last_verdict=None,
-               prompt=current_prompt(state/turn))
+               prompt=current_prompt(state/turn), mark=current_mark(state/turn))
+
+move_mark(tree):                       # 6.2.1, the window the radius report measures
+  commit = commit_tree(tree, parent=HEAD)
+  update_ref("refs/worktree/klin/mark", commit)
+  write_atomic(state/turn, mark=commit)
+
+read_mark():
+  return mark_of(state/turn) or resolve("refs/worktree/klin/mark")
 
 derivation_commit(window):
   return stamp.parent if window.kind == TURN else window.before

@@ -154,6 +154,52 @@ fn the_report_names_directories_up_to_a_point() {
     );
 }
 
+/// The stamp waits for a green stop, and the mark does not, so a second prompt after a red
+/// stop measures its own turn rather than the window the first one left. ADR 0024.
+#[test]
+fn a_red_stop_does_not_widen_the_next_turn() {
+    let tree = tree();
+    stamped(&tree);
+    a_wide_turn(&tree);
+    let first = radius(&tree, A_PROMPT);
+    assert!(first.says("wider than"), "{}", first.out);
+    let stamp = tree.field("commit");
+
+    tree.write("src/a.rs", &lines(10, "// touched "));
+    let second = radius(&tree, A_PROMPT);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("wider than"), "{}", second.out);
+    assert_eq!(tree.field("commit"), stamp, "a red stop moved the stamp");
+}
+
+/// A session start ends no turn, and it still opens one, so the work before it belongs to no
+/// turn the report names.
+#[test]
+fn a_session_start_moves_the_mark() {
+    let tree = tree();
+    stamped(&tree);
+    a_wide_turn(&tree);
+    assert_eq!(radius(&tree, A_SESSION).code, 0);
+
+    let run = radius(&tree, A_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("wider than"), "{}", run.out);
+}
+
+/// The mark is a commit under its own per-worktree ref, so a `git gc` cannot prune it.
+#[test]
+fn the_mark_is_a_ref_of_its_own() {
+    let tree = tree();
+    stamped(&tree);
+    assert_eq!(tree.field("mark"), tree.revision("refs/worktree/klin/mark"));
+    assert_ne!(tree.field("mark"), "", "no mark was written");
+
+    a_wide_turn(&tree);
+    let first = tree.field("mark");
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
+    assert_ne!(tree.field("mark"), first, "a prompt left the mark behind");
+}
+
 #[test]
 fn a_session_start_reports_no_spread() {
     let tree = tree();
@@ -171,13 +217,15 @@ fn report_measures_without_moving_the_stamp_or_the_counter() {
     stamped(&tree);
     a_wide_turn(&tree);
     let commit = tree.field("commit");
+    let mark = tree.field("mark");
     let prompts = tree.field("prompts");
 
     let run = tree.run(&["radius", "--report"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("measured against the turn stamp"), "{}", run.out);
+    assert!(run.says("measured against the prompt mark"), "{}", run.out);
     assert!(run.says("110 lines in 3 files"), "{}", run.out);
     assert_eq!(tree.field("commit"), commit, "--report moved the stamp");
+    assert_eq!(tree.field("mark"), mark, "--report moved the mark");
     assert_eq!(
         tree.field("prompts"),
         prompts,

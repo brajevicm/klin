@@ -1,5 +1,9 @@
 # The turn is the window, and radius only reports
 
+> ADR 0024 amends this record. The report measures a prompt mark of its own,
+> not the turn stamp, because the stamp waits for a green stop and the report
+> must not.
+
 > ADR 0017 amends this record. The stamp is also the hook's base, it is a
 > parented commit under `refs/worktree/klin/turn`, it moves by one rule on session
 > start and prompt alike, and it is guarded. The paragraph "The stamp is not

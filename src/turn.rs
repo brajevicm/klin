@@ -20,6 +20,10 @@ const INDEX: &str = "index";
 /// Git shares `refs/` across the worktrees of one repository, and `refs/worktree/` is one of
 /// the exceptions, so each worktree keeps its own stamp. The ref is never pushed. Spec 6.5.
 const REFERENCE: &str = "refs/worktree/klin/turn";
+/// The prompt mark, beside the stamp and under the same guarded namespace. The stamp waits
+/// for a green stop, so a report keyed to it re-measures one widening window on every prompt.
+/// The mark moves on every event, and it is what the report measures. ADR 0024.
+const MARK: &str = "refs/worktree/klin/mark";
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -45,6 +49,8 @@ enum Which {
 pub struct Stamp {
     pub commit: Option<String>,
     pub parent: Option<String>,
+    /// Where the last event left the prompt mark, which the spread report measures from.
+    pub mark: Option<String>,
     pub time: u64,
     pub green: bool,
     pub prompts: u64,
@@ -66,15 +72,17 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         }
     };
     let never = !at.join(INDEX).exists();
+    let opened = mark(start, &at);
+    let tree = tree(start, &at);
     let held = held(start, &at, out);
-    // ponytail: the report and the stamp each write the index, so a green turn hashes the
-    // tree twice. Thread one tree through both if a prompt ever gets slow.
     if prompt {
-        radius::spread(start, &at, held.as_ref().and_then(opened_at), out);
+        radius::spread(start, opened.as_deref(), tree.as_deref(), out);
     }
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
-    if let Some(stamp) = next(start, &at, never, held, prompts, out) {
-        write(&at, &stamp, out);
+    let mark = tree.as_deref().and_then(|tree| marked(start, tree));
+    if let Some(stamp) = next(start, tree.as_deref(), never, held, prompts, out) {
+        let mark = mark.or(stamp.mark);
+        write(&at, &Stamp { mark, ..stamp }, out);
     }
     Ok(0)
 }
@@ -87,17 +95,19 @@ fn prompted() -> bool {
 
 const PROMPT: &str = "UserPromptSubmit";
 
-fn opened_at(stamp: &Stamp) -> Option<&str> {
-    stamp.commit.as_deref()
+/// Where this turn's window opened: the prompt mark the last event left, or the mark ref when
+/// the turn file is gone. It writes nothing back, because the report judges nothing. ADR 0024.
+pub fn mark(root: &Path, at: &Path) -> Option<String> {
+    let held = read(at)
+        .and_then(|held| held.mark)
+        .filter(|mark| resolve(root, mark).is_some());
+    held.or_else(|| resolve(root, MARK))
 }
 
-/// Where this turn's window opened, for a person who asks for the measurement by hand. It
-/// falls back to the ref like a hook does, and unlike a hook it writes nothing back.
-pub fn opened(root: &Path, at: &Path) -> Option<String> {
-    read(at)
-        .filter(|held| resolves(root, held))
-        .and_then(|held| held.commit)
-        .or_else(|| kept(root).and_then(|held| held.commit))
+/// The mark this event leaves for the next prompt to measure from. It moves on a session start
+/// and on a prompt alike, whatever verdict the last stop left. ADR 0024.
+fn marked(root: &Path, tree: &str) -> Option<String> {
+    stamped(root, tree, MARK).map(|(commit, _)| commit)
 }
 
 /// One rule, on a session start and on a prompt alike: the stamp moves on a first session or
@@ -106,17 +116,17 @@ pub fn opened(root: &Path, at: &Path) -> Option<String> {
 /// commands write there too.
 fn next(
     root: &Path,
-    at: &Path,
+    tree: Option<&str>,
     never: bool,
     held: Option<Stamp>,
     prompts: u64,
     out: &mut String,
 ) -> Option<Stamp> {
     let Some(held) = held else {
-        return restored(root, at, never, prompts, out);
+        return restored(root, tree, never, prompts, out);
     };
     if held.green {
-        return taken(root, at, prompts, out).or(Some(Stamp { prompts, ..held }));
+        return taken(root, tree, prompts, out).or(Some(Stamp { prompts, ..held }));
     }
     if held.commit.is_none() {
         note(out, GONE);
@@ -132,10 +142,12 @@ pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> 
     let Which::Reset = args.which;
     let at = state::ready(start).map_err(Error)?;
     let prompts = read(&at).map_or(0, |held| held.prompts);
-    let Some(stamp) = taken(start, &at, prompts, out) else {
+    let tree = tree(start, &at);
+    let Some(stamp) = taken(start, tree.as_deref(), prompts, out) else {
         return Err(Error("git could not stamp this tree".to_string()));
     };
-    write(&at, &stamp, out);
+    let mark = tree.as_deref().and_then(|tree| marked(start, tree));
+    write(&at, &Stamp { mark, ..stamp }, out);
     let _ = writeln!(
         out,
         "klin: a person moved the turn stamp to the working tree."
@@ -163,6 +175,7 @@ fn read(at: &Path) -> Option<Stamp> {
     Some(Stamp {
         commit: text("commit"),
         parent: text("parent"),
+        mark: text("mark"),
         time: held.get("time").and_then(Value::as_u64).unwrap_or_default(),
         green: text("verdict").as_deref() == Some("green"),
         prompts: held
@@ -174,8 +187,8 @@ fn read(at: &Path) -> Option<Stamp> {
 
 /// A fresh stamp, or `None` when git could not take one, so the caller keeps the stamp it has
 /// and the next prompt tries again.
-fn taken(root: &Path, at: &Path, prompts: u64, out: &mut String) -> Option<Stamp> {
-    let Some((commit, parent)) = stamped(root, at) else {
+fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Option<Stamp> {
+    let Some((commit, parent)) = tree.and_then(|tree| stamped(root, tree, REFERENCE)) else {
         note(
             out,
             "git could not stamp this tree, so the stamp klin already had still stands",
@@ -185,6 +198,7 @@ fn taken(root: &Path, at: &Path, prompts: u64, out: &mut String) -> Option<Stamp
     Some(Stamp {
         commit: Some(commit),
         parent,
+        mark: None,
         time: now(),
         green: false,
         prompts,
@@ -225,6 +239,7 @@ fn kept(root: &Path) -> Option<Stamp> {
     let commit = resolve(root, REFERENCE)?;
     Some(Stamp {
         parent: resolve(root, &format!("{commit}^")),
+        mark: resolve(root, MARK),
         commit: Some(commit),
         time: now(),
         green: false,
@@ -234,14 +249,21 @@ fn kept(root: &Path) -> Option<Stamp> {
 
 /// A stamp neither the file nor the ref holds. With the ref gone the stamp was deleted, and a
 /// fresh stamp would photograph whatever the deletion hid. Spec 6.2.
-fn restored(root: &Path, at: &Path, never: bool, prompts: u64, out: &mut String) -> Option<Stamp> {
+fn restored(
+    root: &Path,
+    tree: Option<&str>,
+    never: bool,
+    prompts: u64,
+    out: &mut String,
+) -> Option<Stamp> {
     if never {
-        return taken(root, at, prompts, out);
+        return taken(root, tree, prompts, out);
     }
     note(out, GONE);
     Some(Stamp {
         commit: None,
         parent: None,
+        mark: None,
         time: now(),
         green: false,
         prompts,
@@ -269,9 +291,10 @@ pub fn window(root: &Path, out: &mut String) -> Result<Window, Error> {
         &Stamp {
             commit: Some(base.before.clone()),
             parent: Some(base.before.clone()),
+            mark: held.as_ref().and_then(|held| held.mark.clone()),
             time: now(),
             green: false,
-            prompts: held.map_or(0, |held| held.prompts),
+            prompts: held.as_ref().map_or(0, |held| held.prompts),
         },
         out,
     );
@@ -338,17 +361,15 @@ const GONE_ON_A_STOP: &str = "no turn stamp resolves, in the turn file or in the
 /// its parent, held under a ref so `git gc` does not prune it. Spec 6.5. The index starts
 /// empty on every stamp, so a file that became ignored leaves the tree, at the cost of
 /// hashing the whole tree once per prompt. A reused index would keep the stat cache.
-fn stamped(root: &Path, at: &Path) -> Option<(String, Option<String>)> {
-    let tree = tree(root, at)?;
-    let git = |args: &[&str]| git(root, Some(&at.join(INDEX)), args);
+fn stamped(root: &Path, tree: &str, reference: &str) -> Option<(String, Option<String>)> {
     let head = resolve(root, "HEAD");
-    let mut args = vec!["commit-tree", &tree];
+    let mut args = vec!["commit-tree", tree];
     if let Some(head) = &head {
         args.extend(["-p", head]);
     }
     args.extend(["-m", "klin: the turn stamp"]);
-    let commit = git(&args)?;
-    git(&["update-ref", REFERENCE, &commit])?;
+    let commit = git(root, None, &args)?;
+    git(root, None, &["update-ref", reference, &commit])?;
     Some((commit, head))
 }
 
@@ -402,7 +423,12 @@ pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
 
 fn write(at: &Path, stamp: &Stamp, out: &mut String) {
     let mut fields = Map::new();
-    for (key, value) in [("commit", &stamp.commit), ("parent", &stamp.parent)] {
+    let fields_of = [
+        ("commit", &stamp.commit),
+        ("parent", &stamp.parent),
+        ("mark", &stamp.mark),
+    ];
+    for (key, value) in fields_of {
         if let Some(found) = value {
             fields.insert(key.into(), found.clone().into());
         }

@@ -45,14 +45,14 @@ struct Spread {
 
 /// The report on a prompt: the facts, and only when the turn passed a value. It asks for
 /// nothing, and anything it cannot measure it says nothing about. ADR 0014.
-pub fn spread(root: &Path, at: &Path, opened: Option<&str>, out: &mut String) {
-    let Some(opened) = opened else {
+pub fn spread(root: &Path, opened: Option<&str>, tree: Option<&str>, out: &mut String) {
+    let (Some(opened), Some(tree)) = (opened, tree) else {
         return;
     };
     let Ok(usual) = pinned(root) else {
         return;
     };
-    let Some(spread) = measured(root, at, opened) else {
+    let Some(spread) = measured(root, opened, tree) else {
         return;
     };
     if spread.lines <= usual.lines && spread.directories.len() as u64 <= usual.directories {
@@ -70,12 +70,14 @@ pub fn spread(root: &Path, at: &Path, opened: Option<&str>, out: &mut String) {
 pub fn asked(root: &Path, out: &mut String) -> Result<u8, Error> {
     let at = state::ready(root).map_err(Error)?;
     let usual = pinned(root)?;
-    let opened = turn::opened(root, &at).ok_or_else(|| {
-        Error("no turn stamp is readable, so there is no turn to measure".to_string())
+    let opened = turn::mark(root, &at).ok_or_else(|| {
+        Error("no prompt mark is readable, so there is no turn to measure".to_string())
     })?;
-    let spread = measured(root, &at, &opened)
+    let tree = turn::tree(root, &at)
+        .ok_or_else(|| Error("git could not read this working tree".to_string()))?;
+    let spread = measured(root, &opened, &tree)
         .ok_or_else(|| Error("git could not measure this turn".to_string()))?;
-    let _ = writeln!(out, "klin: this turn, measured against the turn stamp.");
+    let _ = writeln!(out, "klin: this turn, measured against the prompt mark.");
     describe(&spread, &usual, out);
     Ok(0)
 }
@@ -146,13 +148,12 @@ fn pinned(root: &Path) -> Result<Usual, Error> {
     })
 }
 
-/// The turn, measured. The tree is the working directory as the stamp would take it, so
-/// uncommitted and untracked work counts, and nothing is written for it.
-fn measured(root: &Path, at: &Path, opened: &str) -> Option<Spread> {
-    let tree = turn::tree(root, at)?;
-    let raw = numstat(root, opened, &tree, &["--no-renames"])?;
-    let spaced = numstat(root, opened, &tree, &["-w", "--no-renames"])?;
-    let renamed = numstat(root, opened, &tree, &["-M"])?;
+/// The turn, measured from the prompt mark to a tree of the working directory, so uncommitted
+/// and untracked work counts and nothing is written for it.
+fn measured(root: &Path, opened: &str, tree: &str) -> Option<Spread> {
+    let raw = numstat(root, opened, tree, &["--no-renames"])?;
+    let spaced = numstat(root, opened, tree, &["-w", "--no-renames"])?;
+    let renamed = numstat(root, opened, tree, &["-M"])?;
     let lines = total(&raw);
     Some(Spread {
         files: raw.len(),
