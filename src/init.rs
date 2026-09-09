@@ -30,6 +30,7 @@ pub struct Args {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let file = wanted(args, start);
     let held = read(&file)?;
+    let root = file.parent().unwrap_or(start).to_path_buf();
     if held.is_some() && !args.add {
         let _ = writeln!(
             out,
@@ -37,13 +38,39 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
              does not name, and a person edits the rest.",
             file.display()
         );
+        inert(&root, out);
         return Ok(0);
     }
-    let root = file.parent().unwrap_or(start);
-    let (config, written) = surveyed(root, held.unwrap_or_default())?;
+    let (config, written) = surveyed(&root, held.unwrap_or_default())?;
     write(&file, &config)?;
     let _ = writeln!(out, "{}", said(&file, &written));
+    inert(&root, out);
     Ok(0)
+}
+
+/// klin writes nothing git can see, so an ignore line an older klin asked for does nothing.
+/// `init` never edits `.gitignore`, and says so rather than leaving a person to wonder.
+fn inert(root: &Path, out: &mut String) {
+    let file = root.join(".gitignore");
+    let text = std::fs::read_to_string(&file).unwrap_or_default();
+    let lines = [
+        "/.klin",
+        ".klin",
+        "/.klin-build-blocked",
+        ".klin-build-blocked",
+    ];
+    if !text
+        .lines()
+        .any(|line| lines.contains(&line.trim().trim_end_matches('/')))
+    {
+        return;
+    }
+    let _ = writeln!(
+        out,
+        "{}: the .klin line is inert — klin keeps its state under the git directory now, and \
+         writes nothing the working tree can see. Delete the line when you like.",
+        file.display()
+    );
 }
 
 fn wanted(args: &Args, start: &Path) -> PathBuf {

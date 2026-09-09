@@ -163,6 +163,11 @@ impl Tree {
         ]);
     }
 
+    /// Where klin keeps its own state for this tree, by default under the git directory.
+    pub fn state(&self, name: &str) -> PathBuf {
+        self.path(&format!(".git/klin/{name}"))
+    }
+
     pub fn repository(&self) {
         self.git(&["init", "-q", "-b", "main"]);
     }
@@ -170,6 +175,10 @@ impl Tree {
 
 pub fn run_from(cwd: &Path, args: &[&str]) -> Run {
     feed(cwd, args, "")
+}
+
+pub fn run_from_with(cwd: &Path, environment: &[(&str, &str)], args: &[&str]) -> Run {
+    spawn(cwd, args, "", environment)
 }
 
 pub fn feed(cwd: &Path, args: &[&str], stdin: &str) -> Run {

@@ -5,7 +5,7 @@ use harness::Tree;
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
-const BUILD_BLOCKED: &str = ".klin-build-blocked";
+const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
 
 const GATES: &str = r#""doc_size": [{"file": "README.md", "ceiling": 10}],
   "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }"#;

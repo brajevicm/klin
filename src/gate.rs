@@ -8,11 +8,11 @@ use serde_json::{Map, Value};
 use crate::base::{self, Base, Prior};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error, Flags, Records};
-use crate::{build, complexity, doc_citations, doc_size, escapes};
+use crate::{build, complexity, doc_citations, doc_size, escapes, state};
 
 /// Where klin records that a build failed, so the stop that follows knows the turn's gate
-/// block is still unspent. Not under `target/`, which an agent empties as a matter of routine.
-const BUILD_BLOCKED: &str = ".klin-build-blocked";
+/// block is still unspent. In the state directory, which an agent does not empty. ADR 0019.
+const BUILD_BLOCKED: &str = "build-blocked";
 const GATES: &str = "gates";
 
 struct Check {
@@ -135,7 +135,12 @@ const DOES_NOT_BUILD: &str =
     "the tree does not build, so no gate ran (every stop blocks until it does)";
 
 fn does_not_build(args: &Args, root: &Path, failure: &str, out: &mut String) -> u8 {
-    let _ = std::fs::write(root.join(BUILD_BLOCKED), "");
+    match state::ready(root) {
+        Ok(state) => {
+            let _ = std::fs::write(state.join(BUILD_BLOCKED), "");
+        }
+        Err(_) => unwritable(root),
+    }
     if args.json {
         let mut records = Records::default();
         records
@@ -176,7 +181,7 @@ fn root(args: &Args, start: &Path) -> PathBuf {
 }
 
 fn build_blocked(root: &Path) -> bool {
-    std::fs::remove_file(root.join(BUILD_BLOCKED)).is_ok()
+    state::dir(root).is_some_and(|at| std::fs::remove_file(at.join(BUILD_BLOCKED)).is_ok())
 }
 
 fn scoped(
@@ -266,6 +271,9 @@ fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<(usize, usiz
         return Err(no_gate(config, plan));
     }
     list(plan, out);
+    if let Some(at) = state::dir(config.root()) {
+        let _ = writeln!(out, "state: {}", at.display());
+    }
     Ok((0, 0))
 }
 
@@ -371,6 +379,7 @@ fn problem_record(text: &str) -> Value {
 
 fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
     let unspent = build_blocked(root);
+    unwritable(root);
     if failed == 0 && errored == 0 {
         return 0;
     }
@@ -394,6 +403,16 @@ fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
     }
     eprintln!("klin: not blocking a second time; the failure stands and CI will refuse it.");
     0
+}
+
+/// A state directory klin cannot write costs a wider window and nothing else. Section 14.
+fn unwritable(root: &Path) {
+    if let Err(why) = state::ready(root) {
+        eprintln!(
+            "klin: NOTE: {why} — the window comes from HEAD, and a state klin cannot keep \
+             blocks nothing."
+        );
+    }
 }
 
 fn lead(failed: usize, errored: usize) -> &'static str {

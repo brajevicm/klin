@@ -1,5 +1,6 @@
 mod base;
 mod build;
+mod cache;
 mod changed;
 mod complexity;
 mod config;
@@ -11,6 +12,7 @@ mod gate;
 mod guard;
 mod init;
 mod ratchet;
+mod state;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -40,17 +42,44 @@ enum Command {
     Init(init::Args),
     /// Refuse an agent's tool call that would edit the configuration or the hooks
     Guard,
+    /// Remove the survey cache klin keeps for this tree, or every orphaned one
+    Cache(cache::Args),
 }
 
 fn main() -> ExitCode {
-    match &Cli::parse().command {
+    match Cli::parse().command {
         Command::Guard => ExitCode::from(guard::run()),
-        Command::Complexity(args) => report(|start, out| complexity::run(args, start, out)),
-        Command::DocCitations(args) => report(|start, out| doc_citations::run(args, start, out)),
-        Command::DocSize(args) => report(|start, out| doc_size::run(args, start, out)),
-        Command::Escapes(args) => report(|start, out| escapes::run(args, start, out)),
-        Command::Gate(args) => report(|start, out| gate::run(args, start, out)),
-        Command::Init(args) => report(|start, out| init::run(args, start, out)),
+        command => report(|start, out| ran(&command, start, out)),
+    }
+}
+
+fn ran(command: &Command, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+    match check(command, start, out) {
+        Some(outcome) => outcome,
+        None => tool(command, start, out),
+    }
+}
+
+/// The checks a person runs one at a time, and `None` for a command that is not one of them.
+fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8, config::Error>> {
+    Some(match command {
+        Command::Complexity(args) => complexity::run(args, start, out),
+        Command::DocCitations(args) => doc_citations::run(args, start, out),
+        Command::DocSize(args) => doc_size::run(args, start, out),
+        Command::Escapes(args) => escapes::run(args, start, out),
+        Command::Gate(_) | Command::Init(_) | Command::Cache(_) | Command::Guard => {
+            return None;
+        }
+    })
+}
+
+/// Everything else: the runner, the survey, the cache, and the guard the last arm leaves.
+fn tool(command: &Command, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+    match command {
+        Command::Gate(args) => gate::run(args, start, out),
+        Command::Init(args) => init::run(args, start, out),
+        Command::Cache(args) => cache::run(args, start, out),
+        _ => Ok(guard::run()),
     }
 }
 

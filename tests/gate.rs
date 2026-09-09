@@ -157,6 +157,15 @@ fn a_tool_error_alone_exits_two() {
     assert!(run.says("3 gate(s), 1 tool error."), "{}", run.out);
 }
 
+/// What --list says about the gates, without the state directory line that follows them.
+fn gates(run: &harness::Run) -> String {
+    run.out
+        .lines()
+        .filter(|line| !line.starts_with("state: "))
+        .map(|line| line.to_string() + "\n")
+        .collect()
+}
+
 #[test]
 fn list_prints_the_configured_gates_and_runs_none_of_them() {
     let tree = tree(EVERY_GATE);
@@ -165,7 +174,8 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
-        run.out, "doc-size\ndoc-citations\nescapes\ncomplexity\n",
+        gates(&run),
+        "doc-size\ndoc-citations\nescapes\ncomplexity\n",
         "{:?}",
         run.out
     );
@@ -486,7 +496,7 @@ fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
-const BUILD_BLOCKED: &str = ".klin-build-blocked";
+const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
 
 fn settings() -> String {
     let at = concat!(env!("CARGO_MANIFEST_DIR"), "/.claude/settings.json");
@@ -897,7 +907,8 @@ fn list_names_the_excluded_gates() {
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
-        run.out, "doc-size\ndoc-citations\ncomplexity\nescapes — excluded\n",
+        gates(&run),
+        "doc-size\ndoc-citations\ncomplexity\nescapes — excluded\n",
         "{:?}",
         run.out
     );
@@ -987,7 +998,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
-        run.out,
+        gates(&run),
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
          complexity — excluded\n",
         "{:?}",

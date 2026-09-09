@@ -1022,7 +1022,7 @@ Extension:
 Core, in this order:
 
 - [ ] Guard: fix the glob prefix and quoted splitting, add the `ask` decision
-- [ ] State directory under the git directory, `KLIN_STATE_DIR` override,
+- [x] State directory under the git directory, `KLIN_STATE_DIR` override,
       `cache clean`
 - [ ] The turn stamp as a commit with HEAD as parent, under `refs/klin/turn`
 - [ ] One stamp rule for session start and prompt, `turn reset` for a person
