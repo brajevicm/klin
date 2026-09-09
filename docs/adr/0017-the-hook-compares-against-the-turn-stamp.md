@@ -89,3 +89,14 @@ following prompt to be read.
 
 The stamp appears in `git log --all`. A dangling commit would not, and would
 be pruned instead.
+
+Amended 2026-09-09, second amendment. The paragraph above that begins "A
+missing stamp on a stop is a window from HEAD" is withdrawn. A window from
+HEAD after a deletion forgave everything committed inside the turn, which
+made deleting the stamp and committing the debt a route to green. A `turn`
+file that is gone while the ref remains is now restored from the ref with a
+red verdict. When the file and the ref are both gone and the state directory
+exists, the prompt writes no fresh stamp and the next stop judges a branch
+window from the base `klin gate` would choose by hand, HEAD only when no base
+resolves, and writes that base as the stamp. Only an absent state directory
+is a first session. `docs/SPEC.md` 6.2, 14 and 16.1 carry the rule.

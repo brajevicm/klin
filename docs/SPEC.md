@@ -85,8 +85,17 @@ or widens the window to the branch, and the state-directory `deny` goes (6.2,
 7.4, 9.4, 14, 16.1). The failure model is keyed on `--hook` and `--strict`,
 never on CI, and a config error in the hook never blocks (8.6, 10, 14). The
 build stamp counts blocks under a prompt counter in `turn`, and a red verdict
-is written before a build block (6.2, 9.2, 9.3, 16.1, 16.3). ADR 0016, 0020
-and 0022 carry the amendments. The same pass fixed the escapes row count
+is written before a build block (6.2, 9.2, 9.3, 16.1, 16.3). ADR 0016, 0017,
+0020 and 0022 carry the amendments. A re-read after the edits found thirteen
+smaller conflicts, most between the pseudocode of 16 and the prose it
+illustrates, and they are fixed in place: the stamp rule names the first
+session (6.2), a check with no ceiling judges every entry (16.4), `inventory`
+receives `before` (16.4), the prompt counter is not written into a deleted
+stamp (16.1), the edit tool on the state directory is `ask` (9.4, 15.1), the
+build stamp is one record per prompt (16.3), and an unwritable state
+directory reports a build failure instead of blocking (14). The same pass
+fixed the escapes row count
+
 (8.2), the `sarif` exception in 8.2, the `OK:` line with notes (8.6), the
 finding id under a rename (11.2), the report path under `.gitignore` (8.3),
 the report age check as the second clock (12), and the per-worktree survey
@@ -231,9 +240,10 @@ A derived path set, such as `roots`, `languages`, the documents of
 commit's survey and a discovery walk over the `after` tree. The walk reads
 names and extensions only, prunes the default skip set and every path
 `.gitignore` excludes, and is not cached. Between the two trees a path set
-MAY only grow. Where a number is needed for a path the derivation commit's
-survey did not hold, the check's floor applies (5.4). A site under such a
-path is `new` (7.1).
+MAY only grow. For a path the derivation commit's survey did not hold, the
+check's own rule applies (5.4): complexity holds it to the floor, and
+`doc_size` does not judge it and prints a NOTE. A site under such a path
+that is judged matches nothing in `before` and is `new` (7.1).
 
 ### 4.4 Site
 
@@ -260,7 +270,8 @@ One site with the values a check measured there. Fields:
 - `values` (object) metric name to number or string, REQUIRED
 - `outcome` (`new` | `worsened` | `held`) set by the engine, never by a check.
   A note about a site, such as an unmatched accepted entry or an unparsed
-  file, carries `outcome: note` and is not a finding.
+  file, is not a finding. It is a separate record under `notes` in the JSON
+  (11.2) and carries no `outcome`.
 
 A value the check ratchets on is one where higher is worse. A check MUST name
 those values. A value that is not ratcheted is carried for the report only.
@@ -455,15 +466,16 @@ these, and it is the window ADR 0014 already built for radius.
 
 One rule, applied on session start and on every prompt submitted alike:
 
-> The stamp moves to the current working tree when no stamp exists or when
+> The stamp moves to the current working tree on a first session, or when
 > the last stop ended green. Otherwise the stamp stays where it is.
 
 So debt an agent left behind stays `new` until it is fixed or a person accepts
 it, across turns and across sessions. The stamp persists in the state
 directory between sessions, and a session start that finds a red verdict
-keeps the old stamp rather than photographing the mess. When no stamp exists
-the first stamp is the working tree as it stands, which treats a person's
-uncommitted work as prior, and that is correct.
+keeps the old stamp rather than photographing the mess. A first session is a
+worktree whose state directory does not exist yet. Its first stamp is the
+working tree as it stands, which treats a person's uncommitted work as prior,
+and that is correct.
 
 An acceptance does not move the stamp. An accepted entry is a `before` entry
 under 7.1, so the site it names is `held` on the next stop, and the stamp
@@ -477,18 +489,16 @@ denies the command by name from an agent, the way it denies `init`. Without
 this command a red window that nobody acts on degrades into a report that
 everyone learns to ignore.
 
-"No stamp exists" means the state directory holds no `turn` file and the ref
-of 6.5 is gone as well. A `turn` file that is gone while the ref remains is
-restored from the ref with a RED verdict, and a NOTE says so. When both are
-gone and the state directory itself is present, the stamp was deleted. The
-rule above writes no fresh stamp then, because a fresh stamp would photograph
-whatever the deletion was meant to hide. The next stop prints a NOTE that
-names the missing stamp, judges a branch window from the base of 6.3, and
-writes that base as the stamp with the verdict the gates gave. So deleting a
-stamp widens the window to the whole branch. Only an absent state directory
-is a first session, and only then is the first stamp the working tree as it
-stands. When no base of 6.3 resolves either, the stop judges from HEAD and
-says so.
+A stamp is missing when the state directory exists and holds no `turn` file.
+A `turn` file that is gone while the ref of 6.5 remains is restored from the
+ref with a RED verdict, and a NOTE says so. When the file and the ref are
+both gone, the stamp was deleted. The rule above writes no fresh stamp then,
+because a fresh stamp would photograph whatever the deletion was meant to
+hide. The next stop prints a NOTE that names the missing stamp, judges a
+branch window from the base of 6.3, and writes that base as the stamp with
+the verdict the gates gave. So deleting a stamp widens the window to the
+whole branch. When no base of 6.3 resolves either, the stop judges from HEAD
+and says so.
 
 The stamp holds the stamped commit id, the time, the verdict of the last
 stop, and a prompt counter. `klin gate --hook` writes the verdict. `klin
@@ -594,10 +604,12 @@ Below the ceiling nothing is judged. An accepted entry is a `before` entry. A
 finding matches at most one entry. Identical sites in one file match by line
 order, then by closest value.
 
-A site under a path the derivation commit's survey did not hold is `new`,
-whatever `before` holds there. A path that was not measured was never held,
-so a directory that becomes a root, or a file that becomes a known language,
-cannot bring inherited debt with it.
+A site under a path the derivation commit's survey did not hold matches
+nothing in `before`, whatever `before` holds there, so when the check judges
+it at all it is `new`. Whether the check judges it follows its rule for a
+path without a number (4.3, 5.4). A path that was not measured was never
+held, so a directory that becomes a root, or a file that becomes a known
+language, cannot bring inherited debt with it.
 
 ### 7.2 Scope
 
@@ -923,20 +935,23 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 ### 9.4 The guard's three decisions
 
-- `deny`: an edit tool whose `file_path` is guarded, a redirect onto a
-  guarded path, a whole-tree restore, `init` in any form, and `turn reset`.
-  The reason names the file and says a person changes it in a reviewed
-  commit, or names the command a person runs instead.
+- `deny`: an edit tool whose `file_path` is `klin.json`, a host's hook file
+  or CODEOWNERS, a redirect onto one of those, a whole-tree restore, `init`
+  in any form, and `turn reset`. The reason names the file and says a person
+  changes it in a reviewed commit, or names the command a person runs
+  instead.
 
 The guarded set is: `klin.json`, each host's hook file, CODEOWNERS, the state
 directory of 7.4, and `refs/worktree/klin`. The state directory and the ref
 are in the set for a different reason from the others. Nothing in them needs
 a reviewed commit to restore, and a deleted stamp is restored from the ref
 or replaced by a branch window (6.2), so a deletion gains nothing. They are
-in the set so that a shell command that would write to them is a question a
-person answers, not a silent act. No `deny` is needed for them.
+in the set so that a write to them is a question a person answers, not a
+silent act. No `deny` is needed for them.
 - `ask`: a shell command outside the reader list whose arguments name a
-  guarded path. The reason quotes the token that matched. The person decides.
+  guarded path, and an edit tool or a redirect whose target is the state
+  directory or the ref. The reason quotes the token that matched. The person
+  decides.
   The reader list of ADR 0011 gains `git rev-parse`, `git cat-file`, `git
   for-each-ref`, `du`, and `find` without `-delete`, `-exec`, `-execdir` or
   `-ok`, so an agent can read a stamp or list the state directory without a
@@ -1085,7 +1100,7 @@ same in all three.
 | Host event unreadable in the guard | allow |
 | A `run` entry exits without writing its report, or the report is not SARIF | that gate is ERR, in every mode. The command's exit status alone is not judged (8.3). |
 | Survey cache unreadable | recompute, overwrite |
-| State directory unwritable | the hook runs with a window from HEAD, prints why, and never blocks on it |
+| State directory unwritable | the hook reads the stamp it can find, per the two rows above, writes no verdict and no build count, prints why, and never blocks on it. A build failure is reported, not blocked, because no count could bound the blocks. |
 | Survey finds no source root | `--strict`: exit 2 naming the directory surveyed. Otherwise a NOTE naming it, and in the hook the turn ends. |
 
 ## 15. Trust Model and Conformance Levels
@@ -1094,7 +1109,8 @@ same in all three.
 
 Hooks only. klin puts every failure in front of the agent once per turn, keeps
 the window open until the failure is fixed, accepted or reset by a person,
-and refuses its edits to the config and to the stamp. Nothing prevents a PATH
+and refuses its edits to the config and asks about its writes to the stamp.
+Nothing prevents a PATH
 shim or a `chmod -x`, and the guard sees only the tool calls the host shows
 it. This level is what a person gets with no CI, and this document makes no
 stronger claim for it.
@@ -1146,8 +1162,8 @@ on_session_start_or_prompt():          # one rule for both events
   if stamp is None and not exists(state): move_stamp()       # first session here
   elif stamp is not None and stamp.last_verdict == GREEN: move_stamp()
   elif stamp is None: note("stamp deleted, the next stop judges the branch")
-  bump_prompt(state/turn)              # prompt += 1, whether or not the stamp moved
-  report_radius(stamp)
+  if exists(state/turn): bump_prompt(state/turn)   # prompt += 1, whether or not the stamp moved
+  report_radius(stamp)                             # a deleted stamp gets no file here
 
 turn_reset():                          # a person's command, denied by the guard
   move_stamp(); print("a person moved the window")
@@ -1163,7 +1179,7 @@ derivation_commit(window):
   return stamp.parent if window.kind == TURN else window.before
 
 roots(window):
-  return survey(derivation_commit(window)).roots | survey_roots(WORKING)
+  return survey(derivation_commit(window)).roots | survey_roots(window.after)
 ```
 
 ### 16.2 `klin gate` and CI window
@@ -1193,40 +1209,53 @@ hook(event):
   window = hook_window()
   at = derivation_commit(window)
   survey = cached_survey(at) or survey(at)
+  count = read(state/build-blocked)
+  if count is None or count.prompt != turn.prompt:
+    count = Count(prompt=turn.prompt, builds=0, gate_spent=False)   # a new turn
   failure = build(config_or(survey), changed_files(window))
   if failure:
-    count  = read(state/build-blocked)
-    blocks = count.blocks + 1 if count and count.prompt == turn.prompt else 1
-    write_atomic(state/build-blocked, prompt=turn.prompt, blocks=blocks)
+    count.builds += 1; write_atomic(state/build-blocked, count)
     write_verdict_atomic(state/turn, RED)
-    if blocks > 8: report(failure, "stopped blocking after eight"); return 0
+    if count.builds > 8: report(failure, "stopped blocking after eight"); return 0
     block(failure)
-  unspent = remove(state/build-blocked)
   (failed, errored) = run_gates(config_or(survey), window, scope=changed)
   write_verdict_atomic(state/turn, GREEN if failed == 0 and errored == 0 else RED)
   if failed == 0 and errored == 0: return 0
-  if not unspent and host.blocked_before(event): report(); return 0
+  if count.gate_spent: report(); return 0
+  if count.builds == 0 and host.blocked_before(event): report(); return 0
+  count.gate_spent = True; write_atomic(state/build-blocked, count)
   block(report)
 ```
+
+The build stamp is one record per prompt: the prompt counter it belongs to,
+the number of build blocks, and whether the turn's one gate block is spent.
+A passing build does not reset the build count, so a tree that builds, breaks
+and builds again inside one turn still gets eight blocks in that turn and no
+more. The host's `blocked_before` flag is a second opinion for the first gate
+block only, because after a build block that flag is true while the gate
+block is still unspent (ADR 0004).
 
 ### 16.4 Evaluate one gate
 
 ```
 evaluate(check, section, window, scope):
-  after  = check.measure(window.after,  section)
   before = check.measure(window.before, section) if check.compares_to_base else []
+  after  = check.measure(window.after,  section, before)   # only inventory reads `before`
   entries = before + accepted(config, check.name)
   (after, entries) = restrict(after, entries, scope)
-  ceiling = section.ceiling            # derived from the derivation commit, or pinned, or dated
+  ceiling = section.ceiling            # derived from the derivation commit, pinned, dated, or none
 
-  after = [f for f in after if over(f, ceiling)]
-  before_over = [e for e in entries if over(e, ceiling) or e.accepted]
+  after = [f for f in after if ceiling is None or over(f, ceiling)]
+  before_over = [e for e in entries if ceiling is None or over(e, ceiling) or e.accepted]
   return judge(after, before_over, check.ratcheted)
 ```
 
 `before_over` is what makes 7.3 hold: an entry below today's ceiling is not
 judged, and an entry above it is matched, so a lower ceiling never turns a
-held site red.
+held site red. A check with no ceiling, such as `inventory`, judges every
+finding and every entry, so its `missing: 0` entries stay in and a vanished
+site matches its `before` entry.
+
 
 `inventory` fits the same judge by ratcheting existence. Its measure of
 `after` emits a finding for every site the `before` measure holds, with
