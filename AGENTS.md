@@ -46,3 +46,20 @@ finding is new. `tree.base()` makes the tree as it stands the base.
 Do not edit `klin.json` or the hooks to make a gate pass, and do not add an
 entry to the `accepted` list. That list records debt a person accepted. Only a
 person writes it, in a reviewed commit. A gate that fails names code to fix.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `brajevicm/klin`, through the `gh` CLI. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repository root. See
+`docs/agents/domain.md`.
