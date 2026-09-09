@@ -32,12 +32,12 @@ and Derived, and asks `CONTEXT.md` to take them.
 | 0009, 0013 | The hook compares against the merge-base with the default branch. | The hook compares against the turn stamp. `klin gate` and CI keep the merge-base. | The merge-base is the wrong window for a turn. It is empty after a commit on the default branch, it grows with the branch, and ADR 0013 exists only to patch that. Section 6. |
 | 0010 | Under `--strict` an unaccounted gate is exit 2. | Every applicable gate runs unless its section is `false`. The failure has nothing left to catch. | A gate whose section is derived cannot be unaccounted. Section 10. |
 | 0007 | Config keys match cleat's. | One key vocabulary across sections. The differential test goes. | ADR 0009 already weakened the reason to a preference. `sources` in one section and `roots` in the next is a cost a user pays for a test klin no longer needs. |
-| 0003 | A file no grammar reads is exit 2 everywhere. | In the hook it is a NOTE. In CI under `--strict` it stays exit 2. | An agent cannot fix a grammar. Blocking a stop on it costs a turn per stop with no remedy. |
+| 0003 | A file no grammar reads is exit 2 everywhere. | In the hook it is a NOTE. Outside the hook it stays exit 2. | An agent cannot fix a grammar. Blocking a stop on it costs a turn per stop with no remedy. |
 | 0011 | A non-reader naming a guarded path is refused. | It is `ask`. Only a clear write is `deny`. | Four read-only commands were refused in the session that wrote this draft. Section 9.4. |
 | 0004 | The host's cap on consecutive blocks bounds the loop. | klin bounds its own blocks. | The cap is not in the host's current documentation. Section 9.3. |
 | 0015 | klin's state lives in `.klin/` at the tree root, with one `.gitignore` line. | State lives in the git directory, or under `KLIN_STATE_DIR`. No ignore line. | Per-worktree state has a native home that git never tracks and never lists. Section 7.4. |
 | 0002 | The plugin ships no binary. | The plugin ships a `bin/klin` wrapper that fetches the pinned release on first run. | The first reason, a pin beside committed baselines, went with ADR 0009. The second, `bin/` unavailable for organization-distributed plugins, is handled by falling back to PATH. Section 19. |
-| 0014, one line | The turn stamp is not guarded, because a report leaves nothing to gain. | The stamp is guarded. | The stamp now holds the verdict that keeps a window open, so deleting it is the cheapest route to green. Section 9.4. The rest of ADR 0014 stands. |
+| 0014, one line | The turn stamp is not guarded, because a report leaves nothing to gain. | The stamp is in the guarded set, and a missing stamp widens the window instead of closing it. | The stamp now holds the verdict that keeps a window open. A stamp that is gone is restored from its ref, or the stop judges the whole branch, so deleting it buys nothing. Sections 6.2 and 9.4. The rest of ADR 0014 stands. |
 
 ADR 0001, 0006, 0008 and 0012 stand as written.
 
@@ -459,9 +459,18 @@ denies the command by name from an agent, the way it denies `init`. Without
 this command a red window that nobody acts on degrades into a report that
 everyone learns to ignore.
 
-A missing stamp on a stop is a window from HEAD, and the run prints a NOTE
-that names the missing stamp, because a stamp that was there and is gone was
-deleted by someone.
+"No stamp exists" means the state directory holds no `turn` file and the ref
+of 6.5 is gone as well. A `turn` file that is gone while the ref remains is
+restored from the ref with a RED verdict, and a NOTE says so. When both are
+gone and the state directory itself is present, the stamp was deleted. The
+rule above writes no fresh stamp then, because a fresh stamp would photograph
+whatever the deletion was meant to hide. The next stop prints a NOTE that
+names the missing stamp, judges a branch window from the base of 6.3, and
+writes that base as the stamp with the verdict the gates gave. So deleting a
+stamp widens the window to the whole branch. Only an absent state directory
+is a first session, and only then is the first stamp the working tree as it
+stands. When no base of 6.3 resolves either, the stop judges from HEAD and
+says so.
 
 The stamp holds the stamped commit id, the time, and the verdict of the last
 stop. `klin gate --hook` writes the verdict. `klin radius` applies the rule
@@ -505,8 +514,9 @@ temporary index, with HEAD at stamping time as its parent, so both paths above
 work on it unchanged. The RECOMMENDED stamping sequence is `git add -A` with
 `GIT_INDEX_FILE` pointing at an `index` file in the state directory, then
 `git write-tree`, then `git commit-tree -p HEAD`, then `git update-ref
-refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp and
-makes it visible to `git log --all`. The ref is never pushed. The `turn` file
+refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp,
+makes it visible to `git log --all`, and is the copy a stop restores the
+`turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
 in the state directory holds the time and the verdict beside the commit id.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
@@ -606,9 +616,9 @@ only when a person runs it.
 
 klin's own state is three things: the turn stamp, the build stamp, and the
 survey cache. All are per working tree. The cache is safe to delete. The two
-stamps are guarded (9.4), because each holds a fact that keeps a block alive,
-and deleting one is the cheapest route to green. They live in the state
-directory:
+stamps are in the guarded set (9.4), because each holds a fact that keeps a
+block alive. Deleting the turn stamp buys nothing, because a stop without one
+judges the whole branch (6.2). They live in the state directory:
 
 - By default, `klin/` under the directory `git rev-parse --git-dir` returns.
   Git never tracks it, never lists it as untracked, `git clean` never removes
@@ -813,8 +823,9 @@ Every check MUST:
   can only discover more, so such a file left through an exclusion, a file
   the grammar stopped reading, or a discovery rule the tree no longer meets.
   In the hook it is a NOTE. Under `--strict` it is exit 2, per section 10.
-- name a file it could not measure. In CI under `--strict` that is exit 2. In
-  the hook it is a NOTE, because the agent has no remedy.
+- name a file it could not measure. Outside the hook that is exit 2, with or
+  without `--strict` (ADR 0021). In the hook it is a NOTE, because the agent
+  has no remedy.
 - run under `klin gate` and under its own subcommand with the same output
 - carry tests through the binary only, on a throwaway tree with a base
 
@@ -884,18 +895,23 @@ holds, the last turn of a session can carry a radius report at its stop.
 ### 9.4 The guard's three decisions
 
 - `deny`: an edit tool whose `file_path` is guarded, a redirect onto a
-  guarded path, a whole-tree restore, `init` in any form, `turn reset`, and
-  any non-reader command that names the state directory or `refs/worktree/klin`. The
-  reason names the file and says a person changes it in a reviewed commit,
-  or names the command a person runs instead.
+  guarded path, a whole-tree restore, `init` in any form, and `turn reset`.
+  The reason names the file and says a person changes it in a reviewed
+  commit, or names the command a person runs instead.
 
 The guarded set is: `klin.json`, each host's hook file, CODEOWNERS, the state
-directory of 7.4, and `refs/worktree/klin`. The state directory is guarded for a
-different reason from the others. Nothing in it needs a reviewed commit to
-restore, but deleting the stamp turns every open failure into `held` in one
-command, and section 8.1's fourth criterion applies to that act.
+directory of 7.4, and `refs/worktree/klin`. The state directory and the ref
+are in the set for a different reason from the others. Nothing in them needs
+a reviewed commit to restore, and a deleted stamp is restored from the ref
+or replaced by a branch window (6.2), so a deletion gains nothing. They are
+in the set so that a shell command that would write to them is a question a
+person answers, not a silent act. No `deny` is needed for them.
 - `ask`: a shell command outside the reader list whose arguments name a
   guarded path. The reason quotes the token that matched. The person decides.
+  The reader list of ADR 0011 gains `git rev-parse`, `git cat-file`, `git
+  for-each-ref`, `du`, and `find` without `-delete`, `-exec`, `-execdir` or
+  `-ok`, so an agent can read a stamp or list the state directory without a
+  question.
   Also an edit tool or non-reader command that names a verification file. The
   verification files are a fixed table in the binary, not a config key: lint
   configuration such as `.eslintrc*` and `eslint.config.*`, test
@@ -932,13 +948,16 @@ The `--json` form is available for a host that reads JSON.
 - `klin gate` runs every applicable gate cheapest first and prints a status
   row per gate, the full output of each failing gate, and one summary line.
 - `--gate NAME` runs one gate. Naming an excluded or unknown gate is exit 2.
-- `--strict` adds five failures: a config error, an accepted entry matching
-  nothing, a same-tree comparison klin cannot explain (6.4), a file measured
-  in `before` and not in `after` though present in both (8.6), and a survey
-  that finds no source root. The last one closes the hole the retired
-  unaccounted-gate failure of ADR 0010 used to close: a CI job in the wrong
-  directory or over a clone with no base would otherwise apply every gate to
-  nothing and print green.
+- `--strict` adds four failures: an accepted entry matching nothing, a
+  same-tree comparison klin cannot explain (6.4), a file measured in `before`
+  and not in `after` though present in both (8.6), and a survey that finds no
+  source root. The last one closes the hole the retired unaccounted-gate
+  failure of ADR 0010 used to close: a CI job in the wrong directory or over
+  a clone with no base would otherwise apply every gate to nothing and print
+  green. A config error is exit 2 in every mode but the hook (14), so it is
+  not on this list.
+- `--hook` with `--strict` is a usage error: the reason goes to stderr with
+  exit 1, which no host reads as a block. The two flags name two callers.
 - `--changed` scopes to the window's changed files.
 - `--list` prints applicable gates with `derived` or `pinned` per section,
   excluded gates, and gates that need a section a person writes.
@@ -1015,19 +1034,28 @@ key on its section.
 
 ## 14. Failure Model
 
+Two flags change the failure model, and nothing else does. `--hook` turns a
+failure the agent cannot fix into a NOTE, or sends it to stderr with exit 1,
+so a stop is never blocked on it. `--strict` turns a hole a person's CI must
+not miss into exit 2. `klin gate` with neither flag exits 2 on every hole ADR
+0003 named and passes with a NOTE on the holes that `--strict` adds (10).
+klin cannot see CI, so no row says "CI". A row that names no mode behaves the
+same in all three.
+
 | Class | Behavior |
 |---|---|
-| Config error: unknown key, malformed section, schedule with no due step | exit 2 before any gate runs, naming the file and key |
+| Config error: unknown key, malformed section, schedule with no due step | exit 2 before any gate runs, naming the file and key. Hook: the same text on stderr with exit 1, never a block, because the agent cannot edit the file it names (9.4) |
 | No base resolves outside the hook | exit 2 naming what was tried |
-| No stamp in the hook | window from HEAD, and a NOTE names the missing stamp |
-| A file no grammar reads | CI: the gate names it and exits 2, other findings still print. Hook: a NOTE. |
-| The build fails in the hook | block with the build output, no gate runs |
+| `turn` file missing in the hook, ref present | restored from the ref with a RED verdict, and a NOTE says so |
+| `turn` file and ref both missing in the hook | a branch window from the base of 6.3, or from HEAD when none resolves, a NOTE names the missing stamp, and the stop writes that base as the stamp |
+| A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE. |
+| The build fails in the hook | block with the build output, no gate runs. Outside the hook the build step does not run (ADR 0012). |
 | Host event unreadable in the hook | report to stderr and exit 1, never block |
 | Host event unreadable in the guard | allow |
-| A `run` entry fails or prints no SARIF | that gate is ERR |
+| A `run` entry exits without writing its report, or the report is not SARIF | that gate is ERR, in every mode. The command's exit status alone is not judged (8.3). |
 | Survey cache unreadable | recompute, overwrite |
 | State directory unwritable | the hook runs with a window from HEAD, prints why, and never blocks on it |
-| Survey finds no source root | `--strict`: exit 2 naming the directory surveyed. Hook: a NOTE, and the turn ends. |
+| Survey finds no source root | `--strict`: exit 2 naming the directory surveyed. Otherwise a NOTE naming it, and in the hook the turn ends. |
 
 ## 15. Trust Model and Conformance Levels
 
@@ -1063,15 +1091,30 @@ manifest, printed before it runs.
 ```
 state = KLIN_STATE_DIR/hash(common_dir, worktree) if set else git_dir()/klin
 
-hook_window():
+read_stamp():
   stamp = read(state/turn)
-  if stamp is None: note("no stamp"); return Window(TURN, HEAD, WORKING, "from HEAD")
+  if stamp is not None: return stamp
+  commit = resolve("refs/worktree/klin/turn")
+  if commit is None: return None
+  note("turn file missing, restored from the ref")
+  stamp = Stamp(commit, parent=parent(commit), time=None, last_verdict=RED)
+  write_atomic(state/turn, stamp)
+  return stamp
+
+hook_window():
+  stamp = read_stamp()
+  if stamp is None:
+    note("stamp deleted, judging the branch")
+    before = choose_window(strict=False).before or HEAD     # 16.2
+    write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED)
+    return Window(BRANCH, before, WORKING, "stamp missing")
   return Window(TURN, stamp.commit, WORKING, "since " + stamp.time)
 
 on_session_start_or_prompt():          # one rule for both events
-  stamp = read(state/turn)
-  if stamp is None or stamp.last_verdict == GREEN:
-    move_stamp()
+  stamp = read_stamp()
+  if stamp is None and not exists(state): move_stamp()       # first session here
+  elif stamp is not None and stamp.last_verdict == GREEN: move_stamp()
+  elif stamp is None: note("stamp deleted, the next stop judges the branch")
   report_radius(stamp)
 
 turn_reset():                          # a person's command, denied by the guard
@@ -1169,7 +1212,9 @@ Core:
   derived ceilings on a tree with fewer than 50 functions, cache hit and miss,
   cache keyed by binary version.
 - Window: each candidate in order, each ADR 0013 branch outside the hook, the
-  hook with no stamp prints a NOTE, the stamp holding through a commit, the
+  hook with a deleted `turn` file restores it from the ref with a red
+  verdict, the hook with file and ref both deleted judges the branch and the
+  prompt before it writes no fresh stamp, the stamp holding through a commit, the
   derived values holding through a commit inside a turn, the stamp not moving
   after a red stop on a prompt and on a session start, accepting finding A
   holds A and leaves B failing and the stamp where it was, `turn reset`
@@ -1182,8 +1227,11 @@ Core:
   match, a lowered ceiling fails no held site, accepted entry holds a site,
   unmatched accepted entry is a NOTE and a strict failure, a failure prints
   the site it matched and both values.
-- Each check: over, at, under the ceiling, a file it cannot read in CI and in
-  the hook, scope restricts both sides, `--json` shape with coverage counts,
+- Each check: over, at, under the ceiling, a file it cannot read with
+  `--hook`, with neither flag and with `--strict`, of which the first is a
+  NOTE and the other two exit 2, scope restricts both sides, `--json` shape
+  with coverage counts,
+
   a tree with no config and existing debt of this check's kind is green, a
   new root added in the window is measured, a first file in a new language
   is held to the floor, a new document is a NOTE with its word count and is
@@ -1232,9 +1280,12 @@ green, because deterministic detection is not correct judgement:
 - Hook: build failure blocks every stop and stops after eight, gate failure
   blocks once, the stamp hands the second stop an unspent block, unreadable
   event never blocks, the verdict is written.
-- Guard: one test per deny route including the state directory, `refs/worktree/klin`
-  and `turn reset`, one per ask route, every reader allowed, glob does not
-  match by empty prefix, quoted pipe does not split, under 50 milliseconds.
+- Guard: one test per deny route including `init` and `turn reset`, one per
+  ask route including a write that names the state directory or
+  `refs/worktree/klin`, every reader allowed including `git rev-parse` and
+  `git cat-file` on the ref and `find` over the state directory, `find
+  -delete` over it is `ask`, glob does not match by empty prefix, quoted pipe
+  does not split, under 50 milliseconds.
 - Init: pins exactly what the run would derive, writes only the config,
   `--add` leaves `false` alone, `--force` re-pins, never touches
   `.gitignore`, `--hooks` writes each host's file and leaves an existing
@@ -1264,10 +1315,12 @@ Core, in this order:
 - [ ] One stamp rule for session start and prompt, `turn reset` for a person,
       the `turn` file written atomically, a lock on the state directory for
       the whole stop
-- [ ] The hook reads the turn window, writes the verdict, and notes a missing
-      stamp
-- [ ] The guard denies writes to the state directory, `refs/worktree/klin` and
-      `turn reset`, and asks on the verification files of 9.4
+- [ ] The hook reads the turn window, writes the verdict, restores a missing
+      `turn` file from the ref, and judges the branch when both are gone
+- [ ] The guard denies `init` and `turn reset`, asks on the state directory,
+      `refs/worktree/klin` and the verification files of 9.4, and allows the
+      plumbing readers
+
 - [ ] Survey at run time from the derivation commit, cached by it, derived
       values printed. Derived numbers come from the derivation commit's own
       paths. Roots, languages, documents and manifests are the union of that
