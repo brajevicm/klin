@@ -25,16 +25,23 @@ changed set is the files the turn changed, and an empty set is an honest
 In `--hook` mode `before` is the turn stamp and `after` is the working tree.
 The stamp is a commit made with `git commit-tree` over a tree from a temporary
 index that holds every file `.gitignore` does not exclude, with HEAD at
-stamping time as its parent. It is held under `refs/klin/turn`, so `git gc`
-does not prune it, and the ref is never pushed. The `turn` file in the state
-directory holds the commit id, the time and the verdict of the last stop.
+stamping time as its parent. It is held under `refs/worktree/klin/turn`, so
+`git gc` does not prune it, and the ref is never pushed. It sits under
+`refs/worktree/` because git shares every other ref across the worktrees of
+one repository, and each worktree has its own stamp. The `turn` file in the
+state directory holds the commit id, the time and the verdict of the last
+stop. A stop holds a lock on the state directory from before it measures
+until after it writes the verdict, so two stops in one worktree cannot leave
+an older green over a newer red.
 
 One rule moves the stamp, applied on session start and on every prompt
 submitted alike. The stamp moves to the current working tree when no stamp
-exists, when the last stop ended green, or when the `accepted` section
-differs from the one at the stamp's parent. Otherwise the stamp stays. So
-debt an agent left behind stays new until it is fixed or a person accepts it,
-across turns and across sessions.
+exists or when the last stop ended green. Otherwise the stamp stays. So debt
+an agent left behind stays new until it is fixed or a person accepts it,
+across turns and across sessions. An acceptance does not move the stamp. An
+accepted entry is a `before` entry, so the accepted site is held on the next
+stop and the stamp moves when that stop ends green. Moving on acceptance
+would make every other open finding inherited debt.
 
 Session start follows the same rule, not a fresh stamp. A fresh stamp on
 session start would photograph the mess a red stop left behind and read it as
@@ -65,9 +72,16 @@ for a base equal to HEAD.
 
 The hook's cost is proportional to the turn, not to the branch.
 
-An agent can commit inside a turn and move the derivation commit of ADR 0016.
-A committed tree passed no stop, so it holds what the working tree holds, and
-the derived ceiling is monotone, so the new commit cannot raise it.
+A commit inside a turn does not move the derivation commit of ADR 0016. The
+derivation commit is the stamp's parent, fixed when the stamp is taken, so one
+turn is judged against one set of derived values from start to end.
+
+Amended 2026-09-09. The first text of this record moved the stamp when the
+`accepted` section changed, said a commit inside a turn moved the derivation
+commit, and relied on a monotone derived ceiling. The 2026-09-09 review of
+`docs/SPEC.md` showed that the first forgave unrelated findings, the second
+contradicted the stamp's fixed parent, and the third was false. SPEC.md 6.2,
+6.5 and 6.6 carry the current rules, including the ref location and the lock.
 
 The last turn of a session is measured at its stop like any other. ADR 0014's
 gap about the last turn concerned the radius report, which still needs a

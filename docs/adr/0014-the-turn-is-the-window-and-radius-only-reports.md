@@ -1,7 +1,7 @@
 # The turn is the window, and radius only reports
 
 > ADR 0017 amends this record. The stamp is also the hook's base, it is a
-> parented commit under `refs/klin/turn`, it moves by one rule on session
+> parented commit under `refs/worktree/klin/turn`, it moves by one rule on session
 > start and prompt alike, and it is guarded. The paragraph "The stamp is not
 > guarded" no longer holds. ADR 0019 moves it out of `.klin/`.
 

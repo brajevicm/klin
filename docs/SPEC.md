@@ -4,7 +4,8 @@ Status: Draft v0, 2026-09-08
 
 Purpose: Define a tool that gates an agentic coding harness deterministically,
 with at most one committed configuration file, no baseline that a person
-maintains, green on the day it arrives, and tighter from then on.
+maintains, green on the day it arrives, and tighter under a schedule a
+person pins once.
 
 The structure follows the Symphony service specification. This draft is not
 bound by the ADRs under `docs/adr/`. Where it reverses one, it says so and
@@ -50,6 +51,28 @@ wrapper. Each superseded ADR carries a note pointing forward.
 This draft was reviewed on 2026-09-08 (`docs/spec-review-2026-09-08.md`).
 Every finding of that review is applied here. The review's fix table maps to
 sections 5.1, 5.4, 6.2, 6.5, 6.6, 7.3, 8.3, 9.4, 10 and 14.
+
+A second review on 2026-09-09 found six contract gaps. Four are applied: the
+derived ceiling is not monotone (5.4, 6.6, 7.3), an acceptance no longer moves
+the stamp (6.2, 16.1), roots are discovered in both trees (3, 5.4), and the
+dated ceiling uses one zone (5.5). Two were refused: a `complete` flag that
+holds the window open on an unreadable file, because such a file yields no
+sites in `before` and its later readable form is judged `new`, so the debt is
+not hidden, and report provenance for SARIF, because a working tree has no
+revision id. The `run` key in 8.3 answers the freshness problem instead. The
+review also added the coverage line (8.6, 11), `inventory` over test
+declarations (8.2), and three escapes patterns.
+
+A third review on 2026-09-09, of the draft above, found six more. Five are
+applied: the day-one promise is narrowed to the same tree (5.1), stops in one
+worktree take a lock (6.5), the stamp ref moved under `refs/worktree/` (6.5),
+`inventory` has its own judge (16.4), and ADR 0016 and 0017 are amended to
+match 5.4, 6.2 and 6.6. The sixth, a content fingerprint of the working tree
+as report provenance, was replaced by deleting the report before `run` (8.3).
+The review also added the coverage regression rule (8.6, 10), verification
+files to the guard's `ask` list (9.4), the empty test body to `stubs` (8.2),
+a finding id (11.2), and the paired scenarios of 17. `TODO` and `FIXME` stay
+in the `stubs` table because #106 had decided it.
 
 ## 1. Problem Statement
 
@@ -121,8 +144,11 @@ Nine components, in one binary.
 1. **Config** loads `klin.json` when it exists, resolves paths against its
    directory, and rejects a key klin does not know.
 2. **Survey** derives every value the config does not pin: source roots,
-   languages, documents, manifests, test roots, and ceilings. It runs on the
-   `before` tree so an agent cannot move a number by editing the `after` tree.
+   languages, documents, manifests, test roots, and ceilings. Every number
+   comes from the `before` tree, so an agent cannot move a ceiling by editing
+   the `after` tree. Roots, languages and documents come from both trees, so
+   a new directory or a first file in a new language is measured on the turn
+   that adds it. Discovering more never loosens a gate.
 3. **Window Chooser** picks the two trees a run compares and says which.
    Section 6.
 4. **Checks** measure one tree each and return Findings with a Site identity
@@ -248,11 +274,15 @@ the working directory. `--config PATH` overrides. Paths resolve against the
 file's own directory. The file is under the guard and SHOULD be under
 CODEOWNERS.
 
-With no file, every check with a `derive` runs over derived sections. This
-MUST produce a green run on any tree with a base, because every derivable
-check compares two trees and nothing in the working tree is worse than the
-same tree. A stale citation, a missing lockfile entry or a long document that
-the base already holds is `held`, not `new`.
+With no file, every check with a `derive` runs over derived sections. When
+the two trees are the same, this MUST produce a green run, because nothing in
+a tree is worse than itself. That is the first stop of the hook, whose first
+stamp is the working tree as it stands. When the trees differ, as under `klin
+gate` by hand against a merge-base, the run fails on new or worsened findings
+only. A stale citation, a missing lockfile entry or a long document that the
+base already holds is `held`, not `new`. A build that already fails, or a
+file no grammar reads, is judged under section 14 and is not part of this
+promise.
 
 One configuration per repository, at the root. Sections carry roots, so a
 monorepo is many roots in one file. Discovery walks up only to find that file
@@ -289,25 +319,34 @@ Each check documents its rule. The rules for the shipped checks:
 
 - `roots`: directories under the tree root that hold source files of a known
   language, excluding the default skip set, merged up to the shallowest
-  directory that holds nothing but source. Test roots are the subset whose
-  name or files match the language's test convention.
-- `languages`: the languages of the files under `roots`.
-- `doc_size`: every Markdown file at the tree root. The ceiling is the word
-  count at the derivation commit, rounded up to the next 50.
+  directory that holds nothing but source. The set is the union over both
+  trees. Test roots are the subset whose name or files match the language's
+  test convention.
+- `languages`: the languages of the files under `roots`, in both trees.
+- `doc_size`: every Markdown file at the tree root, in both trees. The
+  ceiling is the word count at the derivation commit, rounded up to the next
+  50. A document the derivation commit lacks is not judged on that run. A
+  NOTE names it and its word count, and it gets a ceiling when the stamp
+  moves and the derivation commit holds it. Any other rule would read the
+  ceiling from `after`, which 4.3 forbids.
 - `complexity.ceilings`: the 95th percentile of `cc` and of `lines` over
   every function at the derivation commit, rounded up to the next whole
   number, with a floor of `cc 5` and `lines 25` so a small clean tree is not
-  held to a ceiling of 1. Below 50 functions the floor is the ceiling.
+  held to a ceiling of 1. Below 50 functions the floor is the ceiling. A
+  language the derivation commit lacks has the floor as its ceiling.
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
 - `build`: one entry per manifest, per ADR 0012.
 
-A derived ceiling is monotone. New sites must be under it and existing sites
-cannot rise, so the next derived ceiling is never higher than the last. It is
-not a tightening mechanism. The percentile itself can rise when new code lands
-between the old percentile and the ceiling, and on a tree of thousands of
-functions a few clean additions move it by nothing. The derived ceiling is the
-day-one default. Section 7.3 names what tightens.
+A derived ceiling is not monotone. A percentile falls when simple functions
+arrive and rises when simple functions leave. A tree of 96 simple functions
+and four complex held ones has a ceiling at the floor. Delete 46 of the
+simple ones and the next derivation puts the ceiling at the complex four,
+though no surviving function got worse. klin keeps no history that could
+prevent this, and a run prints the ceiling it used, so a person sees the
+number move. The derived ceiling is the day-one default and nothing more. A
+person who wants a ceiling that cannot loosen pins one. Section 7.3 names
+what tightens.
 
 ### 5.5 Pinned ceiling shape
 
@@ -321,9 +360,11 @@ A pinned ceiling is either a number or an object of dated steps:
 ```
 
 The run uses the lowest step whose date is on or before today. A schedule
-with no step yet due MUST be an error. The date is the system date in the
-local zone. A run MAY take `KLIN_TODAY=YYYY-MM-DD` for tests. This is the
-shape issue #87 proposes for one gate, applied to every ceiling.
+with no step yet due MUST be an error. Today is the system date in UTC, so
+two machines on one day agree on the step. A run MAY take
+`KLIN_TODAY=YYYY-MM-DD` for tests. A run that uses a schedule MUST print the
+date it used on the `derived:` line for that ceiling. This is the shape issue
+#87 proposes for one gate, applied to every ceiling.
 
 ### 5.6 Exclusion
 
@@ -369,9 +410,8 @@ these, and it is the window ADR 0014 already built for radius.
 
 One rule, applied on session start and on every prompt submitted alike:
 
-> The stamp moves to the current working tree when no stamp exists, when the
-> last stop ended green, or when the accepted list changed since the stamp.
-> Otherwise the stamp stays where it is.
+> The stamp moves to the current working tree when no stamp exists or when
+> the last stop ended green. Otherwise the stamp stays where it is.
 
 So debt an agent left behind stays `new` until it is fixed or a person accepts
 it, across turns and across sessions. The stamp persists in the state
@@ -380,9 +420,11 @@ keeps the old stamp rather than photographing the mess. When no stamp exists
 the first stamp is the working tree as it stands, which treats a person's
 uncommitted work as prior, and that is correct.
 
-"The accepted list changed" means the `accepted` section of `klin.json` in
-the working tree differs from the one at the stamp's parent commit. The config
-is guarded, so a difference is a person's act.
+An acceptance does not move the stamp. An accepted entry is a `before` entry
+under 7.1, so the site it names is `held` on the next stop, and the stamp
+moves when that stop ends green. Accepting finding A while finding B is still
+open leaves B `new`. A rule that moved the stamp on acceptance would make B
+inherited debt, which is the route to green this section exists to close.
 
 A person who abandons the work has a third route: `klin turn reset` moves the
 stamp to the current working tree and prints that a person moved it. The guard
@@ -436,9 +478,24 @@ temporary index, with HEAD at stamping time as its parent, so both paths above
 work on it unchanged. The RECOMMENDED stamping sequence is `git add -A` with
 `GIT_INDEX_FILE` pointing at an `index` file in the state directory, then
 `git write-tree`, then `git commit-tree -p HEAD`, then `git update-ref
-refs/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp and
+refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp and
 makes it visible to `git log --all`. The ref is never pushed. The `turn` file
 in the state directory holds the time and the verdict beside the commit id.
+It MUST be written to a temporary name and renamed into place, so a hook that
+dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
+worktree share one window and one `turn` file. A stop MUST hold an advisory
+lock on the state directory from before it measures until after it writes the
+verdict, so stops in one worktree run in order and the last verdict describes
+the last tree. Without the lock an old green stop that finishes after a new
+red one would write green, and the next prompt would move the stamp over the
+red debt. A stop that cannot take the lock within the hook budget writes no
+verdict and says so.
+
+The ref is `refs/worktree/klin/turn`, not `refs/klin/turn`. Git shares
+`refs/` across the worktrees of one repository, with `refs/worktree/`,
+`refs/bisect/` and `refs/rewritten/` as the exceptions, so a stamp under
+`refs/klin/` in one worktree would replace the stamp of another and leave it
+for `git gc` to prune.
 
 ### 6.6 The derivation commit
 
@@ -454,10 +511,12 @@ binary version. The first stop after a commit pays one whole-tree parse.
 Every stop between two commits reads the cache. Worktrees of one repository
 MAY share the survey cache, because a commit id means the same thing in each.
 
-An agent can commit inside a turn and move the derivation commit. That is
-harmless. A committed tree passed no stop, so it holds what the working tree
-holds, and the derived ceiling is monotone under 5.4, so the new commit cannot
-raise it.
+A commit inside a turn does not move the derivation commit. The stamp's parent
+is fixed when the stamp is taken, and the stamp moves only under 6.2. So a
+turn is judged against one set of derived values from start to end, whatever
+the agent commits along the way. The derivation commit changes only when the
+stamp moves, which is after a green stop, and a person sees the new ceiling on
+the `derived:` line of the next run.
 
 ## 7. Ratchet Semantics
 
@@ -497,8 +556,10 @@ order of how much work it does:
    MAY offer to write one from the derived ceiling to a target over a period,
    under a flag such as `--tighten 18m`, and MUST NOT write one unasked.
 2. A person pins a lower number.
-3. The derived ceiling never rises (5.4). It is the floor of the process, not
-   the engine.
+
+The derived ceiling tightens nothing. It can rise when simple code leaves the
+tree (5.4). A pinned number or schedule is the only ceiling that cannot
+loosen, and `init` writes one from today's derived value in one command.
 
 Forced paydown, where a touched file must leave with less debt, is NOT
 RECOMMENDED. Its only remedy is a refactor nobody asked for, which the radius
@@ -567,14 +628,31 @@ present in `after` and absent in `before` fails, and a site in both is held.
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
-| `inventory` over tests | deleted or renamed test file | path at `before` | gone from `after` | yes | #45, #69 |
-| `hallucinated-deps` | dependency that does not exist, pin removed | manifest + name | new against `before` | yes | #58 |
-| `sarif`, report only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | #47, section 8.3 |
+| `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | in `before`, gone from `after` | yes | #45, #69 |
+| `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | new against `before` | yes | #58 |
+| `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | #47, section 8.3 |
 
-`inventory` MUST NOT fail on a deletion that removed the subject too. A
-deleted test file whose subject file was deleted in the same window is a
-NOTE. The subject match is by basename with the language's test affixes
-stripped, and the exact rule is implementation-defined.
+`inventory` has two identities. A test file is keyed by path. A test function
+is keyed like a complexity site, file plus declaration line, and only
+functions the language's test convention marks count, such as a `#[test]`
+item, a `test_` function or an `it(` call. A site in `before` with no match
+in `after` fails, with the remedy to restore the test or say in the accepted
+list why it went. The second pass of 4.4 matches a renamed test by body hash
+before it fails, so a rename with the body unchanged is `held`. A rename that
+also edits the body fails, and the remedy names the vanished site so a person
+can accept it. A deletion that removed the subject too is a NOTE: for a file,
+the subject file went in the same window, and for a function, the file that
+held it went. The subject match is by basename with the language's test
+affixes stripped, and the exact rule is implementation-defined. Deleting a
+test that fails is the cheapest route to green in section 1, and the
+file-level inventory alone does not close it.
+
+`lockfile` proves one thing: every dependency the manifest names has an entry
+in the lockfile beside it, and no pin the base held is gone. It cannot prove
+that a package exists in a registry, because it runs offline. A dependency
+that does not exist fails the project's own install, which the `build` step
+runs. Workspace members, path dependencies and optional dependencies are
+implementation-defined and MUST be documented per manifest format.
 
 Two more checks belong to this tier by the criteria and are not in the core
 list of section 18, because each takes weeks and carries an unsolved problem:
@@ -582,29 +660,58 @@ list of section 18, because each takes weeks and carries an unsolved problem:
 | Check | Agent failure it names | Identity | Judgement | Status |
 |---|---|---|---|---|
 | `duplication` | copy instead of reuse | block in changed lines, and tree share | `share` rises | #48 |
-| `sarif` with `run` | a linter's findings compared across two trees | file + rule + message | `count` rises | #47, section 8.3 |
+| `sarif` with `compare` | a linter's findings compared across two trees | file + rule + message | `count` rises | #47, section 8.3 |
 
 `stubs` is new. Its patterns per language are a fixed table the way escapes
-are: `todo!()`, `unimplemented!()`, `pass` as a sole body, `raise
-NotImplementedError`, `throw new Error("not implemented")`, `TODO` and
-`FIXME`, and an elision comment such as `// ...` or `# rest of the code` as a
-sole body. Identity is file plus line text, ratcheted on `count`, exactly
-like escapes. It SHOULD share the escapes engine and differ only in the table.
+are, and every pattern in the first table is an executable body that does
+nothing: `todo!()`, `unimplemented!()`, `pass` as the sole body of a
+function, `raise NotImplementedError`, `throw new Error("not implemented")`,
+an empty body on a function the language's test convention marks, and an
+elision comment such as `// ...` or `# rest of the code` as a sole body. The
+sole-body patterns match function bodies only, because `pass` as the body of
+a class or an exception is ordinary Python. The comment markers `TODO`,
+`FIXME`, `XXX` and `HACK` are in the table too, as #106 decided. A project
+that tracks work in such comments sees a new one fail once, and a person
+accepts it or the agent moves the note to the tracker. An abstract
+declaration whose body is meant to be empty, such as a trait method or a
+protocol, MUST NOT match. Identity is file plus line text, ratcheted on
+`count`, exactly like escapes. It SHOULD share the escapes engine and differ
+only in the table. #106 ships the line patterns first and the body shapes,
+which need the function walk, in a second ticket.
+
+The escapes table gains four rows for test-disabling constructs it lacks:
+`fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
+other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
+`@Disabled`, `t.Skip` and `XCTSkip`, are already there.
 
 ### 8.3 The linter seam
 
 The seam ships in two steps. The first needs no second tree and fits the hook
 budget. The second is deferred until a user asks for the cases it catches.
 
-**Step one, report only.** A `sarif` entry names a report the project's own
-tooling wrote from the `after` tree:
+**Step one, the `after` tree only.** A `sarif` entry names a command that
+writes a SARIF report from the working tree, or a report that is already
+there:
 
 ```json
 "sarif": [
-  { "name": "eslint", "report": "out/eslint.sarif" },
+  { "name": "eslint", "run": "npx eslint -f sarif -o out/eslint.sarif .", "report": "out/eslint.sarif" },
   { "name": "semgrep", "report": "out/semgrep.sarif", "differential": true }
 ]
 ```
+
+With `run`, klin deletes `report`, executes the command in the working tree
+the way it runs `build`, then reads `report`. A report that is missing after
+`run` is ERR. The report is fresh by construction, because the only file at
+that path is one the tool wrote over the tree klin is about to judge. The
+command's exit status is not judged, because a linter exits non-zero when it
+finds something. In the hook this is the RECOMMENDED form. Without `run`,
+klin reads the report as it finds it, and that form belongs in CI, where the
+same job wrote the report one step earlier. There, a report older than any
+file the window changed is ERR, because a report that predates the change
+cannot describe it. Executing the tool in the `after` tree has no dependency
+problem: the working tree has its dependencies installed, or the build would
+fail first.
 
 Each result is keyed by file, rule id and message. A result fails when its
 line falls inside a hunk the window changed. A result on a line the window did
@@ -614,12 +721,12 @@ changed lines, not changed files, is what keeps an agent that touches a file
 with thirty old warnings green. A reformat that moves every line is the known
 weakness, and the radius report already names such a turn.
 
-This step runs the tool once, needs no `before` worktree, and has no
-dependency problem. It delivers most of what the goal names: eslint, tsc,
-clippy and ruff findings become klin failures exactly where the agent wrote
-the line.
+This step runs the tool once, needs no `before` worktree, and delivers most
+of what the goal names: eslint, tsc, clippy and ruff findings become klin
+failures exactly where the agent wrote the line. The same `run` and `report`
+contract is the one a coverage reader or a test-result reader takes later.
 
-**Step two, `run` in both trees.** An entry with `run` instead of `report` is
+**Step two, `run` in both trees.** An entry marked `compare: true` is
 executed in both trees and its results are matched by site and ratcheted on
 `count`. This catches a rule count that rose on an unchanged line, and a
 finding that moved. It is deferred for a reason the review stated: the
@@ -651,7 +758,19 @@ Every check MUST:
 - state its identity rule, its ratcheted values and its derivation rule in
   its module docstring
 - print one remedy per failure that names what to change
-- print `OK:` with what it judged, and nothing else, on success
+- print, per failure, the site it matched in `before` or the accepted entry it
+  matched, and the value on each side, so an agent fixes the right thing and
+  a person can dispute a wrong match. A `new` finding says that nothing
+  matched.
+- print `OK:` with what it judged, and nothing else, on success. What it
+  judged includes the coverage: how many files it found, measured, excluded
+  and could not read, so a green run over an unexpectedly small scope is
+  visible on its one line.
+- name every file that is present in both trees, was measured in `before`,
+  and was not measured in `after`. The union of roots in 5.4 means a check
+  can only discover more, so such a file left through an exclusion, a file
+  the grammar stopped reading, or a discovery rule the tree no longer meets.
+  In the hook it is a NOTE. Under `--strict` it is exit 2, per section 10.
 - name a file it could not measure. In CI under `--strict` that is exit 2. In
   the hook it is a NOTE, because the agent has no remedy.
 - run under `klin gate` and under its own subcommand with the same output
@@ -724,17 +843,27 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 - `deny`: an edit tool whose `file_path` is guarded, a redirect onto a
   guarded path, a whole-tree restore, `init` in any form, `turn reset`, and
-  any non-reader command that names the state directory or `refs/klin`. The
+  any non-reader command that names the state directory or `refs/worktree/klin`. The
   reason names the file and says a person changes it in a reviewed commit,
   or names the command a person runs instead.
 
 The guarded set is: `klin.json`, each host's hook file, CODEOWNERS, the state
-directory of 7.4, and `refs/klin`. The state directory is guarded for a
+directory of 7.4, and `refs/worktree/klin`. The state directory is guarded for a
 different reason from the others. Nothing in it needs a reviewed commit to
 restore, but deleting the stamp turns every open failure into `held` in one
 command, and section 8.1's fourth criterion applies to that act.
 - `ask`: a shell command outside the reader list whose arguments name a
   guarded path. The reason quotes the token that matched. The person decides.
+  Also an edit tool or non-reader command that names a verification file. The
+  verification files are a fixed table in the binary, not a config key: lint
+  configuration such as `.eslintrc*` and `eslint.config.*`, test
+  configuration such as `pytest.ini`, `jest.config.*` and the `[tool.pytest]`
+  and `[tool.coverage]` tables' files, coverage thresholds such as
+  `.coveragerc` and `codecov.yml`, and CI workflows under `.github/workflows`.
+  An agent that edits one of these can weaken every check that reads it
+  without touching `klin.json`, and klin cannot tell a loosening from a fix,
+  so a person looks. The table is `ask`, never `deny`, and the reason names
+  the file and says why klin asked.
 - `allow`: everything else, including any reader naming a guarded path, and
   any glob that does not match a guarded name.
 
@@ -761,9 +890,10 @@ The `--json` form is available for a host that reads JSON.
 - `klin gate` runs every applicable gate cheapest first and prints a status
   row per gate, the full output of each failing gate, and one summary line.
 - `--gate NAME` runs one gate. Naming an excluded or unknown gate is exit 2.
-- `--strict` adds four failures: a config error, an accepted entry matching
-  nothing, a same-tree comparison klin cannot explain (6.4), and a survey that
-  finds no source root. The last one closes the hole the retired
+- `--strict` adds five failures: a config error, an accepted entry matching
+  nothing, a same-tree comparison klin cannot explain (6.4), a file measured
+  in `before` and not in `after` though present in both (8.6), and a survey
+  that finds no source root. The last one closes the hole the retired
   unaccounted-gate failure of ADR 0010 used to close: a CI job in the wrong
   directory or over a clone with no base would otherwise apply every gate to
   nothing and print green.
@@ -791,8 +921,14 @@ One object on stdout. Fields:
 
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
-- `gates` list of `{name, status, findings, notes}`
-- `findings` entries per 4.5 with `condition` and `fix_advice`
+- `gates` list of `{name, status, findings, notes, coverage}`, where
+  `coverage` is `{found, measured, excluded, unreadable}` file counts
+- `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
+  `ceiling`, and `matched`, which is the `before` site or accepted entry with
+  its values, or null for a `new` finding. `id` is a hash of the gate name,
+  the file and the declaration text, so it is the site identity of 4.4 in one
+  token, and a harness can follow one finding across stops without parsing
+  the rest.
 - `exit` integer
 
 A finding has no column, so the JSON carries none rather than a wrong one.
@@ -811,8 +947,8 @@ finding (#65). Text output is unchanged by the flag.
 - Grammars are compiled into the binary. A grammar version change is a klin
   version change, and the survey cache key includes the version.
 - No check MAY read the network.
-- The only clock is a pinned dated ceiling (5.5), and `KLIN_TODAY` overrides
-  it.
+- The only clock is a pinned dated ceiling (5.5), read in UTC, and
+  `KLIN_TODAY` overrides it.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
 - A derived value is a pure function of the `before` commit and the binary
@@ -891,7 +1027,7 @@ hook_window():
 
 on_session_start_or_prompt():          # one rule for both events
   stamp = read(state/turn)
-  if stamp is None or stamp.last_verdict == GREEN or accepted_changed(stamp):
+  if stamp is None or stamp.last_verdict == GREEN:
     move_stamp()
   report_radius(stamp)
 
@@ -901,14 +1037,14 @@ turn_reset():                          # a person's command, denied by the guard
 move_stamp():
   tree   = write_tree(index=state/index, add_all=True)
   commit = commit_tree(tree, parent=HEAD)
-  update_ref("refs/klin/turn", commit)
-  write(state/turn, commit=commit, parent=HEAD, time=now, last_verdict=None)
-
-accepted_changed(stamp):
-  return accepted_section(WORKING) != accepted_section(stamp.parent)
+  update_ref("refs/worktree/klin/turn", commit)
+  write_atomic(state/turn, commit=commit, parent=HEAD, time=now, last_verdict=None)
 
 derivation_commit(window):
   return stamp.parent if window.kind == TURN else window.before
+
+roots(window):
+  return survey(derivation_commit(window)).roots | survey_roots(WORKING)
 ```
 
 ### 16.2 `klin gate` and CI window
@@ -942,7 +1078,7 @@ hook(event):
   if failure: write(state/build-blocked); block(failure)
   unspent = remove(state/build-blocked)
   (failed, errored) = run_gates(config_or(survey), window, scope=changed)
-  write_verdict(state/turn, GREEN if failed == 0 and errored == 0 else RED)
+  write_verdict_atomic(state/turn, GREEN if failed == 0 and errored == 0 else RED)
   if failed == 0 and errored == 0: return 0
   if not unspent and host.blocked_before(event): report(); return 0
   block(report)
@@ -966,6 +1102,15 @@ evaluate(check, section, window, scope):
 judged, and an entry above it is matched, so a lower ceiling never turns a
 held site red.
 
+`inventory` fits the same judge by ratcheting existence. Its measure of
+`after` emits a finding for every site the `before` measure holds, with
+`missing: 1` where `after` has no match by site and then by body hash, and
+`missing: 0` where it has one. The `before` entries carry `missing: 0`, so a
+vanished site is `worsened` under the one `judge` and nothing else changes.
+A site the accepted list names is matched like any other, so a person accepts
+a deletion the same way they accept any other debt. A vanished site whose
+subject went in the same window is a NOTE, not a finding.
+
 ## 17. Test and Validation Matrix
 
 One seam, the binary, on a throwaway tree with a base (AGENTS.md).
@@ -981,27 +1126,66 @@ Core:
   cache keyed by binary version.
 - Window: each candidate in order, each ADR 0013 branch outside the hook, the
   hook with no stamp prints a NOTE, the stamp holding through a commit, the
-  stamp not moving after a red stop on a prompt and on a session start, the
-  stamp moving after an acceptance, `turn reset` moving it and saying so, the
-  stamp surviving `git gc`, the survey cache hitting on the second stop of a
-  turn and missing after a commit.
+  derived values holding through a commit inside a turn, the stamp not moving
+  after a red stop on a prompt and on a session start, accepting finding A
+  holds A and leaves B failing and the stamp where it was, `turn reset`
+  moving it and saying so, the stamp surviving `git gc`, a hook killed
+  mid-write leaving the previous `turn` file intact, the survey cache hitting
+  on the second stop of a turn and missing after a commit.
 - Ratchet: new fails, worsened fails, held passes, rename keeps sites, moved
-  function keeps its site within a file and across files, a lowered ceiling
-  fails no held site, accepted entry holds a site, unmatched accepted entry
-  is a NOTE and a strict failure.
+  function keeps its site within a file and across files, a copy of a
+  function beside its original is `new` and does not inherit the original's
+  match, a lowered ceiling fails no held site, accepted entry holds a site,
+  unmatched accepted entry is a NOTE and a strict failure, a failure prints
+  the site it matched and both values.
 - Each check: over, at, under the ceiling, a file it cannot read in CI and in
-  the hook, scope restricts both sides, `--json` shape, a tree with no config
-  and existing debt of this check's kind is green.
-- `inventory`: a deleted test whose subject was deleted too is a NOTE.
+  the hook, scope restricts both sides, `--json` shape with coverage counts,
+  a tree with no config and existing debt of this check's kind is green, a
+  new root added in the window is measured, a first file in a new language
+  is held to the floor, a new document is a NOTE with its word count and is
+  judged once the stamp moves.
+- `inventory`: a deleted test file whose subject was deleted too is a NOTE, a
+  deleted test function fails, a renamed test function with its body
+  unchanged is held, a deleted test function whose file went too is a NOTE.
 - `sarif`: a result on a changed line fails, on an unchanged line in a changed
-  file is held, `differential` fails every result.
+  file is held, `differential` fails every result, `run` writes the report
+  before it is read, a report older than a changed file is ERR.
+- `lockfile`: a manifest entry with no lockfile entry fails, a removed pin
+  fails, a path dependency is not judged.
+- Coverage: a file present in both trees and measured in `before` only is a
+  NOTE in the hook and exit 2 under `--strict`, whether it left through an
+  exclusion or a grammar error.
+- Concurrency and worktrees: an old green stop that finishes after a new red
+  stop does not write green, two worktrees keep independent stamps through
+  `git gc --prune=now`, a stop that cannot take the lock writes no verdict.
+- Guard, verification files: an edit to a lint config, a test config, a
+  coverage threshold and a CI workflow is `ask`, and a read of each is
+  allowed.
+
+Paired scenarios. Every `stubs`, `escapes` and `inventory` pattern carries
+two fixtures, one shortcut that fails and one legitimate change that stays
+green, because deterministic detection is not correct judgement:
+
+- A failing test is deleted, fails. The same test moves to another file with
+  its body unchanged, green.
+- A test body is emptied, fails. A test body is rewritten with the same
+  declaration, green.
+- A `pass` body lands on a function, fails. A `pass` body lands on an
+  exception class, green.
+- A new root or an exclusion changes what is measured, and the coverage line
+  says so on the same run.
+- A finding survives a commit, a new prompt and a new session, and its `id`
+  is the same in each JSON report.
+- Accepting finding A holds A and leaves B failing.
+- A `run` command that exits without writing the report is ERR, and a run
+  that writes it is judged on the new report.
 - Runner: cheapest first, every gate runs after a failure, ERR beats FAIL in
   the exit code, `--gate` on an excluded gate, `--list` shows derived and
   pinned, no source root is exit 2 under `--strict` and a NOTE in the hook.
 - Hook: build failure blocks every stop and stops after eight, gate failure
   blocks once, the stamp hands the second stop an unspent block, unreadable
   event never blocks, the verdict is written.
-- Guard: one test per deny route including the state directory, `refs/klin`
+- Guard: one test per deny route including the state directory, `refs/worktree/klin`
   and `turn reset`, one per ask route, every reader allowed, glob does not
   match by empty prefix, quoted pipe does not split, under 50 milliseconds.
 - Init: pins exactly what the run would derive, writes only the config,
@@ -1028,26 +1212,40 @@ Core, in this order:
 - [ ] Guard: fix the glob prefix and quoted splitting, add the `ask` decision
 - [x] State directory under the git directory, `KLIN_STATE_DIR` override,
       `cache clean`
-- [ ] The turn stamp as a commit with HEAD as parent, under `refs/klin/turn`
-- [ ] One stamp rule for session start and prompt, `turn reset` for a person
+- [ ] The turn stamp as a commit with HEAD as parent, under `refs/worktree/klin/turn`
+- [ ] Amend ADR 0016 and 0017 to match 5.4, 6.2 and 6.6
+- [ ] One stamp rule for session start and prompt, `turn reset` for a person,
+      the `turn` file written atomically, a lock on the state directory for
+      the whole stop
 - [ ] The hook reads the turn window, writes the verdict, and notes a missing
       stamp
-- [ ] The guard denies writes to the state directory, `refs/klin` and
-      `turn reset`
+- [ ] The guard denies writes to the state directory, `refs/worktree/klin` and
+      `turn reset`, and asks on the verification files of 9.4
 - [ ] Survey at run time from the derivation commit, cached by it, derived
-      values printed
+      values printed. Roots, languages and documents are the union over both
+      trees.
 - [ ] `doc-citations` and every other derivable check compare to `before`
 - [ ] No source root is exit 2 under `--strict`
-- [ ] Derived complexity ceilings, floor and minimum sample
-- [ ] Pinned dated ceilings in every check that takes a ceiling
+- [ ] Derived complexity ceilings, floor and minimum sample, floor for a new
+      language
+- [ ] Pinned dated ceilings in every check that takes a ceiling, in UTC, date
+      printed
 - [ ] One key vocabulary, old names print the new one, differential test
       retired
 - [ ] Unreadable file is a NOTE in the hook
+- [ ] Coverage counts on every `OK:` line, matched site and both values on
+      every failure, a finding `id`, all in the JSON, and the coverage
+      regression NOTE and strict failure
 - [ ] Host adapter, Claude Code first, README stops naming other hosts
-- [ ] `stubs`, sharing the escapes engine
-- [ ] `inventory` over derived test roots, with the deleted-subject NOTE
-- [ ] `hallucinated-deps`
-- [ ] `sarif`, report only, scoped to changed lines
+- [ ] Three escapes rows: `fit(`, `fdescribe(`, `xfail`
+- [ ] Cross-file move matching by body hash (4.4)
+- [ ] `inventory` over test files and test functions, with the
+      deleted-subject NOTE and the body-hash rename match
+- [ ] `stubs`, sharing the escapes engine, executable function bodies only,
+      the empty test body included, with a legitimate-change fixture per row
+- [ ] `sarif`, `after` only, delete `report`, `run`, read `report`, scoped to
+      changed lines
+- [ ] `lockfile`
 - [ ] `CONTEXT.md` takes Window and Derived, README names the two
       conformance levels
 - [ ] New ADRs for each row of section 0 that is accepted, and one for the
@@ -1056,7 +1254,7 @@ Core, in this order:
 Next, after core is green, each with an unsolved problem named in section 8:
 
 - [ ] `duplication`
-- [ ] `sarif` with `run`, once the dependency problem of 8.3 has a design
+- [ ] `sarif` with `compare`, once the dependency problem of 8.3 has a design
 
 Distribution, in this order, because each step depends on the one before:
 
@@ -1072,11 +1270,14 @@ Recommended:
 - [ ] Configuration reference (#18) generated from each check's declared keys
       and derivation rules
 - [ ] `--sarif` output
-- [ ] Cross-file move matching by body hash (4.4)
 
 Before calling it 1.0:
 
 - [ ] Performance numbers from section 13 recorded on a fixture
+- [ ] A task comparison with and without klin on a small set of agent tasks,
+      recording regressions caught, legitimate changes blocked, extra repair
+      turns and hook latency. This is a benchmark, not a test, and it is what
+      shows the tool is useful rather than correct.
 - [ ] The hook-output facts in 9.3 verified against the host's documentation
 - [ ] Cursor and Codex adapters, or the README stays silent on them
 

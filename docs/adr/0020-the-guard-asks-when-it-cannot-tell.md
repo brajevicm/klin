@@ -21,7 +21,7 @@ The guard sorts a tool call into three decisions.
 
 `deny` is for a clear write: an edit tool whose path is guarded, a redirect
 onto a guarded path, a whole-tree restore, `init` in any form, `turn reset`,
-and any non-reader command that names the state directory or `refs/klin`. The
+and any non-reader command that names the state directory or `refs/worktree/klin`. The
 reason names the file and says a person changes it in a reviewed commit, or
 names the command a person runs instead.
 
@@ -35,7 +35,7 @@ agent loses no turn.
 any glob that does not match a guarded name when read as a pattern.
 
 The guarded set is `klin.json`, each host's hook file, CODEOWNERS, the state
-directory of ADR 0019, and `refs/klin`. The state directory is guarded for a
+directory of ADR 0019, and `refs/worktree/klin`. The state directory is guarded for a
 reason of its own, recorded in ADR 0017: deleting the stamp turns every open
 failure into held in one command.
 

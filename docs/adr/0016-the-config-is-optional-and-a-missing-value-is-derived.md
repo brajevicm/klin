@@ -34,11 +34,17 @@ the measured distribution at the derivation commit, rounded up, with a floor,
 and the floor alone below 50 functions. A document ceiling is the word count at
 the derivation commit rounded up to the next 50. Radius follows ADR 0014.
 
-A derived ceiling is monotone and no more. New sites must be under it and
-existing sites cannot rise, so the next derived ceiling is never above the
-last. It does not tighten in any useful rate on a large tree. Tightening is a
+A derived ceiling is the day-one default and no more. It is not monotone. A
+percentile rises when simple functions leave the tree, so a deletion that
+worsens no surviving function can raise the next derived ceiling above the
+last. klin keeps no history that could prevent this, and every run prints the
+ceiling it used. A ceiling that cannot loosen is a pinned one. Tightening is a
 dated schedule a person pins once, and `init` may offer to write one under a
 flag, never unasked.
+
+Amended 2026-09-09. The first text of this paragraph claimed the derived
+ceiling was monotone. The 2026-09-09 review of `docs/SPEC.md` gave the
+deletion counterexample, and SPEC.md 5.4 carries it.
 
 `init` pins. It writes what the run would derive into the file so a person can
 read, edit and review it. `--add` fills in missing sections. `--force` re-pins

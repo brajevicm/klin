@@ -2,7 +2,7 @@
 
 > ADR 0020 amends this record. A non-reader that names a guarded path is
 > `ask`, not `deny`, and the guarded set gains the state directory and
-> `refs/klin`. The reader rule stands.
+> `refs/worktree/klin`. The reader rule stands.
 
 The guard had two rules pulling against each other. `command_writes_guarded`
 matched the guarded literals anywhere in a command string, so a `grep` for
