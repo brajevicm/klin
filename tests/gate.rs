@@ -1070,3 +1070,74 @@ fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
     );
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
 }
+
+const ANOTHER_VERSION: &str = r#"{
+  "project": "t",
+  "version": "0.0.1",
+  "doc_size": [{"file": "README.md", "ceiling": 10}]
+}"#;
+
+#[test]
+fn a_version_the_binary_does_not_carry_is_a_note_and_nothing_else() {
+    let tree = tree(ANOTHER_VERSION);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("NOTE"), "{}", run.out);
+    assert!(run.says("0.0.1"), "{}", run.out);
+    assert!(run.says(env!("CARGO_PKG_VERSION")), "{}", run.out);
+    assert!(run.says("1 gate(s), all passed."), "{}", run.out);
+}
+
+#[test]
+fn the_running_version_and_no_version_both_print_no_note() {
+    let matching = tree(&format!(
+        r#"{{ "project": "t", "version": "{}",
+              "doc_size": [{{"file": "README.md", "ceiling": 10}}] }}"#,
+        env!("CARGO_PKG_VERSION")
+    ));
+    let absent = tree(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
+
+    for tree in [matching, absent] {
+        let run = tree.run(&["gate"]);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert!(!run.says("NOTE"), "{}", run.out);
+    }
+}
+
+#[test]
+fn a_version_that_is_not_a_string_is_a_tool_error() {
+    let tree = tree(
+        r#"{ "project": "t", "version": 1,
+                         "doc_size": [{"file": "README.md", "ceiling": 10}] }"#,
+    );
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"version\""), "{}", run.out);
+}
+
+#[test]
+fn the_version_note_reaches_the_json_notes() {
+    let tree = tree(ANOTHER_VERSION);
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = json(&run);
+    let notes = list(&report, "notes");
+    let note = notes
+        .iter()
+        .find(|note| field(note, "outcome") == "version")
+        .unwrap_or_else(|| panic!("no version note in:\n{}", run.out));
+    assert!(field(note, "text").contains("0.0.1"), "{}", run.out);
+}
+
+#[test]
+fn the_hook_hands_back_the_version_note_and_does_not_block_the_stop() {
+    let tree = tree(ANOTHER_VERSION);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("NOTE"), "{}", run.out);
+    assert!(run.says("0.0.1"), "{}", run.out);
+}

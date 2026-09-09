@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 const FILENAME: &str = "klin.json";
+const VERSION: &str = "version";
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -77,6 +78,7 @@ impl Config {
         let text = std::fs::read_to_string(&file).map_err(|why| Error::unreadable(&file, why))?;
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
+        a_version_is_a_string(&file, &data)?;
         Ok(Config { file, root, data })
     }
 
@@ -88,6 +90,21 @@ impl Config {
             data.insert(section.clone(), values.clone());
         }
         Ok(config)
+    }
+
+    /// What to say when the config names a klin version other than the one running, and
+    /// nothing when it names this one or none. A mismatch is a note. Section 5.2.
+    pub fn version_note(&self) -> Option<String> {
+        let running = env!("CARGO_PKG_VERSION");
+        let named = self.data.get(VERSION)?.as_str()?;
+        if named == running {
+            return None;
+        }
+        Some(format!(
+            "NOTE: {} names version {named} and this binary is {running} \u{2014} the version it \
+             names changes no gate and no exit code.",
+            self.file.display()
+        ))
     }
 
     pub fn root(&self) -> &Path {
@@ -121,6 +138,18 @@ impl Config {
             "{}: a \"{section}\" entry's \"{key}\" must be {must_be}",
             self.file.display()
         ))
+    }
+}
+
+/// A "version" that is not a string is a malformed key, and every command refuses it. Whether
+/// the version it names is the one running is a note instead. Sections 5.2 and 14.
+fn a_version_is_a_string(file: &Path, data: &Value) -> Result<(), Error> {
+    match data.get(VERSION) {
+        None | Some(Value::String(_)) => Ok(()),
+        Some(_) => Err(Error(format!(
+            "{}: \"{VERSION}\" must be a klin version as a string",
+            file.display()
+        ))),
     }
 }
 

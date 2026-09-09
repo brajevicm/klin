@@ -208,6 +208,7 @@ fn scoped(
 
 fn judge(args: &Args, start: &Path, out: &mut String) -> Result<Tally, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
+    let note = version(args, &config, out);
     let plan = plan(&config)?;
     if args.list {
         return listed(&config, &plan, out);
@@ -215,7 +216,8 @@ fn judge(args: &Args, start: &Path, out: &mut String) -> Result<Tally, Error> {
     let wanted = select(&args.gates, &plan, &config)?;
     accounted(args, &plan, &config)?;
     let against = against(args, &wanted, &config, out)?;
-    let (tally, records) = each(args, &wanted, &config.file, start, &against, out);
+    let (tally, mut records) = each(args, &wanted, &config.file, start, &against, out);
+    records.notes.extend(note);
     finish(args, &plan, wanted.len(), tally, records, &against, out);
     Ok(tally)
 }
@@ -369,6 +371,22 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
         errored: 1,
         ..Tally::default()
     })
+}
+
+/// The note a config that names another klin version leaves: printed above the gates, and
+/// carried into the JSON records. A version klin does not carry fails nothing. Section 5.2.
+/// The hook drops a report that blocks nothing, so there the note goes straight to stderr.
+fn version(args: &Args, config: &Config, out: &mut String) -> Option<Value> {
+    let text = config.version_note()?;
+    if args.hook {
+        eprintln!("klin: {text}");
+    } else if !args.json {
+        let _ = writeln!(out, "  {text}");
+    }
+    let mut record = Map::new();
+    record.insert("outcome".into(), "version".into());
+    record.insert("text".into(), text.into());
+    Some(Value::Object(record))
 }
 
 fn problem_record(text: &str) -> Value {

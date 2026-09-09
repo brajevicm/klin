@@ -196,3 +196,17 @@ fn a_section_naming_sources_says_the_key_is_now_roots() {
     assert!(run.says("\"sources\""), "{}", run.out);
     assert!(run.says("\"roots\""), "{}", run.out);
 }
+
+#[test]
+fn a_version_that_is_not_a_string_is_a_tool_error_under_any_command() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"version": 1, "doc_size": [{"file": "README.md", "ceiling": 10}]}"#,
+    );
+    tree.words("README.md", 5);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"version\""), "{}", run.out);
+}
