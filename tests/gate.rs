@@ -1113,3 +1113,67 @@ fn the_hook_hands_back_the_version_note_and_does_not_block_the_stop() {
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("0.0.1"), "{}", run.out);
 }
+
+/// A config that names a key no klin version reads, beside a gate that would otherwise pass.
+const AN_UNKNOWN_KEY: &str = r#"{
+  "project": "t",
+  "nonsense": true,
+  "doc_size": [{"file": "README.md", "ceiling": 10}]
+}"#;
+
+#[test]
+fn hook_reports_a_config_error_and_does_not_block_the_stop() {
+    let tree = tree(AN_UNKNOWN_KEY);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("\"nonsense\""), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}
+
+#[test]
+fn hook_with_strict_is_a_usage_error_and_runs_no_gate() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let run = harness::feed(tree.root(), &["gate", "--hook", "--strict"], A_STOP);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("--hook"), "{}", run.out);
+    assert!(run.says("--strict"), "{}", run.out);
+    assert!(!run.says("doc-size"), "{}", run.out);
+}
+
+#[test]
+fn no_ci_variable_changes_what_a_run_does() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let plain = tree.run(&["gate"]);
+    let in_ci = tree.run_with(
+        &[("CI", "true"), ("CONTINUOUS_INTEGRATION", "true")],
+        &["gate"],
+    );
+    assert_eq!(plain.code, in_ci.code, "{}", in_ci.out);
+    assert_eq!(plain.out, in_ci.out);
+}
+
+#[test]
+fn hook_reports_a_schedule_with_no_step_due_and_does_not_block_the_stop() {
+    let tree = tree(r#"{"doc_size": [{"file": "README.md", "ceiling": {"2999-01-01": 10}}]}"#);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("no step due"), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}
+
+#[test]
+fn hook_reports_a_section_naming_a_retired_key_and_does_not_block_the_stop() {
+    let tree =
+        tree(r#"{"escapes": {"roots": ["src"], "languages": ["rust"], "baseline": "old.json"}}"#);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("\"baseline\""), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}

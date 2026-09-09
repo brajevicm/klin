@@ -1,4 +1,5 @@
 use std::fmt;
+use std::path::Path;
 
 use serde_json::{Map, Value};
 
@@ -46,17 +47,64 @@ pub fn read(
     let (value, date) = due(config, section, key, steps, unit, &today)?
         .into_iter()
         .min()
-        .ok_or_else(|| {
-            Error(format!(
-                "{}: the \"{section}\" \"{key}\" schedule has no step due on {today}, so the \
-                 gate would have no ceiling — add a step on or before today",
-                config.file.display()
-            ))
-        })?;
+        .ok_or_else(|| no_step_due(&config.file, section, key, &today))?;
     Ok(Ceiling {
         value,
         step: Some(date),
     })
+}
+
+/// Every dated schedule in the file, judged before any gate runs: a schedule whose steps all
+/// fall after today leaves its gate with no ceiling, and that is a config error. An object
+/// whose every key is a date is a schedule wherever it sits. Section 14.
+pub fn every_schedule(file: &Path, data: &Value) -> Result<(), Error> {
+    let Some(sections) = data.as_object() else {
+        return Ok(());
+    };
+    let today = today()?;
+    sections
+        .iter()
+        .try_for_each(|(section, value)| walk(file, section, "", value, &today))
+}
+
+fn walk(file: &Path, section: &str, key: &str, data: &Value, today: &str) -> Result<(), Error> {
+    match data {
+        Value::Array(items) => items
+            .iter()
+            .try_for_each(|item| walk(file, section, key, item, today)),
+        Value::Object(fields) => {
+            if is_schedule(fields) && !fields.keys().any(|date| date.as_str() <= today) {
+                return Err(no_step_due(file, section, key, today));
+            }
+            fields
+                .iter()
+                .try_for_each(|(name, value)| walk(file, section, &under(key, name), value, today))
+        }
+        _ => Ok(()),
+    }
+}
+
+fn no_step_due(file: &Path, section: &str, key: &str, today: &str) -> Error {
+    let named = match key.is_empty() {
+        true => format!("\"{section}\""),
+        false => format!("\"{section}\" \"{key}\""),
+    };
+    Error(format!(
+        "{}: the {named} schedule has no step due on {today}, so the gate would have no \
+         ceiling — add a step on or before today",
+        file.display()
+    ))
+}
+
+fn under(key: &str, name: &str) -> String {
+    match key.is_empty() {
+        true => name.to_string(),
+        false => format!("{key}.{name}"),
+    }
+}
+
+fn is_schedule(fields: &Map<String, Value>) -> bool {
+    !fields.is_empty() && fields.keys().all(|key| is_date(key))
 }
 
 /// The steps a schedule holds that today has reached, lowest value first once sorted. A step

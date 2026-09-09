@@ -39,19 +39,29 @@ pub fn section<'a>(config: &'a Config, name: &'a str) -> Result<Section<'a>, Err
             config.file.display()
         )));
     };
-    for (retired, why) in RETIRED {
-        if values.contains_key(*retired) {
-            return Err(Error(format!(
-                "{}: \"{name}\" names a \"{retired}\", {why}",
-                config.file.display()
-            )));
-        }
-    }
+    no_retired_key(&config.file, name, values)?;
     Ok(Section {
         config,
         name,
         values: values.clone(),
     })
+}
+
+/// A section naming a key klin retired, refused before any gate runs. Section 14.
+pub fn no_retired_key(
+    file: &std::path::Path,
+    name: &str,
+    values: &Map<String, Value>,
+) -> Result<(), Error> {
+    for (retired, why) in RETIRED {
+        if values.contains_key(*retired) {
+            return Err(Error(format!(
+                "{}: \"{name}\" names a \"{retired}\", {why}",
+                file.display()
+            )));
+        }
+    }
+    Ok(())
 }
 
 pub struct Finding {

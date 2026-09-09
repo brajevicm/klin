@@ -7,6 +7,10 @@ use serde_json::Value;
 const FILENAME: &str = "klin.json";
 const VERSION: &str = "version";
 
+/// The keys of section 5.2. The gate sections come from the checks themselves, so the two
+/// lists cannot drift apart.
+const KEYS: &[&str] = &["project", VERSION, "build", "accepted", "radius", "gates"];
+
 #[derive(Debug)]
 pub struct Error(pub String);
 
@@ -78,7 +82,7 @@ impl Config {
         let text = std::fs::read_to_string(&file).map_err(|why| Error::unreadable(&file, why))?;
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
-        a_version_is_a_string(&file, &data)?;
+        well_formed(&file, &data)?;
         Ok(Config { file, root, data })
     }
 
@@ -141,6 +145,27 @@ impl Config {
     }
 }
 
+/// What every command refuses before it reads a section: the config errors of section 14,
+/// named against the file that holds them.
+fn well_formed(file: &Path, data: &Value) -> Result<(), Error> {
+    a_version_is_a_string(file, data)?;
+    every_key_is_one_klin_reads(file, data)?;
+    no_section_names_a_retired_key(file, data)?;
+    crate::ceiling::every_schedule(file, data)
+}
+
+fn no_section_names_a_retired_key(file: &Path, data: &Value) -> Result<(), Error> {
+    let Some(fields) = data.as_object() else {
+        return Ok(());
+    };
+    for (name, section) in fields {
+        if let Some(values) = section.as_object() {
+            crate::ratchet::no_retired_key(file, name, values)?;
+        }
+    }
+    Ok(())
+}
+
 /// A "version" that is not a string is a malformed key, and every command refuses it. Whether
 /// the version it names is the one running is a note instead. Sections 5.2 and 14.
 fn a_version_is_a_string(file: &Path, data: &Value) -> Result<(), Error> {
@@ -151,6 +176,43 @@ fn a_version_is_a_string(file: &Path, data: &Value) -> Result<(), Error> {
             file.display()
         ))),
     }
+}
+
+/// Whether a klin.json is there to read at all, which tells a failure of `load` that names a
+/// config error apart from one that names no file. Section 14.
+pub fn present(explicit: Option<&Path>, start: &Path) -> bool {
+    match explicit {
+        Some(named) => absolute(named, start).is_file(),
+        None => find(start).is_some(),
+    }
+}
+
+/// A key klin does not read measures nothing and would otherwise pass in silence, so it is a
+/// config error naming the file and the key. Sections 5.2 and 14.
+fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
+    let Some(fields) = data.as_object() else {
+        return Ok(());
+    };
+    let known = |key: &str| KEYS.contains(&key) || crate::gate::sections().any(|read| read == key);
+    let Some(unknown) = fields.keys().find(|key| !known(key)) else {
+        return Ok(());
+    };
+    if let Some(section) = crate::gate::command_named(unknown) {
+        return Err(Error(format!(
+            "{}: \"{unknown}\" is what the command is called — the section it reads is \
+             \"{section}\"",
+            file.display()
+        )));
+    }
+    Err(Error(format!(
+        "{}: \"{unknown}\" is not a key klin reads — one of: {}",
+        file.display(),
+        KEYS.iter()
+            .copied()
+            .chain(crate::gate::sections())
+            .collect::<Vec<&str>>()
+            .join(", ")
+    )))
 }
 
 fn find(start: &Path) -> Option<PathBuf> {

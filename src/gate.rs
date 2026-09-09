@@ -7,7 +7,7 @@ use serde_json::{Map, Value};
 
 use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
-use crate::config::{Config, Error, Flags, Records, UNPARSED};
+use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::{build, complexity, doc_citations, doc_size, escapes, state, turn};
 
@@ -62,6 +62,19 @@ const CHECKS: &[Check] = &[
     },
 ];
 
+/// The section each check reads, which config.rs judges the top-level keys against, and the
+/// command name that is not that section. A new check is one edit, here.
+pub fn sections() -> impl Iterator<Item = &'static str> {
+    CHECKS.iter().map(|check| check.section)
+}
+
+pub fn command_named(key: &str) -> Option<&'static str> {
+    CHECKS
+        .iter()
+        .find(|check| check.name != check.section && check.name == key)
+        .map(|check| check.section)
+}
+
 struct Gate {
     name: String,
     check: &'static Check,
@@ -99,7 +112,8 @@ pub struct Args {
     /// Judge only the files changed against the base — the fast loop; CI runs the full pass
     #[arg(long)]
     changed: bool,
-    /// Agent Stop hook mode: the failures to stderr, exit 2 to block the first stop
+    /// Agent Stop hook mode: the failures to stderr, exit 2 to block the first stop, and
+    /// exit 1 for what only a person can fix
     #[arg(long)]
     hook: bool,
     /// Print one JSON object for the run instead of the human report
@@ -111,6 +125,21 @@ pub struct Args {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    if args.hook && args.strict {
+        eprintln!(
+            "klin: --hook and --strict name two callers — the hook runs a turn and never \
+             blocks a person's CI failure, so pass one or the other."
+        );
+        return Ok(1);
+    }
+    if args.hook
+        && let Some(problem) = unfixable_config(args, start)
+    {
+        eprintln!(
+            "klin: FAIL: {problem} — only a person edits that file, so this stop is not blocked."
+        );
+        return Ok(1);
+    }
     if !args.hook {
         let judged = judge(args, start, None, out);
         return refused(args, judged, out).map(code);
@@ -337,6 +366,13 @@ fn built(
     let changes = scoped(args, &config, &entries, window)?;
     let failure = build::failure(config.root(), &build::wanted(&entries, changes.as_deref()));
     Ok(failure.map(|text| (config.root().to_path_buf(), text)))
+}
+
+/// A config the hook cannot act on: the file is there and reading it failed. The agent cannot
+/// edit it, so a block would repeat every stop, the loop ADR 0021 closed. Section 14.
+fn unfixable_config(args: &Args, start: &Path) -> Option<Error> {
+    let problem = Config::load(args.config.as_deref(), start).err()?;
+    config::present(args.config.as_deref(), start).then_some(problem)
 }
 
 fn root(args: &Args, start: &Path) -> PathBuf {
@@ -698,7 +734,6 @@ fn no_gate(config: &Config, plan: &Plan) -> Error {
 }
 
 fn plan(config: &Config) -> Result<Plan, Error> {
-    named_after_a_command(config)?;
     let entries = entries(config)?;
     let mut plan = Plan::default();
     for check in CHECKS {
@@ -706,21 +741,6 @@ fn plan(config: &Config) -> Result<Plan, Error> {
     }
     distinct(config, &plan)?;
     Ok(plan)
-}
-
-fn named_after_a_command(config: &Config) -> Result<(), Error> {
-    let named = CHECKS
-        .iter()
-        .find(|check| check.name != check.section && config.section(check.name).is_ok());
-    let Some(check) = named else {
-        return Ok(());
-    };
-    Err(Error(format!(
-        "{}: \"{}\" is what the command is called — the section it reads is \"{}\"",
-        config.file.display(),
-        check.name,
-        check.section
-    )))
 }
 
 fn add(config: &Config, check: &'static Check, entries: &[Entry], plan: &mut Plan) {

@@ -210,3 +210,38 @@ fn a_version_that_is_not_a_string_is_a_tool_error_under_any_command() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"version\""), "{}", run.out);
 }
+
+#[test]
+fn an_unknown_top_level_key_is_a_tool_error_naming_the_file_and_the_key() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"doc_sizes": [{"file": "README.md", "ceiling": 10}],
+            "doc_size": [{"file": "README.md", "ceiling": 10}]}"#,
+    );
+    tree.words("README.md", 5);
+
+    for args in [&["gate"][..], &["gate", "--strict"][..]] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 2, "{args:?}: {}", run.out);
+        assert!(run.says(&tree.at("klin.json")), "{args:?}: {}", run.out);
+        assert!(run.says("\"doc_sizes\""), "{args:?}: {}", run.out);
+        assert!(!run.says("gate(s)"), "{args:?}: {}", run.out);
+    }
+}
+
+#[test]
+fn a_schedule_with_no_step_due_today_is_a_tool_error_before_any_gate_runs() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"doc_size": [{"file": "README.md", "ceiling": {"2999-01-01": 10}}]}"#,
+    );
+    tree.words("README.md", 5);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(&tree.at("klin.json")), "{}", run.out);
+    assert!(run.says("no step due"), "{}", run.out);
+    assert!(!run.says("gate(s)"), "{}", run.out);
+}
