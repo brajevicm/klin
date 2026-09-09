@@ -76,6 +76,26 @@ fn a_prompt_after_a_wide_turn_reports_the_spread() {
     );
 }
 
+/// Either value alone is enough, so a turn that spread over more directories than usual
+/// reports even though its line count is ordinary.
+#[test]
+fn the_directories_alone_carry_the_report() {
+    let tree = tree();
+    stamped(&tree);
+    for at in 0..3 {
+        tree.write(&format!("d{at}/f.rs"), &lines(2, "fn f"));
+    }
+
+    let run = radius(&tree, A_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("wider than"), "{}", run.out);
+    assert!(
+        run.says("6 lines in 3 files, under d0/, d1/, d2/."),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_turn_within_both_values_reports_nothing() {
     let tree = tree();
