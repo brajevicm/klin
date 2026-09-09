@@ -74,6 +74,24 @@ files to the guard's `ask` list (9.4), the empty test body to `stubs` (8.2),
 a finding id (11.2), and the paired scenarios of 17. `TODO` and `FIXME` stay
 in the `stubs` table because #106 had decided it.
 
+A fourth review on 2026-09-09 read the draft for contradictions and found
+five that would have shaped code, a data type or a test. Each resolution was
+judged against the goals before it went in. Derived values split into
+numbers from the derivation commit and path sets unioned with `after`, and a
+site under an undiscovered path is `new` (3, 4.3, 5.4, 7.1, 12). `inventory`
+ratchets existence under the one judge, which reverses the own judge of the
+third review (4.4, 4.5, 8.2, 16.4). A deleted stamp is restored from its ref
+or widens the window to the branch, and the state-directory `deny` goes (6.2,
+7.4, 9.4, 14, 16.1). The failure model is keyed on `--hook` and `--strict`,
+never on CI, and a config error in the hook never blocks (8.6, 10, 14). The
+build stamp counts blocks under a prompt counter in `turn`, and a red verdict
+is written before a build block (6.2, 9.2, 9.3, 16.1, 16.3). ADR 0016, 0020
+and 0022 carry the amendments. The same pass fixed the escapes row count
+(8.2), the `sarif` exception in 8.2, the `OK:` line with notes (8.6), the
+finding id under a rename (11.2), the report path under `.gitignore` (8.3),
+the report age check as the second clock (12), and the per-worktree survey
+cache (6.6).
+
 ## 1. Problem Statement
 
 A coding agent optimizes for a green result at the end of its turn. The
@@ -410,9 +428,9 @@ every form from an agent, so `--force` is a person's flag. `init` MUST NOT
 edit `.gitignore`, because klin writes nothing that git could see.
 
 `init --hooks` writes the hook entries for each host it detects, or for the
-host `--host` names. Section 19.3. This is the one command that edits a
-guarded file, and it is a person's command. The guard refuses it from an
-agent.
+host `--host` names. Section 19.3. Like `init` itself and `turn reset`, it
+writes a guarded target, and it is a person's command. The guard refuses it
+from an agent.
 
 `init` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
@@ -551,8 +569,8 @@ directory, because its numbers and its path sets at that commit are a pure
 function of the derivation commit and the binary version. The `after` walk
 of 4.3 is not cached and is unioned in at run time. The first stop after a
 commit pays one whole-tree parse.
-Every stop between two commits reads the cache. Worktrees of one repository
-MAY share the survey cache, because a commit id means the same thing in each.
+Every stop between two commits reads the cache. The cache is per worktree
+like the rest of the state directory (7.4).
 
 A commit inside a turn does not move the derivation commit. The stamp's parent
 is fixed when the stamp is taken, and the stamp moves only under 6.2. So a
@@ -735,7 +753,7 @@ protocol, MUST NOT match. Identity is file plus line text, ratcheted on
 only in the table. #106 ships the line patterns first and the body shapes,
 which need the function walk, in a second ticket.
 
-The escapes table gains four rows for test-disabling constructs it lacks:
+The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
 `@Disabled`, `t.Skip` and `XCTSkip`, are already there.
@@ -758,7 +776,8 @@ there:
 
 With `run`, klin deletes `report`, executes the command in the working tree
 the way it runs `build`, then reads `report`. A report that is missing after
-`run` is ERR. The report is fresh by construction, because the only file at
+`run` is ERR. The report path SHOULD be under `.gitignore`, so the stamp of
+6.5 does not carry it. The report is fresh by construction, because the only file at
 that path is one the tool wrote over the tree klin is about to judge. The
 command's exit status is not judged, because a linter exits non-zero when it
 finds something. In the hook this is the RECOMMENDED form. Without `run`,
@@ -818,10 +837,10 @@ Every check MUST:
   matched, and the value on each side, so an agent fixes the right thing and
   a person can dispute a wrong match. A `new` finding says that nothing
   matched.
-- print `OK:` with what it judged, and nothing else, on success. What it
-  judged includes the coverage: how many files it found, measured, excluded
-  and could not read, so a green run over an unexpectedly small scope is
-  visible on its one line.
+- print one `OK:` line with what it judged on success, plus any `NOTE:`
+  lines, and nothing else. What it judged includes the coverage: how many
+  files it found, measured, excluded and could not read, so a green run over
+  an unexpectedly small scope is visible on its one line.
 - name every file that is present in both trees, was measured in `before`,
   and was not measured in `after`. The union of roots in 5.4 means a check
   can only discover more, so such a file left through an exclusion, a file
@@ -999,7 +1018,8 @@ One object on stdout. Fields:
   its values, or null for a `new` finding. `id` is a hash of the gate name,
   the file and the declaration text, so it is the site identity of 4.4 in one
   token, and a harness can follow one finding across stops without parsing
-  the rest.
+  the rest. The id follows the path, so a file rename changes it while the
+  site of 4.4 survives.
 - `exit` integer
 
 A finding has no column, so the JSON carries none rather than a wrong one.
@@ -1019,7 +1039,8 @@ finding (#65). Text output is unchanged by the flag.
   version change, and the survey cache key includes the version.
 - No check MAY read the network.
 - The only clock is a pinned dated ceiling (5.5), read in UTC, and
-  `KLIN_TODAY` overrides it.
+  `KLIN_TODAY` overrides it. The report age check of 8.3 compares file
+  times and is the one other place time enters.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
 - A derived number is a pure function of the derivation commit and the binary
@@ -1333,7 +1354,9 @@ Core, in this order:
 - [x] State directory under the git directory, `KLIN_STATE_DIR` override,
       `cache clean`
 - [ ] The turn stamp as a commit with HEAD as parent, under `refs/worktree/klin/turn`
-- [ ] Amend ADR 0016 and 0017 to match 5.4, 6.2 and 6.6
+- [x] Amend ADR 0016 and 0017 to match 5.4, 6.2 and 6.6
+- [ ] Amend ADR 0016, 0020 and 0022 for the fourth review of section 0
+
 - [ ] One stamp rule for session start and prompt, `turn reset` for a person,
       the `turn` file written atomically with its prompt counter, a lock on
       the state directory for the whole stop, the build stamp counting blocks
