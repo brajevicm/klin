@@ -50,3 +50,17 @@ ADR 0011's behaviour, and the host adapter records that per host.
 
 ADR 0011's argument for a reader list over a writer list stands. A reader list
 is short and closed. What changes is what happens outside it.
+
+Amended 2026-09-09. The `deny` paragraph above ends with any non-reader that
+names the state directory or `refs/worktree/klin`. That clause is withdrawn.
+It overlapped the `ask` rule, which already covers every guarded path, and
+it refused the plumbing an agent needs to read a stamp: `git rev-parse`,
+`git cat-file`, `git for-each-ref`, `find` and `du`, none of which ADR 0011
+lists. Those join the reader list, with `find` a reader only without
+`-delete`, `-exec`, `-execdir` or `-ok`. The reason the clause existed is
+answered elsewhere. A `turn` file that is gone is restored from the ref with
+a red verdict. When the file and the ref are both gone, the prompt writes no
+fresh stamp and the next stop judges the whole branch, so deleting a stamp
+widens the window instead of closing it. The state directory and the ref
+stay in the guarded set, so a shell command that would write to them is
+`ask`. `docs/SPEC.md` 6.2 and 9.4 carry the rule.

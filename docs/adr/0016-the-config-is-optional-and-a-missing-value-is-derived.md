@@ -77,3 +77,15 @@ budget records that cost separately from the warm case.
 
 A key klin does not know is still an error. A `baseline` key is still an
 error saying the key is gone.
+
+Amended 2026-09-09, second amendment. The decision above says the survey is
+a pure function of the derivation commit. That holds for every derived
+number, and for the path sets as they stand at that commit, and those are
+what the cache holds. The path sets a run uses are wider. Roots, languages,
+documents and manifests are the union of the cached survey and an uncached
+walk over the `after` tree, so a directory added in a turn is measured on the
+turn that adds it. A derived number is computed over the derivation commit's
+own paths and never over a path found only in `after`, and a site under a
+path the survey did not hold is `new`. So the union can only widen a gate. The
+fourth review of `docs/SPEC.md` found the purity sentence and the union rule
+in conflict, and 4.3, 5.4 and 7.1 carry the resolution.

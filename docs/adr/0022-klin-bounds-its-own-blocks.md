@@ -25,3 +25,15 @@ anything. If the host does cap, the two bounds agree at eight.
 Two stops of one turn are two processes, so the count crosses them through
 the build stamp, which ADR 0012 already writes for the fact that the build
 blocked at all. The stamp gains a counter and nothing else.
+
+Amended 2026-09-09. The decision above said the turn stamp resets the count
+when it moves. The stamp moves only after a green stop, and a build failure
+never ends green, so after eight build blocks the count never reset and the
+build never blocked again in that window. The count now sits beside the
+prompt counter it was taken under. `klin radius` raises that counter in the
+`turn` file on every session start and prompt submitted, whether or not the
+stamp moves, and a count taken under an earlier prompt reads as zero. The
+block budget is per prompt, which is what a turn is, and the window stays
+per stamp. A build-failure stop also writes a red verdict before it blocks,
+so the next prompt does not move the stamp over a tree that does not build.
+`docs/SPEC.md` 6.2, 9.3 and 16.3 carry the rule.

@@ -67,6 +67,9 @@ branch, push.
 _Avoid_: scope, range, diff
 
 **Derived**:
-A value klin computed from one commit because the config did not pin it, and
-printed as such.
+A value klin computed because the config did not pin it, and printed as such.
+A number comes from one commit. A set of paths adds what the working tree
+holds.
+
+
 _Avoid_: default, inferred, guessed

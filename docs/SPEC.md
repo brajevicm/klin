@@ -1355,7 +1355,7 @@ Core, in this order:
       `cache clean`
 - [ ] The turn stamp as a commit with HEAD as parent, under `refs/worktree/klin/turn`
 - [x] Amend ADR 0016 and 0017 to match 5.4, 6.2 and 6.6
-- [ ] Amend ADR 0016, 0020 and 0022 for the fourth review of section 0
+- [x] Amend ADR 0016, 0020 and 0022 for the fourth review of section 0
 
 - [ ] One stamp rule for session start and prompt, `turn reset` for a person,
       the `turn` file written atomically with its prompt counter, a lock on
