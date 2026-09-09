@@ -291,11 +291,7 @@ impl Evaluator<'_> {
         ok_line: &str,
         out: &mut String,
     ) -> u8 {
-        let entries: Vec<Values> = prior
-            .iter()
-            .map(Finding::entry)
-            .chain(accepted.into_iter())
-            .collect();
+        let entries: Vec<Values> = prior.iter().map(Finding::entry).chain(accepted).collect();
         let (findings, entries) = restrict(findings, entries, flags.only.as_deref());
         let held = entries.len();
         let comparison = judge(findings, entries, self.metrics);

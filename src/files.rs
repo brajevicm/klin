@@ -176,7 +176,7 @@ fn visit(
         .file_type()
         .map_err(|why| Error::unreadable(&path, why))?
         .is_symlink()
-        || ignored.iter().any(|gone| *gone == path)
+        || ignored.contains(&path)
     {
         return Ok(());
     }
