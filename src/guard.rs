@@ -1,10 +1,8 @@
-use std::io::Read;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use serde_json::Value;
-
 use crate::files::glob_matches;
+use crate::host::{self, Decision, Event};
 
 const SPLIT: char = '\u{0}';
 const SEPARATORS: &[char] = &[';', '&', '|', '\n'];
@@ -27,30 +25,26 @@ const READERS: &[&str] = &[
 const GIT_VALUE_FLAGS: &[&str] = &["-C", "-c", "--git-dir", "--work-tree", "--exec-path"];
 const GIT_READERS: &[&str] = &["diff", "show", "log", "status", "blame", "add", "commit"];
 
-pub fn run() -> u8 {
-    let mut text = String::new();
-    if std::io::stdin().read_to_string(&mut text).is_err() {
-        return 0;
-    }
-    let Ok(event) = serde_json::from_str::<Value>(&text) else {
+#[derive(clap::Args)]
+pub struct Args {
+    /// Read the hook event as this host's shape instead of the one its fields name
+    #[arg(long)]
+    host: Option<String>,
+}
+
+pub fn run(args: &Args) -> u8 {
+    let Some(event) = host::read(args.host.as_deref()) else {
         return 0;
     };
-    let field = |key| {
-        event
-            .get("tool_input")
-            .and_then(|input| input.get(key))
-            .and_then(Value::as_str)
-            .unwrap_or("")
-    };
-    let tool = event.get("tool_name").and_then(Value::as_str).unwrap_or("");
-    let edits = !READ_TOOLS.contains(&tool);
-    if (edits && (guarded(field("file_path")) || guarded(field("notebook_path"))))
-        || command_touches_guarded(field("command"))
-    {
-        eprintln!("{REFUSAL}");
-        return 2;
+    host::decide(&event, &decided(&event))
+}
+
+fn decided(event: &Event) -> Decision {
+    let edits = !READ_TOOLS.contains(&event.tool.as_str());
+    if (edits && guarded(&event.file_path)) || command_touches_guarded(&event.command) {
+        return Decision::Deny(REFUSAL.to_string());
     }
-    0
+    Decision::Allow
 }
 
 fn guarded(path: &str) -> bool {

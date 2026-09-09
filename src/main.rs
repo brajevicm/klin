@@ -10,6 +10,7 @@ mod escapes;
 mod files;
 mod gate;
 mod guard;
+mod host;
 mod init;
 mod ratchet;
 mod state;
@@ -41,14 +42,14 @@ enum Command {
     /// Survey the tree and write the configuration it can say for itself
     Init(init::Args),
     /// Refuse an agent's tool call that would edit the configuration or the hooks
-    Guard,
+    Guard(guard::Args),
     /// Remove the survey cache klin keeps for this tree, or every orphaned one
     Cache(cache::Args),
 }
 
 fn main() -> ExitCode {
     match Cli::parse().command {
-        Command::Guard => ExitCode::from(guard::run()),
+        Command::Guard(args) => ExitCode::from(guard::run(&args)),
         command => report(|start, out| ran(&command, start, out)),
     }
 }
@@ -67,19 +68,20 @@ fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8,
         Command::DocCitations(args) => doc_citations::run(args, start, out),
         Command::DocSize(args) => doc_size::run(args, start, out),
         Command::Escapes(args) => escapes::run(args, start, out),
-        Command::Gate(_) | Command::Init(_) | Command::Cache(_) | Command::Guard => {
+        Command::Gate(_) | Command::Init(_) | Command::Cache(_) | Command::Guard(_) => {
             return None;
         }
     })
 }
 
-/// Everything else: the runner, the survey, the cache, and the guard the last arm leaves.
+/// Everything else: the runner, the survey and the cache. `main` takes the guard before this.
 fn tool(command: &Command, start: &Path, out: &mut String) -> Result<u8, config::Error> {
     match command {
         Command::Gate(args) => gate::run(args, start, out),
         Command::Init(args) => init::run(args, start, out),
         Command::Cache(args) => cache::run(args, start, out),
-        _ => Ok(guard::run()),
+        Command::Guard(args) => Ok(guard::run(args)),
+        _ => Ok(0),
     }
 }
 

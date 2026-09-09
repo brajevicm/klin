@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::fmt::Write;
-use std::io::{IsTerminal, Read};
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
@@ -8,6 +7,7 @@ use serde_json::{Map, Value};
 use crate::base::{self, Base, Prior};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error, Flags, Records};
+use crate::host::{self, Stop};
 use crate::{build, complexity, doc_citations, doc_size, escapes, state};
 
 /// Where klin records that a build failed, so the stop that follows knows the turn's gate
@@ -97,6 +97,9 @@ pub struct Args {
     /// Print one JSON object for the run instead of the human report
     #[arg(long)]
     json: bool,
+    /// Read the hook event as this host's shape instead of the one its fields name
+    #[arg(long)]
+    host: Option<String>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -128,7 +131,13 @@ fn handed(
             (0, 1)
         }
     };
-    hook(failed, errored, &std::mem::take(out), &root(args, start))
+    hook(
+        args,
+        failed,
+        errored,
+        &std::mem::take(out),
+        &root(args, start),
+    )
 }
 
 const DOES_NOT_BUILD: &str =
@@ -377,21 +386,17 @@ fn problem_record(text: &str) -> Value {
     Value::Object(out)
 }
 
-fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
+fn hook(args: &Args, failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
     let unspent = build_blocked(root);
     unwritable(root);
     if failed == 0 && errored == 0 {
         return 0;
     }
-    let Some(event) = event() else {
+    let Some(event) = host::read(args.host.as_deref()) else {
         eprint!("{report}");
         return 1;
     };
-    let again = !unspent
-        && event
-            .get("stop_hook_active")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
+    let again = !unspent && event.blocked_before;
     let tail = match again {
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
@@ -399,10 +404,10 @@ fn hook(failed: usize, errored: usize, report: &str, root: &Path) -> u8 {
     eprintln!("klin: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
-        return 2;
+        return host::stop(event.host, &Stop::Block);
     }
     eprintln!("klin: not blocking a second time; the failure stands and CI will refuse it.");
-    0
+    host::stop(event.host, &Stop::Pass)
 }
 
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.
@@ -421,15 +426,6 @@ fn lead(failed: usize, errored: usize) -> &'static str {
         (true, false) => "a quality gate failed",
         _ => "could not run a quality gate",
     }
-}
-
-fn event() -> Option<Value> {
-    if std::io::stdin().is_terminal() {
-        return None;
-    }
-    let mut text = String::new();
-    std::io::stdin().read_to_string(&mut text).ok()?;
-    serde_json::from_str(&text).ok()
 }
 
 fn prior(
