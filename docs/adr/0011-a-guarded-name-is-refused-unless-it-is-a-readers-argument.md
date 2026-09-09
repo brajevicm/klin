@@ -2,7 +2,10 @@
 
 > ADR 0020 amends this record. A non-reader that names a guarded path is
 > `ask`, not `deny`, and the guarded set gains the state directory and
-> `refs/worktree/klin`. The reader rule stands.
+> `refs/worktree/klin`. The reader rule stands, and the reader list grows.
+> The paragraph below about an interpreter's heredoc body is withdrawn: the
+> body is data, and the guard matches the command words and every redirect
+> target instead.
 
 The guard had two rules pulling against each other. `command_writes_guarded`
 matched the guarded literals anywhere in a command string, so a `grep` for

@@ -420,10 +420,10 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     eprintln!("klin: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
-        return host::stop(event.host, &Stop::Block);
+        return host::stop(&Stop::Block);
     }
     eprintln!("klin: not blocking a second time; the failure stands and CI will refuse it.");
-    host::stop(event.host, &Stop::Pass)
+    host::stop(&Stop::Pass)
 }
 
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.

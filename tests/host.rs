@@ -21,6 +21,13 @@ const AN_ORDINARY_EDIT: &str = r#"{
   "tool_input": {"file_path": "src/main.rs"}
 }"#;
 
+const AN_AMBIGUOUS_COMMAND: &str = r#"{
+  "hook_event_name": "PreToolUse",
+  "session_id": "s1",
+  "tool_name": "Bash",
+  "tool_input": {"command": "rm klin.json"}
+}"#;
+
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 
@@ -50,6 +57,21 @@ fn a_pre_tool_event_comes_back_as_a_decision() {
     let allowed = guard(&[], AN_ORDINARY_EDIT);
     assert_eq!(allowed.code, 0, "{}", allowed.out);
     assert_eq!(allowed.out, "", "{}", allowed.out);
+}
+
+/// Claude Code reads an ask from stdout on exit 0. A host klin cannot place is not credited
+/// with `ask`, so the ambiguous class reaches it as the deny of ADR 0011.
+#[test]
+fn an_ambiguous_call_asks_claude_and_denies_a_host_without_ask() {
+    let asked = guard(&["--host", "claude"], AN_AMBIGUOUS_COMMAND);
+    assert_eq!(asked.code, 0, "{}", asked.out);
+    assert!(asked.says(r#""permissionDecision":"ask""#), "{}", asked.out);
+    assert!(asked.says("klin.json"), "{}", asked.out);
+
+    let denied = guard(&["--host", "borg"], AN_AMBIGUOUS_COMMAND);
+    assert_eq!(denied.code, 2, "{}", denied.out);
+    assert!(!denied.says("permissionDecision"), "{}", denied.out);
+    assert!(denied.says("klin.json"), "{}", denied.out);
 }
 
 #[test]

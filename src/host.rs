@@ -7,6 +7,9 @@ use serde_json::Value;
 #[derive(Clone, Copy)]
 pub enum Host {
     Claude,
+    /// An event or a `--host` name klin cannot place. It is read and answered as Claude Code,
+    /// except that it is not credited with `ask`: an unplaced host gets ADR 0011's `deny`.
+    Unplaced,
 }
 
 /// One host event, in klin's own words.
@@ -18,10 +21,12 @@ pub struct Event {
     pub blocked_before: bool,
 }
 
-/// What the guard decides about a tool call. ADR 0020's `ask` lands with its own ticket, and
-/// needs the decision on stdout under exit 0, which no host reads while a deny exits 2.
+/// What the guard decides about a tool call. ADR 0020. A deny exits 2 with the reason on
+/// stderr. An ask needs the decision on stdout under exit 0, because a blocking exit says
+/// only that the call is refused, and an ask leaves the answer to a person.
 pub enum Decision {
     Allow,
+    Ask(String),
     Deny(String),
 }
 
@@ -49,9 +54,7 @@ pub fn read(flag: Option<&str>) -> Option<Event> {
     let mut text = String::new();
     std::io::stdin().read_to_string(&mut text).ok()?;
     let event = serde_json::from_str::<Value>(&text).ok()?;
-    Some(match host(flag, &event) {
-        Host::Claude => claude(&event),
-    })
+    Some(claude(&event, host(flag, &event)))
 }
 
 fn host(flag: Option<&str>, event: &Value) -> Host {
@@ -64,15 +67,15 @@ fn host(flag: Option<&str>, event: &Value) -> Host {
 }
 
 fn fell_back(why: &str) -> Host {
-    eprintln!("klin: NOTE: {why} — reading it as {CLAUDE}.");
-    Host::Claude
+    eprintln!("klin: NOTE: {why} — reading it as {CLAUDE}, and asking it nothing.");
+    Host::Unplaced
 }
 
-fn claude(event: &Value) -> Event {
+fn claude(event: &Value, host: Host) -> Event {
     let input = |key: &str| text(event.get("tool_input").and_then(|input| input.get(key)));
     let path = input("file_path");
     Event {
-        host: Host::Claude,
+        host,
         tool: text(event.get("tool_name")),
         file_path: match path.is_empty() {
             true => input("notebook_path"),
@@ -93,26 +96,48 @@ fn text(value: Option<&Value>) -> String {
         .to_string()
 }
 
-/// The decision in the host's shape, and the exit code that carries it.
+/// The decision in the host's shape, and the exit code that carries it. A refusal is exit 2
+/// with the reason on stderr, which is what Claude Code reads back to the agent. A host klin
+/// cannot ask has no third answer, so the question is refused, and it is worded as a refusal:
+/// an agent that is blocked cannot act on advice to let a person decide.
 pub fn decide(event: &Event, decision: &Decision) -> u8 {
-    match event.host {
-        Host::Claude => claude_decision(decision),
+    match decision {
+        Decision::Allow => 0,
+        Decision::Ask(reason) if asks(event.host) => {
+            println!("{}", claude_ask(&format!("klin: ask — {reason}")));
+            0
+        }
+        Decision::Ask(reason) => {
+            eprintln!("klin: refused — {reason} This host has no question to ask.");
+            2
+        }
+        Decision::Deny(reason) => {
+            eprintln!("{reason}");
+            2
+        }
     }
 }
 
-/// A deny is exit 2 with the reason on stderr, which is what Claude Code reads back to the
-/// agent. Nothing goes to stdout: on a blocking exit the host does not read it.
-fn claude_decision(decision: &Decision) -> u8 {
-    let Decision::Deny(reason) = decision else {
-        return 0;
-    };
-    eprintln!("{reason}");
-    2
+fn asks(host: Host) -> bool {
+    matches!(host, Host::Claude)
 }
 
-pub fn stop(host: Host, stop: &Stop) -> u8 {
-    match (host, stop) {
-        (Host::Claude, Stop::Block) => 2,
-        (Host::Claude, Stop::Pass) => 0,
+/// Claude Code reads a pre-tool decision from stdout on exit 0. Section 9.1.
+fn claude_ask(reason: &str) -> String {
+    serde_json::json!({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": reason,
+        }
+    })
+    .to_string()
+}
+
+/// Every host klin reads blocks a stop the same way, with exit 2.
+pub fn stop(stop: &Stop) -> u8 {
+    match stop {
+        Stop::Block => 2,
+        Stop::Pass => 0,
     }
 }

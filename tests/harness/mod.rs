@@ -190,6 +190,10 @@ pub fn feed(cwd: &Path, args: &[&str], stdin: &str) -> Run {
     spawn(cwd, args, stdin, &[])
 }
 
+pub fn feed_with(cwd: &Path, environment: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
+    spawn(cwd, args, stdin, environment)
+}
+
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
     let mut command = Command::new(env!("CARGO_BIN_EXE_klin"));
     command

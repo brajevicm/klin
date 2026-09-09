@@ -6,7 +6,9 @@ Codex CLI.
 
 ## Only CI is authoritative
 
-The guard refuses the agent's edits to the config, the hooks and CODEOWNERS.
+The guard refuses the agent's edits to the config, the hooks and CODEOWNERS,
+and asks a person about a command it cannot read as a write, about klin's own
+state, and about a file that configures a check.
 It is feedback
 and cannot stop an agent that works around it. It sees none of these routes:
 

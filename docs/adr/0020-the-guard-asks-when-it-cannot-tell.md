@@ -39,6 +39,22 @@ directory of ADR 0019, and `refs/worktree/klin`. The state directory is guarded 
 reason of its own, recorded in ADR 0017: deleting the stamp turns every open
 failure into held in one command.
 
+A second class is `ask` for a reason of its own. A verification file
+configures a check that klin does not own: lint configuration, test
+configuration, a coverage threshold, a CI workflow. An agent that edits one
+of these can weaken every check that reads it without touching the
+configuration, and klin cannot tell a loosening from a fix. The table of
+these files is fixed in the binary, never a config key, and the class is
+`ask`, never `deny`, because a fix to one of them is ordinary work.
+
+A heredoc body is data. The guard matches the command words and every
+redirect target, including a command after the terminator, and skips the text
+between the delimiter and the terminator. This costs the guard the
+interpreter case ADR 0011 relied on: a script an interpreter reads on stdin
+is no longer matched. The guard is feedback, not a gate, and CI is
+authoritative, so a route this open is the price of not refusing a note an
+agent writes about the configuration.
+
 ## Consequences
 
 The guard still reads no configuration. It may read `KLIN_STATE_DIR` and run
