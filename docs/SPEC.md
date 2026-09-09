@@ -472,9 +472,12 @@ is a first session, and only then is the first stamp the working tree as it
 stands. When no base of 6.3 resolves either, the stop judges from HEAD and
 says so.
 
-The stamp holds the stamped commit id, the time, and the verdict of the last
-stop. `klin gate --hook` writes the verdict. `klin radius` applies the rule
-above. The stamp is guarded (9.4).
+The stamp holds the stamped commit id, the time, the verdict of the last
+stop, and a prompt counter. `klin gate --hook` writes the verdict. `klin
+radius` applies the rule above and raises the counter by one on every
+session start and prompt submitted, whether or not the stamp moved. The
+counter is what makes "once per turn" in 9.3 literal, because the stamp
+itself moves only after a green stop. The stamp is guarded (9.4).
 
 ### 6.3 `klin gate` by hand and in CI
 
@@ -517,7 +520,8 @@ work on it unchanged. The RECOMMENDED stamping sequence is `git add -A` with
 refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp,
 makes it visible to `git log --all`, and is the copy a stop restores the
 `turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
-in the state directory holds the time and the verdict beside the commit id.
+in the state directory holds the time, the verdict and the prompt counter
+beside the commit id.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
 worktree share one window and one `turn` file. A stop MUST hold an advisory
@@ -859,10 +863,10 @@ that reads a host's JSON.
 
 | Event | Command | Blocks | Writes |
 |---|---|---|---|
-| session start | `klin radius` | never | `turn` in the state directory |
+| session start | `klin radius` | never | `turn` per 6.2, and its prompt counter |
 | pre-tool | `klin guard` | deny or ask | nothing |
-| prompt submitted | `klin radius` | never | `turn` per 6.2 |
-| stop | `klin gate --hook --changed` | once per turn for the build, once per turn for gates | `build-blocked`, and the verdict in `turn` |
+| prompt submitted | `klin radius` | never | `turn` per 6.2, and its prompt counter |
+| stop | `klin gate --hook --changed` | each stop while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
 
 The hook lines are the same on every host and call `klin` from PATH:
 
@@ -877,15 +881,21 @@ needed in the hook line. `--host NAME` overrides detection.
 
 ### 9.3 The block-once policy
 
-ADR 0004 and ADR 0012 hold in policy. A build failure blocks every stop until
+ADR 0004 and ADR 0012 hold in policy. A build failure blocks each stop until
 the tree builds. A gate failure blocks the first stop and reports on the
-second. The stamp in the state directory carries the fact between the two
-processes.
+second. The build stamp in the state directory carries the fact between the
+two processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
-the current Claude Code documentation. klin MUST bound its own blocks. The
-bound is two per turn, one per cause, plus the build's repeated block, which
-MUST stop after eight stops in one turn and say so.
+the current Claude Code documentation. klin MUST bound its own blocks (ADR
+0022). A gate failure blocks once per turn. A build failure blocks at each
+stop until the tree builds, up to eight in one turn, and then the hook
+reports, says that it stopped blocking, and lets the turn end. The build
+stamp holds the count and the prompt counter of 6.2 the count was taken
+under. A count taken under an earlier prompt reads as zero, so every turn
+has eight blocks and only the stop writes the build stamp. A build-failure
+stop writes a RED verdict before it blocks, so the next prompt does not move
+the turn stamp over a tree that does not build.
 
 Two facts in ADR 0014 about where hook output goes on exit 0 need one more
 check against the current documentation before #91 lands. The documentation
@@ -1115,6 +1125,7 @@ on_session_start_or_prompt():          # one rule for both events
   if stamp is None and not exists(state): move_stamp()       # first session here
   elif stamp is not None and stamp.last_verdict == GREEN: move_stamp()
   elif stamp is None: note("stamp deleted, the next stop judges the branch")
+  bump_prompt(state/turn)              # prompt += 1, whether or not the stamp moved
   report_radius(stamp)
 
 turn_reset():                          # a person's command, denied by the guard
@@ -1124,7 +1135,8 @@ move_stamp():
   tree   = write_tree(index=state/index, add_all=True)
   commit = commit_tree(tree, parent=HEAD)
   update_ref("refs/worktree/klin/turn", commit)
-  write_atomic(state/turn, commit=commit, parent=HEAD, time=now, last_verdict=None)
+  write_atomic(state/turn, commit=commit, parent=HEAD, time=now, last_verdict=None,
+               prompt=current_prompt(state/turn))
 
 derivation_commit(window):
   return stamp.parent if window.kind == TURN else window.before
@@ -1161,7 +1173,13 @@ hook(event):
   at = derivation_commit(window)
   survey = cached_survey(at) or survey(at)
   failure = build(config_or(survey), changed_files(window))
-  if failure: write(state/build-blocked); block(failure)
+  if failure:
+    count  = read(state/build-blocked)
+    blocks = count.blocks + 1 if count and count.prompt == turn.prompt else 1
+    write_atomic(state/build-blocked, prompt=turn.prompt, blocks=blocks)
+    write_verdict_atomic(state/turn, RED)
+    if blocks > 8: report(failure, "stopped blocking after eight"); return 0
+    block(failure)
   unspent = remove(state/build-blocked)
   (failed, errored) = run_gates(config_or(survey), window, scope=changed)
   write_verdict_atomic(state/turn, GREEN if failed == 0 and errored == 0 else RED)
@@ -1277,9 +1295,13 @@ green, because deterministic detection is not correct judgement:
 - Runner: cheapest first, every gate runs after a failure, ERR beats FAIL in
   the exit code, `--gate` on an excluded gate, `--list` shows derived and
   pinned, no source root is exit 2 under `--strict` and a NOTE in the hook.
-- Hook: build failure blocks every stop and stops after eight, gate failure
-  blocks once, the stamp hands the second stop an unspent block, unreadable
-  event never blocks, the verdict is written.
+- Hook: build failure blocks every stop and stops after eight, a new prompt
+  restores the eight, a build failure writes a red verdict and the next
+  prompt does not move the stamp, gate failure blocks once, the stamp hands
+  the second stop an unspent block, a second session's prompt in the same
+  worktree does not spend it, unreadable event never blocks, the verdict is
+  written.
+
 - Guard: one test per deny route including `init` and `turn reset`, one per
   ask route including a write that names the state directory or
   `refs/worktree/klin`, every reader allowed including `git rev-parse` and
@@ -1313,8 +1335,11 @@ Core, in this order:
 - [ ] The turn stamp as a commit with HEAD as parent, under `refs/worktree/klin/turn`
 - [ ] Amend ADR 0016 and 0017 to match 5.4, 6.2 and 6.6
 - [ ] One stamp rule for session start and prompt, `turn reset` for a person,
-      the `turn` file written atomically, a lock on the state directory for
-      the whole stop
+      the `turn` file written atomically with its prompt counter, a lock on
+      the state directory for the whole stop, the build stamp counting blocks
+      under the prompt counter and stopping after eight, a red verdict before
+      a build block
+
 - [ ] The hook reads the turn window, writes the verdict, restores a missing
       `turn` file from the ref, and judges the branch when both are gone
 - [ ] The guard denies `init` and `turn reset`, asks on the state directory,
