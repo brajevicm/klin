@@ -48,13 +48,25 @@ const CLAUDE_FIELDS: &[&str] = &[
 /// The event on stdin, or `None` when there is nothing to read or the text is not JSON. A
 /// caller that gets `None` must let the turn through: klin says nothing about what it cannot read.
 pub fn read(flag: Option<&str>) -> Option<Event> {
+    let event = payload()?;
+    Some(claude(&event, host(flag, &event)))
+}
+
+/// The host's own name for the event, such as `UserPromptSubmit`. It places no host, because
+/// a caller that only needs the name asks the host nothing, and the note about a host klin
+/// cannot place belongs to the guard.
+pub fn named() -> Option<String> {
+    let name = text(payload()?.get("hook_event_name"));
+    (!name.is_empty()).then_some(name)
+}
+
+fn payload() -> Option<Value> {
     if std::io::stdin().is_terminal() {
         return None;
     }
     let mut text = String::new();
     std::io::stdin().read_to_string(&mut text).ok()?;
-    let event = serde_json::from_str::<Value>(&text).ok()?;
-    Some(claude(&event, host(flag, &event)))
+    serde_json::from_str(&text).ok()
 }
 
 fn host(flag: Option<&str>, event: &Value) -> Host {

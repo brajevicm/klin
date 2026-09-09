@@ -356,7 +356,8 @@ from a subdirectory. A configuration per package is not supported.
 - `build` (string or list) OPTIONAL, ADR 0012. Derived from manifests when
   absent.
 - `accepted` (list) OPTIONAL, section 4.8
-- `radius` (object) OPTIONAL, ADR 0014. Derived from history when absent.
+- `radius` (object) OPTIONAL, ADR 0014, with `lines` and `directories` as whole
+  numbers. Derived from history when absent.
 - one key per gate, named for its section, or `false` to exclude the gate
 
 A key klin does not know MUST be an error naming the key. A section with a
@@ -1194,11 +1195,11 @@ hook_window():
 
 on_session_start_or_prompt():          # one rule for both events
   stamp = read_stamp()
+  if event == PROMPT: report_radius(stamp)         # before the move, never on a session start
   if stamp is None and not exists(state): move_stamp()       # first session here
   elif stamp is not None and stamp.last_verdict == GREEN: move_stamp()
   elif stamp is None: note("stamp deleted, the next stop judges the branch")
   if exists(state/turn): bump_prompt(state/turn)   # prompt += 1, whether or not the stamp moved
-  report_radius(stamp)                             # a deleted stamp gets no file here
 
 turn_reset():                          # a person's command, denied by the guard
   move_stamp(); print("a person moved the window")

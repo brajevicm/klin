@@ -7,6 +7,8 @@ use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Window};
 use crate::config::Error;
+use crate::host;
+use crate::radius;
 use crate::state;
 
 /// The stamp file in the state directory, and the name it is written under before the rename,
@@ -20,7 +22,11 @@ const INDEX: &str = "index";
 const REFERENCE: &str = "refs/worktree/klin/turn";
 
 #[derive(clap::Args)]
-pub struct Args {}
+pub struct Args {
+    /// Print how far this turn has spread, moving no stamp and raising no counter
+    #[arg(long)]
+    report: bool,
+}
 
 #[derive(clap::Args)]
 pub struct Moved {
@@ -44,10 +50,14 @@ pub struct Stamp {
     pub prompts: u64,
 }
 
-pub fn run(_args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    if args.report {
+        return radius::asked(start, out);
+    }
     if state::dir(start).is_none() {
         return Ok(0);
     }
+    let prompt = prompted();
     let at = match state::ready(start) {
         Ok(at) => at,
         Err(why) => {
@@ -57,11 +67,37 @@ pub fn run(_args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     };
     let never = !at.join(INDEX).exists();
     let held = held(start, &at, out);
+    // ponytail: the report and the stamp each write the index, so a green turn hashes the
+    // tree twice. Thread one tree through both if a prompt ever gets slow.
+    if prompt {
+        radius::spread(start, &at, held.as_ref().and_then(opened_at), out);
+    }
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     if let Some(stamp) = next(start, &at, never, held, prompts, out) {
         write(&at, &stamp, out);
     }
     Ok(0)
+}
+
+/// A session start opens a window and ends no turn, so only a prompt carries the spread
+/// report. An event klin cannot read is not a prompt. Spec 9.2, ADR 0014.
+fn prompted() -> bool {
+    host::named().is_some_and(|name| name == PROMPT)
+}
+
+const PROMPT: &str = "UserPromptSubmit";
+
+fn opened_at(stamp: &Stamp) -> Option<&str> {
+    stamp.commit.as_deref()
+}
+
+/// Where this turn's window opened, for a person who asks for the measurement by hand. It
+/// falls back to the ref like a hook does, and unlike a hook it writes nothing back.
+pub fn opened(root: &Path, at: &Path) -> Option<String> {
+    read(at)
+        .filter(|held| resolves(root, held))
+        .and_then(|held| held.commit)
+        .or_else(|| kept(root).and_then(|held| held.commit))
 }
 
 /// One rule, on a session start and on a prompt alike: the stamp moves on a first session or
@@ -303,11 +339,8 @@ const GONE_ON_A_STOP: &str = "no turn stamp resolves, in the turn file or in the
 /// empty on every stamp, so a file that became ignored leaves the tree, at the cost of
 /// hashing the whole tree once per prompt. A reused index would keep the stat cache.
 fn stamped(root: &Path, at: &Path) -> Option<(String, Option<String>)> {
-    let index = at.join(INDEX);
-    let _ = std::fs::remove_file(&index);
-    let git = |args: &[&str]| git(root, Some(&index), args);
-    git(&["add", "-A"])?;
-    let tree = git(&["write-tree"])?;
+    let tree = tree(root, at)?;
+    let git = |args: &[&str]| git(root, Some(&at.join(INDEX)), args);
     let head = resolve(root, "HEAD");
     let mut args = vec!["commit-tree", &tree];
     if let Some(head) = &head {
@@ -317,6 +350,15 @@ fn stamped(root: &Path, at: &Path) -> Option<(String, Option<String>)> {
     let commit = git(&args)?;
     git(&["update-ref", REFERENCE, &commit])?;
     Some((commit, head))
+}
+
+/// A tree of the working directory, everything `.gitignore` does not exclude, written through
+/// an index of klin's own. Both the stamp and the spread report read the turn from it.
+pub fn tree(root: &Path, at: &Path) -> Option<String> {
+    let index = at.join(INDEX);
+    let _ = std::fs::remove_file(&index);
+    git(root, Some(&index), &["add", "-A"])?;
+    git(root, Some(&index), &["write-tree"])
 }
 
 fn resolve(root: &Path, reference: &str) -> Option<String> {
@@ -335,7 +377,7 @@ fn resolve(root: &Path, reference: &str) -> Option<String> {
 
 /// Every git call the stamp makes, with klin as the author of its own commit and an index of
 /// its own, so nothing here touches what a person staged.
-fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
+pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
     let mut command = Command::new("git");
     command
         .arg("-C")
