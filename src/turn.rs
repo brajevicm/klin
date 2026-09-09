@@ -107,6 +107,12 @@ pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> 
     Ok(0)
 }
 
+/// The prompt counter the stamp holds, which the build stamp keys its count to. Zero when no
+/// stamp is readable, so a stop with no stamp still has one budget of its own. Spec 9.3.
+pub fn prompts(at: &Path) -> u64 {
+    read(at).map_or(0, |held| held.prompts)
+}
+
 fn read(at: &Path) -> Option<Stamp> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;

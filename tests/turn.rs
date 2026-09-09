@@ -26,14 +26,6 @@ fn stamp(tree: &Tree) -> serde_json::Value {
     serde_json::from_str(&text).unwrap_or_default()
 }
 
-fn field(tree: &Tree, name: &str) -> String {
-    match stamp(tree).get(name) {
-        Some(serde_json::Value::String(text)) => text.clone(),
-        Some(other) => other.to_string(),
-        None => String::new(),
-    }
-}
-
 fn verdict(tree: &Tree, said: &str) {
     let mut held = stamp(tree);
     held["verdict"] = said.into();
@@ -61,7 +53,7 @@ fn a_first_session_stamps_the_working_tree_over_head() {
 
     let held = tree.revision("refs/worktree/klin/turn");
     assert!(!held.is_empty(), "the ref holds no stamp: {}", run.out);
-    assert_eq!(field(&tree, "commit"), held);
+    assert_eq!(tree.field("commit"), held);
     assert_eq!(
         git_out(tree.root(), &["rev-parse", "refs/worktree/klin/turn^"]),
         tree.revision("HEAD"),
@@ -97,15 +89,15 @@ fn an_ignored_file_stays_out_of_the_stamp() {
 fn a_red_verdict_keeps_the_stamp_and_a_green_one_moves_it() {
     let tree = tree();
     assert_eq!(radius(&tree, A_SESSION).code, 0);
-    let first = field(&tree, "commit");
+    let first = tree.field("commit");
     verdict(&tree, "red");
     tree.write("src/lib.rs", "fn one() {}\n");
 
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
-    assert_eq!(field(&tree, "commit"), first, "a red stop moved the stamp");
+    assert_eq!(tree.field("commit"), first, "a red stop moved the stamp");
     assert_eq!(radius(&tree, A_SESSION).code, 0);
     assert_eq!(
-        field(&tree, "commit"),
+        tree.field("commit"),
         first,
         "a session start moved the stamp after a red stop"
     );
@@ -113,7 +105,7 @@ fn a_red_verdict_keeps_the_stamp_and_a_green_one_moves_it() {
     verdict(&tree, "green");
     tree.write("src/lib.rs", "fn two() {}\n");
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
-    let moved = field(&tree, "commit");
+    let moved = tree.field("commit");
     assert_ne!(moved, first, "a green stop did not move the stamp");
     assert_eq!(tree.revision("refs/worktree/klin/turn"), moved);
     assert_eq!(
@@ -128,12 +120,12 @@ fn every_prompt_and_session_start_raises_the_counter() {
 
     for expected in ["1", "2", "3"] {
         assert_eq!(radius(&tree, A_PROMPT).code, 0);
-        assert_eq!(field(&tree, "prompts"), expected);
+        assert_eq!(tree.field("prompts"), expected);
     }
     verdict(&tree, "red");
     assert_eq!(radius(&tree, A_SESSION).code, 0);
     assert_eq!(
-        field(&tree, "prompts"),
+        tree.field("prompts"),
         "4",
         "a stamp that stayed put lost the count"
     );
@@ -144,15 +136,15 @@ fn a_turn_file_that_is_gone_is_restored_red_from_the_ref() {
     let tree = tree();
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
     verdict(&tree, "green");
-    let held = field(&tree, "commit");
+    let held = tree.field("commit");
     tree.remove(".git/klin/turn");
 
     let run = radius(&tree, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
-    assert_eq!(field(&tree, "commit"), held, "the restored stamp moved");
-    assert_eq!(field(&tree, "verdict"), "red");
+    assert_eq!(tree.field("commit"), held, "the restored stamp moved");
+    assert_eq!(tree.field("verdict"), "red");
 }
 
 #[test]
@@ -170,7 +162,7 @@ fn a_stamp_and_a_ref_that_are_both_gone_get_no_fresh_stamp() {
         "",
         "a fresh stamp went over the deletion"
     );
-    assert_eq!(field(&tree, "commit"), "");
+    assert_eq!(tree.field("commit"), "");
 }
 
 #[test]
@@ -182,7 +174,7 @@ fn a_state_directory_another_command_made_is_still_a_first_session() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("NOTE"), "{}", run.out);
     assert_eq!(
-        field(&tree, "commit"),
+        tree.field("commit"),
         tree.revision("refs/worktree/klin/turn"),
         "a stop's own file cost the first prompt its stamp"
     );
@@ -192,7 +184,7 @@ fn a_state_directory_another_command_made_is_still_a_first_session() {
 fn a_state_directory_that_is_gone_reads_the_ref_before_it_stamps_afresh() {
     let tree = tree();
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
-    let held = field(&tree, "commit");
+    let held = tree.field("commit");
     tree.write("src/lib.rs", "fn hidden_debt() {}\n");
     assert!(std::fs::remove_dir_all(tree.path(".git/klin")).is_ok());
 
@@ -200,7 +192,7 @@ fn a_state_directory_that_is_gone_reads_the_ref_before_it_stamps_afresh() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
     assert_eq!(
-        field(&tree, "commit"),
+        tree.field("commit"),
         held,
         "deleting the state directory photographed the debt"
     );
@@ -216,8 +208,8 @@ fn a_stamp_that_stays_gone_says_so_on_every_prompt() {
 
     let run = radius(&tree, A_PROMPT);
     assert!(run.says("both gone"), "{}", run.out);
-    assert_eq!(field(&tree, "prompts"), "2");
-    assert_eq!(field(&tree, "commit"), "");
+    assert_eq!(tree.field("prompts"), "2");
+    assert_eq!(tree.field("commit"), "");
 }
 
 #[test]
@@ -284,19 +276,15 @@ fn outside_a_repository_the_stamp_says_nothing_and_blocks_nothing() {
 fn a_person_resets_the_stamp_after_a_red_stop() {
     let tree = tree();
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
-    let first = field(&tree, "commit");
+    let first = tree.field("commit");
     verdict(&tree, "red");
     tree.write("src/lib.rs", "fn abandoned() {}\n");
 
     let run = tree.run(&["turn", "reset"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("a person moved"), "{}", run.out);
-    assert_ne!(
-        field(&tree, "commit"),
-        first,
-        "the reset left the stamp put"
-    );
-    assert_eq!(field(&tree, "verdict"), "red");
+    assert_ne!(tree.field("commit"), first, "the reset left the stamp put");
+    assert_eq!(tree.field("verdict"), "red");
     assert_eq!(
         git_out(tree.root(), &["show", "refs/worktree/klin/turn:src/lib.rs"]),
         "fn abandoned() {}"
@@ -310,13 +298,13 @@ fn a_reset_after_a_green_stop_leaves_a_red_stamp_the_next_prompt_keeps() {
     verdict(&tree, "green");
 
     assert_eq!(tree.run(&["turn", "reset"]).code, 0);
-    assert_eq!(field(&tree, "verdict"), "red");
-    let moved = field(&tree, "commit");
+    assert_eq!(tree.field("verdict"), "red");
+    let moved = tree.field("commit");
     tree.write("src/lib.rs", "fn after_the_reset() {}\n");
 
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
     assert_eq!(
-        field(&tree, "commit"),
+        tree.field("commit"),
         moved,
         "the prompt after a reset moved the stamp over an unjudged tree"
     );
@@ -329,7 +317,7 @@ fn a_reset_keeps_the_prompt_counter() {
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
 
     assert_eq!(tree.run(&["turn", "reset"]).code, 0);
-    assert_eq!(field(&tree, "prompts"), "2");
+    assert_eq!(tree.field("prompts"), "2");
 }
 
 #[test]

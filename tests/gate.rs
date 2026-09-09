@@ -497,6 +497,17 @@ fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
 }
 
 const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
+
+/// The build stamp as a stop leaves it: the prompt counter it belongs to, how many stops a
+/// build failure already blocked, and whether the turn's one gate block is spent. A stop that
+/// takes no prompt counter of its own runs under counter 0.
+fn stamped(tree: &Tree, prompt: u64, builds: u64, gate_spent: bool) {
+    tree.write(
+        BUILD_BLOCKED,
+        &format!(r#"{{"prompt": {prompt}, "builds": {builds}, "gate_spent": {gate_spent}}}"#),
+    );
+}
 
 fn settings() -> String {
     let at = concat!(env!("CARGO_MANIFEST_DIR"), "/.claude/settings.json");
@@ -516,7 +527,7 @@ fn the_stop_hook_is_one_line_that_runs_the_binary() {
 fn hook_blocks_the_stop_after_a_build_failure_spent_the_turns_block() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
-    tree.write(BUILD_BLOCKED, "");
+    stamped(&tree, 0, 1, false);
 
     let blocked = stop(&tree, A_SECOND_STOP);
     assert_eq!(blocked.code, 2, "{}", blocked.out);
@@ -538,37 +549,37 @@ fn hook_blocks_the_stop_after_a_build_failure_spent_the_turns_block() {
 }
 
 #[test]
-fn a_passing_stop_spends_the_stamp_too() {
+fn a_passing_stop_leaves_the_gates_one_block_unspent() {
     let tree = tree(EVERY_GATE);
-    tree.write(BUILD_BLOCKED, "");
+    stamped(&tree, 0, 1, false);
 
     let passed = stop(&tree, A_SECOND_STOP);
     assert_eq!(passed.code, 0, "{}", passed.out);
-    assert!(!tree.path(BUILD_BLOCKED).exists());
 
     tree.words("README.md", 30);
     let failed = stop(&tree, A_SECOND_STOP);
-    assert_eq!(failed.code, 0, "{}", failed.out);
-    assert!(failed.says("not blocking a second time"), "{}", failed.out);
+    assert_eq!(failed.code, 2, "{}", failed.out);
+    assert!(!failed.says("not blocking a second time"), "{}", failed.out);
 }
 
 #[test]
 fn the_stamp_sits_beside_the_config_rather_than_the_working_directory() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
-    tree.write(BUILD_BLOCKED, "");
 
-    let run = harness::feed(&tree.path("src"), &["gate", "--hook"], A_SECOND_STOP);
+    let run = harness::feed(&tree.path("src"), &["gate", "--hook"], A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(!tree.path(BUILD_BLOCKED).exists());
+    assert!(tree.path(BUILD_BLOCKED).is_file(), "{}", run.out);
 }
 
 #[test]
-fn a_stamp_an_abandoned_turn_left_changes_nothing_at_the_next_first_stop() {
+fn a_stamp_an_earlier_prompt_left_changes_nothing_at_the_next_first_stop() {
     let tree = tree(EVERY_GATE);
-    tree.words("README.md", 30);
-    tree.write(BUILD_BLOCKED, "");
+    stamped(&tree, 0, 9, true);
 
+    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(prompt.code, 0, "{}", prompt.out);
+    tree.words("README.md", 30);
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
@@ -576,7 +587,6 @@ fn a_stamp_an_abandoned_turn_left_changes_nothing_at_the_next_first_stop() {
         "{}",
         run.out
     );
-    assert!(!tree.path(BUILD_BLOCKED).exists());
 }
 
 #[test]

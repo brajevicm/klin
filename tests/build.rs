@@ -187,3 +187,105 @@ fn a_build_key_is_not_read_outside_the_hook() {
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
+
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
+
+fn blocked(tree: &Tree, times: usize) {
+    for at in 1..=times {
+        let run = stop(tree, A_STOP, &["gate", "--hook"]);
+        assert_eq!(run.code, 2, "stop {at} of {times}: {}", run.out);
+    }
+}
+
+#[test]
+fn a_failing_build_blocks_eight_stops_under_one_prompt_and_the_ninth_reports() {
+    let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
+    blocked(&tree, 8);
+
+    let ninth = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(ninth.code, 0, "{}", ninth.out);
+    assert!(ninth.says("the-compiler-spoke"), "{}", ninth.out);
+    assert!(ninth.says("stops blocking"), "{}", ninth.out);
+}
+
+#[test]
+fn a_new_prompt_restores_the_eight_build_blocks() {
+    let tree = tree(r#""build": "exit 1","#);
+    blocked(&tree, 8);
+    let spent = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(spent.code, 0, "{}", spent.out);
+
+    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(prompt.code, 0, "{}", prompt.out);
+    let after = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(after.code, 2, "{}", after.out);
+}
+
+#[test]
+fn a_passing_build_inside_one_prompt_does_not_restore_the_build_blocks() {
+    let tree = tree(r#""build": "test ! -f fails","#);
+    tree.write("fails", "");
+    blocked(&tree, 8);
+
+    tree.remove("fails");
+    let green = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(green.code, 0, "{}", green.out);
+
+    tree.write("fails", "");
+    let after = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(after.code, 0, "{}", after.out);
+    assert!(after.says("stops blocking"), "{}", after.out);
+}
+
+#[test]
+fn a_build_failure_writes_a_red_verdict_and_the_next_prompt_keeps_the_stamp() {
+    let tree = tree(r#""build": "exit 1","#);
+
+    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(tree.field("verdict"), "red", "{}", run.out);
+
+    let held = tree.field("commit");
+    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(prompt.code, 0, "{}", prompt.out);
+    assert_eq!(tree.field("commit"), held, "a red build moved the stamp");
+}
+
+#[test]
+fn the_gates_one_block_is_spent_apart_from_the_build_blocks() {
+    let tree = tree(r#""build": "test ! -f fails","#);
+    tree.write("fails", "");
+    tree.words("README.md", 30);
+
+    let build = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(build.code, 2, "{}", build.out);
+
+    tree.remove("fails");
+    let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(gate.code, 2, "{}", gate.out);
+    assert!(gate.says("FAIL  doc-size"), "{}", gate.out);
+
+    let again = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(again.says("not blocking a second time"), "{}", again.out);
+}
+
+#[test]
+fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
+    let tree = tree(r#""build": "exit 1","#);
+    blocked(&tree, 8);
+
+    let ninth = stop(&tree, A_STOP, &["gate", "--hook", "--json"]);
+    assert_eq!(ninth.code, 0, "{}", ninth.out);
+    let report: serde_json::Value = match serde_json::from_str(ninth.out.trim()) {
+        Ok(report) => report,
+        Err(why) => panic!("{why} — the run printed:\n{}", ninth.out),
+    };
+    assert!(
+        report["notes"][0]["text"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("stops blocking"),
+        "{report}"
+    );
+}

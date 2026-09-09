@@ -11,9 +11,16 @@ use crate::config::{Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::{build, complexity, doc_citations, doc_size, escapes, state, turn};
 
-/// Where klin records that a build failed, so the stop that follows knows the turn's gate
-/// block is still unspent. In the state directory, which an agent does not empty. ADR 0019.
+/// Where klin records what one prompt already spent, so the stop that follows knows how many
+/// build blocks are left and whether the turn's gate block is still unspent. In the state
+/// directory, which an agent does not empty. ADR 0019, ADR 0022.
 const BUILD_BLOCKED: &str = "build-blocked";
+/// The name the build stamp is written under before the rename, so a stop that dies mid-write
+/// leaves the previous record rather than a torn one.
+const BUILD_WRITING: &str = "build-blocked.writing";
+/// How many stops one prompt's build failures may block. klin bounds this itself, because the
+/// host documents no cap of its own. ADR 0022, spec 9.3.
+const BLOCKS: u64 = 8;
 const GATES: &str = "gates";
 
 struct Check {
@@ -120,10 +127,8 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
 fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
     let root = root(args, start);
-    let lost = matches!(
-        state::ready(&root).ok().map(|at| state::lock(&at, BUDGET)),
-        Some(None)
-    );
+    let lock = state::ready(&root).ok().map(|at| state::lock(&at, BUDGET));
+    let lost = matches!(&lock, Some(None));
     let window = turn::window(&root, out).ok();
     let (code, green) = ran(args, start, window.as_ref(), out);
     if lost {
@@ -176,8 +181,56 @@ struct Tally {
     unread: usize,
 }
 
-const DOES_NOT_BUILD: &str =
-    "the tree does not build, so no gate ran (every stop blocks until it does)";
+const DOES_NOT_BUILD: &str = "the tree does not build, so no gate ran (each stop blocks until \
+                              it does, up to eight in one turn)";
+const STOPPED_BLOCKING: &str = "the build has blocked eight stops under this prompt, so klin \
+                                stops blocking; the failure stands and CI will refuse it.";
+
+/// The build stamp: one record per prompt. The prompt counter of the turn file it was taken
+/// under, how many stops a build failure already blocked, and whether the turn's one gate
+/// block is spent. A record taken under an earlier prompt reads as zero, so every prompt gets
+/// the whole budget. Spec 16.3.
+struct Count {
+    prompt: u64,
+    builds: u64,
+    gate_spent: bool,
+}
+
+fn count(at: &Path) -> Count {
+    let prompt = turn::prompts(at);
+    let held = std::fs::read_to_string(at.join(BUILD_BLOCKED))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .filter(|held| held.get("prompt").and_then(Value::as_u64) == Some(prompt));
+    Count {
+        prompt,
+        builds: held
+            .as_ref()
+            .and_then(|held| held.get("builds")?.as_u64())
+            .unwrap_or_default(),
+        gate_spent: held
+            .as_ref()
+            .and_then(|held| held.get("gate_spent")?.as_bool())
+            .unwrap_or_default(),
+    }
+}
+
+fn counted(at: &Path, count: &Count) {
+    let text = serde_json::json!({
+        "prompt": count.prompt,
+        "builds": count.builds,
+        "gate_spent": count.gate_spent,
+    })
+    .to_string()
+        + "\n";
+    let writing = at.join(BUILD_WRITING);
+    if std::fs::write(&writing, text).is_ok()
+        && std::fs::rename(&writing, at.join(BUILD_BLOCKED)).is_ok()
+    {
+        return;
+    }
+    let _ = std::fs::remove_file(&writing);
+}
 
 fn does_not_build(
     args: &Args,
@@ -186,28 +239,50 @@ fn does_not_build(
     window: Option<&Window>,
     out: &mut String,
 ) -> u8 {
-    match state::ready(root) {
-        Ok(state) => {
-            let _ = std::fs::write(state.join(BUILD_BLOCKED), "");
+    let builds = state::ready(root).ok().map(|at| {
+        let held = count(&at);
+        let count = Count {
+            builds: held.builds + 1,
+            ..held
+        };
+        counted(&at, &count);
+        count.builds
+    });
+    let stopped = builds.is_some_and(|builds| builds > BLOCKS);
+    reported(args, failure, window, stopped, out);
+    if builds.is_none() {
+        unwritable(root);
+    }
+    match builds {
+        Some(builds) if builds <= BLOCKS => 2,
+        _ => 0,
+    }
+}
+
+/// The build failure as a person and an agent read it, and as `--json` records it. The note
+/// says that klin stopped blocking, because the exit code alone no longer says it. Spec 11.
+fn reported(args: &Args, failure: &str, window: Option<&Window>, stopped: bool, out: &mut String) {
+    if !args.json {
+        eprintln!("klin: {DOES_NOT_BUILD}:");
+        eprint!("{failure}");
+        if stopped {
+            eprintln!("klin: {STOPPED_BLOCKING}");
         }
-        Err(_) => unwritable(root),
+        return;
     }
-    if args.json {
-        let mut records = Records::default();
-        records
-            .findings
-            .push(problem_record(&format!("{DOES_NOT_BUILD}:\n{failure}")));
-        out.clear();
-        let _ = writeln!(
-            out,
-            "{}",
-            as_json(2, &format!("klin: {DOES_NOT_BUILD}."), records, window)
-        );
-        return 2;
+    let mut records = Records::default();
+    records
+        .findings
+        .push(record("error", &format!("{DOES_NOT_BUILD}:\n{failure}")));
+    if stopped {
+        records.notes.push(record("note", STOPPED_BLOCKING));
     }
-    eprintln!("klin: {DOES_NOT_BUILD}:");
-    eprint!("{failure}");
-    2
+    out.clear();
+    let _ = writeln!(
+        out,
+        "{}",
+        as_json(2, &format!("klin: {DOES_NOT_BUILD}."), records, window)
+    );
 }
 
 /// The build the config names, run before any gate judges the tree it produces. The key
@@ -233,10 +308,6 @@ fn root(args: &Args, start: &Path) -> PathBuf {
     Config::load(args.config.as_deref(), start)
         .map(|config| config.root().to_path_buf())
         .unwrap_or_else(|_| start.to_path_buf())
-}
-
-fn build_blocked(root: &Path) -> bool {
-    state::dir(root).is_some_and(|at| std::fs::remove_file(at.join(BUILD_BLOCKED)).is_ok())
 }
 
 fn scoped(
@@ -422,7 +493,7 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
         return Err(problem);
     }
     let mut records = Records::default();
-    records.findings.push(problem_record(&problem.to_string()));
+    records.findings.push(record("error", &problem.to_string()));
     out.clear();
     let _ = writeln!(
         out,
@@ -451,30 +522,25 @@ fn version(args: &Args, config: &Config, out: &mut String) -> Option<Value> {
     Some(Value::Object(record))
 }
 
-fn problem_record(text: &str) -> Value {
+fn record(outcome: &str, text: &str) -> Value {
     let mut out = Map::new();
-    out.insert("outcome".into(), "error".into());
+    out.insert("outcome".into(), outcome.into());
     out.insert("text".into(), text.trim_end().into());
     Value::Object(out)
 }
 
 fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     let (failed, errored) = (tally.failed, tally.errored);
-    let unspent = build_blocked(root);
+    let held = state::ready(root).ok().map(|at| (count(&at), at));
     unwritable(root);
     if failed == 0 && errored == 0 {
-        if tally.unread == 0 {
-            return 0;
-        }
-        eprintln!("klin: nothing blocks the stop, and the run left a note:");
-        eprint!("{report}");
-        return 1;
+        return nothing_blocks(tally.unread, report);
     }
     let Some(event) = host::read(args.host.as_deref()) else {
         eprint!("{report}");
         return 1;
     };
-    let again = !unspent && event.blocked_before;
+    let again = gate_spent(held.as_ref(), event.blocked_before);
     let tail = match again {
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
@@ -482,10 +548,44 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     eprintln!("klin: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
-        return host::stop(&Stop::Block);
+        return spend(held);
     }
     eprintln!("klin: not blocking a second time; the failure stands and CI will refuse it.");
     host::stop(&Stop::Pass)
+}
+
+/// What the hook says about a stop nothing blocks: nothing at all, or the note the run left.
+fn nothing_blocks(unread: usize, report: &str) -> u8 {
+    if unread == 0 {
+        return 0;
+    }
+    eprintln!("klin: nothing blocks the stop, and the run left a note:");
+    eprint!("{report}");
+    1
+}
+
+/// Whether the turn's one gate block is already spent. The build stamp is the record. The
+/// host's flag is a second opinion for the first gate block only, because after a build block
+/// that flag is true while the gate block is still unspent. Spec 16.3.
+fn gate_spent(held: Option<&(Count, PathBuf)>, blocked_before: bool) -> bool {
+    match held {
+        Some((count, _)) => count.gate_spent || (count.builds == 0 && blocked_before),
+        None => blocked_before,
+    }
+}
+
+/// The block the gate takes, recorded so the stop after it reports and lets the turn end.
+fn spend(held: Option<(Count, PathBuf)>) -> u8 {
+    if let Some((count, at)) = held {
+        counted(
+            &at,
+            &Count {
+                gate_spent: true,
+                ..count
+            },
+        );
+    }
+    host::stop(&Stop::Block)
 }
 
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.
@@ -724,7 +824,7 @@ fn unread(note: &Value) -> bool {
 
 fn gather(totals: &mut Records, mut records: Records, name: &str, code: u8, text: &str) {
     if code == 2 && records.findings.is_empty() {
-        records.findings.push(problem_record(text));
+        records.findings.push(record("error", text));
     }
     for record in records.findings.iter_mut().chain(records.notes.iter_mut()) {
         if let Some(fields) = record.as_object_mut() {

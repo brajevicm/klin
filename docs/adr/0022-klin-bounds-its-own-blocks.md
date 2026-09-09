@@ -37,3 +37,10 @@ block budget is per prompt, which is what a turn is, and the window stays
 per stamp. A build-failure stop also writes a red verdict before it blocks,
 so the next prompt does not move the stamp over a tree that does not build.
 `docs/SPEC.md` 6.2, 9.3 and 16.3 carry the rule.
+
+The build stamp is a record now, not a marker, so it retires two details of
+ADR 0004. No run deletes it: a record from an earlier prompt reads as zero,
+which is what ends its life. And a stop that passes no longer ends it either,
+so the gate's one block per turn is spent where the record says it is, apart
+from the build blocks. That is what ADR 0004 wanted and could not have while
+the only state was a file's existence.

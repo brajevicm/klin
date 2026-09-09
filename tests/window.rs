@@ -31,14 +31,10 @@ fn stop(tree: &Tree) -> Run {
     harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
 }
 
-fn field(tree: &Tree, name: &str) -> String {
-    let text = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
-    let held: Value = serde_json::from_str(&text).unwrap_or_default();
-    match held.get(name) {
-        Some(Value::String(found)) => found.clone(),
-        Some(other) => other.to_string(),
-        None => String::new(),
-    }
+/// One prompt of the same turn, which raises the prompt counter and so hands the next stop a
+/// fresh block budget.
+fn prompt(tree: &Tree) {
+    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
 }
 
 fn accepting(file: &str) -> String {
@@ -76,12 +72,12 @@ fn every_stop_writes_its_verdict_into_the_turn_file() {
     let tree = stamped();
 
     assert_eq!(stop(&tree).code, 0);
-    assert_eq!(field(&tree, "verdict"), "green");
+    assert_eq!(tree.field("verdict"), "green");
 
     tree.write("src/lib.rs", text::WRAPPED);
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert_eq!(field(&tree, "verdict"), "red");
+    assert_eq!(tree.field("verdict"), "red");
 }
 
 #[test]
@@ -95,6 +91,7 @@ fn accepting_one_finding_holds_it_and_leaves_the_other_failing() {
     assert!(both.says("src/a.rs"), "{}", both.out);
 
     tree.write("klin.json", &accepting("src/a.rs"));
+    prompt(&tree);
     let left = stop(&tree);
     assert_eq!(left.code, 2, "{}", left.out);
     assert!(left.says("src/b.rs"), "{}", left.out);
@@ -112,8 +109,8 @@ fn a_turn_file_that_is_gone_is_restored_red_from_the_ref() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
     assert!(run.says("window: turn"), "{}", run.out);
-    assert_eq!(field(&tree, "commit"), held);
-    assert_eq!(field(&tree, "verdict"), "red");
+    assert_eq!(tree.field("commit"), held);
+    assert_eq!(tree.field("verdict"), "red");
 }
 
 #[test]
@@ -129,8 +126,8 @@ fn a_stamp_and_a_ref_that_are_both_gone_widen_the_window_to_the_branch() {
     assert!(run.says("no turn stamp resolves"), "{}", run.out);
     assert!(run.says("window: branch"), "{}", run.out);
     assert!(run.says("src/lib.rs"), "{}", run.out);
-    assert_eq!(field(&tree, "commit"), tree.revision("main"));
-    assert_eq!(field(&tree, "verdict"), "red");
+    assert_eq!(tree.field("commit"), tree.revision("main"));
+    assert_eq!(tree.field("verdict"), "red");
 }
 
 #[test]
@@ -149,7 +146,7 @@ fn a_deleted_stamp_falls_back_to_head_when_no_base_resolves() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no base resolves"), "{}", run.out);
     assert!(run.says("window: branch"), "{}", run.out);
-    assert_eq!(field(&tree, "commit"), tree.revision("HEAD"));
+    assert_eq!(tree.field("commit"), tree.revision("HEAD"));
 }
 
 #[test]
@@ -166,7 +163,7 @@ fn a_stop_that_cannot_take_the_lock_writes_no_verdict_and_says_so() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("wrote no verdict"), "{}", run.out);
     assert_eq!(
-        field(&tree, "verdict"),
+        tree.field("verdict"),
         "green",
         "a stop without the lock wrote over the verdict"
     );
@@ -191,7 +188,7 @@ fn a_stamp_commit_git_no_longer_holds_comes_back_from_the_ref() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("restored"), "{}", run.out);
     assert!(run.says("window: turn"), "{}", run.out);
-    assert_eq!(field(&tree, "commit"), ref_holds);
+    assert_eq!(tree.field("commit"), ref_holds);
 }
 
 #[test]
@@ -207,7 +204,7 @@ fn a_stamp_commit_no_reference_holds_widens_the_window_to_the_branch() {
     assert!(run.says("no turn stamp resolves"), "{}", run.out);
     assert!(run.says("window: branch"), "{}", run.out);
     assert!(run.says("src/lib.rs"), "{}", run.out);
-    assert_eq!(field(&tree, "commit"), tree.revision("main"));
+    assert_eq!(tree.field("commit"), tree.revision("main"));
 }
 
 #[test]
@@ -267,7 +264,7 @@ fn a_run_by_hand_keeps_the_branch_window_the_stamp_did_not_touch() {
     assert!(run.says("window: branch"), "{}", run.out);
     assert!(run.says("the merge-base with main"), "{}", run.out);
     assert_eq!(
-        field(&tree, "verdict"),
+        tree.field("verdict"),
         "green",
         "a run by hand wrote a verdict"
     );

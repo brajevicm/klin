@@ -173,6 +173,17 @@ impl Tree {
         self.path(&format!(".git/klin/{name}"))
     }
 
+    /// One field of the turn stamp, as text, and empty when the stamp holds no such field.
+    pub fn field(&self, name: &str) -> String {
+        let text = fs::read_to_string(self.state("turn")).unwrap_or_default();
+        let held: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        match held.get(name) {
+            Some(serde_json::Value::String(text)) => text.clone(),
+            Some(other) => other.to_string(),
+            None => String::new(),
+        }
+    }
+
     pub fn repository(&self) {
         self.git(&["init", "-q", "-b", "main"]);
     }

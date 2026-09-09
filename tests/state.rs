@@ -173,15 +173,16 @@ fn init_says_an_older_ignore_line_is_inert_and_leaves_it_alone() {
 }
 
 #[test]
-fn a_build_failure_says_why_the_state_directory_is_unwritable() {
+fn a_build_failure_under_an_unwritable_state_directory_says_why_and_blocks_nothing() {
     let tree = tree("\"build\": \"false\",");
     tree.write("a-file", "");
     let file = tree.at("a-file");
 
     let run = tree.run_with(&[("KLIN_STATE_DIR", file.as_str())], &["gate", "--hook"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("does not build"), "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
+    assert!(run.says("blocks nothing"), "{}", run.out);
 }
 
 #[test]
@@ -209,4 +210,28 @@ fn the_override_keeps_the_build_stamp_in_the_directory_it_names() {
     assert!(mine.starts_with(&under), "{}", mine.display());
     assert!(mine.join("build-blocked").is_file(), "{}", run.out);
     assert!(!tree.state("build-blocked").exists(), "{}", run.out);
+}
+
+#[test]
+fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
+    let tree = tree("");
+    let first = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", first.out);
+
+    let opened = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(tree.state("lock"));
+    let Ok(lock) = opened else {
+        panic!("the lock file could not be opened");
+    };
+    assert!(lock.lock().is_ok(), "another holder has the lock");
+    tree.words("README.md", 30);
+
+    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    assert_eq!(held.code, 2, "{}", held.out);
+    assert!(held.says("held the state directory"), "{}", held.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", held.out);
 }
