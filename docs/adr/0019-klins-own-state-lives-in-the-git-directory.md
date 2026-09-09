@@ -19,7 +19,7 @@ requires git, so this costs nothing.
 by a hash of the git common directory and the worktree path, so two clones or
 two worktrees never share a stamp. `~/.cache/klin` is the intended value.
 `klin cache clean` removes the survey cache for the current tree, and with
-`--all` every entry whose repository no longer exists.
+`--all` the survey cache of every entry whose repository no longer exists.
 
 The state is three things. The turn stamp of ADR 0017, as a `turn` file
 beside the ref it names. The build stamp of ADR 0004. The survey cache of
@@ -34,8 +34,12 @@ Anyone already running klin has `.klin-build-blocked` or `.klin/` in
 
 Moving a repository directory under `KLIN_STATE_DIR` orphans its state. A
 missing stamp is a window from HEAD with a note, so the cost is one stop with
-a wider window. Deleted repositories leave a few kilobytes behind, which
-`cache clean --all` removes.
+a wider window. Deleted repositories leave a few kilobytes behind. `cache
+clean --all` removes their survey cache and keeps their stamps, because a
+repository path that does not resolve on this machine, such as a worktree a
+container does not mount, is no proof that the tree is gone. Wiping a live
+tree's stamp is the cheapest route to green, and no command that a person can
+mistype may take it.
 
 ADR 0004's reason for the location holds in both places. An agent empties
 `target/` as a matter of routine and does not empty `.git/` or a home cache.

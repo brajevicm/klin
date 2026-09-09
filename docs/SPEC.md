@@ -525,7 +525,11 @@ directory:
 
 An implementation MUST print the state directory under `klin gate --list`.
 `klin cache clean` MUST remove the survey cache for the current tree, and with
-`--all` every entry under `KLIN_STATE_DIR` whose repository no longer exists.
+`--all` the survey cache under every entry of `KLIN_STATE_DIR` whose repository
+no longer exists. It MUST NOT remove a stamp. A repository path that does not
+resolve on the machine running the command, such as a worktree a container
+does not mount, is no proof that the tree is gone, and a stamp is the one piece
+of state whose loss lets a block go unspent.
 
 ADR 0004's argument for the location holds in both: an agent empties `target/`
 as a matter of routine and does not empty `.git/` or a home cache. ADR 0015's

@@ -12,9 +12,9 @@ pub struct Args {
 
 #[derive(clap::Subcommand)]
 enum Command {
-    /// Remove the survey cache for this tree, or with --all every entry whose repository is gone
+    /// Remove the survey cache for this tree, or with --all the cache of every tree that is gone
     Clean {
-        /// Remove every entry under KLIN_STATE_DIR whose repository no longer exists
+        /// Remove the cache under every KLIN_STATE_DIR entry whose repository no longer exists
         #[arg(long)]
         all: bool,
     },
@@ -69,16 +69,17 @@ fn orphans(out: &mut String) -> u8 {
     };
     let mut removed = 0;
     for entry in entries.flatten().filter(|entry| gone(&entry.path())) {
-        if std::fs::remove_dir_all(entry.path()).is_ok() {
+        if std::fs::remove_dir_all(entry.path().join(state::CACHE)).is_ok() {
             removed += 1;
         }
     }
     let _ = writeln!(
         out,
-        "klin: removed {removed} entr{} under {} whose repository is gone.",
+        "klin: removed {removed} cache{} under {} whose repository is gone. The stamps stay: a \
+         tree klin cannot see from here may still be there.",
         match removed == 1 {
-            true => "y",
-            false => "ies",
+            true => "",
+            false => "s",
         },
         under.display()
     );

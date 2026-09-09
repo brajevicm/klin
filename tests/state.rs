@@ -120,24 +120,30 @@ fn cache_clean_removes_the_survey_cache_and_leaves_the_stamps() {
 }
 
 #[test]
-fn cache_clean_all_removes_only_an_entry_whose_repository_is_gone() {
+fn cache_clean_all_removes_only_the_cache_of_a_repository_that_is_gone() {
     let tree = tree("");
     let cache = Tree::bare();
     let under = cache.root().display().to_string();
     let environment = [("KLIN_STATE_DIR", under.as_str())];
     let stamped = tree.run_with(&environment, &["gate", "--hook"]);
     assert_eq!(stamped.code, 0, "{}", stamped.out);
-    let orphan = cache.write("0000000000000000/repository", &cache.at("gone"));
+    let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
+    let mine = Path::new(mine.trim_start_matches("state: ")).to_path_buf();
+    let stamp = mine.join("build-blocked");
+    assert!(std::fs::write(&stamp, "").is_ok(), "a stamp of my own");
+    let held = cache.write("0000000000000000/cache/a-tree", "measured");
+    cache.write("0000000000000000/repository", &cache.at("gone"));
+    let orphan = cache.write("0000000000000000/build-blocked", "");
 
     let run = tree.run_with(&environment, &["cache", "clean", "--all"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("removed 1 entry"), "{}", run.out);
-    assert!(!orphan.exists(), "{}", run.out);
-    let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
+    assert!(run.says("removed 1 cache"), "{}", run.out);
+    assert!(!held.exists(), "{}", run.out);
     assert!(
-        Path::new(mine.trim_start_matches("state: ")).is_dir(),
-        "{mine}"
+        orphan.is_file(),
+        "the stamp of a tree klin cannot see went too"
     );
+    assert!(stamp.is_file(), "{}", run.out);
 }
 
 #[test]
