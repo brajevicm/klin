@@ -71,7 +71,7 @@ fn init_writes_every_section_it_can_infer() {
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert_eq!(
-        config["complexity"]["sources"],
+        config["complexity"]["roots"],
         serde_json::json!(["src", "tests"]),
         "{config}"
     );

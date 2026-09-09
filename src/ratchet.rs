@@ -12,6 +12,20 @@ pub type Values = Map<String, Value>;
 
 const ACCEPTED: &str = "accepted";
 
+const RETIRED: &[(&str, &str)] = &[
+    (
+        "baseline",
+        "which is not a key klin reads — a run compares the working tree against the base \
+         commit, and a person accepts debt in the \"accepted\" list. Delete the key and the \
+         file it names.",
+    ),
+    (
+        "sources",
+        "which klin now spells \"roots\", the name every section uses for the same thing. \
+         Rename the key, so nothing measures a different set in silence.",
+    ),
+];
+
 pub struct Section<'a> {
     pub config: &'a Config,
     pub name: &'a str,
@@ -25,13 +39,13 @@ pub fn section<'a>(config: &'a Config, name: &'a str) -> Result<Section<'a>, Err
             config.file.display()
         )));
     };
-    if values.contains_key("baseline") {
-        return Err(Error(format!(
-            "{}: \"{name}\" names a \"baseline\", which is not a key klin reads — a run \
-             compares the working tree against the base commit, and a person accepts debt in \
-             the \"accepted\" list. Delete the key and the file it names.",
-            config.file.display()
-        )));
+    for (retired, why) in RETIRED {
+        if values.contains_key(*retired) {
+            return Err(Error(format!(
+                "{}: \"{name}\" names a \"{retired}\", {why}",
+                config.file.display()
+            )));
+        }
     }
     Ok(Section {
         config,

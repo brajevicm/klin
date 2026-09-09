@@ -182,9 +182,7 @@ fun simple(a: Int): Int = a
 "#;
 
 fn config(ceilings: &str) -> String {
-    format!(
-        r#"{{ "project": "t", "complexity": {{ "sources": ["src"], "ceilings": {ceilings} }} }}"#
-    )
+    format!(r#"{{ "project": "t", "complexity": {{ "roots": ["src"], "ceilings": {ceilings} }} }}"#)
 }
 
 fn tree(ceilings: &str) -> Tree {
@@ -196,7 +194,7 @@ fn tree(ceilings: &str) -> Tree {
 fn accepted(entries: &str) -> String {
     format!(
         r#"{{ "project": "t", "accepted": [{entries}],
-             "complexity": {{ "sources": ["src"], "ceilings": {{"cc": 8, "lines": 60}} }} }}"#
+             "complexity": {{ "roots": ["src"], "ceilings": {{"cc": 8, "lines": 60}} }} }}"#
     )
 }
 
@@ -424,9 +422,9 @@ fn a_missing_key_is_a_tool_error_naming_it() {
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"sources\""), "{}", run.out);
+    assert!(run.says("\"roots\""), "{}", run.out);
 
-    tree.write("klin.json", r#"{ "complexity": { "sources": ["src"] } }"#);
+    tree.write("klin.json", r#"{ "complexity": { "roots": ["src"] } }"#);
     let missing_ceilings = tree.run(&["complexity"]);
     assert_eq!(missing_ceilings.code, 2, "{}", missing_ceilings.out);
     assert!(
@@ -494,11 +492,11 @@ fn a_nested_function_is_measured_on_its_own_not_folded_into_the_one_around_it() 
 }
 
 #[test]
-fn overlapping_sources_measure_each_file_once() {
+fn overlapping_roots_measure_each_file_once() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["src", "src/deep"], "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "roots": ["src", "src/deep"], "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write("src/deep/c.rs", "fn f() {}\n");
 
@@ -535,7 +533,7 @@ fn a_ceilings_key_of_the_wrong_shape_is_named_as_malformed_not_missing() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["src"], "ceilings": 8 } }"#,
+        r#"{ "complexity": { "roots": ["src"], "ceilings": 8 } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
 
@@ -867,11 +865,11 @@ fn each_accessor_in_a_file_carries_its_own_site() {
 }
 
 #[test]
-fn a_vendored_directory_under_a_sources_root_is_not_measured() {
+fn a_vendored_directory_under_a_root_is_not_measured() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["."], "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "roots": ["."], "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write(
         "node_modules/dep/index.ts",
@@ -887,11 +885,11 @@ fn a_vendored_directory_under_a_sources_root_is_not_measured() {
 }
 
 #[test]
-fn a_vendored_directory_named_as_a_source_is_measured() {
+fn a_vendored_directory_named_as_a_root_is_measured() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["node_modules/dep"], "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "roots": ["node_modules/dep"], "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write(
         "node_modules/dep/index.ts",
@@ -908,7 +906,7 @@ fn skip_dirs_adds_to_the_default_list() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["."], "skip_dirs": ["legacy"],
+        r#"{ "complexity": { "roots": ["."], "skip_dirs": ["legacy"],
              "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write("legacy/old.rs", "fn old() {}\n");
@@ -925,7 +923,7 @@ fn only_the_named_languages_are_measured() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["src"], "languages": ["rust"],
+        r#"{ "complexity": { "roots": ["src"], "languages": ["rust"],
              "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
@@ -942,7 +940,7 @@ fn a_language_name_covers_every_grammar_the_escapes_gate_gives_it() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["src"], "languages": ["typescript"],
+        r#"{ "complexity": { "roots": ["src"], "languages": ["typescript"],
              "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write("src/a.ts", "function a() { return 1; }\n");
@@ -961,7 +959,7 @@ fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["src"], "languages": ["cobol"],
+        r#"{ "complexity": { "roots": ["src"], "languages": ["cobol"],
              "ceilings": {"cc": 0, "lines": 0} } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
@@ -977,7 +975,7 @@ fn an_exclude_glob_drops_a_file_and_exclude_except_keeps_a_named_path_back() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "sources": ["src"], "exclude": ["*test*"],
+        r#"{ "complexity": { "roots": ["src"], "exclude": ["*test*"],
              "exclude_except": ["src/test-runner.ts"],
              "ceilings": {"cc": 0, "lines": 0} } }"#,
     );

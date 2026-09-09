@@ -181,3 +181,18 @@ fn a_section_naming_a_baseline_says_the_key_is_not_one_klin_reads() {
     assert!(run.says("not a key klin reads"), "{}", run.out);
     assert!(run.says("\"accepted\""), "{}", run.out);
 }
+
+#[test]
+fn a_section_naming_sources_says_the_key_is_now_roots() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"complexity": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60}}}"#,
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"sources\""), "{}", run.out);
+    assert!(run.says("\"roots\""), "{}", run.out);
+}

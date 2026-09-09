@@ -230,7 +230,7 @@ fn complexity_section(sources: &Sources) -> Option<Value> {
     ceilings.insert("cc".into(), CEILINGS.0.into());
     ceilings.insert("lines".into(), CEILINGS.1.into());
     let mut section = Map::new();
-    section.insert("sources".into(), list(&sources.roots));
+    section.insert("roots".into(), list(&sources.roots));
     section.insert("ceilings".into(), Value::Object(ceilings));
     Some(Value::Object(section))
 }

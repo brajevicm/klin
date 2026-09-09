@@ -347,7 +347,7 @@ struct Selection {
 }
 
 struct Spec {
-    sources: Vec<PathBuf>,
+    roots: Vec<PathBuf>,
     selection: Selection,
     ceilings: Ceilings,
     gate_text: String,
@@ -364,7 +364,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
 fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
-    let (functions, unparsed) = measure(&spec.sources, &spec.selection, config.root())?;
+    let (functions, unparsed) = measure(&spec.roots, &spec.selection, config.root())?;
     let now = over(&functions, &spec);
     let judged = scoped(functions.iter().map(|function| &function.file), flags);
     let count = scoped(now.iter().map(|finding| &finding.file), flags);
@@ -394,7 +394,7 @@ fn at_the_base(
         }
     };
     let (before, _) = measure(
-        &base::roots(&spec.sources, config, prior)?,
+        &base::roots(&spec.roots, config, prior)?,
         &spec.selection,
         prior,
     )?;
@@ -479,8 +479,8 @@ fn spec(config: &Config) -> Result<Spec, Error> {
     let values = &section.values;
     let ceilings = ceilings(section.config, values)?;
     Ok(Spec {
-        sources: files::roots(section.config, section.name, values, "sources")?
-            .ok_or_else(|| section.config.missing(section.name, "sources"))?,
+        roots: files::roots(section.config, section.name, values, "roots")?
+            .ok_or_else(|| section.config.missing(section.name, "roots"))?,
         selection: selection(section.config, values)?,
         gate_text: format!(
             "over the complexity gate (cyclomatic > {} or body > {} lines)",
@@ -561,7 +561,7 @@ fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
 }
 
 fn measure(
-    sources: &[PathBuf],
+    roots: &[PathBuf],
     selection: &Selection,
     repo_root: &Path,
 ) -> Result<(Vec<Function>, Vec<Unparsed>), Error> {
@@ -580,7 +580,7 @@ fn measure(
         exclude_except: &selection.exclude_except,
         skip_hidden: true,
     };
-    for file in files::under(sources, &wanted)? {
+    for file in files::under(roots, &wanted)? {
         let name = file.to_string_lossy().to_string();
         let Some(language) = selection.languages.iter().find(|language| {
             language

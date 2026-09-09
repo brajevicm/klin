@@ -8,7 +8,7 @@ const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": t
 const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
 
 const GATES: &str = r#""doc_size": [{"file": "README.md", "ceiling": 10}],
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }"#;
+  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }"#;
 
 fn tree(build: &str) -> Tree {
     let tree = Tree::new();

@@ -5,7 +5,7 @@
       "cc": 8,
       "lines": 60
     },
-    "sources": ["src", "tests"]
+    "roots": ["src", "tests"]
   },
   "doc_citations": [
     {

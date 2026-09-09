@@ -10,7 +10,7 @@ const EVERY_GATE: &str = r#"{
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": { "roots": ["src"], "languages": ["rust"] },
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 /// A config whose escapes gate names a language klin has no patterns for, so that gate errors.
@@ -18,7 +18,7 @@ const A_BROKEN_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "escapes": { "roots": ["src"], "languages": ["cobol"] },
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 /// A config holding one accepted escape that no site in the tree matches.
@@ -29,7 +29,7 @@ const AN_UNMATCHED_ACCEPTED: &str = r#"{
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": { "roots": ["src"], "languages": ["rust"] },
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 fn tree(config: &str) -> Tree {
@@ -803,7 +803,7 @@ fn deleting_a_section_makes_the_ci_invocation_exit_two() {
         "klin.json",
         r#"{ "project": "t",
              "doc_size": [{"file": "README.md", "ceiling": 10}],
-             "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} } }"#,
+             "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} } }"#,
     );
     let deleted = tree.run(&ci_arguments());
     assert_eq!(deleted.code, 2, "{}", deleted.out);
@@ -814,9 +814,9 @@ const TWO_COMPLEXITY_GATES: &str = r#"{
   "project": "t",
   "gates": [
     {"name": "complexity-src", "check": "complexity",
-     "with": {"sources": ["src"], "ceilings": {"cc": 8, "lines": 60}}},
+     "with": {"roots": ["src"], "ceilings": {"cc": 8, "lines": 60}}},
     {"name": "complexity-tests", "check": "complexity",
-     "with": {"sources": ["tests"], "ceilings": {"cc": 8, "lines": 60}}}
+     "with": {"roots": ["tests"], "ceilings": {"cc": 8, "lines": 60}}}
   ]
 }"#;
 
@@ -825,7 +825,7 @@ const AN_EXCLUDED_GATE: &str = r#"{
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": false,
-  "complexity": { "sources": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
 }"#;
 
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
@@ -836,7 +836,7 @@ const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
 }"#;
 
 #[test]
-fn one_check_backs_two_gates_over_different_sources() {
+fn one_check_backs_two_gates_over_different_roots() {
     let tree = tree(TWO_COMPLEXITY_GATES);
     tree.write("tests/big.rs", &tangled("big"));
 

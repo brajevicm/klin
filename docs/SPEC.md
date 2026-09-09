@@ -1444,7 +1444,7 @@ Core, in this order:
       language
 - [ ] Pinned dated ceilings in every check that takes a ceiling, in UTC, date
       printed
-- [ ] One key vocabulary, old names print the new one, differential test
+- [x] One key vocabulary, old names print the new one, differential test
       retired
 - [ ] Unreadable file is a NOTE in the hook
 - [ ] Coverage counts on every `OK:` line, matched site and both values on
