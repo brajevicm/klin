@@ -45,38 +45,19 @@ fn allowed(run: &Run, what: &str) {
 }
 
 #[test]
-fn refuses_an_edit_of_the_configuration_or_the_hooks() {
-    for (name, file) in [
-        ("Edit", "/repo/klin.json"),
-        ("Edit", "/repo/.claude/settings.json"),
-        ("Write", "klin.json"),
-    ] {
+fn refuses_an_edit_of_the_configuration() {
+    for (name, file) in [("Edit", "/repo/klin.json"), ("Write", "klin.json")] {
         denied(&edit(name, file), &format!("{name} {file}"));
     }
     let run = tool("NotebookEdit", "notebook_path", "/repo/klin.json");
     assert_eq!(run.code, 2, "{}", run.out);
 }
 
-/// GitHub reads the code owners from three places, so guarding one spelling guards nothing.
 #[test]
-fn refuses_an_edit_of_the_code_owners_wherever_they_sit() {
-    for at in [
-        "CODEOWNERS",
-        ".github/CODEOWNERS",
-        "docs/CODEOWNERS",
-        "/repo/CODEOWNERS",
-    ] {
-        denied(&edit("Write", at), at);
-    }
-}
-
-#[test]
-fn refuses_a_redirect_onto_the_configuration_the_hooks_or_the_code_owners() {
+fn refuses_a_redirect_onto_the_configuration() {
     for command in [
         "echo '{}' > klin.json",
         "echo '[]' >>klin.json",
-        "echo '{}' > .cursor/hooks.json",
-        "echo '* @me' > docs/CODEOWNERS",
         "awk '{ print }' notes.txt > klin.json",
     ] {
         denied(&bash(command), command);
@@ -100,10 +81,6 @@ fn asks_about_git_putting_back_old_content_of_a_guarded_file() {
     for (command, quoted) in [
         ("git checkout -- klin.json", "klin.json"),
         (
-            "git checkout HEAD~3 -- .claude/settings.json",
-            ".claude/settings.json",
-        ),
-        (
             "git -C /repo restore --source=HEAD~1 klin.json",
             "klin.json",
         ),
@@ -126,22 +103,11 @@ fn refuses_the_commands_only_a_person_runs() {
 }
 
 #[test]
-fn refuses_an_edit_of_the_hook_settings_of_cursor_and_codex() {
-    for (name, file) in [
-        ("Edit", "/repo/.cursor/hooks.json"),
-        ("Write", "/Users/someone/.cursor/hooks.json"),
-        ("Edit", "/repo/.codex/config.toml"),
-        ("Write", "/Users/someone/.codex/config.toml"),
-    ] {
-        denied(&edit(name, file), &format!("{name} {file}"));
-    }
-}
-
-#[test]
 fn the_refusal_names_what_it_protects() {
     let run = edit("Edit", "/repo/klin.json");
     assert!(run.says("klin.json"), "{}", run.out);
-    assert!(run.says("hooks"), "{}", run.out);
+    assert!(run.says("reviewed commit"), "{}", run.out);
+    assert!(!run.says("hooks"), "{}", run.out);
     assert!(!run.says("baseline"), "{}", run.out);
 }
 
@@ -154,10 +120,7 @@ fn asks_about_a_command_outside_the_reader_list_that_names_a_guarded_path() {
         ("rm klin.json", "klin.json"),
         ("mv klin.json klin.json.bak", "klin.json"),
         ("truncate -s 0 klin.json", "klin.json"),
-        (
-            "tee .claude/settings.json < /tmp/loose.json",
-            ".claude/settings.json",
-        ),
+        ("tee klin.json < /tmp/loose.json", "klin.json"),
         ("echo klin.json", "klin.json"),
         ("perl -i -pe 's/a/b/' klin.json", "klin.json"),
         ("ed klin.json", "klin.json"),
@@ -167,72 +130,6 @@ fn asks_about_a_command_outside_the_reader_list_that_names_a_guarded_path() {
     ] {
         asked(&bash(command), quoted, command);
     }
-}
-
-#[test]
-fn asks_about_an_edit_or_a_redirect_onto_klins_own_state_or_its_ref() {
-    asked(
-        &edit("Write", ".git/klin/turn"),
-        ".git/klin/turn",
-        "an edit",
-    );
-    asked(
-        &edit("Edit", ".git/klin/build-blocked"),
-        ".git/klin/build-blocked",
-        "an edit",
-    );
-    for (command, quoted) in [
-        ("echo x > .git/klin/turn", ".git/klin/turn"),
-        ("rm -rf .git/klin", ".git/klin"),
-        (
-            "git update-ref -d refs/worktree/klin/turn",
-            "refs/worktree/klin/turn",
-        ),
-        ("find .git/klin -delete", ".git/klin"),
-    ] {
-        asked(&bash(command), quoted, command);
-    }
-}
-
-/// A verification file configures a check. klin cannot tell a loosening from a fix.
-#[test]
-fn asks_about_an_edit_or_a_command_that_names_a_verification_file() {
-    for file in [
-        ".eslintrc.json",
-        "eslint.config.mjs",
-        "pytest.ini",
-        "jest.config.ts",
-        ".coveragerc",
-        "codecov.yml",
-        ".github/workflows/ci.yml",
-    ] {
-        asked(&edit("Write", file), file, file);
-        let command = format!("rm {file}");
-        asked(&bash(&command), file, &command);
-    }
-}
-
-/// `pyproject.toml` is a verification file only when it holds a check's table.
-#[test]
-fn asks_about_a_pyproject_that_carries_a_checks_table() {
-    let tree = Tree::new();
-    tree.write(
-        "pyproject.toml",
-        "[tool.pytest.ini_options]\naddopts = \"-q\"\n",
-    );
-    let event = r#"{"tool_name": "Edit", "tool_input": {"file_path": "pyproject.toml"}}"#;
-    asked(
-        &feed(tree.root(), &["guard"], event),
-        "pyproject.toml",
-        "a tabled pyproject",
-    );
-
-    let plain = Tree::new();
-    plain.write("pyproject.toml", "[project]\nname = \"t\"\n");
-    allowed(
-        &feed(plain.root(), &["guard"], event),
-        "a pyproject with no check",
-    );
 }
 
 #[test]
@@ -247,19 +144,6 @@ fn allows_the_plumbing_that_reads_a_stamp() {
     ] {
         allowed(&bash(command), command);
     }
-}
-
-#[test]
-fn allows_reading_a_guarded_file_or_a_verification_file() {
-    for command in [
-        "cat docs/CODEOWNERS",
-        "cat .eslintrc.json",
-        "grep -n threshold .coveragerc",
-        "cat .github/workflows/ci.yml",
-    ] {
-        allowed(&bash(command), command);
-    }
-    allowed(&edit("Read", ".github/workflows/ci.yml"), "a read tool");
 }
 
 #[test]
@@ -332,10 +216,8 @@ fn asks_about_a_glob_that_matches_a_guarded_name() {
         ("perl -i -pe 's/a/b/' klin.*", "klin.*"),
         ("rm klin.js*n", "klin.js*n"),
         ("rm *.json", "*.json"),
-        ("rm CODEOWNER*", "CODEOWNER*"),
         ("rm ?lin.json", "?lin.json"),
         ("rm klin.jso[n]", "klin.jso[n]"),
-        ("rm C?DEOWNERS", "C?DEOWNERS"),
     ] {
         asked(&bash(command), quoted, command);
     }
@@ -384,7 +266,7 @@ fn refuses_a_whole_tree_restore_whose_argument_quotes_a_separator() {
 fn asks_about_a_left_open_quote_that_hides_a_separator() {
     for command in [
         "cat \"unclosed | rm klin.json",
-        "cat 'unclosed ; rm CODEOWNERS",
+        "cat 'unclosed ; rm klin.json",
     ] {
         let run = bash(command);
         assert_eq!(run.code, 0, "{command}: {}", run.out);
@@ -437,8 +319,8 @@ fn a_heredoc_body_is_data_and_the_redirect_beside_it_is_not() {
         "a `<<` that opens no body",
     );
     asked(
-        &bash("echo \"a << EOF\"\nrm CODEOWNERS\nEOF"),
-        "CODEOWNERS",
+        &bash("echo \"a << EOF\"\nrm klin.json\nEOF"),
+        "klin.json",
         "a quoted `<<`",
     );
 }
@@ -449,8 +331,7 @@ fn a_heredoc_body_is_data_and_the_redirect_beside_it_is_not() {
 fn asks_about_find_writing_a_guarded_file() {
     for (command, quoted) in [
         ("find . -fprint klin.json", "klin.json"),
-        ("find . -name x -fprintf CODEOWNERS '%p'", "CODEOWNERS"),
-        ("find . -fls .git/klin/listing", ".git/klin/listing"),
+        ("find . -name x -fprintf klin.json '%p'", "klin.json"),
     ] {
         asked(&bash(command), quoted, command);
     }
@@ -467,33 +348,6 @@ fn refuses_a_persons_command_behind_a_prefix() {
     ] {
         denied(&bash(command), command);
     }
-}
-
-#[test]
-fn asks_about_the_state_directory_of_a_linked_worktree() {
-    let command = "rm -rf .git/worktrees/wt1/klin";
-    asked(&bash(command), ".git/worktrees/wt1/klin", command);
-}
-
-/// The override names a directory, and a path is under it or is not. An empty value names no
-/// directory, so it must not turn every path into klin's own state.
-#[test]
-fn an_empty_state_directory_override_guards_nothing() {
-    let tree = Tree::new();
-    let event = r#"{"tool_name": "Edit", "tool_input": {"file_path": "src/main.rs"}}"#;
-    for value in ["", ".", "state"] {
-        let run = harness::feed_with(tree.root(), &[("KLIN_STATE_DIR", value)], &["guard"], event);
-        allowed(&run, value);
-    }
-
-    let under = r#"{"tool_name": "Edit", "tool_input": {"file_path": "state/a1b2/turn"}}"#;
-    let run = harness::feed_with(
-        tree.root(),
-        &[("KLIN_STATE_DIR", "state")],
-        &["guard"],
-        under,
-    );
-    asked(&run, "state/a1b2/turn", "a path under the override");
 }
 
 #[test]
@@ -543,4 +397,72 @@ fn it_never_reads_the_configuration() {
     assert_eq!(refused.code, 2, "{}", refused.out);
     assert!(refused.says("refused"), "{}", refused.out);
     assert!(!refused.says("could not be read"), "{}", refused.out);
+}
+
+/// Only the configuration is guarded. A hook file, the code owners, a lint, test or coverage
+/// configuration, a workflow, and klin's own state are ordinary files.
+#[test]
+fn allows_an_edit_of_everything_the_configuration_is_not() {
+    for file in [
+        ".claude/settings.json",
+        "/Users/someone/.claude/settings.json",
+        ".cursor/hooks.json",
+        ".codex/config.toml",
+        "CODEOWNERS",
+        ".github/CODEOWNERS",
+        ".eslintrc.json",
+        "eslint.config.mjs",
+        "pytest.ini",
+        "jest.config.ts",
+        ".coveragerc",
+        "codecov.yml",
+        ".github/workflows/ci.yml",
+        ".git/klin/turn",
+        "pyproject.toml",
+    ] {
+        allowed(&edit("Write", file), file);
+        let command = format!("rm {file}");
+        allowed(&bash(&command), &command);
+    }
+}
+
+/// klin's own state carries a stamp a report restores, so a write to it is nobody's question.
+#[test]
+fn allows_a_command_that_writes_klins_own_state() {
+    for command in [
+        "echo x > .git/klin/turn",
+        "rm -rf .git/klin",
+        "git update-ref -d refs/worktree/klin/turn",
+        "find .git/klin -delete",
+        "rm -rf .git/worktrees/wt1/klin",
+    ] {
+        allowed(&bash(command), command);
+    }
+}
+
+/// A command substitution starts a fresh quoting context, so the `<<` inside one opens a
+/// heredoc even though a double quote wraps it. Without this the body is read as commands.
+#[test]
+fn a_heredoc_that_opens_inside_a_command_substitution_still_holds_data() {
+    for command in [
+        "gh issue create --body \"$(cat <<'EOF'\nsee klin.json for the shape\nEOF\n)\"",
+        "gh issue create --body \"`cat <<'EOF'\nsee klin.json for the shape\nEOF\n`\"",
+    ] {
+        allowed(&bash(command), command);
+    }
+    asked(
+        &bash("echo 'a $(cat <<EOF'\nrm klin.json\nEOF"),
+        "klin.json",
+        "a single-quoted substitution opens no body",
+    );
+    asked(
+        &bash("echo \"$(date) << EOF\"\nrm klin.json\nEOF"),
+        "klin.json",
+        "a `<<` back inside the double quote the substitution closed",
+    );
+    asked(
+        &bash("gh issue create klin.json --body \"$(cat <<'EOF'\nnotes\nEOF\n)\""),
+        "klin.json",
+        "a guarded name in the command words beside the heredoc",
+    );
 }

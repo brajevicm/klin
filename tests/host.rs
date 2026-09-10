@@ -11,7 +11,7 @@ const A_GUARDED_EDIT: &str = r#"{
   "hook_event_name": "PreToolUse",
   "session_id": "s1",
   "tool_name": "Write",
-  "tool_input": {"file_path": "CODEOWNERS"}
+  "tool_input": {"file_path": "klin.json"}
 }"#;
 
 const AN_ORDINARY_EDIT: &str = r#"{

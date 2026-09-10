@@ -61,7 +61,7 @@ enum Command {
     Gate(gate::Args),
     /// Survey the tree and write the configuration it can say for itself
     Init(init::Args),
-    /// Refuse an agent's tool call that would edit the configuration or the hooks
+    /// Refuse an agent's tool call that would edit the configuration
     Guard(guard::Args),
     /// Remove the survey cache klin keeps for this tree, or every orphaned one
     Cache(cache::Args),
