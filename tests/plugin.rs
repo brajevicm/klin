@@ -30,10 +30,10 @@ fn the_hooks_carry_the_three_commands() {
         .unwrap_or_default()
         .to_string();
 
-    assert!(hook("SessionStart").ends_with("klin radius"));
-    assert!(hook("UserPromptSubmit").ends_with("klin radius"));
-    assert!(hook("PreToolUse").ends_with("klin guard"));
-    assert!(hook("Stop").ends_with("klin gate --hook --changed"));
+    assert!(hook("SessionStart").ends_with("\"$k\" radius"));
+    assert!(hook("UserPromptSubmit").ends_with("\"$k\" radius"));
+    assert!(hook("PreToolUse").ends_with("\"$k\" guard"));
+    assert!(hook("Stop").ends_with("\"$k\" gate --hook --changed"));
     assert!(matcher.contains("Edit"), "{matcher}");
     assert!(matcher.contains("Bash"), "{matcher}");
 }
@@ -158,6 +158,37 @@ fn the_stop_says_nothing_in_a_tree_that_holds_no_configuration() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out, "", "the stop spoke in a tree that did not opt in");
+}
+
+/// The hook runs the plugin's own wrapper before any `klin` on PATH, so the version the plugin
+/// pins is the one Claude Code runs, whatever an installer left in `~/.local/bin`. Spec 19.2.
+#[test]
+fn the_hook_runs_the_plugin_wrapper_before_a_klin_on_path() {
+    let tree = Tree::bare();
+    release(&tree, "the-plugin-binary");
+    let decoy = tree.write("path/klin", "#!/bin/sh\necho the-path-binary\n");
+    executable(&decoy);
+    let path = format!(
+        "{}:/usr/bin:/bin",
+        decoy.parent().unwrap_or(tree.root()).display()
+    );
+    let base = format!("file://{}", tree.path("release").display());
+
+    let run = ran(
+        SHELL,
+        &["-c", &hook("UserPromptSubmit")],
+        tree.root(),
+        &[
+            ("PATH", &path),
+            ("CLAUDE_PLUGIN_ROOT", &at(PLUGIN).display().to_string()),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &tree.path("cache").display().to_string()),
+        ],
+    );
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.printed.contains("the-plugin-binary"), "{}", run.out);
+    assert!(!run.printed.contains("the-path-binary"), "{}", run.out);
 }
 
 /// The stop hook as the plugin ships it, run where no `klin` resolves on PATH.
@@ -299,6 +330,13 @@ fn at(relative: &str) -> PathBuf {
 fn made(path: &Path) {
     if let Err(why) = fs::create_dir_all(path) {
         panic!("create {}: {why}", path.display());
+    }
+}
+
+fn executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Err(why) = fs::set_permissions(path, fs::Permissions::from_mode(0o755)) {
+        panic!("chmod {}: {why}", path.display());
     }
 }
 

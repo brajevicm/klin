@@ -2077,16 +2077,21 @@ network call. When the download fails, the wrapper prints one line saying so
 and exits 0, so a turn is never blocked by a missing network. This is the one
 place klin touches the network, and it is install, not measurement.
 
-Plugins add `bin/` to the Bash tool's PATH. Where `bin/` is unavailable,
-which is the case for plugins distributed through organization settings, the
-hooks find `klin` on PATH from a route in 19.1, and the skill says which
-command installs it. When neither is present the Stop hook says so once and
-lets the turn end.
+Each hook line runs `${CLAUDE_PLUGIN_ROOT}/bin/klin` when that file is
+executable, and otherwise the `klin` that PATH resolves. Claude Code appends
+every installed plugin's `bin/` to the end of PATH, for hooks as for the Bash
+tool, so a binary an installer left in `~/.local/bin` would win over the
+wrapper if the hooks called `klin` by name. Calling the wrapper by its path
+makes the version the plugin pins the one Claude Code runs. Where `bin/` is
+unavailable, which is the case for plugins distributed through organization
+settings, the hooks find `klin` on PATH from a route in 19.1, and the skill
+says which command installs it. When neither is present the Stop hook says so
+once and lets the turn end.
 
-The plugin's hook lines carry one presence test before the command, because a
-person may install the plugin where no binary resolves yet. With no `klin` on
-PATH the session start, the prompt and the pre-tool events say nothing and
-block nothing. The Stop hook names the install command on stdout, and only
+The hook lines resolve the binary before they run it, because a person may
+install the plugin where no binary resolves yet. With neither the wrapper nor
+a `klin` on PATH the session start, the prompt and the pre-tool events say
+nothing and block nothing. The Stop hook names the install command on stdout, and only
 where a `klin.json` resolves at the project root, so a tree that never opted
 in stays silent (ADR 0028). Nothing blocks, so the turn ends at that stop and
 the line appears once.
