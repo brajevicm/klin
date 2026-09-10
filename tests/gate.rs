@@ -213,7 +213,8 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
-        "doc-size — runs\ndoc-citations — runs\nescapes — runs\ncomplexity — runs\n",
+        "doc-size — runs\ndoc-citations — runs\nescapes — runs\ncomplexity — runs\n\
+         stubs — needs a section a person writes\n",
         "{:?}",
         run.out
     );
@@ -247,7 +248,8 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\ncomplexity — excluded\n\
-         escapes — needs a section a person writes\n",
+         escapes — needs a section a person writes\n\
+         stubs — needs a section a person writes\n",
         "{:?}",
         run.out
     );
@@ -973,7 +975,8 @@ fn list_names_the_excluded_gates() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
-        "doc-size — runs\ndoc-citations — runs\ncomplexity — runs\nescapes — excluded\n",
+        "doc-size — runs\ndoc-citations — runs\ncomplexity — runs\nescapes — excluded\n\
+         stubs — needs a section a person writes\n",
         "{:?}",
         run.out
     );
@@ -998,8 +1001,12 @@ fn list_names_a_gate_the_survey_supplies_as_one_that_runs() {
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("needs a section"), "{}", run.out);
     assert!(rows(&run).contains("escapes — runs\n"), "{}", run.out);
+    assert!(
+        !rows(&run).contains("escapes — needs a section"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1158,7 +1165,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     assert_eq!(
         rows(&run),
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
-         complexity — excluded\n",
+         complexity — excluded\nstubs — needs a section a person writes\n",
         "{:?}",
         run.out
     );

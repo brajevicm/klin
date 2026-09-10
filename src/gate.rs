@@ -9,7 +9,7 @@ use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
-use crate::{build, complexity, doc_citations, doc_size, escapes, state, survey, turn};
+use crate::{build, complexity, doc_citations, doc_size, escapes, state, stubs, survey, turn};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks are left and whether the turn's gate block is still unspent. In the state
@@ -52,6 +52,13 @@ const CHECKS: &[Check] = &[
         name: "escapes",
         section: "escapes",
         run: escapes::gate,
+        compares_to_base: true,
+        takes_scope: true,
+    },
+    Check {
+        name: "stubs",
+        section: "stubs",
+        run: stubs::gate,
         compares_to_base: true,
         takes_scope: true,
     },

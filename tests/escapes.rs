@@ -310,7 +310,6 @@ fn every_built_in_language_finds_and_names_its_escapes() {
         "src/thing.rs:2  expect",
         "src/thing.rs:3  unsafe",
         "src/thing.rs:5  allow",
-        "src/thing.rs:6  todo",
         "src/thing.rs:7  skipped test",
         "src/thing.go:1  nolint",
         "src/thing.go:2  skipped test",
@@ -679,7 +678,6 @@ fn every_alternative_inside_a_pattern_matches_too() {
         "src/alt.ts:3  skipped test",
         "src/alt.ts:4  skipped test",
         "src/alt.ts:5  skipped test",
-        "src/alt.rs:1  todo",
         "src/alt.rs:2  allow",
         "src/alt.go:1  skipped test",
         "src/alt.go:2  skipped test",
@@ -705,4 +703,34 @@ fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.mts:1"), "{}", run.out);
     assert!(run.says("src/b.cts:1"), "{}", run.out);
+}
+
+#[test]
+fn a_focused_or_expected_failure_test_is_a_new_escape_and_holds_at_the_base() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript", "python"] } }"#,
+    );
+    tree.write(
+        "src/spec.ts",
+        "fit('x', () => {});\n  fdescribe('y', () => {});\nconst y = fit(points);\n",
+    );
+    tree.write(
+        "src/thing.py",
+        "@pytest.mark.xfail\ndef a():\n    return 1\n@pytest.mark.skipif(WINDOWS)\ndef b():\n    return 2\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/spec.ts:1  focused test"), "{}", run.out);
+    assert!(run.says("src/spec.ts:2  focused test"), "{}", run.out);
+    assert!(run.says("src/thing.py:1  expected failure"), "{}", run.out);
+    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+    assert!(!run.says("src/spec.ts:3"), "{}", run.out);
+    assert!(!run.says("src/thing.py:4"), "{}", run.out);
+
+    tree.base();
+    let held = tree.run(&["escapes", "--strict"]);
+    assert_eq!(held.code, 0, "{}", held.out);
 }
