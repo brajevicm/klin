@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
@@ -40,17 +40,28 @@ const HOSTS: &[Host] = &[
 /// klin's hook lines, one per event of section 9.2. The matcher names the tools the guard
 /// reads, and an event with no matcher takes every call.
 const ENTRIES: &[(&str, &str, &str)] = &[
-    ("SessionStart", "", "klin radius"),
-    ("UserPromptSubmit", "", "klin radius"),
+    ("SessionStart", "", "radius"),
+    ("UserPromptSubmit", "", "radius"),
     (
         "PreToolUse",
         "Write|Edit|MultiEdit|NotebookEdit|Bash",
-        "klin guard",
+        "guard",
     ),
-    ("Stop", "", "klin gate --hook --changed"),
+    ("Stop", "", "gate --hook --changed"),
 ];
 
+/// Every line klin writes resolves the binary before it runs it, and ends the hook when none
+/// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
+/// would otherwise see a failed hook on every event of every session. Section 19.3.
+fn line(arguments: &str) -> String {
+    format!("command -v klin > /dev/null 2>&1 || exit 0; klin {arguments}")
+}
+
 const HOOKS: &str = "hooks";
+
+/// The key a host lists its enabled plugins under, and klin's name in that list.
+const PLUGINS: &str = "enabledPlugins";
+const PLUGIN: &str = "klin";
 
 pub fn run(root: &Path, named: Option<&str>, shared: bool, out: &mut String) -> Result<u8, Error> {
     let hosts = wanted(root, named)?;
@@ -58,14 +69,64 @@ pub fn run(root: &Path, named: Option<&str>, shared: bool, out: &mut String) -> 
         return Err(pending(host, shared));
     }
     for host in &hosts {
-        match host.file {
-            Some(file) => wrote(&root.join(file), shared, out)?,
-            None => {
-                let _ = writeln!(out, "klin: NOTE: {}", pending(host, shared));
-            }
-        }
+        hooked(host, root, shared, out)?;
     }
     Ok(0)
+}
+
+/// One host's file, or the note that klin cannot write it. A host whose plugin already
+/// carries the entries gets neither, and is told which settings file enables it.
+fn hooked(host: &Host, root: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
+    let Some(file) = host.file else {
+        let _ = writeln!(out, "klin: NOTE: {}", pending(host, shared));
+        return Ok(());
+    };
+    let target = root.join(file);
+    match elsewhere(root, file, shared, &target) {
+        Some(said) => {
+            let _ = writeln!(out, "{said}");
+            Ok(())
+        }
+        None => wrote(&target, shared, out),
+    }
+}
+
+/// What already runs klin's hooks over the file klin would write, in klin's own words. Two
+/// copies of the entries run klin twice on every event: two gates race for one turn stamp,
+/// and the prompt counter moves by two. A plugin is one copy. A user-level install klin wrote
+/// itself is the other, because a host reads its user file and the tree's together.
+fn elsewhere(root: &Path, file: &str, shared: bool, target: &Path) -> Option<String> {
+    if let Some(settings) = enabling(root, file, shared) {
+        return Some(registered(&settings, target));
+    }
+    if shared {
+        return None;
+    }
+    let user = std::env::home_dir()?.join(file);
+    holds_klin(&user).then(|| installed(&user, target))
+}
+
+/// A host file that already holds an entry of klin's on some event.
+fn holds_klin(settings: &Path) -> bool {
+    let Ok(held) = read(settings) else {
+        return false;
+    };
+    held.get(HOOKS)
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter_map(|(_, entries)| entries.as_array())
+        .flatten()
+        .any(calls_klin)
+}
+
+fn installed(user: &Path, file: &Path) -> String {
+    format!(
+        "{}: klin's hooks are installed for every repository already, so klin added nothing \
+         to {}. Change them where they are: klin init --hooks --global.",
+        user.display(),
+        file.display()
+    )
 }
 
 /// A host klin has no adapter for is refused when `--host` named it, and when this tree names
@@ -136,6 +197,54 @@ fn pending(host: &Host, shared: bool) -> Error {
     ))
 }
 
+/// The settings file that enables klin's plugin for the file klin is about to write, if one
+/// does. The plugin carries the same entries, so a second copy of them runs klin twice on
+/// every event: two gates race for the turn stamp, and the prompt counter moves by two.
+///
+/// A write into a tree is covered by that tree's settings, the local settings beside them and
+/// the user's. A write into the home directory is covered by the user's alone, because a
+/// plugin one repository enables gates that repository and not the machine.
+fn enabling(root: &Path, file: &str, shared: bool) -> Option<PathBuf> {
+    let mut looked = Vec::new();
+    if !shared {
+        looked.push(root.join(file));
+        looked.push(root.join(file.replace(".json", ".local.json")));
+    }
+    if let Some(home) = std::env::home_dir() {
+        looked.push(home.join(file));
+    }
+    looked.into_iter().find(|settings| lists_klin(settings))
+}
+
+fn lists_klin(settings: &Path) -> bool {
+    let Ok(held) = read(settings) else {
+        return false;
+    };
+    held.get(PLUGINS)
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .any(|(named, on)| named_klin(named) && on.as_bool().unwrap_or(false))
+}
+
+/// The name a host lists the plugin under is klin's own name, or that name and the marketplace
+/// it came from. A plugin whose name only starts with klin's is another plugin.
+fn named_klin(named: &str) -> bool {
+    named == PLUGIN
+        || named
+            .strip_prefix(PLUGIN)
+            .is_some_and(|rest| rest.starts_with('@'))
+}
+
+fn registered(settings: &Path, file: &Path) -> String {
+    format!(
+        "{}: klin's plugin is enabled here and carries the hooks itself, so klin added nothing \
+         to {}. Disable the plugin first if you would rather the file held them.",
+        settings.display(),
+        file.display()
+    )
+}
+
 /// klin's entries added to whatever the file already holds. An event klin shares with another
 /// tool keeps that tool's entries, and an event that already calls klin is left as it is, so a
 /// second run writes nothing.
@@ -163,7 +272,7 @@ fn wrote(file: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
             held_already.push(*event);
             continue;
         }
-        entries.push(entry(matcher, command));
+        entries.push(entry(matcher, &line(command)));
         added.push(*event);
     }
     init::write(file, &settings)?;

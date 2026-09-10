@@ -149,19 +149,31 @@ fn read(file: &Path) -> Result<Option<Map<String, Value>>, Error> {
 }
 
 /// The file is replaced whole, through a neighbour and a rename, so a run that dies partway
-/// leaves the file it found rather than a truncated one. A host's settings are a person's.
+/// leaves the file it found rather than a truncated one. A host's settings are a person's: a
+/// path that is a link is followed, so a settings file kept in a dotfiles tree stays a link.
 pub fn write(file: &Path, config: &Map<String, Value>) -> Result<(), Error> {
     let unwritable = |why: &dyn std::fmt::Display| {
         Error(format!("{} could not be written: {why}", file.display()))
     };
     let text = serde_json::to_string_pretty(&Value::Object(config.clone()))
         .map_err(|why| unwritable(&why))?;
-    let beside = file.with_extension(format!("klin-{}", std::process::id()));
+    let held = std::fs::canonicalize(file);
+    let target = held.as_deref().unwrap_or(file);
+    let beside = target.with_extension(format!("klin-{}", std::process::id()));
     std::fs::write(&beside, text + "\n").map_err(|why| unwritable(&why))?;
-    std::fs::rename(&beside, file).map_err(|why| {
+    kept_mode(target, &beside);
+    std::fs::rename(&beside, target).map_err(|why| {
         let _ = std::fs::remove_file(&beside);
         unwritable(&why)
     })
+}
+
+/// The file klin replaces keeps the permissions it had. A person who narrowed a host's
+/// settings file did so on purpose, and a fresh neighbour would widen it back.
+fn kept_mode(target: &Path, beside: &Path) {
+    if let Ok(held) = std::fs::metadata(target) {
+        let _ = std::fs::set_permissions(beside, held.permissions());
+    }
 }
 
 /// Every section the tree can say for itself, what it wrote, and one `derived:` line per value

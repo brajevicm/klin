@@ -1934,7 +1934,8 @@ green, because deterministic detection is not correct judgement:
   `--add` leaves `false` alone, `--force` re-pins, never touches
   `.gitignore`, `--hooks` writes each host's file and leaves an existing
   entry alone, `--hooks --global` writes the user-level file and leaves the
-  tree's own untouched.
+  tree's own untouched, a written line exits 0 when no binary resolves, and a
+  host whose plugin is enabled gets no entries at all.
 - State: default under the git directory, per worktree, `KLIN_STATE_DIR`
   relocates it, two clones never share a stamp, an unwritable directory never
   blocks, `cache clean` removes only klin's files.
@@ -2135,6 +2136,28 @@ leaves every other entry alone. It MUST NOT overwrite an entry that already
 calls `klin`. The files are committed, so a teammate who clones gets the
 hooks, and CODEOWNERS SHOULD cover them. The hook file is not guarded (9.4),
 but `init` in any form is refused from an agent, so this command is too.
+
+Each line klin writes resolves `klin` on PATH before it runs it and ends the
+hook when none resolves, the way the plugin's own lines do (19.2). A person
+who never installed the binary, or who removed it, sees nothing rather than a
+failed hook on every event.
+
+`init --hooks` writes nothing for a host that already runs klin's hooks over
+the file it would write, and names what runs them. Two things do: a plugin,
+and a user-level install klin wrote itself, which a host reads together with
+the tree's file. The plugin registers the
+same four events, so a second copy of them runs klin twice on every event: two
+gates race for one turn stamp, and the prompt counter of 6.2 moves by two. A
+host lists its enabled plugins in its settings files. For a write into a tree
+klin reads the tree's, the local ones beside them and the user's. For a write
+into the home directory it reads the user's alone, because a plugin one
+repository enables gates that repository and not the machine. A write into a
+tree is refused the same way by a user file that holds klin's entries.
+
+klin replaces a host's settings file whole, through a neighbour and a rename,
+so a run that dies partway leaves the file it found. It follows a path that is
+a link, so a settings file kept in a dotfiles tree stays a link, and it keeps
+the permissions the file had.
 
 `--global` moves both the detection and the write to the host's user-level
 directory: `~/.claude/settings.json`, `~/.cursor/hooks.json`,

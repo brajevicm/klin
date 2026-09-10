@@ -246,10 +246,22 @@ pub fn feed_with(cwd: &Path, environment: &[(&str, &str)], args: &[&str], stdin:
     spawn(cwd, args, stdin, environment)
 }
 
+/// One empty home directory for the whole test binary, so a run reads the machine's own
+/// host settings from nowhere and a test that wants a home names its own.
+fn empty_home() -> &'static Path {
+    static HOME: std::sync::OnceLock<tempfile::TempDir> = std::sync::OnceLock::new();
+    HOME.get_or_init(|| match tempfile::tempdir() {
+        Ok(home) => home,
+        Err(why) => panic!("a home directory could not be made: {why}"),
+    })
+    .path()
+}
+
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
     let mut command = Command::new(env!("CARGO_BIN_EXE_klin"));
     command
         .args(args)
+        .env("HOME", empty_home())
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

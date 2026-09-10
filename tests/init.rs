@@ -2,6 +2,7 @@ mod harness;
 
 use harness::Tree;
 use serde_json::Value;
+use std::os::unix::fs::PermissionsExt;
 
 #[path = "fixtures/escape_text.rs"]
 mod text;
@@ -279,6 +280,11 @@ fn settings_at(path: &std::path::Path) -> Value {
     }
 }
 
+/// The hook line klin writes for one klin command. Every line resolves the binary first.
+fn line(arguments: &str) -> String {
+    format!("command -v klin > /dev/null 2>&1 || exit 0; klin {arguments}")
+}
+
 /// Every command in one host event, so a test can count klin's entries and the ones it left.
 fn commands(settings: &Value, event: &str) -> Vec<String> {
     settings["hooks"][event]
@@ -304,22 +310,22 @@ fn hooks_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     let settings = settings(&tree);
     assert_eq!(
         commands(&settings, "Stop"),
-        ["cargo fmt", "klin gate --hook --changed"],
+        ["cargo fmt".to_string(), line("gate --hook --changed")],
         "{settings}"
     );
     assert_eq!(
         commands(&settings, "PreToolUse"),
-        ["klin guard"],
+        [line("guard")],
         "{settings}"
     );
     assert_eq!(
         commands(&settings, "SessionStart"),
-        ["klin radius"],
+        [line("radius")],
         "{settings}"
     );
     assert_eq!(
         commands(&settings, "UserPromptSubmit"),
-        ["klin radius"],
+        [line("radius")],
         "{settings}"
     );
 }
@@ -420,7 +426,7 @@ fn hooks_for_a_named_host_writes_a_file_the_tree_does_not_hold_yet() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
-        ["klin gate --hook --changed"],
+        [line("gate --hook --changed")],
         "{}",
         run.out
     );
@@ -478,7 +484,10 @@ fn hooks_adds_its_entry_beside_a_hook_that_only_mentions_klin() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
-        ["/work/klin-ui/scripts/fmt.sh", "klin gate --hook --changed"],
+        [
+            "/work/klin-ui/scripts/fmt.sh".to_string(),
+            line("gate --hook --changed")
+        ],
         "{}",
         run.out
     );
@@ -497,7 +506,7 @@ fn hooks_writes_the_host_it_can_and_notes_the_one_it_cannot() {
     assert!(run.says("#67"), "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "PreToolUse"),
-        ["klin guard"],
+        [line("guard")],
         "{}",
         run.out
     );
@@ -542,12 +551,12 @@ fn hooks_global_writes_the_users_file_and_leaves_the_trees_alone() {
     let written = settings_at(&home.path(".claude/settings.json"));
     assert_eq!(
         commands(&written, "Stop"),
-        ["cargo fmt", "klin gate --hook --changed"],
+        ["cargo fmt".to_string(), line("gate --hook --changed")],
         "{written}"
     );
     assert_eq!(
         commands(&written, "PreToolUse"),
-        ["klin guard"],
+        [line("guard")],
         "{written}"
     );
     assert!(run.says("covers every repository"), "{}", run.out);
@@ -577,4 +586,139 @@ fn hooks_global_for_a_host_with_no_adapter_is_refused() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("#67"), "{}", run.out);
     assert!(run.says("--hooks --global --host"), "{}", run.out);
+}
+
+const A_PLUGIN: &str = r#"{"enabledPlugins": {"klin@klin-marketplace": true}}"#;
+
+/// The plugin registers the same four events, so a second copy of them runs klin twice on
+/// every event. #147.
+#[test]
+fn hooks_adds_nothing_when_the_plugin_is_enabled_in_the_tree() {
+    let tree = two_documents();
+    tree.write(".claude/settings.json", A_PLUGIN);
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
+}
+
+#[test]
+fn hooks_adds_nothing_when_the_plugin_is_enabled_for_this_tree_alone() {
+    let tree = two_documents();
+    tree.write(".claude/settings.json", "{}\n");
+    tree.write(".claude/settings.local.json", A_PLUGIN);
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
+}
+
+#[test]
+fn hooks_writes_when_the_plugin_is_listed_but_switched_off() {
+    let tree = two_documents();
+    tree.write(
+        ".claude/settings.json",
+        r#"{"enabledPlugins": {"klin@klin-marketplace": false}}"#,
+    );
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        commands(&settings(&tree), "PreToolUse").len(),
+        1,
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn hooks_global_adds_nothing_when_the_plugin_is_enabled_for_the_user() {
+    let (tree, home) = a_home();
+    home.write(".claude/settings.json", A_PLUGIN);
+
+    let run = globally(&tree, &home, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let written = settings_at(&home.path(".claude/settings.json"));
+    assert_eq!(written["hooks"], Value::Null, "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
+}
+
+/// A plugin one repository enables gates that repository, not the machine, so it does not
+/// stand in the way of the user-level install. #147.
+#[test]
+fn hooks_global_writes_when_the_plugin_is_enabled_in_the_tree_alone() {
+    let (tree, home) = a_home();
+    tree.write(".claude/settings.json", A_PLUGIN);
+
+    let run = globally(&tree, &home, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let written = settings_at(&home.path(".claude/settings.json"));
+    assert_eq!(commands(&written, "PreToolUse").len(), 1, "{}", run.out);
+}
+
+/// Every hook line klin writes resolves the binary first, so a machine that holds no klin
+/// says nothing on every event of every session instead of failing. #147.
+#[test]
+fn a_written_hook_line_says_nothing_when_no_binary_resolves() {
+    let tree = two_documents();
+    tree.write(".claude/settings.json", "{}\n");
+    assert_eq!(tree.run(&["init", "--hooks"]).code, 0);
+
+    let settings = settings(&tree);
+    for event in ["Stop", "PreToolUse", "SessionStart", "UserPromptSubmit"] {
+        for command in commands(&settings, event) {
+            let outcome = std::process::Command::new("/bin/sh")
+                .args(["-c", &command])
+                .env("PATH", "")
+                .output();
+            let Ok(done) = outcome else {
+                panic!("the hook line could not run: {command}")
+            };
+            assert_eq!(done.status.code(), Some(0), "{event}: {command}");
+            assert!(done.stdout.is_empty(), "{event}: {command}");
+            assert!(done.stderr.is_empty(), "{event}: {command}");
+        }
+    }
+}
+
+/// A host reads its user file and the tree's together, so a global install klin wrote itself
+/// duplicates every event when a tree write follows it. #147.
+#[test]
+fn hooks_adds_nothing_when_the_user_file_already_holds_klins_entries() {
+    let (tree, home) = a_home();
+    assert_eq!(globally(&tree, &home, &[]).code, 0);
+
+    let at = home.root().display().to_string();
+    let run = tree.run_with(&[("HOME", at.as_str())], &["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
+    assert!(run.says("--global"), "{}", run.out);
+}
+
+/// A settings file kept in a dotfiles tree is a link. klin follows it, so the link survives
+/// and the tree it points into holds the hooks. #147.
+#[test]
+fn hooks_follows_a_settings_file_that_is_a_link() {
+    let tree = two_documents();
+    let held = tree.write("dotfiles/settings.json", "{}\n");
+    let link = tree.path(".claude/settings.json");
+    assert!(std::fs::create_dir_all(tree.path(".claude")).is_ok());
+    assert!(std::os::unix::fs::symlink(&held, &link).is_ok());
+    let narrow = std::fs::Permissions::from_mode(0o600);
+    assert!(std::fs::set_permissions(&held, narrow).is_ok());
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(link.is_symlink(), "{}", run.out);
+    assert_eq!(
+        commands(&settings_at(&held), "PreToolUse"),
+        [line("guard")],
+        "{}",
+        run.out
+    );
+    let Ok(mode) = std::fs::metadata(&held) else {
+        panic!("the settings file is gone")
+    };
+    assert_eq!(mode.permissions().mode() & 0o777, 0o600, "{}", run.out);
 }
