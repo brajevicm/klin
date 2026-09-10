@@ -50,6 +50,19 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases
 It verifies a checksum and puts `klin` in `~/.local/bin`.
 [19.1](docs/SPEC.md) pins a version or moves that directory.
 
+### Update
+
+Each route updates with the tool it came from:
+
+- The plugin, with `/plugin marketplace update`, or on its own when Claude
+  Code's plugin auto-update is on. The wrapper fetches the new version on the
+  next run.
+- The installer or a downloaded binary, with `klin update`.
+- CI, by moving the tag in `uses: brajevicm/klin@vX.Y.Z`, which Renovate and
+  Dependabot do.
+
+One tag names every route, so they never disagree. [ADR 0029](docs/adr/0029-the-release-tag-is-the-one-version.md).
+
 ## What it checks
 
 klin is not a linter or test runner. Its checks target agent-driven

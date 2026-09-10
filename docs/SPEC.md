@@ -2155,4 +2155,4 @@ auto-update. Every other route upgrades when the person asks. `klin update`
 runs the `klin-update` beside the binary, or the one PATH resolves, which
 installs the newest release over the current one, and its exit code is the
 updater's. Where no updater is found, `klin update` says so, names the
-installer, and exits 2.
+installer, and exits 2. ADR 0029 records that one tag names every route.
