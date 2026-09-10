@@ -52,16 +52,16 @@ const ENTRIES: &[(&str, &str, &str)] = &[
 
 const HOOKS: &str = "hooks";
 
-pub fn run(root: &Path, named: Option<&str>, out: &mut String) -> Result<u8, Error> {
+pub fn run(root: &Path, named: Option<&str>, shared: bool, out: &mut String) -> Result<u8, Error> {
     let hosts = wanted(root, named)?;
     if let Some(host) = refused(named, &hosts) {
-        return Err(pending(host));
+        return Err(pending(host, shared));
     }
     for host in &hosts {
         match host.file {
-            Some(file) => wrote(&root.join(file), out)?,
+            Some(file) => wrote(&root.join(file), shared, out)?,
             None => {
-                let _ = writeln!(out, "klin: NOTE: {}", pending(host));
+                let _ = writeln!(out, "klin: NOTE: {}", pending(host, shared));
             }
         }
     }
@@ -119,13 +119,19 @@ fn listed<'a>(hosts: impl Iterator<Item = &'a Host>) -> String {
         .join(", ")
 }
 
-fn pending(host: &Host) -> Error {
+/// The refusal names the command that works today, and keeps `--global` when that is the
+/// install the person asked for, because the per-tree form writes into a repository.
+fn pending(host: &Host, shared: bool) -> Error {
     Error(format!(
         "klin has no {} adapter yet, so it cannot write {}'s hooks — {} lands it. Until then \
-         name a host klin writes: klin init --hooks --host {}",
+         name a host klin writes: klin init --hooks{} --host {}",
         host.name,
         host.name,
         host.ticket,
+        match shared {
+            true => " --global",
+            false => "",
+        },
         built()
     ))
 }
@@ -133,7 +139,7 @@ fn pending(host: &Host) -> Error {
 /// klin's entries added to whatever the file already holds. An event klin shares with another
 /// tool keeps that tool's entries, and an event that already calls klin is left as it is, so a
 /// second run writes nothing.
-fn wrote(file: &Path, out: &mut String) -> Result<(), Error> {
+fn wrote(file: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
     if let Some(parent) = file.parent() {
         std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
     }
@@ -161,13 +167,13 @@ fn wrote(file: &Path, out: &mut String) -> Result<(), Error> {
         added.push(*event);
     }
     init::write(file, &settings)?;
-    let _ = writeln!(out, "{}", said(file, &added, &held_already));
+    let _ = writeln!(out, "{}", said(file, shared, &added, &held_already));
     Ok(())
 }
 
 /// What was added and what was left, because a run that added two entries of four reads like a
 /// complete one otherwise.
-fn said(file: &Path, added: &[&str], held: &[&str]) -> String {
+fn said(file: &Path, shared: bool, added: &[&str], held: &[&str]) -> String {
     let kept = match held.is_empty() {
         true => String::new(),
         false => format!(
@@ -182,10 +188,13 @@ fn said(file: &Path, added: &[&str], held: &[&str]) -> String {
     match added.is_empty() {
         true => format!("{}: nothing was added.{kept}", file.display()),
         false => format!(
-            "{}: added klin's entry on {}. Commit it, so a teammate who clones gets the \
-             hooks.{kept}",
+            "{}: added klin's entry on {}.{}{kept}",
             file.display(),
-            added.join(", ")
+            added.join(", "),
+            match shared {
+                true => " It covers every repository you open.",
+                false => " Commit it, so a teammate who clones gets the hooks.",
+            }
         ),
     }
 }

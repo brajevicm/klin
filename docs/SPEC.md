@@ -536,9 +536,11 @@ every form from an agent, so `--force` is a person's flag. `init` MUST NOT
 edit `.gitignore`, because klin writes nothing that git could see.
 
 `init --hooks` writes the hook entries for each host it detects, or for the
-host `--host` names. Section 19.3. The hook file is not guarded (9.4), but
-`init` in any form is a person's command, so the guard refuses this one from
-an agent like it refuses `init` itself.
+host `--host` names. `init --hooks --global` writes the host's user-level
+file instead of the tree's own, so one install covers every repository and no
+project file carries klin. Section 19.3. The hook file is not guarded (9.4),
+but `init` in any form is a person's command, so the guard refuses this one
+from an agent like it refuses `init` itself.
 
 `init` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
@@ -1931,7 +1933,8 @@ green, because deterministic detection is not correct judgement:
 - Init: pins exactly what the run would derive, writes only the config,
   `--add` leaves `false` alone, `--force` re-pins, never touches
   `.gitignore`, `--hooks` writes each host's file and leaves an existing
-  entry alone.
+  entry alone, `--hooks --global` writes the user-level file and leaves the
+  tree's own untouched.
 - State: default under the git directory, per worktree, `KLIN_STATE_DIR`
   relocates it, two clones never share a stamp, an unwritable directory never
   blocks, `cache clean` removes only klin's files.
@@ -2132,6 +2135,14 @@ leaves every other entry alone. It MUST NOT overwrite an entry that already
 calls `klin`. The files are committed, so a teammate who clones gets the
 hooks, and CODEOWNERS SHOULD cover them. The hook file is not guarded (9.4),
 but `init` in any form is refused from an agent, so this command is too.
+
+`--global` moves both the detection and the write to the host's user-level
+directory: `~/.claude/settings.json`, `~/.cursor/hooks.json`,
+`~/.codex/hooks.json`. Everything else is the same, so a host with no adapter
+is refused under `--global` with the message the per-tree form gives, and
+gains `--global` when its adapter lands. A global install is not committed,
+so the write says it covers every repository rather than asking for a commit,
+and a person who chooses it accepts that an agent can remove the lines.
 
 ### 19.4 CI
 

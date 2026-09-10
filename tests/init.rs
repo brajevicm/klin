@@ -266,12 +266,16 @@ fn force_edits_no_gitignore() {
 }
 
 fn settings(tree: &Tree) -> Value {
-    let Ok(text) = std::fs::read_to_string(tree.path(".claude/settings.json")) else {
-        panic!("no .claude/settings.json was written")
+    settings_at(&tree.path(".claude/settings.json"))
+}
+
+fn settings_at(path: &std::path::Path) -> Value {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        panic!("no {} was written", path.display())
     };
     match serde_json::from_str(&text) {
         Ok(value) => value,
-        Err(why) => panic!(".claude/settings.json is not JSON: {why}\n{text}"),
+        Err(why) => panic!("{} is not JSON: {why}\n{text}", path.display()),
     }
 }
 
@@ -505,4 +509,72 @@ fn host_without_hooks_is_a_usage_error() {
 
     let run = tree.run(&["init", "--host", "claude"]);
     assert_eq!(run.code, 2, "{}", run.out);
+}
+
+/// A home directory klin writes the user-level hook file into, and the tree it is run from.
+fn a_home() -> (Tree, Tree) {
+    let tree = two_documents();
+    tree.write(".claude/settings.json", "{}\n");
+    tree.commit("a settings file");
+    let home = Tree::bare();
+    home.write(".claude/settings.json", A_USER_FILE);
+    (tree, home)
+}
+
+const A_USER_FILE: &str = r#"{"hooks": {"Stop": [{"hooks": [{"type": "command",
+  "command": "cargo fmt"}]}]}}"#;
+
+fn globally(tree: &Tree, home: &Tree, args: &[&str]) -> harness::Run {
+    let at = home.root().display().to_string();
+    tree.run_with(
+        &[("HOME", at.as_str())],
+        &[&["init", "--hooks", "--global"], args].concat(),
+    )
+}
+
+/// One install covers every repository, and the tree's own file carries nothing. #137.
+#[test]
+fn hooks_global_writes_the_users_file_and_leaves_the_trees_alone() {
+    let (tree, home) = a_home();
+
+    let run = globally(&tree, &home, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let written = settings_at(&home.path(".claude/settings.json"));
+    assert_eq!(
+        commands(&written, "Stop"),
+        ["cargo fmt", "klin gate --hook --changed"],
+        "{written}"
+    );
+    assert_eq!(
+        commands(&written, "PreToolUse"),
+        ["klin guard"],
+        "{written}"
+    );
+    assert!(run.says("covers every repository"), "{}", run.out);
+    assert!(!run.says("Commit it"), "{}", run.out);
+    assert_eq!(tree.status(), "", "{}", run.out);
+}
+
+#[test]
+fn hooks_global_adds_no_second_entry_on_a_second_run() {
+    let (tree, home) = a_home();
+    home.write(".claude/settings.json", "{}\n");
+
+    assert_eq!(globally(&tree, &home, &[]).code, 0);
+    let run = globally(&tree, &home, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let written = settings_at(&home.path(".claude/settings.json"));
+    for event in ["Stop", "PreToolUse", "SessionStart", "UserPromptSubmit"] {
+        assert_eq!(commands(&written, event).len(), 1, "{event}: {written}");
+    }
+}
+
+#[test]
+fn hooks_global_for_a_host_with_no_adapter_is_refused() {
+    let (tree, home) = a_home();
+
+    let run = globally(&tree, &home, &["--host", "cursor"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("#67"), "{}", run.out);
+    assert!(run.says("--hooks --global --host"), "{}", run.out);
 }

@@ -25,13 +25,21 @@ pub struct Args {
     /// The host whose hook file --hooks writes, instead of the ones this tree names
     #[arg(long, requires = "hooks")]
     host: Option<String>,
+    /// Write the hooks to the host's user-level file, so one install covers every repository
+    #[arg(long, requires = "hooks")]
+    global: bool,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let file = wanted(args, start);
     let root = file.parent().unwrap_or(start).to_path_buf();
     if args.hooks {
-        return hooks::run(&root, args.host.as_deref(), out);
+        return hooks::run(
+            &hooks_root(args, &root)?,
+            args.host.as_deref(),
+            args.global,
+            out,
+        );
     }
     let held = read(&file)?;
     if held.is_some() && !args.add && !args.force {
@@ -40,6 +48,21 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         return Ok(0);
     }
     pins(&file, &root, held.unwrap_or_default(), args.force, out)
+}
+
+/// Where `--hooks` reads a host's marker directory and writes its file: this tree, or the
+/// home directory whose files every repository shares. Section 19.3.
+fn hooks_root(args: &Args, root: &Path) -> Result<PathBuf, Error> {
+    if !args.global {
+        return Ok(root.to_path_buf());
+    }
+    std::env::home_dir().ok_or_else(|| {
+        Error(
+            "--global writes the host's user-level file, and this system names no home \
+               directory — run it without --global to write this tree's file"
+                .to_string(),
+        )
+    })
 }
 
 fn already(file: &Path) -> String {
@@ -125,13 +148,20 @@ fn read(file: &Path) -> Result<Option<Map<String, Value>>, Error> {
     }
 }
 
+/// The file is replaced whole, through a neighbour and a rename, so a run that dies partway
+/// leaves the file it found rather than a truncated one. A host's settings are a person's.
 pub fn write(file: &Path, config: &Map<String, Value>) -> Result<(), Error> {
     let unwritable = |why: &dyn std::fmt::Display| {
         Error(format!("{} could not be written: {why}", file.display()))
     };
     let text = serde_json::to_string_pretty(&Value::Object(config.clone()))
         .map_err(|why| unwritable(&why))?;
-    std::fs::write(file, text + "\n").map_err(|why| unwritable(&why))
+    let beside = file.with_extension(format!("klin-{}", std::process::id()));
+    std::fs::write(&beside, text + "\n").map_err(|why| unwritable(&why))?;
+    std::fs::rename(&beside, file).map_err(|why| {
+        let _ = std::fs::remove_file(&beside);
+        unwritable(&why)
+    })
 }
 
 /// Every section the tree can say for itself, what it wrote, and one `derived:` line per value
