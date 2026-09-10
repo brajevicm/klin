@@ -140,6 +140,28 @@ fn a_span_that_is_not_a_path_is_not_read() {
 }
 
 #[test]
+fn a_wildcard_a_link_and_a_line_suffix_are_read_as_the_syntax_says() {
+    let tree = Tree::new();
+    tree.write("src/a.rs", "");
+    let doc = tree.write(
+        "docs/arch.md",
+        "See `src/a.rs:12`, every `*.rs`, [the gone one](src/gone.rs) and `src/gone.rs:3`.\n",
+    );
+    let run = tree.run(&[
+        "doc-citations",
+        "--file",
+        &doc.display().to_string(),
+        "--root",
+        &tree.at(""),
+    ]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL: 1 new citation(s)"), "{}", run.out);
+    assert!(run.says("src/gone.rs"), "{}", run.out);
+    assert!(!run.says("src/a.rs"), "{}", run.out);
+    assert!(!run.says("*.rs"), "{}", run.out);
+}
+
+#[test]
 fn a_missing_document_is_a_tool_error() {
     let tree = Tree::new();
     let run = tree.run(&[

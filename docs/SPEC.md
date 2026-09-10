@@ -851,6 +851,99 @@ The escapes table gains three rows for test-disabling constructs it lacks:
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
 `@Disabled`, `t.Skip` and `XCTSkip`, are already there.
 
+#### 8.2.1 Measurement rules of the shipped checks
+
+The table above names what each shipped check measures. This section states
+how, so a second implementation reproduces klin's own numbers and so a rule
+that looks wrong is disputed as a rule, not rediscovered in source. Every
+rule here is pinned by a CLI test under `tests/`, named beside it. #18 owns
+the configuration keys that choose roots, languages and exclusions, and
+links here.
+
+**`doc-size` counts words.** A word is a maximal run of characters that are
+not Unicode whitespace, as `White_Space` defines it. A no-break space and an
+em space split words the way an ASCII space does. Nothing is stripped: a
+heading marker, a fence, a backticked span, an emphasis marker and every
+token inside a code block are words. A byte sequence that is not valid UTF-8
+is decoded lossily, and each replacement character is part of a word, never
+an error. The count compares to the ceiling with `words > ceiling` failing,
+so a document exactly at its ceiling passes, and lands inside the two
+percent margin that adds a WARN line. Pinned by
+`a_word_is_a_run_of_non_whitespace_so_markup_counts_and_unicode_spaces_split`
+and `a_byte_that_is_not_utf8_is_read_as_one_word_not_an_error` in
+`tests/doc_size.rs`. Known limit: the count rewards terse markup and
+punishes fenced examples equally. That is a design choice for a separate
+ticket, not a defect of the rule.
+
+**`escapes` and `stubs` aggregate matches into sites.** A site is one file
+plus the text of one line with leading and trailing whitespace trimmed. Every
+match of every pattern in the language's table, on every line whose trimmed
+text is equal, lands on that one site. Its `count` is the number of those
+matches. Its label and remedy are the ones of the first pattern, in table
+order, that matched a line with that text, and its line is the first line
+that pattern matched. The language tables come first, in the order the
+config names them, and the project's own `patterns` after them. A line that carries two kinds is one site labelled by
+the earlier row, and a second copy of that line, indented differently, adds
+its matches to the same site rather than opening another. `escapes` reads
+the text as written, so a pattern inside a string literal is a match, and it
+leaves an inline Rust test module out unless `skip_rust_tests` is `false`.
+`stubs` throws away a match that lies wholly inside a quoted span on one
+line, judges a test module like any other code, and refuses the key. Pinned by
+`repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
+`a_line_carrying_two_escape_kinds_counts_both_under_the_first` and
+`the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in
+`tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
+line. A finding that says `unwrap x4` may hold two `expect` calls.
+
+**`doc-citations` reads backticked paths, not Markdown links.** On each line,
+backticks pair from the left, and an unpaired trailing backtick opens
+nothing. A span is a citation when, after trimming and dropping everything
+from the first colon on, it holds no space and no `*`, it ends with one of the
+configured extensions, the default list being the source, document and
+manifest extensions the module names, and it holds a `/` or a `.`. So `` `src/a.rs:12` `` cites
+`src/a.rs`, and `` `*.rs` ``, `` `a b.rs` `` and `[a](src/a.rs)` cite
+nothing. Any citation resolves when a root holds a file at that path. A path with
+a `/` resolves nowhere else. A bare filename no root holds directly
+resolves when exactly one file under the roots has that basename, is
+ambiguous when several do, and resolves nowhere when none does. Identity is
+the document plus the cited path after trimming and the colon strip, so the same stale string on two lines is one site with `count` 2, and the
+same string moved to another line is held. Pinned by
+`a_span_that_is_not_a_path_is_not_read`,
+`a_wildcard_a_link_and_a_line_suffix_are_read_as_the_syntax_says`,
+`a_bare_filename_resolves_when_exactly_one_file_under_the_roots_has_that_name`,
+`two_candidates_is_ambiguity_reported_with_both`,
+`a_stale_citation_moved_to_another_line_is_held` and
+`the_same_stale_string_cited_once_more_is_worsened_with_the_count` in
+`tests/doc_citations.rs`. Known limit: a citation split across two lines, a
+path in a Markdown link, and a path with a space are never read.
+
+**`complexity` measures each function on its own.** The unit is a function
+node of the language's grammar, and an accessor or initializer body counts
+as a function of its own. Cyclomatic complexity starts at one and adds one
+for each decision node and each boolean operator in the language's tables,
+walked through the function's body. A nested function is not walked: it is
+excluded from the count of the function around it and measured as a site of
+its own, at its own declaration line. The `default` arm of a Java or Swift
+`switch`, the `else` arm of a Kotlin `when`, and a single unguarded
+catch-all arm of a `match` or `case` add nothing. `lines` is the
+count of source lines from the first line of the declaration to the last
+line of its body, both inclusive, so a one-line function is 1. The
+hand-checked numbers per language are the contract, in
+`*_functions_carry_their_hand_checked_numbers` for Rust, Python, TypeScript,
+Go, Java, Ruby, Swift and Kotlin, with
+`a_nested_function_is_measured_on_its_own_not_folded_into_the_one_around_it`,
+`a_fall_through_arm_is_not_a_decision`,
+`a_guarded_catch_all_arm_is_still_a_decision` and
+`an_accessor_or_initializer_body_is_measured_like_any_other_function` in
+`tests/complexity.rs`. Known limit: which grammar nodes are decisions is per
+language and fixed in the binary. Two languages that express one construct
+differently may count it differently, and the fixtures are the record of
+which choice was made.
+
+None of these rules asks another implementation to agree with klin. They
+state what klin's own tests hold, per ADR 0025, so a change to one is a
+change to the spec and to a test in the same commit.
+
 ### 8.3 The linter seam
 
 The seam ships in two steps. The first needs no second tree and fits the hook
@@ -1461,6 +1554,11 @@ Core:
   gives one a value that is not a number, is exit 2, unmatched accepted
   entry is a NOTE and a strict failure,
   a failure prints the site it matched and both values.
+- Measurement rules (8.2.1): a document whose words are split by Unicode
+  spaces and hold markup is counted at the ceiling boundary, a byte that is
+  not UTF-8 is one word, a repeated line of two escape kinds fails as one site
+  with the first label and every match counted, a backticked span that is not
+  a path is not read, a nested function is measured on its own.
 - Each check: over, at, under the ceiling, a file it cannot read with
   `--hook`, with neither flag and with `--strict`, of which the first is a
   NOTE and the other two exit 2, scope restricts both sides, `--json` shape

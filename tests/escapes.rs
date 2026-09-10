@@ -733,3 +733,26 @@ fn a_focused_or_expected_failure_test_is_a_new_escape_and_holds_at_the_base() {
     let held = tree.run(&["escapes", "--strict"]);
     assert_eq!(held.code, 0, "{}", held.out);
 }
+
+const MIXED: &str = concat!("a.", "unwrap(); b.", "expect(\"x\");");
+
+#[test]
+fn repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted()
+ {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        &format!("{MIXED}\nfn pad() {{}}\n    {MIXED}\n"),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL: 1 new escape site(s)"), "{}", run.out);
+    assert!(
+        run.says(&format!("src/lib.rs:1  unwrap x4  {MIXED}")),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("src/lib.rs:3"), "{}", run.out);
+    assert!(!run.says("expect "), "{}", run.out);
+}
