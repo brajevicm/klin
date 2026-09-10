@@ -595,6 +595,26 @@ fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
+#[test]
+fn hook_says_nothing_in_a_tree_that_holds_no_config() {
+    let tree = Tree::new();
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.out, "", "{:?}", run.out);
+    assert!(!tree.path(".git/klin").exists(), "wrote state");
+}
+
+#[test]
+fn gate_by_hand_in_a_tree_that_holds_no_config_still_names_what_is_missing() {
+    let tree = Tree::new();
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("klin.json does not exist"), "{}", run.out);
+    assert!(run.says("nothing to gate"), "{}", run.out);
+}
+
 const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 

@@ -204,6 +204,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         );
         return Ok(1);
     }
+    if args.hook && !config::present(args.config.as_deref(), start) {
+        return Ok(0);
+    }
     if args.hook
         && let Some(problem) = unfixable_config(args, start)
     {

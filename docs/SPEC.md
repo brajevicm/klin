@@ -421,6 +421,12 @@ base already holds is `held`, not `new`. A build that already fails, or a
 file no grammar reads, is judged under section 14 and is not part of this
 promise.
 
+Under `--hook` the file is the marker that the repository opted in. When no
+`klin.json` resolves, `klin gate --hook` MUST exit 0, print nothing and write
+no state, before it surveys the tree. A `--config PATH` that names no file
+reads the same way. `klin gate` without `--hook` keeps the exit 2 that names
+the file and the sections that would fill it. ADR 0028.
+
 One configuration per repository, at the root. Sections carry roots, so a
 monorepo is many roots in one file. Discovery walks up only to find that file
 from a subdirectory. A configuration per package is not supported.
@@ -1327,6 +1333,9 @@ klin gate --hook --changed
 
 The host adapter reads which host called from the event, so no flag is
 needed in the hook line. `--host NAME` overrides detection.
+
+A stop in a tree that holds no `klin.json` prints nothing and blocks
+nothing, per 5.1.
 
 ### 9.3 The block-once policy
 

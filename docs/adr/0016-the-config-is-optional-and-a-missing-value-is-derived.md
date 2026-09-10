@@ -1,6 +1,7 @@
 # The config is optional, and a missing value is derived from the derivation commit
 
-> Supersedes ADR 0005 and the `--strict` rule of ADR 0010.
+> Supersedes ADR 0005 and the `--strict` rule of ADR 0010. ADR 0028 amends
+> this for the `--hook` path: there the file is the opt-in marker.
 
 ADR 0005 held two rules apart. A key a gate needs and does not find is an
 error naming the key, never a default. And `init` writes every section it can
