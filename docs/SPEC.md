@@ -2049,8 +2049,8 @@ order of least friction for the person:
 
 1. The install script the release carries, `klin-installer.sh`, run through
    `sh`. It detects the platform, verifies the checksum it was generated
-   with, and puts `klin` in `~/.local/bin`, or in the directory
-   `KLIN_INSTALL_DIR` names. Each release carries the script that installs
+   with, and puts `klin` and `klin-update` in `~/.local/bin`, or in the
+   directory `KLIN_INSTALL_DIR` names. Each release carries the script that installs
    that release, so a URL under a tag pins a version.
 2. A Homebrew tap, for macOS and Linux users who already have brew.
 3. `npm install --save-dev klin`, for a JavaScript project. The package holds
@@ -2143,5 +2143,9 @@ trees are measured by one binary, so an upgrade changes nothing about any
 verdict except where a new check applies. A new derivable check runs on the
 first stop after the upgrade, against a derived ceiling from the base tree,
 so it is green on arrival. The plugin pins its own version and upgrades when
-the plugin does. The script and the package managers upgrade when the person
-asks.
+the plugin does, through `/plugin marketplace update` or the host's
+auto-update. Every other route upgrades when the person asks. `klin update`
+runs the `klin-update` beside the binary, or the one PATH resolves, which
+installs the newest release over the current one, and its exit code is the
+updater's. Where no updater is found, `klin update` says so, names the
+installer, and exits 2.

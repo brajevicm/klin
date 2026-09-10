@@ -26,6 +26,7 @@ mod state;
 mod stubs;
 mod survey;
 mod turn;
+mod update;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -69,11 +70,14 @@ enum Command {
     Radius(turn::Args),
     /// Move the turn stamp to the working tree, which only a person does
     Turn(turn::Moved),
+    /// Install the newest release over this binary, through the klin-update beside it
+    Update,
 }
 
 fn main() -> ExitCode {
     match Cli::parse().command {
         Command::Guard(args) => ExitCode::from(guard::run(&args)),
+        Command::Update => ExitCode::from(update::run()),
         command => report(|start, out| ran(&command, start, out)),
     }
 }
@@ -99,7 +103,8 @@ fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8,
         | Command::Cache(_)
         | Command::Guard(_)
         | Command::Radius(_)
-        | Command::Turn(_) => {
+        | Command::Turn(_)
+        | Command::Update => {
             return None;
         }
     })
