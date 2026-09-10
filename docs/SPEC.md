@@ -2009,13 +2009,19 @@ it. Every route installs the binary once and then writes hook lines.
 
 ### 19.1 The binary
 
-A pushed tag builds the binary for macOS and Linux, on x86_64 and arm64, and
-attaches the four binaries and one checksum file to a GitHub release. Every
-route below downloads from that release and MUST verify the checksum. The
-routes, in order of least friction for the person:
+A pushed tag `vX.Y.Z` builds the binary for macOS and Linux, on x86_64 and
+arm64, and attaches the four archives, a `.sha256` beside each one, a
+`sha256.sum` over all of them, and the install script to a GitHub release.
+`dist` runs that pipeline, so its artifact names and its install script are
+what a route consumes. ADR 0026 records that choice. Every route below
+downloads from that release and MUST verify the checksum. The routes, in
+order of least friction for the person:
 
-1. An install script: `curl -fsSL <url>/install.sh | sh`, with `--version` to
-   pin one release. Puts `klin` on PATH.
+1. The install script the release carries, `klin-installer.sh`, run through
+   `sh`. It detects the platform, verifies the checksum it was generated
+   with, and puts `klin` in `~/.local/bin`, or in the directory
+   `KLIN_INSTALL_DIR` names. Each release carries the script that installs
+   that release, so a URL under a tag pins a version.
 2. A Homebrew tap, for macOS and Linux users who already have brew.
 3. `npm install --save-dev klin`, for a JavaScript project. The package holds
    no compiled code. Its install step downloads the release for the host and

@@ -1,0 +1,20 @@
+# dist builds and publishes the release
+
+`dist` (formerly `cargo-dist`) owns the release pipeline. A pushed tag runs
+the workflow `dist` generates, which builds the four targets, writes the
+checksums, generates the install script, and creates the GitHub release.
+klin writes no release YAML and no install script of its own.
+
+The cost is that `dist` names the artifacts, not klin. Section 19.1 once
+asked for four bare binaries called `klin-<os>-<arch>`, one `SHA256SUMS`, and
+an `install.sh` in the repository taking `--version` and `--dir`. `dist`
+publishes `klin-<target-triple>.tar.xz` archives, a `.sha256` beside each,
+one `sha256.sum`, and a `klin-installer.sh` that pins its own version and
+reads `KLIN_INSTALL_DIR`. The `dist` shapes win, because a route that
+consumes them stays on the tool's supported path, and the tool also generates
+the Homebrew tap and the npm package that routes 2 and 3 of 19.1 need.
+
+`dist plan` runs on every pull request through the generated workflow, so a
+release configuration that no longer resolves fails before a tag exists. The
+version inside the binary comes from the `version` key in `Cargo.toml`, which
+the tag must match, so a release is a version bump and a tag.
