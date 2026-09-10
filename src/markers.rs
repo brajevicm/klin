@@ -7,6 +7,7 @@ use serde_json::Value;
 use tree_sitter::{Node, Parser};
 
 use crate::base;
+use crate::complexity;
 use crate::config::{Config, Error, Flags};
 use crate::coverage::{self, Files};
 use crate::files;
@@ -35,6 +36,8 @@ pub struct Kind {
     pub skips_tests: bool,
     /// Whether a match that lies inside a string literal is thrown away.
     pub skips_literals: bool,
+    /// Whether the function walk judges body shapes too, which only a parser can see. #114.
+    pub reads_shapes: bool,
     pub evaluator: Evaluator<'static>,
 }
 
@@ -76,6 +79,9 @@ struct Pattern {
 struct Set {
     suffixes: Vec<String>,
     patterns: Vec<Pattern>,
+    /// Whether the function walk judges the body shapes of the files this set reads. A set the
+    /// project's own patterns make is not a language, so it names no shapes. #114.
+    shapes: bool,
 }
 
 struct Spec {
@@ -289,6 +295,7 @@ fn language_sets(kind: &Kind, config: &Config, named: &[String]) -> Result<Vec<S
         .into_iter()
         .map(|set| {
             Ok(Set {
+                shapes: kind.reads_shapes,
                 suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
                 patterns: compiled(
                     kind,
@@ -321,6 +328,7 @@ fn project_set(
         suffixes.push(EVERY_FILE.to_string());
     }
     Ok(Set {
+        shapes: false,
         suffixes,
         patterns: compiled(kind, config, project.into_iter())?,
     })
@@ -429,6 +437,7 @@ fn findings(
     let mut cache: BTreeMap<String, Skipped> = BTreeMap::new();
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
+    let mut shaped: BTreeSet<String> = BTreeSet::new();
     let mut skipped = 0;
     for set in &search.sets {
         let suffixes: Vec<&str> = set.suffixes.iter().map(String::as_str).collect();
@@ -452,6 +461,18 @@ fn findings(
             let rel = files::relative(&file, repo_root);
             let past = cached(kind, search, &rel, &text, &mut cache);
             skipped += tally(set, &rel, &text, &past, &mut seen);
+            if set.shapes && shaped.insert(rel.clone()) {
+                for stub in complexity::stubs(&rel, &text) {
+                    record(
+                        &mut seen,
+                        &rel,
+                        stub.line,
+                        &stub.text,
+                        stub.name,
+                        stub.remedy,
+                    );
+                }
+            }
             measured.insert(rel);
         }
     }
@@ -512,7 +533,7 @@ fn tally(
                 continue;
             }
             let body = lines.get(line as usize - 1).unwrap_or(&"").trim();
-            record(seen, rel, line, body, pattern);
+            record(seen, rel, line, body, &pattern.name, &pattern.remedy);
         }
     }
     skipped
@@ -554,14 +575,15 @@ fn record(
     file: &str,
     line: u64,
     text: &str,
-    pattern: &Pattern,
+    name: &str,
+    remedy: &str,
 ) {
     seen.entry((file.to_string(), text.to_string()))
         .and_modify(|tally| tally.count += 1)
         .or_insert(Tally {
             line,
-            name: pattern.name.clone(),
-            remedy: pattern.remedy.clone(),
+            name: name.to_string(),
+            remedy: remedy.to_string(),
             count: 1,
         });
 }

@@ -17,7 +17,8 @@ const SLASH: &str = r"(?://|/\*)[^\n]*\b(?:TODO|FIXME|XXX|HACK)\b";
 const HASH: &str = r"#[^\n]*\b(?:TODO|FIXME|XXX|HACK)\b";
 
 /// The markers of spec 8.2 that one line states. A body only a parser can judge, such as `pass`
-/// as the sole body of a function, belongs to the function walk and is not here. #114.
+/// as the sole body of a function, is not here: `complexity::stubs` reads it from the function
+/// walk, and `reads_shapes` puts what it finds on the same sites. #114.
 const LANGUAGES: &[Language] = &[
     Language {
         names: &["go"],
@@ -67,6 +68,7 @@ const KIND: Kind = Kind {
     label: LABEL,
     skips_tests: false,
     skips_literals: true,
+    reads_shapes: true,
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "stub site(s)",

@@ -694,8 +694,8 @@ fn functions(
     Ok(found)
 }
 
-/// Every function one source text holds, and `None` when the grammar rejects the text.
-fn parsed(source: &str, file: &str, language: &Language) -> Result<Option<Vec<Function>>, Error> {
+/// The parse of one source text, and `None` when the grammar rejects it.
+fn tree_of(source: &str, language: &Language) -> Result<Option<tree_sitter::Tree>, Error> {
     let mut parser = Parser::new();
     parser.set_language(&(language.grammar)()).map_err(|why| {
         Error(format!(
@@ -703,8 +703,14 @@ fn parsed(source: &str, file: &str, language: &Language) -> Result<Option<Vec<Fu
             language.name
         ))
     })?;
-    let tree = parser.parse(source, None);
-    let Some(tree) = tree.filter(|tree| !tree.root_node().has_error()) else {
+    Ok(parser
+        .parse(source, None)
+        .filter(|tree| !tree.root_node().has_error()))
+}
+
+/// Every function one source text holds, and `None` when the grammar rejects the text.
+fn parsed(source: &str, file: &str, language: &Language) -> Result<Option<Vec<Function>>, Error> {
+    let Some(tree) = tree_of(source, language)? else {
         return Ok(None);
     };
     let lines: Vec<&str> = source.lines().collect();
@@ -843,6 +849,197 @@ fn mentions(text: &str, marker: &str) -> bool {
             .next_back()
             .is_none_or(|before| !before.is_alphanumeric() && before != '_' && before != '.')
     })
+}
+
+/// The placeholder body shapes of spec 8.2, and the remedy each one carries. A shape is what a
+/// line pattern cannot see, so `stubs` reads it from this walk. #114.
+pub struct Stub {
+    pub line: u64,
+    pub text: String,
+    pub name: &'static str,
+    pub remedy: &'static str,
+}
+
+const PASS_BODY: (&str, &str) = ("pass body", "implement the body");
+const ELIDED_BODY: (&str, &str) = ("elided body", "implement the body");
+const EMPTY_TEST: (&str, &str) = ("empty test", "write the assertion the test name promises");
+
+/// A comment that stands in for the body it replaces, once the comment markers and the
+/// whitespace are off it. Fixed in the binary, the way the marker table is.
+const ELISIONS: &[&str] = &["...", "rest of the"];
+
+/// The body a shape can be read off: a run of statements, and no expression a function returns.
+/// A concise arrow body such as `() => value` is one expression and does the work of one.
+const BODY_BLOCKS: &[&str] = &[
+    "block",
+    "statement_block",
+    "body_statement",
+    "function_body",
+];
+
+/// A decorator that declares a body is meant to be empty, so no shape of it is a stub.
+const ABSTRACT_DECORATORS: &[&str] = &["abstractmethod", "abstractproperty", "overload"];
+
+/// A base class whose methods declare a shape and no body.
+const ABSTRACT_BASES: &[&str] = &["Protocol", "ABC"];
+
+/// Every placeholder body shape one source text holds, at the declaration line of the function
+/// that holds it. Nothing for a path no grammar here reads, and nothing for a text the grammar
+/// rejects. Spec 8.2.
+pub fn stubs(path: &str, source: &str) -> Vec<Stub> {
+    let Some(language) = language_of(path) else {
+        return Vec::new();
+    };
+    let Some(tree) = tree_of(source, language).ok().flatten() else {
+        return Vec::new();
+    };
+    let lines: Vec<&str> = source.lines().collect();
+    let mut out = Vec::new();
+    shapes(
+        tree.root_node(),
+        language,
+        source.as_bytes(),
+        &lines,
+        &mut out,
+    );
+    out.sort_by_key(|stub| stub.line);
+    out
+}
+
+fn shapes(node: Node, language: &Language, source: &[u8], lines: &[&str], out: &mut Vec<Stub>) {
+    if language.functions.contains(&node.kind()) {
+        let from = node.start_position().row;
+        let to = node
+            .end_position()
+            .row
+            .min(lines.len().saturating_sub(1))
+            .max(from);
+        let row = declaration_row(lines, from, to);
+        if let Some((name, remedy)) = shape(node, language, source, lines, row) {
+            out.push(Stub {
+                line: row as u64 + 1,
+                text: line_at(lines, row),
+                name,
+                remedy,
+            });
+        }
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        shapes(child, language, source, lines, out);
+    }
+}
+
+/// The shape of one function's body, and `None` when the body does work or when the
+/// declaration is abstract. A declaration that carries no body at all, such as a trait method
+/// without a default or an interface method, has no shape to judge.
+fn shape(
+    node: Node,
+    language: &Language,
+    source: &[u8],
+    lines: &[&str],
+    row: usize,
+) -> Option<(&'static str, &'static str)> {
+    let body = node.child_by_field_name("body")?;
+    if !BODY_BLOCKS.contains(&body.kind())
+        || !owns_the_declaration(node, language)
+        || declared_abstract(node, source)
+    {
+        return None;
+    }
+    let mut cursor = body.walk();
+    let children: Vec<Node> = body.named_children(&mut cursor).collect();
+    let (comments, statements): (Vec<&Node>, Vec<&Node>) = children
+        .iter()
+        .partition(|child| child.kind().contains("comment"));
+    match statements.as_slice() {
+        [only] if only.kind() == "pass_statement" => Some(PASS_BODY),
+        [] if comments.iter().any(|child| elides(child, source)) => Some(ELIDED_BODY),
+        [] if marks_a_test(lines, row) => Some(EMPTY_TEST),
+        _ => None,
+    }
+}
+
+/// Whether the declaration line this function is judged at is its own. A callback written
+/// inside the call that declares a test shares that line, and the shape of its body is not the
+/// shape of the test's.
+fn owns_the_declaration(node: Node, language: &Language) -> bool {
+    let row = node.start_position().row;
+    let mut above = node.parent();
+    while let Some(holder) = above {
+        if holder.start_position().row == row && language.functions.contains(&holder.kind()) {
+            return false;
+        }
+        above = holder.parent();
+    }
+    true
+}
+
+fn elides(comment: &Node, source: &[u8]) -> bool {
+    let text = comment
+        .utf8_text(source)
+        .unwrap_or_default()
+        .trim_start_matches(['/', '#', '*', '!', '-'])
+        .trim_end_matches(['/', '*'])
+        .trim()
+        .to_lowercase();
+    ELISIONS.iter().any(|elision| text.starts_with(elision))
+}
+
+/// Whether a declaration above this function says its body is meant to be empty: a decorator
+/// that names it abstract, or a class that states a shape and no body.
+fn declared_abstract(node: Node, source: &[u8]) -> bool {
+    let mut above = node.parent();
+    while let Some(holder) = above {
+        match holder.kind() {
+            "decorated_definition" if decorated_with(holder, source, ABSTRACT_DECORATORS) => {
+                return true;
+            }
+            "class_definition" => {
+                return holder
+                    .child_by_field_name("superclasses")
+                    .is_some_and(|bases| based_on(bases, source, ABSTRACT_BASES));
+            }
+            _ => {}
+        }
+        above = holder.parent();
+    }
+    false
+}
+
+/// Whether one of this definition's decorators names one of these. The name a decorator calls
+/// is read on its own, so an argument that spells `overload` inside a route is not one.
+fn decorated_with(node: Node, source: &[u8], wanted: &[&str]) -> bool {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .filter(|child| child.kind() == "decorator")
+        .filter_map(|child| child.named_child(0))
+        .any(|called| named(callee(called), source, wanted))
+}
+
+/// Whether one of the bases in this argument list names one of these. Whole names only, so
+/// `StoreABC` is not `ABC`.
+fn based_on(bases: Node, source: &[u8], wanted: &[&str]) -> bool {
+    let mut cursor = bases.walk();
+    bases
+        .named_children(&mut cursor)
+        .any(|base| named(callee(base), source, wanted))
+}
+
+/// The name a call or a subscript is written on, and the node itself when it is a name already.
+fn callee(node: Node) -> Node {
+    match node.kind() {
+        "call" => node.child_by_field_name("function").unwrap_or(node),
+        "subscript" => node.child_by_field_name("value").unwrap_or(node),
+        _ => node,
+    }
+}
+
+/// Whether this name, or the last segment of this dotted name, is one of these.
+fn named(node: Node, source: &[u8], wanted: &[&str]) -> bool {
+    let text = node.utf8_text(source).unwrap_or_default();
+    let tail = text.rsplit('.').next().unwrap_or(text);
+    wanted.contains(&tail)
 }
 
 fn language_of(path: &str) -> Option<&'static Language> {

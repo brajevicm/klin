@@ -204,3 +204,185 @@ fn skip_rust_tests_is_refused_because_a_stub_in_a_test_is_a_stub() {
     assert!(run.says("skip_rust_tests"), "{}", run.out);
     assert!(run.says("Delete the key."), "{}", run.out);
 }
+
+/// The body shapes of #114. Every shape is judged by the function walk, so a config that names
+/// the language it is written in reads it.
+fn shaped() -> Tree {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "stubs": { "roots": ["src"],
+             "languages": ["rust", "python", "typescript"] } }"#,
+    );
+    tree
+}
+
+#[test]
+fn a_pass_body_fails_and_the_same_declaration_with_a_body_stays_green() {
+    let tree = shaped();
+    tree.write("src/a.py", "def save(key):\n    pass\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/a.py:1  pass body — implement the body"),
+        "{}",
+        run.out
+    );
+
+    tree.write("src/a.py", "def save(key):\n    write(key)\n");
+    let rewritten = tree.run(&["stubs"]);
+    assert_eq!(rewritten.code, 0, "{}", rewritten.out);
+}
+
+#[test]
+fn an_elided_body_fails_and_a_comment_that_elides_nothing_stays_green() {
+    let tree = shaped();
+    tree.write(
+        "src/a.rs",
+        "fn f() {\n    // ...\n}\nfn g() {\n    // rest of the code\n}\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/a.rs:1  elided body — implement the body"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("src/a.rs:4  elided body"), "{}", run.out);
+
+    tree.write(
+        "src/a.rs",
+        "fn f() {\n    // the caller holds the lock\n    work();\n}\n",
+    );
+    let written = tree.run(&["stubs"]);
+    assert_eq!(written.code, 0, "{}", written.out);
+}
+
+#[test]
+fn an_empty_test_body_fails_and_a_test_rewritten_with_the_same_declaration_stays_green() {
+    let tree = shaped();
+    tree.write("src/a.rs", "#[test]\nfn test_it() {}\nfn main() {}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/a.rs:2  empty test — write the assertion the test name promises"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+
+    tree.write(
+        "src/a.rs",
+        "#[test]\nfn test_it() {\n    assert!(true);\n}\nfn main() {}\n",
+    );
+    let written = tree.run(&["stubs"]);
+    assert_eq!(written.code, 0, "{}", written.out);
+}
+
+#[test]
+fn an_empty_test_body_a_call_declares_fails() {
+    let tree = shaped();
+    tree.write(
+        "src/a.ts",
+        "it(\"does nothing\", () => {});\nfunction empty() {}\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/a.ts:1  empty test"), "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_body_shape_the_base_holds_is_held() {
+    let tree = shaped();
+    tree.write("src/a.py", "def save(key):\n    pass\n");
+    tree.base();
+
+    let run = tree.run(&["stubs", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("OK: 1 stub site(s) in the tree, all held at the base"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn pass_on_an_exception_class_and_on_an_abstract_declaration_is_not_a_stub() {
+    let tree = shaped();
+    tree.write(
+        "src/a.py",
+        "from abc import ABC, abstractmethod\nfrom typing import Protocol\n\n\n\
+         class Missing(Exception):\n    pass\n\n\n\
+         class Store(ABC):\n    @abstractmethod\n    def put(self, key):\n        pass\n\n\n\
+         class Reader(Protocol):\n    def read(self) -> str:\n        pass\n",
+    );
+    tree.write("src/a.rs", "trait Store {\n    fn put(&self);\n}\n");
+    tree.write(
+        "src/a.ts",
+        "interface Store {\n  put(key: string): void;\n}\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 0 stub site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_marker_and_a_body_shape_on_one_declaration_line_are_one_site() {
+    let tree = shaped();
+    tree.write("src/a.py", "def save(key):  # TODO write it\n    pass\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(run.says("src/a.py:1  comment marker x2"), "{}", run.out);
+}
+
+#[test]
+fn a_callback_on_the_line_of_a_test_declaration_is_not_an_empty_test() {
+    let tree = shaped();
+    tree.write(
+        "src/a.ts",
+        "it(\"logs\", () => withLogger(() => {}, run));\nit(\"returns\", () => value);\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 0 stub site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_decorator_or_a_base_whose_text_only_spells_a_marker_does_not_hide_a_pass_body() {
+    let tree = shaped();
+    tree.write(
+        "src/a.py",
+        "@app.route(\"/overload\")\ndef handler():\n    pass\n\n\n\
+         class Repo(StoreABC):\n    def put(self, key):\n        pass\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/a.py:2  pass body"), "{}", run.out);
+    assert!(run.says("src/a.py:7  pass body"), "{}", run.out);
+    assert!(run.says("2 new stub site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_project_pattern_alone_judges_no_body_shape() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "stubs": { "roots": ["src"], "patterns": { "banned": "NOCOMMIT" } } }"#,
+    );
+    tree.write("src/a.py", "def save(key):\n    pass\n");
+    tree.write("src/a.rs", "fn f() {\n    // ...\n}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 0 stub site(s)"), "{}", run.out);
+}

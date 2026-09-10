@@ -886,8 +886,8 @@ accepts it or the agent moves the note to the tracker. An abstract
 declaration whose body is meant to be empty, such as a trait method or a
 protocol, MUST NOT match. Identity is file plus line text, ratcheted on
 `count`, exactly like escapes. It SHOULD share the escapes engine and differ
-only in the table. #106 ships the line patterns first and the body shapes,
-which need the function walk, in a second ticket.
+only in the table. #106 shipped the line patterns and #114 the body shapes,
+which the function walk reads.
 
 The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
@@ -937,6 +937,45 @@ line, judges a test module like any other code, and refuses the key. Pinned by
 `the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in
 `tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
 line. A finding that says `unwrap x4` may hold two `expect` calls.
+
+**`stubs` judges three body shapes.** The function walk of `complexity`
+reads them, over the grammars of the languages the section names, and
+`stubs` records each one at the declaration line of the function that holds
+it, as one more match on that site. A set the project's own `patterns` make
+is not a language and carries no shapes. A shape is read off a body that
+holds a run of statements, so a concise arrow body such as `() => value` is
+one expression and does the work of one. A function whose body holds one
+`pass` statement is a `pass body`. A function whose body holds no statement,
+and one comment that starts with `...` or with `rest of the`
+case-insensitively once the comment markers are off it, is an `elided body`.
+A function whose body holds no statement, and whose declaration the
+language's test convention marks, is an `empty test`. A comment is not a
+statement in any of the three.
+
+A body meant to be empty is not a shape. A declaration that carries no body,
+such as a trait method without a default or an interface method, has none. A
+Python declaration under a decorator that names `abstractmethod`,
+`abstractproperty` or `overload` has none, and neither does one in a class
+whose bases name `Protocol` or `ABC`. Both are read as whole names, the last
+segment of a dotted one, so `StoreABC` is not `ABC` and a route argument
+that spells `overload` exempts nothing. `pass` in a class body, an exception
+class included, is not a function body and never matches. A function that
+starts on the declaration line of a function that holds it is not judged
+either, because the line it would be reported at is not its own: a callback
+written inside the call that declares a test carries the test's line and not
+its shape. Pinned by
+`a_pass_body_fails_and_the_same_declaration_with_a_body_stays_green`,
+`an_elided_body_fails_and_a_comment_that_elides_nothing_stays_green`,
+`an_empty_test_body_fails_and_a_test_rewritten_with_the_same_declaration_stays_green`,
+`pass_on_an_exception_class_and_on_an_abstract_declaration_is_not_a_stub`,
+`a_callback_on_the_line_of_a_test_declaration_is_not_an_empty_test` and
+`a_decorator_or_a_base_whose_text_only_spells_a_marker_does_not_hide_a_pass_body`
+in `tests/stubs.rs`. Known limit: another shape that stands in for work,
+such as `return null` or `{}` on a function no test convention marks, is not
+judged, and adding one is a spec change with its own legitimate-use fixture.
+Second known limit: a text the grammar rejects keeps its line patterns and
+loses its shapes, and the run says nothing about the loss, so a file that
+does not parse can only under-report.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens
@@ -1922,7 +1961,7 @@ Core, in this order:
 - [x] Cross-file move matching by body hash (4.4)
 - [x] `inventory` over test files and test functions, with the
       deleted-subject NOTE and the body-hash rename match
-- [ ] `stubs`, sharing the escapes engine, executable function bodies only,
+- [x] `stubs`, sharing the escapes engine, executable function bodies only,
       the empty test body included, with a legitimate-change fixture per row
 - [x] `sarif`, `after` only, delete `report`, `run`, read `report`, scoped to
       changed lines

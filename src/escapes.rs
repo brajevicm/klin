@@ -112,6 +112,7 @@ const KIND: Kind = Kind {
     label: LABEL,
     skips_tests: true,
     skips_literals: false,
+    reads_shapes: false,
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "escape site(s)",
