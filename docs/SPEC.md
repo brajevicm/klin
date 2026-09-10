@@ -38,11 +38,11 @@ and Derived, and asks `CONTEXT.md` to take them.
 | 0010 | Under `--strict` an unaccounted gate is exit 2. | Every applicable gate runs unless its section is `false`. The failure has nothing left to catch. | A gate whose section is derived cannot be unaccounted. Section 10. |
 | 0007 | Config keys preserve compatibility for differential tests. | One key vocabulary across sections. The differential test goes. | ADR 0009 already weakened the reason to a preference. `sources` in one section and `roots` in the next is a cost a user pays for a test klin no longer needs. |
 | 0003 | A file no grammar reads is exit 2 everywhere. | In the hook it is a NOTE. Outside the hook it stays exit 2. | An agent cannot fix a grammar. Blocking a stop on it costs a turn per stop with no remedy. |
-| 0011 | A non-reader naming a guarded path is refused. | It is `ask`. Only a clear write is `deny`. | Four read-only commands were refused in the session that wrote this draft. Section 9.4. |
+| 0011 | A non-reader naming a guarded path is refused. | It is `ask`. Only a clear write is `deny`. | Four read-only commands were refused in the session that wrote this draft. Section 9.4. ADR 0027 keeps the `ask` and shrinks the guarded set to `klin.json`. |
 | 0004 | The host's cap on consecutive blocks bounds the loop. | klin bounds its own blocks. | The cap is not in the host's current documentation. Section 9.3. |
 | 0015 | klin's state lives in `.klin/` at the tree root, with one `.gitignore` line. | State lives in the git directory, or under `KLIN_STATE_DIR`. No ignore line. | Per-worktree state has a native home that git never tracks and never lists. Section 7.4. |
 | 0002 | The plugin ships no binary. | The plugin ships a `bin/klin` wrapper that fetches the pinned release on first run. | The first reason, a pin beside committed baselines, went with ADR 0009. The second, `bin/` unavailable for organization-distributed plugins, is handled by falling back to PATH. Section 19. |
-| 0014, one line | The turn stamp is not guarded, because a report leaves nothing to gain. | The stamp is in the guarded set, and a missing stamp widens the window instead of closing it. | The stamp now holds the verdict that keeps a window open. A stamp that is gone is restored from its ref, or the stop judges the whole branch, so deleting it buys nothing. Sections 6.2 and 9.4. The rest of ADR 0014 stands. |
+| 0014, one line | The turn stamp is not guarded, because a report leaves nothing to gain. | The stamp is in the guarded set, and a missing stamp widens the window instead of closing it. | The stamp now holds the verdict that keeps a window open. A stamp that is gone is restored from its ref, or the stop judges the whole branch, so deleting it buys nothing. Sections 6.2 and 9.4. The rest of ADR 0014 stands. ADR 0027 reverses this row again: the stamp left the guarded set with everything but `klin.json`, and 9.4 carries the current rule. |
 
 ADR 0001, 0006, 0008 and 0012 stand as written.
 
@@ -75,7 +75,8 @@ worktree take a lock (6.5), the stamp ref moved under `refs/worktree/` (6.5),
 match 5.4, 6.2 and 6.6. The sixth, a content fingerprint of the working tree
 as report provenance, was replaced by deleting the report before `run` (8.3).
 The review also added the coverage regression rule (8.6, 10), verification
-files to the guard's `ask` list (9.4), the empty test body to `stubs` (8.2),
+files to the guard's `ask` list, which ADR 0027 later removed again (9.4),
+the empty test body to `stubs` (8.2),
 a finding id (11.2), and the paired scenarios of 17. `TODO` and `FIXME` stay
 in the `stubs` table because #106 had decided it.
 
@@ -529,9 +530,9 @@ every form from an agent, so `--force` is a person's flag. `init` MUST NOT
 edit `.gitignore`, because klin writes nothing that git could see.
 
 `init --hooks` writes the hook entries for each host it detects, or for the
-host `--host` names. Section 19.3. Like `init` itself and `turn reset`, it
-writes a guarded target, and it is a person's command. The guard refuses it
-from an agent.
+host `--host` names. Section 19.3. The hook file is not guarded (9.4), but
+`init` in any form is a person's command, so the guard refuses this one from
+an agent like it refuses `init` itself.
 
 `init` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
@@ -595,7 +596,7 @@ stop, a prompt counter, and the prompt mark of 6.2.1. `klin gate --hook`
 writes the verdict. `klin radius` applies the rule above and raises the
 counter by one on every session start and prompt submitted, whether or not
 the stamp moved. The counter is what makes "once per turn" in 9.3 literal,
-because the stamp itself moves only after a green stop. The stamp is
+because the stamp itself moves only after a green stop. The stamp is not
 guarded (9.4).
 
 #### 6.2.1 The prompt mark
@@ -761,9 +762,9 @@ only when a person runs it.
 
 klin's own state is three things: the turn stamp with the prompt mark of
 6.2.1, the build stamp, and the survey cache. All are per working tree. The
-cache is safe to delete. The two stamps are in the guarded set (9.4), because
-each holds a fact that keeps a block alive. Deleting the turn stamp buys nothing, because a stop without one
-judges the whole branch (6.2). They live in the state directory:
+cache is safe to delete. None of the three is guarded (9.4). Deleting the
+turn stamp buys nothing, because a stop without one judges the whole branch
+(6.2). They live in the state directory:
 
 - By default, `klin/` under the directory `git rev-parse --git-dir` returns.
   Git never tracks it, never lists it as untracked, `git clean` never removes
@@ -1352,46 +1353,44 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 ### 9.4 The guard's three decisions
 
-- `deny`: an edit tool whose `file_path` is `klin.json`, a host's hook file
-  or CODEOWNERS, a redirect onto one of those, a whole-tree restore, `init`
-  in any form, and `turn reset`. The reason names the file and says a person
-  changes it in a reviewed commit, or names the command a person runs
-  instead.
+The guarded set is one file: `klin.json`. A host's hook file, CODEOWNERS,
+klin's state directory, `refs/worktree/klin` and every verification file are
+ordinary files, and an edit to one of them is `allow`. ADR 0027 records why,
+and what it gives up.
 
-The guarded set is: `klin.json`, each host's hook file, CODEOWNERS, the state
-directory of 7.4, and `refs/worktree/klin`. The state directory and the ref
-are in the set for a different reason from the others. Nothing in them needs
-a reviewed commit to restore, and a deleted stamp is restored from the ref
-or replaced by a branch window (6.2), so a deletion gains nothing. They are
-in the set so that a write to them is a question a person answers, not a
-silent act. No `deny` is needed for them.
-- `ask`: a shell command outside the reader list whose arguments name a
-  guarded path, and an edit tool or a redirect whose target is the state
-  directory or the ref. The reason quotes the token that matched. The person
-  decides.
+- `deny`: an edit tool whose `file_path` is `klin.json`, a redirect onto it,
+  `init` in any form, and `turn reset`. The reason names the file and says a
+  person changes it in a reviewed commit, or names the command a person runs
+  instead. Nothing else denies. Every route klin cannot read as a clear write
+  to `klin.json` is an `ask` at most, because a deny leaves an agent no
+  remedy and ordinary work must not meet one.
+- `ask`: a shell command outside the reader list whose arguments name
+  `klin.json`. The reason quotes the token that matched. The person decides.
   The reader list of ADR 0011 gains `git rev-parse`, `git cat-file`, `git
   for-each-ref`, `du`, and `find` without `-delete`, `-exec`, `-execdir` or
-  `-ok`, so an agent can read a stamp or list the state directory without a
-  question.
-  Also an edit tool or non-reader command that names a verification file. The
-  verification files are a fixed table in the binary, not a config key: lint
-  configuration such as `.eslintrc*` and `eslint.config.*`, test
-  configuration such as `pytest.ini`, `jest.config.*` and the `[tool.pytest]`
-  and `[tool.coverage]` tables' files, coverage thresholds such as
-  `.coveragerc` and `codecov.yml`, and CI workflows under `.github/workflows`.
-  An agent that edits one of these can weaken every check that reads it
-  without touching `klin.json`, and klin cannot tell a loosening from a fix,
-  so a person looks. The table is `ask`, never `deny`, and the reason names
-  the file and says why klin asked.
-- `allow`: everything else, including any reader naming a guarded path, and
-  any glob that does not match a guarded name.
+  `-ok`.
+- `allow`: everything else, including any reader naming `klin.json`, any
+  glob that does not match it, and every file that left the guarded set.
 
-A glob matches a guarded name only when the glob, read as a pattern, matches
-it. An empty prefix MUST NOT match. Splitting a command into segments MUST
-honor single and double quotes (issue #90). The body of a heredoc is data:
-the guard matches the command words and every redirect target, including a
-command after the heredoc's terminator, and does not match the text between
-the delimiter and the terminator.
+A glob matches the guarded name only when the glob, read as a pattern,
+matches it. An empty prefix MUST NOT match. Splitting a command into segments
+MUST honor single and double quotes (issue #90). The body of a heredoc is
+data: the guard matches the command words and every redirect target,
+including a command after the heredoc's terminator, and does not match the
+text between the delimiter and the terminator.
+
+A command substitution starts a command of its own, and a quoting context of
+its own with it. The guard MUST find the heredoc a `$(` or a backtick opens,
+even inside a double quote, so a body passed as `--body "$(cat <<'EOF' ...
+EOF)"` is data and not a list of commands.
+
+A command substitution is a command of its own, so it leaves the line it sat
+in. The guard reads the command inside it on its own, and the words after the
+closing parenthesis stay with the command that owns them. So a reader inside
+a substitution exempts nothing outside it, and a reader outside one keeps the
+exemption for its own arguments. An unbalanced parenthesis ends the
+substitution early, which splits the command into more pieces than a shell
+would and can only add a question, never remove one.
 
 The guard MUST NOT read the configuration. It runs before the config loads.
 It MAY read `KLIN_STATE_DIR` and run `git rev-parse --git-dir` to learn the
@@ -1861,9 +1860,9 @@ Core:
 - Concurrency and worktrees: an old green stop that finishes after a new red
   stop does not write green, two worktrees keep independent stamps through
   `git gc --prune=now`, a stop that cannot take the lock writes no verdict.
-- Guard, verification files: an edit to a lint config, a test config, a
-  coverage threshold and a CI workflow is `ask`, and a read of each is
-  allowed.
+- Guard, the files that left the guarded set: an edit to a host's hook file,
+  CODEOWNERS, a lint config, a test config, a coverage threshold, a CI
+  workflow and klin's state directory is allowed.
 
 Paired scenarios. Every `stubs`, `escapes` and `inventory` pattern carries
 two fixtures, one shortcut that fails and one legitimate change that stays
@@ -1893,11 +1892,11 @@ green, because deterministic detection is not correct judgement:
   written.
 
 - Guard: one test per deny route including `init` and `turn reset`, one per
-  ask route including a write that names the state directory or
-  `refs/worktree/klin`, every reader allowed including `git rev-parse` and
-  `git cat-file` on the ref and `find` over the state directory, `find
-  -delete` over it is `ask`, glob does not match by empty prefix, quoted pipe
-  does not split, under 50 milliseconds.
+  ask route, every reader allowed including `git rev-parse` and `git cat-file`
+  on the ref, every file that left the guarded set allowed for both an edit
+  and a write, a heredoc opened inside a command substitution allowed, glob
+  does not match by empty prefix, quoted pipe does not split, under 50
+  milliseconds.
 - Init: pins exactly what the run would derive, writes only the config,
   `--add` leaves `false` alone, `--force` re-pins, never touches
   `.gitignore`, `--hooks` writes each host's file and leaves an existing
@@ -1934,9 +1933,8 @@ Core, in this order:
 
 - [ ] The hook reads the turn window, writes the verdict, restores a missing
       `turn` file from the ref, and judges the branch when both are gone
-- [ ] The guard denies `init` and `turn reset`, asks on the state directory,
-      `refs/worktree/klin` and the verification files of 9.4, and allows the
-      plumbing readers
+- [ ] The guard denies `init` and `turn reset`, asks on a non-reader that
+      names `klin.json`, and allows every file that left the guarded set
 
 - [ ] Survey at run time from the derivation commit, cached by it, derived
       values printed. Derived numbers come from the derivation commit's own
@@ -1969,7 +1967,7 @@ Core, in this order:
 - [ ] `CONTEXT.md` takes Window and Derived, README names the two
       conformance levels
 - [ ] New ADRs for each row of section 0 that is accepted, and one for the
-      stamp as a guarded, parented, ref-held commit
+      stamp as a parented, ref-held commit
 
 Next, after core is green, each with an unsolved problem named in section 8:
 
@@ -2078,8 +2076,8 @@ Neither host has a plugin that can carry a binary, so the binary comes from
 `.codex/` at the root, or takes `--host NAME`. It adds klin's entries and
 leaves every other entry alone. It MUST NOT overwrite an entry that already
 calls `klin`. The files are committed, so a teammate who clones gets the
-hooks, and CODEOWNERS SHOULD cover them. This command edits guarded files, so
-the guard refuses it from an agent, like `init` itself.
+hooks, and CODEOWNERS SHOULD cover them. The hook file is not guarded (9.4),
+but `init` in any form is refused from an agent, so this command is too.
 
 ### 19.4 CI
 
