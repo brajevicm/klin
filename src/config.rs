@@ -154,6 +154,27 @@ impl Config {
         })
     }
 
+    /// Whether the survey found no source root in this tree. The caller asks only when a check
+    /// that measures code takes its roots from the survey, so a config that names its own roots
+    /// surveys nothing for this. Spec 10, 14.
+    pub fn found_no_source_root(&self) -> bool {
+        self.derivation().roots.is_empty()
+    }
+
+    /// The `derived:` and `pinned:` lines about one section, which `--list` prints under the
+    /// gate that reads it. Empty without running the survey when the config pins every
+    /// derivable section, so `--list` on a fully pinned config walks no tree. Spec 10.
+    pub fn said_about(&self, section: &str) -> Vec<String> {
+        if !self.derives_anything() {
+            return Vec::new();
+        }
+        self.derived_said()
+            .iter()
+            .filter(|line| names(line, section))
+            .cloned()
+            .collect()
+    }
+
     /// The lines above, with the survey run if it has not run yet. The gate runner prints these
     /// once for the whole run, before any check reads a section of its own.
     pub fn derived_said(&self) -> &[String] {

@@ -184,7 +184,12 @@ fn a_gates_entry_leaves_its_check_underived() {
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.out.matches("complexity").count(), 1, "{}", run.out);
+    let rows = run
+        .out
+        .lines()
+        .filter(|line| line.starts_with("complexity"))
+        .count();
+    assert_eq!(rows, 1, "{}", run.out);
 }
 
 /// The ceiling comes from the derivation commit, so growing a document past it fails rather
