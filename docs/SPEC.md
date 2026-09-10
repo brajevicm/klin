@@ -1292,6 +1292,28 @@ Every check MUST:
 
 ### 9.1 Host adapter
 
+Hosts come in two kinds, and a port starts by naming which kind the host is.
+
+A shell-hook host runs a command with a JSON event on stdin and reads a
+decision from stdout or from the exit code. Claude Code, Codex CLI, Cursor
+and Hermes are this kind. Each one is a row in the host table, which holds
+the name, the marker directory, the project file, the user file, the file
+shape and the event mapping, and a variant in the host adapter, which reads
+the payload and writes the decision. A port of a shell-hook host touches
+those two places and nothing else.
+
+A program-hook host loads a module in its own process and has no shell hook.
+OpenCode and Pi are this kind, and klin cannot be the hook. A shim outside
+this crate translates the host's event into Claude Code's payload shape,
+spawns `klin <command> --host claude`, and translates the answer back. The
+shim is the whole port, and klin gains no variant for it.
+
+Two facts shape both kinds. The stop answer is the report text, and the
+adapter chooses the channel it goes out on: the exit code, stderr, or a JSON
+field. A host's guard event carries a list of paths, because one event may
+name more than one file, and the adapter maps that list onto the record
+below.
+
 One `Host` value, chosen from the event's shape or from `--host`, maps a host
 event to one internal record:
 
@@ -1310,9 +1332,9 @@ means "block this stop", whatever caused it. The verdict of section 4.9 lives
 in the report and in the `turn` file. Outside hook mode the exit code is the
 verdict.
 
-Cursor and Codex CLI adapters are separate tickets (#67, #68). Until they
-exist the README MUST NOT name those hosts. The adapter is the only module
-that reads a host's JSON.
+The Cursor and Codex CLI variants are separate tickets (#67, #68). Until
+they exist the README MUST NOT name those hosts. The adapter is the only
+module that reads a host's JSON.
 
 ### 9.2 Events
 
@@ -2071,8 +2093,9 @@ binary is a NOTE per 5.2, not a failure.
 
 ### 19.3 Cursor and Codex: a hooks file in the repository
 
-Neither host has a plugin that can carry a binary, so the binary comes from
-19.1 and `klin init --hooks` writes the host file:
+Both hosts are shell-hook hosts (9.1), and neither install route carries a
+binary the way Claude Code's plugin does. So the binary comes from 19.1 and
+`klin init --hooks` writes the host file:
 
 - Cursor reads `.cursor/hooks.json` at the project root, and its blocking
   events answer `allow`, `ask` or `deny`, which is the guard's vocabulary.
