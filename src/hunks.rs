@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -55,6 +53,12 @@ impl Hunks {
             by_path.extend(untracked(root));
         }
         Ok(Hunks { by_path })
+    }
+
+    /// Every file the window changed, which is the set a report older than one of them cannot
+    /// describe. Spec 8.3.
+    pub fn paths(&self) -> impl Iterator<Item = &str> {
+        self.by_path.keys().map(String::as_str)
     }
 
     pub fn ranges(&self, path: &str) -> &[Range] {

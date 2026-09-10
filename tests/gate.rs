@@ -216,7 +216,8 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\ncomplexity — runs\n\
          lockfile — needs a section a person writes\n\
          stubs — needs a section a person writes\n\
-         inventory — needs a section a person writes\n",
+         inventory — needs a section a person writes\n\
+         sarif — needs a section a person writes\n",
         "{:?}",
         run.out
     );
@@ -253,7 +254,8 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          lockfile — needs a section a person writes\n\
          escapes — needs a section a person writes\n\
          stubs — needs a section a person writes\n\
-         inventory — needs a section a person writes\n",
+         inventory — needs a section a person writes\n\
+         sarif — needs a section a person writes\n",
         "{:?}",
         run.out
     );
@@ -982,7 +984,8 @@ fn list_names_the_excluded_gates() {
         "doc-size — runs\ndoc-citations — runs\ncomplexity — runs\nescapes — excluded\n\
          lockfile — needs a section a person writes\n\
          stubs — needs a section a person writes\n\
-         inventory — needs a section a person writes\n",
+         inventory — needs a section a person writes\n\
+         sarif — needs a section a person writes\n",
         "{:?}",
         run.out
     );
@@ -1173,7 +1176,8 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
          complexity — excluded\nlockfile — needs a section a person writes\n\
          stubs — needs a section a person writes\n\
-         inventory — needs a section a person writes\n",
+         inventory — needs a section a person writes\n\
+         sarif — needs a section a person writes\n",
         "{:?}",
         run.out
     );

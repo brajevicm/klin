@@ -328,11 +328,18 @@ configured or derived instance of a check. A check declares:
 
 - `name`, the command name and the `--gate` name
 - `section`, the config key it reads
-- `compares_to_base`, whether it matches sites between two trees. Every check
-  with a `derive` MUST compare to the base, so that a tree with no config is
-  green (5.1). A check that judges one tree against a number exists only for
-  a number a person pinned.
+- `needs`, what the check needs of the base: nothing, the commit the window
+  names, or that commit laid out as a tree beside the working one. Every check
+  with a `derive` MUST need the tree, so that a tree with no config is green
+  (5.1). A check that judges one tree against a number exists only for a
+  number a person pinned. A check that needs the commit or the tree is the
+  kind `--strict` reaches, because it has a comparison or an accepted list to
+  judge. `sarif` needs the commit and not the tree: it reads which lines the
+  window changed and runs the scanner once, over the working tree only (8.3).
 - `takes_scope`, whether a changed-file list narrows it
+- `gate_per_entry`, whether the section is a list of entries a person writes,
+  each its own gate under its own `name`, rather than one section the whole
+  check runs under. Only `sarif` sets it (8.3).
 - `derive`, a function from a surveyed tree to a section, or none when the
   check cannot apply without a person, such as `sarif`
 - `cost`, an ordinal that orders the run cheapest first
@@ -1044,10 +1051,42 @@ cannot describe it. Executing the tool in the `after` tree has no dependency
 problem: the working tree has its dependencies installed, or the build would
 fail first.
 
+Each entry of the section is its own gate, named by its own `name`, because
+nothing in a tree says which scanner an entry runs. An entry with no `name` is
+a config error naming the key. A `sarif` gate reads the base commit and never
+the base tree, so it runs one scanner over the working tree and no `before`
+worktree is laid out for it.
+
 Each result is keyed by file, rule id and message. A result fails when its
-line falls inside a hunk the window changed. A result on a line the window did
-not change is held, whatever the base held there. With `differential: true`
-the tool already reports only what is new, so every result fails. Scoping to
+line falls inside a hunk the window changed. A result in a file the tree does
+not track is one whole changed range, so every result in it is judged.
+
+**Where a result sits.** A result's `physicalLocation.artifactLocation.uri`
+reaches klin in four forms, because every scanner writes a location its own
+way: a path relative to the repository, an absolute path, a `file://` URI, and
+a path under an entry of `originalUriBaseIds`, which may name a further entry
+in turn. klin percent-decodes each uri, drops a `file://` scheme, resolves a
+base id through at most four entries, and then places an absolute path under
+the tree it judges, following the real directories both name so that a tree
+reached by a symlink still places. A uri klin cannot place there, and a result
+with no physical location at all, is a NOTE naming the uri and is not judged,
+because a path klin cannot resolve says nothing about which lines changed. A
+location with no `region.startLine` starts at line 1, which is the line a
+result about a whole file is judged on.
+
+Several results of one rule in one file are one finding with a `count`, so an
+accepted entry holds that site at the count a person accepted. An accepted
+entry that matches nothing is a NOTE, and exit 1 under `--strict`, as for
+every other gate (10).
+
+A report klin did not write is judged fresh by modification time: klin
+compares the report file's time against the time of each file the window
+changed, and a report older than one of them is ERR.
+
+A result on a line the window did not change is held, whatever the base held
+there, and the gate's `OK:` line says how many results it held. With
+`differential: true` the tool already reports only what is new, so every
+result fails. Scoping to
 changed lines, not changed files, is what keeps an agent that touches a file
 with thirty old warnings green. A reformat that moves every line is the known
 weakness, and the radius report already names such a turn.
@@ -1515,7 +1554,7 @@ block is still unspent (ADR 0004).
 
 ```
 evaluate(check, section, window, scope):
-  before = check.measure(window.before, section) if check.compares_to_base else []
+  before = check.measure(window.before, section) if check.needs is the tree else []
   after  = check.measure(window.after,  section, before)   # only inventory reads `before`
   entries = accepted(config, check.name) + before   # accepted first: entry order breaks ties (16.5)
   (after, entries) = restrict(after, entries, scope)
@@ -1761,7 +1800,7 @@ Core, in this order:
       deleted-subject NOTE and the body-hash rename match
 - [ ] `stubs`, sharing the escapes engine, executable function bodies only,
       the empty test body included, with a legitimate-change fixture per row
-- [ ] `sarif`, `after` only, delete `report`, `run`, read `report`, scoped to
+- [x] `sarif`, `after` only, delete `report`, `run`, read `report`, scoped to
       changed lines
 - [x] `lockfile`, Rust, npm and Go, with pnpm, yarn, Poetry and uv deferred
 - [ ] `CONTEXT.md` takes Window and Derived, README names the two
