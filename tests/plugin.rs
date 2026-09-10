@@ -160,6 +160,24 @@ fn the_stop_says_nothing_in_a_tree_that_holds_no_configuration() {
     assert_eq!(run.out, "", "the stop spoke in a tree that did not opt in");
 }
 
+/// A plugin update pins a new version, and the fetch that installs it removes the ones before
+/// it, so the cache holds one binary. Spec 19.2.
+#[test]
+fn a_fetch_removes_the_other_cached_versions() {
+    let tree = Tree::bare();
+    release(&tree, "the-fetched-binary");
+    tree.write("cache/bin/0.0.1/klin", "#!/bin/sh\necho stale\n");
+
+    let run = fetch(&tree, &["--version"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        held(&tree),
+        PINNED,
+        "the cache holds more than the pinned version"
+    );
+}
+
 /// The hook runs the plugin's own wrapper before any `klin` on PATH, so the version the plugin
 /// pins is the one Claude Code runs, whatever an installer left in `~/.local/bin`. Spec 19.2.
 #[test]

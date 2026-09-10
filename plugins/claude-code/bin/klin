@@ -53,7 +53,9 @@ installed() {
 	[ -n "$found" ] || return 1
 	chmod 755 "$found" || return 1
 	mkdir -p "$CACHE/$VERSION" || return 1
-	mv "$found" "$BINARY"
+	mv "$found" "$BINARY" || return 1
+	find "$CACHE" -mindepth 1 -maxdepth 1 -type d ! -name "$VERSION" ! -name '.fetch.*' \
+		-exec rm -rf {} + 2>/dev/null || true
 }
 
 if [ ! -x "$BINARY" ]; then
