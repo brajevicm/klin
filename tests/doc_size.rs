@@ -234,3 +234,52 @@ fn this_repositorys_own_documents_are_under_their_ceilings() {
     let run = run_from(repo, &["doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
+
+#[test]
+fn a_word_is_a_run_of_non_whitespace_so_markup_counts_and_unicode_spaces_split() {
+    let tree = Tree::new();
+    let doc = tree.write(
+        "spaced.md",
+        "# Title\n\none\u{2003}two\u{00A0}three `code` **bold**\n```\nx = 1\n```\n",
+    );
+    let at = tree.run(&[
+        "doc-size",
+        "--file",
+        &doc.display().to_string(),
+        "--ceiling",
+        "12",
+    ]);
+    assert_eq!(at.code, 0, "{}", at.out);
+    assert!(at.says("is 12 words, ceiling 12"), "{}", at.out);
+    assert!(at.says("0 from its ceiling of 12"), "{}", at.out);
+
+    let over = tree.run(&[
+        "doc-size",
+        "--file",
+        &doc.display().to_string(),
+        "--ceiling",
+        "11",
+    ]);
+    assert_eq!(over.code, 1, "{}", over.out);
+    assert!(
+        over.says("is 12 words, over its ceiling of 11"),
+        "{}",
+        over.out
+    );
+}
+
+#[test]
+fn a_byte_that_is_not_utf8_is_read_as_one_word_not_an_error() {
+    let tree = Tree::new();
+    let doc = tree.path("bytes.md");
+    assert!(std::fs::write(&doc, b"one \xFF two\n").is_ok());
+    let run = tree.run(&[
+        "doc-size",
+        "--file",
+        &doc.display().to_string(),
+        "--ceiling",
+        "3",
+    ]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("is 3 words, ceiling 3"), "{}", run.out);
+}
