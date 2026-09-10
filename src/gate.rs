@@ -10,8 +10,8 @@ use crate::changed::{self, Change};
 use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::{
-    build, complexity, doc_citations, doc_size, escapes, inventory, lockfile, state, stubs, survey,
-    turn,
+    build, complexity, doc_citations, doc_size, escapes, inventory, lockfile, sarif, state, stubs,
+    survey, turn,
 };
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -32,8 +32,35 @@ struct Check {
     name: &'static str,
     section: &'static str,
     run: fn(&Flags, &Path, &mut String) -> Result<u8, Error>,
-    compares_to_base: bool,
+    needs: Needs,
     takes_scope: bool,
+    /// Whether the section is a list of entries a person writes, each its own gate under its
+    /// own `name`, rather than one section the whole check runs under. Spec 8.3.
+    gate_per_entry: bool,
+}
+
+/// What a check needs of the base: nothing, the commit the window names, or that commit laid
+/// out as a tree beside the working one. A check that needs the commit or the tree is also the
+/// kind `--strict` reaches, because it has a comparison or an accepted list to judge. Spec
+/// 4.6, 10.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Needs {
+    Nothing,
+    TheCommit,
+    TheTree,
+}
+
+impl Needs {
+    /// Whether the run resolves the base commit for this check, which is also whether
+    /// `--strict` reaches it. Spec 4.6, 10.
+    fn the_commit(self) -> bool {
+        self >= Needs::TheCommit
+    }
+
+    /// Whether the run lays the base commit out as a tree for this check.
+    fn the_tree(self) -> bool {
+        self == Needs::TheTree
+    }
 }
 
 const CHECKS: &[Check] = &[
@@ -41,50 +68,65 @@ const CHECKS: &[Check] = &[
         name: "doc-size",
         section: "doc_size",
         run: doc_size::gate,
-        compares_to_base: false,
+        needs: Needs::Nothing,
         takes_scope: false,
+        gate_per_entry: false,
     },
     Check {
         name: "doc-citations",
         section: "doc_citations",
         run: doc_citations::gate,
-        compares_to_base: true,
+        needs: Needs::TheTree,
         takes_scope: true,
+        gate_per_entry: false,
     },
     Check {
         name: "lockfile",
         section: "lockfile",
         run: lockfile::gate,
-        compares_to_base: true,
+        needs: Needs::TheTree,
         takes_scope: false,
+        gate_per_entry: false,
     },
     Check {
         name: "escapes",
         section: "escapes",
         run: escapes::gate,
-        compares_to_base: true,
+        needs: Needs::TheTree,
         takes_scope: true,
+        gate_per_entry: false,
     },
     Check {
         name: "stubs",
         section: "stubs",
         run: stubs::gate,
-        compares_to_base: true,
+        needs: Needs::TheTree,
         takes_scope: true,
+        gate_per_entry: false,
     },
     Check {
         name: "inventory",
         section: "inventory",
         run: inventory::gate,
-        compares_to_base: true,
+        needs: Needs::TheTree,
         takes_scope: true,
+        gate_per_entry: false,
     },
     Check {
         name: "complexity",
         section: "complexity",
         run: complexity::gate,
-        compares_to_base: true,
+        needs: Needs::TheTree,
         takes_scope: true,
+        gate_per_entry: false,
+    },
+    Check {
+        name: "sarif",
+        section: "sarif",
+        run: sarif::gate,
+        needs: Needs::TheCommit,
+        takes_scope: false,
+        gate_per_entry: true,
     },
 ];
 
@@ -475,7 +517,7 @@ fn against(
         scope: changes
             .as_ref()
             .map(|changed| changed.iter().map(|change| change.path.clone()).collect()),
-        prior: prior(config, base.as_ref(), changes.as_deref())?,
+        prior: prior(config, base.as_ref(), changes.as_deref(), wanted)?,
         base,
     })
 }
@@ -487,7 +529,11 @@ fn base(
     window: Option<&Window>,
     out: &mut String,
 ) -> Result<Option<Window>, Error> {
-    if !args.changed && !wanted.iter().any(|gate| gate.check.compares_to_base) {
+    if !args.changed
+        && !wanted
+            .iter()
+            .any(|gate| gate.check.needs >= Needs::TheCommit)
+    {
         return Ok(None);
     }
     let base = chosen(window, config, args.strict)?;
@@ -785,8 +831,9 @@ fn prior(
     config: &Config,
     base: Option<&Window>,
     changes: Option<&[Change]>,
+    wanted: &[&Gate],
 ) -> Result<Option<Prior>, Error> {
-    let Some(base) = base else {
+    let Some(base) = base.filter(|_| wanted.iter().any(|gate| gate.check.needs.the_tree())) else {
         return Ok(None);
     };
     base::materialize(config, base, changes).map(Some)
@@ -851,7 +898,7 @@ fn plan(config: &Config) -> Result<Plan, Error> {
     let entries = entries(config)?;
     let mut plan = Plan::default();
     for check in CHECKS {
-        add(config, check, &entries, &mut plan);
+        add(config, check, &entries, &mut plan)?;
     }
     distinct(config, &plan)?;
     Ok(plan)
@@ -860,7 +907,12 @@ fn plan(config: &Config) -> Result<Plan, Error> {
 /// A check's gates: the one its section names, and one per `gates` entry that names it. A
 /// `gates` entry is the person's statement of how that check runs, so klin derives no section
 /// beside it and the whole tree is not measured twice. Spec 5.2.
-fn add(config: &Config, check: &'static Check, entries: &[Entry], plan: &mut Plan) {
+fn add(
+    config: &Config,
+    check: &'static Check,
+    entries: &[Entry],
+    plan: &mut Plan,
+) -> Result<(), Error> {
     let mine: Vec<&Entry> = entries
         .iter()
         .filter(|entry| entry.check == check.name)
@@ -872,15 +924,30 @@ fn add(config: &Config, check: &'static Check, entries: &[Entry], plan: &mut Pla
     if section.is_none() && mine.is_empty() {
         plan.needs_a_section.push(check);
     }
-    from_section(check, section, plan);
+    from_section(config, check, section, plan)?;
     for entry in mine {
         from_entry(check, entry, plan);
     }
+    Ok(())
 }
 
-fn from_section(check: &'static Check, section: Option<&Value>, plan: &mut Plan) {
+fn from_section(
+    config: &Config,
+    check: &'static Check,
+    section: Option<&Value>,
+    plan: &mut Plan,
+) -> Result<(), Error> {
     match section {
         Some(Value::Bool(false)) => plan.excluded.push(check.name.to_string()),
+        Some(_) if check.gate_per_entry => {
+            for (name, entry) in named_entries(config, check.section)? {
+                plan.gates.push(Gate {
+                    name,
+                    check,
+                    with: Some(entry),
+                });
+            }
+        }
         Some(_) => plan.gates.push(Gate {
             name: check.name.to_string(),
             check,
@@ -888,6 +955,32 @@ fn from_section(check: &'static Check, section: Option<&Value>, plan: &mut Plan)
         }),
         None => (),
     }
+    Ok(())
+}
+
+/// The entries of a section a person writes entry by entry, each with the name its gate takes.
+/// Such a section is a list, and an entry with no `name` is a config error naming the key,
+/// because nothing in a tree says which tool the entry runs. The check that reads one entry
+/// reads its own list through this, so a gate's name is the name the check judges under.
+/// Spec 8.3.
+pub fn named_entries(config: &Config, section: &str) -> Result<Vec<(String, Value)>, Error> {
+    let held = config.section(section)?;
+    let listed = held.as_array().ok_or_else(|| {
+        Error(format!(
+            "{}: \"{section}\" is a list of entries, each its own gate under its own \"name\"",
+            config.file.display()
+        ))
+    })?;
+    listed
+        .iter()
+        .map(|entry| {
+            let name = entry
+                .get("name")
+                .and_then(Value::as_str)
+                .ok_or_else(|| config.missing(section, "name"))?;
+            Ok((name.to_string(), entry.clone()))
+        })
+        .collect()
 }
 
 fn from_entry(check: &'static Check, entry: &Entry, plan: &mut Plan) {
@@ -1070,7 +1163,7 @@ fn one(
         prior: against.dir().map(Path::to_path_buf),
         base: against.base.as_ref().map(|base| base.before.clone()),
         quiet: true,
-        strict: args.strict && gate.check.compares_to_base,
+        strict: args.strict && gate.check.needs.the_commit(),
         hook: args.hook,
         only: against
             .scope

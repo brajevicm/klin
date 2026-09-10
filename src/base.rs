@@ -159,6 +159,15 @@ fn written(
     Ok(prior)
 }
 
+/// The base commit a gate judges against: the one the runner chose, or the one this gate
+/// chooses for itself and names once in the report. Spec 6.1.
+pub fn commit(root: &Path, flags: &Flags, out: &mut String) -> Result<String, Error> {
+    match &flags.base {
+        Some(commit) => Ok(commit.clone()),
+        None => Ok(announced(root, flags, out)?.before),
+    }
+}
+
 /// The base a gate the runner did not lay out chooses for itself, named once in the report.
 pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Window, Error> {
     let base = choose(root, flags.strict)?;

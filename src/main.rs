@@ -20,6 +20,7 @@ mod lockfile;
 mod markers;
 mod radius;
 mod ratchet;
+mod sarif;
 mod state;
 mod stubs;
 mod survey;
@@ -49,6 +50,8 @@ enum Command {
     Escapes(markers::Args),
     /// Fail on a new placeholder marker — a stub an agent left where the work belongs
     Stubs(markers::Args),
+    /// Fail on a scanner's result that sits on a line this window changed
+    Sarif(sarif::Args),
     /// Run every gate the configuration names, cheapest first
     Gate(gate::Args),
     /// Survey the tree and write the configuration it can say for itself
@@ -85,6 +88,7 @@ fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8,
         Command::DocSize(args) => doc_size::run(args, start, out),
         Command::Escapes(args) => escapes::run(args, start, out),
         Command::Stubs(args) => stubs::run(args, start, out),
+        Command::Sarif(args) => sarif::run(args, start, out),
         Command::Gate(_)
         | Command::Init(_)
         | Command::Cache(_)
