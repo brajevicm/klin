@@ -1,5 +1,11 @@
+//! The `sarif` check: a scanner's own report, judged against the lines the window changed.
+//!
+//! Identity: the repository path plus `rule id: message text`, so a result that shifted lines
+//! still matches. Ratcheted value: `count`, how many results one site holds. Derivation: none,
+//! because nothing in a tree says which scanner ran. A person writes the section, and each
+//! entry of it is one gate. Spec 8.3.
+
 use std::collections::BTreeMap;
-use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::SystemTime;
@@ -8,14 +14,15 @@ use serde_json::{Map, Value};
 
 use crate::base;
 use crate::config::{Config, Error, Flags};
+use crate::gate;
 use crate::hunks::Hunks;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
 const SECTION: &str = "sarif";
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];
-/// How many `originalUriBaseIds` entries one location may be resolved through, so a report
-/// whose ids point at each other resolves rather than recurring forever.
+/// How many `originalUriBaseIds` entries one location is resolved through, so a report whose
+/// ids point at each other resolves rather than recurring forever.
 const DEPTH: usize = 4;
 const REMEDY: &str = "Fix the result the scanner reports on the line this window wrote, or \
     delete the line. A result on a line the window did not change is held, so what this gate \
@@ -48,29 +55,10 @@ pub struct Args {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let mut worst = 0;
-    for (name, entry) in named(&config)? {
-        worst = worst.max(evaluate(&flags(args, &name, entry), start, out)?);
+    for (name, entry) in gate::named_entries(&config, SECTION)? {
+        worst = worst.max(gate(&flags(args, &name, entry), start, out)?);
     }
     Ok(worst)
-}
-
-/// The name and the value of each entry the section holds. A section that is one entry rather
-/// than a list runs under the section's own name.
-fn named(config: &Config) -> Result<Vec<(String, Value)>, Error> {
-    let section = config.section(SECTION)?;
-    let Some(entries) = section.as_array() else {
-        return Ok(vec![(SECTION.to_string(), section.clone())]);
-    };
-    entries
-        .iter()
-        .map(|entry| {
-            let name = entry
-                .get("name")
-                .and_then(Value::as_str)
-                .ok_or_else(|| config.missing(SECTION, "name"))?;
-            Ok((name.to_string(), entry.clone()))
-        })
-        .collect()
 }
 
 fn flags(args: &Args, name: &str, entry: Value) -> Flags {
@@ -89,20 +77,14 @@ fn flags(args: &Args, name: &str, entry: Value) -> Flags {
 }
 
 pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(flags, start, out)
-}
-
-fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     let entry = entry(&config)?;
-    let (read, changed) = reading(&config, &entry, flags, out)?;
-    let (findings, judged, held) = judged(read.sites, &changed, entry.differential);
+    let (found, changed) = read(&config, &entry, flags, out)?;
+    let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
-    let ok = format!(
-        "OK: {judged} result(s) on lines this window changed, {held} held on lines it did not"
-    );
-    let code = evaluator().evaluate(findings, Vec::new(), accepted, flags, &ok, out);
-    noted(&read.notes, flags, out);
+    let ok = said(&judged, entry.differential);
+    let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, flags, &ok, out);
+    ratchet::noted(&found.notes, flags, out);
     Ok(code)
 }
 
@@ -124,8 +106,8 @@ fn entry(config: &Config) -> Result<Entry, Error> {
 
 fn shape(config: &Config) -> Error {
     Error(format!(
-        "{}: \"{SECTION}\" is a list of {{\"name\", \"report\"}} entries, each with an optional \
-         \"run\" and \"differential\"",
+        "{}: \"{SECTION}\" is a list of {{\"name\", \"report\"}} entries, each its own gate, \
+         and each with an optional \"run\" and \"differential\"",
         config.file.display()
     ))
 }
@@ -149,22 +131,22 @@ fn only_the_new(config: &Config, held: Option<&Value>) -> Result<bool, Error> {
 /// What this gate reads before it judges: the report, and the lines the window changed. With
 /// `run` klin writes the report over this tree first. Without it klin reads the report as it
 /// finds it, and refuses one that predates the change. Spec 8.3.
-fn reading(
+fn read(
     config: &Config,
     entry: &Entry,
     flags: &Flags,
     out: &mut String,
-) -> Result<(Read, Hunks), Error> {
+) -> Result<(Placed, Hunks), Error> {
     let root = config.root();
     if let Some(command) = &entry.run {
         wrote(root, command, &entry.report)?;
     }
-    let data = read(&entry.report)?;
-    let changed = Hunks::read(root, &commit(config, flags, out)?, None)?;
+    let data = sarif(&entry.report)?;
+    let changed = Hunks::read(root, &base::commit(root, flags, out)?, None)?;
     if entry.run.is_none() {
         fresh(&entry.report, root, &changed)?;
     }
-    Ok((sites(&data, root), changed))
+    Ok((placed(&data, root), changed))
 }
 
 /// The report the command writes over the tree klin is about to judge. The old report goes
@@ -185,17 +167,17 @@ fn wrote(root: &Path, command: &str, report: &Path) -> Result<(), Error> {
             "{command} wrote no report at {} — klin deletes the report before it runs the \
              command, so this gate has nothing to read:\n{}",
             report.display(),
-            said(&done)
+            output(&done)
         ))),
     }
 }
 
-fn said(done: &Output) -> String {
+fn output(done: &Output) -> String {
     String::from_utf8_lossy(&done.stdout).into_owned() + &String::from_utf8_lossy(&done.stderr)
 }
 
 /// The report as SARIF, or the tool error that says why it is not. Spec 8.3, 14.
-fn read(report: &Path) -> Result<Value, Error> {
+fn sarif(report: &Path) -> Result<Value, Error> {
     let bytes = std::fs::read(report).map_err(|why| Error::unreadable(report, why))?;
     let data: Value =
         serde_json::from_slice(&bytes).map_err(|why| not_sarif(report, &why.to_string()))?;
@@ -242,23 +224,16 @@ struct Site {
     text: String,
 }
 
-/// What one location says before klin places it: the uri as the scanner wrote it, the base id
-/// it is relative to, and the line it starts on.
-struct Location {
-    uri: String,
-    base: Option<String>,
-    line: u64,
-}
-
-/// What one report says: the results klin placed, and one NOTE per result it could not.
+/// What one report says: the results klin placed in the tree, and one NOTE per result it could
+/// not place.
 #[derive(Default)]
-struct Read {
-    sites: Vec<Site>,
+struct Placed {
+    placed: Vec<Site>,
     notes: Vec<(String, String)>,
 }
 
-fn sites(data: &Value, root: &Path) -> Read {
-    let mut read = Read::default();
+fn placed(data: &Value, root: &Path) -> Placed {
+    let mut found = Placed::default();
     for run in listed(data, "runs") {
         let bases = run
             .get("originalUriBaseIds")
@@ -266,13 +241,13 @@ fn sites(data: &Value, root: &Path) -> Read {
             .cloned()
             .unwrap_or_default();
         for result in listed(run, "results") {
-            read.add(root, &bases, result);
+            found.add(root, &bases, result);
         }
     }
-    read
+    found
 }
 
-impl Read {
+impl Placed {
     fn add(&mut self, root: &Path, bases: &Map<String, Value>, result: &Value) {
         let named = format!("{}: {}", rule(result), message(result));
         let Some(location) = location(result) else {
@@ -285,7 +260,7 @@ impl Read {
             ));
             return;
         };
-        let Some(file) = placed(root, bases, &location) else {
+        let Some(file) = under(root, bases, &location) else {
             self.notes.push((
                 location.uri.clone(),
                 format!(
@@ -297,7 +272,7 @@ impl Read {
             ));
             return;
         };
-        self.sites.push(Site {
+        self.placed.push(Site {
             file,
             line: location.line,
             text: named,
@@ -323,6 +298,14 @@ fn message(result: &Value) -> String {
         .to_string()
 }
 
+/// What one location says before klin places it: the uri as the scanner wrote it, the base id
+/// it is relative to, and the line it starts on.
+struct Location {
+    uri: String,
+    base: Option<String>,
+    line: u64,
+}
+
 /// What the first location of a result says. A location with no region starts at line 1, which
 /// is the line a result about a whole file is judged on.
 fn location(result: &Value) -> Option<Location> {
@@ -345,20 +328,22 @@ fn location(result: &Value) -> Option<Location> {
 
 /// The repository-relative path a location names. Four forms reach klin, because every scanner
 /// writes a location its own way: a path relative to the repository, an absolute path, a
-/// `file://` URI, and a path under an entry of `originalUriBaseIds`. klin decodes each, then
-/// places an absolute one under the tree it judges. A location it cannot place there is a
-/// NOTE, because a path klin cannot resolve says nothing about which lines changed. Spec 8.3.
-fn placed(root: &Path, bases: &Map<String, Value>, location: &Location) -> Option<String> {
+/// `file://` URI, and a path under an entry of `originalUriBaseIds`. klin decodes each, strips
+/// the tree's own directory off an absolute one, and then resolves the `.` and `..` segments of
+/// what is left. A location that lands outside the tree is placed nowhere, and the caller
+/// leaves a NOTE, because a path klin cannot resolve says nothing about which lines the window
+/// changed. Spec 8.3.
+fn under(root: &Path, bases: &Map<String, Value>, location: &Location) -> Option<String> {
     let text = joined(
         &prefix(bases, location.base.as_deref(), 0),
         &decoded(&location.uri),
     );
     let path = PathBuf::from(&text);
-    if !path.is_absolute() {
-        let named = text.trim_start_matches("./").to_string();
-        return (!named.is_empty()).then_some(named);
-    }
-    inside(root, &path)
+    let relative = match path.is_absolute() {
+        true => inside(root, &path)?,
+        false => text,
+    };
+    within(&relative)
 }
 
 /// The path an `originalUriBaseIds` entry stands for, through the id that entry may name in
@@ -394,12 +379,27 @@ fn inside(root: &Path, path: &Path) -> Option<String> {
         Ok(rest) => rest.to_path_buf(),
         Err(_) => real(path).strip_prefix(real(root)).ok()?.to_path_buf(),
     };
-    let named = rest.to_string_lossy().into_owned();
-    (!named.is_empty()).then_some(named)
+    Some(rest.to_string_lossy().into_owned())
 }
 
 fn real(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// A relative path with its `.` and `..` segments resolved, and nothing when it climbs above
+/// the tree or names the tree itself, because neither is a file the window could have changed.
+fn within(text: &str) -> Option<String> {
+    let mut segments: Vec<&str> = Vec::new();
+    for segment in text.split('/') {
+        match segment {
+            "" | "." => (),
+            ".." => {
+                segments.pop()?;
+            }
+            named => segments.push(named),
+        }
+    }
+    (!segments.is_empty()).then(|| segments.join("/"))
 }
 
 /// A uri as a path: without its `file://` scheme, and with every percent escape decoded, which
@@ -431,36 +431,57 @@ fn escaped(text: &[u8], at: usize) -> Option<u8> {
     Some((digit(text[at + 1])? * 16 + digit(text[at + 2])?) as u8)
 }
 
-/// The findings this gate judges, how many results they hold, and how many results it held
-/// because the window did not change the line they sit on. A site is one file and one
-/// `rule id: message text`, so several results of one rule in one file are one finding with a
-/// count. With `differential` the scanner already reports only what is new, so every result is
-/// judged. Spec 8.3.
-fn judged(sites: Vec<Site>, changed: &Hunks, differential: bool) -> (Vec<Finding>, u64, u64) {
-    let mut seen: BTreeMap<(String, String), (u64, u64)> = BTreeMap::new();
+/// How many results one site holds, and the first line one of them sits on.
+struct Tally {
+    line: u64,
+    count: u64,
+}
+
+/// What this gate made of the report: one finding per site, how many results those findings
+/// hold, and how many results it held because the window did not change the line they sit on.
+struct Judged {
+    findings: Vec<Finding>,
+    judged: u64,
+    held: u64,
+}
+
+/// A site is one file and one `rule id: message text`, so several results of one rule in one
+/// file are one finding with a count. With `differential` the scanner already reports only what
+/// is new, so every result is judged. Spec 8.3.
+fn judge(placed: Vec<Site>, changed: &Hunks, differential: bool) -> Judged {
+    let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
     let mut held = 0;
-    for site in sites {
+    for site in placed {
         if !differential && !changed.holds(&site.file, site.line) {
             held += 1;
             continue;
         }
-        let at = seen.entry((site.file, site.text)).or_insert((site.line, 0));
-        at.0 = at.0.min(site.line);
-        at.1 += 1;
+        seen.entry((site.file, site.text))
+            .and_modify(|tally| {
+                tally.line = tally.line.min(site.line);
+                tally.count += 1;
+            })
+            .or_insert(Tally {
+                line: site.line,
+                count: 1,
+            });
     }
-    let judged = seen.values().map(|(_, count)| count).sum();
-    (collected(seen), judged, held)
+    Judged {
+        judged: seen.values().map(|tally| tally.count).sum(),
+        findings: collected(seen),
+        held,
+    }
 }
 
-fn collected(seen: BTreeMap<(String, String), (u64, u64)>) -> Vec<Finding> {
+fn collected(seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
     let mut out: Vec<Finding> = seen
         .into_iter()
-        .map(|((file, text), (line, count))| {
+        .map(|((file, text), tally)| {
             let mut values = Values::new();
-            values.insert(COUNT.into(), count.into());
+            values.insert(COUNT.into(), tally.count.into());
             Finding {
                 file,
-                line,
+                line: tally.line,
                 text,
                 values,
             }
@@ -468,6 +489,22 @@ fn collected(seen: BTreeMap<(String, String), (u64, u64)>) -> Vec<Finding> {
         .collect();
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
     out
+}
+
+/// The `OK:` line, which says what the gate judged. A `differential` entry judges every result
+/// the scanner wrote, wherever it sits, so that line does not name the changed lines. Spec 8.3,
+/// 8.6.
+fn said(judged: &Judged, differential: bool) -> String {
+    match differential {
+        true => format!(
+            "OK: {} result(s) judged, which is every result the scanner reported",
+            judged.judged
+        ),
+        false => format!(
+            "OK: {} result(s) on lines this window changed, {} held on lines it did not",
+            judged.judged, judged.held
+        ),
+    }
 }
 
 fn evaluator() -> Evaluator<'static> {
@@ -488,28 +525,6 @@ fn show(values: &Values) -> String {
             .and_then(Value::as_u64)
             .unwrap_or_default()
     )
-}
-
-fn noted(notes: &[(String, String)], flags: &Flags, out: &mut String) {
-    for (_, why) in notes {
-        let _ = writeln!(out, "NOTE: {why}");
-    }
-    flags.record(|records| {
-        for (at, why) in notes {
-            let mut record = Map::new();
-            record.insert("outcome".into(), "note".into());
-            record.insert("file".into(), at.clone().into());
-            record.insert("text".into(), why.clone().into());
-            records.notes.push(Value::Object(record));
-        }
-    });
-}
-
-fn commit(config: &Config, flags: &Flags, out: &mut String) -> Result<String, Error> {
-    match &flags.base {
-        Some(commit) => Ok(commit.clone()),
-        None => Ok(base::announced(config.root(), flags, out)?.before),
-    }
 }
 
 fn listed<'a>(held: &'a Value, key: &str) -> &'a [Value] {

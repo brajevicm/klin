@@ -11,21 +11,22 @@ const DIFFERENTIAL: &str = r#"{"sarif": [
 ]}"#;
 
 fn result(uri: &str, line: u64, rule: &str, message: &str) -> String {
-    format!(
-        r#"{{"ruleId": "{rule}", "message": {{"text": "{message}"}}, "locations": [
-            {{"physicalLocation": {{
-                "artifactLocation": {{"uri": "{uri}"}},
-                "region": {{"startLine": {line}}}
-            }}}}
-        ]}}"#
-    )
+    located(uri, "", line, rule, message)
 }
 
 fn based(uri: &str, base: &str, line: u64, rule: &str) -> String {
+    located(uri, base, line, rule, "m")
+}
+
+fn located(uri: &str, base: &str, line: u64, rule: &str, message: &str) -> String {
+    let named = match base.is_empty() {
+        true => String::new(),
+        false => format!(r#", "uriBaseId": "{base}""#),
+    };
     format!(
-        r#"{{"ruleId": "{rule}", "message": {{"text": "m"}}, "locations": [
+        r#"{{"ruleId": "{rule}", "message": {{"text": "{message}"}}, "locations": [
             {{"physicalLocation": {{
-                "artifactLocation": {{"uri": "{uri}", "uriBaseId": "{base}"}},
+                "artifactLocation": {{"uri": "{uri}"{named}}},
                 "region": {{"startLine": {line}}}
             }}}}
         ]}}"#
@@ -207,6 +208,43 @@ fn a_location_klin_cannot_place_is_a_note_and_is_not_judged() {
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("/elsewhere/x.ts"), "{}", run.out);
     assert!(run.says("nowhere"), "{}", run.out);
+}
+
+#[test]
+fn a_relative_location_that_climbs_out_of_the_tree_is_a_note() {
+    let tree = tree(DIFFERENTIAL);
+    tree.write(
+        "eslint.sarif",
+        &report(&[result("../outside/x.ts", 2, "outside", "m")]),
+    );
+
+    let run = tree.run(&["gate", "--gate", "eslint"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("could not place"), "{}", run.out);
+    assert!(run.says("../outside/x.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_differential_entry_says_on_its_ok_line_that_it_judged_every_result() {
+    let tree = tree(DIFFERENTIAL);
+    tree.write("eslint.sarif", &report(&[]));
+
+    let run = tree.run(&["sarif"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("OK: 0 result(s) judged, which is every result the scanner reported"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_section_that_is_not_a_list_of_entries_is_a_config_error() {
+    let tree = tree(r#"{"sarif": {"report": "eslint.sarif"}}"#);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("is a list of entries"), "{}", run.out);
 }
 
 #[test]

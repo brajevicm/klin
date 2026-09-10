@@ -797,7 +797,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | #45, #69 |
 | `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | `unlocked`, `unpinned` rise | yes | shipped, Rust, npm and Go |
-| `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | #47, section 8.3 |
+| `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
 
 `inventory` has two identities. A test file is keyed by path. A test function
 is keyed like a complexity site, file plus declaration line, and only
@@ -1052,10 +1052,10 @@ problem: the working tree has its dependencies installed, or the build would
 fail first.
 
 Each entry of the section is its own gate, named by its own `name`, because
-nothing in a tree says which scanner an entry runs. An entry with no `name` is
-a config error naming the key. A `sarif` gate reads the base commit and never
-the base tree, so it runs one scanner over the working tree and no `before`
-worktree is laid out for it.
+nothing in a tree says which scanner an entry runs. The section MUST be a list,
+and an entry with no `name` is a config error naming the key. A `sarif` gate
+reads the base commit and never the base tree, so it runs one scanner over the
+working tree and no `before` worktree is laid out for it.
 
 Each result is keyed by file, rule id and message. A result fails when its
 line falls inside a hunk the window changed. A result in a file the tree does
@@ -1066,13 +1066,14 @@ reaches klin in four forms, because every scanner writes a location its own
 way: a path relative to the repository, an absolute path, a `file://` URI, and
 a path under an entry of `originalUriBaseIds`, which may name a further entry
 in turn. klin percent-decodes each uri, drops a `file://` scheme, resolves a
-base id through at most four entries, and then places an absolute path under
-the tree it judges, following the real directories both name so that a tree
-reached by a symlink still places. A uri klin cannot place there, and a result
-with no physical location at all, is a NOTE naming the uri and is not judged,
-because a path klin cannot resolve says nothing about which lines changed. A
-location with no `region.startLine` starts at line 1, which is the line a
-result about a whole file is judged on.
+base id through at most four entries, strips the tree's own directory off an
+absolute path, following the real directories both name so that a tree reached
+by a symlink still places, and resolves the `.` and `..` segments of what is
+left. A location that lands outside the tree, in any of the four forms, and a
+result with no physical location at all, is a NOTE naming the uri and is not
+judged, because a path klin cannot resolve says nothing about which lines
+changed. A location with no `region.startLine` starts at line 1, which is the
+line a result about a whole file is judged on.
 
 Several results of one rule in one file are one finding with a `count`, so an
 accepted entry holds that site at the count a person accepted. An accepted
@@ -1084,12 +1085,13 @@ compares the report file's time against the time of each file the window
 changed, and a report older than one of them is ERR.
 
 A result on a line the window did not change is held, whatever the base held
-there, and the gate's `OK:` line says how many results it held. With
-`differential: true` the tool already reports only what is new, so every
-result fails. Scoping to
-changed lines, not changed files, is what keeps an agent that touches a file
-with thirty old warnings green. A reformat that moves every line is the known
-weakness, and the radius report already names such a turn.
+there, and the gate's `OK:` line says how many results it judged and how many
+it held. With `differential: true` the tool already reports only what is new,
+so every result fails and that line says instead that it judged every result
+the scanner reported. Scoping to changed lines, not changed files, is what
+keeps an agent that touches a file with thirty old warnings green. A reformat
+that moves every line is the known weakness, and the radius report already
+names such a turn.
 
 This step runs the tool once, needs no `before` worktree, and delivers most
 of what the goal names: eslint, tsc, clippy and ruff findings become klin

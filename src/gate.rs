@@ -43,11 +43,24 @@ struct Check {
 /// out as a tree beside the working one. A check that needs the commit or the tree is also the
 /// kind `--strict` reaches, because it has a comparison or an accepted list to judge. Spec
 /// 4.6, 10.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Needs {
     Nothing,
     TheCommit,
     TheTree,
+}
+
+impl Needs {
+    /// Whether the run resolves the base commit for this check, which is also whether
+    /// `--strict` reaches it. Spec 4.6, 10.
+    fn the_commit(self) -> bool {
+        self >= Needs::TheCommit
+    }
+
+    /// Whether the run lays the base commit out as a tree for this check.
+    fn the_tree(self) -> bool {
+        self == Needs::TheTree
+    }
 }
 
 const CHECKS: &[Check] = &[
@@ -820,8 +833,7 @@ fn prior(
     changes: Option<&[Change]>,
     wanted: &[&Gate],
 ) -> Result<Option<Prior>, Error> {
-    let Some(base) = base.filter(|_| wanted.iter().any(|gate| gate.check.needs == Needs::TheTree))
-    else {
+    let Some(base) = base.filter(|_| wanted.iter().any(|gate| gate.check.needs.the_tree())) else {
         return Ok(None);
     };
     base::materialize(config, base, changes).map(Some)
@@ -927,9 +939,13 @@ fn from_section(
 ) -> Result<(), Error> {
     match section {
         Some(Value::Bool(false)) => plan.excluded.push(check.name.to_string()),
-        Some(Value::Array(entries)) if check.gate_per_entry => {
-            for entry in entries {
-                plan.gates.push(per_entry(config, check, entry)?);
+        Some(_) if check.gate_per_entry => {
+            for (name, entry) in named_entries(config, check.section)? {
+                plan.gates.push(Gate {
+                    name,
+                    check,
+                    with: Some(entry),
+                });
             }
         }
         Some(_) => plan.gates.push(Gate {
@@ -942,18 +958,29 @@ fn from_section(
     Ok(())
 }
 
-/// One gate per entry of a section a person writes entry by entry, named by the entry's own
-/// `name`, because nothing in a tree says which tool that entry runs. Spec 8.3.
-fn per_entry(config: &Config, check: &'static Check, entry: &Value) -> Result<Gate, Error> {
-    let name = entry
-        .get("name")
-        .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(check.section, "name"))?;
-    Ok(Gate {
-        name: name.to_string(),
-        check,
-        with: Some(entry.clone()),
-    })
+/// The entries of a section a person writes entry by entry, each with the name its gate takes.
+/// Such a section is a list, and an entry with no `name` is a config error naming the key,
+/// because nothing in a tree says which tool the entry runs. The check that reads one entry
+/// reads its own list through this, so a gate's name is the name the check judges under.
+/// Spec 8.3.
+pub fn named_entries(config: &Config, section: &str) -> Result<Vec<(String, Value)>, Error> {
+    let held = config.section(section)?;
+    let listed = held.as_array().ok_or_else(|| {
+        Error(format!(
+            "{}: \"{section}\" is a list of entries, each its own gate under its own \"name\"",
+            config.file.display()
+        ))
+    })?;
+    listed
+        .iter()
+        .map(|entry| {
+            let name = entry
+                .get("name")
+                .and_then(Value::as_str)
+                .ok_or_else(|| config.missing(section, "name"))?;
+            Ok((name.to_string(), entry.clone()))
+        })
+        .collect()
 }
 
 fn from_entry(check: &'static Check, entry: &Entry, plan: &mut Plan) {
@@ -1136,7 +1163,7 @@ fn one(
         prior: against.dir().map(Path::to_path_buf),
         base: against.base.as_ref().map(|base| base.before.clone()),
         quiet: true,
-        strict: args.strict && gate.check.needs >= Needs::TheCommit,
+        strict: args.strict && gate.check.needs.the_commit(),
         hook: args.hook,
         only: against
             .scope
