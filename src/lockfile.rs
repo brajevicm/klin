@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
-use std::fmt::Write;
 use std::path::Path;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::config::{Config, Error, Flags};
 use crate::ratchet::{self, Evaluator, Finding, Section, Values};
-use crate::{changed, files};
+use crate::{base, changed, files};
 
 const SECTION: &str = "lockfile";
 const MANIFESTS: &str = "manifests";
@@ -94,7 +93,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
         sites.manifests
     );
     let code = evaluator().evaluate(sites.findings, sites.prior, accepted, flags, &ok, out);
-    noted(&sites.notes, flags, out);
+    ratchet::noted(&sites.notes, flags, out);
     Ok(code)
 }
 
@@ -103,7 +102,7 @@ fn surveyed(config: &Config, flags: &Flags, out: &mut String) -> Result<Sites, E
     let section = ratchet::section(config, SECTION)?;
     let manifests = listed(&section, MANIFESTS)?;
     let exclude = optional(&section, EXCLUDE)?;
-    let commit = commit(flags, config.root(), out)?;
+    let commit = base::commit(config.root(), flags, out)?;
     let mut sites = Sites::default();
     for manifest in manifests.iter().filter(|path| !excluded(path, &exclude)) {
         sites.add(config.root(), &commit, manifest)?;
@@ -317,28 +316,6 @@ fn beside(
             return None;
         }
         at = parent(&at);
-    }
-}
-
-fn noted(notes: &[(String, String)], flags: &Flags, out: &mut String) {
-    for (_, why) in notes {
-        let _ = writeln!(out, "NOTE: {why}");
-    }
-    flags.record(|records| {
-        for (at, why) in notes {
-            let mut record = Map::new();
-            record.insert("outcome".into(), "note".into());
-            record.insert("file".into(), at.clone().into());
-            record.insert("text".into(), why.clone().into());
-            records.notes.push(Value::Object(record));
-        }
-    });
-}
-
-fn commit(flags: &Flags, root: &Path, out: &mut String) -> Result<String, Error> {
-    match &flags.base {
-        Some(commit) => Ok(commit.clone()),
-        None => Ok(crate::base::announced(root, flags, out)?.before),
     }
 }
 

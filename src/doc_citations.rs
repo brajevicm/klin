@@ -104,7 +104,7 @@ fn evaluate(
     if let Some(config) = &listing.config {
         config.say(flags, SECTION, out);
     }
-    let commit = commit(flags, &listing.root, out)?;
+    let commit = base::commit(&listing.root, flags, out)?;
     let (now, before) = sides(&listing, &commit)?;
     let sites = ratchet::scoped(&now, flags.only.as_deref());
     let accepted = match &listing.config {
@@ -168,13 +168,6 @@ fn show(values: &Values) -> String {
 }
 
 /// The base commit the runner chose, or the one this command chooses for itself.
-fn commit(flags: &Flags, root: &Path, out: &mut String) -> Result<String, Error> {
-    match &flags.base {
-        Some(commit) => Ok(commit.clone()),
-        None => Ok(base::announced(root, flags, out)?.before),
-    }
-}
-
 fn roots_exist(document: &Document) -> Result<(), Error> {
     for root in &document.roots {
         if !root.is_dir() {

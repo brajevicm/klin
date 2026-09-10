@@ -4,6 +4,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
+use crate::base;
 use crate::changed::git;
 use crate::config::{Config, Error, Flags};
 use crate::files;
@@ -39,7 +40,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let config = Config::open(flags, start)?;
     config.say(flags, SECTION, out);
     let entries = entries(&config)?;
-    let commit = commit(flags, config.root(), out)?;
+    let commit = base::commit(config.root(), flags, out)?;
     let listed = at_the_base(config.root(), &commit)?;
     let sites = sites(&entries, &listed, config.root());
     let (judged, mut paired): (Vec<Site>, Vec<Site>) =
@@ -240,13 +241,6 @@ fn without_an_affix(name: &str) -> Vec<String> {
 }
 
 /// The base commit the runner chose, or the one this gate chooses for itself.
-fn commit(flags: &Flags, root: &Path, out: &mut String) -> Result<String, Error> {
-    match &flags.base {
-        Some(commit) => Ok(commit.clone()),
-        None => Ok(crate::base::announced(root, flags, out)?.before),
-    }
-}
-
 /// The base tree's file list, read out of git so the file level needs no base worktree. A
 /// listing git refuses is an error: an empty base holds no test file and reports green.
 fn at_the_base(root: &Path, commit: &str) -> Result<BTreeSet<String>, Error> {

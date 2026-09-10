@@ -140,6 +140,23 @@ fn names_every_value(
     )))
 }
 
+/// The NOTE lines a gate leaves about what it did not judge, printed for a person and kept for
+/// `--json`. A note carries no ceiling, so none of these fails anything. Spec 8.6, 11.
+pub fn noted(notes: &[(String, String)], flags: &Flags, out: &mut String) {
+    for (_, why) in notes {
+        let _ = writeln!(out, "NOTE: {why}");
+    }
+    flags.record(|records| {
+        for (at, why) in notes {
+            let mut record = Map::new();
+            record.insert("outcome".into(), "note".into());
+            record.insert("file".into(), at.clone().into());
+            record.insert("text".into(), why.clone().into());
+            records.notes.push(Value::Object(record));
+        }
+    });
+}
+
 fn is_accepted(entry: &Values) -> bool {
     entry.get(ACCEPTED).is_some()
 }
