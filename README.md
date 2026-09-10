@@ -50,6 +50,16 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases
 It verifies a checksum and puts `klin` in `~/.local/bin`.
 [19.1](docs/SPEC.md) pins a version or moves that directory.
 
+For Codex CLI, write the project hooks after installing the binary:
+
+```sh
+klin init --hooks --host codex
+```
+
+Use `--global` to install them once in `~/.codex/hooks.json`. Codex CLI does
+not document an `ask` result for `PreToolUse`, so klin treats an ambiguous
+guard decision as a block (exit 2); clear allowed calls still exit 0.
+
 ### Update
 
 Each route updates with the tool it came from:
@@ -82,7 +92,7 @@ Agent hooks give fast feedback during a turn, but an agent controls its own
 working tree and can work around them. The authoritative verdict belongs in CI,
 on a checkout the agent never touched.
 
-klin targets **Claude Code first**. Cursor and Codex CLI adapters are planned.
+klin targets **Claude Code and Codex CLI**. A Cursor adapter is planned.
 
 ### CI
 

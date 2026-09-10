@@ -4,6 +4,8 @@ use harness::{Run, Tree};
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
+const A_CODEX_PROMPT: &str = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1","turn_id":"t1","permission_mode":"default"}"#;
+const A_CODEX_SESSION: &str = r#"{"hook_event_name":"SessionStart","session_id":"s1","turn_id":"t1","permission_mode":"default"}"#;
 const CONFIG: &str = r#"{
   "project": "t",
   "radius": { "lines": 50, "directories": 2 }
@@ -229,6 +231,19 @@ fn a_session_start_reports_no_spread() {
     let run = radius(&tree, A_SESSION);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("wider than"), "{}", run.out);
+}
+
+#[test]
+fn codex_session_start_and_prompt_use_the_radius_events() {
+    let tree = tree();
+    stamped(&tree);
+    a_wide_turn(&tree);
+    assert_eq!(radius(&tree, A_CODEX_SESSION).code, 0);
+
+    tree.write("docs/wider.md", &lines(60, "line "));
+    let run = radius(&tree, A_CODEX_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("wider than"), "{}", run.out);
 }
 
 #[test]

@@ -32,8 +32,8 @@ const HOSTS: &[Host] = &[
     Host {
         name: "codex",
         marker: ".codex",
-        file: None,
-        ticket: "#68",
+        file: Some(".codex/hooks.json"),
+        ticket: "",
     },
 ];
 
@@ -49,6 +49,8 @@ const ENTRIES: &[(&str, &str, &str)] = &[
     ),
     ("Stop", "", "gate --hook --changed"),
 ];
+
+const CODEX_MATCHER: &str = "Bash|apply_patch|mcp__.*";
 
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
@@ -87,7 +89,7 @@ fn hooked(host: &Host, root: &Path, shared: bool, out: &mut String) -> Result<()
             let _ = writeln!(out, "{said}");
             Ok(())
         }
-        None => wrote(&target, shared, out),
+        None => wrote(host, &target, shared, out),
     }
 }
 
@@ -248,7 +250,7 @@ fn registered(settings: &Path, file: &Path) -> String {
 /// klin's entries added to whatever the file already holds. An event klin shares with another
 /// tool keeps that tool's entries, and an event that already calls klin is left as it is, so a
 /// second run writes nothing.
-fn wrote(file: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
+fn wrote(host: &Host, file: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
     if let Some(parent) = file.parent() {
         std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
     }
@@ -272,6 +274,11 @@ fn wrote(file: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
             held_already.push(*event);
             continue;
         }
+        let matcher = if *event == "PreToolUse" && host.name == "codex" {
+            CODEX_MATCHER
+        } else {
+            matcher
+        };
         entries.push(entry(matcher, &line(command)));
         added.push(*event);
     }

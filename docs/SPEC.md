@@ -1319,7 +1319,7 @@ below.
 One `Host` value, chosen from the event's shape or from `--host`, maps a host
 event to one internal record:
 
-- `tool` (string), `file_path` (string), `command` (string) for the guard
+- `tool` (string), `file_paths` (list), `command` (string) for the guard
 - `blocked_before` (bool), the host's flag that the hook already blocked this
   turn
 - `session` (string) when the host sends one
@@ -1328,15 +1328,21 @@ And maps one internal decision to the host's output. For Claude Code:
 pre-tool decisions go out as `hookSpecificOutput.permissionDecision` with
 `allow`, `deny` or `ask` and a reason. Stop blocks are exit 2 with the report
 on stderr. Prompt and session-start text go to stdout on exit 0.
+For Codex CLI, `allow` is exit 0 and both `deny` and the undocumented `ask`
+case are exit 2 with the reason on stderr; stop blocks also use exit 2.
 
 In hook mode the exit code is the host's protocol, not the verdict. Exit 2
 means "block this stop", whatever caused it. The verdict of section 4.9 lives
 in the report and in the `turn` file. Outside hook mode the exit code is the
 verdict.
 
-The Cursor and Codex CLI variants are separate tickets (#67, #68). Until
-they exist the README MUST NOT name those hosts. The adapter is the only
-module that reads a host's JSON.
+The Cursor variant is a separate ticket (#67). Codex CLI uses the same event
+fields as Claude Code plus `turn_id` and `permission_mode`, which the adapter
+checks before Claude's fields. Its `Bash` and MCP tool calls carry a shell
+command in `tool_input.command`; `apply_patch` carries one or more file paths
+in its patch headers. Codex has no documented `ask` result for `PreToolUse`,
+so an `ask` is returned as exit 2 with its reason on stderr. The adapter is
+the only module that reads a host's JSON.
 
 ### 9.2 Events
 
@@ -1391,7 +1397,7 @@ klin's state directory, `refs/worktree/klin` and every verification file are
 ordinary files, and an edit to one of them is `allow`. ADR 0027 records why,
 and what it gives up.
 
-- `deny`: an edit tool whose `file_path` is `klin.json`, a redirect onto it,
+- `deny`: an edit tool whose path is `klin.json`, a redirect onto it,
   `init` in any form, and `turn reset`. The reason names the file and says a
   person changes it in a reviewed commit, or names the command a person runs
   instead. Nothing else denies. Every route klin cannot read as a clear write
@@ -1416,6 +1422,11 @@ A command substitution starts a command of its own, and a quoting context of
 its own with it. The guard MUST find the heredoc a `$(` or a backtick opens,
 even inside a double quote, so a body passed as `--body "$(cat <<'EOF' ...
 EOF)"` is data and not a list of commands.
+
+For Codex CLI, an `apply_patch` call is judged by every path in its `*** Add
+File:`, `*** Delete File:`, `*** Update File:`, `*** Move to:` or `*** Copy
+to:` headers. Patch body text is data. A deny for any path wins; otherwise an
+ask wins over allow.
 
 A command substitution is a command of its own, so it leaves the line it sat
 in. The guard reads the command inside it on its own, and the words after the
@@ -2014,7 +2025,8 @@ Distribution, in this order, because each step depends on the one before:
 - [x] Release pipeline: four binaries and a checksum file per tag (#62)
 - [ ] Install script with `--version`
 - [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
-- [ ] `init --hooks` for Cursor and Codex, and their host adapters (#67, #68)
+- [x] `init --hooks` for Codex and its host adapter (#68)
+- [ ] `init --hooks` for Cursor and its host adapter (#67)
 - [ ] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64)
 
@@ -2032,7 +2044,7 @@ Before calling it 1.0:
       turns and hook latency. This is a benchmark, not a test, and it is what
       shows the tool is useful rather than correct.
 - [ ] The hook-output facts in 9.3 verified against the host's documentation
-- [ ] Cursor and Codex adapters, or the README stays silent on them
+- [ ] Cursor adapter, or the README stays silent on it
 
 ## 19. Installation and Distribution
 

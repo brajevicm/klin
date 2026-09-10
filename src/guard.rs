@@ -65,10 +65,29 @@ pub fn run(args: &Args) -> u8 {
 
 fn decided(event: &Event) -> Decision {
     let edits = !READ_TOOLS.contains(&event.tool.as_str());
-    match edits.then(|| touched(&event.file_path)).flatten() {
-        Some(decision) => decision,
-        None => command_decision(&event.command),
+    if edits {
+        if let Some(decision) = paths_decision(&event.file_paths) {
+            return decision;
+        }
+        if matches!(event.host, host::Host::Codex) && event.tool == "apply_patch" {
+            return Decision::Allow;
+        }
     }
+    command_decision(&event.command)
+}
+
+/// The strictest decision for all paths one edit call names. A direct guarded path is a deny;
+/// the ordering also preserves an ask if another host adds one later. Section 9.1.
+fn paths_decision(paths: &[String]) -> Option<Decision> {
+    let mut asked = None;
+    for path in paths {
+        match touched(path) {
+            Some(Decision::Deny(reason)) => return Some(Decision::Deny(reason)),
+            Some(Decision::Ask(reason)) => asked = asked.or(Some(Decision::Ask(reason))),
+            Some(Decision::Allow) | None => {}
+        }
+    }
+    asked
 }
 
 /// What one path an edit tool or a redirect names is worth: a deny for the one file only a

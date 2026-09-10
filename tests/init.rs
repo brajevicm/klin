@@ -270,6 +270,10 @@ fn settings(tree: &Tree) -> Value {
     settings_at(&tree.path(".claude/settings.json"))
 }
 
+fn codex_settings(tree: &Tree) -> Value {
+    settings_at(&tree.path(".codex/hooks.json"))
+}
+
 fn settings_at(path: &std::path::Path) -> Value {
     let Ok(text) = std::fs::read_to_string(path) else {
         panic!("no {} was written", path.display())
@@ -297,6 +301,16 @@ fn commands(settings: &Value, event: &str) -> Vec<String> {
         .collect()
 }
 
+fn matchers(settings: &Value, event: &str) -> Vec<String> {
+    settings["hooks"][event]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|entry| entry["matcher"].as_str().map(str::to_string))
+        .collect()
+}
+
 #[test]
 fn hooks_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     let tree = two_documents();
@@ -316,6 +330,49 @@ fn hooks_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     assert_eq!(
         commands(&settings, "PreToolUse"),
         [line("guard")],
+        "{settings}"
+    );
+    assert_eq!(
+        matchers(&settings, "PreToolUse"),
+        ["Write|Edit|MultiEdit|NotebookEdit|Bash".to_string()],
+        "{settings}"
+    );
+    assert_eq!(
+        commands(&settings, "SessionStart"),
+        [line("radius")],
+        "{settings}"
+    );
+    assert_eq!(
+        commands(&settings, "UserPromptSubmit"),
+        [line("radius")],
+        "{settings}"
+    );
+}
+
+#[test]
+fn hooks_writes_klins_entries_for_codex_cli_and_leaves_the_others_alone() {
+    let tree = two_documents();
+    tree.write(
+        ".codex/hooks.json",
+        r#"{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "cargo fmt"}]}]}}"#,
+    );
+
+    let run = tree.run(&["init", "--hooks", "--host", "codex"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let settings = codex_settings(&tree);
+    assert_eq!(
+        commands(&settings, "Stop"),
+        ["cargo fmt".to_string(), line("gate --hook --changed")],
+        "{settings}"
+    );
+    assert_eq!(
+        commands(&settings, "PreToolUse"),
+        [line("guard")],
+        "{settings}"
+    );
+    assert_eq!(
+        matchers(&settings, "PreToolUse"),
+        ["Bash|apply_patch|mcp__.*".to_string()],
         "{settings}"
     );
     assert_eq!(
@@ -348,7 +405,7 @@ fn hooks_adds_no_second_klin_entry_on_a_second_run() {
 fn hooks_for_a_host_with_no_adapter_is_refused() {
     let tree = two_documents();
 
-    for name in ["cursor", "codex", "borg"] {
+    for name in ["cursor", "borg"] {
         let run = tree.run(&["init", "--hooks", "--host", name]);
         assert_eq!(run.code, 2, "{name}: {}", run.out);
         assert!(run.says(name), "{name}: {}", run.out);
@@ -586,6 +643,59 @@ fn hooks_global_for_a_host_with_no_adapter_is_refused() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("#67"), "{}", run.out);
     assert!(run.says("--hooks --global --host"), "{}", run.out);
+}
+
+#[test]
+fn hooks_global_writes_codex_cli_hooks_to_the_users_file() {
+    let (tree, home) = a_home();
+
+    let run = globally(&tree, &home, &["--host", "codex"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let written = settings_at(&home.path(".codex/hooks.json"));
+    assert_eq!(
+        commands(&written, "Stop"),
+        [line("gate --hook --changed")],
+        "{written}"
+    );
+    assert_eq!(
+        commands(&written, "PreToolUse"),
+        [line("guard")],
+        "{written}"
+    );
+    assert_eq!(tree.status(), "", "{}", run.out);
+}
+
+#[test]
+fn hooks_adds_nothing_when_the_codex_plugin_is_enabled() {
+    let tree = two_documents();
+    tree.write(".codex/hooks.json", A_PLUGIN);
+
+    let run = tree.run(&["init", "--hooks", "--host", "codex"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(codex_settings(&tree)["hooks"], Value::Null, "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
+}
+
+#[test]
+fn a_codex_hook_line_says_nothing_when_no_binary_resolves() {
+    let tree = two_documents();
+    tree.write(".codex/hooks.json", "{}\n");
+    assert_eq!(tree.run(&["init", "--hooks", "--host", "codex"]).code, 0);
+
+    let command = commands(&codex_settings(&tree), "Stop")
+        .into_iter()
+        .next()
+        .expect("Codex Stop hook");
+    let outcome = std::process::Command::new("/bin/sh")
+        .args(["-c", &command])
+        .env("PATH", "")
+        .output();
+    let Ok(done) = outcome else {
+        panic!("the hook line could not run: {command}")
+    };
+    assert_eq!(done.status.code(), Some(0), "{command}");
+    assert!(done.stdout.is_empty(), "{command}");
+    assert!(done.stderr.is_empty(), "{command}");
 }
 
 const A_PLUGIN: &str = r#"{"enabledPlugins": {"klin@klin-marketplace": true}}"#;
