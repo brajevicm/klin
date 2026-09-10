@@ -6,6 +6,10 @@
 > ADR 0017 supersedes "Locally the base is the merge-base" for `--hook` mode,
 > where the base is the turn stamp. `klin gate` by hand and CI keep the bases
 > below.
+>
+> Spec 4.8 requires an accepted entry to name every value the gate ratchets,
+> and lets it win a tie against the base entry at the same site. The example
+> below names both of complexity's values.
 
 Until now a gate that ratchets held a committed JSON file: the findings a
 person accepted, with the tool, version and config hash that produced them. A
@@ -66,7 +70,7 @@ site is keyed, with the value they allow:
 
 ```json
 "accepted": [
-  { "gate": "complexity", "file": "src/checkout.rs", "text": "fn checkout(", "cc": 14 }
+  { "gate": "complexity", "file": "src/checkout.rs", "text": "fn checkout(", "cc": 14, "lines": 40 }
 ]
 ```
 

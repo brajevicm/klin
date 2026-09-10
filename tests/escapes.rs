@@ -162,8 +162,7 @@ fn an_accepted_entry_that_names_no_value_is_a_tool_error() {
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("names none of the values"), "{}", run.out);
-    assert!(run.says("count"), "{}", run.out);
+    assert!(run.says("does not give a number for count"), "{}", run.out);
 }
 
 #[test]
