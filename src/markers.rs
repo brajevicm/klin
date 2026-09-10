@@ -501,6 +501,7 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> Vec<Findin
                 line: tally.line,
                 text,
                 values,
+                body: None,
             }
         })
         .collect();

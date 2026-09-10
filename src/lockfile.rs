@@ -183,6 +183,7 @@ fn finding(manifest: &str, name: &str, values: Values) -> Finding {
         line: 0,
         text: name.to_string(),
         values,
+        body: None,
     }
 }
 

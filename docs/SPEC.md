@@ -303,7 +303,31 @@ inserted between two twins the new one.
 A function moved between files with its body unchanged SHOULD match its old
 site. The RECOMMENDED second pass matches unmatched findings to unmatched
 entries by a whitespace-normalized body hash, across files. This is additive
-to ADR 0008 and does not change the primary key.
+to ADR 0008 and does not change the primary key, so a move within a file and
+a rename of a file still match on the primary key alone.
+
+The body is everything below the first line, with every run of whitespace
+collapsed. A declaration that fits on one line has nothing below it, so the
+whole line is its key. A declaration that wraps keeps its later lines,
+because the primary key is the declaration line and not the whole signature
+(ADR 0008). Dropping the first line drops the name, so a rename whose body
+did not change matches too, which is what `inventory` reads to tell a
+renamed test from a deleted one (8.2). An edit to the body changes the hash,
+so a move that also edits is `new`. This is an equality match on an
+unchanged body and not a similarity match.
+
+Only an entry whose site the `after` tree no longer holds is a move target.
+From one site the second pass may take as many `before` entries as that site
+lost, which is the count of its `before` entries less the count of its
+findings, lowest line first. An entry an accepted one outranked is not lost,
+so a copy is not a move: the original takes the primary match, and the copy
+is `new`. klin drops a body hash from an accepted entry, so the accepted
+list keeps the keys 4.8 names and no accepted entry is matched this way.
+
+Pairing is one to one and ranks by 16.5 without the line distance, which
+means nothing across files. A failure whose entry sits in another file names
+that file after the values it was, so a function that moved and grew does
+not read as a regression where it now sits.
 
 ### 4.5 Finding
 
@@ -1607,7 +1631,11 @@ match_site(findings, entries, ratcheted):
 The judge runs this once per file and declaration text (4.4). An untaken
 finding is `new`. An untaken `before` entry has no outcome. An untaken
 accepted entry matched nothing (4.8). The second pass of 4.4 takes the
-untaken findings and entries as its input.
+untaken findings and entries as its input, grouped by body hash rather than
+by site, with `distance` fixed at 0. Each group sorts both sides by file and
+line before it runs, so what is left of the rank order, `i` and `j`, is the
+finding's file and line, then the entry's. Only an entry whose site the
+`after` tree lost reaches this input (4.4).
 
 Inserted twin. `before` holds `fn f() {}` at lines 1 and 5. `after` holds it
 at lines 1, 3 and 6, all with equal values. Every pair shares every value,
@@ -1654,17 +1682,23 @@ Core:
   mid-write leaving the previous `turn` file intact, the survey cache hitting
   on the second stop of a turn and missing after a commit.
 - Ratchet: new fails, worsened fails, held passes, rename keeps sites, moved
-  function keeps its site within a file and across files, a copy of a
-  function beside its original is `new` and does not inherit the original's
-  match, a twin inserted between two twins is the new one and its
+  function keeps its site within a file and across files, a function renamed
+  with its body unchanged keeps its site, a one-line function that moved
+  keeps its site, a moved body that was reindented keeps its site, a moved
+  body that was edited is `new`, two bodies that moved take the entry that
+  shares their values, the lower of two bodies in one file takes the moved
+  entry, an accepted entry beside the base entry does not free it for a
+  copy, a function that moved and grew names the site it matched, a copy of
+  a function beside its original is `new` and does not inherit the
+  original's match, a twin inserted between two twins is the new one and its
   neighbours hold, a moved twin keeps its entry over a nearer twin whose
   value changed (16.5), a lowered ceiling fails no held site, accepted entry
   holds a site, an accepted entry the base also holds at the same values
   stays matched under `--strict`, a stale accepted entry does not fail a
   site the base holds, an accepted entry that names some of the values, or
   gives one a value that is not a number, is exit 2, unmatched accepted
-  entry is a NOTE and a strict failure,
-  a failure prints the site it matched and both values.
+  entry is a NOTE and a strict failure, a failure prints the site it matched
+  and both values.
 - Measurement rules (8.2.1): a document whose words are split by Unicode
   spaces and hold markup is counted at the ceiling boundary, a byte that is
   not UTF-8 is one word, a repeated line of two escape kinds fails as one site
@@ -1797,7 +1831,7 @@ Core, in this order:
       regression NOTE and strict failure
 - [ ] Host adapter, Claude Code first, README stops naming other hosts
 - [ ] Three escapes rows: `fit(`, `fdescribe(`, `xfail`
-- [ ] Cross-file move matching by body hash (4.4)
+- [x] Cross-file move matching by body hash (4.4)
 - [ ] `inventory` over test files and test functions, with the
       deleted-subject NOTE and the body-hash rename match
 - [ ] `stubs`, sharing the escapes engine, executable function bodies only,

@@ -23,6 +23,21 @@ fn quoted() -> &'static str {
 }
 "##;
 
+const TANGLED: &str = r##"fn tangled(a: i32) -> i32 {
+    if a > 0 && a < 10 {
+        for x in 0..a {
+            if x == 3 { return 1; }
+        }
+    } else if a == 0 || a == -1 {
+        return 2;
+    }
+    match a {
+        1 => 1,
+        9 => 0,
+    }
+}
+"##;
+
 const PYTHON: &str = r#"def tangled(a, b):
     if a and b:
         for x in b:
@@ -1085,4 +1100,180 @@ fn a_file_the_grammar_cannot_parse_is_exit_two_under_strict_too() {
     let run = tree.run(&["complexity", "--strict"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("src/bad.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_function_moved_to_another_file_with_its_body_unchanged_keeps_its_site() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/knot.rs", "");
+    tree.write("src/moved.rs", TANGLED);
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/moved.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_moved_function_whose_body_changed_is_new() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/knot.rs", "");
+    tree.write(
+        "src/moved.rs",
+        &TANGLED.replace("    match a {", "    let _ = a;\n    match a {"),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+    assert!(run.says("src/moved.rs:1"), "{}", run.out);
+}
+
+#[test]
+fn a_copy_of_a_function_beside_its_original_is_new() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/copy.rs", TANGLED);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+    assert!(run.says("src/copy.rs:1"), "{}", run.out);
+    assert!(!run.says("worse"), "{}", run.out);
+}
+
+#[test]
+fn two_identical_bodies_that_moved_match_one_to_one() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/one.rs", TANGLED);
+    tree.write("src/two.rs", TANGLED);
+    tree.base();
+    tree.write("src/one.rs", "");
+    tree.write("src/two.rs", "");
+    tree.write("src/three.rs", TANGLED);
+    tree.write("src/four.rs", TANGLED);
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("new function(s)"), "{}", run.out);
+}
+
+#[test]
+fn two_moved_bodies_take_the_entry_that_shares_their_values() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    let spread = TANGLED.replace("    match a {", "\n    match a {");
+    tree.write("src/one.rs", TANGLED);
+    tree.write("src/two.rs", &spread);
+    tree.base();
+    tree.write("src/one.rs", "");
+    tree.write("src/two.rs", "");
+    tree.write("src/three.rs", TANGLED);
+    tree.write("src/four.rs", &spread);
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("worse"), "{}", run.out);
+}
+
+#[test]
+fn a_whitespace_only_reformat_of_a_moved_body_still_matches() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/knot.rs", "");
+    tree.write("src/moved.rs", &TANGLED.replace("\n    ", "\n        "));
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/moved.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_function_whose_body_did_not_change_keeps_its_site() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write(
+        "src/knot.rs",
+        &TANGLED.replace("fn tangled(", "fn untangled("),
+    );
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("untangled"), "{}", run.out);
+}
+
+#[test]
+fn a_one_line_function_that_moved_keeps_its_site() {
+    let tree = tree(r#"{"cc": 1, "lines": 60}"#);
+    tree.write("src/one.rs", "fn a() -> i32 { if true { 1 } else { 0 } }\n");
+    tree.base();
+    tree.write("src/one.rs", "");
+    tree.write("src/two.rs", "fn a() -> i32 { if true { 1 } else { 0 } }\n");
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/two.rs"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_beside_the_base_entry_does_not_free_it_for_a_copy() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "complexity", "file": "src/knot.rs",
+                "text": "fn tangled(a: i32) -> i32 {", "cc": 9, "lines": 13}"#,
+        ),
+    );
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/copy.rs", TANGLED);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+    assert!(run.says("src/copy.rs:1"), "{}", run.out);
+}
+
+#[test]
+fn the_lower_of_two_bodies_in_one_file_takes_the_moved_entry() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write(
+        "src/knot.rs",
+        &format!(
+            "{}\n{}",
+            TANGLED.replace("fn tangled(", "fn zzz("),
+            TANGLED.replace("fn tangled(", "fn aaa(")
+        ),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new function(s)"), "{}", run.out);
+    assert!(run.says("fn aaa("), "{}", run.out);
+    assert!(!run.says("fn zzz("), "{}", run.out);
+}
+
+#[test]
+fn a_function_that_moved_and_grew_names_the_site_it_matched() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+    tree.base();
+    tree.write("src/knot.rs", "");
+    tree.write(
+        "src/moved.rs",
+        &TANGLED.replace("    match a {", "\n    match a {"),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("at src/knot.rs"), "{}", run.out);
 }

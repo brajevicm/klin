@@ -95,6 +95,7 @@ fn finding(path: &str, gone: bool) -> Finding {
         line: 0,
         text: LABEL.to_string(),
         values,
+        body: None,
     }
 }
 

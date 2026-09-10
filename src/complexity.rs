@@ -306,6 +306,7 @@ struct Function {
     end: u64,
     cc: u64,
     text: String,
+    body: u64,
 }
 
 impl Function {
@@ -326,6 +327,7 @@ impl Function {
             line: self.line,
             text: self.text.clone(),
             values,
+            body: Some(self.body),
         }
     }
 }
@@ -671,7 +673,7 @@ fn parsed(source: &str, file: &str, language: &Language) -> Result<Option<Vec<Fu
     };
     let lines: Vec<&str> = source.lines().collect();
     let mut out = Vec::new();
-    collect(tree.root_node(), language, file, &lines, &mut out);
+    collect(tree.root_node(), language, file, source, &lines, &mut out);
     Ok(Some(out))
 }
 
@@ -722,7 +724,14 @@ pub fn measured(path: &str, source: &str) -> Vec<Measured> {
         .collect()
 }
 
-fn collect(node: Node, language: &Language, file: &str, lines: &[&str], out: &mut Vec<Function>) {
+fn collect(
+    node: Node,
+    language: &Language,
+    file: &str,
+    source: &str,
+    lines: &[&str],
+    out: &mut Vec<Function>,
+) {
     if language.functions.contains(&node.kind()) && !holds_a_body(node, language) {
         out.push(Function {
             file: file.to_string(),
@@ -730,11 +739,12 @@ fn collect(node: Node, language: &Language, file: &str, lines: &[&str], out: &mu
             end: node.end_position().row as u64 + 1,
             cc: 1 + decisions(node, language),
             text: site(node, lines),
+            body: ratchet::body_hash(node.utf8_text(source.as_bytes()).unwrap_or_default()),
         });
     }
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect(child, language, file, lines, out);
+        collect(child, language, file, source, lines, out);
     }
 }
 

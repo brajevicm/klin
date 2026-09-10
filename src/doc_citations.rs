@@ -217,6 +217,7 @@ fn found(document: &Document, text: &str, index: &Index) -> Vec<Finding> {
                 line: tally.line,
                 text,
                 values,
+                body: None,
             }
         })
         .collect();

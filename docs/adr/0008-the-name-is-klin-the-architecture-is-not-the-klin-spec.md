@@ -3,6 +3,11 @@
 > Spec 4.4 and 16.5 record how identical sites in one file are paired: by
 > equal ratcheted values first, then by line distance. The line stays the
 > tie-breaker this decision made it.
+>
+> Spec 4.4 adds a second pass over what the first leaves unmatched, keyed by
+> a hash of the body. It is additive: the primary key is still the file and
+> the declaration line, and a site keyed that way is matched before any body
+> is read.
 
 A specification exists for a tool called Klin, version 2.0.0-draft, covering
 this problem. This project takes that name and rejects that architecture. A

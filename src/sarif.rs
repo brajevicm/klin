@@ -484,6 +484,7 @@ fn collected(seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
                 line: tally.line,
                 text,
                 values,
+                body: None,
             }
         })
         .collect();

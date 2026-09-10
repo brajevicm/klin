@@ -1,16 +1,20 @@
 use std::collections::BTreeMap;
 use std::fmt::Write;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use serde_json::{Map, Value};
 
 use crate::config::{Config, Error, Flags, Records};
 
-/// The engine every ratcheting gate judges through. It exposes six items: `Values`, `Section`
-/// and `section`, `Finding`, `accepted`, and `Evaluator` with its `evaluate` call. Everything
-/// else here, the matcher and the reporter included, is private.
+/// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
+/// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
+/// `noted`, `scoped`, and `Evaluator` with its `evaluate` call. Everything else here, the
+/// matcher and the reporter included, is private.
 pub type Values = Map<String, Value>;
 
 const ACCEPTED: &str = "accepted";
+
+const BODY: &str = "body_hash";
 
 const RETIRED: &[(&str, &str)] = &[
     (
@@ -69,6 +73,21 @@ pub struct Finding {
     pub line: u64,
     pub text: String,
     pub values: Values,
+    pub body: Option<u64>,
+}
+
+/// The key the cross-file pass of spec 4.4 matches on: everything below the first line, with
+/// every run of whitespace collapsed. Dropping that line drops the name, so a rename matches
+/// too, and collapsing whitespace means a move that reindents matches. A declaration that fits
+/// on one line has nothing below it, so the whole line is its key. A declaration that wraps
+/// over several lines keeps its later lines, like the declaration line of ADR 0008 does.
+pub fn body_hash(source: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    let body = source.split_once('\n').map_or(source, |(_, body)| body);
+    for word in body.split_whitespace() {
+        word.hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 impl Finding {
@@ -77,6 +96,9 @@ impl Finding {
         out.insert("file".into(), self.file.clone().into());
         out.insert("text".into(), self.text.clone().into());
         out.insert("line".into(), self.line.into());
+        if let Some(body) = self.body {
+            out.insert(BODY.into(), body.into());
+        }
         out.extend(
             self.values
                 .iter()
@@ -110,6 +132,7 @@ pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Val
             continue;
         }
         names_every_value(config, gate, &entry, metrics)?;
+        entry.remove(BODY);
         entry.insert(ACCEPTED.into(), true.into());
         out.push(entry);
     }
@@ -232,8 +255,8 @@ fn compare(finding: &Finding, entry: &Values, metrics: &[&str]) -> Outcome {
     }
 }
 
-fn distance(finding: &Finding, entry: &Values) -> u64 {
-    if is_accepted(entry) {
+fn distance(finding: &Finding, entry: &Values, by_line: bool) -> u64 {
+    if !by_line || is_accepted(entry) {
         return 0;
     }
     entry
@@ -246,6 +269,7 @@ fn match_group(
     findings: Vec<Finding>,
     entries: Vec<Values>,
     metrics: &[&str],
+    by_line: bool,
 ) -> (Vec<(Finding, Values)>, Vec<Finding>, Vec<Values>) {
     let mut candidates = Vec::new();
     for (at_finding, finding) in findings.iter().enumerate() {
@@ -262,7 +286,7 @@ fn match_group(
             candidates.push((
                 rose,
                 -shared,
-                distance(finding, entry),
+                distance(finding, entry, by_line),
                 at_finding,
                 at_entry,
             ));
@@ -287,6 +311,76 @@ fn match_group(
     (pairs, unmatched_findings, unmatched_entries)
 }
 
+/// The cross-file pass of spec 4.4. What the primary match left untaken pairs again by body
+/// hash, across files, so a function moved with its body unchanged keeps its site. A line
+/// distance between two files means nothing, so it does not rank here. Only a `before` site
+/// carries a hash, so an accepted entry is never matched this way.
+fn moved(
+    findings: Vec<Finding>,
+    entries: Vec<Values>,
+    metrics: &[&str],
+) -> (Vec<(Finding, Values)>, Vec<Finding>, Vec<Values>) {
+    let mut groups: BTreeMap<u64, (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
+    let mut findings_left = Vec::new();
+    let mut entries_left = Vec::new();
+    for entry in entries {
+        match entry.get(BODY).and_then(Value::as_u64) {
+            Some(hash) => groups.entry(hash).or_default().1.push(entry),
+            None => entries_left.push(entry),
+        }
+    }
+    for finding in findings {
+        match finding.body {
+            Some(hash) => groups.entry(hash).or_default().0.push(finding),
+            None => findings_left.push(finding),
+        }
+    }
+    let mut pairs = Vec::new();
+    for (mut group_findings, mut group_entries) in groups.into_values() {
+        group_findings.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+        group_entries.sort_by_key(entry_site);
+        let (found, findings_over, entries_over) =
+            match_group(group_findings, group_entries, metrics, false);
+        pairs.extend(found);
+        findings_left.extend(findings_over);
+        entries_left.extend(entries_over);
+    }
+    (pairs, findings_left, entries_left)
+}
+
+fn entry_site(entry: &Values) -> (String, u64) {
+    (
+        text(entry, "file"),
+        entry.get("line").and_then(Value::as_u64).unwrap_or(0),
+    )
+}
+
+/// The untaken entries of one site that carry forward. An untaken `before` entry has no outcome
+/// (16.5), but only a site the `after` tree no longer holds can be a move target: an entry that
+/// an accepted one outranked is still in place, so a body-identical function elsewhere is a copy
+/// and not a move. Spec 4.4. An accepted entry carries forward for its NOTE.
+fn untaken(entries: Vec<Values>, mut lost: usize) -> Vec<Values> {
+    let mut out = Vec::new();
+    for entry in entries {
+        if is_accepted(&entry) {
+            out.push(entry);
+        } else if lost > 0 {
+            lost -= 1;
+            out.push(entry);
+        }
+    }
+    out
+}
+
+fn take(comparison: &mut Comparison, pairs: Vec<(Finding, Values)>, metrics: &[&str]) {
+    for (finding, entry) in pairs {
+        match compare(&finding, &entry, metrics) {
+            Outcome::Rose => comparison.rose.push((finding, entry)),
+            Outcome::Held => {}
+        }
+    }
+}
+
 fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
     let mut comparison = Comparison::default();
     let mut groups: BTreeMap<(String, String), (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
@@ -298,24 +392,30 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
         let key = (finding.file.clone(), finding.text.clone());
         groups.entry(key).or_default().0.push(finding);
     }
+    let mut findings_left = Vec::new();
+    let mut entries_left = Vec::new();
     for (group_findings, group_entries) in groups.into_values() {
-        let (mut pairs, findings_left, entries_left) =
-            match_group(group_findings, group_entries, metrics);
-        pairs.sort_by_key(|(finding, _)| finding.line);
-        for (finding, entry) in pairs {
-            match compare(&finding, &entry, metrics) {
-                Outcome::Rose => comparison.rose.push((finding, entry)),
-                Outcome::Held => {}
-            }
-        }
-        comparison.unmatched_findings.extend(findings_left);
-        comparison
-            .unmatched_accepted
-            .extend(entries_left.into_iter().filter(is_accepted));
+        let lost = group_entries
+            .iter()
+            .filter(|entry| !is_accepted(entry))
+            .count()
+            .saturating_sub(group_findings.len());
+        let (pairs, findings_over, entries_over) =
+            match_group(group_findings, group_entries, metrics, true);
+        take(&mut comparison, pairs, metrics);
+        findings_left.extend(findings_over);
+        entries_left.extend(untaken(entries_over, lost));
     }
+    let (pairs, findings_left, entries_left) = moved(findings_left, entries_left, metrics);
+    take(&mut comparison, pairs, metrics);
+    comparison.unmatched_findings = findings_left;
+    comparison.unmatched_accepted = entries_left.into_iter().filter(is_accepted).collect();
     comparison
         .unmatched_findings
         .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+    comparison
+        .rose
+        .sort_by(|(a, _), (b, _)| (&a.file, a.line).cmp(&(&b.file, b.line)));
     comparison
 }
 
@@ -414,16 +514,26 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
         for (finding, entry) in &comparison.rose {
             let _ = writeln!(
                 out,
-                "  {}:{}  {}, was {}  {}",
+                "  {}:{}  {}, was {}{}  {}",
                 finding.file,
                 finding.line,
                 (evaluator.format_metrics)(&finding.values),
                 (evaluator.format_metrics)(entry),
+                came_from(finding, entry),
                 clip(&finding.text)
             );
         }
     }
     let _ = writeln!(out, "{}", evaluator.fix_advice);
+}
+
+/// The file a failure's own line does not name, which is the one the second pass of 4.4 matched
+/// it to. Without it a function that moved and grew reads as a regression where it now sits.
+fn came_from(finding: &Finding, entry: &Values) -> String {
+    match text(entry, "file") {
+        was if was.is_empty() || was == finding.file => String::new(),
+        was => format!(" at {was}"),
+    }
 }
 
 fn text(entry: &Values, key: &str) -> String {
@@ -504,7 +614,7 @@ fn site(outcome: &str, file: &str, line: Option<u64>, text: &str) -> Values {
 
 fn unmatched_record(entry: &Values) -> Values {
     let mut values = entry.clone();
-    for key in ["file", "text", "line", ACCEPTED, "gate"] {
+    for key in ["file", "text", "line", ACCEPTED, BODY, "gate"] {
         values.remove(key);
     }
     let mut out = site(
