@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::changed::git;
 use crate::config::{Config, Error};
 use crate::ratchet::Values;
+use serde_json::Value;
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[
     ".git",
@@ -275,4 +276,37 @@ pub fn relative(path: &Path, repo_root: &Path) -> String {
         .unwrap_or(path)
         .display()
         .to_string()
+}
+
+/// The exclusions `before` was measured under: the ones the base's own configuration names for
+/// this section, when the base tree holds one, and today's otherwise. An exclusion this run adds
+/// is one way a file leaves scrutiny (spec 8.6), and the same list applied to both trees would
+/// hide exactly that loss. A base with no configuration measured under none of today's rules, so
+/// today's list is the closest reading of what it held.
+pub fn base_exclusions(
+    config: &Config,
+    section: &str,
+    prior: &Path,
+    today: &[String],
+) -> Vec<String> {
+    let Some(name) = config.file.file_name() else {
+        return today.to_vec();
+    };
+    let Some(listed) = std::fs::read_to_string(prior.join(name))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .and_then(|data| {
+            data.get(section)?
+                .as_object()
+                .map(|found| found.get("exclude").cloned())
+        })
+    else {
+        return today.to_vec();
+    };
+    listed
+        .and_then(|listed| listed.as_array().cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|item| item.as_str().map(str::to_string))
+        .collect()
 }

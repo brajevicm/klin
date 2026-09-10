@@ -756,3 +756,27 @@ fn repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_wi
     assert!(!run.says("src/lib.rs:3"), "{}", run.out);
     assert!(!run.says("expect "), "{}", run.out);
 }
+
+#[test]
+fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
+    let tree = tree();
+    tree.write("src/gone.rs", "fn f() {}\n");
+    tree.base();
+    tree.write(
+        "klin.json",
+        r#"{ "project": "t", "escapes": { "roots": ["src"], "languages": ["rust"],
+             "exclude": ["gone.rs"] } }"#,
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: src/gone.rs was measured at the base"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("an exclusion drops it now"), "{}", run.out);
+
+    let strict = tree.run(&["escapes", "--strict"]);
+    assert_eq!(strict.code, 2, "{}", strict.out);
+}

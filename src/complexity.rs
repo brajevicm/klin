@@ -7,7 +7,7 @@ use tree_sitter::{Node, Parser};
 use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::config::{Config, Error, Flags, UNPARSED};
-use crate::coverage::{self, Coverage};
+use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
@@ -348,25 +348,10 @@ struct Unparsed {
 struct Sweep {
     functions: Vec<Function>,
     unparsed: Vec<Unparsed>,
-    measured: Vec<String>,
-    excluded: Vec<String>,
+    files: Files,
 }
 
-impl Sweep {
-    fn coverage(&self, only: Option<&[String]>) -> Coverage {
-        let unread: Vec<String> = self.unparsed.iter().map(|file| file.file.clone()).collect();
-        let measured = coverage::scoped(&self.measured, only);
-        let excluded = coverage::scoped(&self.excluded, only);
-        let unreadable = coverage::scoped(&unread, only);
-        Coverage {
-            found: measured + excluded + unreadable,
-            measured,
-            excluded,
-            unreadable,
-        }
-    }
-}
-
+#[derive(Clone)]
 struct Selection {
     languages: Vec<&'static Language>,
     skip_dirs: Vec<String>,
@@ -399,10 +384,12 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let now = over(&sweep.functions, &spec);
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), flags);
     let count = scoped(now.iter().map(|finding| &finding.file), flags);
-    let said = sweep.coverage(flags.only.as_deref()).said(flags);
+    let said = sweep.files.coverage(flags.only.as_deref()).said(flags);
+    let (prior, before) = at_the_base(&config, &spec, flags, out)?;
+    let lost = sweep.files.lost(&before, &config, flags.only.as_deref());
     let code = evaluator(&spec).evaluate(
         now,
-        at_the_base(&config, &spec, flags, out)?,
+        prior,
         ratchet::accepted(&config, &flags.gate, evaluator(&spec).metrics)?,
         flags,
         &format!(
@@ -411,6 +398,7 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
         ),
         out,
     );
+    let code = coverage::lost_said(&lost, flags, code, out);
     Ok(unread(&sweep.unparsed, flags, code, out))
 }
 
@@ -419,7 +407,7 @@ fn at_the_base(
     spec: &Spec,
     flags: &Flags,
     out: &mut String,
-) -> Result<Vec<Finding>, Error> {
+) -> Result<(Vec<Finding>, Files), Error> {
     let owned;
     let prior = match flags.prior.as_deref() {
         Some(dir) => dir,
@@ -428,15 +416,14 @@ fn at_the_base(
             owned.root()
         }
     };
-    let before = measure(
-        &base::roots(&spec.roots, config, prior)?,
-        &spec.selection,
-        prior,
-    )?
-    .functions;
-    let mut found = over(&before, spec);
+    let selection = Selection {
+        exclude: files::base_exclusions(config, SECTION, prior, &spec.selection.exclude),
+        ..spec.selection.clone()
+    };
+    let before = measure(&base::roots(&spec.roots, config, prior)?, &selection, prior)?;
+    let mut found = over(&before.functions, spec);
     found.retain(|finding| config.was_held(&finding.file));
-    Ok(found)
+    Ok((found, before.files))
 }
 
 fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
@@ -668,15 +655,19 @@ fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
     read.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
-    Ok(Sweep {
-        functions: out,
-        unparsed,
+    let files = Files {
         measured: read,
         excluded: found
             .excluded
             .iter()
             .map(|file| files::relative(file, repo_root))
             .collect(),
+        unreadable: unparsed.iter().map(|file| file.file.clone()).collect(),
+    };
+    Ok(Sweep {
+        functions: out,
+        unparsed,
+        files,
     })
 }
 

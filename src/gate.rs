@@ -10,8 +10,8 @@ use crate::changed::{self, Change};
 use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::{
-    build, complexity, doc_citations, doc_size, escapes, inventory, lockfile, sarif, state, stubs,
-    survey, turn,
+    build, complexity, coverage, doc_citations, doc_size, escapes, inventory, lockfile, sarif,
+    state, stubs, survey, turn,
 };
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -279,7 +279,7 @@ fn handed(args: &Args, start: &Path, outcome: Result<Tally, Error>, out: &mut St
 struct Tally {
     failed: usize,
     errored: usize,
-    unread: usize,
+    unmeasured: usize,
 }
 
 /// What the hook says about a tree that does not build. Both messages name the bound from
@@ -756,7 +756,7 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     let held = state::ready(root).ok().map(|at| (count(&at), at));
     unwritable(root);
     if failed == 0 && errored == 0 {
-        return nothing_blocks(tally.unread, report);
+        return nothing_blocks(tally.unmeasured, report);
     }
     let Some(event) = host::read(args.host.as_deref()) else {
         eprint!("{report}");
@@ -777,8 +777,8 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the note the run left.
-fn nothing_blocks(unread: usize, report: &str) -> u8 {
-    if unread == 0 {
+fn nothing_blocks(unmeasured: usize, report: &str) -> u8 {
+    if unmeasured == 0 {
         return 0;
     }
     eprintln!("klin: nothing blocks the stop, and the run left a note:");
@@ -1084,7 +1084,7 @@ fn each(
         totals.gates.push(row(gate, code, &records));
         gather(&mut totals, records, &gate.name);
     }
-    tally.unread = totals.notes.iter().filter(|note| unread(note)).count();
+    tally.unmeasured = totals.notes.iter().filter(|note| unmeasured(note)).count();
     (tally, totals)
 }
 
@@ -1103,8 +1103,10 @@ fn row(gate: &Gate, code: u8, records: &Records) -> Value {
     Value::Object(out)
 }
 
-fn unread(note: &Value) -> bool {
-    note.get("outcome").and_then(Value::as_str) == Some(UNPARSED)
+/// A note about a file the run could not read or stopped measuring, which the hook hands back
+/// even when nothing blocks the stop. Spec 8.6, 14.
+fn unmeasured(note: &Value) -> bool {
+    note.get("outcome").and_then(Value::as_str) == Some(UNPARSED) || coverage::is_lost(note)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str) {

@@ -8,7 +8,7 @@ use tree_sitter::{Node, Parser};
 
 use crate::base;
 use crate::config::{Config, Error, Flags};
-use crate::coverage::{self, Coverage};
+use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
@@ -65,12 +65,14 @@ pub struct Args {
     only: Option<Vec<String>>,
 }
 
+#[derive(Clone)]
 struct Pattern {
     name: String,
     regex: Regex,
     remedy: String,
 }
 
+#[derive(Clone)]
 struct Set {
     suffixes: Vec<String>,
     patterns: Vec<Pattern>,
@@ -81,6 +83,7 @@ struct Spec {
     roots: Vec<PathBuf>,
 }
 
+#[derive(Clone)]
 struct Search {
     sets: Vec<Set>,
     skip_dirs: Vec<String>,
@@ -101,21 +104,7 @@ struct Skipped {
 struct Read {
     findings: Vec<Finding>,
     skipped: u64,
-    measured: Vec<String>,
-    excluded: Vec<String>,
-}
-
-impl Read {
-    fn coverage(&self, only: Option<&[String]>) -> Coverage {
-        let measured = coverage::scoped(&self.measured, only);
-        let excluded = coverage::scoped(&self.excluded, only);
-        Coverage {
-            found: measured + excluded,
-            measured,
-            excluded,
-            unreadable: 0,
-        }
-    }
+    files: Files,
 }
 
 struct Tally {
@@ -177,15 +166,18 @@ fn evaluate(kind: &Kind, flags: &Flags, start: &Path, out: &mut String) -> Resul
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
     let unit = kind.evaluator.unit;
-    let said = read.coverage(flags.only.as_deref()).said(flags);
-    Ok(kind.evaluator.evaluate(
+    let said = read.files.coverage(flags.only.as_deref()).said(flags);
+    let (prior, before) = at_the_base(kind, &config, &spec, flags, out)?;
+    let lost = read.files.lost(&before, &config, flags.only.as_deref());
+    let code = kind.evaluator.evaluate(
         read.findings,
-        at_the_base(kind, &config, &spec, flags, out)?,
+        prior,
         ratchet::accepted(&config, &flags.gate, kind.evaluator.metrics)?,
         flags,
         &format!("OK: {sites} {unit} in the tree, all held at the base{aside}{said}"),
         out,
-    ))
+    );
+    Ok(coverage::lost_said(&lost, flags, code, out))
 }
 
 fn at_the_base(
@@ -194,7 +186,7 @@ fn at_the_base(
     spec: &Spec,
     flags: &Flags,
     out: &mut String,
-) -> Result<Vec<Finding>, Error> {
+) -> Result<(Vec<Finding>, Files), Error> {
     let owned;
     let prior = match flags.prior.as_deref() {
         Some(dir) => dir,
@@ -203,15 +195,19 @@ fn at_the_base(
             owned.root()
         }
     };
-    let mut before = findings(
+    let search = Search {
+        exclude: files::base_exclusions(config, kind.section, prior, &spec.search.exclude),
+        ..spec.search.clone()
+    };
+    let before = findings(
         kind,
-        &spec.search,
+        &search,
         &base::roots(&spec.roots, config, prior)?,
         prior,
-    )?
-    .findings;
-    before.retain(|finding| config.was_held(&finding.file));
-    Ok(before)
+    )?;
+    let mut held = before.findings;
+    held.retain(|finding| config.was_held(&finding.file));
+    Ok((held, before.files))
 }
 
 fn flags(kind: &Kind, args: &Args) -> Flags {
@@ -462,8 +458,11 @@ fn findings(
     Ok(Read {
         findings: collected(kind, seen),
         skipped,
-        measured: measured.into_iter().collect(),
-        excluded: excluded.into_iter().collect(),
+        files: Files {
+            measured: measured.into_iter().collect(),
+            excluded: excluded.into_iter().collect(),
+            unreadable: Vec::new(),
+        },
     })
 }
 

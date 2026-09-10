@@ -1385,3 +1385,52 @@ fn hook_reports_a_section_naming_a_retired_key_and_does_not_block_the_stop() {
     assert!(run.says("\"baseline\""), "{}", run.out);
     assert!(!run.says("stop again"), "{}", run.out);
 }
+
+const A_LOST_FILE: &str = r#"{ "project": "t",
+  "complexity": { "roots": ["src"], "exclude": ["gone.rs"], "ceilings": {"cc": 8, "lines": 60} } }"#;
+
+fn lost_file() -> Tree {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 5);
+    tree.write("src/gone.rs", "fn other() -> i32 { 2 }\n");
+    tree.base();
+    tree.write("klin.json", A_LOST_FILE);
+    tree
+}
+
+#[test]
+fn a_coverage_loss_is_a_note_under_the_gate_in_the_json() {
+    let tree = lost_file();
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = json(&run);
+    assert!(list(&report, "findings").is_empty(), "{}", run.out);
+    assert_eq!(
+        outcomes(list(&report, "notes")),
+        [("complexity", "lost")],
+        "{}",
+        run.out
+    );
+    let note = &list(&report, "notes")[0];
+    assert_eq!(field(note, "file"), "src/gone.rs", "{}", run.out);
+    let gates = list(&report, "gates");
+    let gate = gates
+        .iter()
+        .find(|gate| field(gate, "name") == "complexity")
+        .unwrap_or_else(|| panic!("no complexity row: {}", run.out));
+    assert_eq!(gate["notes"], 1, "{}", run.out);
+}
+
+#[test]
+fn a_coverage_loss_in_the_hook_is_a_note_and_the_turn_ends() {
+    let tree = lost_file();
+
+    let run = stop(&tree, A_STOP);
+    assert_ne!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("NOTE: src/gone.rs was measured at the base"),
+        "{}",
+        run.out
+    );
+}

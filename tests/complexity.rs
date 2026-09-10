@@ -1277,3 +1277,75 @@ fn a_function_that_moved_and_grew_names_the_site_it_matched() {
     assert!(run.says("got worse"), "{}", run.out);
     assert!(run.says("at src/knot.rs"), "{}", run.out);
 }
+
+#[test]
+fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/kept.rs", "fn simple() -> i32 { 1 }\n");
+    tree.write("src/gone.rs", "fn other() -> i32 { 2 }\n");
+    tree.base();
+    tree.write(
+        "klin.json",
+        r#"{ "project": "t", "complexity": { "roots": ["src"], "exclude": ["gone.rs"],
+             "ceilings": {"cc": 8, "lines": 60} } }"#,
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: src/gone.rs was measured at the base"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("an exclusion drops it now"), "{}", run.out);
+    assert!(!run.says("src/kept.rs was measured"), "{}", run.out);
+}
+
+#[test]
+fn a_file_measured_at_the_base_and_not_now_is_exit_two_under_strict() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/gone.rs", "fn other() -> i32 { 2 }\n");
+    tree.base();
+    tree.write(
+        "klin.json",
+        r#"{ "project": "t", "complexity": { "roots": ["src"], "exclude": ["gone.rs"],
+             "ceilings": {"cc": 8, "lines": 60} } }"#,
+    );
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL:"), "{}", run.out);
+    assert!(run.says("src/gone.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_file_added_or_deleted_in_the_window_is_not_a_coverage_loss() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/deleted.rs", "fn other() -> i32 { 2 }\n");
+    tree.write("src/same.rs", "fn same() -> i32 { 3 }\n");
+    tree.base();
+    tree.remove("src/deleted.rs");
+    tree.write("src/added.rs", "fn added() -> i32 { 4 }\n");
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("measured at the base"), "{}", run.out);
+}
+
+#[test]
+fn a_file_the_grammar_refuses_now_is_unreadable_and_a_coverage_loss_too() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/bad.rs", "fn fine() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/bad.rs", "%%% not rust %%%\n");
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not parse"), "{}", run.out);
+    assert!(
+        run.says("NOTE: src/bad.rs was measured at the base"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("the grammar refused it"), "{}", run.out);
+}

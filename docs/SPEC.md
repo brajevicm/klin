@@ -340,7 +340,7 @@ One site with the values a check measured there. Fields:
 - `outcome` (`new` | `worsened` | `held`) set by the engine, never by a check.
   A note about a site, such as an unmatched accepted entry or an unparsed
   file, is not a finding. It is a separate record under `notes` in the JSON
-  (11.2) and carries no `outcome`.
+  (11.2), and its `outcome` names the kind of note rather than a verdict.
 
 A value the check ratchets on is one where higher is worse. A check MUST name
 those values. A value that is not ratcheted is carried for the report only.
@@ -1190,6 +1190,17 @@ Every check MUST:
   can only discover more, so such a file left through an exclusion, a file
   the grammar stopped reading, or a discovery rule the tree no longer meets.
   In the hook it is a NOTE. Under `--strict` it is exit 2, per section 10.
+  The rule binds a check whose scope is a set of source files. A check whose
+  scope is a list a person writes, a report, or the very set it ratchets,
+  such as `inventory`, has nothing to lose this way that it does not already
+  judge. `before` is measured under the `exclude` list the base commit's own
+  configuration names for the check, and under today's where the base holds
+  none: today's list applied to both trees could never show a file that an
+  exclusion this run added took away. Every other rule is today's on both
+  trees, so the reason a check gives is what it sees in `after`, and it does
+  not reconstruct why `before` measured the file. A scoped run reports the
+  loss among the files in its scope. The JSON carries the loss as a `lost`
+  record under the gate's notes (11.2).
 - name a file it could not measure. Outside the hook that is exit 2, with or
   without `--strict` (ADR 0021). In the hook it is a NOTE, because the agent
   has no remedy.
@@ -1400,6 +1411,12 @@ One object on stdout. Fields:
   of a run that could not measure something (14). Those name no site's
   values, so they carry no `id`, `ceiling` or `matched`, and their `outcome`
   says which kind each one is.
+- `notes` entries of `{gate, outcome, file, text}`, plus the site's `line`
+  and `values` where the note has them. `outcome` says which kind each one
+  is: `unmatched` for an accepted entry that matched nothing, `unparsed` for
+  a file a grammar refused in the hook, `lost` for a file `before` measured
+  and `after` did not (8.6), and `note` for what a check left out of its
+  count. `text` carries the reason, as the `NOTE:` line printed it.
 - `exit` integer
 
 A finding has no column, so the JSON carries none rather than a wrong one.
