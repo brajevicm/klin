@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace-manifest.json",
+  "name": "klin",
+  "owner": {
+    "name": "brajevicm",
+    "url": "https://github.com/brajevicm"
+  },
+  "description": "klin, a quality ratchet for AI-driven development. Installing the plugin is the whole install for Claude Code.",
+  "plugins": [
+    {
+      "name": "klin",
+      "source": "./plugins/claude-code",
+      "description": "Gate every stop against the base commit. The hooks call klin, and bin/klin fetches the pinned release on first run.",
+      "license": "Apache-2.0",
+      "keywords": ["quality", "ratchet", "gate", "complexity", "hooks"]
+    }
+  ]
+}

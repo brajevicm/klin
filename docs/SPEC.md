@@ -2007,9 +2007,9 @@ Next, after core is green, each with an unsolved problem named in section 8:
 
 Distribution, in this order, because each step depends on the one before:
 
-- [ ] Release pipeline: four binaries and a checksum file per tag (#62)
+- [x] Release pipeline: four binaries and a checksum file per tag (#62)
 - [ ] Install script with `--version`
-- [ ] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
+- [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
 - [ ] `init --hooks` for Cursor and Codex, and their host adapters (#67, #68)
 - [ ] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64)
@@ -2082,6 +2082,19 @@ which is the case for plugins distributed through organization settings, the
 hooks find `klin` on PATH from a route in 19.1, and the skill says which
 command installs it. When neither is present the Stop hook says so once and
 lets the turn end.
+
+The plugin's hook lines carry one presence test before the command, because a
+person may install the plugin where no binary resolves yet. With no `klin` on
+PATH the session start, the prompt and the pre-tool events say nothing and
+block nothing. The Stop hook names the install command on stdout, and only
+where a `klin.json` resolves at the project root, so a tree that never opted
+in stays silent (ADR 0028). Nothing blocks, so the turn ends at that stop and
+the line appears once.
+
+The wrapper reads two overrides, `KLIN_RELEASE_BASE_URL` and
+`KLIN_CACHE_DIR`. They exist so a CLI test can fetch a release of its own over
+`file://` and prove the two paths that a real release cannot: the first run
+that installs, and the failure that installs nothing.
 
 With the optional config of section 5, installing the plugin is the complete
 install. No `init` runs. The first stop is gated.
