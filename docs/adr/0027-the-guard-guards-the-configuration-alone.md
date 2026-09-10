@@ -25,10 +25,20 @@ at a rate that teaches the person to say yes without reading.
 
 The guarded set is `klin.json`. Nothing else.
 
-Every route that reaches it still answers: an edit tool whose path is the
-file, a redirect onto it, a whole-tree restore, a glob that matches the name,
+Every route klin can read as a clear write to it still denies: an edit tool
+whose path is the file, a redirect onto it, a glob that matches the name,
 `klin init`, and `klin turn reset`. A command outside the reader list that
 names it is still `ask`, per ADR 0020, so the three decisions stand.
+
+The whole-tree restore leaves the deny list with them. ADR 0011 put it there
+because the command never names the file it would overwrite, and the rule it
+grew into matched the words `git`, `checkout` or `restore`, and any word
+ending in a slash, anywhere in one command. That denied
+`git checkout main -- src/`, which cannot reach a file at the root, and it
+denied a command that only mentioned the three words in unrelated places. A
+deny leaves an agent no remedy, so each of those cost a turn. The route it
+closed also destroys every other change in the working tree, which a person
+notices at once.
 
 What leaves the set: each host's hook file, CODEOWNERS, klin's state
 directory, and `refs/worktree/klin`. The verification table leaves with them.
@@ -58,10 +68,18 @@ A command substitution starts a command of its own, and a quoting context of
 its own with it. The guard now resets its quote state at a `$(` and at a
 backtick, so a `<<` inside one opens a body the way a bare one does.
 
-One hole beside it stays open, and this record names it rather than fixing
-it. The segmenter does not see where a command substitution ends, so a reader
-inside one exempts the words that follow the closing parenthesis:
-`gh issue create --body "$(cat <<'EOF' ... EOF)" klin.json` is allowed,
-because `cat` heads the segment the `$(` opened. A guarded name in the words
-before the substitution is still `ask`. The hole predates this record and is
-the segmenter's shape, not the heredoc's; #90 owns the segmenter.
+A second hole came with the first. The segmenter cut at the `$(` that opens
+a substitution and never saw the `)` that closes it, so a reader inside one
+lent its exemption to every word after the parenthesis:
+`gh issue create --body "$(cat notes.md)" klin.json` was allowed, because
+`cat` headed the piece the `$(` opened.
+
+The fix is the same idea as the heredoc one. A substitution is a command of
+its own, so it leaves the line it sat in. The guard reads the command inside
+it separately, and the words after the closing parenthesis stay with the
+command that owns them. `grep -rn "$(cat pattern.txt)" klin.json` is still
+allowed, because `grep` owns those words and `grep` is a reader.
+
+An unbalanced parenthesis inside a substitution ends it early. That splits
+the command into more pieces than a shell would, so the guard can only ask
+about more than it should, never about less.

@@ -1359,9 +1359,11 @@ ordinary files, and an edit to one of them is `allow`. ADR 0027 records why,
 and what it gives up.
 
 - `deny`: an edit tool whose `file_path` is `klin.json`, a redirect onto it,
-  a whole-tree restore, `init` in any form, and `turn reset`. The reason
-  names the file and says a person changes it in a reviewed commit, or names
-  the command a person runs instead.
+  `init` in any form, and `turn reset`. The reason names the file and says a
+  person changes it in a reviewed commit, or names the command a person runs
+  instead. Nothing else denies. Every route klin cannot read as a clear write
+  to `klin.json` is an `ask` at most, because a deny leaves an agent no
+  remedy and ordinary work must not meet one.
 - `ask`: a shell command outside the reader list whose arguments name
   `klin.json`. The reason quotes the token that matched. The person decides.
   The reader list of ADR 0011 gains `git rev-parse`, `git cat-file`, `git
@@ -1382,10 +1384,13 @@ its own with it. The guard MUST find the heredoc a `$(` or a backtick opens,
 even inside a double quote, so a body passed as `--body "$(cat <<'EOF' ...
 EOF)"` is data and not a list of commands.
 
-The segmenter does not see where a command substitution ends, so a reader
-inside one exempts the words after the closing parenthesis. A guarded name in
-the words before the substitution is `ask`. ADR 0027 records this hole and
-leaves it to #90.
+A command substitution is a command of its own, so it leaves the line it sat
+in. The guard reads the command inside it on its own, and the words after the
+closing parenthesis stay with the command that owns them. So a reader inside
+a substitution exempts nothing outside it, and a reader outside one keeps the
+exemption for its own arguments. An unbalanced parenthesis ends the
+substitution early, which splits the command into more pieces than a shell
+would and can only add a question, never remove one.
 
 The guard MUST NOT read the configuration. It runs before the config loads.
 It MAY read `KLIN_STATE_DIR` and run `git rev-parse --git-dir` to learn the

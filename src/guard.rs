@@ -28,7 +28,6 @@ const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
 /// owners are ordinary files: klin cannot tell a loosening from a fix in any of them, and
 /// refusing a whole settings file refuses the work that has nothing to do with klin.
 const NAME: &str = "klin.json";
-const RESTORERS: &[&str] = &["checkout", "restore"];
 const READERS: &[&str] = &[
     "cat", "head", "tail", "less", "grep", "rg", "diff", "wc", "stat", "ls", "file", "jq", "du",
 ];
@@ -99,8 +98,10 @@ fn basename(path: &str) -> &str {
 /// A deny anywhere in the command wins, and otherwise the first ask does.
 fn command_decision(command: &str) -> Decision {
     let command = without_heredoc_bodies(command).replace("\\\n", " ");
+    let (outer, inner) = lifted(&command);
     let mut asked = None;
-    for segment in segments(&command).unwrap_or_else(|| blind_segments(&command)) {
+    let lines = std::iter::once(outer).chain(inner);
+    for segment in lines.flat_map(|text| segments(&text).unwrap_or_else(|| blind_segments(&text))) {
         match segment_decision(&segment) {
             Decision::Deny(why) => return Decision::Deny(why),
             Decision::Ask(why) => asked = asked.or(Some(why)),
@@ -111,6 +112,37 @@ fn command_decision(command: &str) -> Decision {
         Some(why) => Decision::Ask(why),
         None => Decision::Allow,
     }
+}
+
+/// A command substitution is a command of its own, so it leaves the line it sat in. The words
+/// after its closing parenthesis stay with the command that owns them, and the command inside
+/// it is read on its own. Section 9.4.
+fn lifted(command: &str) -> (String, Vec<String>) {
+    let mut nesting = Nesting::default();
+    let mut inner: Vec<String> = Vec::new();
+    let mut open: Vec<String> = vec![String::new()];
+    let mut previous = ' ';
+    for c in command.chars() {
+        let step = nesting.nested(c, previous);
+        previous = c;
+        match step {
+            Some(true) => {
+                if let Some(text) = open.last_mut().filter(|text| text.ends_with('$')) {
+                    text.pop();
+                }
+                open.push(String::new());
+            }
+            Some(false) => inner.extend(open.pop()),
+            None => {
+                nesting.quotes.toggled_by(c);
+                if let Some(text) = open.last_mut() {
+                    text.push(c);
+                }
+            }
+        }
+    }
+    inner.extend(open.drain(1..));
+    (open.pop().unwrap_or_default(), inner)
 }
 
 /// A heredoc body is data. The guard keeps every command word and every redirect target,
@@ -235,9 +267,6 @@ fn segment_decision(segment: &str) -> Decision {
     if matches!(redirect, Decision::Deny(_)) {
         return redirect;
     }
-    if restores_a_tree(&words) {
-        return Decision::Deny(REFUSAL.to_string());
-    }
     if let Some(why) = a_persons_command(&words) {
         return Decision::Deny(why.to_string());
     }
@@ -291,12 +320,6 @@ fn a_prefix(word: &str) -> bool {
     word.contains('=') || ["env", "npx", "pnpm", "bunx", "time", "nice", "sudo"].contains(&word)
 }
 
-fn restores_a_tree(words: &[&str]) -> bool {
-    words.iter().any(|word| basename(word) == "git")
-        && words.iter().any(|word| RESTORERS.contains(word))
-        && words.iter().any(|word| *word == "." || word.ends_with('/'))
-}
-
 fn redirect_targets<'a>(words: &[&'a str]) -> Vec<&'a str> {
     words
         .iter()
@@ -346,15 +369,17 @@ struct Nesting {
 }
 
 impl Nesting {
-    /// True for the punctuation of a command substitution. Opening one keeps the quoting it
-    /// sits in, and closing one puts that quoting back.
-    fn nested(&mut self, c: char, previous: char) -> bool {
-        match self.punctuation(c, previous) {
-            Some(true) => self.outer.push(std::mem::take(&mut self.quotes)),
-            Some(false) => self.quotes = self.outer.pop().unwrap_or_default(),
-            None => return false,
+    /// `Some(true)` where a command substitution opens, `Some(false)` where one closes, and
+    /// `None` for a character of an argument. Opening one keeps the quoting it sits in, and
+    /// closing one puts that quoting back.
+    fn nested(&mut self, c: char, previous: char) -> Option<bool> {
+        let step = self.punctuation(c, previous)?;
+        if step {
+            self.outer.push(std::mem::take(&mut self.quotes));
+        } else {
+            self.quotes = self.outer.pop().unwrap_or_default();
         }
-        true
+        Some(step)
     }
 
     /// `Some(true)` for the punctuation that opens a substitution, `Some(false)` for the
@@ -380,7 +405,7 @@ fn unquoted_heredoc(line: &str) -> Option<usize> {
     let mut open = None;
     let mut previous = ' ';
     for (at, c) in line.char_indices() {
-        let nested = nesting.nested(c, previous);
+        let nested = nesting.nested(c, previous).is_some();
         previous = c;
         if nested || nesting.quotes.toggled_by(c) {
             open = None;

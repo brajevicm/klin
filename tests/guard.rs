@@ -64,17 +64,6 @@ fn refuses_a_redirect_onto_the_configuration() {
     }
 }
 
-#[test]
-fn refuses_a_restore_of_a_whole_tree() {
-    for command in [
-        "git restore .",
-        "git checkout .",
-        "git checkout HEAD -- klin/",
-    ] {
-        denied(&bash(command), command);
-    }
-}
-
 /// A restore of one guarded file is a write klin cannot tell from a mention, so it asks.
 #[test]
 fn asks_about_git_putting_back_old_content_of_a_guarded_file() {
@@ -146,6 +135,8 @@ fn allows_the_plumbing_that_reads_a_stamp() {
     }
 }
 
+/// A restore names no file it would overwrite, so klin cannot tell one that reaches the
+/// configuration from a branch a person asked for. It is ordinary work, and it is allowed.
 #[test]
 fn allows_git_that_leaves_the_guarded_files_alone() {
     for command in [
@@ -153,6 +144,11 @@ fn allows_git_that_leaves_the_guarded_files_alone() {
         "git checkout -b klin-work",
         "git restore src/main.rs",
         "git log -- klin.json",
+        "git checkout .",
+        "git restore .",
+        "git checkout main -- src/",
+        "git checkout feature/",
+        r#"git checkout "a|b" ."#,
     ] {
         allowed(&bash(command), command);
     }
@@ -251,15 +247,6 @@ fn allows_a_reader_whose_argument_quotes_a_separator() {
     }
 }
 
-/// The quote-blind split tears `git` off the front and loses the restore, so only the pass that
-/// honours the quoting sees the whole command.
-#[test]
-fn refuses_a_whole_tree_restore_whose_argument_quotes_a_separator() {
-    for command in [r#"git checkout "a|b" ."#, "git restore 'a;b' ."] {
-        denied(&bash(command), command);
-    }
-}
-
 /// An unbalanced quote says nothing about where an argument ends, so the guard falls back to
 /// splitting on every separator rather than trusting the quote.
 #[test]
@@ -341,6 +328,9 @@ fn asks_about_find_writing_a_guarded_file() {
 #[test]
 fn refuses_a_persons_command_behind_a_prefix() {
     for command in [
+        "env $(echo) klin init",
+        "sudo $(pwd) klin init",
+        "time `echo` klin turn reset",
         "KLIN_STATE_DIR=/tmp/x klin init --add",
         "env klin turn reset",
         "npx klin init",
@@ -465,4 +455,30 @@ fn a_heredoc_that_opens_inside_a_command_substitution_still_holds_data() {
         "klin.json",
         "a guarded name in the command words beside the heredoc",
     );
+}
+
+/// A command substitution is a command of its own, so the words after its closing parenthesis
+/// belong to the command that owns them, and a reader inside it lends them no exemption.
+#[test]
+fn asks_about_a_guarded_name_after_a_command_substitution_closes() {
+    for command in [
+        "gh issue create --body \"$(cat notes.md)\" klin.json",
+        "gh issue create --body \"`cat notes.md`\" klin.json",
+        "gh issue create --body \"$(cat <<'EOF'\nnotes\nEOF\n)\" klin.json",
+    ] {
+        asked(&bash(command), "klin.json", command);
+    }
+}
+
+/// The words after the substitution rejoin the outer command, so a reader of its own keeps the
+/// exemption it always had.
+#[test]
+fn allows_a_reader_that_names_the_config_beside_a_substitution() {
+    for command in [
+        "grep -rn \"$(cat pattern.txt)\" klin.json",
+        "cat \"$(basename x)\" klin.json",
+        "git log \"$(git rev-parse HEAD)\" -- klin.json",
+    ] {
+        allowed(&bash(command), command);
+    }
 }
