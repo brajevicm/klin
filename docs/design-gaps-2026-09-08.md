@@ -92,7 +92,7 @@ See SPEC sections 6.1 and 6.2.
 ### G4. The linter integration has no design
 
 The stated goal is to run beside eslint, tsc, clippy, ruff. The only ticket
-that touches this is #47, `sarif`, which is framed as a cleat port and
+that touches this is #47, `sarif`, which is framed as a port and
 blocked behind the registry rework. It also carries the unsolved problem that
 no report exists at the base commit.
 
@@ -104,16 +104,16 @@ turns the sarif gate from a port into the seam the goal names. The cost is
 running the tool twice, and a base worktree without installed dependencies.
 See SPEC section 8.3.
 
-### G5. The gate list is cleat's list, not an agent's failure list
+### G5. The gate list lacks a requirement for each check
 
-Twelve open tickets are gate ports. They were chosen because cleat has them.
+Twelve open tickets are gate ports, selected for parity with another tool.
 The question the goal asks is different: which deterministic check catches
 what an agent does wrong, and names a remedy that adds or fixes code rather
 than deleting work. SPEC section 8 applies four criteria and sorts the
 catalogue into three tiers. One check that is missing entirely is `stubs`:
 a placeholder body, an elided block, a `todo!()`, a `NotImplementedError`,
 a `throw new Error("not implemented")`. That is the most agent-specific
-failure there is, and no linter or cleat check names it.
+failure, and the planned catalogue leaves it uncovered.
 
 ### G6. No host adapter
 
@@ -148,7 +148,7 @@ most weight and deserve a decision before any ticket below starts:
 - ADR 0009 for the hook, the turn window instead of the merge-base. Removes
   ADR 0013 from the hook path and makes the hook's cost proportional to the
   turn.
-- ADR 0007, one key vocabulary instead of cleat's keys. `sources` in one
+- ADR 0007, one key vocabulary instead of compatibility-driven keys. `sources` in one
   section and `roots` in the next is a cost with no remaining benefit, since
   ADR 0009 already emptied the differential test.
 
@@ -212,7 +212,7 @@ postflight, #65 sarif output, #60 hotspots, #62 release, #64 npm, #66 plugin,
 |---|---|
 | #43 guard-suites | Reads a project-specific preflight script. Not language-agnostic. |
 | #44 manifests | Judges a generated Xcode project. One stack. |
-| #50 layering | cleat's own STRATEGY.md says the compiler's module graph is the check. Defer until the extractor exists and a user asks. |
+| #50 layering | Defer until the extractor exists and a user needs constraints beyond the compiler's module graph. |
 | #57 db-migration-safety | Deterministic only for raw SQL. ORM migrations need a per-ORM reader. Defer. |
 | #59 asset-path-verification | The ticket itself expects false positives. Defer. |
 | #88 klin's own hygiene ceilings | Person-only. Fine as is, but not a design item. |

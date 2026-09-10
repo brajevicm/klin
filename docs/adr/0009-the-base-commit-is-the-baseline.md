@@ -95,10 +95,10 @@ and unmatched have nothing to compare against and are not outcomes.
 The guard protects the config and the hooks. The baseline rules and the
 refusal of the write flag go, because neither exists.
 
-The differential test against cleat shrinks to measurement parity for escapes
-and doc-size. Its three surviving cases write cleat's baseline at the base
+The differential test shrinks to measurement parity for escapes
+and doc-size. Its three surviving cases write the reference baseline at the base
 commit and check the working tree against it. The looser-baseline case has no
-equivalent here. ADR 0007's reason for matching cleat's keys, that the
+equivalent here. ADR 0007's reason for matching reference keys, that the
 differential test reaches every gate, weakens to a preference: every `baseline`
 key is gone and the accepted list is ours alone.
 
