@@ -2058,8 +2058,10 @@ order of least friction for the person:
    verifies it. The package version equals the release tag, so the lockfile
    pins the binary.
 4. `cargo install klin`, for a Rust user. Free once the crate is published.
-5. A GitHub Action, `klin-action`, that installs a pinned version and runs
-   `klin gate --strict`. For CI only.
+5. A GitHub Action, `action.yml` at the root of this repository, that
+   installs a pinned version and runs `klin gate --strict`. For CI only. A
+   workflow pins it by the release tag, `uses: brajevicm/klin@vX.Y.Z`, so one
+   tag names the binary, the plugin and the Action.
 
 Cross-compilation for Windows is not a target of this draft. The Codex hook
 system is not available on Windows either.
@@ -2132,9 +2134,13 @@ but `init` in any form is refused from an agent, so this command is too.
 ### 19.4 CI
 
 The Action installs the pinned version and runs `klin gate --strict` with
-`fetch-depth: 0`. A workflow without the Action runs the install script with
-`--version` and the same command. The `version` key in `klin.json`, when
-pinned, is the version the Action installs by default.
+`fetch-depth: 0`, and an `args` input appends flags such as `--gate` names or
+`--sarif`. The version comes from the `version` input, then the `version` key
+in `klin.json`, then the tag the workflow pinned the Action at, then the
+latest release. The Action runs the install script under that release's tag
+URL, and that script verifies the checksum, so a mismatch fails the job
+before any gate runs. A workflow without the Action runs the same script and
+the same command.
 
 ### 19.5 Upgrades
 

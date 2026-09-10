@@ -71,6 +71,20 @@ on a checkout the agent never touched.
 
 klin targets **Claude Code first**. Cursor and Codex CLI adapters are planned.
 
+### CI
+
+```yaml
+steps:
+  - uses: actions/checkout@v5
+    with:
+      fetch-depth: 0
+  - uses: brajevicm/klin@v0.1.0
+```
+
+The action installs the release its tag names, or the `version` that
+`klin.json` pins, and runs `klin gate --strict`. An `args` input appends
+flags such as `--sarif PATH`.
+
 ## Development
 
 ```sh
