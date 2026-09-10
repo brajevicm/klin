@@ -13,6 +13,7 @@ mod gate;
 mod guard;
 mod hooks;
 mod host;
+mod hunks;
 mod init;
 mod inventory;
 mod lockfile;
