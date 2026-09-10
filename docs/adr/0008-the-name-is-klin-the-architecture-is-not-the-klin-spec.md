@@ -1,5 +1,9 @@
 # The name is Klin, and the architecture is deliberately not the Klin spec's
 
+> Spec 4.4 and 16.5 record how identical sites in one file are paired: by
+> equal ratcheted values first, then by line distance. The line stays the
+> tie-breaker this decision made it.
+
 A specification exists for a tool called Klin, version 2.0.0-draft, covering
 this problem. This project takes that name and rejects that architecture. A
 reader who finds the two together will assume one implements the other, so the

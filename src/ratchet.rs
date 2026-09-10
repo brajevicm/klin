@@ -87,7 +87,7 @@ impl Finding {
 }
 
 /// The debt a person accepted in the config, as prior entries for one gate. An entry must carry
-/// a value the gate measures, or it would hold a site at any value it grows to.
+/// every value the gate ratchets, or it would hold a site at any value it grows to.
 pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Values>, Error> {
     let Ok(listed) = config.section(ACCEPTED) else {
         return Ok(Vec::new());
@@ -109,20 +109,39 @@ pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Val
         if named != gate {
             continue;
         }
-        if !metrics.is_empty() && !metrics.iter().any(|metric| entry.contains_key(*metric)) {
-            return Err(Error(format!(
-                "{}: the accepted entry for {} in {} names none of the values {gate} measures \
-                 ({}) — an entry with no value would hold that site however far it grows",
-                config.file.display(),
-                text(&entry, "text"),
-                text(&entry, "file"),
-                metrics.join(", ")
-            )));
-        }
+        names_every_value(config, gate, &entry, metrics)?;
         entry.insert(ACCEPTED.into(), true.into());
         out.push(entry);
     }
     Ok(out)
+}
+
+fn names_every_value(
+    config: &Config,
+    gate: &str,
+    entry: &Values,
+    metrics: &[&str],
+) -> Result<(), Error> {
+    let missing: Vec<&str> = metrics
+        .iter()
+        .copied()
+        .filter(|metric| !entry.contains_key(*metric))
+        .collect();
+    if missing.is_empty() {
+        return Ok(());
+    }
+    Err(Error(format!(
+        "{}: the accepted entry for {} in {} does not name {}, which {gate} ratchets — a value it \
+         leaves out would grow unjudged at that site",
+        config.file.display(),
+        text(entry, "text"),
+        text(entry, "file"),
+        missing.join(", ")
+    )))
+}
+
+fn is_accepted(entry: &Values) -> bool {
+    entry.get(ACCEPTED).is_some()
 }
 
 /// How many of a gate's findings a scoped run judges, which is what its OK line counts.
@@ -196,6 +215,16 @@ fn compare(finding: &Finding, entry: &Values, metrics: &[&str]) -> Outcome {
     }
 }
 
+fn distance(finding: &Finding, entry: &Values) -> u64 {
+    if is_accepted(entry) {
+        return 0;
+    }
+    entry
+        .get("line")
+        .and_then(Value::as_u64)
+        .map_or(0, |line| line.abs_diff(finding.line))
+}
+
 fn match_group(
     findings: Vec<Finding>,
     entries: Vec<Values>,
@@ -212,11 +241,7 @@ fn match_group(
                         .is_some_and(|value| finding.values.get(**metric) == Some(value))
                 })
                 .count() as i64;
-            let distance = entry
-                .get("line")
-                .and_then(Value::as_u64)
-                .map_or(0, |line| line.abs_diff(finding.line));
-            candidates.push((-shared, distance, at_finding, at_entry));
+            candidates.push((-shared, distance(finding, entry), at_finding, at_entry));
         }
     }
     candidates.sort();
@@ -260,11 +285,9 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
             }
         }
         comparison.unmatched_findings.extend(findings_left);
-        comparison.unmatched_accepted.extend(
-            entries_left
-                .into_iter()
-                .filter(|entry| entry.get(ACCEPTED).is_some()),
-        );
+        comparison
+            .unmatched_accepted
+            .extend(entries_left.into_iter().filter(is_accepted));
     }
     comparison
         .unmatched_findings
@@ -291,7 +314,10 @@ impl Evaluator<'_> {
         ok_line: &str,
         out: &mut String,
     ) -> u8 {
-        let entries: Vec<Values> = prior.iter().map(Finding::entry).chain(accepted).collect();
+        let entries: Vec<Values> = accepted
+            .into_iter()
+            .chain(prior.iter().map(Finding::entry))
+            .collect();
         let (findings, entries) = restrict(findings, entries, flags.only.as_deref());
         let held = entries.len();
         let comparison = judge(findings, entries, self.metrics);

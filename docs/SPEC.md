@@ -115,6 +115,15 @@ the name-based resolution rule with its first languages (8.4). One check
 left: `test-hygiene` is an escapes `patterns` row over the test roots, and
 its schedule was the forced paydown 7.3 refuses (8.4).
 
+An independence audit on 2026-09-10 (#127) found that 7.1 and the CLI tests
+disagreed on how identical sites match. The tests describe the behaviour
+klin needs, so the rule they pin is now written down (4.4, 16.5). Two
+behaviours changed with it. An accepted entry wins a tie against a `before`
+entry at the same site, so a merge does not turn it into a strict failure by
+chance of line position (4.8). An accepted entry must name every value the
+gate ratchets, so no value grows unjudged behind it (4.8). ADR 0008 and 0009
+carry notes.
+
 ## 1. Problem Statement
 
 A coding agent optimizes for a green result at the end of its turn. The
@@ -269,6 +278,22 @@ Renaming a file MUST NOT create new sites (ADR 0009). A finding MAY name a
 site that `after` no longer holds, when the check ratchets existence (8.2).
 Its `file` and `text` are then the `before` site's.
 
+When one site has more than one finding or more than one entry, the findings
+and the entries at that site are paired one to one, greedily, in this rank
+order (16.5):
+
+1. The most ratcheted values exactly equal.
+2. The smallest line distance. The matcher does not read a line from an
+   accepted entry, so its distance is 0.
+3. The finding's line. Findings arrive sorted by file then line (12).
+4. Entry order: the accepted list in config order, then the `before` sites
+   by line.
+
+A finding matches at most one entry, and an entry at most one finding. This
+order lets a twin that moved keep its entry over a nearer twin whose values
+changed, so moving code does not read as new debt. It also makes a twin
+inserted between two twins the new one.
+
 A function moved between files with its body unchanged SHOULD match its old
 site. The RECOMMENDED second pass matches unmatched findings to unmatched
 entries by a whitespace-normalized body hash, across files. This is additive
@@ -316,9 +341,19 @@ pinned number, or a pinned dated schedule. Section 7.3.
 
 ### 4.8 Accepted entry
 
-Debt a person allows, keyed like a site, with the value they allow. Only a
-person writes one, in a reviewed commit (ADR 0009). An entry that matches
-nothing is a NOTE, and a failure under `--strict`.
+Debt a person allows, keyed like a site, with every value the gate ratchets
+and the amount of each they allow. Only a person writes one, in a reviewed
+commit (ADR 0009). An entry that names fewer than all of those values, none
+included, is a config error, because a value it leaves out would grow
+unjudged at that site. An entry that matches nothing is a NOTE, and a failure
+under `--strict`.
+
+When `before` holds the site at the accepted values, the accepted entry takes
+the match (4.4). When `before` and the working tree hold the site at other
+values, in either direction, the `before` entry shares more values and takes
+the match, and the accepted entry matches nothing. That is how `--strict`
+tells a person to delete the line once the code has moved off the accepted
+value.
 
 ### 4.9 Verdict
 
@@ -640,8 +675,8 @@ Three outcomes (ADR 0009):
 - `held`: matched, no ratcheted value rose. Pass.
 
 Below the ceiling nothing is judged. An accepted entry is a `before` entry. A
-finding matches at most one entry. Identical sites in one file match by line
-order, then by closest value.
+finding matches at most one entry, and an entry at most one finding.
+Identical sites match in the rank order of 4.4.
 
 A site under a path the derivation commit's survey did not hold matches
 nothing in `before`, whatever `before` holds there, so when the check judges
@@ -1313,7 +1348,7 @@ block is still unspent (ADR 0004).
 evaluate(check, section, window, scope):
   before = check.measure(window.before, section) if check.compares_to_base else []
   after  = check.measure(window.after,  section, before)   # only inventory reads `before`
-  entries = before + accepted(config, check.name)
+  entries = accepted(config, check.name) + before   # accepted first: entry order breaks ties (16.5)
   (after, entries) = restrict(after, entries, scope)
   ceiling = section.ceiling            # derived from the derivation commit, pinned, dated, or none
 
@@ -1337,6 +1372,44 @@ vanished site is `worsened` under the one `judge` and nothing else changes.
 A site the accepted list names is matched like any other, so a person accepts
 a deletion the same way they accept any other debt. A vanished site whose
 subject went in the same window is a NOTE, not a finding.
+
+### 16.5 Match one site
+
+```
+match_site(findings, entries, ratcheted):
+  # findings are sorted by line; entries are the accepted list in config
+  # order, then the `before` sites by line
+  candidates = []
+  for i, f in enumerate(findings):
+    for j, e in enumerate(entries):
+      shared   = count(m for m in ratcheted if e[m] == f[m])
+      distance = 0 if e.accepted else abs(e.line - f.line)
+      candidates.append((-shared, distance, i, j))
+  pairs = []
+  for (_, _, i, j) in sorted(candidates):
+    if taken(findings[i]) or taken(entries[j]): continue
+    take(findings[i]); take(entries[j])
+    pairs.append((findings[i], entries[j]))
+  return pairs, untaken(findings), untaken(entries)
+```
+
+The judge runs this once per file and declaration text (4.4). An untaken
+finding is `new`. An untaken `before` entry has no outcome. An untaken
+accepted entry matched nothing (4.8). The second pass of 4.4 takes the
+untaken findings and entries as its input.
+
+Inserted twin. `before` holds `fn f() {}` at lines 1 and 5. `after` holds it
+at lines 1, 3 and 6, all with equal values. Every pair shares every value,
+so distance decides: line 1 takes line 1 at distance 0, then line 6 takes
+line 5 at distance 1. Line 3 is untaken and `new`. Pairing by line order
+would pair line 3 with line 5 and name line 6, which nobody wrote, as new.
+
+Moved twin. `before` holds `fn twin()` with cc 2 at line 3 and cc 1 at line
+20. `after` holds cc 2 at lines 19 and 50. Both findings share both values
+with the cc 2 entry. Line 19 is nearer, so it takes that entry and is held.
+Line 50 takes the cc 1 entry and is `worsened`, cc 1 to 2. Pairing by
+nearest line would pair 19 with the cc 1 entry at 20 and report a function
+that only moved as worse.
 
 ## 17. Test and Validation Matrix
 
@@ -1364,9 +1437,13 @@ Core:
 - Ratchet: new fails, worsened fails, held passes, rename keeps sites, moved
   function keeps its site within a file and across files, a copy of a
   function beside its original is `new` and does not inherit the original's
-  match, a lowered ceiling fails no held site, accepted entry holds a site,
-  unmatched accepted entry is a NOTE and a strict failure, a failure prints
-  the site it matched and both values.
+  match, a twin inserted between two twins is the new one and its
+  neighbours hold, a moved twin keeps its entry over a nearer twin whose
+  value changed (16.5), a lowered ceiling fails no held site, accepted entry
+  holds a site, an accepted entry the base also holds at the same values
+  stays matched under `--strict`, an accepted entry that names some of the
+  values is exit 2, unmatched accepted entry is a NOTE and a strict failure,
+  a failure prints the site it matched and both values.
 - Each check: over, at, under the ceiling, a file it cannot read with
   `--hook`, with neither flag and with `--strict`, of which the first is a
   NOTE and the other two exit 2, scope restricts both sides, `--json` shape

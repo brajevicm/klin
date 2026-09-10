@@ -392,12 +392,48 @@ fn an_accepted_entry_holds_a_function_at_its_value_and_fails_above_it() {
 }
 
 #[test]
+fn an_accepted_entry_the_base_also_holds_stays_matched_under_strict() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "complexity", "file": "src/knot.rs",
+                "text": "fn tangled(a: i32) -> i32 {", "cc": 9, "lines": 13}"#,
+        ),
+    );
+    tree.write("src/knot.rs", RUST);
+    tree.base();
+
+    let run = tree.run(&["complexity", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("matched nothing"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_that_names_some_of_the_values_is_a_tool_error() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "complexity", "file": "src/knot.rs",
+                "text": "fn tangled(a: i32) -> i32 {", "cc": 9}"#,
+        ),
+    );
+    tree.write("src/knot.rs", RUST);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("does not name lines"), "{}", run.out);
+}
+
+#[test]
 fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_strict_failure() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write(
         "klin.json",
         &accepted(
-            r#"{"gate": "complexity", "file": "src/gone.rs", "text": "fn vanished() {", "cc": 20}"#,
+            r#"{"gate": "complexity", "file": "src/gone.rs", "text": "fn vanished() {",
+                "cc": 20, "lines": 40}"#,
         ),
     );
     tree.write("src/simple.rs", "fn f() -> i32 { 1 }\n");
