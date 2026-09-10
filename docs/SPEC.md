@@ -2072,8 +2072,9 @@ The plugin holds `hooks.json` with the three hooks of 9.2, one skill that
 tells the agent how to read a failure and what it may not touch, two slash
 commands that run the gates and list them, and a `bin/klin` wrapper.
 
-The wrapper is a shell script. On first run it downloads the release the
-plugin version pins into `~/.cache/klin/bin/<version>/klin`, verifies the
+The wrapper is a shell script. It reads the version from the plugin manifest
+beside it, so the plugin carries one pin. On first run it downloads that
+release into `~/.cache/klin/bin/<version>/klin`, verifies the
 checksum, and executes it. That install removes every other version from the
 cache, so the cache holds one binary. Every later run executes the cached
 binary with no network call. When the download fails, the wrapper prints one line saying so

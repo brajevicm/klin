@@ -13,11 +13,11 @@ plugin, the Action, the installer and the updater that `dist` publishes under
 it (ADR 0026). Every route is a pointer to that one release page, and no
 route holds a build of its own.
 
-The version is written in three files, `Cargo.toml`, the plugin manifest and
-the wrapper, plus the `uses:` line in the README. `cargo-release` rewrites
-all of them in one commit and pushes the tag, from the `cut-release` workflow
-or from a laptop. A CLI test fails when the three disagree, so a pin that
-moves by hand is caught before a tag exists.
+The version is written in two files, `Cargo.toml` and the plugin manifest,
+plus the `uses:` line in the README. The wrapper reads the manifest at run
+time. `cargo-release` rewrites all of them in one commit and pushes the tag,
+from the `cut-release` workflow or from a laptop. A CLI test fails when the
+two disagree, so a pin that moves by hand is caught before a tag exists.
 
 Each route updates with the tool the person already uses:
 
@@ -45,5 +45,6 @@ Homebrew and npm are not enabled. `dist` generates both when they are wanted,
 and neither changes this decision, because both would download from the same
 release page. Publishing the crate is deferred with them.
 
-The version is still in three files. A single source would need the wrapper
-to read the manifest at run time, and the test makes the duplication safe.
+The version is still in two files. Cargo needs its own, and Claude Code
+updates a plugin only when the manifest's version changes. The test makes
+that duplication safe.

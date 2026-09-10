@@ -2,7 +2,12 @@
 # Fetch the pinned klin release once, cache it, and execute it. ADR 0023, spec 19.2.
 set -u
 
-VERSION="0.1.0"
+MANIFEST="$(dirname "$0")/../.claude-plugin/plugin.json"
+VERSION=$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$MANIFEST" 2>/dev/null | head -1)
+if [ -z "$VERSION" ]; then
+	echo "klin: $MANIFEST names no version, so nothing was checked."
+	exit 0
+fi
 BASE="${KLIN_RELEASE_BASE_URL:-https://github.com/brajevicm/klin/releases/download/v$VERSION}"
 CACHE="${KLIN_CACHE_DIR:-$HOME/.cache/klin}/bin"
 BINARY="$CACHE/$VERSION/klin"

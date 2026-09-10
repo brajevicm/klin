@@ -43,6 +43,18 @@
     "languages": ["rust"],
     "roots": ["src", "tests"]
   },
+  "inventory": [
+    {
+      "name": "tests",
+      "path": "tests"
+    }
+  ],
+  "lockfile": {
+    "manifests": ["Cargo.toml"]
+  },
   "project": "klin",
-  "version": "0.1.0"
+  "radius": {
+    "directories": 4,
+    "lines": 776
+  }
 }

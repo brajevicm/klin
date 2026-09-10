@@ -54,17 +54,32 @@ fn the_plugin_carries_the_skill_and_the_two_commands() {
 }
 
 #[test]
-fn the_plugin_and_the_wrapper_pin_the_crate_version() {
+fn the_plugin_pins_the_crate_version() {
     let carried = json(MANIFEST)["version"]
         .as_str()
         .unwrap_or_default()
         .to_string();
 
     assert_eq!(carried, PINNED, "the plugin pins another version");
-    assert!(
-        text(WRAPPER).contains(&format!("VERSION=\"{PINNED}\"")),
-        "the wrapper pins another version"
+}
+
+/// The wrapper reads the version from the plugin manifest beside it, so a wrapper without one
+/// has nothing to fetch and says so. Spec 19.2.
+#[test]
+fn a_wrapper_without_its_manifest_says_so_and_lets_the_turn_end() {
+    let tree = Tree::bare();
+    let copied = tree.write("bin/klin", &text(WRAPPER));
+    executable(&copied);
+
+    let run = ran(
+        &copied.display().to_string(),
+        &["--version"],
+        tree.root(),
+        &[],
     );
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.printed.contains("names no version"), "{}", run.out);
 }
 
 #[test]
