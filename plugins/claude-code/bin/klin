@@ -1,0 +1,71 @@
+#!/bin/sh
+# Fetch the pinned klin release once, cache it, and execute it. ADR 0023, spec 19.2.
+set -u
+
+VERSION="0.1.0"
+BASE="${KLIN_RELEASE_BASE_URL:-https://github.com/brajevicm/klin/releases/download/v$VERSION}"
+CACHE="${KLIN_CACHE_DIR:-$HOME/.cache/klin}/bin"
+BINARY="$CACHE/$VERSION/klin"
+
+target() {
+	machine=$(uname -m)
+	case "$machine" in
+	arm64 | aarch64) machine=aarch64 ;;
+	x86_64 | amd64) machine=x86_64 ;;
+	*) return 1 ;;
+	esac
+	case "$(uname -s)" in
+	Darwin) echo "$machine-apple-darwin" ;;
+	Linux) echo "$machine-unknown-linux-gnu" ;;
+	*) return 1 ;;
+	esac
+}
+
+digest() {
+	if command -v shasum >/dev/null 2>&1; then
+		shasum -a 256 "$1" | awk '{print $1}'
+	elif command -v sha256sum >/dev/null 2>&1; then
+		sha256sum "$1" | awk '{print $1}'
+	else
+		return 1
+	fi
+}
+
+download() {
+	curl --tlsv1.2 --proto-redir "=https" -fsL \
+		--connect-timeout 5 --max-time 20 -o "$2" "$1"
+}
+
+# The binary moves into the cache only after the checksum matches, so a failure leaves
+# nothing executable behind.
+installed() {
+	scratch=$1
+	triple=$(target) || return 1
+	archive="klin-$triple.tar.xz"
+	download "$BASE/$archive" "$scratch/$archive" || return 1
+	download "$BASE/$archive.sha256" "$scratch/$archive.sha256" || return 1
+	want=$(awk '{print $1; exit}' "$scratch/$archive.sha256")
+	got=$(digest "$scratch/$archive") || return 1
+	[ -n "$want" ] || return 1
+	[ "$want" = "$got" ] || return 1
+	tar -xJf "$scratch/$archive" -C "$scratch" || return 1
+	found=$(find "$scratch" -type f -name klin -print | head -1)
+	[ -n "$found" ] || return 1
+	chmod 755 "$found" || return 1
+	mkdir -p "$CACHE/$VERSION" || return 1
+	mv "$found" "$BINARY"
+}
+
+if [ ! -x "$BINARY" ]; then
+	scratch="$CACHE/.fetch.$$"
+	mkdir -p "$scratch" 2>/dev/null
+	installed "$scratch"
+	outcome=$?
+	rm -rf "$scratch"
+	if [ "$outcome" -ne 0 ]; then
+		echo "klin: the pinned release $VERSION could not be installed, so nothing was checked."
+		exit 0
+	fi
+fi
+
+exec "$BINARY" "$@"

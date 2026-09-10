@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v klin >/dev/null 2>&1 || exit 0; klin radius",
+            "timeout": 60,
+            "statusMessage": "klin: opening the turn"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v klin >/dev/null 2>&1 || exit 0; klin radius",
+            "timeout": 60,
+            "statusMessage": "klin: opening the turn"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v klin >/dev/null 2>&1 || exit 0; klin guard",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v klin >/dev/null 2>&1 || { [ -f \"${CLAUDE_PROJECT_DIR:-.}/klin.json\" ] && echo 'klin is not installed. Install it with: curl --proto \"=https\" --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh'; exit 0; }; klin gate --hook --changed",
+            "timeout": 900,
+            "statusMessage": "klin: gating the changed files"
+          }
+        ]
+      }
+    ]
+  }
+}
