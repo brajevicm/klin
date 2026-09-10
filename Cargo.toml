@@ -26,3 +26,14 @@ tree-sitter-typescript = "0.23.2"
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[package.metadata.release]
+allow-branch = ["main"]
+publish = false
+pre-release-commit-message = "Release {{version}}"
+tag-message = "Release {{version}}"
+pre-release-replacements = [
+  { file = "plugins/claude-code/.claude-plugin/plugin.json", search = "\"version\": \"[0-9.]+\"", replace = "\"version\": \"{{version}}\"", exactly = 1 },
+  { file = "plugins/claude-code/bin/klin", search = "^VERSION=\"[0-9.]+\"", replace = "VERSION=\"{{version}}\"", exactly = 1 },
+  { file = "README.md", search = "brajevicm/klin@v[0-9.]+", replace = "brajevicm/klin@v{{version}}", exactly = 1 },
+]

@@ -92,6 +92,16 @@ cargo build --release
 ./target/release/klin gate --strict
 ```
 
+A release is one command on `main`, with
+[cargo-release](https://github.com/crate-ci/cargo-release) installed:
+
+```sh
+cargo release minor --execute
+```
+
+It moves the version in `Cargo.toml`, the plugin, its wrapper and this file,
+commits, tags `vX.Y.Z` and pushes. The tag builds and publishes the release.
+
 ## Design
 
 The behaviour is defined by the
