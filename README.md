@@ -1,35 +1,71 @@
-# klin
+<p align="center">
+  <img src="assets/klin-logo.svg" alt="klin" width="280">
+</p>
 
-Quality ratchets for AI-driven development, in one binary. It records today's
-debt, then fails the build on anything new. Supports Claude Code, Cursor and
-Codex CLI.
+<p align="center">
+  <strong>Quality ratchets for AI-driven development, in one binary.</strong>
+</p>
 
-## Only CI is authoritative
+> [!WARNING]
+> **klin is early-stage and under active development.**
+> The specification and CLI are still evolving.
 
-The guard refuses the agent's edits to the config, the hooks and CODEOWNERS,
-and asks a person about a command it cannot read as a write, about klin's own
-state, and about a file that configures a check.
-It is feedback
-and cannot stop an agent that works around it. It sees none of these routes:
+Coding agents optimize for green. Sometimes the easiest route there is the
+wrong one: skip a test, silence a check, leave a stub, grow an already-complex
+function, or change the guardrails themselves.
 
-- the binary, which a PATH shim or `chmod -x` defeats
-- a deleted test, the cheapest route to green
-- a moved local ref, which moves the base a local run compares against
-- a deleted config section, which runs no gate and reads green
+**klin makes existing debt the floor, not the blocker.**
 
-The verdict is a CI run on a checkout the agent never touched, against a
-protected branch. Name every gate on the CI command line, and put the workflow
-and the config under CODEOWNERS. ADR 0008 and 0009 record why.
+```text
+existing debt     improvement       regression
+     8                 6                 9
+     ✓                 ✓                 ✗
+```
 
-## Accepting debt
+It compares the tree before a change with the tree after it and rejects only
+**new or worsened debt**. Existing problems do not have to be fixed before
+adopting stricter quality gates.
 
-A person adds one line to the `accepted` list in the config, in a reviewed
-commit. Nothing else records debt, and klin writes no files.
+## Install
 
-## Specification and license
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+```
 
-[The specification](docs/SPEC.md) defines klin's behaviour, [ADRs](docs/adr/)
-record its decisions, and CLI tests pin the expected results. See
-[ADR 0025](docs/adr/0025-klin-defines-its-own-behaviour.md).
+It verifies a checksum and puts `klin` in `~/.local/bin`.
+[19.1](docs/SPEC.md) pins a version or moves that directory.
 
-Apache License 2.0, with copyright notices in [LICENSE](LICENSE).
+## What it checks
+
+klin is not a linter or test runner. Its checks target agent-driven
+development:
+
+- **complexity** — functions that become more complex or longer
+- **escapes** — new skipped tests, silenced checks, or swallowed errors
+- **stubs** — placeholder work left behind
+- **doc-size** — documents that keep growing
+- **doc-citations** — references to files that no longer resolve
+- **inventory** — important declarations that disappear
+- **lockfile** and **SARIF** integration
+
+## Local feedback, CI authority
+
+Agent hooks give fast feedback during a turn, but an agent controls its own
+working tree and can work around them. The authoritative verdict belongs in CI,
+on a checkout the agent never touched.
+
+klin targets **Claude Code first**. Cursor and Codex CLI adapters are planned.
+
+## Development
+
+```sh
+cargo build --release
+./target/release/klin gate --strict
+```
+
+## Design
+
+The behaviour is defined by the
+[specification](docs/SPEC.md), [ADRs](docs/adr/), and CLI tests.
+
+Apache-2.0.

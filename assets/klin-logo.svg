@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+width="370" height="128" viewBox="0 0 370 128"
+role="img" aria-label="klin">
+<title>klin</title>
+<style>
+
+.klin-wordmark {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 96px;
+  font-weight: 600;
+  font-style: normal;
+  font-kerning: normal;
+  letter-spacing: -0.03em;
+}
+</style><g transform="translate(16 30.42) scale(0.98)">
+<path d="
+M 1 61
+Q 0 61 0 62
+V 71
+Q 0 72 1 72
+H 34
+Q 35 72 35 71
+V 59
+Q 35 58 36 58
+H 53
+Q 54 58 54 57
+V 46
+Q 54 45 55 45
+H 77
+Q 78 45 78 44
+V 34
+Q 78 33 77 33
+H 43
+Q 42 33 42 34
+V 45
+Q 42 46 41 46
+H 23
+Q 22 46 22 47
+V 60
+Q 22 61 21 61
+Z
+" fill="#0F172A"/>
+<path d="M 59.272,24.614 L 89.810,3.329 Q 91.000,2.500 92.450,2.500 L 95.550,2.500 Q 98.000,2.500 98.000,5.100 L 98.000,31.300 Q 98.000,33.500 96.090,32.408 L 85.172,26.170 Q 84.000,25.500 82.650,25.500 L 59.550,25.500 Q 58.000,25.500 59.272,24.614 Z" fill="#10B981"/>
+</g><text class="klin-wordmark" x="140" y="100" fill="#0F172A">klin</text>
+</svg>

@@ -1,4 +1,4 @@
 /target
 .env
 .codegraph
-.klin-build-blocked
+.DS_Store
