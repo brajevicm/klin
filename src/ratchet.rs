@@ -424,6 +424,10 @@ pub struct Evaluator<'a> {
     pub unit: &'a str,
     pub condition: &'a str,
     pub fix_advice: &'a str,
+    /// The ceiling in force, printed beside every failure and carried in the JSON. `None` for a
+    /// gate whose only ceiling is the value the base holds, which each failure already names.
+    /// Spec 4.7, 8.6.
+    pub ceiling: Option<&'a str>,
     pub format_metrics: fn(&Values) -> String,
 }
 
@@ -457,7 +461,7 @@ fn report(
     flags: &Flags,
     out: &mut String,
 ) -> u8 {
-    flags.record(|records| collect(comparison, evaluator, records));
+    flags.record(|records| collect(comparison, evaluator, &flags.gate, records));
     if comparison.failed() {
         failures(comparison, evaluator, held, out);
         notes(comparison, evaluator, out);
@@ -496,11 +500,12 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
         for finding in &comparison.unmatched_findings {
             let _ = writeln!(
                 out,
-                "  {}:{}  {}  {}",
+                "  {}:{}  {}  {}{}",
                 finding.file,
                 finding.line,
                 (evaluator.format_metrics)(&finding.values),
-                clip(&finding.text)
+                clip(&finding.text),
+                against(None, evaluator)
             );
         }
     }
@@ -514,17 +519,38 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
         for (finding, entry) in &comparison.rose {
             let _ = writeln!(
                 out,
-                "  {}:{}  {}, was {}{}  {}",
+                "  {}:{}  {}, was {}{}  {}{}",
                 finding.file,
                 finding.line,
                 (evaluator.format_metrics)(&finding.values),
                 (evaluator.format_metrics)(entry),
                 came_from(finding, entry),
-                clip(&finding.text)
+                clip(&finding.text),
+                against(Some(entry), evaluator)
             );
         }
     }
     let _ = writeln!(out, "{}", evaluator.fix_advice);
+}
+
+/// What one failure was judged against: the `before` site it matched, or the accepted entry, or
+/// nothing at all, and the ceiling in force beside it. A person disputes a wrong match from
+/// this, and an agent fixes the site the ratchet actually compared. Spec 8.6.
+fn against(entry: Option<&Values>, evaluator: &Evaluator) -> String {
+    let matched = match entry {
+        None => "nothing matched".to_string(),
+        Some(entry) if is_accepted(entry) => {
+            format!("matched the accepted entry for {}", text(entry, "file"))
+        }
+        Some(entry) => {
+            let (file, line) = entry_site(entry);
+            format!("matched the base site at {file}:{line}")
+        }
+    };
+    match evaluator.ceiling {
+        Some(ceiling) => format!("  — {matched}, ceiling {ceiling}"),
+        None => format!("  — {matched}"),
+    }
 }
 
 /// The file a failure's own line does not name, which is the one the second pass of 4.4 matched
@@ -582,19 +608,27 @@ fn clip(text: &str) -> String {
     text.chars().take(70).collect()
 }
 
-fn collect(comparison: &Comparison, evaluator: &Evaluator, records: &mut Records) {
-    let failing = |outcome, finding: &Finding| {
+fn collect(comparison: &Comparison, evaluator: &Evaluator, gate: &str, records: &mut Records) {
+    let failing = |outcome, finding: &Finding, entry: Option<&Values>| {
         let mut out = site(outcome, &finding.file, Some(finding.line), &finding.text);
+        out.insert("id".into(), identity(gate, finding).into());
         out.insert("values".into(), Value::Object(finding.values.clone()));
         out.insert("condition".into(), evaluator.condition.into());
         out.insert("fix_advice".into(), evaluator.fix_advice.into());
+        out.insert(
+            "ceiling".into(),
+            evaluator.ceiling.map_or(Value::Null, Into::into),
+        );
+        out.insert("matched".into(), entry.map_or(Value::Null, matched_record));
         Value::Object(out)
     };
     for finding in &comparison.unmatched_findings {
-        records.findings.push(failing("new", finding));
+        records.findings.push(failing("new", finding, None));
     }
-    for (finding, _) in &comparison.rose {
-        records.findings.push(failing("worsened", finding));
+    for (finding, entry) in &comparison.rose {
+        records
+            .findings
+            .push(failing("worsened", finding, Some(entry)));
     }
     for entry in &comparison.unmatched_accepted {
         records.notes.push(Value::Object(unmatched_record(entry)));
@@ -612,17 +646,54 @@ fn site(outcome: &str, file: &str, line: Option<u64>, text: &str) -> Values {
     out
 }
 
-fn unmatched_record(entry: &Values) -> Values {
+/// The site identity of 4.4 in one token: a hash of the gate, the file and the declaration
+/// text, so a harness follows one site across stops without parsing the rest. It names the
+/// site and not the finding, so two findings 4.4 keys the same way share it. The path is
+/// hashed too, so a rename changes the id while the site of 4.4 survives. FNV-1a, written out
+/// here, so one site keeps one id across builds of klin. Spec 11.2.
+fn identity(gate: &str, finding: &Finding) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let parts = [
+        gate.as_bytes(),
+        finding.file.as_bytes(),
+        finding.text.as_bytes(),
+    ];
+    for byte in parts.join(&0u8) {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x100_0000_01b3);
+    }
+    format!("{hash:016x}")
+}
+
+/// The `before` site or accepted entry a failure was matched to, with the values it held there,
+/// so a harness sees both sides of the comparison. Spec 11.2.
+fn matched_record(entry: &Values) -> Value {
+    let mut out = Values::new();
+    out.insert("file".into(), text(entry, "file").into());
+    out.insert("text".into(), text(entry, "text").into());
+    if let Some(line) = entry.get("line").and_then(Value::as_u64) {
+        out.insert("line".into(), line.into());
+    }
+    out.insert("accepted".into(), is_accepted(entry).into());
+    out.insert("values".into(), Value::Object(entry_values(entry)));
+    Value::Object(out)
+}
+
+/// The values one entry holds, without the keys that name the site it sits at.
+fn entry_values(entry: &Values) -> Values {
     let mut values = entry.clone();
     for key in ["file", "text", "line", ACCEPTED, BODY, "gate"] {
         values.remove(key);
     }
+    values
+}
+
+fn unmatched_record(entry: &Values) -> Values {
     let mut out = site(
         "unmatched",
         &text(entry, "file"),
         entry.get("line").and_then(Value::as_u64),
         &text(entry, "text"),
     );
-    out.insert("values".into(), Value::Object(values));
+    out.insert("values".into(), Value::Object(entry_values(entry)));
     out
 }

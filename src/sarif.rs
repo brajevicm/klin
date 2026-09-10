@@ -14,6 +14,7 @@ use serde_json::{Map, Value};
 
 use crate::base;
 use crate::config::{Config, Error, Flags};
+use crate::coverage::Coverage;
 use crate::gate;
 use crate::hunks::Hunks;
 use crate::ratchet::{self, Evaluator, Finding, Values};
@@ -68,6 +69,7 @@ fn flags(args: &Args, name: &str, entry: Value) -> Flags {
         prior: None,
         base: None,
         quiet: args.quiet,
+        context: !args.quiet,
         strict: args.strict,
         hook: false,
         only: None,
@@ -80,12 +82,35 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let config = Config::open(flags, start)?;
     let entry = entry(&config)?;
     let (found, changed) = read(&config, &entry, flags, out)?;
+    let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
-    let ok = said(&judged, entry.differential);
+    let ok = said(&judged, entry.differential) + &coverage.said(flags);
     let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, flags, &ok, out);
     ratchet::noted(&found.notes, flags, out);
     Ok(code)
+}
+
+/// What this gate discovered, in files, which is the unit every other gate counts: a scanner
+/// reports results, and each one names a file. It measures every result it placed, because the
+/// window decides which of them fail and not which it read. A location it could not place is
+/// unreadable, and every result with no location at all is one such place. Spec 8.6.
+fn covered(found: &Placed) -> Coverage {
+    let measured = distinct(found.placed.iter().map(|site| site.file.as_str()));
+    let unreadable = distinct(found.notes.iter().map(|(at, _)| at.as_str()));
+    Coverage {
+        found: measured + unreadable,
+        measured,
+        excluded: 0,
+        unreadable,
+    }
+}
+
+fn distinct<'a>(places: impl Iterator<Item = &'a str>) -> usize {
+    let mut places: Vec<&str> = places.collect();
+    places.sort_unstable();
+    places.dedup();
+    places.len()
 }
 
 fn entry(config: &Config) -> Result<Entry, Error> {
@@ -514,6 +539,7 @@ fn evaluator() -> Evaluator<'static> {
         unit: "result(s)",
         condition: "the scanner reports on a line this window changed",
         fix_advice: REMEDY,
+        ceiling: None,
         format_metrics: show,
     }
 }

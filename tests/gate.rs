@@ -126,12 +126,19 @@ fn a_status_row_per_gate_and_a_summary_line() {
 }
 
 #[test]
-fn a_passing_gate_prints_a_row_and_nothing_else() {
+fn a_passing_gate_prints_a_row_and_the_one_ok_line_under_it() {
     let tree = tree(EVERY_GATE);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("OK:"), "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+    assert!(
+        run.says("OK: 0 escape site(s) in the tree, all held at the base"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("FAIL"), "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
 }
 
 #[test]

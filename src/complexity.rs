@@ -7,6 +7,7 @@ use tree_sitter::{Node, Parser};
 use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::config::{Config, Error, Flags, UNPARSED};
+use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
@@ -342,6 +343,30 @@ struct Unparsed {
     language: &'static str,
 }
 
+/// One tree walked: its functions, the files no grammar read, and the files the walk reached,
+/// which is what the gate's coverage counts.
+struct Sweep {
+    functions: Vec<Function>,
+    unparsed: Vec<Unparsed>,
+    measured: Vec<String>,
+    excluded: Vec<String>,
+}
+
+impl Sweep {
+    fn coverage(&self, only: Option<&[String]>) -> Coverage {
+        let unread: Vec<String> = self.unparsed.iter().map(|file| file.file.clone()).collect();
+        let measured = coverage::scoped(&self.measured, only);
+        let excluded = coverage::scoped(&self.excluded, only);
+        let unreadable = coverage::scoped(&unread, only);
+        Coverage {
+            found: measured + excluded + unreadable,
+            measured,
+            excluded,
+            unreadable,
+        }
+    }
+}
+
 struct Selection {
     languages: Vec<&'static Language>,
     skip_dirs: Vec<String>,
@@ -354,6 +379,8 @@ struct Spec {
     selection: Selection,
     ceilings: Ceilings,
     gate_text: String,
+    /// The two ceilings as one line, which every failure names beside its values. Spec 8.6.
+    ceiling_text: String,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -368,22 +395,23 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let config = Config::open(flags, start)?;
     let spec = spec(&config)?;
     config.say(flags, SECTION, out);
-    let (functions, unparsed) = measure(&spec.roots, &spec.selection, config.root())?;
-    let now = over(&functions, &spec);
-    let judged = scoped(functions.iter().map(|function| &function.file), flags);
+    let sweep = measure(&spec.roots, &spec.selection, config.root())?;
+    let now = over(&sweep.functions, &spec);
+    let judged = scoped(sweep.functions.iter().map(|function| &function.file), flags);
     let count = scoped(now.iter().map(|finding| &finding.file), flags);
+    let said = sweep.coverage(flags.only.as_deref()).said(flags);
     let code = evaluator(&spec).evaluate(
         now,
         at_the_base(&config, &spec, flags, out)?,
         ratchet::accepted(&config, &flags.gate, evaluator(&spec).metrics)?,
         flags,
         &format!(
-            "OK: {judged} function(s) judged, {count} over the gate{}, all held at the base",
+            "OK: {judged} function(s) judged, {count} over the gate{}, all held at the base{said}",
             ceiling::in_force(&[("cc", &spec.ceilings.cc), ("lines", &spec.ceilings.lines)])
         ),
         out,
     );
-    Ok(unread(&unparsed, flags, code, out))
+    Ok(unread(&sweep.unparsed, flags, code, out))
 }
 
 fn at_the_base(
@@ -400,11 +428,12 @@ fn at_the_base(
             owned.root()
         }
     };
-    let (before, _) = measure(
+    let before = measure(
         &base::roots(&spec.roots, config, prior)?,
         &spec.selection,
         prior,
-    )?;
+    )?
+    .functions;
     let mut found = over(&before, spec);
     found.retain(|finding| config.was_held(&finding.file));
     Ok(found)
@@ -425,6 +454,7 @@ fn flags(args: &Args) -> Flags {
         prior: None,
         base: None,
         quiet: args.quiet,
+        context: !args.quiet,
         strict: args.strict,
         hook: false,
         only: args.only.clone(),
@@ -509,6 +539,7 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
         metrics: &["cc", "lines"],
         unit: "function(s)",
         condition: &spec.gate_text,
+        ceiling: Some(&spec.ceiling_text),
         fix_advice: "Split the function so each piece is under the gate. Accepting new debt is a \
                      policy decision for a person, in the config, in a reviewed commit.",
         format_metrics: show,
@@ -530,6 +561,7 @@ fn spec(config: &Config) -> Result<Spec, Error> {
             ceilings.lines.value,
             ceilings.lines.note()
         ),
+        ceiling_text: format!("cc {}, lines {}", ceilings.cc, ceilings.lines),
         ceilings,
     })
 }
@@ -603,11 +635,7 @@ fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
     })
 }
 
-fn measure(
-    roots: &[PathBuf],
-    selection: &Selection,
-    repo_root: &Path,
-) -> Result<(Vec<Function>, Vec<Unparsed>), Error> {
+fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result<Sweep, Error> {
     let extensions: Vec<&str> = selection
         .languages
         .iter()
@@ -623,7 +651,9 @@ fn measure(
         exclude_except: &selection.exclude_except,
         skip_hidden: true,
     };
-    for file in files::under(roots, &wanted)? {
+    let found = files::found(roots, &wanted)?;
+    let mut read: Vec<String> = Vec::new();
+    for file in found.kept {
         let name = file.to_string_lossy().to_string();
         let Some(language) = selection.languages.iter().find(|language| {
             language
@@ -634,9 +664,20 @@ fn measure(
             continue;
         };
         out.extend(functions(&file, repo_root, language, &mut unparsed)?);
+        read.push(files::relative(&file, repo_root));
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    Ok((out, unparsed))
+    read.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
+    Ok(Sweep {
+        functions: out,
+        unparsed,
+        measured: read,
+        excluded: found
+            .excluded
+            .iter()
+            .map(|file| files::relative(file, repo_root))
+            .collect(),
+    })
 }
 
 fn functions(

@@ -1172,13 +1172,19 @@ Every check MUST:
   its module docstring
 - print one remedy per failure that names what to change
 - print, per failure, the site it matched in `before` or the accepted entry it
-  matched, and the value on each side, so an agent fixes the right thing and
-  a person can dispute a wrong match. A `new` finding says that nothing
-  matched.
+  matched, and the value on each side, with the ceiling in force beside them,
+  so an agent fixes the right thing and a person can dispute a wrong match. A
+  `new` finding says that nothing matched. A check that prints a held site
+  says the value the base holds it at, for the same reason. Section 11.1
+  fixes those line shapes.
 - print one `OK:` line with what it judged on success, plus any `NOTE:`
   lines, and nothing else. What it judged includes the coverage: how many
   files it found, measured, excluded and could not read, so a green run over
-  an unexpectedly small scope is visible on its one line.
+  an unexpectedly small scope is visible on its one line. Section 11.1 writes
+  the boundary between those four counts down once, and every check uses it.
+  A check whose section is a list a person writes entry by entry, such as
+  `doc_size`, says its entries on a line each and the gate's coverage on one
+  line for the gate.
 - name every file that is present in both trees, was measured in `before`,
   and was not measured in `after`. The union of roots in 5.4 means a check
   can only discover more, so such a file left through an exclusion, a file
@@ -1345,9 +1351,27 @@ The `--json` form is available for a host that reads JSON.
 ### 11.1 Text
 
 Stable, tested line shapes. `ok    NAME`, `FAIL  NAME`, `ERR   NAME` for
-rows. `OK:` for a passing gate's one line. `FAIL:` for a failure with its
-remedy under it. `NOTE:` for a note. One `window:` line first. One
-`derived:` line per derived value, after the rows.
+rows. `OK:` for a passing gate's one line, printed under its row by the
+runner and on its own by the gate's subcommand, because 8.6 asks for the same
+output from both. `FAIL:` for a failure with its remedy under it. `NOTE:` for
+a note. One `window:` line first. One `derived:` line per derived value,
+after the rows.
+
+Every `OK:` line ends in the gate's coverage, as `(N file(s) found, N
+measured, N excluded, N unreadable)`. The boundary is the same for every
+check: `found` counts every file the check's own discovery rule reached under
+its roots, before anything dropped one; `excluded` counts the ones an
+exclusion dropped; `unreadable` counts the ones it reached and could not read
+or parse; `measured` counts the ones it judged. A scoped run counts only the
+files in its scope. A check whose scope is not a set of files counts the
+thing it discovers — a document, a manifest, a test file the base holds — and
+its module docstring names that thing.
+
+Every failure line ends in what the ratchet judged it against: `— matched the
+base site at FILE:LINE`, `— matched the accepted entry for FILE`, or `—
+nothing matched` for a `new` finding, with `, ceiling C` after it wherever
+the gate has a ceiling of its own. So an agent fixes the site the ratchet
+compared, and a person can dispute a wrong match.
 
 ### 11.2 JSON
 
@@ -1356,14 +1380,26 @@ One object on stdout. Fields:
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
 - `gates` list of `{name, status, findings, notes, coverage}`, where
-  `coverage` is `{found, measured, excluded, unreadable}` file counts
+  `status` is the row of 11.1, `findings` and `notes` are how many that gate
+  left in the two lists below, and `coverage` is the
+  `{found, measured, excluded, unreadable}` counts of 11.1, or null for a
+  gate that could not run far enough to measure a scope
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
-  `ceiling`, and `matched`, which is the `before` site or accepted entry with
-  its values, or null for a `new` finding. `id` is a hash of the gate name,
+  `ceiling`, and `matched`, which is the `before` site or accepted entry as
+  `{file, line, text, accepted, values}`, or null for a `new` finding. The
+  list carries the run's failures, so a `held` site is not in it: a held
+  finding is not a failure, and the gate that prints one says so on its own
+  `OK:` line. `ceiling` is the ceiling in force as text, or null for a gate
+  whose only ceiling is the value the base holds. `id` is a hash of the gate name,
   the file and the declaration text, so it is the site identity of 4.4 in one
   token, and a harness can follow one finding across stops without parsing
   the rest. The id follows the path, so a file rename changes it while the
-  site of 4.4 survives.
+  site of 4.4 survives. Two findings at one site share the id, because 4.4
+  keys a site by its file and its declaration text and pairs the findings
+  there one to one. The list also carries the `error` and `unparsed` records
+  of a run that could not measure something (14). Those name no site's
+  values, so they carry no `id`, `ceiling` or `matched`, and their `outcome`
+  says which kind each one is.
 - `exit` integer
 
 A finding has no column, so the JSON carries none rather than a wrong one.

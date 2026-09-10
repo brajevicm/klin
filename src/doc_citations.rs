@@ -6,6 +6,7 @@ use serde_json::Value;
 use crate::base;
 use crate::changed::{self, git};
 use crate::config::{Config, Error, Flags};
+use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
@@ -85,6 +86,7 @@ fn flags(args: &Args) -> Flags {
         prior: None,
         base: None,
         quiet: args.quiet,
+        context: !args.quiet,
         strict: args.strict,
         hook: false,
         only: None,
@@ -111,14 +113,36 @@ fn evaluate(
         Some(config) => ratchet::accepted(config, &flags.gate, evaluator().metrics)?,
         None => Vec::new(),
     };
+    let said = covered(&listing, flags).said(flags);
     Ok(evaluator().evaluate(
         now,
         before,
         accepted,
         flags,
-        &format!("OK: {sites} citation(s) resolve nowhere, all held at the base"),
+        &format!("OK: {sites} citation(s) resolve nowhere, all held at the base{said}"),
         out,
     ))
+}
+
+/// What this gate discovered: one document per entry, and the ones it read. A document the
+/// working tree no longer holds is found and not measured, because only the base holds its
+/// citations. Spec 8.6.
+fn covered(listing: &Listing, flags: &Flags) -> Coverage {
+    let only = flags.only.as_deref();
+    let named = |document: &Document| document.name.clone();
+    let listed: Vec<String> = listing.documents.iter().map(named).collect();
+    let read: Vec<String> = listing
+        .documents
+        .iter()
+        .filter(|document| document.path.exists())
+        .map(named)
+        .collect();
+    Coverage {
+        found: coverage::scoped(&listed, only),
+        measured: coverage::scoped(&read, only),
+        excluded: 0,
+        unreadable: 0,
+    }
 }
 
 /// What each document cites and resolves nowhere today, and what it did at the base.
@@ -152,6 +176,7 @@ fn evaluator() -> Evaluator<'static> {
         unit: "citation(s)",
         condition: "where a document cites a file that resolves nowhere",
         fix_advice: REMEDY,
+        ceiling: None,
         format_metrics: show,
     }
 }

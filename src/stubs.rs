@@ -74,6 +74,7 @@ const KIND: Kind = Kind {
         fix_advice: "Do what the marker stands in for. A placeholder an agent left behind is \
                      not work, and accepting one is a decision for a person, in the config, in \
                      a reviewed commit.",
+        ceiling: None,
         format_metrics: show,
     },
 };

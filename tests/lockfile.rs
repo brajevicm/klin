@@ -366,6 +366,11 @@ fn an_excluded_manifest_is_not_judged() {
     );
     let run = tree.run(&["gate", "--gate", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("(1 file(s) found, 0 measured, 1 excluded, 0 unreadable)"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]

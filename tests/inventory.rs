@@ -78,6 +78,11 @@ fn a_deleted_test_whose_subject_went_too_is_a_note() {
         run.out
     );
     assert!(run.says("a test_ or spec_ prefix"), "{}", run.out);
+    assert!(
+        run.says("(1 file(s) found, 0 measured, 0 excluded, 0 unreadable)"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]

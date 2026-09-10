@@ -701,6 +701,7 @@ fn as_json(code: u8, tally: &str, records: Records, base: Option<&Window>) -> St
     if let Some(base) = base {
         out.insert("window".into(), base.record());
     }
+    out.insert("gates".into(), Value::Array(records.gates));
     out.insert("findings".into(), Value::Array(records.findings));
     out.insert("notes".into(), Value::Array(records.notes));
     Value::Object(out).to_string()
@@ -1080,20 +1081,33 @@ fn each(
         for line in text.lines() {
             let _ = writeln!(out, "        {line}");
         }
-        gather(&mut totals, records, &gate.name, code, &text);
+        totals.gates.push(row(gate, code, &records));
+        gather(&mut totals, records, &gate.name);
     }
     tally.unread = totals.notes.iter().filter(|note| unread(note)).count();
     (tally, totals)
+}
+
+/// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
+/// it left, and the scope it measured. Spec 11.2.
+fn row(gate: &Gate, code: u8, records: &Records) -> Value {
+    let mut out = Map::new();
+    out.insert("name".into(), gate.name.clone().into());
+    out.insert("status".into(), status(code).trim_end().into());
+    out.insert("findings".into(), records.findings.len().into());
+    out.insert("notes".into(), records.notes.len().into());
+    out.insert(
+        "coverage".into(),
+        records.coverage.clone().unwrap_or(Value::Null),
+    );
+    Value::Object(out)
 }
 
 fn unread(note: &Value) -> bool {
     note.get("outcome").and_then(Value::as_str) == Some(UNPARSED)
 }
 
-fn gather(totals: &mut Records, mut records: Records, name: &str, code: u8, text: &str) {
-    if code == 2 && records.findings.is_empty() {
-        records.findings.push(record("error", text));
-    }
+fn gather(totals: &mut Records, mut records: Records, name: &str) {
     for record in records.findings.iter_mut().chain(records.notes.iter_mut()) {
         if let Some(fields) = record.as_object_mut() {
             fields.insert("gate".into(), name.into());
@@ -1162,7 +1176,8 @@ fn one(
         gate: gate.name.clone(),
         prior: against.dir().map(Path::to_path_buf),
         base: against.base.as_ref().map(|base| base.before.clone()),
-        quiet: true,
+        quiet: false,
+        context: false,
         strict: args.strict && gate.check.needs.the_commit(),
         hook: args.hook,
         only: against
@@ -1180,7 +1195,10 @@ fn one(
         Ok(code) => (code, text),
         Err(problem) => (2, text + &format!("FAIL: {problem}")),
     };
-    let records = flags.records.map(RefCell::into_inner).unwrap_or_default();
+    let mut records = flags.records.map(RefCell::into_inner).unwrap_or_default();
+    if code == 2 && records.findings.is_empty() {
+        records.findings.push(record("error", &text));
+    }
     (code, text, records)
 }
 

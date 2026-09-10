@@ -119,6 +119,7 @@ const KIND: Kind = Kind {
         fix_advice: "Fix what the escape hides: handle the error instead of unwrapping it, \
                      address the lint instead of allowing it. Accepting a new escape is a policy \
                      decision for a person, in the config, in a reviewed commit.",
+        ceiling: None,
         format_metrics: show,
     },
 };

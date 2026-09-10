@@ -7,6 +7,7 @@ use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
 use crate::config::{Config, Error, Flags};
+use crate::coverage::Coverage;
 
 const SECTION: &str = "doc_size";
 const MARGIN_FRACTION: f64 = 0.02;
@@ -59,6 +60,7 @@ fn flags(args: &Args) -> Flags {
         prior: None,
         base: None,
         quiet: args.quiet,
+        context: !args.quiet,
         strict: false,
         hook: false,
         only: None,
@@ -78,19 +80,36 @@ fn evaluate(
     let against = against(flags, &documents, start, out)?;
     let mut over = 0;
     for document in &documents {
-        if !document.path.is_file() {
-            return Err(Error(format!("no such file: {}", document.path.display())));
-        }
-        let words = count_words(&document.path)?;
-        over += usize::from(judge(
-            document,
-            words,
-            held(&against, document, words),
-            flags,
-            out,
-        ));
+        over += usize::from(one(document, &against, flags, out)?);
+    }
+    let measured = documents.len();
+    let said = Coverage::whole(measured).said(flags);
+    if over == 0 && !flags.quiet {
+        let _ = writeln!(out, "OK: {measured} document(s) judged{said}");
     }
     Ok(if over > 0 { 1 } else { 0 })
+}
+
+/// One document judged, and whether it is over its ceiling. A document the tree does not hold
+/// is an error naming it: the list is a person's, so a path that resolves nowhere is a config
+/// error and not a measurement.
+fn one(
+    document: &Document,
+    against: &Option<(String, PathBuf)>,
+    flags: &Flags,
+    out: &mut String,
+) -> Result<bool, Error> {
+    if !document.path.is_file() {
+        return Err(Error(format!("no such file: {}", document.path.display())));
+    }
+    let words = count_words(&document.path)?;
+    Ok(judge(
+        document,
+        words,
+        held(against, document, words),
+        flags,
+        out,
+    ))
 }
 
 /// The base commit a document is compared against, and the directory its path is relative to.
@@ -117,7 +136,7 @@ fn commit(config: &Config, flags: &Flags, out: &mut String) -> Option<String> {
         return Some(named.clone());
     }
     let base = base::choose(config.root(), flags.strict).ok()?;
-    if !flags.quiet {
+    if flags.context {
         let _ = writeln!(out, "{}", base.line());
     }
     Some(base.before)
@@ -127,30 +146,35 @@ fn commit(config: &Config, flags: &Flags, out: &mut String) -> Option<String> {
 /// fail no document the base holds, so a document over the ceiling in both trees that did not
 /// grow is held, whatever the ceiling is. A document the base holds under another path reads as
 /// new debt, and the commit that renames it edits this gate's list anyway.
-fn held(against: &Option<(String, PathBuf)>, document: &Document, words: u64) -> bool {
+fn held(against: &Option<(String, PathBuf)>, document: &Document, words: u64) -> Option<u64> {
     if words <= document.ceiling.value {
-        return false;
+        return None;
     }
     let (Some((commit, root)), Some(relative)) = (against, &document.relative) else {
-        return false;
+        return None;
     };
-    let Some(text) = changed::blob(root, commit, &relative.to_string_lossy()) else {
-        return false;
-    };
+    let text = changed::blob(root, commit, &relative.to_string_lossy())?;
     let before = words_in(&text);
-    before > document.ceiling.value && words <= before
+    (before > document.ceiling.value && words <= before).then_some(before)
 }
 
-fn judge(document: &Document, words: u64, held: bool, flags: &Flags, out: &mut String) -> bool {
+fn judge(
+    document: &Document,
+    words: u64,
+    held: Option<u64>,
+    flags: &Flags,
+    out: &mut String,
+) -> bool {
     let (name, ceiling) = (&document.name, &document.ceiling);
     if words > ceiling.value {
-        if !held {
+        let Some(before) = held else {
             return failed(document, words, flags, out);
-        }
+        };
         if !flags.quiet {
             let _ = writeln!(
                 out,
-                "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base"
+                "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base \
+                 at {before} words"
             );
         }
         return false;

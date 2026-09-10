@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -8,6 +8,7 @@ use tree_sitter::{Node, Parser};
 
 use crate::base;
 use crate::config::{Config, Error, Flags};
+use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 
@@ -95,6 +96,28 @@ struct Skipped {
     literals: Vec<(usize, usize)>,
 }
 
+/// One tree read: the sites, how many an inline test module took out of the count, and the
+/// files the walk reached, which is what the gate's coverage counts.
+struct Read {
+    findings: Vec<Finding>,
+    skipped: u64,
+    measured: Vec<String>,
+    excluded: Vec<String>,
+}
+
+impl Read {
+    fn coverage(&self, only: Option<&[String]>) -> Coverage {
+        let measured = coverage::scoped(&self.measured, only);
+        let excluded = coverage::scoped(&self.excluded, only);
+        Coverage {
+            found: measured + excluded,
+            measured,
+            excluded,
+            unreadable: 0,
+        }
+    }
+}
+
 struct Tally {
     line: u64,
     name: String,
@@ -147,19 +170,20 @@ fn evaluate(kind: &Kind, flags: &Flags, start: &Path, out: &mut String) -> Resul
     let config = Config::open(flags, start)?;
     let spec = spec(kind, &config)?;
     config.say(flags, kind.section, out);
-    let (found, skipped) = findings(kind, &spec.search, &spec.roots, config.root())?;
-    let sites = ratchet::scoped(&found, flags.only.as_deref());
-    let aside = match skipped {
+    let read = findings(kind, &spec.search, &spec.roots, config.root())?;
+    let sites = ratchet::scoped(&read.findings, flags.only.as_deref());
+    let aside = match read.skipped {
         0 => String::new(),
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
     let unit = kind.evaluator.unit;
+    let said = read.coverage(flags.only.as_deref()).said(flags);
     Ok(kind.evaluator.evaluate(
-        found,
+        read.findings,
         at_the_base(kind, &config, &spec, flags, out)?,
         ratchet::accepted(&config, &flags.gate, kind.evaluator.metrics)?,
         flags,
-        &format!("OK: {sites} {unit} in the tree, all held at the base{aside}"),
+        &format!("OK: {sites} {unit} in the tree, all held at the base{aside}{said}"),
         out,
     ))
 }
@@ -179,12 +203,13 @@ fn at_the_base(
             owned.root()
         }
     };
-    let (mut before, _) = findings(
+    let mut before = findings(
         kind,
         &spec.search,
         &base::roots(&spec.roots, config, prior)?,
         prior,
-    )?;
+    )?
+    .findings;
     before.retain(|finding| config.was_held(&finding.file));
     Ok(before)
 }
@@ -196,6 +221,7 @@ fn flags(kind: &Kind, args: &Args) -> Flags {
         prior: None,
         base: None,
         quiet: args.quiet,
+        context: !args.quiet,
         strict: args.strict,
         hook: false,
         only: args.only.clone(),
@@ -402,9 +428,11 @@ fn findings(
     search: &Search,
     roots: &[PathBuf],
     repo_root: &Path,
-) -> Result<(Vec<Finding>, u64), Error> {
+) -> Result<Read, Error> {
     let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
     let mut cache: BTreeMap<String, Skipped> = BTreeMap::new();
+    let mut measured: BTreeSet<String> = BTreeSet::new();
+    let mut excluded: BTreeSet<String> = BTreeSet::new();
     let mut skipped = 0;
     for set in &search.sets {
         let suffixes: Vec<&str> = set.suffixes.iter().map(String::as_str).collect();
@@ -415,15 +443,28 @@ fn findings(
             exclude_except: &[],
             skip_hidden: false,
         };
-        for file in files::under(roots, &wanted)? {
+        let found = files::found(roots, &wanted)?;
+        excluded.extend(
+            found
+                .excluded
+                .iter()
+                .map(|file| files::relative(file, repo_root)),
+        );
+        for file in found.kept {
             let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
             let text = String::from_utf8_lossy(&bytes).to_string();
             let rel = files::relative(&file, repo_root);
             let past = cached(kind, search, &rel, &text, &mut cache);
             skipped += tally(set, &rel, &text, &past, &mut seen);
+            measured.insert(rel);
         }
     }
-    Ok((collected(kind, seen), skipped))
+    Ok(Read {
+        findings: collected(kind, seen),
+        skipped,
+        measured: measured.into_iter().collect(),
+        excluded: excluded.into_iter().collect(),
+    })
 }
 
 fn cached(

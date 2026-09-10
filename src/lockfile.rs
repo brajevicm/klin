@@ -4,6 +4,7 @@ use std::path::Path;
 use serde_json::Value;
 
 use crate::config::{Config, Error, Flags};
+use crate::coverage::Coverage;
 use crate::ratchet::{self, Evaluator, Finding, Section, Values};
 use crate::{base, changed, files};
 
@@ -87,10 +88,11 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let sites = surveyed(&config, flags, out)?;
     let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
     let ok = format!(
-        "OK: {} dependenc{} in {} manifest(s), each locked and pinned as the base had it",
+        "OK: {} dependenc{} in {} manifest(s), each locked and pinned as the base had it{}",
         sites.judged,
         plural(sites.judged),
-        sites.manifests
+        sites.manifests,
+        sites.coverage().said(flags)
     );
     let code = evaluator().evaluate(sites.findings, sites.prior, accepted, flags, &ok, out);
     ratchet::noted(&sites.notes, flags, out);
@@ -104,7 +106,11 @@ fn surveyed(config: &Config, flags: &Flags, out: &mut String) -> Result<Sites, E
     let exclude = optional(&section, EXCLUDE)?;
     let commit = base::commit(config.root(), flags, out)?;
     let mut sites = Sites::default();
-    for manifest in manifests.iter().filter(|path| !excluded(path, &exclude)) {
+    let (dropped, judged): (Vec<&String>, Vec<&String>) =
+        manifests.iter().partition(|path| excluded(path, &exclude));
+    sites.listed = manifests.len();
+    sites.excluded = dropped.len();
+    for manifest in judged {
         sites.add(config.root(), &commit, manifest)?;
     }
     Ok(sites)
@@ -116,6 +122,7 @@ fn evaluator() -> Evaluator<'static> {
         unit: "dependenc(ies)",
         condition: "that the lockfile beside the manifest does not lock",
         fix_advice: REMEDY,
+        ceiling: None,
         format_metrics: show,
     }
 }
@@ -148,9 +155,25 @@ struct Sites {
     notes: Vec<(String, String)>,
     judged: usize,
     manifests: usize,
+    /// What the gate's coverage counts beside `manifests`, the manifests it judged: how many
+    /// the section names, how many of those an exclusion dropped, and how many the working
+    /// tree no longer holds, which it discovers nothing of. A manifest it reached and did not
+    /// read left a NOTE instead, and the coverage calls that one unreadable. Spec 8.6.
+    listed: usize,
+    excluded: usize,
+    absent: usize,
 }
 
 impl Sites {
+    fn coverage(&self) -> Coverage {
+        Coverage {
+            found: self.listed - self.absent,
+            measured: self.manifests,
+            excluded: self.excluded,
+            unreadable: self.notes.len(),
+        }
+    }
+
     fn add(&mut self, root: &Path, commit: &str, manifest: &str) -> Result<(), Error> {
         let (now, before) = match reading(root, commit, manifest)? {
             Reading::Judged(now, before) => (now, before),
@@ -158,7 +181,10 @@ impl Sites {
                 self.notes.push((at, why));
                 return Ok(());
             }
-            Reading::Absent => return Ok(()),
+            Reading::Absent => {
+                self.absent += 1;
+                return Ok(());
+            }
         };
         self.manifests += 1;
         self.judged += now.deps.len();

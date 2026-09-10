@@ -5,6 +5,7 @@ mod ceiling;
 mod changed;
 mod complexity;
 mod config;
+mod coverage;
 mod doc_citations;
 mod doc_size;
 mod escapes;

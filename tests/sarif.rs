@@ -77,6 +77,32 @@ fn a_result_on_a_changed_line_fails_with_its_file_line_rule_and_message() {
 }
 
 #[test]
+fn the_ok_line_counts_the_files_it_placed_and_the_places_it_could_not() {
+    let tree = tree(ONE);
+    tree.write(
+        "eslint.sarif",
+        &report(&[
+            result(
+                "src/a.ts",
+                1,
+                "no-any",
+                "on a line the window did not change",
+            ),
+            result("src/b.ts", 1, "no-any", "in a second file of the tree"),
+            result("/elsewhere/x.ts", 2, "no-any", "outside the tree"),
+        ]),
+    );
+
+    let run = tree.run(&["gate", "--gate", "eslint"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("(3 file(s) found, 2 measured, 0 excluded, 1 unreadable)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_result_on_a_line_the_window_did_not_change_is_held_and_counted() {
     let tree = tree(ONE);
     tree.write(

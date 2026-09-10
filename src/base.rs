@@ -171,7 +171,7 @@ pub fn commit(root: &Path, flags: &Flags, out: &mut String) -> Result<String, Er
 /// The base a gate the runner did not lay out chooses for itself, named once in the report.
 pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Window, Error> {
     let base = choose(root, flags.strict)?;
-    if !flags.quiet {
+    if flags.context {
         let _ = writeln!(out, "{}", base.line());
     }
     Ok(base)

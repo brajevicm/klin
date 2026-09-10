@@ -101,11 +101,10 @@ pub struct Wanted<'a> {
 }
 
 impl Wanted<'_> {
-    fn keeps(&self, path: &Path, name: &str) -> bool {
+    fn matches(&self, name: &str) -> bool {
         self.extensions
             .iter()
             .any(|extension| name.ends_with(extension))
-            && !self.excluded(path, name)
     }
 
     fn descends(&self, name: &str) -> bool {
@@ -125,14 +124,28 @@ impl Wanted<'_> {
     }
 }
 
+/// What a walk reached: the files the check measures, and the ones an exclusion dropped, which
+/// its coverage counts. Spec 8.6.
+#[derive(Default)]
+pub struct Found {
+    pub kept: Vec<PathBuf>,
+    pub excluded: Vec<PathBuf>,
+}
+
 pub fn under(roots: &[PathBuf], wanted: &Wanted) -> Result<Vec<PathBuf>, Error> {
-    let mut files = Vec::new();
+    Ok(found(roots, wanted)?.kept)
+}
+
+pub fn found(roots: &[PathBuf], wanted: &Wanted) -> Result<Found, Error> {
+    let mut found = Found::default();
     for root in roots {
-        walk(root, wanted, &ignored(root), &mut files)?;
+        walk(root, wanted, &ignored(root), &mut found)?;
     }
-    files.sort();
-    files.dedup();
-    Ok(files)
+    for files in [&mut found.kept, &mut found.excluded] {
+        files.sort();
+        files.dedup();
+    }
+    Ok(found)
 }
 
 /// What git ignores under a root. A gate judges the tree git describes, so a generated file
@@ -156,12 +169,7 @@ fn ignored(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-fn walk(
-    root: &Path,
-    wanted: &Wanted,
-    ignored: &[PathBuf],
-    into: &mut Vec<PathBuf>,
-) -> Result<(), Error> {
+fn walk(root: &Path, wanted: &Wanted, ignored: &[PathBuf], into: &mut Found) -> Result<(), Error> {
     let listing = std::fs::read_dir(root).map_err(|why| Error::unreadable(root, why))?;
     for entry in listing {
         let entry = entry.map_err(|why| Error::unreadable(root, why))?;
@@ -174,7 +182,7 @@ fn visit(
     entry: &DirEntry,
     wanted: &Wanted,
     ignored: &[PathBuf],
-    into: &mut Vec<PathBuf>,
+    into: &mut Found,
 ) -> Result<(), Error> {
     let path = entry.path();
     if entry
@@ -190,10 +198,22 @@ fn visit(
         if wanted.descends(&name) {
             walk(&path, wanted, ignored, into)?;
         }
-    } else if wanted.keeps(&path, &name) {
-        into.push(path);
+    } else {
+        keep(path, &name, wanted, into);
     }
     Ok(())
+}
+
+/// Where one file the walk reached lands: the set the check measures, the set an exclusion
+/// dropped, or neither, because no discovery rule of this check names it.
+fn keep(path: PathBuf, name: &str, wanted: &Wanted, into: &mut Found) {
+    if !wanted.matches(name) {
+        return;
+    }
+    match wanted.excluded(&path, name) {
+        true => into.excluded.push(path),
+        false => into.kept.push(path),
+    }
 }
 
 pub fn glob_matches(glob: &[u8], text: &[u8]) -> bool {

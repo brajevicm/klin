@@ -7,6 +7,7 @@ use serde_json::{Map, Value};
 use crate::base;
 use crate::changed::git;
 use crate::config::{Config, Error, Flags};
+use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::survey::{ROOT, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
@@ -58,16 +59,33 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
         .collect();
     let held = ratchet::scoped(&now, flags.only.as_deref());
     let accepted = ratchet::accepted(&config, &flags.gate, evaluator().metrics)?;
+    let said = covered(&judged, &paired, flags).said(flags);
     let code = evaluator().evaluate(
         now,
         before,
         accepted,
         flags,
-        &format!("OK: {held} test file(s) the base holds, all still there"),
+        &format!("OK: {held} test file(s) the base holds, all still there{said}"),
         out,
     );
     noted(&paired, flags, out);
     Ok(code)
+}
+
+/// What this gate discovered: every test file the base holds under its entries. A deleted test
+/// whose subject went with it is found and not measured, because it is a NOTE and not a site
+/// the gate judges. Spec 8.6.
+fn covered(judged: &[Site], paired: &[Site], flags: &Flags) -> Coverage {
+    let only = flags.only.as_deref();
+    let paths =
+        |sites: &[Site]| -> Vec<String> { sites.iter().map(|site| site.path.clone()).collect() };
+    let measured = coverage::scoped(&paths(judged), only);
+    Coverage {
+        found: measured + coverage::scoped(&paths(paired), only),
+        measured,
+        excluded: 0,
+        unreadable: 0,
+    }
 }
 
 fn evaluator() -> Evaluator<'static> {
@@ -76,6 +94,7 @@ fn evaluator() -> Evaluator<'static> {
         unit: "test file(s)",
         condition: "where the base holds a test file the working tree no longer has",
         fix_advice: REMEDY,
+        ceiling: None,
         format_metrics: show,
     }
 }

@@ -36,6 +36,10 @@ pub const UNPARSED: &str = "unparsed";
 pub struct Records {
     pub findings: Vec<Value>,
     pub notes: Vec<Value>,
+    /// One row per gate the run judged, which only the runner fills in. Spec 11.2.
+    pub gates: Vec<Value>,
+    /// What scope the gate measured, which every check records once. Spec 11.2.
+    pub coverage: Option<Value>,
 }
 
 pub struct Flags {
@@ -46,7 +50,12 @@ pub struct Flags {
     pub prior: Option<PathBuf>,
     /// The base commit the runner chose, for a gate that reads the base tree out of git.
     pub base: Option<String>,
+    /// Print nothing on success: no `OK:` line, and nothing under it.
     pub quiet: bool,
+    /// Whether this gate says the run's own context for itself: the `window:` line and the
+    /// `derived:` lines. The runner prints those once for the whole run, so it clears this and
+    /// still gets each gate's `OK:` line. Spec 4.3, 11.1.
+    pub context: bool,
     pub strict: bool,
     /// The Stop hook runs this gate, so a hole the agent cannot fix is a note, not a failure.
     pub hook: bool,
@@ -132,7 +141,7 @@ impl Config {
     /// The same lines, written out by a check a person ran by hand. The gate runner prints its
     /// own once for the whole run, so a gate stays quiet here. Spec 4.3.
     pub fn say(&self, flags: &Flags, section: &str, out: &mut String) {
-        if flags.quiet {
+        if !flags.context {
             return;
         }
         for line in self.said().iter().filter(|line| names(line, section)) {
