@@ -18,11 +18,8 @@ ADR 0008 took `diff-radius` from the Klin spec as a gate worth having. Building
 it showed that the gate shape does not survive contact with what klin is. What
 survives is a report on a window klin did not previously own.
 
-cleat has no equivalent, so there is no behavioural specification to work from.
-Its nearest relative, `report-hotspots.py`, is deliberately not a gate, and
-`quality/STRATEGY.md` gives the reason: "churn alone chases harmless
-refactors ... A report, not a gate: it prioritizes work, it does not block a
-commit."
+Change volume alone cannot distinguish a harmless refactor from a regression.
+The report gives the person context about a turn without blocking a commit.
 
 ## Three findings forced the shape
 

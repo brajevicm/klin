@@ -69,7 +69,7 @@ touched is authoritative. A local hook is feedback, not a control.
 
 The spec's gate catalogue is its strongest part. `diff-radius`,
 `db-migration-safety`, `asset-path-verification` and `hallucinated-deps` name
-real failures nothing here or in cleat catches, and structured JSON output with
+real failures the existing checks do not catch, and structured JSON output with
 a remediation per violation is the right shape for an agent's loop.
 
 `hallucinated-deps` reads the lockfile rather than a registry, so the gate stays

@@ -1,9 +1,8 @@
 # References read through tree-sitter, user-written rules through ast-grep
 
-cleat reads references through ast-grep for its layering, reachability and
-dead-symbols checks. ADR 0001 already refused to bundle a foreign runtime for
-complexity, and the obvious move was to refuse it again here. That reasoning
-does not survive contact with the crate.
+Reference extraction and user-written rules both need syntax trees. ADR 0001
+refused to bundle a foreign runtime for complexity; using a Rust library for
+pattern matching does not require one.
 
 `ast-grep-core` is a Rust library, not a subprocess, and it resolves to
 tree-sitter 0.27.0, the version this tree already pins. Cargo unifies them, so
@@ -11,9 +10,7 @@ there is no second parser and no duplicated grammar. Measured against a probe
 binary holding only tree-sitter and the Rust grammar, it adds 96 KB. Over a
 20,922-byte file it parses in 1.71 ms against 2.40 ms for a tree-sitter parse
 plus this tree's own node-kind walk, and matching a pattern against an
-already-parsed tree costs 0.50 ms. The 50x parse cost cleat recorded compared
-ast-grep against regex over stripped source, and does not apply where both
-sides are tree-sitter.
+already-parsed tree costs 0.50 ms.
 
 So the question is not cost. It is who writes the matcher.
 
@@ -45,13 +42,12 @@ than anywhere else because the pattern came from a user rather than from us.
 
 So a rule carries an `example`, and its own matcher must match it. A rule whose
 pattern does not match its own example is a config error naming the rule. This
-is optional for a regex rule, where it keeps cleat's configs valid, and
-required for a structural one.
+is optional for a regex rule and required for a structural one, where the
+probe demonstrated that valid-looking patterns can silently match nothing.
 
 ## Consequences
 
-A conventions rule carries `pattern` or `structural`, never both. `pattern`
-stays exactly cleat's regex key, so cleat's rules run unchanged and the
-differential test still reaches them. `structural` is additive and ours alone.
+A conventions rule carries `pattern` for a regex or `structural` for a syntax
+pattern, never both.
 
 `ast-grep-core` is pre-1.0 at 0.45.x. Expect breaking changes on upgrade.

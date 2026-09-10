@@ -1,35 +1,20 @@
 # Working on klin
 
-klin is a Rust rewrite of cleat, a quality-ratchet tool. Read `CONTEXT.md`
+klin is a quality ratchet for AI-driven development. Read `CONTEXT.md`
 for the vocabulary and `docs/adr/` for decisions that are already made.
 
-## The reference implementation
+## Behavioural specification
 
-cleat is the behavioural specification. Find it at `$CLEAT_SRC`, defaulting to
-`../cleat` beside this repository. It is not vendored here and must not be:
-klin gates itself, and a vendored Python tree would be scanned as its own debt.
+Before changing a check, read its contract in `docs/SPEC.md`, the applicable
+decisions in `docs/adr/`, and its CLI tests under `tests/`. These are klin's
+authority; ADR 0025 records the scope of that authority.
 
-That checkout is indexed with CodeGraph, so use it instead of grep:
+When behaviour is unspecified or a test conflicts with the contract, resolve
+it against klin's requirements and record the intended result in the spec and
+a CLI test. Use idiomatic Rust to implement that result.
 
-    codegraph explore "<symbols or question>" --project $CLEAT_SRC
-
-**Read cleat's tests and docstrings freely.** They are the specification.
-Cleat's `$CLEAT_SRC/quality/bin/` ratchet.py docstring states the five
-outcomes outright, and the suites under `quality/tests/` pin every edge case.
-
-**Read cleat's implementation only when behaviour is ambiguous**, and never
-port it line by line. It is idiomatic Python and the idioms do not carry. For
-example ratchet.py dispatches to a field by string name:
-
-    getattr(verdict, compare(finding, entry, metrics)).append((finding, entry))
-
-That is good Python. Transliterated it is bad Rust, where the same thing is an
-enum and a `match`. Take the behaviour from the test that covers it, then write
-Rust.
-
-klin's numbers are not required to match cleat's. A ratchet compares today's
-measurement against yesterday's measurement from the same tool, so being
-self-consistent is the whole requirement. See ADR 0001.
+Measurements must be deterministic and self-consistent across the two trees
+measured by one binary. See ADR 0001.
 
 ## Tests
 

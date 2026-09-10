@@ -2,6 +2,11 @@
 
 Status: Draft v0, 2026-09-08
 
+This specification, accepted ADRs and klin's CLI tests define klin's behaviour.
+ADR 0025 retires the external behavioural reference obligation. Gaps and
+conflicts are resolved against klin's requirements and recorded here and in
+CLI tests.
+
 Purpose: Define a tool that gates an agentic coding harness deterministically,
 with at most one committed configuration file, no baseline that a person
 maintains, green on the day it arrives, and tighter under a schedule a
@@ -31,7 +36,7 @@ and Derived, and asks `CONTEXT.md` to take them.
 | 0005 | A missing key is an error, never a default. `init` writes every section. | A missing key is derived from the base tree at run time and printed. `init` only pins a derived value into the file. | The goal is a tool a person manages nothing for. A derived value that the run prints is not the silent default ADR 0005 feared. Section 5. |
 | 0009, 0013 | The hook compares against the merge-base with the default branch. | The hook compares against the turn stamp. `klin gate` and CI keep the merge-base. | The merge-base is the wrong window for a turn. It is empty after a commit on the default branch, it grows with the branch, and ADR 0013 exists only to patch that. Section 6. |
 | 0010 | Under `--strict` an unaccounted gate is exit 2. | Every applicable gate runs unless its section is `false`. The failure has nothing left to catch. | A gate whose section is derived cannot be unaccounted. Section 10. |
-| 0007 | Config keys match cleat's. | One key vocabulary across sections. The differential test goes. | ADR 0009 already weakened the reason to a preference. `sources` in one section and `roots` in the next is a cost a user pays for a test klin no longer needs. |
+| 0007 | Config keys preserve compatibility for differential tests. | One key vocabulary across sections. The differential test goes. | ADR 0009 already weakened the reason to a preference. `sources` in one section and `roots` in the next is a cost a user pays for a test klin no longer needs. |
 | 0003 | A file no grammar reads is exit 2 everywhere. | In the hook it is a NOTE. Outside the hook it stays exit 2. | An agent cannot fix a grammar. Blocking a stop on it costs a turn per stop with no remedy. |
 | 0011 | A non-reader naming a guarded path is refused. | It is `ask`. Only a clear write is `deny`. | Four read-only commands were refused in the session that wrote this draft. Section 9.4. |
 | 0004 | The host's cap on consecutive blocks bounds the loop. | klin bounds its own blocks. | The cap is not in the host's current documentation. Section 9.3. |
@@ -370,8 +375,7 @@ MAY pin some keys and leave others to derivation. A pinned key MUST print as
 Every section uses the same names for the same things: `roots`, `languages`,
 `exclude`, `skip_dirs`, `ceilings`. `sources` in the complexity section is
 renamed to `roots`. A run that meets the old name MUST say what the new name
-is. cleat's keys are no longer a constraint, and the differential test that
-needed them is retired.
+is. The differential test that required the old vocabulary is retired.
 
 ### 5.4 Derivation rules
 
@@ -884,8 +888,9 @@ a whole-tree total fails a tree nobody changed, which is the forced paydown
 
 ### 8.5 Tier 3: defer with a reason
 
-`layering` (#50): the compiler's module graph is the check, per cleat's own
-strategy. `guard-suites` (#43) and `manifests` (#44): one stack each.
+`layering` (#50): defer until the reference extractor exists and a user needs
+constraints beyond the compiler's module graph. `guard-suites` (#43) and
+`manifests` (#44): one stack each.
 `db-migration-safety` (#57): deterministic for raw SQL only. `asset-path`
 (#59): the ticket expects false positives, which fails criterion 1 in
 spirit. `flaky-test-runner` and an MCP server: refused in ADR 0008.

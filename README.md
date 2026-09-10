@@ -26,8 +26,10 @@ and the config under CODEOWNERS. ADR 0008 and 0009 record why.
 A person adds one line to the `accepted` list in the config, in a reviewed
 commit. Nothing else records debt, and klin writes no files.
 
-## Origin and license
+## Specification and license
 
-A Rust rewrite of [cleat](https://github.com/svetdev/cleat) by Andrey
-Kasatkin. MIT, with both copyrights in [LICENSE](LICENSE). `docs/adr/` records
-what changed.
+[The specification](docs/SPEC.md) defines klin's behaviour, [ADRs](docs/adr/)
+record its decisions, and CLI tests pin the expected results. See
+[ADR 0025](docs/adr/0025-klin-defines-its-own-behaviour.md).
+
+MIT, with copyright notices in [LICENSE](LICENSE).
