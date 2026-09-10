@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$(git rev-parse --show-toplevel)\" || exit 1; cargo run --quiet -- gate --hook --changed",
+            "timeout": 900,
+            "statusMessage": "klin: gating the changed files"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$(git rev-parse --show-toplevel)\" || exit 0; if [ -x target/debug/klin ]; then target/debug/klin guard; else cargo run --quiet -- guard; fi",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
