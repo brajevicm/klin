@@ -58,6 +58,9 @@ pub struct Derived {
     /// nothing in `before`, so a directory that becomes a root brings no inherited debt with
     /// it. Empty when there is no commit to survey. Spec 7.1.
     pub unheld: Vec<String>,
+    /// The source roots the survey found. Empty is the hole of ADR 0016: a gate the survey was
+    /// left to supply reads code, and there is no code to read. Spec 10, 14.
+    pub roots: Vec<String>,
 }
 
 /// The sections klin derives, and for an object section the keys it supplies. A section the
@@ -77,6 +80,12 @@ pub fn keys(section: &str) -> Option<&'static [&'static str]> {
         .map(|(_, keys)| *keys)
 }
 
+/// Whether a section measures code, which is exactly the set the survey supplies roots for. A
+/// section that reads documents has nothing to lose when the tree has no source root. Spec 10.
+pub fn reads_code(section: &str) -> bool {
+    keys(section).is_some_and(|keys| keys.contains(&"roots"))
+}
+
 /// A section the config states in full, so the survey does not have to run for it. A section
 /// that is not an object — a list, a command, or `false` — states itself. A key written `a.b`
 /// is stated only at that depth, so a config that pins one ceiling and leaves the other still
@@ -92,9 +101,42 @@ pub fn pinned_whole(section: &str, pinned: &Value) -> bool {
 }
 
 fn stated(pinned: &Value, key: &str) -> bool {
-    key.split('.')
-        .try_fold(pinned, |at, part| at.get(part))
-        .is_some()
+    held(pinned, key).is_some()
+}
+
+/// The value a dotted key names, and `None` when the config states nothing at that depth.
+fn held<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
+    key.split('.').try_fold(value, |at, part| at.get(part))
+}
+
+/// One `pinned:` line per key of a section the config states in full. A run prints nothing for
+/// such a section, because it derived nothing there, and `--list` still says where each value
+/// came from. Spec 10.
+pub fn pinned_lines(section: &str, value: &Value) -> Vec<String> {
+    let supplies = keys(section).unwrap_or_default();
+    if supplies.is_empty() || !value.is_object() {
+        return vec![said(section, None, value, true)];
+    }
+    supplies
+        .iter()
+        .filter_map(|key| Some(said(section, Some(leaf(key)), held(value, key)?, true)))
+        .collect()
+}
+
+/// The keys of a section the value does not state, as the label a `derived:` line names each
+/// by. A `gates` entry may state some of its check's keys and leave the rest to the survey.
+/// Spec 10.
+pub fn underived(section: &str, value: &Value) -> Vec<&'static str> {
+    keys(section)
+        .unwrap_or_default()
+        .iter()
+        .filter(|key| !stated(value, key))
+        .map(|key| leaf(key))
+        .collect()
+}
+
+fn leaf(key: &str) -> &str {
+    key.rsplit_once('.').map_or(key, |(_, last)| last)
 }
 
 pub fn derivable() -> impl Iterator<Item = &'static str> {
@@ -115,8 +157,10 @@ pub fn derive(root: &Path, pinned: &Value) -> Derived {
     let numbers = numbers(root, at.as_deref(), at_commit, &found, pinned);
     let sections = sections(&found, &numbers, pinned);
     let lines = lines(&found, &sections, &numbers, pinned);
+    let unheld = unheld(&found, &held, surveyed.is_some());
     Derived {
-        unheld: unheld(&found, &held, surveyed.is_some()),
+        unheld,
+        roots: found.roots,
         sections,
         lines,
     }

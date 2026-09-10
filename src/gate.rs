@@ -9,7 +9,7 @@ use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
-use crate::{build, complexity, doc_citations, doc_size, escapes, state, turn};
+use crate::{build, complexity, doc_citations, doc_size, escapes, state, survey, turn};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks are left and whether the turn's gate block is still unspent. In the state
@@ -22,6 +22,8 @@ const BUILD_WRITING: &str = "build-blocked.writing";
 /// host documents no cap of its own. ADR 0022, spec 9.3.
 const BLOCKS: u64 = 8;
 const GATES: &str = "gates";
+/// What `--list` indents a gate's own lines by, under the row that names it.
+const UNDER: &str = "      ";
 
 struct Check {
     name: &'static str,
@@ -85,7 +87,9 @@ struct Gate {
 struct Plan {
     gates: Vec<Gate>,
     excluded: Vec<String>,
-    unaccounted: Vec<&'static str>,
+    /// The checks klin offers that neither the config nor the survey supplies a section for.
+    /// Each needs a section a person writes, and none of them runs.
+    needs_a_section: Vec<&'static Check>,
 }
 
 struct Entry {
@@ -100,13 +104,15 @@ pub struct Args {
     /// The klin.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
-    /// Fail when a gate is unaccounted for or an accepted entry matches nothing — what CI runs
+    /// Fail on the holes of spec 10: an accepted entry matching nothing, a comparison klin
+    /// cannot explain, and a survey with no source root — what CI runs
     #[arg(long)]
     strict: bool,
     /// Run only this gate (repeatable)
     #[arg(long = "gate", value_name = "NAME")]
     gates: Vec<String>,
-    /// Print the gates this config runs, excludes and leaves unaccounted, then exit
+    /// Print the gates that run with derived or pinned per key, the excluded ones, the ones
+    /// that need a section a person writes, and the state directory, then exit
     #[arg(long)]
     list: bool,
     /// Judge only the files changed against the base — the fast loop; CI runs the full pass
@@ -407,11 +413,12 @@ fn judge(
         return listed(&config, &plan, out);
     }
     let wanted = select(&args.gates, &plan, &config)?;
-    accounted(args, &plan, &config)?;
     let against = against(args, &wanted, &config, window, out)?;
     said(args, &config, out);
+    let rootless = no_source_root(args, &plan, &config, out)?;
     let (tally, mut records) = each(args, &wanted, &config, start, &against, out);
     records.notes.extend(note);
+    records.notes.extend(rootless);
     finish(args, &plan, wanted.len(), tally, records, &against, out);
     Ok(tally)
 }
@@ -479,35 +486,96 @@ fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<Tally, Error
     if plan.gates.is_empty() && plan.excluded.is_empty() {
         return Err(no_gate(config, plan));
     }
-    list(plan, out);
+    list(config, plan, out);
     if let Some(at) = state::dir(config.root()) {
         let _ = writeln!(out, "state: {}", at.display());
     }
     Ok(Tally::default())
 }
 
-fn list(plan: &Plan, out: &mut String) {
+fn list(config: &Config, plan: &Plan, out: &mut String) {
     for gate in &plan.gates {
-        let _ = writeln!(out, "{}", gate.name);
+        let _ = writeln!(out, "{} — runs", gate.name);
+        for line in stated(config, gate) {
+            let _ = writeln!(out, "{UNDER}{line}");
+        }
     }
     for name in &plan.excluded {
         let _ = writeln!(out, "{name} — excluded");
     }
-    for name in &plan.unaccounted {
-        let _ = writeln!(out, "{name} — available, not configured");
+    for check in &plan.needs_a_section {
+        let _ = writeln!(out, "{} — needs a section a person writes", check.name);
     }
 }
 
-fn accounted(args: &Args, plan: &Plan, config: &Config) -> Result<(), Error> {
-    if !args.strict || plan.unaccounted.is_empty() {
-        return Ok(());
+/// Where each of a gate's values came from: the run's own `derived:` and `pinned:` lines for
+/// the section it reads, and the `pinned:` lines of a section the config states in full, which
+/// a run derives nothing for and so says nothing about. Spec 10.
+fn stated(config: &Config, gate: &Gate) -> Vec<String> {
+    let section = gate.check.section;
+    let states = gate.with.as_ref().or_else(|| {
+        config
+            .pinned(section)
+            .filter(|pinned| survey::pinned_whole(section, pinned))
+    });
+    match states {
+        Some(value) => beside(config, section, value),
+        None => config.said_about(section),
     }
-    Err(Error(format!(
-        "{} leaves these gates unaccounted for: {} — under --strict every gate klin offers \
-         takes a decision, so configure each one, or set its section to false to exclude it",
-        config.file.display(),
-        plan.unaccounted.join(", ")
-    )))
+}
+
+/// A section a person states, key by key. An entry that states some of its check's keys leaves
+/// the rest to the survey, and the run fills those in, so the row says `pinned` for what the
+/// person named and `derived` for what the survey supplied. Spec 5.2, 10.
+fn beside(config: &Config, section: &str, with: &Value) -> Vec<String> {
+    let mut out = survey::pinned_lines(section, with);
+    let said = config.said_about(section);
+    for key in survey::underived(section, with) {
+        let derived = format!("derived: {section} {key} ");
+        out.extend(
+            said.iter()
+                .filter(|line| line.starts_with(&derived))
+                .cloned(),
+        );
+    }
+    out
+}
+
+/// A survey that finds no source root, with a check that measures code left for it to supply:
+/// exit 2 under `--strict`, and a NOTE otherwise, which lets the turn end in the hook. Without
+/// it a CI job in the wrong directory applies every gate to nothing and prints green. A person
+/// who excluded those gates, or who pinned their roots, is not this hole. A clone with no base
+/// is a different error, of spec 14. ADR 0016, spec 10, 14.
+///
+/// This runs after the base is laid out, so a `--strict` run pays for a layout it then refuses.
+/// A rootless tree is rare, and the NOTE reads after the lines it explains rather than before
+/// the window line, so the order stands.
+fn no_source_root(
+    args: &Args,
+    plan: &Plan,
+    config: &Config,
+    out: &mut String,
+) -> Result<Option<Value>, Error> {
+    let dropped = plan
+        .needs_a_section
+        .iter()
+        .any(|check| survey::reads_code(check.section));
+    if !dropped || !config.found_no_source_root() {
+        return Ok(None);
+    }
+    let said = format!(
+        "the survey of {} found no source root — a source root is a directory that holds \
+         nothing but source files, so no gate that reads code ran here at all; run klin from \
+         the tree you mean to gate, or set those gates to false to exclude them",
+        config.root().display()
+    );
+    if args.strict {
+        return Err(Error(said));
+    }
+    if !args.json {
+        let _ = writeln!(out, "  NOTE: {said}");
+    }
+    Ok(Some(record("note", &said)))
 }
 
 fn finish(
@@ -778,7 +846,7 @@ fn add(config: &Config, check: &'static Check, entries: &[Entry], plan: &mut Pla
         false => config.pinned(check.section),
     };
     if section.is_none() && mine.is_empty() {
-        plan.unaccounted.push(check.name);
+        plan.needs_a_section.push(check);
     }
     from_section(check, section, plan);
     for entry in mine {

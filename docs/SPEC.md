@@ -1471,7 +1471,8 @@ Core, in this order:
       survey and the `after` walk, and a site under a path the survey did not
       hold is `new`.
 - [ ] `doc-citations` and every other derivable check compare to `before`
-- [ ] No source root is exit 2 under `--strict`
+- [x] No source root is exit 2 under `--strict`, and `--list` says derived or
+      pinned per key
 - [ ] Derived complexity ceilings, floor and minimum sample, floor for a new
       language
 - [ ] Pinned dated ceilings in every check that takes a ceiling, in UTC, date
