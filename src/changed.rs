@@ -3,7 +3,9 @@ use std::process::Command;
 
 use crate::config::Error;
 
-/// A file the working tree changed since the base, with the path it had at the base.
+/// A file the working tree changed since the base, with the path it had at the base. A
+/// deletion is a change: `inventory` judges the path the working tree no longer holds, so a
+/// scoped run must have it in scope. Spec 4.5, 8.2.
 #[derive(Clone)]
 pub struct Change {
     pub path: String,
@@ -13,15 +15,7 @@ pub struct Change {
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let listed = git(
         root,
-        &[
-            "diff",
-            "--name-status",
-            "-M",
-            "--diff-filter=d",
-            "--relative",
-            base,
-            "--",
-        ],
+        &["diff", "--name-status", "-M", "--relative", base, "--"],
     )
     .ok_or_else(|| {
         Error(format!(

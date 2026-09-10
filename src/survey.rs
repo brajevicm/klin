@@ -20,9 +20,9 @@ const MANIFESTS: &[(&str, &str, &str)] = &[
 
 /// The directory segments a language's test convention uses, and the affixes that mark one file
 /// as a test. Spec 8.2.
-const TEST_DIRS: &[&str] = &["tests", "test", "spec", "__tests__"];
-const TEST_PREFIXES: &[&str] = &["test_", "spec_"];
-const TEST_SUFFIXES: &[&str] = &["_test", "_spec", ".test", ".spec", "Test", "Tests"];
+pub const TEST_DIRS: &[&str] = &["tests", "test", "spec", "__tests__"];
+pub const TEST_PREFIXES: &[&str] = &["test_", "spec_"];
+pub const TEST_SUFFIXES: &[&str] = &["_test", "_spec", ".test", ".spec", "Test", "Tests"];
 
 /// The keys the two derived numbers are cached under, beside the survey of the same commit.
 const COMPLEXITY: &str = "complexity";
@@ -71,6 +71,7 @@ const DERIVABLE: &[(&str, &[&str])] = &[
     ("doc_citations", &[]),
     ("doc_size", &[]),
     ("escapes", &["roots", "languages"]),
+    ("inventory", &[]),
 ];
 
 pub fn keys(section: &str) -> Option<&'static [&'static str]> {
@@ -757,6 +758,7 @@ fn sections(found: &Survey, numbers: &Numbers, pinned: &Value) -> Map<String, Va
     add("complexity", complexity_section(found, numbers));
     add("doc_size", doc_size_section(found, numbers));
     add("doc_citations", doc_citations_section(found));
+    add("inventory", inventory_section(found));
     add("build", build_section(found));
     out
 }
@@ -846,6 +848,25 @@ fn doc_citations_section(found: &Survey) -> Option<Value> {
                 let mut entry = Map::new();
                 entry.insert("file".into(), name.clone().into());
                 entry.insert("roots".into(), list(&[ROOT.to_string()]));
+                Value::Object(entry)
+            })
+            .collect(),
+    ))
+}
+
+/// One entry per test root the survey found, named after the root, with no pattern. Spec 5.4.
+fn inventory_section(found: &Survey) -> Option<Value> {
+    if found.test_roots.is_empty() {
+        return None;
+    }
+    Some(Value::Array(
+        found
+            .test_roots
+            .iter()
+            .map(|root| {
+                let mut entry = Map::new();
+                entry.insert("name".into(), root.clone().into());
+                entry.insert("path".into(), root.clone().into());
                 Value::Object(entry)
             })
             .collect(),
@@ -1014,6 +1035,7 @@ fn rule(section: &str, key: Option<&str>) -> &'static str {
              word count there rounded up to the next 50"
         }
         ("doc_citations", None) => "every Markdown file at the tree root, resolved against it",
+        ("inventory", None) => "one entry per test root",
         ("build", None) => "one command per manifest",
         _ => "the survey of this tree",
     }
@@ -1039,9 +1061,15 @@ fn shown(value: &Value) -> String {
             .join(", "),
         Value::Array(items) => items
             .iter()
-            .map(|item| match item.get("file").or_else(|| item.get("run")) {
-                Some(Value::String(text)) => text.clone(),
-                _ => item.to_string(),
+            .map(|item| {
+                match item
+                    .get("file")
+                    .or_else(|| item.get("run"))
+                    .or_else(|| item.get("name"))
+                {
+                    Some(Value::String(text)) => text.clone(),
+                    _ => item.to_string(),
+                }
             })
             .collect::<Vec<String>>()
             .join(", "),

@@ -159,6 +159,7 @@ fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<
         "build",
         "doc_size",
         "doc_citations",
+        "inventory",
         "escapes",
         "complexity",
     ] {
