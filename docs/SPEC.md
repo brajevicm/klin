@@ -2013,7 +2013,8 @@ A pushed tag `vX.Y.Z` builds the binary for macOS and Linux, on x86_64 and
 arm64, and attaches the four archives, a `.sha256` beside each one, a
 `sha256.sum` over all of them, and the install script to a GitHub release.
 `dist` runs that pipeline, so its artifact names and its install script are
-what a route consumes. ADR 0026 records that choice. Every route below
+what a route consumes. ADR 0026 records that choice. `klin --version` prints
+the version the binary was built from, which is the tag without its `v`. Every route below
 downloads from that release and MUST verify the checksum. The routes, in
 order of least friction for the person:
 
