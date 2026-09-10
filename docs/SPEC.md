@@ -789,7 +789,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | #45, #69 |
-| `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | new against `before` | yes | #58 |
+| `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | `unlocked`, `unpinned` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | #47, section 8.3 |
 
 `inventory` has two identities. A test file is keyed by path. A test function
@@ -819,7 +819,16 @@ in the lockfile beside it, and no pin the base held is gone. It cannot prove
 that a package exists in a registry, because it runs offline. A dependency
 that does not exist fails the project's own install, which the `build` step
 runs. Workspace members, path dependencies and optional dependencies are
-implementation-defined and MUST be documented per manifest format.
+implementation-defined and MUST be documented per manifest format, which
+8.2.1 does for the three formats that ship.
+
+The first version covers the three formats that need no parser klin does not
+already carry: `Cargo.toml` against `Cargo.lock`, `package.json` against
+`package-lock.json`, and `go.mod` against `go.sum`. `pnpm-lock.yaml` and
+`yarn.lock` need a YAML reader, and `poetry.lock` and `uv.lock` need a TOML
+reader, so each is a follow-up and each is a NOTE until then. A manifest
+whose lockfile format klin cannot read is one NOTE per run and no finding, so
+such a manifest never reads as a pass.
 
 Two more checks belong to this tier by the criteria and are not in the core
 list of section 18, because each takes weeks and carries an unsolved problem:
@@ -939,6 +948,67 @@ Go, Java, Ruby, Swift and Kotlin, with
 language and fixed in the binary. Two languages that express one construct
 differently may count it differently, and the fixtures are the record of
 which choice was made.
+
+**`lockfile` reads the manifest and the lockfile beside it.** A site is the
+manifest's repository path plus the dependency name, and it carries two
+values, both higher is worse: `unlocked` is 1 when the lockfile holds no entry
+for the name, and `unpinned` is 1 when the manifest's specifier is a range or
+absent. Exact means a Cargo requirement that starts with `=`, an npm
+specifier that starts with a digit and holds no operator and no wildcard
+segment, and every Go `require`, which states one version. A path, git or
+workspace dependency has no registry behind it and no version to pin, so it
+carries 0 for both values and can never fail. The manifest tables read are
+Cargo's `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and
+`[workspace.dependencies]`, including the `[dependencies.name]` sub-table
+form, the dotted-key form, an inline table on one line or several, and any
+table whose last path segment is one of those names, so a target-specific
+table is read too. A statement only ever takes a value away, so two tables
+that name one dependency read the same in either order, and a `features` line
+undoes no version another line stated. A Cargo `package` field gives the name
+the lockfile is searched for, so a renamed dependency is found. A comment is
+cut off before the line is read, so a brace inside one opens no inline table.
+The npm tables are `dependencies`, `devDependencies`,
+`optionalDependencies` and `peerDependencies`. Go reads both forms of the
+`require` directive, with a module a `replace` directive sends to a local
+path treated as having no registry. The lockfile is the nearest one at or
+above the manifest's own directory, which is how a workspace member finds the
+one lockfile its members share. `Cargo.lock` gives the `name` of each
+`[[package]]` block, `package-lock.json` gives the keys of `packages` with
+everything up to the last `node_modules/` stripped and the keys of the nested
+`dependencies` tree that version 1 writes, and `go.sum` gives the first field
+of each line. A dependency the base manifest did not name is a site only when
+it is `unlocked`, so a new dependency with a range and a lockfile entry is
+not a finding, while a pin the base held and a lockfile entry the base held
+are both `worsened` when they go. A manifest with no lockfile in either tree
+is a NOTE and no finding, and a lockfile only the base held makes every
+dependency of that manifest `unlocked`, so deleting a lockfile fails. A
+supported file klin cannot parse is a tool error naming the file. The check
+judges every manifest under `--changed` as well, because a lockfile change
+judges a manifest whose own text did not change and the whole set is a
+handful of files. Pinned by
+`a_new_rust_dependency_with_no_lockfile_entry_fails_as_new`,
+`a_rust_lockfile_entry_that_went_fails_as_worsened`,
+`a_rust_pin_that_became_a_range_fails_as_worsened`,
+`a_new_dependency_with_a_range_and_a_lockfile_entry_does_not_fail`,
+`a_path_a_git_and_a_workspace_dependency_are_not_judged_for_unlocked`,
+`a_deleted_lockfile_fails_every_dependency_of_its_manifest`,
+`a_workspace_lockfile_above_the_member_manifest_is_found`,
+`a_sub_table_and_a_target_table_are_read_like_any_dependency_table`,
+`a_dotted_key_states_one_field_and_undoes_nothing_another_line_stated`,
+`an_inline_table_written_over_several_lines_is_read_as_one_dependency`,
+`a_brace_inside_a_comment_hides_no_dependency_below_it`,
+`a_renamed_dependency_is_locked_by_the_package_the_lockfile_records`,
+`both_npm_lockfile_versions_hold_a_dependency_in_the_base_state`,
+`an_unreadable_lockfile_format_is_a_note_and_judges_no_manifest`,
+`a_malformed_lockfile_is_a_tool_error_naming_the_file` and
+`under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged`
+in `tests/lockfile.rs`. Known limits: the Cargo and Go readers are line
+scans, so a manifest that states a dependency in a shape the scan does not
+know contributes no site rather than a wrong one. And a repository that
+carries a deliberately invalid manifest as a test fixture makes the whole
+gate a tool error, because the derived `manifests` list holds every manifest
+the survey found and an unparseable one is an error by the rule above. The
+escape is an `exclude` glob, which needs a `klin.json` a person writes.
 
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a
@@ -1578,7 +1648,11 @@ Core:
   file is held, `differential` fails every result, `run` writes the report
   before it is read, a report older than a changed file is ERR.
 - `lockfile`: a manifest entry with no lockfile entry fails, a removed pin
-  fails, a path dependency is not judged.
+  fails, a path dependency is not judged, a new dependency with a range and a
+  lockfile entry is green, a deleted lockfile fails every dependency, a
+  workspace lockfile above the member manifest is found, both npm lockfile
+  versions are read, an unreadable format is a NOTE and a malformed supported
+  file is a tool error.
 - Coverage: a file present in both trees and measured in `before` only is a
   NOTE in the hook and exit 2 under `--strict`, whether it left through an
   exclusion or a grammar error.
@@ -1689,7 +1763,7 @@ Core, in this order:
       the empty test body included, with a legitimate-change fixture per row
 - [ ] `sarif`, `after` only, delete `report`, `run`, read `report`, scoped to
       changed lines
-- [ ] `lockfile`
+- [x] `lockfile`, Rust, npm and Go, with pnpm, yarn, Poetry and uv deferred
 - [ ] `CONTEXT.md` takes Window and Derived, README names the two
       conformance levels
 - [ ] New ADRs for each row of section 0 that is accepted, and one for the

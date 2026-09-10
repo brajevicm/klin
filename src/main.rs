@@ -15,6 +15,7 @@ mod hooks;
 mod host;
 mod init;
 mod inventory;
+mod lockfile;
 mod markers;
 mod radius;
 mod ratchet;

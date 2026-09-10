@@ -10,7 +10,8 @@ use crate::changed::{self, Change};
 use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::{
-    build, complexity, doc_citations, doc_size, escapes, inventory, state, stubs, survey, turn,
+    build, complexity, doc_citations, doc_size, escapes, inventory, lockfile, state, stubs, survey,
+    turn,
 };
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -49,6 +50,13 @@ const CHECKS: &[Check] = &[
         run: doc_citations::gate,
         compares_to_base: true,
         takes_scope: true,
+    },
+    Check {
+        name: "lockfile",
+        section: "lockfile",
+        run: lockfile::gate,
+        compares_to_base: true,
+        takes_scope: false,
     },
     Check {
         name: "escapes",

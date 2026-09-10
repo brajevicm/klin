@@ -37,7 +37,8 @@ fn a_tree_with_no_configuration_runs_every_derivable_gate() {
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    inventory"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("ok    lockfile"), "{}", run.out);
+    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -104,7 +105,7 @@ fn a_section_set_to_false_excludes_its_gate_with_nothing_else_configured() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
     assert!(
-        run.says("4 gate(s), 1 excluded, all passed."),
+        run.says("5 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );

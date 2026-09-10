@@ -72,6 +72,7 @@ const DERIVABLE: &[(&str, &[&str])] = &[
     ("doc_size", &[]),
     ("escapes", &["roots", "languages"]),
     ("inventory", &[]),
+    ("lockfile", &["manifests"]),
 ];
 
 pub fn keys(section: &str) -> Option<&'static [&'static str]> {
@@ -759,6 +760,7 @@ fn sections(found: &Survey, numbers: &Numbers, pinned: &Value) -> Map<String, Va
     add("doc_size", doc_size_section(found, numbers));
     add("doc_citations", doc_citations_section(found));
     add("inventory", inventory_section(found));
+    add("lockfile", lockfile_section(found));
     add("build", build_section(found));
     out
 }
@@ -871,6 +873,23 @@ fn inventory_section(found: &Survey) -> Option<Value> {
             })
             .collect(),
     ))
+}
+
+/// One entry per manifest klin has a lockfile reader for. A manifest of another ecosystem is
+/// left out, because the check would only say it cannot read it. Spec 5.4, 8.2.1.
+fn lockfile_section(found: &Survey) -> Option<Value> {
+    let read: Vec<String> = found
+        .manifests
+        .iter()
+        .filter(|path| crate::lockfile::reads(basename(path)))
+        .cloned()
+        .collect();
+    if read.is_empty() {
+        return None;
+    }
+    let mut section = Map::new();
+    section.insert("manifests".into(), list(&read));
+    Some(Value::Object(section))
 }
 
 /// One build entry per manifest. A single manifest at the top of the tree is one command.
@@ -1030,6 +1049,9 @@ fn rule(section: &str, key: Option<&str>) -> &'static str {
     match (section, key) {
         (_, Some("roots")) => "the shallowest directories that hold nothing but source",
         (_, Some("languages")) => "the languages of the files under those roots",
+        (_, Some("manifests")) => {
+            "the manifests the survey found that klin can read a lockfile for"
+        }
         ("doc_size", None) => {
             "every Markdown file at the tree root the derivation commit holds, each ceiling its \
              word count there rounded up to the next 50"

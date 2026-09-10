@@ -84,8 +84,8 @@ fn ran(tree: &Tree) -> String {
 
 fn monorepo(build: &str) -> Tree {
     let tree = tree(build);
-    tree.write("api/Cargo.toml", "");
-    tree.write("web/package.json", "");
+    tree.write("api/Cargo.toml", "[package]\nname = \"api\"\n");
+    tree.write("web/package.json", "{}\n");
     tree.base();
     tree
 }
