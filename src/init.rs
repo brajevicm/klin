@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::config::Error;
-use crate::{radius, survey};
+use crate::{hooks, radius, survey};
 
 const FILENAME: &str = "klin.json";
 
@@ -16,29 +16,54 @@ pub struct Args {
     /// Fill in the sections an existing configuration does not name
     #[arg(long)]
     add: bool,
+    /// Re-pin every derivable section from today's tree
+    #[arg(long, conflicts_with = "hooks")]
+    force: bool,
+    /// Write the hook entries for the hosts this tree uses, and nothing else
+    #[arg(long, conflicts_with = "add")]
+    hooks: bool,
+    /// The host whose hook file --hooks writes, instead of the ones this tree names
+    #[arg(long, requires = "hooks")]
+    host: Option<String>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let file = wanted(args, start);
-    let held = read(&file)?;
     let root = file.parent().unwrap_or(start).to_path_buf();
-    if held.is_some() && !args.add {
-        let _ = writeln!(
-            out,
-            "{} already names this project's gates — klin init --add fills in the sections it \
-             does not name, and a person edits the rest.",
-            file.display()
-        );
+    if args.hooks {
+        return hooks::run(&root, args.host.as_deref(), out);
+    }
+    let held = read(&file)?;
+    if held.is_some() && !args.add && !args.force {
+        let _ = writeln!(out, "{}", already(&file));
         inert(&root, out);
         return Ok(0);
     }
-    let surveyed = surveyed(&root, held.unwrap_or_default())?;
-    write(&file, &surveyed.config)?;
-    let _ = writeln!(out, "{}", said(&file, &surveyed.written));
+    pins(&file, &root, held.unwrap_or_default(), args.force, out)
+}
+
+fn already(file: &Path) -> String {
+    format!(
+        "{} already names this project's gates — klin init --add fills in the sections it does \
+         not name, klin init --force re-pins them from today's tree, and a person edits the rest.",
+        file.display()
+    )
+}
+
+fn pins(
+    file: &Path,
+    root: &Path,
+    held: Map<String, Value>,
+    force: bool,
+    out: &mut String,
+) -> Result<u8, Error> {
+    let surveyed = surveyed(root, held, force)?;
+    write(file, &surveyed.config)?;
+    let _ = writeln!(out, "{}", said(file, &surveyed.written));
     for line in surveyed.derived {
         let _ = writeln!(out, "{line}");
     }
-    inert(&root, out);
+    inert(root, out);
     Ok(0)
 }
 
@@ -100,7 +125,7 @@ fn read(file: &Path) -> Result<Option<Map<String, Value>>, Error> {
     }
 }
 
-fn write(file: &Path, config: &Map<String, Value>) -> Result<(), Error> {
+pub fn write(file: &Path, config: &Map<String, Value>) -> Result<(), Error> {
     let unwritable = |why: &dyn std::fmt::Display| {
         Error(format!("{} could not be written: {why}", file.display()))
     };
@@ -118,15 +143,11 @@ struct Surveyed {
     derived: Vec<String>,
 }
 
-fn surveyed(root: &Path, mut config: Map<String, Value>) -> Result<Surveyed, Error> {
-    let found = survey::derive(root, &Value::Object(config.clone()));
+fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<Surveyed, Error> {
+    let found = survey::derive(root, &pinned(&config, force));
     let mut written = Vec::new();
     let mut add = |key: &str, value: Option<Value>, said: String| {
-        let Some(value) = value.filter(|_| !config.contains_key(key)) else {
-            return;
-        };
-        config.insert(key.to_string(), value);
-        written.push(said);
+        added(&mut config, &mut written, force, key, value, said);
     };
     add("project", project(root), "project".to_string());
     add(
@@ -163,6 +184,107 @@ fn surveyed(root: &Path, mut config: Map<String, Value>) -> Result<Surveyed, Err
         written,
         derived: found.lines.into_iter().chain(derived).collect(),
     })
+}
+
+/// One section written into the config, and the name the report gives it. A key the file holds
+/// stays as it is unless `--force` re-pins it, and a re-pin keeps what klin cannot derive, so a
+/// value that comes back unchanged is not reported as written.
+fn added(
+    config: &mut Map<String, Value>,
+    written: &mut Vec<String>,
+    force: bool,
+    key: &str,
+    value: Option<Value>,
+    said: String,
+) {
+    let Some(value) = value else {
+        return;
+    };
+    match config.remove(key) {
+        Some(held) if !force => {
+            config.insert(key.to_string(), held);
+            return;
+        }
+        Some(held) => {
+            let value = kept(&held, value);
+            let same = value == held;
+            config.insert(key.to_string(), value);
+            if same {
+                return;
+            }
+        }
+        None => {
+            config.insert(key.to_string(), value);
+        }
+    };
+    written.push(said);
+}
+
+/// What the survey is told the config already pins. `--force` tells it nothing, because a
+/// pinned value wins over a derived one everywhere else, and re-pinning wants the tree's answer.
+fn pinned(config: &Map<String, Value>, force: bool) -> Value {
+    match force {
+        true => Value::Object(Map::new()),
+        false => Value::Object(config.clone()),
+    }
+}
+
+/// The derived value, with everything klin cannot derive taken from what the file held: a
+/// dated schedule where a number would go, and a `false` that switched a gate off. Spec 5.7.
+fn kept(held: &Value, derived: Value) -> Value {
+    if underivable(held) {
+        return held.clone();
+    }
+    match (held, derived) {
+        (Value::Object(held), Value::Object(derived)) => fields(held, derived),
+        (Value::Array(held), Value::Array(derived)) => entries(held, derived),
+        (_, derived) => derived,
+    }
+}
+
+fn underivable(held: &Value) -> bool {
+    match held {
+        Value::Bool(pinned) => !pinned,
+        Value::Object(fields) => crate::ceiling::is_schedule(fields),
+        _ => false,
+    }
+}
+
+/// Every key either side holds. A key the survey does not derive, such as an exclusion a
+/// person wrote, is that person's and survives the re-pin.
+fn fields(held: &Map<String, Value>, mut derived: Map<String, Value>) -> Value {
+    let mut out = Map::new();
+    for (key, value) in held {
+        let value = match derived.remove(key) {
+            Some(found) => kept(value, found),
+            None => value.clone(),
+        };
+        out.insert(key.clone(), value);
+    }
+    out.extend(derived);
+    Value::Object(out)
+}
+
+/// An entry the file held, paired with the derived entry for the same file, so re-pinning a
+/// list of documents keeps each document's schedule wherever the derived list puts it.
+fn entries(held: &[Value], derived: Vec<Value>) -> Value {
+    Value::Array(
+        derived
+            .into_iter()
+            .enumerate()
+            .map(|(at, value)| match paired(held, at, &value) {
+                Some(held) => kept(held, value),
+                None => value,
+            })
+            .collect(),
+    )
+}
+
+fn paired<'a>(held: &'a [Value], at: usize, derived: &Value) -> Option<&'a Value> {
+    match derived.get("file") {
+        Some(file) => held.iter().find(|entry| entry.get("file") == Some(file)),
+        None => held.get(at),
+    }
 }
 
 /// A section worth writing down. An empty list is what a survey says when it found the

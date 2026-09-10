@@ -11,6 +11,7 @@ mod escapes;
 mod files;
 mod gate;
 mod guard;
+mod hooks;
 mod host;
 mod init;
 mod radius;

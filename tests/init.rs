@@ -196,12 +196,165 @@ fn add_leaves_a_gate_a_person_excluded_alone() {
     assert_eq!(config(&tree)["escapes"], Value::Bool(false), "{}", run.out);
 }
 
+/// A tree whose two documents let one entry be re-pinned while the other keeps a schedule.
+fn two_documents() -> Tree {
+    let tree = Tree::bare();
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
+    tree.words("README.md", 400);
+    tree.words("CONTEXT.md", 200);
+    tree.base();
+    tree
+}
+
+fn entry(config: &Value, section: &str, file: &str) -> Value {
+    let entries = config[section].as_array().cloned().unwrap_or_default();
+    entries
+        .into_iter()
+        .find(|entry| entry["file"] == file)
+        .unwrap_or_else(|| panic!("no {section} entry for {file} in {config}"))
+}
+
+/// `--force` re-pins what the tree says today. It keeps the accepted list, a dated schedule
+/// and a gate a person switched off, because klin derives none of those. #107.
 #[test]
-fn init_takes_no_force_flag() {
-    let tree = in_debt();
+fn force_re_pins_every_derivable_value_and_keeps_what_klin_cannot_derive() {
+    let tree = two_documents();
+    let accepted = serde_json::json!([{"gate": "escapes", "file": "src/lib.rs"}]);
+    tree.write(
+        "klin.json",
+        r#"{
+          "project": "old",
+          "accepted": [{"gate": "escapes", "file": "src/lib.rs"}],
+          "doc_size": [
+            {"file": "README.md", "ceiling": 50},
+            {"file": "CONTEXT.md", "ceiling": {"2020-01-01": 900}}
+          ],
+          "escapes": false
+        }"#,
+    );
 
     let run = tree.run(&["init", "--force"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let config = config(&tree);
+    assert_ne!(config["project"], "old", "{config}");
+    assert!(
+        entry(&config, "doc_size", "README.md")["ceiling"]
+            .as_u64()
+            .unwrap_or_default()
+            >= 400,
+        "{config}"
+    );
+    assert_eq!(
+        entry(&config, "doc_size", "CONTEXT.md")["ceiling"],
+        serde_json::json!({"2020-01-01": 900}),
+        "{config}"
+    );
+    assert_eq!(config["accepted"], accepted, "{config}");
+    assert_eq!(config["escapes"], Value::Bool(false), "{config}");
+}
+
+#[test]
+fn force_edits_no_gitignore() {
+    let tree = two_documents();
+    tree.write(".gitignore", "/target\n");
+    tree.commit("an ignore file");
+
+    let run = tree.run(&["init", "--force"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
+}
+
+fn settings(tree: &Tree) -> Value {
+    let Ok(text) = std::fs::read_to_string(tree.path(".claude/settings.json")) else {
+        panic!("no .claude/settings.json was written")
+    };
+    match serde_json::from_str(&text) {
+        Ok(value) => value,
+        Err(why) => panic!(".claude/settings.json is not JSON: {why}\n{text}"),
+    }
+}
+
+/// Every command in one host event, so a test can count klin's entries and the ones it left.
+fn commands(settings: &Value, event: &str) -> Vec<String> {
+    settings["hooks"][event]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|entry| entry["hooks"].as_array().cloned().unwrap_or_default())
+        .filter_map(|hook| hook["command"].as_str().map(str::to_string))
+        .collect()
+}
+
+#[test]
+fn hooks_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
+    let tree = two_documents();
+    tree.write(
+        ".claude/settings.json",
+        r#"{"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "cargo fmt"}]}]}}"#,
+    );
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let settings = settings(&tree);
+    assert_eq!(
+        commands(&settings, "Stop"),
+        ["cargo fmt", "klin gate --hook --changed"],
+        "{settings}"
+    );
+    assert_eq!(
+        commands(&settings, "PreToolUse"),
+        ["klin guard"],
+        "{settings}"
+    );
+    assert_eq!(
+        commands(&settings, "SessionStart"),
+        ["klin radius"],
+        "{settings}"
+    );
+    assert_eq!(
+        commands(&settings, "UserPromptSubmit"),
+        ["klin radius"],
+        "{settings}"
+    );
+}
+
+#[test]
+fn hooks_adds_no_second_klin_entry_on_a_second_run() {
+    let tree = two_documents();
+    tree.write(".claude/settings.json", "{}\n");
+
+    assert_eq!(tree.run(&["init", "--hooks"]).code, 0);
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let settings = settings(&tree);
+    for event in ["Stop", "PreToolUse", "SessionStart", "UserPromptSubmit"] {
+        assert_eq!(commands(&settings, event).len(), 1, "{event}: {settings}");
+    }
+}
+
+#[test]
+fn hooks_for_a_host_with_no_adapter_is_refused() {
+    let tree = two_documents();
+
+    for name in ["cursor", "codex", "borg"] {
+        let run = tree.run(&["init", "--hooks", "--host", name]);
+        assert_eq!(run.code, 2, "{name}: {}", run.out);
+        assert!(run.says(name), "{name}: {}", run.out);
+    }
+}
+
+#[test]
+fn hooks_edits_no_gitignore_and_no_config() {
+    let tree = two_documents();
+    tree.write(".gitignore", "/target\n");
+    tree.write(".claude/settings.json", "{}\n");
+    tree.commit("an ignore file and a settings file");
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(tree.status(), " M .claude/settings.json\n", "{}", run.out);
 }
 
 #[test]
@@ -253,4 +406,103 @@ fn init_writes_no_radius_section_below_fifty_commits() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn hooks_for_a_named_host_writes_a_file_the_tree_does_not_hold_yet() {
+    let tree = two_documents();
+
+    let run = tree.run(&["init", "--hooks", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        commands(&settings(&tree), "Stop"),
+        ["klin gate --hook --changed"],
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn hooks_with_no_host_at_the_root_is_refused() {
+    let tree = two_documents();
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("--host"), "{}", run.out);
+}
+
+/// A key the survey does not derive is a person's, and `--force` re-pins around it. #107.
+#[test]
+fn force_keeps_an_exclusion_the_survey_does_not_derive() {
+    let tree = two_documents();
+    tree.write(
+        "klin.json",
+        r#"{
+          "complexity": {"roots": ["src"], "exclude": ["src/generated/**"]},
+          "escapes": {"roots": ["src"], "languages": ["rust"], "exclude": ["vendor/**"]}
+        }"#,
+    );
+
+    let run = tree.run(&["init", "--force"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let config = config(&tree);
+    assert_eq!(
+        config["complexity"]["exclude"],
+        serde_json::json!(["src/generated/**"]),
+        "{config}"
+    );
+    assert_eq!(
+        config["escapes"]["exclude"],
+        serde_json::json!(["vendor/**"]),
+        "{config}"
+    );
+    assert!(config["complexity"]["ceilings"].is_object(), "{config}");
+}
+
+/// A hook that only mentions klin belongs to another tool, and reading it as klin's would
+/// leave that event ungated. #107.
+#[test]
+fn hooks_adds_its_entry_beside_a_hook_that_only_mentions_klin() {
+    let tree = two_documents();
+    tree.write(
+        ".claude/settings.json",
+        r#"{"hooks": {"Stop": [{"hooks": [{"type": "command",
+          "command": "/work/klin-ui/scripts/fmt.sh"}]}]}}"#,
+    );
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        commands(&settings(&tree), "Stop"),
+        ["/work/klin-ui/scripts/fmt.sh", "klin gate --hook --changed"],
+        "{}",
+        run.out
+    );
+}
+
+/// A tree that names a host klin cannot write yet still gets the hooks of the host it can.
+#[test]
+fn hooks_writes_the_host_it_can_and_notes_the_one_it_cannot() {
+    let tree = two_documents();
+    tree.write(".claude/settings.json", "{}\n");
+    tree.write(".cursor/rules", "\n");
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("NOTE"), "{}", run.out);
+    assert!(run.says("#67"), "{}", run.out);
+    assert_eq!(
+        commands(&settings(&tree), "PreToolUse"),
+        ["klin guard"],
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn host_without_hooks_is_a_usage_error() {
+    let tree = two_documents();
+
+    let run = tree.run(&["init", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
 }

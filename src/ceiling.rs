@@ -103,7 +103,7 @@ fn under(key: &str, name: &str) -> String {
     }
 }
 
-fn is_schedule(fields: &Map<String, Value>) -> bool {
+pub fn is_schedule(fields: &Map<String, Value>) -> bool {
     !fields.is_empty() && fields.keys().all(|key| is_date(key))
 }
 
