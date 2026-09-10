@@ -92,15 +92,16 @@ cargo build --release
 ./target/release/klin gate --strict
 ```
 
-A release is one command on `main`, with
+A release is the `cut-release` workflow under Actions. Press "Run workflow",
+pick `patch`, `minor` or `major`, or type an exact version, and it runs
+`cargo release` on `main`. That moves the version in `Cargo.toml`, the
+plugin, its wrapper and this file, commits, tags `vX.Y.Z` and pushes. The tag
+builds and publishes the release. The same command runs locally with
 [cargo-release](https://github.com/crate-ci/cargo-release) installed:
 
 ```sh
 cargo release minor --execute
 ```
-
-It moves the version in `Cargo.toml`, the plugin, its wrapper and this file,
-commits, tags `vX.Y.Z` and pushes. The tag builds and publishes the release.
 
 ## Design
 

@@ -1,0 +1,34 @@
+name: cut-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: Which part of the version moves
+        type: choice
+        options: [patch, minor, major]
+        default: minor
+      version:
+        description: An exact version instead, such as 0.3.0. Wins over the level when set.
+        type: string
+        default: ""
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-release@1.1.5
+      - run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+      - env:
+          LEVEL: ${{ inputs.level }}
+          VERSION: ${{ inputs.version }}
+        run: cargo release "${VERSION:-$LEVEL}" --execute --no-confirm
