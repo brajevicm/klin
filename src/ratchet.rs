@@ -125,14 +125,14 @@ fn names_every_value(
     let missing: Vec<&str> = metrics
         .iter()
         .copied()
-        .filter(|metric| !entry.contains_key(*metric))
+        .filter(|metric| entry.get(*metric).and_then(Value::as_f64).is_none())
         .collect();
     if missing.is_empty() {
         return Ok(());
     }
     Err(Error(format!(
-        "{}: the accepted entry for {} in {} does not name {}, which {gate} ratchets — a value it \
-         leaves out would grow unjudged at that site",
+        "{}: the accepted entry for {} in {} does not give a number for {}, which {gate} \
+         ratchets — a value it leaves out would grow unjudged at that site",
         config.file.display(),
         text(entry, "text"),
         text(entry, "file"),
@@ -241,14 +241,21 @@ fn match_group(
                         .is_some_and(|value| finding.values.get(**metric) == Some(value))
                 })
                 .count() as i64;
-            candidates.push((-shared, distance(finding, entry), at_finding, at_entry));
+            let rose = matches!(compare(finding, entry, metrics), Outcome::Rose);
+            candidates.push((
+                rose,
+                -shared,
+                distance(finding, entry),
+                at_finding,
+                at_entry,
+            ));
         }
     }
     candidates.sort();
     let mut findings: Vec<Option<Finding>> = findings.into_iter().map(Some).collect();
     let mut entries: Vec<Option<Values>> = entries.into_iter().map(Some).collect();
     let mut pairs = Vec::new();
-    for (_, _, at_finding, at_entry) in candidates {
+    for (_, _, _, at_finding, at_entry) in candidates {
         if findings[at_finding].is_none() || entries[at_entry].is_none() {
             continue;
         }

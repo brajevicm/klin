@@ -117,10 +117,12 @@ its schedule was the forced paydown 7.3 refuses (8.4).
 
 An independence audit on 2026-09-10 (#127) found that 7.1 and the CLI tests
 disagreed on how identical sites match. The tests describe the behaviour
-klin needs, so the rule they pin is now written down (4.4, 16.5). Two
-behaviours changed with it. An accepted entry wins a tie against a `before`
-entry at the same site, so a merge does not turn it into a strict failure by
-chance of line position (4.8). An accepted entry must name every value the
+klin needs, so the rule they pin is now written down (4.4, 16.5). Three
+behaviours changed with it. A finding prefers an entry it did not rise
+against, so a stale accepted entry never fails a site `before` holds (4.4,
+7.3). An accepted entry wins a full tie against a `before` entry at the same
+site, so a merge does not turn it into a strict failure by chance of line
+position (4.8). An accepted entry must give a number for every value the
 gate ratchets, so no value grows unjudged behind it (4.8). ADR 0008 and 0009
 carry notes.
 
@@ -282,16 +284,20 @@ When one site has more than one finding or more than one entry, the findings
 and the entries at that site are paired one to one, greedily, in this rank
 order (16.5):
 
-1. The most ratcheted values exactly equal.
-2. The smallest line distance. The matcher does not read a line from an
+1. No ratcheted value rose against the entry.
+2. The most ratcheted values exactly equal.
+3. The smallest line distance. The matcher does not read a line from an
    accepted entry, so its distance is 0.
-3. The finding's line. Findings arrive sorted by file then line (12).
-4. Entry order: the accepted list in config order, then the `before` sites
+4. The finding's line. Findings arrive sorted by file then line (12).
+5. Entry order: the accepted list in config order, then the `before` sites
    by line.
 
-A finding matches at most one entry, and an entry at most one finding. This
-order lets a twin that moved keep its entry over a nearer twin whose values
-changed, so moving code does not read as new debt. It also makes a twin
+A finding matches at most one entry, and an entry at most one finding. A
+finding is `worsened` only when no untaken entry at its site holds it. So a
+stale accepted entry never fails a site that `before` holds (7.3), and a
+value a person raised in the accepted list holds the site. The order also
+lets a twin that moved keep its entry over a nearer twin whose values
+changed, so moving code does not read as new debt, and it makes a twin
 inserted between two twins the new one.
 
 A function moved between files with its body unchanged SHOULD match its old
@@ -343,17 +349,17 @@ pinned number, or a pinned dated schedule. Section 7.3.
 
 Debt a person allows, keyed like a site, with every value the gate ratchets
 and the amount of each they allow. Only a person writes one, in a reviewed
-commit (ADR 0009). An entry that names fewer than all of those values, none
-included, is a config error, because a value it leaves out would grow
-unjudged at that site. An entry that matches nothing is a NOTE, and a failure
+commit (ADR 0009). An entry that does not give a number for each of those
+values is a config error, because a value it leaves out would grow unjudged
+at that site. An entry that matches nothing is a NOTE, and a failure
 under `--strict`.
 
-When `before` holds the site at the accepted values, the accepted entry takes
-the match (4.4). When `before` and the working tree hold the site at other
-values, in either direction, the `before` entry shares more values and takes
-the match, and the accepted entry matches nothing. That is how `--strict`
-tells a person to delete the line once the code has moved off the accepted
-value.
+The accepted entry takes the match when the finding holds against it, unless
+a `before` entry the finding also holds against shares more values with it
+(4.4). When the finding rose against the accepted entry but not against
+`before`, or when `before` shares more values, the `before` entry takes the
+match and the accepted entry matches nothing. That is how `--strict` tells a
+person to delete the line once the code has moved off the accepted value.
 
 ### 4.9 Verdict
 
@@ -1382,11 +1388,12 @@ match_site(findings, entries, ratcheted):
   candidates = []
   for i, f in enumerate(findings):
     for j, e in enumerate(entries):
+      rose     = any(f[m] > e[m] for m in ratcheted)
       shared   = count(m for m in ratcheted if e[m] == f[m])
       distance = 0 if e.accepted else abs(e.line - f.line)
-      candidates.append((-shared, distance, i, j))
+      candidates.append((rose, -shared, distance, i, j))
   pairs = []
-  for (_, _, i, j) in sorted(candidates):
+  for (_, _, _, i, j) in sorted(candidates):
     if taken(findings[i]) or taken(entries[j]): continue
     take(findings[i]); take(entries[j])
     pairs.append((findings[i], entries[j]))
@@ -1410,6 +1417,14 @@ with the cc 2 entry. Line 19 is nearer, so it takes that entry and is held.
 Line 50 takes the cc 1 entry and is `worsened`, cc 1 to 2. Pairing by
 nearest line would pair 19 with the cc 1 entry at 20 and report a function
 that only moved as worse.
+
+Stale accepted entry. `before` holds `fn f()` with cc 3 and 5 lines. The
+accepted list holds it at cc 2 and 4 lines. `after` holds it at cc 2 and 5
+lines. The finding shares one value with each entry. It holds against the
+`before` entry and rose against the accepted one, so the `before` entry takes
+the match and the site is held (7.3). The accepted entry matched nothing.
+Without the first rank, entry order would give the match to the accepted
+entry and report a site that got no worse as `worsened`.
 
 ## 17. Test and Validation Matrix
 
@@ -1441,8 +1456,10 @@ Core:
   neighbours hold, a moved twin keeps its entry over a nearer twin whose
   value changed (16.5), a lowered ceiling fails no held site, accepted entry
   holds a site, an accepted entry the base also holds at the same values
-  stays matched under `--strict`, an accepted entry that names some of the
-  values is exit 2, unmatched accepted entry is a NOTE and a strict failure,
+  stays matched under `--strict`, a stale accepted entry does not fail a
+  site the base holds, an accepted entry that names some of the values, or
+  gives one a value that is not a number, is exit 2, unmatched accepted
+  entry is a NOTE and a strict failure,
   a failure prints the site it matched and both values.
 - Each check: over, at, under the ceiling, a file it cannot read with
   `--hook`, with neither flag and with `--strict`, of which the first is a
