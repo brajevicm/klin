@@ -32,4 +32,4 @@ commit. Nothing else records debt, and klin writes no files.
 record its decisions, and CLI tests pin the expected results. See
 [ADR 0025](docs/adr/0025-klin-defines-its-own-behaviour.md).
 
-MIT, with copyright notices in [LICENSE](LICENSE).
+Apache License 2.0, with copyright notices in [LICENSE](LICENSE).
