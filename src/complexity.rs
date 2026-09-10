@@ -338,9 +338,10 @@ struct Ceilings {
     lines: Ceiling,
 }
 
-struct Unparsed {
-    file: String,
-    language: &'static str,
+/// One file no grammar read, which every gate that parses names and refuses. ADR 0003.
+pub struct Unparsed {
+    pub file: String,
+    pub language: &'static str,
 }
 
 /// One tree walked: its functions, the files no grammar read, and the files the walk reached,
@@ -457,7 +458,10 @@ fn scoped<'a>(files: impl Iterator<Item = &'a String>, flags: &Flags) -> usize {
     }
 }
 
-fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u8 {
+/// What a gate does about the files no grammar read: a NOTE in the hook, and exit 2 outside
+/// it, because an agent cannot fix a grammar and a file klin cannot read is a hole in the
+/// ratchet. ADR 0003, spec 14.
+pub fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u8 {
     let only = flags.only.as_deref();
     let named: Vec<&Unparsed> = unparsed
         .iter()
@@ -732,16 +736,129 @@ pub struct Measured {
     pub lines: u64,
 }
 
-/// The cyclomatic complexity and body length of every function in one source text, for the
-/// percentile the survey takes over the derivation commit. Nothing for a path no grammar here
-/// reads, and nothing for a text the grammar rejects. Spec 5.4.
-pub fn measured(path: &str, source: &str) -> Vec<Measured> {
-    let Some(language) = LANGUAGES.iter().find(|language| {
+/// The declaration a language's test convention names a test function by, anywhere on the
+/// declaration line, so a modifier before it is allowed. Fixed in the binary, the way the
+/// escapes table is. Spec 8.2.
+const TEST_NAMES: &[&str] = &["fn test_", "def test_", "func test_", "func Test"];
+
+/// The calls a convention declares a test by, at the start of the declaration line, so a call
+/// to one of these names inside a body is not a declaration.
+const TEST_CALLS: &[&str] = &["it(", "test("];
+
+/// The markers it writes as an attribute or an annotation, on the declaration line or on the
+/// run of marker lines above it.
+const TEST_ATTRIBUTES: &[&str] = &["#[test]", "@Test"];
+
+/// One test function a tree holds: the site of ADR 0008, and the body hash the cross-file pass
+/// of spec 4.4 matches on. What `inventory` ratchets the existence of. Spec 8.2.
+#[derive(Clone)]
+pub struct Test {
+    pub file: String,
+    pub line: u64,
+    pub text: String,
+    pub body: u64,
+}
+
+/// Every function in one source text that the language's own test convention marks as a test.
+/// The walk is the one this gate already does, and only the marker table is new. Nothing for a
+/// path no grammar here reads, and nothing for a text the grammar rejects. Spec 8.2.
+pub fn tests(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Vec<Test> {
+    let Some(language) = language_of(path) else {
+        return Vec::new();
+    };
+    let Some(found) = parsed(source, path, language).ok().flatten() else {
+        unparsed.push(Unparsed {
+            file: path.to_string(),
+            language: language.name,
+        });
+        return Vec::new();
+    };
+    let lines: Vec<&str> = source.lines().collect();
+    found
+        .into_iter()
+        .filter_map(|function| {
+            let end = (function.end as usize - 1).min(lines.len().saturating_sub(1));
+            let row = declaration_row(&lines, function.line as usize - 1, end);
+            marks_a_test(&lines, row).then(|| Test {
+                file: function.file,
+                line: row as u64 + 1,
+                text: line_at(&lines, row),
+                body: ratchet::body_hash(&lines[row..=end].join("\n")),
+            })
+        })
+        .collect()
+}
+
+/// The row the declaration of a test sits on. A language that writes the test marker as an
+/// annotation may put it inside the function's own node, so the node's first line is not the
+/// declaration. Neither the site of ADR 0008 nor the body hash of 4.4 may keep that line: an
+/// annotation above the name would hold the name in the body, and a rename would not match.
+fn declaration_row(lines: &[&str], from: usize, to: usize) -> usize {
+    (from..=to)
+        .find(|row| {
+            let line = line_at(lines, *row);
+            !line.is_empty() && !only_a_marker(&line)
+        })
+        .unwrap_or(from)
+}
+
+/// Whether this line carries nothing but an attribute or an annotation, so the declaration it
+/// marks sits on a line below it.
+fn only_a_marker(line: &str) -> bool {
+    (line.starts_with('#') || line.starts_with('@'))
+        && (line.ends_with(']') || line.ends_with(')') || !line.contains(' '))
+}
+
+/// Whether the convention marks the function that starts on this row: a marker on the
+/// declaration line, or an attribute on the run of marker lines directly above it.
+fn marks_a_test(lines: &[&str], row: usize) -> bool {
+    let declaration = line_at(lines, row);
+    TEST_NAMES
+        .iter()
+        .any(|marker| mentions(&declaration, marker))
+        || TEST_CALLS
+            .iter()
+            .any(|marker| declaration.starts_with(marker))
+        || TEST_ATTRIBUTES
+            .iter()
+            .any(|marker| declaration.contains(marker))
+        || attributed(lines, row)
+}
+
+fn attributed(lines: &[&str], row: usize) -> bool {
+    lines[..row.min(lines.len())]
+        .iter()
+        .rev()
+        .map(|line| line.trim())
+        .take_while(|line| only_a_marker(line))
+        .any(|line| TEST_ATTRIBUTES.iter().any(|marker| line.contains(marker)))
+}
+
+/// Whether the text names this marker where no identifier runs into it, so `myfunc Test` is
+/// not a `func Test` declaration.
+fn mentions(text: &str, marker: &str) -> bool {
+    text.match_indices(marker).any(|(at, _)| {
+        text[..at]
+            .chars()
+            .next_back()
+            .is_none_or(|before| !before.is_alphanumeric() && before != '_' && before != '.')
+    })
+}
+
+fn language_of(path: &str) -> Option<&'static Language> {
+    LANGUAGES.iter().find(|language| {
         language
             .extensions
             .iter()
             .any(|extension| path.ends_with(extension))
-    }) else {
+    })
+}
+
+/// The cyclomatic complexity and body length of every function in one source text, for the
+/// percentile the survey takes over the derivation commit. Nothing for a path no grammar here
+/// reads, and nothing for a text the grammar rejects. Spec 5.4.
+pub fn measured(path: &str, source: &str) -> Vec<Measured> {
+    let Some(language) = language_of(path) else {
         return Vec::new();
     };
     parsed(source, path, language)

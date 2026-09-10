@@ -19,7 +19,7 @@ fn a_deleted_test_file_fails_as_worsened_naming_the_path() {
     tree.remove("tests/test_foo.py");
     let run = tree.run(&["gate", "--gate", "inventory"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 test file(s) got worse"), "{}", run.out);
+    assert!(run.says("1 test site(s) got worse"), "{}", run.out);
     assert!(
         run.says("tests/test_foo.py:0  missing 1, was missing 0"),
         "{}",
@@ -113,7 +113,7 @@ fn each_vanished_file_is_its_own_finding() {
     tree.remove("tests/test_two.py");
     let run = tree.run(&["gate", "--gate", "inventory"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("2 test file(s) got worse"), "{}", run.out);
+    assert!(run.says("2 test site(s) got worse"), "{}", run.out);
     assert!(run.says("tests/test_one.py:0"), "{}", run.out);
     assert!(run.says("tests/test_two.py:0"), "{}", run.out);
 }
@@ -131,4 +131,258 @@ fn a_pattern_limits_the_entry_to_the_basenames_it_matches() {
     tree.remove("tests/helper.go");
     let run = tree.run(&["gate", "--gate", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
+}
+
+/// One test-recognition pattern of spec 8.2, with the two fixtures every pattern carries: a
+/// deletion that must fail, and a move with the body unchanged that must stay green. Spec 17.
+struct Pattern {
+    marker: &'static str,
+    file: &'static str,
+    base: &'static str,
+    stays: &'static str,
+    moved_to: &'static str,
+    moved: &'static str,
+    site: &'static str,
+}
+
+const PATTERNS: &[Pattern] = &[
+    Pattern {
+        marker: "#[test]",
+        file: "tests/suite.rs",
+        base: "#[test]\nfn alpha() {\n    assert!(true);\n}\n\n#[test]\nfn beta() {\n    \
+               assert!(1 == 1);\n}\n",
+        stays: "#[test]\nfn alpha() {\n    assert!(true);\n}\n",
+        moved_to: "tests/moved.rs",
+        moved: "#[test]\nfn renamed() {\n    assert!(1 == 1);\n}\n",
+        site: "fn beta() {",
+    },
+    Pattern {
+        marker: "test_",
+        file: "tests/test_foo.py",
+        base: "def test_alpha():\n    assert True\n\n\ndef test_beta():\n    assert 1 == 1\n",
+        stays: "def test_alpha():\n    assert True\n",
+        moved_to: "tests/test_moved.py",
+        moved: "def test_renamed():\n    assert 1 == 1\n",
+        site: "def test_beta():",
+    },
+    Pattern {
+        marker: "it(",
+        file: "tests/foo.test.ts",
+        base: "it(\"alpha\", () => {\n  check(1);\n});\n\nit(\"beta\", () => {\n  check(2);\n});\n",
+        stays: "it(\"alpha\", () => {\n  check(1);\n});\n",
+        moved_to: "tests/moved.test.ts",
+        moved: "it(\"renamed\", () => {\n  check(2);\n});\n",
+        site: "it(\"beta\", () => {",
+    },
+    Pattern {
+        marker: "test(",
+        file: "tests/bar.test.js",
+        base: "test(\"alpha\", () => {\n  check(1);\n});\n\ntest(\"beta\", () => {\n  \
+               check(2);\n});\n",
+        stays: "test(\"alpha\", () => {\n  check(1);\n});\n",
+        moved_to: "tests/moved.test.js",
+        moved: "test(\"renamed\", () => {\n  check(2);\n});\n",
+        site: "test(\"beta\", () => {",
+    },
+    Pattern {
+        marker: "@Test",
+        file: "tests/FooTest.java",
+        base: "class FooTest {\n    @Test\n    void alpha() {\n        check(1);\n    }\n\n    \
+               @Test\n    void beta() {\n        check(2);\n    }\n}\n",
+        stays: "class FooTest {\n    @Test\n    void alpha() {\n        check(1);\n    }\n}\n",
+        moved_to: "tests/MovedTest.java",
+        moved: "class MovedTest {\n    @Test\n    void renamed() {\n        check(2);\n    }\n}\n",
+        site: "void beta() {",
+    },
+    Pattern {
+        marker: "func Test",
+        file: "tests/foo_test.go",
+        base: "package tests\n\nfunc TestAlpha(t *testing.T) {\n\tcheck(t, 1)\n}\n\nfunc \
+               TestBeta(t *testing.T) {\n\tcheck(t, 2)\n}\n",
+        stays: "package tests\n\nfunc TestAlpha(t *testing.T) {\n\tcheck(t, 1)\n}\n",
+        moved_to: "tests/moved_test.go",
+        moved: "package tests\n\nfunc TestRenamed(t *testing.T) {\n\tcheck(t, 2)\n}\n",
+        site: "func TestBeta(t *testing.T) {",
+    },
+];
+
+fn tree_with(pattern: &Pattern) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write(pattern.file, pattern.base);
+    tree.base();
+    tree
+}
+
+#[test]
+fn deleting_a_test_function_from_a_file_that_stays_fails_as_worsened() {
+    for pattern in PATTERNS {
+        let tree = tree_with(pattern);
+        tree.write(pattern.file, pattern.stays);
+        let run = tree.run(&["gate", "--gate", "inventory"]);
+        assert_eq!(run.code, 1, "{}: {}", pattern.marker, run.out);
+        assert!(
+            run.says("1 test site(s) got worse"),
+            "{}: {}",
+            pattern.marker,
+            run.out
+        );
+        assert!(
+            run.says(&format!("missing 1, was missing 0  {}", pattern.site)),
+            "{}: {}",
+            pattern.marker,
+            run.out
+        );
+        assert!(
+            run.says("Restore the test, or record in the accepted list"),
+            "{}: {}",
+            pattern.marker,
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_test_function_renamed_and_moved_with_its_body_unchanged_is_held() {
+    for pattern in PATTERNS {
+        let tree = tree_with(pattern);
+        tree.write(pattern.file, pattern.stays);
+        tree.write(pattern.moved_to, pattern.moved);
+        let run = tree.run(&["gate", "--gate", "inventory"]);
+        assert_eq!(run.code, 0, "{}: {}", pattern.marker, run.out);
+    }
+}
+
+#[test]
+fn an_accepted_entry_keyed_by_the_vanished_function_holds_it() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    tree.write(
+        "klin.json",
+        r#"{"inventory": [{"name": "tests", "path": "tests"}],
+            "accepted": [{"gate": "inventory", "file": "tests/suite.rs",
+                          "text": "fn beta() {", "missing": 1}]}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_deleted_test_function_whose_file_went_too_is_a_note() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"inventory": [{"name": "src", "path": "src", "pattern": "*_test.go"}]}"#,
+    );
+    tree.write("src/foo.go", "package src\n");
+    tree.write(
+        "src/foo_test.go",
+        "package src\n\nfunc TestFoo(t *testing.T) {\n\tcheck(t)\n}\n",
+    );
+    tree.base();
+    tree.remove("src/foo_test.go");
+    tree.remove("src/foo.go");
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 deleted test function(s) whose file went in the same window"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("src/foo_test.go:3  func TestFoo(t *testing.T) {  its file went too"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_test_function_edited_as_it_moved_is_reported_as_gone() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    tree.write(
+        "tests/moved.rs",
+        "#[test]\nfn renamed() {\n    assert!(2 == 2);\n}\n",
+    );
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("tests/suite.rs:7  missing 1, was missing 0  fn beta() {"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_entry_that_names_one_file_judges_the_functions_in_it() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"inventory": [{"name": "one", "path": "tests/suite.rs"}]}"#,
+    );
+    tree.write("tests/suite.rs", PATTERNS[0].base);
+    tree.base();
+    tree.write("tests/suite.rs", PATTERNS[0].stays);
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("missing 1, was missing 0  fn beta() {"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_function_whose_name_only_holds_a_marker_is_not_a_test_site() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write(
+        "tests/test_foo.py",
+        "def test_alpha():\n    assert True\n\n\ndef helper(test_arg):\n    return it(test_arg)\n",
+    );
+    tree.base();
+    tree.write("tests/test_foo.py", "def test_alpha():\n    assert True\n");
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("2 test site(s) the base holds"), "{}", run.out);
+}
+
+#[test]
+fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write("tests/suite.rs", PATTERNS[0].base);
+    tree.base();
+    tree.write("tests/suite.rs", "%%% not rust %%%\n");
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not parse"), "{}", run.out);
+    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(
+        run.says("(1 file(s) found, 0 measured, 0 excluded, 1 unreadable)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write(
+        "tests/suite.rs",
+        "pub fn test_alpha() {\n    let x = 1;\n}\n\npub fn test_beta() {\n    let y = 2;\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/suite.rs",
+        "pub fn test_alpha() {\n    let x = 1;\n}\n",
+    );
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("missing 1, was missing 0  pub fn test_beta() {"),
+        "{}",
+        run.out
+    );
 }

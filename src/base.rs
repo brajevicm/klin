@@ -45,7 +45,7 @@ impl Drop for Prior {
 
 pub fn materialize(
     config: &Config,
-    base: &Window,
+    before: &str,
     scope: Option<&[Change]>,
 ) -> Result<Prior, Error> {
     let dir = tempfile::Builder::new()
@@ -53,12 +53,16 @@ pub fn materialize(
         .tempdir()
         .map_err(|why| Error(format!("a directory for the base could not be made: {why}")))?;
     match scope {
-        Some(changes) => written(config, base, changes, dir),
-        None => checked_out(config, base, dir),
+        Some(changes) => written(config, before, changes, dir),
+        None => checked_out(config, before, dir),
     }
 }
 
-fn checked_out(config: &Config, base: &Window, dir: tempfile::TempDir) -> Result<Prior, Error> {
+fn short(commit: &str) -> &str {
+    &commit[..7.min(commit.len())]
+}
+
+fn checked_out(config: &Config, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
     let root = config.root();
     let inside = under_the_repository(root)?;
     git(
@@ -69,14 +73,14 @@ fn checked_out(config: &Config, base: &Window, dir: tempfile::TempDir) -> Result
             "--detach",
             "--quiet",
             &dir.path().to_string_lossy(),
-            &base.before,
+            before,
         ],
     )
     .ok_or_else(|| {
         Error(format!(
             "the base commit {} could not be checked out to measure it — fetch history, or \
              give CI the full clone",
-            base.short()
+            short(before)
         ))
     })?;
     let prior = Prior {
@@ -84,7 +88,7 @@ fn checked_out(config: &Config, base: &Window, dir: tempfile::TempDir) -> Result
         dir,
         from_worktree: Some(root.to_path_buf()),
     };
-    for change in changed::files(root, &base.before)? {
+    for change in changed::files(root, before)? {
         let Some(was) = change.was.filter(|was| *was != change.path) else {
             continue;
         };
@@ -126,7 +130,7 @@ fn move_within(root: &Path, was: &str, now: &str) -> Result<(), Error> {
 
 fn written(
     config: &Config,
-    base: &Window,
+    before: &str,
     changes: &[Change],
     dir: tempfile::TempDir,
 ) -> Result<Prior, Error> {
@@ -140,11 +144,11 @@ fn written(
         let Some(was) = &change.was else {
             continue;
         };
-        let bytes = changed::blob(root, &base.before, was).ok_or_else(|| {
+        let bytes = changed::blob(root, before, was).ok_or_else(|| {
             Error(format!(
                 "the base commit {} holds no {was}, which git says it changed — the base and the \
                  working tree disagree, so klin cannot judge this run",
-                base.short()
+                short(before)
             ))
         })?;
         let path = prior.root().join(&change.path);
@@ -180,7 +184,7 @@ pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Window,
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
 pub fn own(config: &Config, flags: &Flags, out: &mut String) -> Result<Prior, Error> {
     let base = announced(config.root(), flags, out)?;
-    materialize(config, &base, None)
+    materialize(config, &base.before, None)
 }
 
 /// Where a gate's roots are in the base tree. A root the base does not hold measures nothing.
@@ -234,7 +238,7 @@ impl Kind {
 
 impl Window {
     pub fn short(&self) -> &str {
-        &self.before[..7.min(self.before.len())]
+        short(&self.before)
     }
 
     pub fn line(&self) -> String {

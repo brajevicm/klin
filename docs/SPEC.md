@@ -819,28 +819,31 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
-| `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | #45, #69 |
+| `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
 | `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | `unlocked`, `unpinned` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
 
-`inventory` has two identities. A test file is keyed by path. A test function
-is keyed like a complexity site, file plus declaration line, and only
-functions the language's test convention marks count, such as a `#[test]`
-item, a `test_` function or an `it(` call. It ratchets one value, `missing`,
-which is 0 for every test site in `before` and 1 for a site `after` no longer
-holds, so a vanished site is `worsened` under the one judge of 16.4. The
-remedy names the vanished site and says to restore the test, or to record in
-the accepted list why it went, and a person writes that entry. The second
-pass of 4.4 matches a renamed test by body hash before it counts as missing,
-so a rename with the body unchanged is `held`. A rename that also edits the
-body is `worsened`. A deletion that removed the subject too is a NOTE: for a
-file, the subject file went in the same window, and for a function, the file
-that held it went. The subject of a test file is the file in `before` whose
-path equals the test's path with the test affixes stripped: a `test_` or
-`spec_` prefix, a `_test`, `_spec`, `.test` or `.spec` suffix before the
-extension, a `Test` or `Tests` suffix on the basename as in `FooTest.java`
-or `FooTests.swift`, and a `tests/`, `test/`, `spec/` or `__tests__/`
-directory segment. The table is fixed in the binary and printed with the NOTE.
+`inventory` has two identities. A test file is keyed by path. A test
+function is keyed like a complexity site, file plus declaration line, and
+only functions the language's test convention marks count, such as a
+`#[test]` item, a `test_` function or an `it(` call. That table is fixed in
+the binary and 8.2.1 states it. `inventory` ratchets one value, `missing`,
+which is 0 for every test site in `before` and 1 for a site `after` no
+longer holds, so a vanished site is `worsened` under the one judge of 16.4.
+Both identities reach that judge together and count in one unit, `test
+site(s)`. The remedy names the vanished site and says to restore the test,
+or to record in the accepted list why it went, and a person writes that
+entry. The second pass of 4.4 matches a renamed test by body hash before it
+counts as missing, so a rename with the body unchanged is `held`. A rename
+that also edits the body is `worsened`. A deletion that removed the subject
+too is a NOTE: for a file, the subject file went in the same window, and
+for a function, the file that held it went. The subject of a test file is
+the file in `before` whose path equals the test's path with the test
+affixes stripped: a `test_` or `spec_` prefix, a `_test`, `_spec`, `.test`
+or `.spec` suffix before the extension, a `Test` or `Tests` suffix on the
+basename as in `FooTest.java` or `FooTests.swift`, and a `tests/`, `test/`,
+`spec/` or `__tests__/` directory segment. The table is fixed in the binary
+and printed with the NOTE.
 Deleting a test that fails is the cheapest route to green in section 1, and
 the file-level inventory alone does not close it.
 
@@ -979,6 +982,38 @@ Go, Java, Ruby, Swift and Kotlin, with
 language and fixed in the binary. Two languages that express one construct
 differently may count it differently, and the fixtures are the record of
 which choice was made.
+
+**`inventory` ratchets the existence of two things.** A test file is the
+repository path of a file the base commit's tree listing holds under an
+entry, and its `missing` is 1 when the working tree holds no file there. A
+test function is a site of ADR 0008 inside a file an entry holds, in both
+trees, found by the walk `complexity` does and kept only where the
+language's test convention marks it: a `fn`, `def` or `func` declaration
+whose name starts with `test_`, a `func Test` declaration, an `it(` or a
+`test(` call at the start of the declaration line, and a `#[test]`
+attribute or an `@Test` annotation on the declaration line or on the run of
+marker lines directly above it. A marker an identifier runs into matches
+nothing, so `myfunc Test` is not a declaration, and a call marker counts at
+the start of the line only, so `def helper(test_arg): return it(test_arg)`
+is not a test. Where the grammar holds the annotation inside the function's
+own node, as it does for Java, the declaration line is the first line of
+that node that carries more than an attribute or an annotation, so the site
+names the method and the body hash of 4.4 leaves the name out. Its
+`missing` is 1 when no function in the working tree takes it, by site first
+and then by body hash, one to one on each pass. An entry's `path` may name
+a directory or a single file, and its `pattern` limits both identities the
+same way. A file the working tree's grammar refuses holds no function site,
+so the functions in it are not judged and the file is the unparsed refusal
+of ADR 0003. Pinned by
+`deleting_a_test_function_from_a_file_that_stays_fails_as_worsened`,
+`a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
+`a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
+`a_test_name_with_no_attribute_above_it_is_a_test_site`,
+`an_entry_that_names_one_file_judges_the_functions_in_it` and
+`a_test_file_no_grammar_reads_is_named_and_exits_two` in
+`tests/inventory.rs`. Known limit: the convention table is fixed in the
+binary, so a project whose tests carry another mark has no function
+identity, and only its test files are ratcheted.
 
 **`lockfile` reads the manifest and the lockfile beside it.** A site is the
 manifest's repository path plus the dependency name, and it carries two
@@ -1885,7 +1920,7 @@ Core, in this order:
 - [ ] Host adapter, Claude Code first, README stops naming other hosts
 - [ ] Three escapes rows: `fit(`, `fdescribe(`, `xfail`
 - [x] Cross-file move matching by body hash (4.4)
-- [ ] `inventory` over test files and test functions, with the
+- [x] `inventory` over test files and test functions, with the
       deleted-subject NOTE and the body-hash rename match
 - [ ] `stubs`, sharing the escapes engine, executable function bodies only,
       the empty test body included, with a legitimate-change fixture per row

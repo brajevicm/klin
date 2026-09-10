@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
 use std::fmt::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
 use crate::base;
 use crate::changed::git;
+use crate::complexity;
 use crate::config::{Config, Error, Flags};
 use crate::coverage::{self, Coverage};
 use crate::files;
@@ -37,6 +38,36 @@ struct Site {
     subject: Option<String>,
 }
 
+/// One test function the base holds: where it was declared, whether the working tree still
+/// holds it by site or by body, and whether the file that held it went in the same window.
+/// The second identity of spec 8.2.
+struct Function {
+    site: complexity::Test,
+    gone: bool,
+    file_went: bool,
+}
+
+impl Function {
+    /// Whether this is the NOTE of spec 8.2: the function went and so did its one subject, the
+    /// file that held it, which #45 judges instead.
+    fn orphaned(&self) -> bool {
+        self.gone && self.file_went
+    }
+}
+
+/// What the function level of this gate measured: every test function the base holds, and the
+/// files in the working tree no grammar read. ADR 0003.
+struct Measured {
+    functions: Vec<Function>,
+    unparsed: Vec<complexity::Unparsed>,
+}
+
+/// One tree walked for test functions: the sites it holds, and the files no grammar read.
+struct Walk {
+    tests: Vec<complexity::Test>,
+    unparsed: Vec<complexity::Unparsed>,
+}
+
 pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::open(flags, start)?;
     config.say(flags, SECTION, out);
@@ -46,53 +77,226 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let sites = sites(&entries, &listed, config.root());
     let (judged, mut paired): (Vec<Site>, Vec<Site>) =
         sites.into_iter().partition(|site| site.subject.is_none());
+    let measured = tests(&config, &entries, flags, &commit)?;
+    let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
+        measured.functions.into_iter().partition(Function::orphaned);
     if let Some(only) = flags.only.as_deref() {
         paired.retain(|site| only.contains(&site.path));
+        orphans.retain(|function| only.contains(&function.site.file));
     }
     let now: Vec<Finding> = judged
         .iter()
-        .map(|site| finding(&site.path, site.gone))
+        .map(|site| finding(&site.path, LABEL, 0, site.gone))
+        .chain(functions.iter().map(|function| {
+            finding(
+                &function.site.file,
+                &function.site.text,
+                function.site.line,
+                function.gone,
+            )
+        }))
         .collect();
     let before: Vec<Finding> = judged
         .iter()
-        .map(|site| finding(&site.path, false))
+        .map(|site| finding(&site.path, LABEL, 0, false))
+        .chain(functions.iter().map(|function| {
+            finding(
+                &function.site.file,
+                &function.site.text,
+                function.site.line,
+                false,
+            )
+        }))
         .collect();
     let held = ratchet::scoped(&now, flags.only.as_deref());
     let accepted = ratchet::accepted(&config, &flags.gate, evaluator().metrics)?;
-    let said = covered(&judged, &paired, flags).said(flags);
+    let said = covered(&judged, &paired, &measured.unparsed, flags).said(flags);
     let code = evaluator().evaluate(
         now,
         before,
         accepted,
         flags,
-        &format!("OK: {held} test file(s) the base holds, all still there{said}"),
+        &format!("OK: {held} test site(s) the base holds, all still there{said}"),
         out,
     );
     noted(&paired, flags, out);
-    Ok(code)
+    orphaned(&orphans, flags, out);
+    Ok(complexity::unread(&measured.unparsed, flags, code, out))
 }
 
-/// What this gate discovered: every test file the base holds under its entries. A deleted test
-/// whose subject went with it is found and not measured, because it is a NOTE and not a site
-/// the gate judges. Spec 8.6.
-fn covered(judged: &[Site], paired: &[Site], flags: &Flags) -> Coverage {
+/// Every test function the base holds under the entries, with what the working tree says about
+/// it. A match is by site first and then by body hash across files, so a test renamed or moved
+/// with its body unchanged is held and only a test that was edited as it moved reads as gone.
+/// Spec 4.4, 8.2, 16.4.
+fn tests(
+    config: &Config,
+    entries: &[Entry],
+    flags: &Flags,
+    commit: &str,
+) -> Result<Measured, Error> {
+    let owned;
+    let prior = match flags.prior.as_deref() {
+        Some(dir) => dir,
+        None => {
+            owned = base::materialize(config, commit, None)?;
+            owned.root()
+        }
+    };
+    let after = walked(entries, config.root())?;
+    let before = walked(entries, prior)?.tests;
+    let found = still_there(&before, &after.tests);
+    let refused: BTreeSet<&str> = after
+        .unparsed
+        .iter()
+        .map(|file| file.file.as_str())
+        .collect();
+    Ok(Measured {
+        functions: before
+            .iter()
+            .enumerate()
+            .filter(|(_, site)| !refused.contains(site.file.as_str()))
+            .map(|(at, site)| Function {
+                gone: !found[at],
+                file_went: !config.root().join(&site.file).is_file(),
+                site: site.clone(),
+            })
+            .collect(),
+        unparsed: after.unparsed,
+    })
+}
+
+/// Which of the base's test functions the working tree still holds: by site first, then by
+/// body hash across files, and one to one on both passes. Spec 4.4, 16.4.
+fn still_there(before: &[complexity::Test], after: &[complexity::Test]) -> Vec<bool> {
+    let mut taken = vec![false; after.len()];
+    let mut found = vec![false; before.len()];
+    for (at, site) in before.iter().enumerate() {
+        found[at] = claimed(after, &mut taken, |other| {
+            other.file == site.file && other.text == site.text
+        });
+    }
+    for (at, site) in before.iter().enumerate() {
+        if !found[at] {
+            found[at] = claimed(after, &mut taken, |other| other.body == site.body);
+        }
+    }
+    found
+}
+
+/// Whether the working tree holds a test function this rule names that no earlier site has
+/// already claimed. Pairing is one to one, so two tests that share a site and lose one of the
+/// pair leave that one gone. Spec 4.4.
+fn claimed(
+    after: &[complexity::Test],
+    taken: &mut [bool],
+    matches: impl Fn(&complexity::Test) -> bool,
+) -> bool {
+    let found = after
+        .iter()
+        .enumerate()
+        .find(|(at, other)| !taken[*at] && matches(other));
+    match found {
+        Some((at, _)) => {
+            taken[at] = true;
+            true
+        }
+        None => false,
+    }
+}
+
+/// Every test function one tree holds under the entries, by the convention table of 8.2. The
+/// walk is the one the complexity gate does, over the files an entry holds and no others, so
+/// the pattern that limits an entry limits this identity too.
+fn walked(entries: &[Entry], root: &Path) -> Result<Walk, Error> {
+    let extensions = complexity::extensions(&[]);
+    let skip_dirs = files::default_skip_dirs();
+    let wanted = files::Wanted {
+        extensions: &extensions,
+        skip_dirs: &skip_dirs,
+        exclude: &[],
+        exclude_except: &[],
+        skip_hidden: true,
+    };
+    let mut walk = Walk {
+        tests: Vec::new(),
+        unparsed: Vec::new(),
+    };
+    for path in reachable(entries, root, &wanted)? {
+        let file = files::relative(&path, root);
+        if !entries.iter().any(|entry| entry.holds(&file)) {
+            continue;
+        }
+        let bytes = std::fs::read(&path).map_err(|why| Error::unreadable(&path, why))?;
+        let source = String::from_utf8_lossy(&bytes);
+        walk.tests
+            .extend(complexity::tests(&file, &source, &mut walk.unparsed));
+    }
+    walk.tests
+        .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+    Ok(walk)
+}
+
+/// Every file under the entries this tree holds. An entry that names a directory is walked,
+/// and one that names a single file is that file, so both shapes of `path` reach this identity.
+fn reachable(
+    entries: &[Entry],
+    root: &Path,
+    wanted: &files::Wanted,
+) -> Result<Vec<PathBuf>, Error> {
+    let mut directories = Vec::new();
+    let mut singles = Vec::new();
+    for entry in entries {
+        let at = under(root, &entry.path);
+        match at.is_dir() {
+            true => directories.push(at),
+            false => singles.push(at),
+        }
+    }
+    let mut found = files::under(&directories, wanted)?;
+    found.extend(singles.into_iter().filter(|path| path.is_file()));
+    found.sort();
+    found.dedup();
+    Ok(found)
+}
+
+fn under(root: &Path, path: &str) -> PathBuf {
+    match path {
+        ROOT => root.to_path_buf(),
+        named => root.join(named),
+    }
+}
+
+/// What this gate discovered: every test file the base holds under its entries, which is also
+/// the file scope the function identity reads. A deleted test whose subject went with it is
+/// found and not measured, because it is a NOTE and not a site the gate judges. A file no
+/// grammar read is unreadable and not measured, because no function in it was seen. Spec 8.6.
+fn covered(
+    judged: &[Site],
+    paired: &[Site],
+    unparsed: &[complexity::Unparsed],
+    flags: &Flags,
+) -> Coverage {
     let only = flags.only.as_deref();
     let paths =
         |sites: &[Site]| -> Vec<String> { sites.iter().map(|site| site.path.clone()).collect() };
-    let measured = coverage::scoped(&paths(judged), only);
+    let refused: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
+    let mut read = paths(judged);
+    read.retain(|file| !refused.contains(file));
+    let measured = coverage::scoped(&read, only);
+    let unreadable = coverage::scoped(&refused, only);
     Coverage {
-        found: measured + coverage::scoped(&paths(paired), only),
+        found: measured + unreadable + coverage::scoped(&paths(paired), only),
         measured,
         excluded: 0,
-        unreadable: 0,
+        unreadable,
     }
 }
 
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
         metrics: &[MISSING],
-        unit: "test file(s)",
-        condition: "where the base holds a test file the working tree no longer has",
+        unit: "test site(s)",
+        condition: "where the base holds a test site the working tree no longer has",
         fix_advice: REMEDY,
         ceiling: None,
         format_metrics: show,
@@ -106,15 +310,51 @@ fn show(values: &Values) -> String {
     )
 }
 
-fn finding(path: &str, gone: bool) -> Finding {
+fn finding(path: &str, text: &str, line: u64, gone: bool) -> Finding {
     let mut values = Values::new();
     values.insert(MISSING.into(), u64::from(gone).into());
     Finding {
         file: path.to_string(),
-        line: 0,
-        text: LABEL.to_string(),
+        line,
+        text: text.to_string(),
         values,
         body: None,
+    }
+}
+
+/// A deleted test function whose file went in the same window, which is a NOTE and not a
+/// finding. #45 judges the file, and for a function the file is the whole subject. Spec 8.2.
+fn orphaned(orphans: &[Function], flags: &Flags, out: &mut String) {
+    if orphans.is_empty() {
+        return;
+    }
+    let _ = writeln!(
+        out,
+        "NOTE: {} deleted test function(s) whose file went in the same window:",
+        orphans.len()
+    );
+    for function in orphans {
+        let site = &function.site;
+        let _ = writeln!(
+            out,
+            "  {}:{}  {}  its file went too",
+            site.file, site.line, site.text
+        );
+        flags.record(|records| {
+            let mut record = Map::new();
+            record.insert("outcome".into(), "note".into());
+            record.insert("file".into(), site.file.clone().into());
+            record.insert("line".into(), site.line.into());
+            record.insert(
+                "text".into(),
+                format!(
+                    "the test function {} went with the file {} that held it",
+                    site.text, site.file
+                )
+                .into(),
+            );
+            records.notes.push(Value::Object(record));
+        });
     }
 }
 

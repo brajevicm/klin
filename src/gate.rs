@@ -837,7 +837,7 @@ fn prior(
     let Some(base) = base.filter(|_| wanted.iter().any(|gate| gate.check.needs.the_tree())) else {
         return Ok(None);
     };
-    base::materialize(config, base, changes).map(Some)
+    base::materialize(config, &base.before, changes).map(Some)
 }
 
 fn changes(
