@@ -185,7 +185,8 @@ Boundaries:
 - Matching another tool's numbers. A ratchet needs self-consistency only
   (ADR 0001).
 - Judging style, formatting or naming. Linters own those.
-- Executing a project's test suite, or running anything five times.
+- Executing a project's test suite, or running anything five times. The
+  section 13 performance fixture is the explicit measurement exception.
 - An MCP server, a web UI, a dashboard or a service (ADR 0008).
 - Preventing a determined person or agent from working around a local hook.
 - Forcing an agent to pay down debt it did not add. Section 7.3.
@@ -1941,6 +1942,21 @@ implementation MUST measure all three on a fixture and record the numbers in
 the release notes when they move by more than a third.
 
 The guard MUST finish within 50 milliseconds.
+
+The normative measurement fixture is the ignored `performance_fixture` CLI
+test, selected by `cargo test -- --ignored perf`. It generates a deterministic
+temporary repository with `rust/` and `web/` projects: the 2k row holds 1,000
+`.rs` and 1,000 `.ts`/`.tsx` files, and the 10k row holds 5,000 of each. A
+small one-percent TypeScript subset is `.tsx`; both rows include Rust and
+TypeScript manifests, tests, imports and references, and held escape/stub
+sites. Each row changes 10 files in each language. The test runs warm hook,
+cold survey and whole-tree strict five times and prints the median; the hook
+row explicitly excludes the project build. It also sends 1,000 deterministic
+read, write, shell, quoted-path, glob, heredoc, configuration-name and
+multi-path patch events through the real guard binary path five times, as a
+separate row. The test records the klin version, fixture counts, cache state,
+changed-file counts, iteration count and median milliseconds; it does not
+enforce the budgets on contributor hardware.
 
 A check that cannot take scope, such as a whole-tree duplication share, MUST
 say so in `gate --list` and MAY be skipped by the hook under a `hook: false`
