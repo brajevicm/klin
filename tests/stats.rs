@@ -84,9 +84,16 @@ fn stop(ago: u64, blocked: bool, findings: Vec<Value>, notes: Vec<Value>) -> Val
 
 const UNWRAP: &str = "Handle the error, or accept it in klin.json, before you push.";
 
+/// The prompt line the stops of `stop` ran under, with the excerpt spec 11.4 records.
+fn prompt_line(ago: u64, text: &str) -> Value {
+    json!({"schema": 1, "version": "0.0.0", "kind": "prompt", "time": now() - ago,
+           "session": "s-1", "prompt": 1, "text": text})
+}
+
 #[test]
 fn a_block_and_a_green_stop_after_it_read_as_one_shortcut_the_agent_fixed() {
     let tree = tree(&[
+        prompt_line(300, "Fix the refund flow"),
         stop(
             200,
             true,
@@ -107,7 +114,11 @@ fn a_block_and_a_green_stop_after_it_read_as_one_shortcut_the_agent_fixed() {
     assert!(run.says("The agent fixed it on its own."), "{}", run.out);
     assert!(!run.says("Still there"), "{}", run.out);
     assert!(run.says("Fixed after klin asked"), "{}", run.out);
-    assert!(run.says("unwrap() in src/io.rs:12"), "{}", run.out);
+    assert!(
+        run.says(r#"unwrap() in src/io.rs:12, while you asked for "Fix the refund flow""#),
+        "{}",
+        run.out
+    );
     assert!(run.says("klin ran 2 times"), "{}", run.out);
 }
 
@@ -161,7 +172,7 @@ fn a_deleted_test_klin_let_through_reads_as_an_ask_and_never_as_a_fix() {
     assert!(run.says("You were asked"), "{}", run.out);
     assert!(run.says("The agent asked you once."), "{}", run.out);
     assert!(
-        run.says("test refund_twice deleted from tests/pay.rs. The agent said why."),
+        run.says("a test deleted from tests/pay.rs:20, refund_twice. The agent said why."),
         "{}",
         run.out
     );
@@ -476,13 +487,54 @@ fn a_guard_deny_a_reset_and_a_deleted_test_each_read_as_a_sentence_under_you_wer
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("You were asked"), "{}", run.out);
     assert!(run.says("klin refused an edit to klin.json"), "{}", run.out);
-    assert!(run.says("you reset the turn"), "{}", run.out);
+    assert!(run.says("You told klin to start over."), "{}", run.out);
     assert!(
-        run.says("test fn refund_twice() deleted from tests/pay.rs. The agent said why."),
+        run.says("a test deleted from tests/pay.rs:20, fn refund_twice(). The agent said why."),
         "{}",
         run.out
     );
     assert!(run.says("The agent asked you 3 times."), "{}", run.out);
+    assert!(!run.says("You started the judgment over"), "{}", run.out);
+
+    let json = tree.run(&["stats", "--json"]).json();
+    let kinds: Vec<&str> = json["asked"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{json}"))
+        .iter()
+        .filter_map(|asked| asked["kind"].as_str())
+        .collect();
+    assert_eq!(kinds, ["asked-once", "reset", "guard"], "{json}");
+    assert_eq!(json["asked"][2]["decision"], "deny", "{json}");
+    assert_eq!(json["asked"][2]["reason"], "config-write", "{json}");
+}
+
+#[test]
+fn a_deleted_test_file_reads_as_the_file_deleted() {
+    let tree = tree(&[
+        stop(
+            200,
+            true,
+            vec![finding("inventory", "tests/test_two.py", 0, "", "")],
+            vec![],
+        ),
+        stop(
+            100,
+            false,
+            vec![],
+            vec![
+                json!({"gate": "inventory", "outcome": "deleted", "file": "tests/test_two.py",
+                        "line": 0, "text": "the test file went in this window"}),
+            ],
+        ),
+    ]);
+
+    let run = tree.run(&["stats"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("tests/test_two.py deleted. The agent said why."),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -500,17 +552,25 @@ fn a_journal_holding_two_full_weeks_compares_them_and_one_holding_one_does_not()
     ];
     two.extend(this_week.iter().cloned());
 
-    let run = tree(&two).run(&["stats"]);
+    let both = tree(&two);
+    let run = both.run(&["stats"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("Last week: 2 shortcuts, 1 left open. This week is better."),
         "{}",
         run.out
     );
+    let json = both.run(&["stats", "--json"]).json();
+    assert_eq!(json["earlier"], json!({"caught": 2, "open": 1}), "{json}");
 
-    let one = tree(&this_week).run(&["stats"]);
+    let alone = tree(&this_week);
+    let one = alone.run(&["stats"]);
     assert_eq!(one.code, 0, "{}", one.out);
     assert!(!one.says("Last week"), "{}", one.out);
+    assert_eq!(
+        alone.run(&["stats", "--json"]).json()["earlier"],
+        Value::Null
+    );
 }
 
 const HOOKED: &str = r#"{
@@ -521,7 +581,8 @@ const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
                          "session_id": "s-1"}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true,
                                 "session_id": "s-1"}"#;
-const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1"}"#;
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
+                           "prompt": "Fix the refund flow"}"#;
 const CLEAN: &str = "pub fn f(v: Option<i32>) -> i32 {\n    v.unwrap_or(0)\n}\n";
 
 fn hooked() -> Tree {
@@ -594,6 +655,37 @@ fn turn_reports_the_stops_since_the_stamp_and_after_a_reset_only_the_stops_after
     );
     let week = tree.run(&["stats", "--json"]).json();
     assert_eq!(week["counts"]["reset"], 1, "{week}");
+    let report = tree.run(&["stats"]);
+    assert!(report.says("You set aside 1 shortcut."), "{}", report.out);
+    assert!(
+        report.says(r#"src/lib.rs:2, while you asked for "Fix the refund flow""#),
+        "{}",
+        report.out
+    );
+    assert!(
+        report.says("If it's still there, fix it, or accept it in `klin.json`, before you push."),
+        "{}",
+        report.out
+    );
+}
+
+#[test]
+fn a_fix_in_a_later_prompt_of_the_same_turn_still_tells_the_count_fixed() {
+    let tree = hooked();
+    blocked(&tree);
+    let through = hook(&tree, A_SECOND_STOP);
+    assert_eq!(through.code, 0, "{}", through.out);
+
+    prompt(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    let green = hook(&tree, A_STOP);
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(
+        told(&green),
+        "klin: the agent took 1 shortcut this turn and fixed it after klin asked.",
+        "{}",
+        green.out
+    );
 }
 
 #[test]
@@ -627,7 +719,7 @@ fn a_red_pass_through_tells_the_person_one_shortcut_is_still_there() {
     assert_eq!(through.code, 0, "{}", through.out);
     assert_eq!(
         told(&through),
-        "klin: one shortcut is still there. klin stats --turn names it.",
+        "klin: one shortcut is still there. `klin stats --turn` names it.",
         "{}",
         through.out
     );
@@ -656,12 +748,10 @@ fn the_weekly_line_rides_the_first_turn_end_seven_days_after_the_last_and_not_th
         first.out
     );
     assert!(
-        told(&first).contains("This week, klin caught 1 shortcut."),
-        "{}",
-        first.out
-    );
-    assert!(
-        told(&first).ends_with("klin stats lists them."),
+        told(&first).ends_with(
+            "\nIn the last seven days, klin caught 1 shortcut and the agent fixed it on its own. \
+             `klin stats` lists them."
+        ),
         "{}",
         first.out
     );
@@ -675,5 +765,9 @@ fn the_weekly_line_rides_the_first_turn_end_seven_days_after_the_last_and_not_th
         "{}",
         next.out
     );
-    assert!(!told(&next).contains("This week"), "{}", next.out);
+    assert!(
+        !told(&next).contains("In the last seven days"),
+        "{}",
+        next.out
+    );
 }

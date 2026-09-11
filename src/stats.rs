@@ -62,12 +62,12 @@ impl Outcome {
         }
     }
 
+    /// The group an episode prints under. A reset's episodes print under the reset itself.
     fn heading(self) -> &'static str {
         match self {
             Outcome::Open => "Still there",
             Outcome::FixedNext | Outcome::FixedLater => "Fixed after klin asked",
-            Outcome::AskedOnce => "You were asked",
-            Outcome::Reset => "You started the judgment over",
+            Outcome::AskedOnce | Outcome::Reset => "You were asked",
         }
     }
 }
@@ -83,15 +83,38 @@ pub struct Episode {
     /// How many more findings that gate left on that stop beside the one named here.
     pub more: usize,
     pub outcome: Outcome,
+    /// Where, in the lines the episode was read from, the line that ended it sits.
+    pub ended: Option<usize>,
+    /// The excerpt of the prompt the stop ran under, when the journal recorded one.
+    pub prompt: Option<String>,
+}
+
+/// One thing the person was asked about or did, newest first in its group. Spec 11.5.
+enum Asked<'a> {
+    Guard {
+        time: u64,
+        decision: &'a str,
+        reason: &'a str,
+    },
+    /// A reset, and the episodes it set aside.
+    Reset {
+        time: u64,
+        set_aside: Vec<&'a Episode>,
+    },
+    Deleted(&'a Episode),
+}
+
+impl Asked<'_> {
+    fn time(&self) -> u64 {
+        match self {
+            Asked::Guard { time, .. } | Asked::Reset { time, .. } => *time,
+            Asked::Deleted(episode) => episode.time,
+        }
+    }
 }
 
 /// The report's groups, in the order they print. Spec 11.5.
-const GROUPS: [Outcome; 4] = [
-    Outcome::Open,
-    Outcome::FixedNext,
-    Outcome::AskedOnce,
-    Outcome::Reset,
-];
+const GROUPS: [Outcome; 3] = [Outcome::Open, Outcome::FixedNext, Outcome::AskedOnce];
 const CAP: usize = 5;
 const DAY: u64 = 86_400;
 
@@ -271,29 +294,51 @@ pub fn episodes(lines: &[Value]) -> Vec<Episode> {
         if !blocked(line) {
             continue;
         }
+        let prompt = excerpt(lines, *index);
         for gate in gates_that_failed(line) {
             let sites: Vec<&Value> = failures(line, &gate).collect();
             let Some(first) = sites.first() else { continue };
-            out.push(episode(first, &gate, at(line), sites.len() - 1, {
-                resolve(lines, &stops, turn, &gate, word(first, "file"))
-            }));
+            let ended = resolve(lines, &stops, turn, &gate, word(first, "file"));
+            out.push(episode(first, &gate, line, sites.len() - 1, ended, &prompt));
         }
     }
     out.sort_by_key(|one| Reverse(one.time));
     out
 }
 
-fn episode(site: &Value, gate: &str, time: u64, more: usize, outcome: Outcome) -> Episode {
+fn episode(
+    site: &Value,
+    gate: &str,
+    stop: &Value,
+    more: usize,
+    (outcome, ended): (Outcome, Option<usize>),
+    prompt: &Option<String>,
+) -> Episode {
     Episode {
         gate: gate.to_string(),
         file: word(site, "file").to_string(),
         line: site.get("line").and_then(Value::as_u64),
         text: word(site, "text").to_string(),
         remedy: word(site, "fix_advice").to_string(),
-        time,
+        time: at(stop),
         more,
         outcome,
+        ended,
+        prompt: prompt.clone(),
     }
+}
+
+/// The excerpt of the prompt the stop at `index` ran under: the last prompt line before it that
+/// carries the stop's counter. None where the journal recorded no excerpt. Spec 11.4.
+fn excerpt(lines: &[Value], index: usize) -> Option<String> {
+    let counter = lines[index].get("prompt")?;
+    lines[..index]
+        .iter()
+        .rev()
+        .find(|line| kind(line) == "prompt" && line.get("prompt") == Some(counter))
+        .map(|line| word(line, "text"))
+        .filter(|text| !text.is_empty())
+        .map(str::to_string)
 }
 
 /// The failing findings of one gate on one stop. A record that names no file is a run that
@@ -318,30 +363,38 @@ fn gates_that_failed(line: &Value) -> Vec<String> {
     named
 }
 
-/// How the episode ended, read from the lines after the stop that blocked. A site klin let
-/// through after it asked is an ask, and never a fix: the code is as the agent left it.
-fn resolve(lines: &[Value], stops: &[usize], turn: usize, gate: &str, file: &str) -> Outcome {
+/// How the episode ended, and where the line that ended it sits, read from the lines after the
+/// stop that blocked. A site klin let through after it asked is an ask, and never a fix: the code
+/// is as the agent left it.
+fn resolve(
+    lines: &[Value],
+    stops: &[usize],
+    turn: usize,
+    gate: &str,
+    file: &str,
+) -> (Outcome, Option<usize>) {
     let from = stops.get(turn).map_or(lines.len(), |index| index + 1);
     let mut seen = 0;
-    for line in lines.iter().skip(from) {
+    for (index, line) in lines.iter().enumerate().skip(from) {
         match kind(line) {
-            "reset" => return Outcome::Reset,
+            "reset" => return (Outcome::Reset, Some(index)),
             "stop" => {}
             _ => continue,
         }
         seen += 1;
         if let_through(line, gate, file) {
-            return Outcome::AskedOnce;
+            return (Outcome::AskedOnce, Some(index));
         }
         if !clear(line, gate) {
             continue;
         }
-        return match seen {
+        let outcome = match seen {
             1 => Outcome::FixedNext,
             _ => Outcome::FixedLater,
         };
+        return (outcome, Some(index));
     }
-    Outcome::Open
+    (Outcome::Open, None)
 }
 
 /// Whether this stop ran the gate and the gate passed. A gate the stop carries no row for did
@@ -374,15 +427,26 @@ const GUARDED: [(&str, &str); 6] = [
     ("turn-reset", "klin turn reset, which only you run"),
 ];
 
-/// Everything the person was asked about or did in the window, newest first, one sentence
-/// each: every guard answer, every reset, and every deleted test klin let through once the agent
-/// said why. Spec 11.5.
-fn asked(lines: &[Value], episodes: &[Episode]) -> Vec<(u64, String)> {
-    let mut out: Vec<(u64, String)> = lines
+/// Everything the person was asked about or did in the window, newest first: every guard
+/// answer, every reset with the episodes it set aside, and every deleted test klin let through
+/// once the agent said why. Spec 11.5.
+fn asked<'a>(lines: &'a [Value], episodes: &'a [Episode]) -> Vec<Asked<'a>> {
+    let mut out: Vec<Asked> = lines
         .iter()
-        .filter_map(|line| match kind(line) {
-            "guard" => Some((at(line), guarded(line))),
-            "reset" => Some((at(line), "you reset the turn".to_string())),
+        .enumerate()
+        .filter_map(|(index, line)| match kind(line) {
+            "guard" => Some(Asked::Guard {
+                time: at(line),
+                decision: word(line, "decision"),
+                reason: word(line, "reason"),
+            }),
+            "reset" => Some(Asked::Reset {
+                time: at(line),
+                set_aside: episodes
+                    .iter()
+                    .filter(|episode| episode.ended == Some(index))
+                    .collect(),
+            }),
             _ => None,
         })
         .collect();
@@ -390,39 +454,77 @@ fn asked(lines: &[Value], episodes: &[Episode]) -> Vec<(u64, String)> {
         episodes
             .iter()
             .filter(|episode| episode.outcome == Outcome::AskedOnce)
-            .map(|episode| (episode.time, deleted(episode))),
+            .map(Asked::Deleted),
     );
-    out.sort_by_key(|(time, _)| Reverse(*time));
+    out.sort_by_key(|asked| Reverse(asked.time()));
     out
 }
 
-fn guarded(line: &Value) -> String {
-    let reason = word(line, "reason");
+/// The item's words: one sentence, or a sentence with the shortcuts under it.
+fn sentence(asked: &Asked) -> String {
+    match asked {
+        Asked::Guard {
+            decision, reason, ..
+        } => guarded(decision, reason),
+        Asked::Reset { set_aside, .. } => set_aside_by(set_aside),
+        Asked::Deleted(episode) => deleted(episode),
+    }
+}
+
+fn guarded(decision: &str, reason: &str) -> String {
     let what = GUARDED
         .iter()
         .find(|(tag, _)| *tag == reason)
         .map_or("a tool call", |(_, what)| what);
-    match word(line, "decision") {
+    match decision {
         "ask" => format!("klin asked before {what}"),
         _ => format!("klin refused {what}"),
     }
 }
 
+/// A reset in the person's words. The report cannot see whether the code is still in the tree,
+/// so the action says "if", and CI still judges the branch.
+fn set_aside_by(episodes: &[&Episode]) -> String {
+    let (it, still) = match episodes.len() {
+        0 => return "You told klin to start over.".to_string(),
+        1 => ("it", "it's"),
+        _ => ("them", "they're"),
+    };
+    let mut said = format!("You set aside {}.", shortcuts(episodes.len()));
+    for episode in episodes {
+        let _ = write!(said, "\n  {}{}", item(episode), asking(episode));
+    }
+    let _ = write!(
+        said,
+        "\nIf {still} still there, fix {it}, or accept {it} in `klin.json`, before you push."
+    );
+    said
+}
+
+/// A deleted test klin let through, named by its declaration line, or by its file where the
+/// whole file went.
 fn deleted(episode: &Episode) -> String {
-    let test = clip(&episode.text);
-    format!(
-        "test {} deleted from {}. The agent said why.",
-        test.trim_end_matches(['{', ':', ' ']),
-        episode.file
-    )
+    let clipped = clip(&episode.text);
+    let site = clipped.trim_end_matches(['{', ':', ' ']);
+    match (site.is_empty(), episode.line) {
+        (true, _) => format!("{} deleted. The agent said why.", episode.file),
+        (false, Some(line)) => format!(
+            "a test deleted from {}:{line}, {site}. The agent said why.",
+            episode.file
+        ),
+        (false, None) => format!(
+            "a test deleted from {}, {site}. The agent said why.",
+            episode.file
+        ),
+    }
 }
 
 /// What the turn end tells the person on a stop nothing blocks: the turn line, and beside it at
 /// most once every seven days the week's headline, each with the name the journal records it
 /// under. `this` is the stop's own line, which the journal does not hold yet. Spec 9.5.
 ///
-/// ponytail: reads the whole journal on each stop under a spent gate block; read only its tail
-/// if a long-lived journal pushes the hook past the budget of spec 13.
+/// ponytail: reads the whole journal on each stop in a turn with an intervention; read only its
+/// tail if a long-lived journal pushes the hook past the budget of spec 13.
 pub fn turn_end(root: &Path, this: Value) -> Vec<(&'static str, String)> {
     let (mut lines, _) = journal::read(root);
     lines.push(this);
@@ -441,15 +543,6 @@ pub fn turn_end(root: &Path, this: Value) -> Vec<(&'static str, String)> {
     parts
 }
 
-/// The week's headline, the one `klin stats` prints, and the command that lists it, so a person
-/// who never types the command learns it exists. Spec 9.5.
-fn weekly_line(week: &[Value]) -> String {
-    let episodes = episodes(week);
-    let (caught, still) = headline(&episodes, asked(week, &episodes).len());
-    let still = still.map(|still| format!(" {still}")).unwrap_or_default();
-    format!("This week, {caught}{still} klin stats lists them.")
-}
-
 /// The count fixed on a turn that ends with nothing left, and the count still there on one that
 /// ends red. Nothing for a turn with no intervention, or with only questions the note names.
 fn turn_line(episodes: &[Episode]) -> Option<String> {
@@ -462,10 +555,10 @@ fn turn_line(episodes: &[Episode]) -> Option<String> {
             mended(fixed, caught)
         )),
         (1, _) => {
-            Some("klin: one shortcut is still there. klin stats --turn names it.".to_string())
+            Some("klin: one shortcut is still there. `klin stats --turn` names it.".to_string())
         }
         (open, _) => Some(format!(
-            "klin: {open} shortcuts are still there. klin stats --turn names them."
+            "klin: {open} shortcuts are still there. `klin stats --turn` names them."
         )),
     }
 }
@@ -479,9 +572,23 @@ fn weekly(lines: &[Value], now: u64) -> bool {
         && !lines.iter().any(|line| at(line) > week && told(line))
 }
 
-/// The headline both the report and the weekly line print, so the voice is one: klin is the
-/// subject of the first sentence and the agent of the second, and what is still there is its
-/// own sentence. Spec 11.5.
+/// The week in one sentence, good news first, and the command that lists it, so a person who
+/// never types the command learns it exists. Spec 9.5.
+fn weekly_line(week: &[Value]) -> String {
+    let episodes = episodes(week);
+    let caught = episodes.len();
+    let agent = match fixed(&episodes) {
+        0 => String::new(),
+        fixed => format!(" and the agent {} on its own", mended(fixed, caught)),
+    };
+    format!(
+        "In the last seven days, klin caught {}{agent}. `klin stats` lists them.",
+        shortcuts(caught)
+    )
+}
+
+/// The report's headline: klin is the subject of the first sentence and the agent of the
+/// second, and what is still there is its own sentence. Spec 11.5.
 fn headline(episodes: &[Episode], asked: usize) -> (String, Option<String>) {
     let caught = episodes.len();
     let agent = match (fixed(episodes), asked) {
@@ -510,7 +617,7 @@ fn fixed(episodes: &[Episode]) -> usize {
     many(episodes, Outcome::FixedNext) + many(episodes, Outcome::FixedLater)
 }
 
-/// What the agent fixed, in the words the headline and the turn line share.
+/// What the agent fixed, in the words the headline, the turn line and the weekly line share.
 fn mended(fixed: usize, caught: usize) -> String {
     match (fixed, caught) {
         (1, 1) => "fixed it".to_string(),
@@ -526,7 +633,7 @@ fn mended(fixed: usize, caught: usize) -> String {
 struct Reading<'a> {
     lines: &'a [Value],
     episodes: &'a [Episode],
-    asked: &'a [(u64, String)],
+    asked: &'a [Asked<'a>],
     earlier: Option<&'a [Episode]>,
     skipped: u64,
     now: u64,
@@ -549,6 +656,7 @@ fn json(out: &mut String, read: &Reading) {
                 "time": episode.time,
                 "more": episode.more,
                 "outcome": episode.outcome.name(),
+                "prompt": episode.prompt,
             })
         })
         .collect();
@@ -557,6 +665,9 @@ fn json(out: &mut String, read: &Reading) {
         Scope::Session => serde_json::json!({ "scope": "session" }),
         Scope::Since(days) => serde_json::json!({ "scope": "days", "days": days }),
     };
+    let earlier = read.earlier.map(|earlier| {
+        serde_json::json!({ "caught": earlier.len(), "open": many(earlier, Outcome::Open) })
+    });
     let report = serde_json::json!({
         "window": window,
         "stops": stops(read.lines),
@@ -564,8 +675,35 @@ fn json(out: &mut String, read: &Reading) {
         "unreadable": unreadable(read.lines),
         "counts": counts(read.episodes),
         "episodes": episodes,
+        "asked": read.asked.iter().map(record).collect::<Vec<Value>>(),
+        "earlier": earlier,
     });
     let _ = writeln!(out, "{report}");
+}
+
+/// One thing the person was asked about or did, as facts and not as the person's words.
+fn record(asked: &Asked) -> Value {
+    let (kind, decision, reason, file, line) = match asked {
+        Asked::Guard {
+            decision, reason, ..
+        } => ("guard", Some(*decision), Some(*reason), None, None),
+        Asked::Reset { .. } => ("reset", None, None, None, None),
+        Asked::Deleted(episode) => (
+            "asked-once",
+            None,
+            None,
+            Some(episode.file.as_str()),
+            episode.line,
+        ),
+    };
+    serde_json::json!({
+        "time": asked.time(),
+        "kind": kind,
+        "decision": decision,
+        "reason": reason,
+        "file": file,
+        "line": line,
+    })
 }
 
 fn counts(episodes: &[Episode]) -> Map<String, Value> {
@@ -623,13 +761,21 @@ fn text(out: &mut String, args: &Args, start: &Path, read: &Reading) {
         match outcome {
             Outcome::Open => open(out, args, read, offset),
             Outcome::FixedNext | Outcome::FixedLater => {
-                let fixed = items(read.episodes, &[Outcome::FixedNext, Outcome::FixedLater]);
+                let fixed: Vec<(u64, String)> = read
+                    .episodes
+                    .iter()
+                    .filter(|episode| episode.outcome.heading() == heading)
+                    .map(|episode| (episode.time, item(episode) + &asking(episode)))
+                    .collect();
                 group(out, args, heading, &fixed, read, offset);
             }
-            Outcome::AskedOnce => group(out, args, heading, read.asked, read, offset),
-            Outcome::Reset => {
-                let reset = items(read.episodes, &[Outcome::Reset]);
-                group(out, args, heading, &reset, read, offset);
+            Outcome::AskedOnce | Outcome::Reset => {
+                let asked: Vec<(u64, String)> = read
+                    .asked
+                    .iter()
+                    .map(|asked| (asked.time(), sentence(asked)))
+                    .collect();
+                group(out, args, heading, &asked, read, offset);
             }
         }
     }
@@ -764,9 +910,10 @@ fn open(out: &mut String, args: &Args, read: &Reading, offset: i64) {
     for episode in &held[..shown] {
         let _ = writeln!(
             out,
-            "  {}, left on {}",
+            "  {}, left on {}{}",
             item(episode),
-            day(episode.time, read.now, offset)
+            day(episode.time, read.now, offset),
+            asking(episode)
         );
         if !episode.remedy.is_empty() {
             let _ = writeln!(out, "    {}", episode.remedy);
@@ -775,7 +922,8 @@ fn open(out: &mut String, args: &Args, read: &Reading, offset: i64) {
     more(out, held.len(), shown);
 }
 
-/// Every other group, headed by the day each item happened on.
+/// Every other group, headed by the day each item happened on. An item of more than one line
+/// keeps its own indentation under the first.
 fn group(
     out: &mut String,
     args: &Args,
@@ -796,17 +944,11 @@ fn group(
             let _ = writeln!(out, "  {when}");
             said = when;
         }
-        let _ = writeln!(out, "    {item}");
+        for line in item.lines() {
+            let _ = writeln!(out, "    {line}");
+        }
     }
     more(out, items.len(), shown);
-}
-
-fn items(episodes: &[Episode], wanted: &[Outcome]) -> Vec<(u64, String)> {
-    episodes
-        .iter()
-        .filter(|episode| wanted.contains(&episode.outcome))
-        .map(|episode| (episode.time, item(episode)))
-        .collect()
 }
 
 fn shown(args: &Args, count: usize) -> usize {
@@ -832,6 +974,15 @@ fn item(episode: &Episode) -> String {
         count => format!(", and {count} more in the same check"),
     };
     format!("{} in {at}{more}", clip(&episode.text))
+}
+
+/// The request the shortcut came in, quoted as the person wrote it, which turns a list of sites
+/// into the person's own story. Empty where the journal recorded no excerpt.
+fn asking(episode: &Episode) -> String {
+    match &episode.prompt {
+        Some(prompt) => format!(", while you asked for \"{prompt}\""),
+        None => String::new(),
+    }
 }
 
 fn clip(text: &str) -> String {

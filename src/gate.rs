@@ -284,8 +284,8 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
         report.entry("window").or_insert_with(|| window.record());
     }
     log.blocked = code == 2;
-    written(&root, lost, green, &asked, &mut log);
-    log.asked = asked;
+    written(&root, lost, green, asked.as_deref(), &mut log);
+    log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(&root) {
         let held = count(&at);
         log.gate_spent = held.gate_spent;
@@ -303,7 +303,13 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
 
 /// The verdict this stop leaves for the next prompt, or the reason it left none: another stop
 /// held the lock for the whole budget, or the stamp could not be read or written. Spec 6.5.
-fn written(root: &Path, lost: bool, green: bool, asked: &[String], log: &mut journal::Stop) {
+fn written(
+    root: &Path,
+    lost: bool,
+    green: bool,
+    asked: Option<&[String]>,
+    log: &mut journal::Stop,
+) {
     if lost {
         eprintln!(
             "klin: NOTE: another stop in this worktree held the state directory for the whole \
@@ -325,8 +331,9 @@ fn written(root: &Path, lost: bool, green: bool, asked: &[String], log: &mut jou
 
 /// What this stop tells the person when nothing blocks it, as one `systemMessage`: the notes the
 /// run left, then the turn end and the week's headline. The turn end reads the journal, so it
-/// runs only where the prompt's gate block is spent, which a turn with an intervention in this
-/// prompt always has. The journal records each part by name. Spec 9.5, 11.4.
+/// runs only in a turn whose stamp says a stop spent a gate block, or under a prompt whose build
+/// stamp says so when the verdict could not be written. The journal records each part by name.
+/// Spec 9.5, 11.4.
 fn tell(
     args: &Args,
     root: &Path,
@@ -336,7 +343,8 @@ fn tell(
 ) -> Option<String> {
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
-    if code == 0 && !args.json && log.host.is_some() && log.gate_spent {
+    let intervened = log.gate_spent || turn::intervened(root);
+    if code == 0 && !args.json && log.host.is_some() && intervened {
         parts.extend(stats::turn_end(root, journal::line(log)));
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
@@ -361,8 +369,8 @@ fn config_hash(args: &Args, start: &Path) -> String {
 }
 
 /// One stop's run: the exit code the host reads, whether the gates left the tree green, the
-/// findings a block put in front of the agent, which are none unless the stop blocked on a
-/// gate, and the note a stop nothing blocks leaves for the person. Spec 8.2, 16.3.
+/// findings a gate block put in front of the agent, which is `None` unless the stop blocked on
+/// a gate, and the note a stop nothing blocks leaves for the person. Spec 8.2, 16.3.
 fn ran(
     args: &Args,
     start: &Path,
@@ -370,19 +378,19 @@ fn ran(
     event: Option<&host::Event>,
     log: &mut journal::Stop,
     out: &mut String,
-) -> (u8, bool, Vec<String>, Option<String>) {
+) -> (u8, bool, Option<Vec<String>>, Option<String>) {
     let (outcome, build_ms) = journal::timed(|| built(args, start, window));
     log.timing.build_ms = build_ms;
     match outcome {
         Ok(Some((root, failure))) => (
             does_not_build(args, &root, &failure, window, log, out),
             false,
-            Vec::new(),
+            None,
             None,
         ),
         Err(problem) => {
             let (code, note) = handed(args, start, Err(problem), event, log, out);
-            (code, false, Vec::new(), note)
+            (code, false, None, note)
         }
         Ok(None) => {
             let judged = judge(args, start, window, out);
@@ -392,10 +400,7 @@ fn ran(
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
             let (code, note) = handed(args, start, judged, event, log, out);
-            let asked = match code {
-                2 => reported,
-                _ => Vec::new(),
-            };
+            let asked = (code == 2).then_some(reported);
             (code, green, asked, note)
         }
     }

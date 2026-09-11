@@ -58,6 +58,9 @@ pub struct Stamp {
     /// The findings a stop's block already put in front of the agent under this stamp, by the
     /// site id of spec 11.2. A fresh stamp holds none. Spec 8.2.
     pub asked: Vec<String>,
+    /// Whether a stop under this stamp spent a gate block, so the turn holds an intervention for
+    /// the turn end to tell. A fresh stamp holds none. Spec 6.5, 9.5.
+    pub intervened: bool,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -220,6 +223,14 @@ pub fn asked(root: &Path) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Whether a stop under the current stamp spent a gate block. False when no stamp is readable.
+/// Spec 9.5.
+pub fn intervened(root: &Path) -> bool {
+    state::dir(root)
+        .and_then(|at| read(&at))
+        .is_some_and(|held| held.intervened)
+}
+
 fn read(at: &Path) -> Option<Stamp> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;
@@ -249,6 +260,10 @@ fn read(at: &Path) -> Option<Stamp> {
                     .collect()
             })
             .unwrap_or_default(),
+        intervened: held
+            .get("intervened")
+            .and_then(Value::as_bool)
+            .unwrap_or_default(),
     })
 }
 
@@ -270,6 +285,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         green: false,
         prompts,
         asked: Vec::new(),
+        intervened: false,
     })
 }
 
@@ -314,6 +330,7 @@ fn kept(root: &Path) -> Option<Stamp> {
         green: false,
         prompts: 0,
         asked: Vec::new(),
+        intervened: false,
     })
 }
 
@@ -338,6 +355,7 @@ fn restored(
         green: false,
         prompts,
         asked: Vec::new(),
+        intervened: false,
     })
 }
 
@@ -371,6 +389,7 @@ pub fn window(
             green: false,
             prompts: held.as_ref().map_or(0, |held| held.prompts),
             asked: Vec::new(),
+            intervened: false,
         },
         out,
     );
@@ -404,13 +423,13 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
     })
 }
 
-/// The verdict this stop leaves for the next prompt to read, and the findings its block put in
-/// front of the agent. Green lets the stamp move, red keeps it, so the debt stays new until a
-/// person fixes, accepts or resets it. Spec 6.2, 8.2.
+/// The verdict this stop leaves for the next prompt to read, and, where the stop spent a gate
+/// block, the findings that block put in front of the agent. Green lets the stamp move, red keeps
+/// it, so the debt stays new until a person fixes, accepts or resets it. Spec 6.2, 8.2, 9.5.
 pub fn verdict(
     root: &Path,
     green: bool,
-    asked: &[String],
+    asked: Option<&[String]>,
     out: &mut String,
 ) -> Result<(), &'static str> {
     let Ok(at) = state::ready(root) else {
@@ -423,7 +442,7 @@ pub fn verdict(
         );
     };
     let mut all = held.asked.clone();
-    all.extend(asked.iter().cloned());
+    all.extend(asked.unwrap_or_default().iter().cloned());
     all.sort();
     all.dedup();
     let wrote = write(
@@ -431,6 +450,7 @@ pub fn verdict(
         &Stamp {
             green,
             asked: all,
+            intervened: held.intervened || asked.is_some(),
             ..held
         },
         out,
@@ -523,6 +543,22 @@ pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
 }
 
 fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
+    let text = recorded(stamp).to_string() + "\n";
+    let writing = at.join(WRITING);
+    if std::fs::write(&writing, text).is_ok() && std::fs::rename(&writing, at.join(FILE)).is_ok() {
+        return true;
+    }
+    let _ = std::fs::remove_file(&writing);
+    note(
+        out,
+        &format!("{} could not be written", at.join(FILE).display()),
+    );
+    false
+}
+
+/// The stamp as the `turn` file holds it. A field a fresh stamp does not have is left out.
+/// Spec 6.5.
+fn recorded(stamp: &Stamp) -> Value {
     let mut fields = Map::new();
     let fields_of = [
         ("commit", &stamp.commit),
@@ -544,17 +580,10 @@ fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
     if !stamp.asked.is_empty() {
         fields.insert("asked".into(), stamp.asked.clone().into());
     }
-    let text = Value::Object(fields).to_string() + "\n";
-    let writing = at.join(WRITING);
-    if std::fs::write(&writing, text).is_ok() && std::fs::rename(&writing, at.join(FILE)).is_ok() {
-        return true;
+    if stamp.intervened {
+        fields.insert("intervened".into(), true.into());
     }
-    let _ = std::fs::remove_file(&writing);
-    note(
-        out,
-        &format!("{} could not be written", at.join(FILE).display()),
-    );
-    false
+    Value::Object(fields)
 }
 
 fn now() -> u64 {

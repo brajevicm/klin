@@ -724,7 +724,8 @@ refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp
 makes it visible to `git log --all`, and is the copy a stop restores the
 `turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
 in the state directory holds the time, the verdict, the prompt counter and
-the `asked` record of 8.2 beside the commit id.
+the `asked` record of 8.2 beside the commit id, and `intervened`, set once a
+stop under the stamp spends a gate block (9.5). A fresh stamp holds neither.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
 worktree share one window and one `turn` file. A stop MUST hold an advisory
@@ -1562,17 +1563,22 @@ A stop that nothing blocks can end a turn, and on a turn with an
 intervention (11.5) it tells the person what happened in one `systemMessage`
 of 9.1. A green stop names the count the agent fixed: `klin: the agent took 2
 shortcuts this turn and fixed both after klin asked.` A red pass-through names
-what is still there: `klin: one shortcut is still there. klin stats --turn
-names it.` The line and the headline of 11.5 come from the same words. A turn
-with no intervention prints no such line, and a session start prints none.
+what is still there: ``klin: one shortcut is still there. `klin stats --turn`
+names it.`` The line and the headline of 11.5 come from the same words. A turn
+with no intervention prints no such line, and a session start prints none. A
+fix in a later prompt of the same turn still gets its line, because the turn
+stamp records the intervention (6.5) until the stamp moves.
 
 At most once every seven days, and only when the journal holds seven days,
-the week's headline of 11.5 follows the line, with the command that lists it:
-`This week, klin caught 9 shortcuts. The agent fixed 8 of them on its own. One
-is still there. klin stats lists them.` The notes the run left (8.2, 14), the
-turn-end line and the weekly line join in one message, in that order. The
-stop reads the journal for this only where the prompt's gate block is spent
-(16.3), and its journal line records which parts it printed (11.4).
+one sentence about the week follows the line, with the command that lists it:
+``In the last seven days, klin caught 9 shortcuts and the agent fixed 8 of
+them on its own. `klin stats` lists them.`` Where the agent fixed none, the
+sentence ends after the count. A command in the message stands in backticks,
+and the message never names a command that accepts debt. The notes the run
+left (8.2, 14), the turn-end line and the weekly line join in one message, in
+that order. The stop reads the journal for this only where the turn stamp
+records an intervention, or where the prompt's gate block is spent (16.3),
+and its journal line records which parts it printed (11.4).
 
 ### 9.6 The journal
 
@@ -1829,9 +1835,16 @@ check for is read and printed like any other.
 `turn`, `session` or `days` and `days` stands only beside `days`, `stops`, `skipped` (the lines
 of 11.4 the reader could not read or does not know), `unreadable` (how many distinct
 files the window's stops could not read or measure, counted once each), `counts` `{caught, fixed-next,
-fixed-later, reset, open, asked-once}`, and `episodes`, a list of `{gate,
-file, line, text, remedy, time, more, outcome}` newest first, where `more` is
-how many further findings that gate left on that stop.
+fixed-later, reset, open, asked-once}`, `episodes`, `asked` and `earlier`.
+`episodes` is a list of `{gate, file, line, text, remedy, time, more, outcome,
+prompt}` newest first, where `more` is how many further findings that gate
+left on that stop and `prompt` is the excerpt of 11.4 the stop ran under, or
+null. `asked` is a list of `{time, kind, decision, reason, file, line}` newest
+first, one for each item of `You were asked`: `kind` is `guard`, `reset` or
+`asked-once`, and a field that does not apply to the kind is null. `earlier`
+is `{caught, open}` for the window before this one, or null where the journal
+does not reach back over it. The object holds facts and none of the person's
+sentences.
 
 The text has these line shapes:
 
@@ -1846,20 +1859,36 @@ The text has these line shapes:
   sentence can read `The agent asked you once.` The asked count is the items
   of `You were asked`. Then `One is still there.` or `N are still there.` on
   its own line
-- the groups `Still there`, `Fixed after klin asked`, `You were asked` and
-  `You started the judgment over`, in that order. An open item carries its
-  check's remedy on the line under it; every other group is headed by the day
-  it happened on: `Today`, `Yesterday`, the weekday name inside seven days,
-  then `YYYY-MM-DD`. The local offset is read from the system once per
-  report, with UTC as the fallback.
-- `You were asked` holds one sentence per item, newest first: `klin asked
-  before X` for a guard `ask` and `klin refused X` for a guard `deny`, where X
-  names the reason tag of 11.4 (`an edit to klin.json`, `a command that named
-  klin.json`, `an edit to klin's own state`, `a command that named klin's own
-  state`, `klin init, which only you run`, `klin turn reset, which only you
-  run`, and `a tool call` for a tag the binary does not know); `you reset the
-  turn` for a `reset` line; and `test SITE deleted from FILE. The agent said
-  why.` for an `asked-once` episode
+- the groups `Still there`, `Fixed after klin asked` and `You were asked`, in
+  that order, and no heading carries a count. An open item reads `SITE in
+  FILE:LINE, left on DAY` and carries its check's remedy on the line under it;
+  every other group is headed by the day it happened on: `Today`,
+  `Yesterday`, the weekday name inside seven days, then `YYYY-MM-DD`. The
+  local offset is read from the system once per report, with UTC as the
+  fallback.
+- an open item, a fixed item and a shortcut a reset set aside end with `,
+  while you asked for "EXCERPT"` where the stop's prompt line of 11.4 carries
+  an excerpt, quoted as the person wrote it. The item carries nothing in its
+  place where `journal.prompt` is `false` or the excerpt is not in the lines
+  read
+- `You were asked` holds one item per guard answer, reset and `asked-once`
+  episode, newest first:
+  - `klin asked before X` for a guard `ask` and `klin refused X` for a guard
+    `deny`, where X names the reason tag of 11.4 (`an edit to klin.json`, `a
+    command that named klin.json`, `an edit to klin's own state`, `a command
+    that named klin's own state`, `klin init, which only you run`, `klin turn
+    reset, which only you run`, and `a tool call` for a tag the binary does
+    not know)
+  - for a reset that ended episodes, `You set aside N shortcuts.`, each
+    shortcut on its own line under it, and then ``If they're still there, fix
+    them, or accept them in `klin.json`, before you push.``, in the singular
+    for one. The report cannot see whether the code is still in the tree, and
+    CI still judges the branch (6.3). A reset that ended none reads `You told
+    klin to start over.`
+  - `a test deleted from FILE:LINE, SITE. The agent said why.` for an
+    `asked-once` episode, where SITE is the declaration line without a
+    trailing `{` or `:`, and `FILE deleted. The agent said why.` where the
+    site names no declaration because the whole file went
 - `and N more. klin stats --all` under a group the cap trimmed
 - `Last week: N shortcuts, N left open. This week is better.`, for a window of
   days where the journal reaches back over the whole window before it, and
