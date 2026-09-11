@@ -122,7 +122,7 @@ steps:
   - uses: actions/checkout@v5
     with:
       fetch-depth: 0
-  - uses: brajevicm/klin@v0.1.0
+  - uses: brajevicm/klin@v0.1.1
 ```
 
 The action installs the release its tag names, or the `version` that
