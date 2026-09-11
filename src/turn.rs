@@ -202,6 +202,14 @@ pub fn prompts(at: &Path) -> u64 {
     read(at).map_or(0, |held| held.prompts)
 }
 
+/// The commit the current turn stamp names, which every stop under it judged against, and `None`
+/// when no stamp is readable. Spec 11.5.
+pub fn commit(root: &Path) -> Option<String> {
+    state::dir(root)
+        .and_then(|at| read(&at))
+        .and_then(|held| held.commit)
+}
+
 /// The findings a stop's block already put in front of the agent under the current stamp. The
 /// record lives beside the stamp and not in the build stamp, so a prompt event between two
 /// stops keeps it, and it goes when the stamp moves. Empty when no stamp is readable. Spec 8.2.

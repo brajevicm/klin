@@ -12,7 +12,7 @@ use crate::host::{self, Stop};
 use crate::reference::{self, Key};
 use crate::{
     build, complexity, coverage, doc_citations, doc_size, escapes, inventory, journal, lockfile,
-    sarif, state, stubs, survey, turn,
+    sarif, state, stats, stubs, survey, turn,
 };
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -278,9 +278,32 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
         log.flags.push("branch-fallback");
     }
-    let (code, green, asked) = ran(args, start, window.as_ref(), event.as_ref(), &mut log, out);
+    let (code, green, asked, note) =
+        ran(args, start, window.as_ref(), event.as_ref(), &mut log, out);
+    if let (Some(Value::Object(report)), Some(window)) = (&mut log.report, &window) {
+        report.entry("window").or_insert_with(|| window.record());
+    }
     log.blocked = code == 2;
-    log.asked = asked.clone();
+    written(&root, lost, green, &asked, &mut log);
+    log.asked = asked;
+    if let Ok(at) = state::ready(&root) {
+        let held = count(&at);
+        log.gate_spent = held.gate_spent;
+        log.build_blocks = held.builds;
+        log.prompt = held.prompt;
+    }
+    let said = tell(args, &root, code, note, &mut log);
+    log.timing.total_ms = journal::millis(begun.elapsed());
+    journal::stop(&root, &log);
+    if let Some(said) = said {
+        host::stop(&Stop::Tell(said));
+    }
+    code
+}
+
+/// The verdict this stop leaves for the next prompt, or the reason it left none: another stop
+/// held the lock for the whole budget, or the stamp could not be read or written. Spec 6.5.
+fn written(root: &Path, lost: bool, green: bool, asked: &[String], log: &mut journal::Stop) {
     if lost {
         eprintln!(
             "klin: NOTE: another stop in this worktree held the state directory for the whole \
@@ -288,25 +311,37 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
             BUDGET.as_millis()
         );
         log.why = Some("another stop held the state directory, so this stop wrote no verdict");
-    } else {
-        let mut said = String::new();
-        let wrote = turn::verdict(&root, green, &asked, &mut said);
-        eprint!("{said}");
-        match (wrote, green) {
-            (Ok(()), true) => log.verdict = "green",
-            (Ok(()), false) => log.verdict = "red",
-            (Err(why), _) => log.why = Some(why),
-        }
+        return;
     }
-    if let Ok(at) = state::ready(&root) {
-        let held = count(&at);
-        log.gate_spent = held.gate_spent;
-        log.build_blocks = held.builds;
-        log.prompt = held.prompt;
+    let mut said = String::new();
+    let wrote = turn::verdict(root, green, asked, &mut said);
+    eprint!("{said}");
+    match (wrote, green) {
+        (Ok(()), true) => log.verdict = "green",
+        (Ok(()), false) => log.verdict = "red",
+        (Err(why), _) => log.why = Some(why),
     }
-    log.timing.total_ms = journal::millis(begun.elapsed());
-    journal::stop(&root, &log);
-    code
+}
+
+/// What this stop tells the person when nothing blocks it, as one `systemMessage`: the notes the
+/// run left, then the turn end and the week's headline. The turn end reads the journal, so it
+/// runs only where the prompt's gate block is spent, which a turn with an intervention in this
+/// prompt always has. The journal records each part by name. Spec 9.5, 11.4.
+fn tell(
+    args: &Args,
+    root: &Path,
+    code: u8,
+    note: Option<String>,
+    log: &mut journal::Stop,
+) -> Option<String> {
+    let mut parts: Vec<(&'static str, String)> =
+        note.into_iter().map(|note| ("note", note)).collect();
+    if code == 0 && !args.json && log.host.is_some() && log.gate_spent {
+        parts.extend(stats::turn_end(root, journal::line(log)));
+    }
+    log.told = parts.iter().map(|(part, _)| *part).collect();
+    let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
+    (!said.is_empty()).then(|| said.join("\n"))
 }
 
 /// A hash of the config in force, recorded in the journal and not read, so a later reader can
@@ -325,9 +360,9 @@ fn config_hash(args: &Args, start: &Path) -> String {
     }
 }
 
-/// One stop's run: the exit code the host reads, whether the gates left the tree green, and the
+/// One stop's run: the exit code the host reads, whether the gates left the tree green, the
 /// findings a block put in front of the agent, which are none unless the stop blocked on a
-/// gate. Spec 8.2, 16.3.
+/// gate, and the note a stop nothing blocks leaves for the person. Spec 8.2, 16.3.
 fn ran(
     args: &Args,
     start: &Path,
@@ -335,7 +370,7 @@ fn ran(
     event: Option<&host::Event>,
     log: &mut journal::Stop,
     out: &mut String,
-) -> (u8, bool, Vec<String>) {
+) -> (u8, bool, Vec<String>, Option<String>) {
     let (outcome, build_ms) = journal::timed(|| built(args, start, window));
     log.timing.build_ms = build_ms;
     match outcome {
@@ -343,12 +378,12 @@ fn ran(
             does_not_build(args, &root, &failure, window, log, out),
             false,
             Vec::new(),
+            None,
         ),
-        Err(problem) => (
-            handed(args, start, Err(problem), event, log, out),
-            false,
-            Vec::new(),
-        ),
+        Err(problem) => {
+            let (code, note) = handed(args, start, Err(problem), event, log, out);
+            (code, false, Vec::new(), note)
+        }
         Ok(None) => {
             let judged = judge(args, start, window, out);
             let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
@@ -356,17 +391,18 @@ fn ran(
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let code = handed(args, start, judged, event, log, out);
+            let (code, note) = handed(args, start, judged, event, log, out);
             let asked = match code {
                 2 => reported,
                 _ => Vec::new(),
             };
-            (code, green, asked)
+            (code, green, asked, note)
         }
     }
 }
 
-/// What the hook does with a run it finished: report it, and block the stop or let it end.
+/// What the hook does with a run it finished: report it, and block the stop or let it end with
+/// the note it leaves for the person.
 fn handed(
     args: &Args,
     start: &Path,
@@ -374,7 +410,7 @@ fn handed(
     event: Option<&host::Event>,
     log: &mut journal::Stop,
     out: &mut String,
-) -> u8 {
+) -> (u8, Option<String>) {
     let mut tally = match refused(args, outcome, out) {
         Ok(tally) => tally,
         Err(problem) => {
@@ -927,7 +963,7 @@ fn hook(
     root: &Path,
     event: Option<&host::Event>,
     log: &mut journal::Stop,
-) -> u8 {
+) -> (u8, Option<String>) {
     let (failed, errored) = (tally.failed, tally.errored);
     let held = state::ready(root).ok().map(|at| (count(&at), at));
     unwritable(root);
@@ -936,7 +972,7 @@ fn hook(
     }
     let Some(event) = event else {
         eprint!("{report}");
-        return 1;
+        return (1, None);
     };
     let again = gate_spent(held.as_ref(), event.blocked_before);
     let tail = match again {
@@ -946,29 +982,35 @@ fn hook(
     eprintln!("klin: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
-        return spend(held, log);
+        return (spend(held, log), None);
     }
     eprintln!(
         "klin: not blocking a second time; the window stays open until a person fixes, accepts \
          or resets it."
     );
-    host::stop(&Stop::Pass)
+    (host::stop(&Stop::Pass), None)
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
-/// a person, told through the host. A `--json` run hands its report to stderr, because a host
-/// that reads JSON reads the report itself, and so does a run whose host event klin cannot
-/// read, because then klin does not know whose shape to tell it in. Spec 9.1, 16.5.
-fn nothing_blocks(args: &Args, told: usize, report: &str, event: Option<&host::Event>) -> u8 {
+/// a person, which the stop tells through the host once it has written its line. A `--json` run
+/// hands its report to stderr, because a host that reads JSON reads the report itself, and so
+/// does a run whose host event klin cannot read, because then klin does not know whose shape to
+/// tell it in. Spec 9.1, 16.5.
+fn nothing_blocks(
+    args: &Args,
+    told: usize,
+    report: &str,
+    event: Option<&host::Event>,
+) -> (u8, Option<String>) {
     if told == 0 {
-        return 0;
+        return (0, None);
     }
     let said = format!("klin: nothing blocks the stop, and the run left a note:\n{report}");
     if args.json || event.is_none() {
         eprint!("{said}");
-        return 1;
+        return (1, None);
     }
-    host::stop(&Stop::Tell(said))
+    (0, Some(said))
 }
 
 /// Whether the turn's one gate block is already spent. The build stamp is the record. The

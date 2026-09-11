@@ -40,6 +40,9 @@ pub struct Stop {
     /// The unusual paths this stop took, empty on a clean one: `turn-restored`,
     /// `branch-fallback`, `count-unwritable`.
     pub flags: Vec<&'static str>,
+    /// The parts of the `systemMessage` this stop put in front of the person, empty when it
+    /// printed none: `note`, `turn` and `weekly`. Spec 9.5.
+    pub told: Vec<&'static str>,
     pub timing: Timing,
     /// A hash of the config in force, recorded and not read, so a later reader can tell a fix
     /// from a config change without a schema bump.
@@ -70,6 +73,7 @@ impl Stop {
             why: None,
             asked: Vec::new(),
             flags: Vec::new(),
+            told: Vec::new(),
             timing: Timing::default(),
             config_hash,
         }
@@ -86,11 +90,17 @@ fn base(kind: &'static str) -> Map<String, Value> {
     line
 }
 
-/// The stop's line: the 11.2 object the run built, plus what only the hook knew. Spec 11.4.
+/// Appends the stop's line. Spec 11.4.
 pub fn stop(root: &Path, stop: &Stop) {
     let Ok(at) = state::ready(root) else {
         return;
     };
+    append(&at, &line(stop));
+}
+
+/// The stop's line: the 11.2 object the run built, plus what only the hook knew. A reader can
+/// take it before it is appended, as the turn end does to count the stop it ends on.
+pub fn line(stop: &Stop) -> Value {
     let mut line = base("stop");
     if let Some(Value::Object(fields)) = &stop.report {
         for (key, value) in fields {
@@ -128,8 +138,9 @@ pub fn stop(root: &Path, stop: &Stop) {
     );
     line.insert("asked".into(), stop.asked.clone().into());
     line.insert("flags".into(), stop.flags.clone().into());
+    line.insert("told".into(), stop.told.clone().into());
     line.insert("config_hash".into(), stop.config_hash.clone().into());
-    append(&at, &Value::Object(line));
+    Value::Object(line)
 }
 
 /// The prompt event `klin radius` runs on: the counter, the session, the prompt's first line cut

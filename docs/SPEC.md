@@ -1558,6 +1558,22 @@ the same report and a line saying the window stays open until a person fixes,
 accepts or resets it.
 The `--json` form is available for a host that reads JSON.
 
+A stop that nothing blocks can end a turn, and on a turn with an
+intervention (11.5) it tells the person what happened in one `systemMessage`
+of 9.1. A green stop names the count the agent fixed: `klin: the agent took 2
+shortcuts this turn and fixed both after klin asked.` A red pass-through names
+what is still there: `klin: one shortcut is still there. klin stats --turn
+names it.` The line and the headline of 11.5 come from the same words. A turn
+with no intervention prints no such line, and a session start prints none.
+
+At most once every seven days, and only when the journal holds seven days,
+the week's headline of 11.5 follows the line, with the command that lists it:
+`This week, klin caught 9 shortcuts. The agent fixed 8 of them on its own. One
+is still there. klin stats lists them.` The notes the run left (8.2, 14), the
+turn-end line and the weekly line join in one message, in that order. The
+stop reads the journal for this only where the prompt's gate block is spent
+(16.3), and its journal line records which parts it printed (11.4).
+
 ### 9.6 The journal
 
 Every `klin gate --hook` stop MUST append one line, the record of 11.4, to
@@ -1726,6 +1742,12 @@ failure, or an error alike — plus what only the hook knew:
   `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
   window because no stamp resolved), `count-unwritable` (a build stamp that
   would not write, 14).
+- `told`, the parts of the `systemMessage` this stop printed for the person,
+  empty where it printed none: `note` (8.2, 14), `turn` and `weekly` (9.5). A
+  reader finds the last weekly line from it.
+- `window`, the window the stop judged, which the line carries even where its
+  run compared nothing against a base, so a reader knows which turn stamp
+  each stop judged against (11.5).
 - `config_hash`, a hash of the config file in force, so a later reader can
   tell a fix from a config change without a schema bump. Recorded and not
   read.
@@ -1772,6 +1794,16 @@ default. `--all` lifts the cap of five items per group. `--json` prints the
 episodes instead of the text. The command exits 0 whatever it finds: it
 reports and judges nothing.
 
+Two more scopes replace the window of days, and the three exclude each other:
+
+- `--turn` reads the lines since the current turn stamp moved: after the last
+  `reset` line, after the last green stop a `prompt` line followed, and after
+  the last stop whose `window` names another stamp. A reset starts the report
+  over, as it starts the judgment over (6.2).
+- `--session` reads the lines carrying the newest `session` id the journal
+  holds, and the `reset` lines among them, which carry none and still end the
+  episodes before them.
+
 The reader turns lines into episodes with no I/O and no clock of its own. An
 **intervention** is one gate's failure on a stop that spent the prompt's gate
 block, so one stop with three failing gates is one blocked stop and three
@@ -1793,7 +1825,8 @@ says the site went.
 Nothing in the reader names a check. A line for a gate the binary has no
 check for is read and printed like any other.
 
-`--json` prints one object: `window` `{days}`, `stops`, `skipped` (the lines
+`--json` prints one object: `window` `{scope, days}`, where `scope` is
+`turn`, `session` or `days` and `days` stands only beside `days`, `stops`, `skipped` (the lines
 of 11.4 the reader could not read or does not know), `unreadable` (how many distinct
 files the window's stops could not read or measure, counted once each), `counts` `{caught, fixed-next,
 fixed-later, reset, open, asked-once}`, and `episodes`, a list of `{gate,
@@ -1802,25 +1835,46 @@ how many further findings that gate left on that stop.
 
 The text has these line shapes:
 
-- the title, `klin, SCOPE in PLACE`, where SCOPE is `today`, `this week`,
-  `this month` or `the last N days`, and PLACE is `this repository` where the
-  repository has one worktree and `this worktree` where it has more
-- `klin caught N shortcuts.`, and `The agent fixed N of them before you saw
-  them.` beside it where any were, then `klin asked you about N shortcuts.`
-  and `One is still there.` or `N are still there.` on their own lines
+- the title, `klin, SCOPE in PLACE`, where SCOPE is `this turn`, `this
+  session`, `today`, `this week`, `this month` or `the last N days`, and PLACE
+  is `this repository` where the repository has one worktree and `this
+  worktree` where it has more
+- the headline, `klin caught N shortcuts.`, and beside it `The agent fixed N
+  of them on its own and asked you N times.` The fixed half reads `fixed it`,
+  `fixed both` or `fixed all N` where the agent fixed every one, and `asked
+  you once` for one. Each half is left out where its count is zero, so the
+  sentence can read `The agent asked you once.` The asked count is the items
+  of `You were asked`. Then `One is still there.` or `N are still there.` on
+  its own line
 - the groups `Still there`, `Fixed after klin asked`, `You were asked` and
   `You started the judgment over`, in that order. An open item carries its
   check's remedy on the line under it; every other group is headed by the day
   it happened on: `Today`, `Yesterday`, the weekday name inside seven days,
   then `YYYY-MM-DD`. The local offset is read from the system once per
   report, with UTC as the fallback.
+- `You were asked` holds one sentence per item, newest first: `klin asked
+  before X` for a guard `ask` and `klin refused X` for a guard `deny`, where X
+  names the reason tag of 11.4 (`an edit to klin.json`, `a command that named
+  klin.json`, `an edit to klin's own state`, `a command that named klin's own
+  state`, `klin init, which only you run`, `klin turn reset, which only you
+  run`, and `a tool call` for a tag the binary does not know); `you reset the
+  turn` for a `reset` line; and `test SITE deleted from FILE. The agent said
+  why.` for an `asked-once` episode
 - `and N more. klin stats --all` under a group the cap trimmed
+- `Last week: N shortcuts, N left open. This week is better.`, for a window of
+  days where the journal reaches back over the whole window before it, and
+  never otherwise. The word is `better`, `worse` or `the same`, judged on the
+  open count first and on the caught count after, and only this worktree's
+  journal is read. The two names follow the title: `Yesterday` and `Today`,
+  `Last week` and `This week`, `Last month` and `This month`, or `The N days
+  before` and `These N days`
 - `klin ran N times and took N seconds in total.`
 - `Measurement`, with what klin skipped or could not read under it, printed
   only where there was something. Green with half the tree unparsed is the
   one lie the report must not tell.
 - `klin caught no shortcuts. klin ran N times and asked nothing.` for a
-  window with no intervention, and `klin started watching today. Come back
+  window with no intervention, with `asked you N times` in place of `asked
+  nothing` where `You were asked` holds items, and `klin started watching today. Come back
   after a few turns.` for a journal with no line at all.
 
 No word of the agent's glossary appears in the text, and the report carries

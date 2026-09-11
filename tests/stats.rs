@@ -7,6 +7,12 @@ const DAY: u64 = 86_400;
 
 fn tree(lines: &[Value]) -> Tree {
     let tree = Tree::new();
+    journal(&tree, lines);
+    tree
+}
+
+/// Writes these lines as the tree's journal, in place of whatever it held.
+fn journal(tree: &Tree, lines: &[Value]) {
     let at = tree.state("journal.jsonl");
     if let Some(parent) = at.parent() {
         assert!(
@@ -20,7 +26,6 @@ fn tree(lines: &[Value]) -> Tree {
         .collect::<Vec<_>>()
         .concat();
     assert!(std::fs::write(&at, text).is_ok(), "the journal");
-    tree
 }
 
 fn now() -> u64 {
@@ -99,11 +104,7 @@ fn a_block_and_a_green_stop_after_it_read_as_one_shortcut_the_agent_fixed() {
         run.out
     );
     assert!(run.says("klin caught 1 shortcut."), "{}", run.out);
-    assert!(
-        run.says("The agent fixed 1 of them before you saw them."),
-        "{}",
-        run.out
-    );
+    assert!(run.says("The agent fixed it on its own."), "{}", run.out);
     assert!(!run.says("Still there"), "{}", run.out);
     assert!(run.says("Fixed after klin asked"), "{}", run.out);
     assert!(run.says("unwrap() in src/io.rs:12"), "{}", run.out);
@@ -158,7 +159,12 @@ fn a_deleted_test_klin_let_through_reads_as_an_ask_and_never_as_a_fix() {
     let run = tree.run(&["stats"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("You were asked"), "{}", run.out);
-    assert!(run.says("klin asked you about 1 shortcut."), "{}", run.out);
+    assert!(run.says("The agent asked you once."), "{}", run.out);
+    assert!(
+        run.says("test refund_twice deleted from tests/pay.rs. The agent said why."),
+        "{}",
+        run.out
+    );
     assert!(!run.says("Fixed after klin asked"), "{}", run.out);
 
     let json = tree.run(&["stats", "--json"]).json();
@@ -391,4 +397,283 @@ fn one_file_no_stop_could_read_is_counted_once_however_many_stops_saw_it() {
         run.out
     );
     assert_eq!(tree.run(&["stats", "--json"]).json()["unreadable"], 1);
+}
+
+// #156: the turn and the session, what the person was asked, last week, and the turn end.
+
+fn in_session(mut line: Value, session: &str) -> Value {
+    line["session"] = json!(session);
+    line
+}
+
+fn guard(ago: u64, decision: &str, reason: &str) -> Value {
+    json!({"schema": 1, "version": "0.0.0", "kind": "guard", "time": now() - ago,
+           "session": "s-1", "decision": decision, "reason": reason})
+}
+
+fn reset(ago: u64) -> Value {
+    json!({"schema": 1, "version": "0.0.0", "kind": "reset", "time": now() - ago,
+           "session": null, "prompt": 1})
+}
+
+#[test]
+fn session_reports_only_the_lines_carrying_the_newest_session_id() {
+    let earlier = finding("escapes", "src/old.rs", 3, "unwrap()", UNWRAP);
+    let newer = finding("stubs", "src/pay.rs", 41, "todo!()", "Do the work.");
+    let tree = tree(&[
+        in_session(stop(400, true, vec![earlier], vec![]), "s-1"),
+        in_session(stop(300, false, vec![], vec![]), "s-1"),
+        in_session(stop(200, true, vec![newer.clone()], vec![]), "s-2"),
+        reset(150),
+        in_session(stop(100, false, vec![newer], vec![]), "s-2"),
+    ]);
+
+    let run = tree.run(&["stats", "--session"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin, this session in this repository"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("klin caught 1 shortcut."), "{}", run.out);
+    assert!(run.says("todo!() in src/pay.rs:41"), "{}", run.out);
+    assert!(!run.says("src/old.rs"), "{}", run.out);
+    assert!(run.says("klin ran 2 times"), "{}", run.out);
+
+    let json = tree.run(&["stats", "--session", "--json"]).json();
+    assert_eq!(json["counts"]["reset"], 1, "{json}");
+}
+
+#[test]
+fn a_guard_deny_a_reset_and_a_deleted_test_each_read_as_a_sentence_under_you_were_asked() {
+    let tree = tree(&[
+        guard(500, "deny", "config-write"),
+        reset(400),
+        stop(
+            200,
+            true,
+            vec![finding(
+                "inventory",
+                "tests/pay.rs",
+                20,
+                "fn refund_twice() {",
+                "",
+            )],
+            vec![],
+        ),
+        stop(
+            100,
+            false,
+            vec![],
+            vec![
+                json!({"gate": "inventory", "outcome": "deleted", "file": "tests/pay.rs",
+                        "line": 20, "text": "the test site went in this window"}),
+            ],
+        ),
+    ]);
+
+    let run = tree.run(&["stats"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("You were asked"), "{}", run.out);
+    assert!(run.says("klin refused an edit to klin.json"), "{}", run.out);
+    assert!(run.says("you reset the turn"), "{}", run.out);
+    assert!(
+        run.says("test fn refund_twice() deleted from tests/pay.rs. The agent said why."),
+        "{}",
+        run.out
+    );
+    assert!(run.says("The agent asked you 3 times."), "{}", run.out);
+}
+
+#[test]
+fn a_journal_holding_two_full_weeks_compares_them_and_one_holding_one_does_not() {
+    let site = finding("escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let other = finding("stubs", "src/pay.rs", 41, "todo!()", "Do the work.");
+    let this_week = [
+        stop(2 * DAY, true, vec![site.clone()], vec![]),
+        stop(2 * DAY - 60, false, vec![], vec![]),
+    ];
+    let mut two = vec![
+        stop(15 * DAY, false, vec![], vec![]),
+        stop(10 * DAY, true, vec![site.clone(), other.clone()], vec![]),
+        stop(10 * DAY - 60, false, vec![other], vec![]),
+    ];
+    two.extend(this_week.iter().cloned());
+
+    let run = tree(&two).run(&["stats"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("Last week: 2 shortcuts, 1 left open. This week is better."),
+        "{}",
+        run.out
+    );
+
+    let one = tree(&this_week).run(&["stats"]);
+    assert_eq!(one.code, 0, "{}", one.out);
+    assert!(!one.says("Last week"), "{}", one.out);
+}
+
+const HOOKED: &str = r#"{
+  "project": "t",
+  "escapes": { "roots": ["src"], "languages": ["rust"] }
+}"#;
+const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
+                         "session_id": "s-1"}"#;
+const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true,
+                                "session_id": "s-1"}"#;
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1"}"#;
+const CLEAN: &str = "pub fn f(v: Option<i32>) -> i32 {\n    v.unwrap_or(0)\n}\n";
+
+fn hooked() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", HOOKED);
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree
+}
+
+fn an_escape() -> String {
+    format!(
+        "pub fn f(v: Option<i32>) -> i32 {{\n    v.{}()\n}}\n",
+        "unwrap"
+    )
+}
+
+fn hook(tree: &Tree, event: &str) -> harness::Run {
+    harness::feed(tree.root(), &["gate", "--hook"], event)
+}
+
+fn prompt(tree: &Tree) {
+    let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+/// A prompt, an escape, and the stop that blocks on it.
+fn blocked(tree: &Tree) {
+    prompt(tree);
+    tree.write("src/lib.rs", &an_escape());
+    let run = hook(tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+}
+
+/// What a stop hands the person through the host's `systemMessage`, or nothing.
+fn told(run: &harness::Run) -> String {
+    run.printed
+        .lines()
+        .find_map(|line| {
+            let held: Value = serde_json::from_str(line).ok()?;
+            held.get("systemMessage")?.as_str().map(str::to_string)
+        })
+        .unwrap_or_default()
+}
+
+#[test]
+fn turn_reports_the_stops_since_the_stamp_and_after_a_reset_only_the_stops_after_it() {
+    let tree = hooked();
+    blocked(&tree);
+
+    let before = tree.run(&["stats", "--turn"]);
+    assert_eq!(before.code, 0, "{}", before.out);
+    assert!(
+        before.says("klin, this turn in this repository"),
+        "{}",
+        before.out
+    );
+    assert!(before.says("klin caught 1 shortcut."), "{}", before.out);
+
+    let reset = tree.run(&["turn", "reset"]);
+    assert_eq!(reset.code, 0, "{}", reset.out);
+    let after = hook(&tree, A_SECOND_STOP);
+    assert_eq!(after.code, 0, "{}", after.out);
+
+    let turn = tree.run(&["stats", "--turn"]);
+    assert!(
+        turn.says("klin caught no shortcuts. klin ran once and asked nothing."),
+        "{}",
+        turn.out
+    );
+    let week = tree.run(&["stats", "--json"]).json();
+    assert_eq!(week["counts"]["reset"], 1, "{week}");
+}
+
+#[test]
+fn a_green_stop_after_a_block_tells_the_count_fixed_and_one_with_no_block_tells_nothing() {
+    let tree = hooked();
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+
+    let green = hook(&tree, A_SECOND_STOP);
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(
+        told(&green),
+        "klin: the agent took 1 shortcut this turn and fixed it after klin asked.",
+        "{}",
+        green.out
+    );
+
+    let quiet = hooked();
+    prompt(&quiet);
+    let run = hook(&quiet, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(told(&run), "", "{}", run.out);
+}
+
+#[test]
+fn a_red_pass_through_tells_the_person_one_shortcut_is_still_there() {
+    let tree = hooked();
+    blocked(&tree);
+
+    let through = hook(&tree, A_SECOND_STOP);
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert_eq!(
+        told(&through),
+        "klin: one shortcut is still there. klin stats --turn names it.",
+        "{}",
+        through.out
+    );
+}
+
+/// A journal whose last weekly line went out eight days ago, from a stop under a stamp long gone.
+fn weekly_eight_days_ago(tree: &Tree) {
+    let mut old = stop(8 * DAY, false, vec![], vec![]);
+    old["window"] = json!({"kind": "turn", "before": "an-old-stamp"});
+    old["told"] = json!(["turn", "weekly"]);
+    journal(tree, &[old]);
+}
+
+#[test]
+fn the_weekly_line_rides_the_first_turn_end_seven_days_after_the_last_and_not_the_next() {
+    let tree = hooked();
+    weekly_eight_days_ago(&tree);
+
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    let first = hook(&tree, A_SECOND_STOP);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(
+        told(&first).starts_with("klin: the agent took 1 shortcut this turn"),
+        "{}",
+        first.out
+    );
+    assert!(
+        told(&first).contains("This week, klin caught 1 shortcut."),
+        "{}",
+        first.out
+    );
+    assert!(
+        told(&first).ends_with("klin stats lists them."),
+        "{}",
+        first.out
+    );
+
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    let next = hook(&tree, A_SECOND_STOP);
+    assert_eq!(next.code, 0, "{}", next.out);
+    assert!(
+        told(&next).starts_with("klin: the agent took"),
+        "{}",
+        next.out
+    );
+    assert!(!told(&next).contains("This week"), "{}", next.out);
 }
