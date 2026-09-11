@@ -2088,20 +2088,45 @@ order of least friction for the person:
 Cross-compilation for Windows is not a target of this draft. The Codex hook
 system is not available on Windows either.
 
-### 19.2 Claude Code: the plugin is the whole install
+### 19.2 Claude Code and Codex CLI: the plugin is the whole install
 
-The plugin holds `hooks.json` with the three hooks of 9.2, one skill that
-tells the agent how to read a failure and what it may not touch, two slash
-commands that run the gates and list them, and a `bin/klin` wrapper.
+One plugin directory serves both hosts. It holds `hooks.json` with the three
+hooks of 9.2, one skill that tells the agent how to read a failure and what
+it may not touch, two slash commands that run the gates and list them, and a
+`bin/klin` wrapper. The manifest names the hooks file, so neither host has to
+find it by convention.
+
+Codex CLI reads the same manifest and the same `hooks.json` shape. It
+substitutes the literal `${CLAUDE_PLUGIN_ROOT}` into a plugin's hook line,
+and the hook lines do not rely on the variable being exported, because a
+shell default form such as `${CLAUDE_PLUGIN_ROOT:-}` was left unsubstituted
+and expanded to nothing. Claude Code exports the variable and reads the bare
+form the same way, so the hook lines name the plugin root in that form and
+no other, and the same lines run on both hosts. It finds the plugin through a marketplace
+file of its own at `.agents/plugins/marketplace.json`, which points at the
+same directory as Claude Code's `.claude-plugin/marketplace.json`. The
+install is `codex plugin marketplace add brajevicm/klin` and
+`codex plugin add klin@klin`, and Codex asks the person to review the
+plugin's hooks once before they run. The pre-tool matcher names
+`apply_patch` beside Claude Code's edit tools, so the guard reads Codex's
+edits. ADR 0030 records the decision. The Codex IDE extension loads no
+plugins, so it takes the route of 19.3.
 
 The wrapper is a shell script. It reads the version from the plugin manifest
 beside it, so the plugin carries one pin. On first run it downloads that
 release into `~/.cache/klin/bin/<version>/klin`, verifies the
 checksum, and executes it. That install removes every other version from the
 cache, so the cache holds one binary. Every later run executes the cached
-binary with no network call. When the download fails, the wrapper prints one line saying so
-and exits 0, so a turn is never blocked by a missing network. This is the one
-place klin touches the network, and it is install, not measurement.
+binary with no network call. When the download fails, the wrapper runs a
+`klin` that PATH resolves if there is one, and otherwise prints one line
+saying so and exits 0, so a turn is never blocked by a missing network.
+This is the one place klin touches the network, and it is install, not
+measurement.
+
+Every line the wrapper or a hook prints on exit 0 is a JSON object with a
+`systemMessage`, because that is the one shape both hosts show as a notice on
+every event. Codex rejects plain text on a Stop that exits 0, and Claude Code
+writes it to the debug log alone.
 
 Each hook line runs `${CLAUDE_PLUGIN_ROOT}/bin/klin` when that file is
 executable, and otherwise the `klin` that PATH resolves. Claude Code appends
@@ -2117,9 +2142,9 @@ once and lets the turn end.
 The hook lines resolve the binary before they run it, because a person may
 install the plugin where no binary resolves yet. With neither the wrapper nor
 a `klin` on PATH the session start, the prompt and the pre-tool events say
-nothing and block nothing. The Stop hook names the install command on stdout, and only
-where a `klin.json` resolves at the project root, so a tree that never opted
-in stays silent (ADR 0028). Nothing blocks, so the turn ends at that stop and
+nothing and block nothing. The Stop hook names the install command in a
+`systemMessage` on stdout, and only where a `klin.json` resolves at the
+project root, so a tree that never opted in stays silent (ADR 0028). Nothing blocks, so the turn ends at that stop and
 the line appears once.
 
 The wrapper reads two overrides, `KLIN_RELEASE_BASE_URL` and
@@ -2137,8 +2162,9 @@ binary is a NOTE per 5.2, not a failure.
 
 ### 19.3 Cursor and Codex: a hooks file in the repository
 
-Both hosts are shell-hook hosts (9.1), and neither install route carries a
-binary the way Claude Code's plugin does. So the binary comes from 19.1 and
+Both hosts are shell-hook hosts (9.1). Cursor has no plugin of klin's, and a
+Codex team may prefer hooks that are committed and covered by CODEOWNERS over
+the plugin of 19.2. On this route the binary comes from 19.1 and
 `klin init --hooks` writes the host file:
 
 - Cursor reads `.cursor/hooks.json` at the project root, and its blocking
@@ -2146,9 +2172,7 @@ binary the way Claude Code's plugin does. So the binary comes from 19.1 and
   `beforeShellExecution` and the file-edit events carry the guard.
   `beforeSubmitPrompt` carries `radius`. `stop` carries the gate.
 - Codex CLI reads a `hooks.json` with `PreToolUse`, `UserPromptSubmit` and
-  `Stop` at turn scope. The mapping is one to one with Claude Code's. Codex
-  enables plugins in `config.toml`, and klin ships no Codex plugin, so the
-  plugin check below does not apply to it.
+  `Stop` at turn scope. The mapping is one to one with Claude Code's.
 
 `init --hooks` detects a host by the presence of `.claude/`, `.cursor/` or
 `.codex/` at the root, or takes `--host NAME`. It adds klin's entries and
@@ -2167,12 +2191,16 @@ the file it would write, and names what runs them. Two things do: a plugin,
 and a user-level install klin wrote itself, which a host reads together with
 the tree's file. The plugin registers the
 same four events, so a second copy of them runs klin twice on every event: two
-gates race for one turn stamp, and the prompt counter of 6.2 moves by two. A
-host lists its enabled plugins in its settings files. For a write into a tree
-klin reads the tree's, the local ones beside them and the user's. For a write
-into the home directory it reads the user's alone, because a plugin one
-repository enables gates that repository and not the machine. A write into a
-tree is refused the same way by a user file that holds klin's entries.
+gates race for one turn stamp, and the prompt counter of 6.2 moves by two.
+Each host's adapter knows where that host lists its enabled plugins. Claude
+Code lists them under `enabledPlugins` in its settings files: for a write into
+a tree klin reads the tree's, the local ones beside them and the user's, and
+for a write into the home directory the user's alone, because a plugin one
+repository enables gates that repository and not the machine. Codex CLI lists
+them as `[plugins."klin@<marketplace>"]` tables in `config.toml`, on unless
+the table says `enabled = false`, and klin reads the tree's and the user's the
+same way. A write into a tree is refused the same way by a user file that
+holds klin's entries.
 
 klin replaces a host's settings file whole, through a neighbour and a rename,
 so a run that dies partway leaves the file it found. It follows a path that is

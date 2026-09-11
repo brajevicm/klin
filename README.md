@@ -41,6 +41,32 @@ use and caches it. No `init` step, and no binary to install by hand. Two
 commands come with it: `/klin:gate` runs the gates over the changed files,
 and `/klin:gates` lists every gate and what it measures.
 
+### Codex CLI
+
+The same plugin installs from the repository's marketplace:
+
+```sh
+codex plugin marketplace add brajevicm/klin
+codex plugin add klin@klin
+```
+
+Codex asks you to review the plugin's hooks once. After that the install is
+Claude Code's: the plugin carries the hooks, and its wrapper fetches the
+pinned release on first use. The Codex IDE extension loads no plugins.
+
+Codex rejects an `ask` on `PreToolUse`, so an ambiguous guard decision is a
+block (exit 2) with the reason on stderr. Allowed calls exit 0.
+
+A team that wants the hooks committed, where CODEOWNERS covers them, installs
+the binary as below and writes the project hook file:
+
+```sh
+klin init --hooks --host codex
+```
+
+`--global` writes the user-level file instead. Both write nothing while the
+plugin is enabled, so klin never runs twice on an event.
+
 ### Every other host
 
 ```sh
@@ -49,16 +75,6 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases
 
 It verifies a checksum and puts `klin` in `~/.local/bin`.
 [19.1](docs/SPEC.md) pins a version or moves that directory.
-
-For Codex CLI, write the project hooks after installing the binary:
-
-```sh
-klin init --hooks --host codex
-```
-
-Use `--global` to install them once, in the user-level Codex hooks file. Codex CLI
-rejects an `ask` result on `PreToolUse`, so klin returns an ambiguous guard
-decision as a block (exit 2) with the reason on stderr. Allowed calls exit 0.
 
 ### Update
 

@@ -1,0 +1,20 @@
+{
+  "name": "klin",
+  "interface": {
+    "displayName": "klin"
+  },
+  "plugins": [
+    {
+      "name": "klin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/claude-code"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Developer Tools",
+      "description": "Gate every stop against the base commit. The hooks call klin, and bin/klin fetches the pinned release on first run."
+    }
+  ]
+}

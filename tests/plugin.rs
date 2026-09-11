@@ -11,9 +11,12 @@ const WRAPPER: &str = "plugins/claude-code/bin/klin";
 const HOOKS: &str = "plugins/claude-code/hooks/hooks.json";
 const MANIFEST: &str = "plugins/claude-code/.claude-plugin/plugin.json";
 const MARKET: &str = ".claude-plugin/marketplace.json";
+const CODEX_MARKET: &str = ".agents/plugins/marketplace.json";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
 const SHELL: &str = "/bin/sh";
+/// The tools the wrapper needs and nothing a person installed.
+const SYSTEM_PATH: &str = "/usr/bin:/bin";
 
 struct Ran {
     code: i32,
@@ -36,6 +39,33 @@ fn the_hooks_carry_the_three_commands() {
     assert!(hook("Stop").ends_with("\"$k\" gate --hook --changed"));
     assert!(matcher.contains("Edit"), "{matcher}");
     assert!(matcher.contains("Bash"), "{matcher}");
+    assert!(matcher.contains("apply_patch"), "{matcher}");
+}
+
+/// Codex CLI reads the same manifest, and is told where the hooks are rather than left to look.
+#[test]
+fn the_manifest_names_the_hooks_file() {
+    let named = json(MANIFEST)["hooks"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(at(&format!("{PLUGIN}/{named}")).is_file(), "{named}");
+}
+
+#[test]
+fn the_codex_marketplace_entry_points_at_the_same_plugin() {
+    let entry = json(CODEX_MARKET)["plugins"][0].clone();
+    let path = entry["source"]["path"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+
+    assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
+    assert_eq!(
+        entry["source"]["source"].as_str().unwrap_or_default(),
+        "local"
+    );
+    assert_eq!(at(&path), at(PLUGIN), "{path}");
 }
 
 #[test]
@@ -79,7 +109,11 @@ fn a_wrapper_without_its_manifest_says_so_and_lets_the_turn_end() {
     );
 
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.printed.contains("names no version"), "{}", run.out);
+    assert!(
+        notice(&run.printed).contains("names no version"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -128,7 +162,7 @@ fn a_checksum_that_does_not_match_installs_nothing_and_lets_the_turn_end() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.printed.contains("could not be installed"),
+        notice(&run.printed).contains("could not be installed"),
         "{}",
         run.out
     );
@@ -145,13 +179,15 @@ fn a_download_that_fails_prints_one_line_and_lets_the_turn_end() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out.lines().count(), 1, "{}", run.out);
     assert!(
-        run.printed.contains("could not be installed"),
+        notice(&run.printed).contains("could not be installed"),
         "{}",
         run.out
     );
     assert_eq!(held(&tree), "", "the scratch directory stayed behind");
 }
 
+/// The install hint is a `systemMessage`, the one shape both hosts show on a Stop that exits 0.
+/// Codex rejects plain text there, and Claude Code writes it to the debug log alone.
 #[test]
 fn the_stop_says_how_to_install_klin_when_it_is_on_no_path() {
     let tree = Tree::bare();
@@ -160,7 +196,34 @@ fn the_stop_says_how_to_install_klin_when_it_is_on_no_path() {
     let run = without_klin(&tree);
 
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.printed.contains("klin-installer.sh"), "{}", run.out);
+    let said = notice(&run.printed);
+    assert!(said.contains("klin-installer.sh"), "{}", run.out);
+}
+
+/// Codex substitutes the literal `${CLAUDE_PLUGIN_ROOT}` into a plugin's hook line, so a shell
+/// default such as `${CLAUDE_PLUGIN_ROOT:-}` is left as it is and expands to nothing. Claude
+/// Code exports the variable, and reads the bare form the same way.
+#[test]
+fn the_hook_lines_name_the_plugin_root_in_the_form_both_hosts_substitute() {
+    for event in ["SessionStart", "UserPromptSubmit", "PreToolUse", "Stop"] {
+        let line = hook(event);
+        assert!(
+            line.contains("${CLAUDE_PLUGIN_ROOT}/bin/klin"),
+            "{event}: {line}"
+        );
+        assert!(!line.contains("CLAUDE_PLUGIN_ROOT:-"), "{event}: {line}");
+    }
+}
+
+/// The `systemMessage` of a JSON notice on stdout, or a panic naming what was printed instead.
+fn notice(printed: &str) -> String {
+    let Ok(held) = serde_json::from_str::<serde_json::Value>(printed.trim()) else {
+        panic!("stdout is not a JSON notice: {printed}")
+    };
+    held["systemMessage"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
 }
 
 /// A tree that never opted in hears nothing, even from a host whose hooks are installed for
@@ -173,6 +236,35 @@ fn the_stop_says_nothing_in_a_tree_that_holds_no_configuration() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out, "", "the stop spoke in a tree that did not opt in");
+}
+
+/// A machine with no network, or a release it cannot reach, still has whatever a person
+/// installed by another route. The wrapper runs that before it gives up. Spec 19.2.
+#[test]
+fn a_download_that_fails_runs_a_klin_on_path_instead() {
+    let tree = Tree::bare();
+    let on_path = tree.write("bin/klin", "#!/bin/sh\necho the-path-binary\n");
+    executable(&on_path);
+    let base = format!("file://{}", tree.path("release").display());
+    let path = format!(
+        "{}:{}",
+        tree.path("bin").display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+
+    let run = ran(
+        &at(WRAPPER).display().to_string(),
+        &["--version"],
+        tree.root(),
+        &[
+            ("PATH", &path),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &tree.path("cache").display().to_string()),
+        ],
+    );
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.printed.trim(), "the-path-binary", "{}", run.out);
 }
 
 /// A plugin update pins a new version, and the fetch that installs it removes the ones before
@@ -263,6 +355,8 @@ fn release(tree: &Tree, says: &str) -> PathBuf {
     archive
 }
 
+/// The wrapper run against the tree's own release, on a PATH that resolves no `klin`, so the
+/// fetch is the only route and a binary a person installed does not stand in for it.
 fn fetch(tree: &Tree, args: &[&str]) -> Ran {
     let base = format!("file://{}", tree.path("release").display());
     let cache = tree.path("cache").display().to_string();
@@ -270,7 +364,11 @@ fn fetch(tree: &Tree, args: &[&str]) -> Ran {
         &at(WRAPPER).display().to_string(),
         args,
         tree.root(),
-        &[("KLIN_RELEASE_BASE_URL", &base), ("KLIN_CACHE_DIR", &cache)],
+        &[
+            ("PATH", SYSTEM_PATH),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &cache),
+        ],
     )
 }
 

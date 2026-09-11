@@ -8,5 +8,6 @@
   "homepage": "https://github.com/brajevicm/klin",
   "repository": "https://github.com/brajevicm/klin",
   "license": "Apache-2.0",
+  "hooks": "./hooks/hooks.json",
   "keywords": ["quality", "ratchet", "gate", "complexity", "hooks"]
 }
