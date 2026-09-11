@@ -1,0 +1,5 @@
+# This repository runs the klin it builds, through .codex/hooks.json, the way
+# .claude/settings.json does for Claude Code. The published plugin would run a
+# second copy of the same hooks here, so it is off for this project.
+[plugins."klin@klin"]
+enabled = false
