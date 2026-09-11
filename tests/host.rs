@@ -31,7 +31,7 @@ const AN_AMBIGUOUS_COMMAND: &str = r#"{
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 /// Claude Code sends `permission_mode` on most events, and so does Codex. Only `turn_id` is Codex's.
-const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"python3 x.py klin.json"}}"#;
+const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm klin.json"}}"#;
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
 const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":true}"#;
 
@@ -158,7 +158,6 @@ fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     for headers in [
         "*** Update File: src/main.rs\n*** Update File: klin.json",
         "*** Update File: a.json\n*** Move to: klin.json",
-        "*** Add File: sub/klin.json",
     ] {
         let denied = codex(
             "apply_patch",

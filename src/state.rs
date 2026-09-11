@@ -13,9 +13,8 @@ pub const REPOSITORY: &str = "repository";
 pub const CACHE: &str = "cache";
 
 pub fn dir(root: &Path) -> Option<PathBuf> {
-    let common = git(root, "--git-common-dir")?;
     match std::env::var_os(OVERRIDE) {
-        Some(at) => Some(PathBuf::from(at).join(key(&common, root))),
+        Some(at) => Some(PathBuf::from(at).join(key(&git(root, "--git-common-dir")?, root))),
         None => Some(git(root, "--absolute-git-dir")?.join(DIR)),
     }
 }

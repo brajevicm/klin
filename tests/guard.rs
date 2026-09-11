@@ -1,27 +1,37 @@
 mod harness;
 
-use harness::{Run, Tree, feed};
+use harness::{Run, Tree, feed, feed_with};
 
 const ASK: &str = r#""permissionDecision":"ask""#;
 
-fn guard(event: &str) -> Run {
-    feed(Tree::new().root(), &["guard"], event)
+fn guard(tree: &Tree, event: &str) -> Run {
+    feed(tree.root(), &["guard"], event)
+}
+
+fn bash_in(tree: &Tree, command: &str) -> Run {
+    guard(
+        tree,
+        &format!(r#"{{"tool_name": "Bash", "tool_input": {{"command": {command:?}}}}}"#),
+    )
 }
 
 fn bash(command: &str) -> Run {
-    guard(&format!(
-        r#"{{"tool_name": "Bash", "tool_input": {{"command": {command:?}}}}}"#
-    ))
+    bash_in(&Tree::new(), command)
 }
 
-fn tool(name: &str, key: &str, file: &str) -> Run {
-    guard(&format!(
-        r#"{{"tool_name": {name:?}, "tool_input": {{{key:?}: {file:?}}}}}"#
-    ))
+fn tool_in(tree: &Tree, name: &str, key: &str, file: &str) -> Run {
+    guard(
+        tree,
+        &format!(r#"{{"tool_name": {name:?}, "tool_input": {{{key:?}: {file:?}}}}}"#),
+    )
+}
+
+fn edit_in(tree: &Tree, name: &str, file: &str) -> Run {
+    tool_in(tree, name, "file_path", file)
 }
 
 fn edit(name: &str, file: &str) -> Run {
-    tool(name, "file_path", file)
+    edit_in(&Tree::new(), name, file)
 }
 
 #[track_caller]
@@ -46,11 +56,31 @@ fn allowed(run: &Run, what: &str) {
 
 #[test]
 fn refuses_an_edit_of_the_configuration() {
-    for (name, file) in [("Edit", "/repo/klin.json"), ("Write", "klin.json")] {
-        denied(&edit(name, file), &format!("{name} {file}"));
+    let tree = Tree::new();
+    for (name, file) in [
+        ("Edit", tree.at("klin.json")),
+        ("Write", "klin.json".into()),
+    ] {
+        denied(&edit_in(&tree, name, &file), &format!("{name} {file}"));
     }
-    let run = tool("NotebookEdit", "notebook_path", "/repo/klin.json");
+    let run = tool_in(&tree, "NotebookEdit", "notebook_path", "klin.json");
     assert_eq!(run.code, 2, "{}", run.out);
+}
+
+/// The guard resolves the path it is given, so a configuration of another project inside the
+/// tree is an ordinary file. ADR 0033.
+#[test]
+fn allows_an_edit_of_another_projects_configuration() {
+    let tree = Tree::new();
+    for file in [
+        "sub/klin.json",
+        "vendor/a/klin.json",
+        "/elsewhere/klin.json",
+    ] {
+        allowed(&edit_in(&tree, "Write", file), file);
+        let command = format!("rm {file}");
+        allowed(&bash_in(&tree, &command), &command);
+    }
 }
 
 #[test]
@@ -59,23 +89,9 @@ fn refuses_a_redirect_onto_the_configuration() {
         "echo '{}' > klin.json",
         "echo '[]' >>klin.json",
         "awk '{ print }' notes.txt > klin.json",
-        "echo '{}' > *",
+        "echo '{}' > ./klin.json",
     ] {
         denied(&bash(command), command);
-    }
-}
-
-/// A restore of one guarded file is a write klin cannot tell from a mention, so it asks.
-#[test]
-fn asks_about_git_putting_back_old_content_of_a_guarded_file() {
-    for (command, quoted) in [
-        ("git checkout -- klin.json", "klin.json"),
-        (
-            "git -C /repo restore --source=HEAD~1 klin.json",
-            "klin.json",
-        ),
-    ] {
-        asked(&bash(command), quoted, command);
     }
 }
 
@@ -94,31 +110,80 @@ fn refuses_the_commands_only_a_person_runs() {
 
 #[test]
 fn the_refusal_names_what_it_protects() {
-    let run = edit("Edit", "/repo/klin.json");
+    let run = edit("Edit", "klin.json");
     assert!(run.says("klin.json"), "{}", run.out);
     assert!(run.says("reviewed commit"), "{}", run.out);
     assert!(!run.says("hooks"), "{}", run.out);
     assert!(!run.says("baseline"), "{}", run.out);
 }
 
-/// Outside the reader list klin cannot tell a write from a mention, so a person decides.
+/// Every argument of one of these is written, so a guarded path among them is a write klin can
+/// prove. ADR 0033.
 #[test]
-fn asks_about_a_command_outside_the_reader_list_that_names_a_guarded_path() {
-    for (command, quoted) in [
-        ("cd /x && sed -i '' 's/8/80/' klin.json", "klin.json"),
-        ("cp /tmp/loose.json klin.json", "klin.json"),
-        ("rm klin.json", "klin.json"),
-        ("mv klin.json klin.json.bak", "klin.json"),
-        ("truncate -s 0 klin.json", "klin.json"),
-        ("tee klin.json < /tmp/loose.json", "klin.json"),
-        ("echo klin.json", "klin.json"),
-        ("perl -i -pe 's/a/b/' klin.json", "klin.json"),
-        ("ed klin.json", "klin.json"),
-        ("patch -p1 klin.json < fix.diff", "klin.json"),
-        ("git apply klin.json", "klin.json"),
-        ("git stash pop klin.json", "klin.json"),
+fn asks_about_a_command_that_writes_every_argument_it_takes() {
+    let tree = Tree::new();
+    for command in [
+        "rm klin.json",
+        "rmdir klin.json",
+        "unlink klin.json",
+        "shred klin.json",
+        "mv klin.json klin.json.bak",
+        "truncate -s 0 klin.json",
+        "tee klin.json < /tmp/loose.json",
+        "sed -i '' 's/8/80/' klin.json",
+        "perl -i -pe 's/a/b/' klin.json",
     ] {
-        asked(&bash(command), quoted, command);
+        asked(&bash_in(&tree, command), "klin.json", command);
+    }
+    asked(
+        &bash_in(&tree, &format!("rm {}", tree.at("klin.json"))),
+        &tree.at("klin.json"),
+        "an absolute path",
+    );
+    asked(&bash_in(&tree, "rm -f ./klin.json"), "./klin.json", "a dot");
+}
+
+/// `cp` and `install` read their first argument, so a backup of klin's own state through one of
+/// them is not a write. ADR 0033.
+#[test]
+fn allows_a_command_that_reads_the_argument_it_is_given() {
+    for command in [
+        "cp .git/klin/turn /tmp/backup",
+        "cp /tmp/loose.json klin.json",
+        "install -m 644 /tmp/loose.json klin.json",
+        "ed klin.json",
+        "patch -p1 klin.json < fix.diff",
+        "git apply klin.json",
+        "git stash pop klin.json",
+        "git checkout -- klin.json",
+        "git restore --source=HEAD~1 klin.json",
+        "find . -delete",
+        "sed -n 2p klin.json",
+        "perl -pe 's/a/b/' klin.json",
+    ] {
+        allowed(&bash(command), command);
+    }
+}
+
+/// The guard answers only where it can prove a write, so a command that merely names the
+/// configuration is ordinary work. ADR 0033.
+#[test]
+fn allows_a_command_that_only_names_the_configuration() {
+    for command in [
+        "echo klin.json",
+        "gh issue create --title 'the klin.json shape' --body 'see klin.json'",
+        "cat klin.json",
+        "cat klin.json > /tmp/copy.json",
+        "grep klin.json src/",
+        "python3 x.py klin.json",
+        "git add klin.json",
+        "git commit klin.json -m 'wip'",
+        "git commit -am 'fix the parser that reads klin.json'",
+        "cargo test > /tmp/out.txt",
+        "klin doc-size --quiet",
+        "klin escapes --write-baseline",
+    ] {
+        allowed(&bash(command), command);
     }
 }
 
@@ -131,220 +196,50 @@ fn allows_the_plumbing_that_reads_a_stamp() {
         "du -sh .git/klin",
         "find .git/klin -type f",
         "cat .git/klin/turn",
+        "git update-ref -d refs/worktree/klin/turn",
     ] {
         allowed(&bash(command), command);
     }
 }
 
-/// A restore names no file it would overwrite, so klin cannot tell one that reaches the
-/// configuration from a branch a person asked for. It is ordinary work, and it is allowed.
+/// A token holding a wildcard proves nothing about the file it expands to, so the guard
+/// matches no path against it. ADR 0033.
 #[test]
-fn allows_git_that_leaves_the_guarded_files_alone() {
+fn allows_a_token_that_holds_a_wildcard() {
     for command in [
-        "git checkout feature-branch",
-        "git checkout -b klin-work",
-        "git restore src/main.rs",
-        "git log -- klin.json",
-        "git checkout .",
-        "git restore .",
-        "git checkout main -- src/",
-        "git checkout feature/",
-        r#"git checkout "a|b" ."#,
-    ] {
-        allowed(&bash(command), command);
-    }
-}
-
-#[test]
-fn allows_a_command_naming_a_file_that_used_to_be_a_baseline() {
-    for command in [
-        "rm quality/escapes-baseline.json",
-        "git rm quality/complexity-baseline.json",
-        "klin escapes --write-baseline",
-    ] {
-        allowed(&bash(command), command);
-    }
-}
-
-#[test]
-fn allows_a_command_that_only_reads_what_is_guarded() {
-    for command in [
-        "klin doc-size --quiet",
-        "cat klin.json",
-        "cat klin.json > /tmp/copy.json",
-        "git diff klin/",
-        "grep klin.json src/",
-        "rg klin.json",
-        "grep -rn baseline src/",
-        "cargo test > /tmp/out.txt",
-    ] {
-        allowed(&bash(command), command);
-    }
-}
-
-#[test]
-fn allows_git_add_and_commit_naming_the_config() {
-    for command in ["git add klin.json", "git commit klin.json -m 'wip'"] {
-        allowed(&bash(command), command);
-    }
-}
-
-#[test]
-fn allows_a_commit_message_that_mentions_the_config() {
-    allowed(
-        &bash("git commit -am 'fix the parser that reads klin.json'"),
-        "a message",
-    );
-}
-
-#[test]
-fn asks_about_an_interpreter_a_reader_reaches_through_a_command_substitution() {
-    for command in [
-        "cat \"$(python3 -c \"open('klin.json','w')\")\"",
-        "wc -l `perl -i -pe 's/a/b/' klin.json`",
-    ] {
-        asked(&bash(command), "klin.json", command);
-    }
-}
-
-#[test]
-fn asks_about_a_glob_that_matches_a_guarded_name() {
-    for (command, quoted) in [
-        ("perl -i -pe 's/a/b/' klin.*", "klin.*"),
-        ("rm klin.js*n", "klin.js*n"),
-        ("rm *.json", "*.json"),
-        ("rm ?lin.json", "?lin.json"),
-        ("rm klin.jso[n]", "klin.jso[n]"),
-    ] {
-        asked(&bash(command), quoted, command);
-    }
-}
-
-/// A `*` with nothing before it names no guarded file, so it must not stand for one.
-#[test]
-fn allows_a_glob_with_nothing_before_the_star() {
-    for command in [
-        "ffmpeg *.rs out",
-        "ffmpeg src/a.rs out",
+        "rm *.json",
+        "rm klin.js*n",
+        "rm ?lin.json",
+        "rm klin.jso[n]",
+        "rm *",
+        "echo '{}' > *",
+        "ffmpeg ** out",
         "find src tests -name '*.rs' | sort",
     ] {
         allowed(&bash(command), command);
     }
 }
 
-/// A token of only wildcards names no file, so Markdown bold in a command is not the config.
+/// Shell the guard cannot read in full leaves every path in the command unproven. ADR 0033.
 #[test]
-fn allows_a_token_of_only_wildcards() {
-    for command in [
-        "ffmpeg ** out",
-        "echo **What changed:** > /tmp/notes.md",
-        "cat > /tmp/notes.md <<EOF\n**What changed:**",
-    ] {
-        allowed(&bash(command), command);
-    }
-}
-
-/// `rm *` in the tree root deletes the configuration, and the guard lets it pass. Issue #119
-/// took that trade so that Markdown bold in a command is not refused.
-#[test]
-fn allows_a_bare_star_that_would_delete_the_configuration() {
-    allowed(&bash("rm *"), "rm *");
-}
-
-/// A quoted separator is a character in an argument, not the end of a command, so the reader
-/// at the front of the command keeps its exemption.
-#[test]
-fn allows_a_reader_whose_argument_quotes_a_separator() {
-    for command in [
-        r#"grep -rn "aaa\|bbb" --include=*.rs ."#,
-        r#"grep -rn "aaa" --include=*.rs ."#,
-        r#"grep -rn "aaa\|bbb" src"#,
-        "grep -rn 'a;b' --include=*.rs .",
-        r#"cat "a|klin.json""#,
-        "cat 'a;klin.json'",
-    ] {
-        allowed(&bash(command), command);
-    }
-}
-
-/// An unbalanced quote says nothing about where an argument ends, so the guard falls back to
-/// splitting on every separator rather than trusting the quote.
-#[test]
-fn asks_about_a_left_open_quote_that_hides_a_separator() {
+fn allows_a_command_it_cannot_read_in_full() {
     for command in [
         "cat \"unclosed | rm klin.json",
         "cat 'unclosed ; rm klin.json",
-    ] {
-        let run = bash(command);
-        assert_eq!(run.code, 0, "{command}: {}", run.out);
-        assert!(run.says(ASK), "{command}: {}", run.out);
-    }
-}
-
-#[test]
-fn allows_a_reader_that_carries_a_global_git_flag() {
-    for command in [
-        "git -C sub add klin.json",
-        "git -c core.pager=cat log klin.json",
-        "git --git-dir=/repo/.git diff klin.json",
+        "rm $(echo klin).json",
+        "rm `echo klin.json`",
+        "rm ${CONFIG}",
+        "rm klin.json\\",
+        "cat <<'EOF' > klin.json\nnothing to see\nEOF",
+        "cd /elsewhere && rm klin.json",
+        "cd sub; rm klin.json",
     ] {
         allowed(&bash(command), command);
     }
 }
 
-#[test]
-fn allows_a_line_continued_reader_command_that_names_the_config() {
-    allowed(
-        &bash("git commit \\\n  -m 'mentions klin.json' \\\n  -m 'a second paragraph'"),
-        "a continued command",
-    );
-}
-
-/// A heredoc body is data, and a redirect beside it is not.
-#[test]
-fn a_heredoc_body_is_data_and_the_redirect_beside_it_is_not() {
-    for command in [
-        "cat <<'EOF' > /tmp/notes\nsee klin.json for details\nEOF",
-        "cat > /tmp/notes <<'EOF'\nsee klin.json for details\nEOF",
-        "python3 - <<'EOF'\nopen('klin.json', 'w').write('{}')\nEOF",
-        "cat <<-EOF > /tmp/notes\n\tklin.json\n\tEOF",
-    ] {
-        allowed(&bash(command), command);
-    }
-    denied(
-        &bash("cat <<'EOF' > klin.json\nnothing to see\nEOF"),
-        "a redirect beside a heredoc",
-    );
-    asked(
-        &bash("cat <<'EOF' > /tmp/notes\nklin.json\nEOF\nrm klin.json"),
-        "klin.json",
-        "a command after the terminator",
-    );
-    asked(
-        &bash("echo 'a<<b'\nrm klin.json"),
-        "klin.json",
-        "a `<<` that opens no body",
-    );
-    asked(
-        &bash("echo \"a << EOF\"\nrm klin.json\nEOF"),
-        "klin.json",
-        "a quoted `<<`",
-    );
-}
-
-/// `find` writes with more primaries than it deletes with, and each one takes it off the
-/// reader list.
-#[test]
-fn asks_about_find_writing_a_guarded_file() {
-    for (command, quoted) in [
-        ("find . -fprint klin.json", "klin.json"),
-        ("find . -name x -fprintf klin.json '%p'", "klin.json"),
-    ] {
-        asked(&bash(command), quoted, command);
-    }
-}
-
-/// A person's command is the same command behind an assignment or a runner.
+/// A `cd` and a command substitution suppress path matching alone. klin's own subcommands name
+/// no path, so their refusal stands behind either. ADR 0033.
 #[test]
 fn refuses_a_persons_command_behind_a_prefix() {
     for command in [
@@ -355,6 +250,7 @@ fn refuses_a_persons_command_behind_a_prefix() {
         "env klin turn reset",
         "npx klin init",
         "sudo klin init",
+        "cd sub && klin turn reset",
     ] {
         denied(&bash(command), command);
     }
@@ -363,9 +259,9 @@ fn refuses_a_persons_command_behind_a_prefix() {
 #[test]
 fn allows_a_tool_call_that_leaves_the_guarded_files_alone() {
     for (name, file) in [
-        ("Edit", "/repo/src/klin_of_life.rs"),
-        ("Write", "/repo/docs/klin.md"),
-        ("Read", "/repo/klin.json"),
+        ("Edit", "src/klin_of_life.rs"),
+        ("Write", "docs/klin.md"),
+        ("Read", "klin.json"),
     ] {
         allowed(&edit(name, file), &format!("{name} {file}"));
     }
@@ -373,6 +269,7 @@ fn allows_a_tool_call_that_leaves_the_guarded_files_alone() {
 
 #[test]
 fn an_event_it_cannot_read_is_allowed_through() {
+    let tree = Tree::new();
     for event in [
         "not json",
         "",
@@ -381,7 +278,7 @@ fn an_event_it_cannot_read_is_allowed_through() {
         r#"{"tool_name": "Bash", "tool_input": {"command": null}}"#,
         r#"{"tool_input": {"pattern": "klin.json"}}"#,
     ] {
-        let run = guard(event);
+        let run = guard(&tree, event);
         assert_eq!(run.code, 0, "{event}: {}", run.out);
     }
 }
@@ -391,173 +288,177 @@ fn it_never_reads_the_configuration() {
     let tree = Tree::new();
     tree.write("klin.json", "{not json at all");
 
-    let run = feed(
-        tree.root(),
-        &["guard"],
-        r#"{"tool_name": "Edit", "tool_input": {"file_path": "src/main.rs"}}"#,
-    );
+    let run = edit_in(&tree, "Edit", "src/main.rs");
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out, "", "{}", run.out);
 
-    let refused = feed(
-        tree.root(),
-        &["guard"],
-        r#"{"tool_name": "Edit", "tool_input": {"file_path": "klin.json"}}"#,
-    );
+    let refused = edit_in(&tree, "Edit", "klin.json");
     assert_eq!(refused.code, 2, "{}", refused.out);
     assert!(refused.says("refused"), "{}", refused.out);
     assert!(!refused.says("could not be read"), "{}", refused.out);
 }
 
-/// A hook file, the code owners, a lint, test or coverage configuration and a workflow are
-/// ordinary files. klin's own state left this list with ADR 0032.
-#[test]
-fn allows_an_edit_of_everything_the_configuration_is_not() {
-    for file in [
-        ".claude/settings.json",
-        "/Users/someone/.claude/settings.json",
-        ".cursor/hooks.json",
-        ".codex/config.toml",
-        "CODEOWNERS",
-        ".github/CODEOWNERS",
-        ".eslintrc.json",
-        "eslint.config.mjs",
-        "pytest.ini",
-        "jest.config.ts",
-        ".coveragerc",
-        "codecov.yml",
-        ".github/workflows/ci.yml",
-        "pyproject.toml",
-    ] {
-        allowed(&edit("Write", file), file);
-        let command = format!("rm {file}");
-        allowed(&bash(&command), &command);
-    }
-}
-
-/// klin's own state takes the three decisions the configuration takes: a redirect onto it is a
-/// deny, and a command that only names it is an ask. The refs are not the state directory and
-/// stay ordinary. ADR 0032.
+/// klin's own state takes the three decisions the configuration takes. ADR 0032, ADR 0033.
 #[test]
 fn a_command_that_writes_klins_own_state_is_denied_or_asked_about() {
+    let tree = Tree::new();
     denied(
-        &bash("echo x > .git/klin/turn"),
+        &bash_in(&tree, "echo x > .git/klin/turn"),
         "a redirect onto the stamp",
     );
     for (command, named) in [
         ("rm -rf .git/klin", ".git/klin"),
-        ("find .git/klin -delete", ".git/klin"),
-        ("rm -rf .git/worktrees/wt1/klin", ".git/worktrees/wt1/klin"),
+        ("rm .git/klin/turn", ".git/klin/turn"),
+        ("sed -i s/red/green/ .git/klin/turn", ".git/klin/turn"),
     ] {
-        asked(&bash(command), named, command);
-    }
-    allowed(
-        &bash("git update-ref -d refs/worktree/klin/turn"),
-        "the turn ref, which is not the state directory",
-    );
-}
-
-/// A command substitution starts a fresh quoting context, so the `<<` inside one opens a
-/// heredoc even though a double quote wraps it. Without this the body is read as commands.
-#[test]
-fn a_heredoc_that_opens_inside_a_command_substitution_still_holds_data() {
-    for command in [
-        "gh issue create --body \"$(cat <<'EOF'\nsee klin.json for the shape\nEOF\n)\"",
-        "gh issue create --body \"`cat <<'EOF'\nsee klin.json for the shape\nEOF\n`\"",
-    ] {
-        allowed(&bash(command), command);
-    }
-    asked(
-        &bash("echo 'a $(cat <<EOF'\nrm klin.json\nEOF"),
-        "klin.json",
-        "a single-quoted substitution opens no body",
-    );
-    asked(
-        &bash("echo \"$(date) << EOF\"\nrm klin.json\nEOF"),
-        "klin.json",
-        "a `<<` back inside the double quote the substitution closed",
-    );
-    asked(
-        &bash("gh issue create klin.json --body \"$(cat <<'EOF'\nnotes\nEOF\n)\""),
-        "klin.json",
-        "a guarded name in the command words beside the heredoc",
-    );
-}
-
-/// A command substitution is a command of its own, so the words after its closing parenthesis
-/// belong to the command that owns them, and a reader inside it lends them no exemption.
-#[test]
-fn asks_about_a_guarded_name_after_a_command_substitution_closes() {
-    for command in [
-        "gh issue create --body \"$(cat notes.md)\" klin.json",
-        "gh issue create --body \"`cat notes.md`\" klin.json",
-        "gh issue create --body \"$(cat <<'EOF'\nnotes\nEOF\n)\" klin.json",
-    ] {
-        asked(&bash(command), "klin.json", command);
+        asked(&bash_in(&tree, command), named, command);
     }
 }
 
-/// The words after the substitution rejoin the outer command, so a reader of its own keeps the
-/// exemption it always had.
-#[test]
-fn allows_a_reader_that_names_the_config_beside_a_substitution() {
-    for command in [
-        "grep -rn \"$(cat pattern.txt)\" klin.json",
-        "cat \"$(basename x)\" klin.json",
-        "git log \"$(git rev-parse HEAD)\" -- klin.json",
-    ] {
-        allowed(&bash(command), command);
-    }
-}
-
-/// ADR 0032: klin's own state is guarded the way the configuration is. Spec 9.4.
 #[test]
 fn an_edit_to_klins_own_state_is_refused_and_names_the_command_a_person_runs() {
-    denied(&edit("Write", ".git/klin/turn"), "a stamp written by hand");
+    let tree = Tree::new();
     denied(
-        &edit("Edit", "/repo/.git/klin/build-blocked"),
+        &edit_in(&tree, "Write", ".git/klin/turn"),
+        "a stamp written by hand",
+    );
+    denied(
+        &edit_in(&tree, "Edit", &tree.at(".git/klin/build-blocked")),
         "an absolute state path",
     );
-    denied(
-        &edit("Write", "/repo/.git/worktrees/second/klin/turn"),
-        "a worktree's own state",
-    );
-    denied(
-        &bash("echo green > .git/klin/turn"),
-        "a redirect onto the stamp",
-    );
     assert!(
-        edit("Write", ".git/klin/turn").says("klin turn reset"),
+        edit_in(&tree, "Write", ".git/klin/turn").says("klin turn reset"),
         "the refusal names no command a person runs"
     );
 }
 
 #[test]
-fn a_reader_of_klins_own_state_is_allowed_and_a_writer_that_only_names_it_asks() {
-    allowed(&bash("cat .git/klin/turn"), "a reader of the stamp");
+fn a_reader_of_klins_own_state_is_allowed() {
+    let tree = Tree::new();
     allowed(
-        &edit("Read", ".git/klin/turn"),
-        "the read tool on the stamp",
+        &bash_in(&tree, "cat .git/klin/turn"),
+        "a reader of the stamp",
     );
-    asked(
-        &bash("sed -i s/red/green/ .git/klin/turn"),
-        ".git/klin/turn",
-        "sed on the stamp",
+    allowed(
+        &edit_in(&tree, "Read", ".git/klin/turn"),
+        "the read tool on the stamp",
     );
 }
 
+/// The guard resolves this tree's own state directory, so a path that only looks like one is an
+/// ordinary file. ADR 0033.
 #[test]
 fn a_path_that_only_looks_like_klins_state_is_allowed() {
+    let tree = Tree::new();
+    for file in [
+        ".github/workflows/klin.yml",
+        "vendor/klin/notes.md",
+        ".git/COMMIT_EDITMSG",
+        ".git/worktrees/second/klin/turn",
+    ] {
+        allowed(&edit_in(&tree, "Write", file), file);
+    }
+}
+
+/// A hook file, the code owners, a lint, test or coverage configuration and a workflow are
+/// ordinary files. ADR 0027.
+#[test]
+fn allows_an_edit_of_everything_the_configuration_is_not() {
+    let tree = Tree::new();
+    for file in [
+        ".claude/settings.json",
+        ".cursor/hooks.json",
+        ".codex/config.toml",
+        "CODEOWNERS",
+        ".github/CODEOWNERS",
+        ".eslintrc.json",
+        "pytest.ini",
+        "codecov.yml",
+        ".github/workflows/ci.yml",
+        "pyproject.toml",
+        "quality/escapes-baseline.json",
+    ] {
+        allowed(&edit_in(&tree, "Write", file), file);
+        let command = format!("rm {file}");
+        allowed(&bash_in(&tree, &command), &command);
+    }
+}
+
+/// Outside a git repository klin has no state directory, so the guard answers nothing about
+/// one. The configuration beside the working directory is guarded as always. ADR 0033.
+#[test]
+fn outside_a_repository_it_answers_nothing_about_the_state_directory() {
+    let tree = Tree::bare();
+    for command in ["rm -rf .git/klin", "echo x > .git/klin/turn"] {
+        allowed(&bash_in(&tree, command), command);
+    }
     allowed(
-        &edit("Write", ".github/workflows/klin.yml"),
-        "a workflow file",
+        &edit_in(&tree, "Write", ".git/klin/turn"),
+        "a stamp by hand",
     );
+    denied(&edit_in(&tree, "Write", "klin.json"), "the configuration");
+}
+
+/// klin's own state moves with `KLIN_STATE_DIR`, and the guard answers about where the state
+/// is rather than about the name `.git/klin`. Section 9.4.
+#[test]
+fn it_guards_where_the_state_is_and_not_the_name() {
+    let tree = Tree::new();
+    let held = Tree::bare();
+    let under = held.root().display().to_string();
+    let run = feed_with(
+        tree.root(),
+        &[("KLIN_STATE_DIR", under.as_str())],
+        &["guard"],
+        r#"{"tool_name": "Bash", "tool_input": {"command": "rm -rf .git/klin"}}"#,
+    );
+    allowed(&run, "the default place the override left empty");
+}
+
+/// A relative path in a command names a file from where the guard runs, and the guarded set is
+/// the tree root's. So the same word means a different file one directory down. ADR 0033.
+#[test]
+fn a_relative_path_names_a_file_from_where_the_guard_runs() {
+    let tree = Tree::new();
+    tree.write("sub/notes.md", "one\n");
+    let event = r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#;
+    let up = r#"{"tool_name": "Bash", "tool_input": {"command": "rm ../klin.json"}}"#;
+
     allowed(
-        &edit("Write", "vendor/klin/notes.md"),
-        "a klin directory of the project's own",
+        &feed(&tree.path("sub"), &["guard"], event),
+        "another project's configuration one directory down",
     );
-    allowed(
-        &edit("Write", ".git/COMMIT_EDITMSG"),
-        "a git file that is not klin's",
+    asked(
+        &feed(&tree.path("sub"), &["guard"], up),
+        "../klin.json",
+        "the tree's own configuration from below",
     );
+}
+
+/// A `>` inside an argument is a character of that argument, not a redirect, so a message that
+/// holds one is ordinary work. ADR 0033.
+#[test]
+fn allows_a_quoted_angle_bracket_that_is_not_a_redirect() {
+    for command in [
+        r#"git commit -m "moved notes > klin.json""#,
+        r#"gh issue create --body "notes > klin.json""#,
+        "echo 'a > klin.json'",
+    ] {
+        allowed(&bash(command), command);
+    }
+}
+
+/// A writer is found behind the prefixes klin's own name is found behind, so a runner in front
+/// of it does not carry the write past the guard. ADR 0033.
+#[test]
+fn asks_about_a_writer_behind_a_prefix() {
+    let tree = Tree::new();
+    for command in [
+        "sudo rm klin.json",
+        "env rm -f klin.json",
+        "time rm klin.json",
+        "KLIN_STATE_DIR=/tmp/x rm klin.json",
+    ] {
+        asked(&bash_in(&tree, command), "klin.json", command);
+    }
 }

@@ -655,8 +655,8 @@ stop, a prompt counter, the prompt mark of 6.2.1, and the `asked` record of
 holds an empty `asked`, so the record goes whenever the stamp moves. `klin radius` applies the rule above and raises the
 counter by one on every session start and prompt submitted, whether or not
 the stamp moved. The counter is what makes "once per turn" in 9.3 literal,
-because the stamp itself moves only after a green stop. The stamp is not
-guarded (9.4).
+because the stamp itself moves only after a green stop. The state directory
+the stamp sits in is guarded (9.4).
 
 #### 6.2.1 The prompt mark
 
@@ -821,9 +821,9 @@ only when a person runs it.
 
 klin's own state is three things: the turn stamp with the prompt mark of
 6.2.1, the build stamp, and the survey cache. All are per working tree. The
-cache is safe to delete. None of the three is guarded (9.4). Deleting the
-turn stamp buys nothing, because a stop without one judges the whole branch
-(6.2). They live in the state directory:
+cache is safe to delete. All three are guarded, because the guard guards the
+directory they share (9.4). Deleting the turn stamp buys nothing, because a
+stop without one judges the whole branch (6.2). They live in the state directory:
 
 - By default, `klin/` under the directory `git rev-parse --git-dir` returns.
   Git never tracks it, never lists it as untracked, `git clean` never removes
@@ -1484,63 +1484,64 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 ### 9.4 The guard's three decisions
 
-The guarded set is `klin.json` and klin's own state directory, which is a
-`klin` directory under a git directory (ADR 0019). A worktree keeps its own
-under `.git/worktrees/<name>/klin`, so a `klin` component anywhere after a
-`.git` one names it. A host's hook file, CODEOWNERS, `refs/worktree/klin` and
-every verification file are ordinary files, and an edit to one of them is
-`allow`. ADR 0027 records why, and ADR 0032 records why the state directory
-is not one of them.
+The guarded set is this tree's `klin.json` and this tree's own state
+directory. The guard resolves both: the configuration beside the tree root
+`git rev-parse --show-toplevel` names, and the state directory of 7.4. A
+host's hook file, CODEOWNERS, `refs/worktree/klin`, every verification file,
+another project's `klin.json` inside the tree, and another worktree's state
+directory are ordinary files, and an edit to one of them is `allow`. ADR
+0027, ADR 0032 and ADR 0033 record why.
 
-- `deny`: an edit tool whose path is `klin.json` or reaches inside the state
-  directory, a redirect onto either, `init` in any form, and `turn reset`.
-  The reason names the file and says a person changes it in a reviewed
-  commit, or names the command a person runs instead: `klin turn reset` for
-  the stamp, and `klin cache clean`, which stays open to an agent, for the
-  cache. Nothing else denies. Every route klin cannot read as a clear write
-  to a guarded path is an `ask` at most, because a deny leaves an agent no
-  remedy and ordinary work must not meet one.
-- `ask`: a shell command outside the reader list whose arguments name a
-  guarded path. The reason quotes the token that matched. The person decides.
-  The reader list of ADR 0011 gains `git rev-parse`, `git cat-file`, `git
-  for-each-ref`, `du`, and `find` without `-delete`, `-exec`, `-execdir` or
-  `-ok`.
-- `allow`: everything else, including any reader naming a guarded path, any
-  glob that does not match one, and every file that left the guarded set.
+The guard answers only where it can prove that a tool call writes a guarded
+path. Everything else is `allow`, and a write the guard misses costs nothing,
+because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 
-A glob matches a guarded name only when the glob, read as a pattern, matches
-it, and a path component holding a wildcard is read the same way, so
-`.git/?lin/turn` names the state directory. An empty prefix MUST NOT match. A command word made only of
-wildcard characters names no file and MUST NOT match, so Markdown bold such
-as `**` passes, and so does `rm *` in the tree root (issue #119). A redirect
-target made only of wildcards still matches. Splitting a command into segments
-MUST honor single and double quotes (issue #90). The body of a heredoc is
-data: the guard matches the command words and every redirect target,
-including a command after the heredoc's terminator, and does not match the
-text between the delimiter and the terminator.
+- `deny`: an edit tool whose path is the configuration or reaches inside the
+  state directory, a redirect onto either, `init` in any form, and `turn
+  reset`. The reason names the file and says a person changes it in a
+  reviewed commit, or names the command a person runs instead: `klin turn
+  reset` for the stamp, and `klin cache clean`, which stays open to an agent,
+  for the cache. Nothing else denies.
+- `ask`: a command that writes every argument it takes, with a guarded path
+  among its arguments. The writers are `rm`, `rmdir`, `unlink`, `shred`,
+  `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
+  `install` are not writers here, because each reads its first argument. The
+  reason quotes the token that matched. The person decides.
+- `allow`: everything else, including every command that only names a guarded
+  path.
 
-A command substitution starts a command of its own, and a quoting context of
-its own with it. The guard MUST find the heredoc a `$(` or a backtick opens,
-even inside a double quote, so a body passed as `--body "$(cat <<'EOF' ...
-EOF)"` is data and not a list of commands.
+A path resolves from the directory the guard runs in, with `.` and `..` taken
+out and every symbolic link its existing part carries followed. A path the
+guard cannot resolve is `allow`. A token holding a shell wildcard proves
+nothing about the file it stands for, so the guard matches no path against
+it, and `rm *.json` in the tree root passes.
+
+The guard matches no path in a command that holds shell it does not read: an
+unbalanced quote, `$(`, a backtick, `${`, `<<`, a backslash, or a `cd`
+command word. An unbalanced quote allows the whole command, because the
+command then does not say where its arguments end. The other six suppress
+path matching alone. `init` and `turn reset` name no path, so their `deny`
+stands behind any of them, and a command substitution in command position is
+a prefix in front of klin's own name.
+
+A command splits into segments at `;`, `&`, `|` and a newline, and the split
+MUST honor single and double quotes (issue #90). A redirect is an unquoted
+`>`, so a `>` inside an argument is a character of that argument and not a
+redirect. A writer and klin's own name are read by the basename of the
+command word, and each is found behind the same prefixes: an assignment,
+`env`, `npx`, `pnpm`, `bunx`, `time`, `nice` and `sudo`. So a script of the
+tree's own named `rm` is read as `rm`, and `sudo rm klin.json` asks.
 
 For Codex CLI, an `apply_patch` call is judged by every path in its `*** Add
 File:`, `*** Delete File:`, `*** Update File:` or `*** Move to:` headers.
 Patch body text is data. A deny for any path wins; otherwise an ask wins over
 allow.
 
-A command substitution is a command of its own, so it leaves the line it sat
-in. The guard reads the command inside it on its own, and the words after the
-closing parenthesis stay with the command that owns them. So a reader inside
-a substitution exempts nothing outside it, and a reader outside one keeps the
-exemption for its own arguments. An unbalanced parenthesis ends the
-substitution early, which splits the command into more pieces than a shell
-would and can only add a question, never remove one.
-
 The guard MUST NOT read the configuration. It runs before the config loads.
-It MAY read `KLIN_STATE_DIR` and run `git rev-parse --git-dir` to learn the
-state directory. It MUST finish in under 50 milliseconds, because it runs on
-every tool call.
+It MAY read `KLIN_STATE_DIR` and run `git rev-parse` to resolve the tree root
+and the state directory, and it reaches for git only when a path needs
+proving. It MUST finish in under 50 milliseconds, because it runs on every
+tool call.
 
 ### 9.5 What the hook prints
 
@@ -1712,7 +1713,8 @@ same in all three.
 
 Hooks only. klin puts every failure in front of the agent once per turn, keeps
 the window open until the failure is fixed, accepted or reset by a person,
-and refuses its edits to the config. The config is the only guarded file (9.4).
+and refuses its edits to the config. The config and klin's own state
+directory are the guarded set (9.4).
 Nothing prevents a PATH
 shim or a `chmod -x`, and the guard sees only the tool calls the host shows
 it. This level is what a person gets with no CI, and this document makes no

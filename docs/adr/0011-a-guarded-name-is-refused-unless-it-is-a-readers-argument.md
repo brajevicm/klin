@@ -6,6 +6,10 @@
 > The paragraph below about an interpreter's heredoc body is withdrawn: the
 > body is data, and the guard matches the command words and every redirect
 > target instead.
+>
+> ADR 0033 reverses the argument below for a reader list over a writer
+> list. The guard now matches a closed list of writers and allows every
+> other command, so the reader list and the interpreter case are gone.
 
 The guard had two rules pulling against each other. `command_writes_guarded`
 matched the guarded literals anywhere in a command string, so a `grep` for

@@ -100,8 +100,8 @@ the turn window open until it is fixed, accepted, or reset by a person. A
 deleted test is asked about once, then reported to the person while the next
 stop ends green.
 
-The guard protects `klin.json` alone. Hook files, CODEOWNERS, verification
-files, klin's state directory, and its stamp refs are ordinary files. An agent
+The guard protects `klin.json` and klin's own state directory. Hook files,
+CODEOWNERS, verification files and the stamp refs are ordinary files. An agent
 controls its working tree and can remove or bypass local hooks, so this level
 is feedback, not enforcement. Installing the plugin reaches this level.
 

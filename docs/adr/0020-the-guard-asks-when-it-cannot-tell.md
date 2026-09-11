@@ -2,6 +2,10 @@
 
 > Amends ADR 0011. The reader rule stays. What changes is the decision for a
 > command outside the reader list, and the guarded set.
+>
+> ADR 0033 retires the reader rule. The three decisions below stand, and the
+> `ask` class becomes a closed list of writers rather than everything outside
+> the reader list.
 
 ADR 0011 refused any command outside the reader list that named a guarded
 path, and accepted the over-refusal as the price of a closed list. The price
