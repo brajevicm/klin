@@ -20,39 +20,34 @@ use crate::hunks::Hunks;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
 
-const SECTION: &str = "sarif";
+pub const SECTION: &str = "sarif";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[
-    Key {
-        name: "name",
-        holds: "the gate's own name, which `--gate` takes",
-        required: true,
-        rule: "",
-        default: "",
-    },
-    Key {
-        name: "report",
-        holds: "the SARIF file this gate reads",
-        required: true,
-        rule: "",
-        default: "",
-    },
-    Key {
-        name: "run",
-        holds: "the command that writes the report before the gate reads it",
-        required: false,
-        rule: "",
-        default: "klin reads the report as it finds it and refuses one that predates the change",
-    },
-    Key {
-        name: "differential",
-        holds: "whether only a finding on a line the window changed is judged",
-        required: false,
-        rule: "",
-        default: "`false`",
-    },
-];
+pub const KEYS: &[Key] = &[gate::NAMED, REPORT, RUN, DIFFERENTIAL];
+
+const REPORT: Key = Key {
+    name: "report",
+    holds: "the SARIF file this gate reads",
+    required: true,
+    rule: None,
+    default: "",
+};
+
+const RUN: Key = Key {
+    name: "run",
+    holds: "the command that writes the report before the gate reads it",
+    required: false,
+    rule: None,
+    default: "klin reads the report as it finds it and refuses one that predates the change",
+};
+
+const DIFFERENTIAL: Key = Key {
+    name: "differential",
+    holds: "whether only a finding on a line the window changed is judged",
+    required: false,
+    rule: None,
+    default: "`false`",
+};
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];
 /// How many `originalUriBaseIds` entries one location is resolved through, so a report whose
@@ -152,13 +147,13 @@ fn entry(config: &Config) -> Result<Entry, Error> {
         .as_object()
         .ok_or_else(|| shape(config))?;
     let report = held
-        .get("report")
+        .get(REPORT.name)
         .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(SECTION, "report"))?;
+        .ok_or_else(|| config.missing(SECTION, REPORT.name))?;
     Ok(Entry {
         report: config.path(report),
-        run: command(config, held.get("run"))?,
-        differential: only_the_new(config, held.get("differential"))?,
+        run: command(config, held.get(RUN.name))?,
+        differential: only_the_new(config, held.get(DIFFERENTIAL.name))?,
     })
 }
 
@@ -174,7 +169,7 @@ fn command(config: &Config, held: Option<&Value>) -> Result<Option<String>, Erro
     match held {
         None => Ok(None),
         Some(Value::String(command)) => Ok(Some(command.clone())),
-        Some(_) => Err(config.malformed(SECTION, "run", "a command that writes the report")),
+        Some(_) => Err(config.malformed(SECTION, RUN.name, "a command that writes the report")),
     }
 }
 
@@ -182,7 +177,7 @@ fn only_the_new(config: &Config, held: Option<&Value>) -> Result<bool, Error> {
     match held {
         None => Ok(false),
         Some(Value::Bool(only_the_new)) => Ok(*only_the_new),
-        Some(_) => Err(config.malformed(SECTION, "differential", "true or false")),
+        Some(_) => Err(config.malformed(SECTION, DIFFERENTIAL.name, "true or false")),
     }
 }
 

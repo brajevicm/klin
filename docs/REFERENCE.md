@@ -23,15 +23,15 @@ One key per gate, named for its section. The sections share key names: `roots`, 
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `file` | the document this entry judges, as a path under the tree root | yes | derived when absent | one entry per Markdown file at the tree root that the derivation commit holds | — |
-| `ceiling` | the words the document may not pass | yes | derived when absent | the word count at the derivation commit, rounded up to the next 50 and never below 50 | — |
+| `file` | the document this entry judges, as a path under the tree root | yes | derived with the section | one entry per Markdown file at the tree root that the derivation commit holds | — |
+| `ceiling` | the words the document may not pass | yes | derived with the section | the word count at the derivation commit, rounded up to the next 50 and never below 50 | — |
 
 ### `doc_citations`
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `file` | the document this entry reads citations from | yes | derived when absent | one entry per Markdown file at the tree root | — |
-| `roots` | the directories a citation may resolve under | no | derived when absent | the tree root | the tree root |
+| `file` | the document this entry reads citations from | yes | derived with the section | one entry per Markdown file at the tree root | — |
+| `roots` | the directories a citation may resolve under | no | derived with the section | the tree root | the tree root |
 | `extensions` | the file extensions a citation may name | no | pinned only | — | `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml` |
 
 ### `lockfile`
@@ -66,8 +66,8 @@ One key per gate, named for its section. The sections share key names: `roots`, 
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `name` | what a finding calls this entry | yes | derived when absent | the test root's path | — |
-| `path` | the directory whose test sites this entry holds | yes | derived when absent | one entry per test root the survey found | — |
+| `name` | what a finding calls this entry | yes | derived with the section | the test root's path | — |
+| `path` | the directory whose test sites this entry holds | yes | derived with the section | one entry per test root the survey found | — |
 | `pattern` | a glob on the basename that limits the entry | no | pinned only | — | every file under `path` |
 
 ### `complexity`
@@ -95,21 +95,6 @@ One key per gate, named for its section. The sections share key names: `roots`, 
 
 The checks share language names and not file sets. A name selects the extensions of its own check's table, and the tables differ. A section that names no language measures every language `complexity` knows, and one that names none for `escapes` or `stubs` must name `patterns` instead.
 
-### `complexity`
-
-| Name | Extensions |
-| --- | --- |
-| `go` | `.go` |
-| `java` | `.java` |
-| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` |
-| `kotlin` | `.kt`, `.kts` |
-| `python` | `.py` |
-| `ruby` | `.rb` |
-| `rust` | `.rs` |
-| `swift` | `.swift` |
-| `tsx` | `.tsx` |
-| `typescript` | `.ts`, `.mts`, `.cts`, `.tsx` |
-
 ### `escapes`
 
 | Name | Extensions |
@@ -134,6 +119,21 @@ The checks share language names and not file sets. A name selects the extensions
 | `python` | `.py` |
 | `rust` | `.rs` |
 | `typescript` | `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs` |
+
+### `complexity`
+
+| Name | Extensions |
+| --- | --- |
+| `go` | `.go` |
+| `java` | `.java` |
+| `javascript` | `.js`, `.jsx`, `.mjs`, `.cjs` |
+| `kotlin` | `.kt`, `.kts` |
+| `python` | `.py` |
+| `ruby` | `.rb` |
+| `rust` | `.rs` |
+| `swift` | `.swift` |
+| `tsx` | `.tsx` |
+| `typescript` | `.ts`, `.mts`, `.cts`, `.tsx` |
 
 ## Exclusion
 

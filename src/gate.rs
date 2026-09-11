@@ -9,7 +9,7 @@ use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{self, Config, DELETED, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
-use crate::reference::Key;
+use crate::reference::{self, Key};
 use crate::{
     build, complexity, coverage, doc_citations, doc_size, escapes, inventory, lockfile, sarif,
     state, stubs, survey, turn,
@@ -25,7 +25,7 @@ const BUILD_WRITING: &str = "build-blocked.writing";
 /// How many stops one prompt's build failures may block. klin bounds this itself, because the
 /// host documents no cap of its own. ADR 0022, spec 9.3.
 const BLOCKS: u64 = 8;
-const GATES: &str = "gates";
+const GATES: &str = config::GATES.name;
 /// What `--list` indents a gate's own lines by, under the row that names it.
 const UNDER: &str = "      ";
 
@@ -35,6 +35,9 @@ struct Check {
     /// The configuration keys the section reads, declared in the check's own module and printed
     /// by `klin reference`. Spec 5.8.
     keys: &'static [Key],
+    /// The language names this section selects a file set by, and none for a check that selects
+    /// no language. Spec 5.8.
+    languages: Option<reference::Languages>,
     run: fn(&Flags, &Path, &mut String) -> Result<u8, Error>,
     needs: Needs,
     takes_scope: bool,
@@ -70,8 +73,9 @@ impl Needs {
 const CHECKS: &[Check] = &[
     Check {
         name: "doc-size",
-        section: "doc_size",
+        section: doc_size::SECTION,
         keys: doc_size::KEYS,
+        languages: None,
         run: doc_size::gate,
         needs: Needs::Nothing,
         takes_scope: false,
@@ -79,8 +83,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "doc-citations",
-        section: "doc_citations",
+        section: doc_citations::SECTION,
         keys: doc_citations::KEYS,
+        languages: None,
         run: doc_citations::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -88,8 +93,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "lockfile",
-        section: "lockfile",
+        section: lockfile::SECTION,
         keys: lockfile::KEYS,
+        languages: None,
         run: lockfile::gate,
         needs: Needs::TheTree,
         takes_scope: false,
@@ -97,8 +103,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "escapes",
-        section: "escapes",
+        section: escapes::SECTION,
         keys: escapes::KIND.keys,
+        languages: Some(escapes::language_extensions),
         run: escapes::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -106,8 +113,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "stubs",
-        section: "stubs",
+        section: stubs::SECTION,
         keys: stubs::KIND.keys,
+        languages: Some(stubs::language_extensions),
         run: stubs::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -115,8 +123,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "inventory",
-        section: "inventory",
+        section: inventory::SECTION,
         keys: inventory::KEYS,
+        languages: None,
         run: inventory::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -124,8 +133,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "complexity",
-        section: "complexity",
+        section: complexity::SECTION,
         keys: complexity::KEYS,
+        languages: Some(complexity::language_extensions),
         run: complexity::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -133,8 +143,9 @@ const CHECKS: &[Check] = &[
     },
     Check {
         name: "sarif",
-        section: "sarif",
+        section: sarif::SECTION,
         keys: sarif::KEYS,
+        languages: None,
         run: sarif::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
@@ -148,9 +159,14 @@ pub fn sections() -> impl Iterator<Item = &'static str> {
     CHECKS.iter().map(|check| check.section)
 }
 
-/// Each check's section and the keys it reads, in the order a run takes the checks. Spec 5.8.
-pub fn catalogue() -> impl Iterator<Item = (&'static str, &'static [Key])> {
-    CHECKS.iter().map(|check| (check.section, check.keys))
+/// What each check tells `klin reference` about its section, in the order a run takes the
+/// checks. Spec 5.8.
+pub fn catalogue() -> impl Iterator<Item = reference::Section> {
+    CHECKS.iter().map(|check| reference::Section {
+        name: check.section,
+        keys: check.keys,
+        languages: check.languages,
+    })
 }
 
 pub fn command_named(key: &str) -> Option<&'static str> {
@@ -1010,6 +1026,15 @@ fn from_section(
     Ok(())
 }
 
+/// The key every entry of a named section carries, whichever check reads the section.
+pub const NAMED: Key = Key {
+    name: "name",
+    holds: "the gate's own name, which `--gate` takes",
+    required: true,
+    rule: None,
+    default: "",
+};
+
 /// The entries of a section a person writes entry by entry, each with the name its gate takes.
 /// Such a section is a list, and an entry with no `name` is a config error naming the key,
 /// because nothing in a tree says which tool the entry runs. The check that reads one entry
@@ -1027,9 +1052,9 @@ pub fn named_entries(config: &Config, section: &str) -> Result<Vec<(String, Valu
         .iter()
         .map(|entry| {
             let name = entry
-                .get("name")
+                .get(NAMED.name)
                 .and_then(Value::as_str)
-                .ok_or_else(|| config.missing(section, "name"))?;
+                .ok_or_else(|| config.missing(section, NAMED.name))?;
             Ok((name.to_string(), entry.clone()))
         })
         .collect()
@@ -1091,7 +1116,7 @@ fn entry(config: &Config, item: &Map<String, Value>) -> Result<Entry, Error> {
             .ok_or_else(|| config.missing(GATES, key))
     };
     let entry = Entry {
-        name: text("name")?,
+        name: text(NAMED.name)?,
         check: text("check")?,
         with: item.get("with").cloned(),
         off: item.get("off").and_then(Value::as_bool).unwrap_or(false),

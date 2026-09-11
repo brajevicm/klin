@@ -4,13 +4,13 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::cache;
-use crate::config::{Config, Error};
+use crate::config::{self, Config, Error};
 use crate::state;
 use crate::turn;
 
 /// The section that pins how wide this project's usual change is. Absent, #92 derives it, and
 /// with neither the report on a prompt prints nothing. ADR 0014.
-const SECTION: &str = "radius";
+const SECTION: &str = config::RADIUS.name;
 const LINES: &str = "lines";
 const DIRECTORIES: &str = "directories";
 /// Every invocation pins these, because a line count moves with the algorithm and with rename

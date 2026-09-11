@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::changed::git;
 use crate::config::{Config, Error};
 use crate::ratchet::Values;
+use crate::reference::{EXCLUDE, Key, SKIP_DIRS};
 use serde_json::Value;
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[
@@ -42,12 +43,12 @@ pub fn roots(
     config: &Config,
     section_name: &str,
     section: &Values,
-    key: &str,
+    key: Key,
 ) -> Result<Option<Vec<PathBuf>>, Error> {
-    let Some(listed) = section.get(key) else {
+    let Some(listed) = section.get(key.name) else {
         return Ok(None);
     };
-    let malformed = || config.malformed(section_name, key, "a list of paths");
+    let malformed = || config.malformed(section_name, key.name, "a list of paths");
     let Some(listed) = listed.as_array() else {
         return Err(malformed());
     };
@@ -66,12 +67,12 @@ pub fn strings(
     config: &Config,
     section_name: &str,
     section: &Values,
-    key: &str,
+    key: Key,
 ) -> Result<Vec<String>, Error> {
-    let Some(listed) = section.get(key) else {
+    let Some(listed) = section.get(key.name) else {
         return Ok(Vec::new());
     };
-    let malformed = || config.malformed(section_name, key, "a list of strings");
+    let malformed = || config.malformed(section_name, key.name, "a list of strings");
     listed
         .as_array()
         .ok_or_else(malformed)?
@@ -89,7 +90,7 @@ pub fn skip_dirs(
         .iter()
         .map(|dir| dir.to_string())
         .collect();
-    dirs.extend(strings(config, section_name, section, "skip_dirs")?);
+    dirs.extend(strings(config, section_name, section, SKIP_DIRS)?);
     Ok(dirs)
 }
 
@@ -298,7 +299,7 @@ pub fn base_exclusions(
         .and_then(|data| {
             data.get(section)?
                 .as_object()
-                .map(|found| found.get("exclude").cloned())
+                .map(|found| found.get(EXCLUDE.name).cloned())
         })
     else {
         return today.to_vec();

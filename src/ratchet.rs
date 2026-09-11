@@ -4,7 +4,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use serde_json::{Map, Value};
 
-use crate::config::{Config, Error, Flags, Records};
+use crate::config::{self, Config, Error, Flags, Records};
 
 /// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
 /// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
@@ -12,6 +12,8 @@ use crate::config::{Config, Error, Flags, Records};
 /// matcher and the reporter included, is private.
 pub type Values = Map<String, Value>;
 
+/// The key a finding carries when it matched an accepted entry, which is a record field of spec
+/// 11.2 and not the config key `config::ACCEPTED` of the same spelling.
 const ACCEPTED: &str = "accepted";
 
 const BODY: &str = "body_hash";
@@ -111,12 +113,13 @@ impl Finding {
 /// The debt a person accepted in the config, as prior entries for one gate. An entry must carry
 /// every value the gate ratchets, or it would hold a site at any value it grows to.
 pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Values>, Error> {
-    let Ok(listed) = config.section(ACCEPTED) else {
+    let section = config::ACCEPTED.name;
+    let Ok(listed) = config.section(section) else {
         return Ok(Vec::new());
     };
     let shape = || {
         Error(format!(
-            "{}: \"{ACCEPTED}\" is a list of {{\"gate\", \"file\", \"text\"}} entries, each with \
+            "{}: \"{section}\" is a list of {{\"gate\", \"file\", \"text\"}} entries, each with \
              the value that gate allows",
             config.file.display()
         ))
@@ -673,7 +676,7 @@ fn matched_record(entry: &Values) -> Value {
     if let Some(line) = entry.get("line").and_then(Value::as_u64) {
         out.insert("line".into(), line.into());
     }
-    out.insert("accepted".into(), is_accepted(entry).into());
+    out.insert(ACCEPTED.into(), is_accepted(entry).into());
     out.insert("values".into(), Value::Object(entry_values(entry)));
     Value::Object(out)
 }

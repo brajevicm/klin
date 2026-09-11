@@ -9,22 +9,26 @@ use crate::ratchet::{self, Evaluator, Finding, Section, Values};
 use crate::reference::{self, Key};
 use crate::{base, changed, files};
 
-const SECTION: &str = "lockfile";
+pub const SECTION: &str = "lockfile";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[
-    Key {
-        name: "manifests",
-        holds: "the manifest files this check proves against their lockfiles",
-        required: true,
-        rule: "one entry per manifest klin has a lockfile reader for: `Cargo.toml`, `package.json` \
-               and `go.mod`",
-        default: "",
-    },
-    reference::EXCLUDE,
-];
-const MANIFESTS: &str = "manifests";
-const EXCLUDE: &str = "exclude";
+pub const KEYS: &[Key] = &[MANIFESTS, reference::EXCLUDE];
+
+/// The key of this section the survey supplies, named off the declaration so the two cannot
+/// spell it differently. It is the key below that carries a rule, restated because the survey
+/// merges a section key by key. Spec 5.4.
+pub const DERIVED: &[&str] = &[MANIFESTS.name];
+
+pub const MANIFESTS: Key = Key {
+    name: "manifests",
+    holds: "the manifest files this check proves against their lockfiles",
+    required: true,
+    rule: Some(
+        "one entry per manifest klin has a lockfile reader for: `Cargo.toml`, `package.json` \
+                and `go.mod`",
+    ),
+    default: "",
+};
 const UNLOCKED: &str = "unlocked";
 const UNPINNED: &str = "unpinned";
 const METRICS: &[&str] = &[UNLOCKED, UNPINNED];
@@ -117,7 +121,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
 fn surveyed(config: &Config, flags: &Flags, out: &mut String) -> Result<Sites, Error> {
     let section = ratchet::section(config, SECTION)?;
     let manifests = listed(&section, MANIFESTS)?;
-    let exclude = optional(&section, EXCLUDE)?;
+    let exclude = optional(&section, reference::EXCLUDE)?;
     let commit = base::commit(config.root(), flags, out)?;
     let mut sites = Sites::default();
     let (dropped, judged): (Vec<&String>, Vec<&String>) =
@@ -361,27 +365,30 @@ fn beside(
 }
 
 /// A list the section may leave out, and an empty one when it does.
-fn optional(section: &Section, key: &str) -> Result<Vec<String>, Error> {
-    match section.values.get(key) {
+fn optional(section: &Section, key: Key) -> Result<Vec<String>, Error> {
+    match section.values.get(key.name) {
         Some(_) => listed(section, key),
         None => Ok(Vec::new()),
     }
 }
 
-fn listed(section: &Section, key: &str) -> Result<Vec<String>, Error> {
-    let held = section.values.get(key).and_then(Value::as_array);
+fn listed(section: &Section, key: Key) -> Result<Vec<String>, Error> {
+    let held = section.values.get(key.name).and_then(Value::as_array);
     let Some(items) = held else {
         return Err(Error(format!(
-            "{}: \"{SECTION}\" must name \"{key}\", a list of paths",
-            section.config.file.display()
+            "{}: \"{SECTION}\" must name \"{}\", a list of paths",
+            section.config.file.display(),
+            key.name
         )));
     };
     items
         .iter()
         .map(|item| {
-            item.as_str()
-                .map(str::to_string)
-                .ok_or_else(|| section.config.malformed(SECTION, key, "a list of paths"))
+            item.as_str().map(str::to_string).ok_or_else(|| {
+                section
+                    .config
+                    .malformed(SECTION, key.name, "a list of paths")
+            })
         })
         .collect()
 }

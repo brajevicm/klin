@@ -57,6 +57,12 @@ fn every_key_says_whether_it_is_required_and_where_its_value_comes_from() {
         out.contains("95th percentile"),
         "no ceiling derivation rule in: {out}"
     );
+    assert!(
+        out.contains(
+            "| `ceiling` | the words the document may not pass | yes | derived with the section"
+        ),
+        "no derived-with-the-section row in: {out}"
+    );
 }
 
 #[test]

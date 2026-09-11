@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::Error;
+use crate::config::{self, Error};
 use crate::{hooks, radius, survey};
 
 const FILENAME: &str = "klin.json";
@@ -191,14 +191,18 @@ fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<
     let mut add = |key: &str, value: Option<Value>, said: String| {
         added(&mut config, &mut written, force, key, value, said);
     };
-    add("project", project(root), "project".to_string());
     add(
-        "version",
+        config::PROJECT.name,
+        project(root),
+        config::PROJECT.name.to_string(),
+    );
+    add(
+        config::VERSION.name,
         Some(env!("CARGO_PKG_VERSION").into()),
         format!("version {}", env!("CARGO_PKG_VERSION")),
     );
     for name in [
-        "build",
+        config::BUILD.name,
         "doc_size",
         "doc_citations",
         "inventory",
@@ -341,7 +345,7 @@ fn stated(section: &Value) -> bool {
 
 /// The section ADR 0014 pins: how wide this project's usual commit is, so the report on a
 /// prompt has something to read a turn against. It is not a gate and it fails nothing.
-const SECTION: &str = "radius";
+const SECTION: &str = config::RADIUS.name;
 
 fn project(root: &Path) -> Option<Value> {
     root.canonicalize()

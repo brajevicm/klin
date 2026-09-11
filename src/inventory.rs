@@ -15,32 +15,34 @@ use crate::reference::Key;
 use crate::survey::{ROOT, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::turn;
 
-const SECTION: &str = "inventory";
+pub const SECTION: &str = "inventory";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[
-    Key {
-        name: "name",
-        holds: "what a finding calls this entry",
-        required: true,
-        rule: "the test root's path",
-        default: "",
-    },
-    Key {
-        name: "path",
-        holds: "the directory whose test sites this entry holds",
-        required: true,
-        rule: "one entry per test root the survey found",
-        default: "",
-    },
-    Key {
-        name: "pattern",
-        holds: "a glob on the basename that limits the entry",
-        required: false,
-        rule: "",
-        default: "every file under `path`",
-    },
-];
+pub const KEYS: &[Key] = &[NAME, PATH, PATTERN];
+
+pub const NAME: Key = Key {
+    name: "name",
+    holds: "what a finding calls this entry",
+    required: true,
+    rule: Some("the test root's path"),
+    default: "",
+};
+
+pub const PATH: Key = Key {
+    name: "path",
+    holds: "the directory whose test sites this entry holds",
+    required: true,
+    rule: Some("one entry per test root the survey found"),
+    default: "",
+};
+
+const PATTERN: Key = Key {
+    name: "pattern",
+    holds: "a glob on the basename that limits the entry",
+    required: false,
+    rule: None,
+    default: "every file under `path`",
+};
 const LABEL: &str = "test file";
 const MISSING: &str = "missing";
 /// The question the hook's block puts to the agent. Removing a test is ordinary work, and
@@ -624,19 +626,19 @@ fn entries(config: &Config) -> Result<Vec<Entry>, Error> {
 fn entry(config: &Config, item: &Value) -> Result<Entry, Error> {
     let values = item
         .as_object()
-        .ok_or_else(|| config.malformed(SECTION, "path", "an object"))?;
-    for key in ["name", "path"] {
-        if !values.get(key).is_some_and(Value::is_string) {
-            return Err(config.missing(SECTION, key));
+        .ok_or_else(|| config.malformed(SECTION, PATH.name, "an object"))?;
+    for key in [NAME, PATH] {
+        if !values.get(key.name).is_some_and(Value::is_string) {
+            return Err(config.missing(SECTION, key.name));
         }
     }
-    let pattern = match values.get("pattern") {
+    let pattern = match values.get(PATTERN.name) {
         None => None,
         Some(Value::String(glob)) => Some(glob.clone()),
-        Some(_) => return Err(config.malformed(SECTION, "pattern", "a glob on the basename")),
+        Some(_) => return Err(config.malformed(SECTION, PATTERN.name, "a glob on the basename")),
     };
     Ok(Entry {
-        path: values["path"].as_str().unwrap_or_default().to_string(),
+        path: values[PATH.name].as_str().unwrap_or_default().to_string(),
         pattern,
     })
 }

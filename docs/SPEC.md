@@ -563,6 +563,18 @@ pins it, the derivation rule of 5.4 where there is one, and the default where
 there is one. The reference states the top-level keys of 5.2 the same way, and
 the dated ceiling shape of 5.5.
 
+Every key the reference names is read through its declaration and written by
+the survey through the same one, so a key renamed in the declaration is
+renamed at both ends. A key inside one of them, such as the `run` of a `build`
+entry, is stated in what the key above it holds and is not a row of its own.
+The sections the reference prints, and the language names it prints beside
+them, come off the same table of checks a run gates from, so a check cannot be
+gated and left out of the reference.
+
+A row of a section the survey supplies entry by entry says `derived with the
+section`, because the rule holds only when the section itself is absent: an
+entry a person pins must state the key.
+
 The reference MUST also state what the key tables alone do not say:
 
 - the language names of each check that selects by language, with the

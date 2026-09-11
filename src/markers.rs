@@ -45,17 +45,32 @@ pub struct Kind {
     pub evaluator: Evaluator<'static>,
 }
 
+/// The keys both marker sections have the survey supply, named off the declarations so the
+/// survey and the reference cannot spell one key differently. These are the keys that carry a
+/// rule, restated because the survey merges a section key by key. Spec 5.4.
+pub const DERIVED: &[&str] = &[reference::ROOTS.name, reference::LANGUAGES.name];
+
 /// The one key a marker section has that no other section has.
 pub const PATTERNS: Key = Key {
     name: "patterns",
     holds: "the project's own patterns, each a regex or a {\"match\", \"remedy\"} pair",
     required: false,
-    rule: "",
+    rule: None,
     default: "no pattern of the project's own",
 };
 
+/// The key only a kind that may skip them reads. A kind whose check judges an inline test module
+/// either way refuses it, so nothing turns it on and measures the same set in silence.
+pub const SKIP_RUST_TESTS: Key = Key {
+    name: "skip_rust_tests",
+    holds: "whether an inline Rust test module is left out",
+    required: false,
+    rule: None,
+    default: "`true`",
+};
+
 /// Every language name a kind's table holds, with the extensions that name selects.
-pub fn language_extensions(kind: &Kind) -> Vec<(String, String)> {
+pub fn language_extensions(kind: &Kind) -> Vec<(&'static str, String)> {
     reference::extensions_by_name(
         kind.languages
             .iter()
@@ -259,7 +274,7 @@ fn spec(kind: &Kind, config: &Config) -> Result<Spec, Error> {
     let values = &section.values;
     Ok(Spec {
         search: search(kind, section.config, values)?,
-        roots: files::roots(section.config, section.name, values, "roots")?
+        roots: files::roots(section.config, section.name, values, reference::ROOTS)?
             .unwrap_or_else(|| vec![section.config.root().to_path_buf()]),
     })
 }
@@ -281,20 +296,22 @@ fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Erro
     Ok(Search {
         sets: sets(kind, config, section)?,
         skip_dirs: files::skip_dirs(config, kind.section, section)?,
-        exclude: files::strings(config, kind.section, section, "exclude")?,
+        exclude: files::strings(config, kind.section, section, reference::EXCLUDE)?,
         skip_rust_tests: skips_tests(kind, config, section)?,
     })
 }
 
 fn sets(kind: &Kind, config: &Config, section: &Values) -> Result<Vec<Set>, Error> {
-    let named = files::strings(config, kind.section, section, "languages")?;
+    let named = files::strings(config, kind.section, section, reference::LANGUAGES)?;
     let mut sets = language_sets(kind, config, &named)?;
     let project = project_patterns(kind, config, section)?;
     if named.is_empty() && project.is_empty() {
         return Err(Error(format!(
-            "{}: \"{}\" names no \"languages\" and no \"patterns\" — nothing to look for",
+            "{}: \"{}\" names no \"{}\" and no \"{}\" — nothing to look for",
             config.file.display(),
-            kind.section
+            kind.section,
+            reference::LANGUAGES.name,
+            PATTERNS.name
         )));
     }
     if !project.is_empty() {
@@ -397,7 +414,7 @@ fn compiled(
 /// Whether this run leaves the inline Rust test modules out. A section whose check judges them
 /// either way is refused the key, so nothing turns it on and measures the same set in silence.
 fn skips_tests(kind: &Kind, config: &Config, section: &Values) -> Result<bool, Error> {
-    let key = "skip_rust_tests";
+    let key = SKIP_RUST_TESTS.name;
     match section.get(key) {
         None => Ok(true),
         Some(_) if !kind.skips_tests => Err(Error(format!(
@@ -417,13 +434,13 @@ fn project_patterns(
     config: &Config,
     section: &Values,
 ) -> Result<Vec<(String, String, String)>, Error> {
-    let Some(listed) = section.get("patterns") else {
+    let Some(listed) = section.get(PATTERNS.name) else {
         return Ok(Vec::new());
     };
     let malformed = || {
         config.malformed(
             kind.section,
-            "patterns",
+            PATTERNS.name,
             "an object of name to regex, or to a {\"match\", \"remedy\"} pair",
         )
     };

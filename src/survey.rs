@@ -4,7 +4,10 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::changed::git;
-use crate::{cache, escapes, files, state, stubs, turn};
+use crate::{
+    build, cache, complexity, config, doc_citations, doc_size, escapes, files, inventory, lockfile,
+    markers, reference, state, stubs, turn,
+};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
 /// commit. Spec 6.6.
@@ -66,14 +69,14 @@ pub struct Derived {
 /// The sections klin derives, and for an object section the keys it supplies. A section the
 /// config pins whole is never derived, so the survey does not run for it.
 const DERIVABLE: &[(&str, &[&str])] = &[
-    ("build", &[]),
-    ("complexity", &["roots", "ceilings.cc", "ceilings.lines"]),
-    ("doc_citations", &[]),
-    ("doc_size", &[]),
-    ("escapes", &["roots", "languages"]),
-    ("inventory", &[]),
-    ("lockfile", &["manifests"]),
-    ("stubs", &["roots", "languages"]),
+    (config::BUILD.name, &[]),
+    (complexity::SECTION, complexity::DERIVED),
+    (doc_citations::SECTION, &[]),
+    (doc_size::SECTION, &[]),
+    (escapes::SECTION, markers::DERIVED),
+    (inventory::SECTION, &[]),
+    (lockfile::SECTION, lockfile::DERIVED),
+    (stubs::SECTION, markers::DERIVED),
 ];
 
 pub fn keys(section: &str) -> Option<&'static [&'static str]> {
@@ -86,7 +89,7 @@ pub fn keys(section: &str) -> Option<&'static [&'static str]> {
 /// Whether a section measures code, which is exactly the set the survey supplies roots for. A
 /// section that reads documents has nothing to lose when the tree has no source root. Spec 10.
 pub fn reads_code(section: &str) -> bool {
-    keys(section).is_some_and(|keys| keys.contains(&"roots"))
+    keys(section).is_some_and(|keys| keys.contains(&reference::ROOTS.name))
 }
 
 /// A section the config states in full, so the survey does not have to run for it. A section
@@ -810,8 +813,8 @@ fn markers_section(roots: &[String], languages: &[String]) -> Option<Value> {
         return None;
     }
     let mut section = Map::new();
-    section.insert("roots".into(), list(roots));
-    section.insert("languages".into(), list(languages));
+    section.insert(reference::ROOTS.name.into(), list(roots));
+    section.insert(reference::LANGUAGES.name.into(), list(languages));
     Some(Value::Object(section))
 }
 
@@ -820,11 +823,11 @@ fn complexity_section(found: &Survey, numbers: &Numbers) -> Option<Value> {
         return None;
     }
     let mut ceilings = Map::new();
-    ceilings.insert("cc".into(), numbers.cc.value.into());
-    ceilings.insert("lines".into(), numbers.lines.value.into());
+    ceilings.insert(complexity::CC.inner().into(), numbers.cc.value.into());
+    ceilings.insert(complexity::LINES.inner().into(), numbers.lines.value.into());
     let mut section = Map::new();
-    section.insert("roots".into(), list(&found.roots));
-    section.insert("ceilings".into(), Value::Object(ceilings));
+    section.insert(reference::ROOTS.name.into(), list(&found.roots));
+    section.insert(complexity::CEILINGS.into(), Value::Object(ceilings));
     Some(Value::Object(section))
 }
 
@@ -843,8 +846,8 @@ fn doc_size_section(found: &Survey, numbers: &Numbers) -> Option<Value> {
         .filter_map(|name| Some((name, numbers.documents.get(name)?)))
         .map(|(name, ceiling)| {
             let mut entry = Map::new();
-            entry.insert("file".into(), name.clone().into());
-            entry.insert("ceiling".into(), (*ceiling).into());
+            entry.insert(doc_size::FILE.name.into(), name.clone().into());
+            entry.insert(doc_size::CEILING.name.into(), (*ceiling).into());
             Value::Object(entry)
         })
         .collect();
@@ -866,8 +869,8 @@ fn doc_citations_section(found: &Survey) -> Option<Value> {
             .iter()
             .map(|name| {
                 let mut entry = Map::new();
-                entry.insert("file".into(), name.clone().into());
-                entry.insert("roots".into(), list(&[ROOT.to_string()]));
+                entry.insert(doc_citations::FILE.name.into(), name.clone().into());
+                entry.insert(doc_citations::ROOTS.name.into(), list(&[ROOT.to_string()]));
                 Value::Object(entry)
             })
             .collect(),
@@ -885,8 +888,8 @@ fn inventory_section(found: &Survey) -> Option<Value> {
             .iter()
             .map(|root| {
                 let mut entry = Map::new();
-                entry.insert("name".into(), root.clone().into());
-                entry.insert("path".into(), root.clone().into());
+                entry.insert(inventory::NAME.name.into(), root.clone().into());
+                entry.insert(inventory::PATH.name.into(), root.clone().into());
                 Value::Object(entry)
             })
             .collect(),
@@ -906,7 +909,7 @@ fn lockfile_section(found: &Survey) -> Option<Value> {
         return None;
     }
     let mut section = Map::new();
-    section.insert("manifests".into(), list(&read));
+    section.insert(lockfile::MANIFESTS.name.into(), list(&read));
     Some(Value::Object(section))
 }
 
@@ -962,9 +965,9 @@ fn beside_it(path: &str, at: &str, name: &str) -> bool {
 fn entry(at: &str, run: &str) -> Value {
     let mut out = Map::new();
     if !at.is_empty() {
-        out.insert("root".into(), at.into());
+        out.insert(build::ROOT.into(), at.into());
     }
-    out.insert("run".into(), run.into());
+    out.insert(build::RUN.into(), run.into());
     Value::Object(out)
 }
 

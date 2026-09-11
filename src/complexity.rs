@@ -12,38 +12,53 @@ use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
 
-const SECTION: &str = "complexity";
+pub const SECTION: &str = "complexity";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[
     reference::ROOTS.required(),
     reference::LANGUAGES
-        .derived("")
+        .pinned()
         .defaulting("every language the table below names"),
-    Key {
-        name: "ceilings.cc",
-        holds: "the cyclomatic complexity a function may not pass",
-        required: true,
-        rule: "the 95th percentile of `cc` over every function under the derivation commit's \
-               roots, rounded up to the next whole number, with a floor of 5, and the floor \
-               itself below 50 functions",
-        default: "",
-    },
-    Key {
-        name: "ceilings.lines",
-        holds: "the body length a function may not pass",
-        required: true,
-        rule: "the 95th percentile of `lines`, by the same rule as `ceilings.cc`, with a floor \
-               of 25",
-        default: "",
-    },
+    CC,
+    LINES,
     reference::EXCLUDE,
     reference::SKIP_DIRS,
     reference::EXCLUDE_EXCEPT,
 ];
 
+/// The keys of this section the survey supplies, named off the declarations above so the two
+/// cannot spell one key differently. These are the keys above that carry a rule, restated
+/// because the survey merges a section key by key and the reference only prints it. Spec 5.4.
+pub const DERIVED: &[&str] = &[reference::ROOTS.name, CC.name, LINES.name];
+
+/// The object both ceilings live in, which each key below names its path through.
+pub const CEILINGS: &str = "ceilings";
+
+pub const CC: Key = Key {
+    name: "ceilings.cc",
+    holds: "the cyclomatic complexity a function may not pass",
+    required: true,
+    rule: Some(
+        "the 95th percentile of `cc` over every function under the derivation commit's roots, \
+                rounded up to the next whole number, with a floor of 5, and the floor itself below 50 \
+                functions",
+    ),
+    default: "",
+};
+
+pub const LINES: Key = Key {
+    name: "ceilings.lines",
+    holds: "the body length a function may not pass",
+    required: true,
+    rule: Some(
+        "the 95th percentile of `lines`, by the same rule as `ceilings.cc`, with a floor of 25",
+    ),
+    default: "",
+};
+
 /// Every language name the table holds, with the extensions that name selects.
-pub fn language_extensions() -> Vec<(String, String)> {
+pub fn language_extensions() -> Vec<(&'static str, String)> {
     reference::extensions_by_name(
         LANGUAGES
             .iter()
@@ -580,8 +595,8 @@ fn spec(config: &Config) -> Result<Spec, Error> {
     let values = &section.values;
     let ceilings = ceilings(section.config, values)?;
     Ok(Spec {
-        roots: files::roots(section.config, section.name, values, "roots")?
-            .ok_or_else(|| section.config.missing(section.name, "roots"))?,
+        roots: files::roots(section.config, section.name, values, reference::ROOTS)?
+            .ok_or_else(|| section.config.missing(section.name, reference::ROOTS.name))?,
         selection: selection(section.config, values)?,
         gate_text: format!(
             "over the complexity gate (cyclomatic > {}{} or body > {} lines{})",
@@ -596,12 +611,12 @@ fn spec(config: &Config) -> Result<Spec, Error> {
 }
 
 fn selection(config: &Config, section: &Values) -> Result<Selection, Error> {
-    let named = files::strings(config, SECTION, section, "languages")?;
+    let named = files::strings(config, SECTION, section, reference::LANGUAGES)?;
     Ok(Selection {
         languages: languages(config, &named)?,
         skip_dirs: files::skip_dirs(config, SECTION, section)?,
-        exclude: files::strings(config, SECTION, section, "exclude")?,
-        exclude_except: files::roots(config, SECTION, section, "exclude_except")?
+        exclude: files::strings(config, SECTION, section, reference::EXCLUDE)?,
+        exclude_except: files::roots(config, SECTION, section, reference::EXCLUDE_EXCEPT)?
             .unwrap_or_default(),
     })
 }
@@ -645,22 +660,25 @@ fn unknown_language(config: &Config, name: &str) -> Error {
 
 fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
     let listed = section
-        .get("ceilings")
-        .ok_or_else(|| config.missing(SECTION, "ceilings"))?
+        .get(CEILINGS)
+        .ok_or_else(|| config.missing(SECTION, CEILINGS))?
         .as_object()
         .ok_or_else(|| {
-            config.malformed(SECTION, "ceilings", "an object of \"cc\" and \"lines\"")
+            config.malformed(
+                SECTION,
+                CEILINGS,
+                &format!("an object of \"{}\" and \"{}\"", CC.inner(), LINES.inner()),
+            )
         })?;
-    let ceiling = |key: &str| {
-        let named = format!("ceilings.{key}");
+    let ceiling = |key: Key| {
         let value = listed
-            .get(key)
-            .ok_or_else(|| config.missing(SECTION, &named))?;
-        ceiling::read(config, SECTION, &named, value, "a whole number")
+            .get(key.inner())
+            .ok_or_else(|| config.missing(SECTION, key.name))?;
+        ceiling::read(config, SECTION, key.name, value, "a whole number")
     };
     Ok(Ceilings {
-        cc: ceiling("cc")?,
-        lines: ceiling("lines")?,
+        cc: ceiling(CC)?,
+        lines: ceiling(LINES)?,
     })
 }
 

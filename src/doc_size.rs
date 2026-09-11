@@ -10,25 +10,28 @@ use crate::config::{Config, Error, Flags};
 use crate::coverage::Coverage;
 use crate::reference::Key;
 
-const SECTION: &str = "doc_size";
+pub const SECTION: &str = "doc_size";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[
-    Key {
-        name: "file",
-        holds: "the document this entry judges, as a path under the tree root",
-        required: true,
-        rule: "one entry per Markdown file at the tree root that the derivation commit holds",
-        default: "",
-    },
-    Key {
-        name: "ceiling",
-        holds: "the words the document may not pass",
-        required: true,
-        rule: "the word count at the derivation commit, rounded up to the next 50 and never below 50",
-        default: "",
-    },
-];
+pub const KEYS: &[Key] = &[FILE, CEILING];
+
+pub const FILE: Key = Key {
+    name: "file",
+    holds: "the document this entry judges, as a path under the tree root",
+    required: true,
+    rule: Some("one entry per Markdown file at the tree root that the derivation commit holds"),
+    default: "",
+};
+
+pub const CEILING: Key = Key {
+    name: "ceiling",
+    holds: "the words the document may not pass",
+    required: true,
+    rule: Some(
+        "the word count at the derivation commit, rounded up to the next 50 and never below 50",
+    ),
+    default: "",
+};
 const MARGIN_FRACTION: f64 = 0.02;
 const REMEDY: &str = "An instruction that can be a gate costs no words — encode it as a gate and \
     point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling \
@@ -282,21 +285,23 @@ fn documents(
 fn listed_documents(config: &Config) -> Result<Vec<Document>, Error> {
     let Some(entries) = config.section(SECTION)?.as_array() else {
         return Err(Error(format!(
-            "{}: \"{SECTION}\" must be a list of {{\"file\", \"ceiling\"}} entries",
-            config.file.display()
+            "{}: \"{SECTION}\" must be a list of {{\"{}\", \"{}\"}} entries",
+            config.file.display(),
+            FILE.name,
+            CEILING.name
         )));
     };
     entries
         .iter()
         .map(|entry| {
-            let name = field(config, entry, "file")?
+            let name = field(config, entry, FILE)?
                 .as_str()
-                .ok_or_else(|| config.malformed(SECTION, "file", "a path"))?;
+                .ok_or_else(|| config.malformed(SECTION, FILE.name, "a path"))?;
             let ceiling = ceiling::read(
                 config,
                 SECTION,
-                "ceiling",
-                field(config, entry, "ceiling")?,
+                CEILING.name,
+                field(config, entry, CEILING)?,
                 "a whole number of words",
             )?;
             let path = config.path(name);
@@ -310,8 +315,10 @@ fn listed_documents(config: &Config) -> Result<Vec<Document>, Error> {
         .collect()
 }
 
-fn field<'a>(config: &Config, entry: &'a Value, key: &str) -> Result<&'a Value, Error> {
-    entry.get(key).ok_or_else(|| config.missing(SECTION, key))
+fn field<'a>(config: &Config, entry: &'a Value, key: Key) -> Result<&'a Value, Error> {
+    entry
+        .get(key.name)
+        .ok_or_else(|| config.missing(SECTION, key.name))
 }
 
 fn identity(path: &Path) -> PathBuf {

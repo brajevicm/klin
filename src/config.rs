@@ -8,58 +8,60 @@ use crate::reference::Key;
 use crate::survey;
 
 const FILENAME: &str = "klin.json";
-const VERSION: &str = "version";
 
-/// The top-level keys, beside one key per gate named for its section. `klin reference`
-/// prints them. Spec 5.2, 5.8.
-const KEYS: &[Key] = &[
-    Key {
-        name: "project",
-        holds: "a name for reports",
-        required: false,
-        rule: "",
-        default: "no name",
-    },
-    Key {
-        name: "version",
-        holds: "the klin version this configuration was written for. A run under another version prints a NOTE naming both and continues",
-        required: false,
-        rule: "",
-        default: "no version",
-    },
-    Key {
-        name: "build",
-        holds: "the commands a run builds with, each an entry of a `run` and an optional `root`",
-        required: false,
-        rule: "one entry per manifest, from the fixed table of ADR 0012",
-        default: "",
-    },
-    Key {
-        name: "accepted",
-        holds: "the debt a person accepted, each entry a site and a reason. Only a person writes it",
-        required: false,
-        rule: "",
-        default: "nothing is accepted",
-    },
-    Key {
-        name: "radius",
-        holds: "the change radius a turn may not pass, as `lines` and `directories`",
-        required: false,
-        rule: "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
-        default: "",
-    },
-    Key {
-        name: "gates",
-        holds: "extra gates, each an entry of a `name`, a `check`, a `with` and an optional `off`",
-        required: false,
-        rule: "",
-        default: "no gate beyond the sections",
-    },
-];
+/// The top-level keys, beside one key per gate named for its section. Every module that reads
+/// one reads it through the declaration here, and `klin reference` prints them. Spec 5.2, 5.8.
+pub const KEYS: &[Key] = &[PROJECT, VERSION, BUILD, ACCEPTED, RADIUS, GATES];
 
-pub fn keys() -> &'static [Key] {
-    KEYS
-}
+pub const PROJECT: Key = Key {
+    name: "project",
+    holds: "a name for reports",
+    required: false,
+    rule: None,
+    default: "no name",
+};
+
+pub const VERSION: Key = Key {
+    name: "version",
+    holds: "the klin version this configuration was written for. A run under another version prints a NOTE naming both and continues",
+    required: false,
+    rule: None,
+    default: "no version",
+};
+
+pub const BUILD: Key = Key {
+    name: "build",
+    holds: "the commands a run builds with, each an entry of a `run` and an optional `root`",
+    required: false,
+    rule: Some("one entry per manifest, from the fixed table of ADR 0012"),
+    default: "",
+};
+
+pub const ACCEPTED: Key = Key {
+    name: "accepted",
+    holds: "the debt a person accepted, each entry a site and a reason. Only a person writes it",
+    required: false,
+    rule: None,
+    default: "nothing is accepted",
+};
+
+pub const RADIUS: Key = Key {
+    name: "radius",
+    holds: "the change radius a turn may not pass, as `lines` and `directories`",
+    required: false,
+    rule: Some(
+        "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
+    ),
+    default: "",
+};
+
+pub const GATES: Key = Key {
+    name: "gates",
+    holds: "extra gates, each an entry of a `name`, a `check`, a `with` and an optional `off`",
+    required: false,
+    rule: None,
+    default: "no gate beyond the sections",
+};
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -261,7 +263,7 @@ impl Config {
     /// nothing when it names this one or none. A mismatch is a note. Section 5.2.
     pub fn version_note(&self) -> Option<String> {
         let running = env!("CARGO_PKG_VERSION");
-        let named = self.data.get(VERSION)?.as_str()?;
+        let named = self.data.get(VERSION.name)?.as_str()?;
         if named == running {
             return None;
         }
@@ -344,11 +346,12 @@ fn no_section_names_a_retired_key(file: &Path, data: &Value) -> Result<(), Error
 /// A "version" that is not a string is a malformed key, and every command refuses it. Whether
 /// the version it names is the one running is a note instead. Sections 5.2 and 14.
 fn a_version_is_a_string(file: &Path, data: &Value) -> Result<(), Error> {
-    match data.get(VERSION) {
+    match data.get(VERSION.name) {
         None | Some(Value::String(_)) => Ok(()),
         Some(_) => Err(Error(format!(
-            "{}: \"{VERSION}\" must be a klin version as a string",
-            file.display()
+            "{}: \"{}\" must be a klin version as a string",
+            file.display(),
+            VERSION.name
         ))),
     }
 }

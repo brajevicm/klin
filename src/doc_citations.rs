@@ -11,33 +11,37 @@ use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
 
-const SECTION: &str = "doc_citations";
+pub const SECTION: &str = "doc_citations";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[
-    Key {
-        name: "file",
-        holds: "the document this entry reads citations from",
-        required: true,
-        rule: "one entry per Markdown file at the tree root",
-        default: "",
-    },
-    Key {
-        name: "roots",
-        holds: "the directories a citation may resolve under",
-        required: false,
-        rule: "the tree root",
-        default: "the tree root",
-    },
-    Key {
-        name: "extensions",
-        holds: "the file extensions a citation may name",
-        required: false,
-        rule: "",
-        default: "`.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, \
-               `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`",
-    },
-];
+pub const KEYS: &[Key] = &[FILE, ROOTS, EXTENSIONS];
+
+pub const FILE: Key = Key {
+    name: "file",
+    holds: "the document this entry reads citations from",
+    required: true,
+    rule: Some("one entry per Markdown file at the tree root"),
+    default: "",
+};
+
+pub const ROOTS: Key = Key {
+    name: "roots",
+    holds: "the directories a citation may resolve under",
+    required: false,
+    rule: Some("the tree root"),
+    default: "the tree root",
+};
+
+const EXTENSIONS: Key = Key {
+    name: "extensions",
+    holds: "the file extensions a citation may name",
+    required: false,
+    rule: None,
+    default: "`.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, \
+           `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`",
+};
+/// The extensions a citation may name when its entry names none. `EXTENSIONS` above prints this
+/// list as its default, so the two are edited together.
 const DEFAULT_EXTENSIONS: &[&str] = &[
     ".py", ".ts", ".tsx", ".js", ".jsx", ".swift", ".rs", ".go", ".kt", ".java", ".rb", ".sh",
     ".md", ".json", ".yml", ".yaml", ".toml",
@@ -486,14 +490,14 @@ fn listed_documents(config: &Config) -> Result<Vec<Document>, Error> {
 fn document(config: &Config, entry: &Value) -> Result<Document, Error> {
     let values = entry
         .as_object()
-        .ok_or_else(|| config.malformed(SECTION, "file", "an object"))?;
+        .ok_or_else(|| config.malformed(SECTION, FILE.name, "an object"))?;
     let name = values
-        .get("file")
+        .get(FILE.name)
         .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(SECTION, "file"))?;
-    let roots = files::roots(config, SECTION, values, "roots")?
+        .ok_or_else(|| config.missing(SECTION, FILE.name))?;
+    let roots = files::roots(config, SECTION, values, ROOTS)?
         .unwrap_or_else(|| vec![config.root().to_path_buf()]);
-    let extensions = files::strings(config, SECTION, values, "extensions")?;
+    let extensions = files::strings(config, SECTION, values, EXTENSIONS)?;
     Ok(Document {
         path: config.path(name),
         roots,

@@ -5,7 +5,7 @@ use crate::markers::{self, Args, Kind, Language};
 use crate::ratchet::{Evaluator, Values};
 use crate::reference::{self, Key};
 
-const SECTION: &str = "stubs";
+pub const SECTION: &str = "stubs";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
 const KEYS: &[Key] = &[
@@ -78,6 +78,11 @@ const LANGUAGES: &[Language] = &[
         ],
     },
 ];
+
+/// Every language name this section selects a file set by, with the extensions each selects.
+pub fn language_extensions() -> Vec<(&'static str, String)> {
+    markers::language_extensions(&KIND)
+}
 
 pub const KIND: Kind = Kind {
     section: SECTION,

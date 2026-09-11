@@ -1,17 +1,18 @@
 //! The configuration reference. Every check declares its keys beside the code that reads them,
 //! and this module prints them as Markdown, so a person reads the keys without reading the
 //! source. `docs/REFERENCE.md` holds the printed copy and a CLI test fails when the two differ,
-//! so the committed copy cannot drift from the binary. A key a module reads and does not
-//! declare here is still invisible, so a new key is two edits. Spec 5.8.
+//! so the committed copy cannot drift from the binary. A read takes the declared `Key` and not
+//! a string of its own, so a key the reference does not print is a key no module can read.
+//! Spec 5.8.
 
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::config::{self, Error};
-use crate::{complexity, escapes, gate, markers, stubs};
+use crate::{gate, survey};
 
 /// One configuration key, declared beside the code that reads it. `rule` is the rule the survey
-/// derives the key by, empty for a key only a person pins. `default` is the value a run uses
+/// derives the key by, and none for a key only a person pins. `default` is the value a run uses
 /// when the key is absent, empty when there is none. Spec 5.4.
 #[derive(Clone, Copy)]
 pub struct Key {
@@ -19,7 +20,7 @@ pub struct Key {
     /// What the key holds, in a person's words, so the reference stands without the source.
     pub holds: &'static str,
     pub required: bool,
-    pub rule: &'static str,
+    pub rule: Option<&'static str>,
     pub default: &'static str,
 }
 
@@ -39,8 +40,37 @@ impl Key {
 
     /// The same key under a rule of this section's own, where the shared one does not hold.
     pub const fn derived(self, rule: &'static str) -> Key {
-        Key { rule, ..self }
+        Key {
+            rule: Some(rule),
+            ..self
+        }
     }
+
+    /// The same key where this section derives nothing and only a person pins it.
+    pub const fn pinned(self) -> Key {
+        Key { rule: None, ..self }
+    }
+
+    /// The key the value that holds this one names it by, which for a key written `a.b` is `b`
+    /// and for every other key is the key itself.
+    pub fn inner(self) -> &'static str {
+        match self.name.split_once('.') {
+            Some((_, inner)) => inner,
+            None => self.name,
+        }
+    }
+}
+
+/// Every language name a section selects a file set by, with the extensions each name selects.
+pub type Languages = fn() -> Vec<(&'static str, String)>;
+
+/// What one section tells the reference about itself, off the same table a run takes its checks
+/// from, so a section klin gates and a section the reference prints cannot drift apart.
+pub struct Section {
+    pub name: &'static str,
+    pub keys: &'static [Key],
+    /// None for a section that selects no language.
+    pub languages: Option<Languages>,
 }
 
 /// The vocabulary of spec 5.3: the keys every section spells the same way and means the same
@@ -49,9 +79,11 @@ pub const ROOTS: Key = Key {
     name: "roots",
     holds: "the directories the check reads",
     required: false,
-    rule: "the directories that hold source files of a known language, merged up to the \
-           shallowest directory that holds nothing but source, over the derivation commit's \
-           survey and a walk of the working tree",
+    rule: Some(
+        "the directories that hold source files of a known language, merged up to the \
+                shallowest directory that holds nothing but source, over the derivation commit's \
+                survey and a walk of the working tree",
+    ),
     default: "",
 };
 
@@ -59,8 +91,10 @@ pub const LANGUAGES: Key = Key {
     name: "languages",
     holds: "the language names that choose the file set",
     required: false,
-    rule: "the languages of the files under `roots`, in the derivation commit and in the \
-           working tree",
+    rule: Some(
+        "the languages of the files under `roots`, in the derivation commit and in the \
+                working tree",
+    ),
     default: "",
 };
 
@@ -68,7 +102,7 @@ pub const EXCLUDE: Key = Key {
     name: "exclude",
     holds: "globs on the basename and on the path from the tree root",
     required: false,
-    rule: "",
+    rule: None,
     default: "nothing is excluded",
 };
 
@@ -76,7 +110,7 @@ pub const SKIP_DIRS: Key = Key {
     name: "skip_dirs",
     holds: "directory names to skip beside the shared list",
     required: false,
-    rule: "",
+    rule: None,
     default: "the shared list only",
 };
 
@@ -84,7 +118,7 @@ pub const EXCLUDE_EXCEPT: Key = Key {
     name: "exclude_except",
     holds: "the files an `exclude` glob must not drop",
     required: false,
-    rule: "",
+    rule: None,
     default: "nothing is kept back",
 };
 
@@ -120,10 +154,11 @@ fn preamble(out: &mut String) {
 
 fn top_level(out: &mut String) {
     let _ = writeln!(out, "\n## Top-level keys\n");
-    table(config::keys(), out);
+    table(config::KEYS, out);
 }
 
 fn sections(out: &mut String) {
+    let whole = |section: &str| survey::keys(section).is_some_and(<[&str]>::is_empty);
     let _ = writeln!(
         out,
         "\n## Sections\n\n\
@@ -131,18 +166,25 @@ fn sections(out: &mut String) {
          `languages`, `exclude`, `skip_dirs` and `ceilings` mean the same thing everywhere. A \
          section reads only the keys its own table names."
     );
-    for (section, keys) in gate::catalogue() {
-        let _ = writeln!(out, "\n### `{section}`\n");
-        table(keys, out);
+    for section in gate::catalogue() {
+        let _ = writeln!(out, "\n### `{}`\n", section.name);
+        rows(section.keys, whole(section.name), out);
     }
 }
 
 fn table(keys: &[Key], out: &mut String) {
+    rows(keys, false, out);
+}
+
+/// One table. `whole` is a section the survey supplies entry by entry and not key by key, where
+/// a rule holds only when the section itself is absent, so a pinned entry must state the key.
+fn rows(keys: &[Key], whole: bool, out: &mut String) {
     let _ = writeln!(out, "{HEAD}\n{RULE}");
     for key in keys {
-        let source = match key.rule.is_empty() {
-            true => "pinned only",
-            false => "derived when absent",
+        let source = match (key.rule, whole) {
+            (None, _) => "pinned only",
+            (Some(_), true) => "derived with the section",
+            (Some(_), false) => "derived when absent",
         };
         let _ = writeln!(
             out,
@@ -150,7 +192,7 @@ fn table(keys: &[Key], out: &mut String) {
             key.name,
             cell(key.holds),
             yes(key.required),
-            cell(key.rule),
+            cell(key.rule.unwrap_or_default()),
             cell(key.default)
         );
     }
@@ -180,15 +222,11 @@ fn languages(out: &mut String) {
          measures every language `complexity` knows, and one that names none for `escapes` or \
          `stubs` must name `patterns` instead."
     );
-    let named = [
-        ("complexity", complexity::language_extensions()),
-        ("escapes", markers::language_extensions(&escapes::KIND)),
-        ("stubs", markers::language_extensions(&stubs::KIND)),
-    ];
+    let named = gate::catalogue().filter_map(|section| Some((section.name, section.languages?)));
     for (section, rows) in named {
         let _ = writeln!(out, "\n### `{section}`\n");
         let _ = writeln!(out, "| Name | Extensions |\n| --- | --- |");
-        for (name, extensions) in rows {
+        for (name, extensions) in rows() {
             let _ = writeln!(out, "| `{name}` | {extensions} |");
         }
     }
@@ -198,8 +236,8 @@ fn languages(out: &mut String) {
 /// name, such as TypeScript and TSX, are one row here, because the name selects both.
 pub fn extensions_by_name(
     rows: impl Iterator<Item = (&'static [&'static str], &'static [&'static str])>,
-) -> Vec<(String, String)> {
-    let mut held: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+) -> Vec<(&'static str, String)> {
+    let mut held: BTreeMap<&'static str, Vec<&str>> = BTreeMap::new();
     for (names, extensions) in rows {
         for name in names {
             let under = held.entry(name).or_default();
@@ -213,7 +251,7 @@ pub fn extensions_by_name(
     held.into_iter()
         .map(|(name, extensions)| {
             let listed: Vec<String> = extensions.iter().map(|at| format!("`{at}`")).collect();
-            (name.to_string(), listed.join(", "))
+            (name, listed.join(", "))
         })
         .collect()
 }

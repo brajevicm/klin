@@ -4,9 +4,12 @@ use std::process::Command;
 use serde_json::Value;
 
 use crate::changed::Change;
-use crate::config::{Config, Error};
+use crate::config::{self, Config, Error};
 
-const BUILD: &str = "build";
+const BUILD: &str = config::BUILD.name;
+/// The two keys one entry of the `build` list holds, which `config::BUILD` states.
+pub const RUN: &str = "run";
+pub const ROOT: &str = "root";
 
 /// One command that builds part of the tree. An entry with no root covers the whole tree.
 pub struct Entry {
@@ -37,13 +40,13 @@ pub fn entries(config: &Config) -> Result<Vec<Entry>, Error> {
 
 fn entry(config: &Config, item: &serde_json::Map<String, Value>) -> Result<Entry, Error> {
     let run = item
-        .get("run")
+        .get(RUN)
         .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(BUILD, "run"))?;
-    let root = match item.get("root") {
+        .ok_or_else(|| config.missing(BUILD, RUN))?;
+    let root = match item.get(ROOT) {
         None => None,
         Some(Value::String(at)) => Some(at.clone()),
-        Some(_) => return Err(config.malformed(BUILD, "root", "a directory in the tree")),
+        Some(_) => return Err(config.malformed(BUILD, ROOT, "a directory in the tree")),
     };
     Ok(Entry {
         root,
