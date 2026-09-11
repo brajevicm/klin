@@ -1418,7 +1418,10 @@ and what it gives up.
   glob that does not match it, and every file that left the guarded set.
 
 A glob matches the guarded name only when the glob, read as a pattern,
-matches it. An empty prefix MUST NOT match. Splitting a command into segments
+matches it. An empty prefix MUST NOT match. A command word made only of
+wildcard characters names no file and MUST NOT match, so Markdown bold such
+as `**` passes, and so does `rm *` in the tree root (issue #119). A redirect
+target made only of wildcards still matches. Splitting a command into segments
 MUST honor single and double quotes (issue #90). The body of a heredoc is
 data: the guard matches the command words and every redirect target,
 including a command after the heredoc's terminator, and does not match the

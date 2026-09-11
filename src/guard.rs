@@ -280,7 +280,15 @@ fn redirected(words: &[&str]) -> Decision {
 /// The guarded path a command outside the reader list names. klin cannot tell a write from a
 /// mention, so it is an ask.
 fn mentioned(token: &str) -> Option<Decision> {
-    guarded(token).then(|| asked_about(token))
+    (!names_no_file(token) && guarded(token)).then(|| asked_about(token))
+}
+
+/// A word of only wildcards, such as Markdown's `**`, names no file. A redirect onto one still
+/// writes whatever it expands to, so only a mention is read this way. Issue #119.
+fn names_no_file(token: &str) -> bool {
+    basename(token.trim_matches(['\'', '"']))
+        .chars()
+        .all(|c| WILDCARDS.contains(&c))
 }
 
 /// One of klin's own subcommands that only a person runs, whatever flags it carries.

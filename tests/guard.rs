@@ -59,6 +59,7 @@ fn refuses_a_redirect_onto_the_configuration() {
         "echo '{}' > klin.json",
         "echo '[]' >>klin.json",
         "awk '{ print }' notes.txt > klin.json",
+        "echo '{}' > *",
     ] {
         denied(&bash(command), command);
     }
@@ -229,6 +230,25 @@ fn allows_a_glob_with_nothing_before_the_star() {
     ] {
         allowed(&bash(command), command);
     }
+}
+
+/// A token of only wildcards names no file, so Markdown bold in a command is not the config.
+#[test]
+fn allows_a_token_of_only_wildcards() {
+    for command in [
+        "ffmpeg ** out",
+        "echo **What changed:** > /tmp/notes.md",
+        "cat > /tmp/notes.md <<EOF\n**What changed:**",
+    ] {
+        allowed(&bash(command), command);
+    }
+}
+
+/// `rm *` in the tree root deletes the configuration, and the guard lets it pass. Issue #119
+/// took that trade so that Markdown bold in a command is not refused.
+#[test]
+fn allows_a_bare_star_that_would_delete_the_configuration() {
+    allowed(&bash("rm *"), "rm *");
 }
 
 /// A quoted separator is a character in an argument, not the end of a command, so the reader
