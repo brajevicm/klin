@@ -225,3 +225,83 @@ fn cache_clean_leaves_the_journal_in_place() {
     assert_eq!(clean.code, 0, "{}", clean.out);
     assert!(tree.state("journal.jsonl").is_file(), "{}", clean.out);
 }
+
+const A_SARIF_GATE: &str = r#"{
+  "project": "t",
+  "sarif": [{"name": "eslint", "report": "eslint.sarif"}],
+  "accepted": [
+    {"gate": "eslint", "file": "src/a.ts", "text": "no-any: on the changed line", "count": 1}
+  ]
+}"#;
+
+fn a_sarif_result(line: u64, message: &str) -> String {
+    format!(
+        r#"{{"ruleId": "no-any", "message": {{"text": "{message}"}}, "locations": [
+            {{"physicalLocation": {{
+                "artifactLocation": {{"uri": "src/a.ts"}},
+                "region": {{"startLine": {line}}}
+            }}}}
+        ]}}"#
+    )
+}
+
+/// Spec 11.2 defines `held` as the findings a base site or an accepted entry carried, which is
+/// one quantity and not two. A sarif gate also drops the results the window did not touch, and
+/// those are its coverage and never its hold.
+#[test]
+fn a_gate_row_holds_what_the_ratchet_let_through_and_not_what_the_window_dropped() {
+    let tree = Tree::new();
+    tree.write("klin.json", A_SARIF_GATE);
+    tree.write("src/a.ts", "one\ntwo\nthree\n");
+    tree.base();
+    prompt(&tree);
+    tree.write("src/a.ts", "one\nchanged\nthree\n");
+    tree.write(
+        "eslint.sarif",
+        &format!(
+            r#"{{"version": "2.1.0", "runs": [{{
+                "tool": {{"driver": {{"name": "eslint"}}}},
+                "results": [{}, {}]
+            }}]}}"#,
+            a_sarif_result(2, "on the changed line"),
+            a_sarif_result(1, "on a line the window did not change"),
+        ),
+    );
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let lines = journal(&tree);
+    let gates = field(&lines[0], &["gates"])
+        .as_array()
+        .unwrap_or_else(|| panic!("no gates list in {}", lines[0]));
+    let eslint = gates
+        .iter()
+        .find(|gate| field(gate, &["name"]) == "eslint")
+        .unwrap_or_else(|| panic!("no eslint row in {}", lines[0]));
+    assert_eq!(field(eslint, &["held"]), 1, "{eslint}");
+}
+
+/// The `why` beside `verdict: "none"` names the reason this stop had, and no other. A stamp
+/// klin read and could not write back is not a state directory klin found no stamp in.
+#[test]
+fn a_stamp_that_could_not_be_written_says_so_and_not_that_there_was_none() {
+    let tree = tree(EVERY_GATE);
+    prompt(&tree);
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 0, "{}", first.out);
+
+    let writing = tree.state("turn.writing");
+    assert!(std::fs::create_dir(&writing).is_ok(), "the writing path");
+
+    let held = stop(&tree, A_STOP);
+    assert_eq!(held.code, 0, "{}", held.out);
+    let line = journal(&tree)
+        .pop()
+        .unwrap_or_else(|| panic!("an empty journal"));
+    assert_eq!(field(&line, &["verdict"]), "none", "{line}");
+    assert_eq!(
+        field(&line, &["why"]),
+        "the turn stamp could not be written, so this stop wrote no verdict",
+        "{line}"
+    );
+}

@@ -293,9 +293,9 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
         let wrote = turn::verdict(&root, green, &asked, &mut said);
         eprint!("{said}");
         match (wrote, green) {
-            (true, true) => log.verdict = "green",
-            (true, false) => log.verdict = "red",
-            (false, _) => log.why = Some("the state directory holds no stamp klin could write"),
+            (Ok(()), true) => log.verdict = "green",
+            (Ok(()), false) => log.verdict = "red",
+            (Err(why), _) => log.why = Some(why),
         }
     }
     if let Ok(at) = state::ready(&root) {

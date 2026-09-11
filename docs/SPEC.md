@@ -1633,9 +1633,11 @@ One object on stdout. Fields:
   `{found, measured, excluded, unreadable}` counts of 11.1, or null for a
   gate that could not run far enough to measure a scope, `ms` is how long the
   gate's own measure and judge took, and `held` counts the findings the run
-  let through because a base site or an accepted entry carried them — on a
-  passing run, the count the gate's `OK:` line of 11.1 prints — or null for a
-  gate that never got that far
+  let through because a base site or an accepted entry carried them, which is
+  one quantity and not two: a gate that also drops sites its window never
+  reached counts those in its `coverage` and never in `held`. On a passing run
+  it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
+  it is null for a gate that never got that far
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The
@@ -1695,9 +1697,10 @@ only the hook knew:
   `follow-up` and `report` are reserved for a host whose stop cannot block
   (#67). `gate_spent` and `build_blocks` are the build stamp of 16.3 as this
   stop left it, and `blocked_before` is the host's flag.
-- `verdict`, `green`, `red`, or `none` for a stop that wrote no verdict —
-  the lock timed out, or the state directory held no stamp klin could write —
-  with a `why` string beside `none`.
+- `verdict`, `green`, `red`, or `none` for a stop that wrote no verdict, with
+  a `why` string beside `none` that names the reason this stop had and no
+  other: the lock timed out, the state directory could not be readied, it held
+  no stamp klin could read, or the stamp klin read could not be written back.
 - `timing` `{total_ms, build_ms, lock_ms, klin_ms}`, where `klin_ms` is the
   total less the build, so the budget of 13 reads straight off it.
 - `asked`, the site ids this stop asked about, as the turn stamp records

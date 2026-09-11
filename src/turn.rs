@@ -373,18 +373,26 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
 /// The verdict this stop leaves for the next prompt to read, and the findings its block put in
 /// front of the agent. Green lets the stamp move, red keeps it, so the debt stays new until a
 /// person fixes, accepts or resets it. Spec 6.2, 8.2.
-pub fn verdict(root: &Path, green: bool, asked: &[String], out: &mut String) -> bool {
+pub fn verdict(
+    root: &Path,
+    green: bool,
+    asked: &[String],
+    out: &mut String,
+) -> Result<(), &'static str> {
     let Ok(at) = state::ready(root) else {
-        return false;
+        return Err("klin could not ready the state directory, so this stop wrote no verdict");
     };
     let Some(held) = read(&at) else {
-        return false;
+        return Err(
+            "the state directory holds no stamp klin could read, so this stop wrote no \
+                    verdict",
+        );
     };
     let mut all = held.asked.clone();
     all.extend(asked.iter().cloned());
     all.sort();
     all.dedup();
-    write(
+    let wrote = write(
         &at,
         &Stamp {
             green,
@@ -392,7 +400,11 @@ pub fn verdict(root: &Path, green: bool, asked: &[String], out: &mut String) -> 
             ..held
         },
         out,
-    )
+    );
+    match wrote {
+        true => Ok(()),
+        false => Err("the turn stamp could not be written, so this stop wrote no verdict"),
+    }
 }
 
 /// How long ago the stamp was taken, from the time the stamp holds. An age rather than a date,
