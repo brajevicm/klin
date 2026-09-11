@@ -904,9 +904,12 @@ asks once and does not judge the answer (ADR 0031):
   blocks records the site id (11.2) of every finding it reported in the
   `turn` file, beside the stamp (6.5). A vanished site that record holds is
   let through: its `before` entry carries `missing: 1`, so the one judge
-  holds it, and the run lists it in a NOTE. The record goes when the stamp
-  moves. The rule keys on `--hook` and not on the window kind, because a
-  stop whose stamp was deleted judges a branch window (6.2).
+  holds it, and the run lists it in a NOTE. The report names every finding
+  it records, so nothing reaches that record unasked. The record goes when
+  the stamp moves, and the guard refuses an agent's write to the file that
+  holds it (9.4). The rule keys on `--hook` and not on the window kind,
+  because a stop whose stamp was deleted judges a branch window (6.2), and a
+  stamp that went takes the record with it, so such a stop asks again.
 - Everywhere else, every vanished site is let through the same way and is a
   NOTE, `--strict` included.
 
@@ -914,17 +917,15 @@ An accepted entry that names a vanished site still takes the match, by
 entry order (16.5), so it neither fails nor turns into an entry that matched
 nothing. Nothing klin prints asks for one.
 
-A deletion that removed the subject
-too is a NOTE: for a file, the subject file went in the same window, and
-for a function, the file that held it went. The subject of a test file is
+A deletion that removed the subject too is a NOTE: for a file, the subject
+file went in the same window, and for a function, the file that held it
+went. The subject of a test file is
 the file in `before` whose path equals the test's path with the test
 affixes stripped: a `test_` or `spec_` prefix, a `_test`, `_spec`, `.test`
 or `.spec` suffix before the extension, a `Test` or `Tests` suffix on the
 basename as in `FooTest.java` or `FooTests.swift`, and a `tests/`, `test/`,
 `spec/` or `__tests__/` directory segment. The table is fixed in the binary
 and printed with the NOTE.
-Deleting a test that fails is the cheapest route to green in section 1, and
-the file-level inventory alone does not close it.
 
 
 `lockfile` proves one thing: every dependency the manifest names has an entry
@@ -1405,7 +1406,9 @@ pre-tool decisions go out as `hookSpecificOutput.permissionDecision` with
 `allow`, `deny` or `ask` and a reason. Stop blocks are exit 2 with the report
 on stderr. A stop that ends with something for the person, such as a note
 about a file no grammar read or a deleted test the run let through, writes
-it as a JSON `systemMessage` on stdout under exit 0. Prompt and
+it as a JSON `systemMessage` on stdout under exit 0. A stop whose host event
+klin cannot read writes that note to stderr and exits 1 instead, by the rule
+of 16.5, because klin does not know whose shape to tell it in. Prompt and
 session-start text go to stdout on exit 0.
 For Codex CLI, `allow` is exit 0 and both `deny` and `ask` are exit 2 with
 the reason on stderr, because Codex rejects `permissionDecision: ask` on
@@ -1481,27 +1484,33 @@ holds, the last turn of a session can carry a radius report at its stop.
 
 ### 9.4 The guard's three decisions
 
-The guarded set is one file: `klin.json`. A host's hook file, CODEOWNERS,
-klin's state directory, `refs/worktree/klin` and every verification file are
-ordinary files, and an edit to one of them is `allow`. ADR 0027 records why,
-and what it gives up.
+The guarded set is `klin.json` and klin's own state directory, which is a
+`klin` directory under a git directory (ADR 0019). A worktree keeps its own
+under `.git/worktrees/<name>/klin`, so a `klin` component anywhere after a
+`.git` one names it. A host's hook file, CODEOWNERS, `refs/worktree/klin` and
+every verification file are ordinary files, and an edit to one of them is
+`allow`. ADR 0027 records why, and ADR 0032 records why the state directory
+is not one of them.
 
-- `deny`: an edit tool whose path is `klin.json`, a redirect onto it,
-  `init` in any form, and `turn reset`. The reason names the file and says a
-  person changes it in a reviewed commit, or names the command a person runs
-  instead. Nothing else denies. Every route klin cannot read as a clear write
-  to `klin.json` is an `ask` at most, because a deny leaves an agent no
+- `deny`: an edit tool whose path is `klin.json` or reaches inside the state
+  directory, a redirect onto either, `init` in any form, and `turn reset`.
+  The reason names the file and says a person changes it in a reviewed
+  commit, or names the command a person runs instead: `klin turn reset` for
+  the stamp, and `klin cache clean`, which stays open to an agent, for the
+  cache. Nothing else denies. Every route klin cannot read as a clear write
+  to a guarded path is an `ask` at most, because a deny leaves an agent no
   remedy and ordinary work must not meet one.
-- `ask`: a shell command outside the reader list whose arguments name
-  `klin.json`. The reason quotes the token that matched. The person decides.
+- `ask`: a shell command outside the reader list whose arguments name a
+  guarded path. The reason quotes the token that matched. The person decides.
   The reader list of ADR 0011 gains `git rev-parse`, `git cat-file`, `git
   for-each-ref`, `du`, and `find` without `-delete`, `-exec`, `-execdir` or
   `-ok`.
-- `allow`: everything else, including any reader naming `klin.json`, any
-  glob that does not match it, and every file that left the guarded set.
+- `allow`: everything else, including any reader naming a guarded path, any
+  glob that does not match one, and every file that left the guarded set.
 
-A glob matches the guarded name only when the glob, read as a pattern,
-matches it. An empty prefix MUST NOT match. A command word made only of
+A glob matches a guarded name only when the glob, read as a pattern, matches
+it, and a path component holding a wildcard is read the same way, so
+`.git/?lin/turn` names the state directory. An empty prefix MUST NOT match. A command word made only of
 wildcard characters names no file and MUST NOT match, so Markdown bold such
 as `**` passes, and so does `rm *` in the tree root (issue #119). A redirect
 target made only of wildcards still matches. Splitting a command into segments
@@ -1717,9 +1726,10 @@ settings and CODEOWNERS under CODEOWNERS. At this level a gate holds against
 an agent, and loosening it takes a reviewed commit by a person.
 
 One finding is the exception. A deleted test is a NOTE in CI (8.2), so at
-this level it holds only through the hook's one question and the reviewer
-who reads the diff. An agent that runs with no hook meets no question at
-all. ADR 0031 records the cost.
+this level it holds only through the hook's one question, the guard in front
+of the record that question leaves (9.4), and the reviewer who reads the
+diff. An agent that runs with no hook meets none of the three. ADR 0031 and
+ADR 0032 record the cost.
 
 The README MUST name both levels and say which one a setup reaches.
 

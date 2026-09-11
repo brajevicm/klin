@@ -3,6 +3,7 @@ use std::str::Chars;
 
 use crate::files::glob_matches;
 use crate::host::{self, Decision, Event};
+use crate::state;
 
 const SPLIT: char = '\u{0}';
 const SEPARATORS: &[char] = &[';', '&', '|', '\n'];
@@ -11,6 +12,10 @@ const WILDCARDS: &[char] = &['*', '?', '['];
 
 const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json). Fix \
     the code the gate names instead. Only a person changes it, in a reviewed commit.";
+
+const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the turn, under \
+    .git/klin. It holds the window a gate failed in and the questions this turn already put to \
+    you. Only a person moves it, with `klin turn reset`.";
 
 const INIT_REFUSAL: &str = "klin: refused — `klin init` writes the configuration. Only a \
     person runs it, in a reviewed commit.";
@@ -24,10 +29,14 @@ const KLIN_REFUSED: &[(&[&str], &str)] = &[
 ];
 
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
-/// The one file klin guards. A check's own configuration, a host's hook file and the code
-/// owners are ordinary files: klin cannot tell a loosening from a fix in any of them, and
-/// refusing a whole settings file refuses the work that has nothing to do with klin.
+/// The one file klin guards, beside klin's own state directory. A check's own configuration, a
+/// host's hook file and the code owners are ordinary files: klin cannot tell a loosening from a
+/// fix in any of them, and refusing a whole settings file refuses the work that has nothing to
+/// do with klin. ADR 0027, ADR 0032.
 const NAME: &str = "klin.json";
+/// The git directory klin keeps its state under. A worktree keeps its own under
+/// `.git/worktrees/<name>/klin`, so the two names need not sit side by side.
+const GIT: &str = ".git";
 const READERS: &[&str] = &[
     "cat", "head", "tail", "less", "grep", "rg", "diff", "wc", "stat", "ls", "file", "jq", "du",
 ];
@@ -76,23 +85,41 @@ fn decided(event: &Event) -> Decision {
 }
 
 /// What one path an edit tool or a redirect names is worth: a deny for the one file only a
-/// person changes, and nothing otherwise.
+/// person changes, a deny for klin's own record of the turn, and nothing otherwise.
 fn touched(path: &str) -> Option<Decision> {
-    guarded(path).then(|| Decision::Deny(REFUSAL.to_string()))
+    match (guarded(path), keeps_state(path)) {
+        (true, _) => Some(Decision::Deny(REFUSAL.to_string())),
+        (_, true) => Some(Decision::Deny(STATE_REFUSAL.to_string())),
+        _ => None,
+    }
 }
 
-fn asked_about(token: &str) -> Decision {
-    Decision::Ask(format!(
-        "this names \"{token}\", which is the configuration klin guards."
-    ))
+fn asked_about(token: &str, what: &str) -> Decision {
+    Decision::Ask(format!("this names \"{token}\", which is {what}."))
 }
 
 fn guarded(path: &str) -> bool {
-    let name = basename(path.trim_matches(['\'', '"']));
-    if name.contains(WILDCARDS) {
-        return glob_matches(name.as_bytes(), NAME.as_bytes());
+    names(basename(unquoted(path)), NAME)
+}
+
+/// Whether a path reaches inside the directory klin keeps its own state in, which is a `klin`
+/// directory under a git directory. ADR 0032.
+fn keeps_state(path: &str) -> bool {
+    let mut parts = unquoted(path).split(['/', '\\']);
+    parts.any(|part| names(part, GIT)) && parts.any(|part| names(part, state::DIR))
+}
+
+/// Whether one path component names this file or directory. A component that holds a shell
+/// wildcard is read as the pattern the shell would expand, so `?lin.json` matches too.
+fn names(part: &str, name: &str) -> bool {
+    match part.contains(WILDCARDS) {
+        true => glob_matches(part.as_bytes(), name.as_bytes()),
+        false => part == name,
     }
-    name == NAME
+}
+
+fn unquoted(path: &str) -> &str {
+    path.trim_matches(['\'', '"'])
 }
 
 fn basename(path: &str) -> &str {
@@ -280,7 +307,13 @@ fn redirected(words: &[&str]) -> Decision {
 /// The guarded path a command outside the reader list names. klin cannot tell a write from a
 /// mention, so it is an ask.
 fn mentioned(token: &str) -> Option<Decision> {
-    (!names_no_file(token) && guarded(token)).then(|| asked_about(token))
+    if names_no_file(token) {
+        return None;
+    }
+    if guarded(token) {
+        return Some(asked_about(token, "the configuration klin guards"));
+    }
+    keeps_state(token).then(|| asked_about(token, "klin's own record of the turn"))
 }
 
 /// A word of only wildcards, such as Markdown's `**`, names no file. A redirect onto one still

@@ -4,8 +4,8 @@ use std::time::{Duration, Instant};
 
 /// klin's own state: the build stamp, and later the turn stamp and the survey cache. It lives
 /// under the git directory, which git never tracks, never lists and never cleans, so klin
-/// writes nothing the working tree can see. ADR 0019.
-const DIR: &str = "klin";
+/// writes nothing the working tree can see. The guard reads this name too. ADR 0019, ADR 0032.
+pub const DIR: &str = "klin";
 pub const OVERRIDE: &str = "KLIN_STATE_DIR";
 /// Names the tree a keyed directory under `KLIN_STATE_DIR` belongs to, so `cache clean --all`
 /// can tell which entries outlived their repository.

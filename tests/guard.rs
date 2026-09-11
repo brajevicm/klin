@@ -409,8 +409,8 @@ fn it_never_reads_the_configuration() {
     assert!(!refused.says("could not be read"), "{}", refused.out);
 }
 
-/// Only the configuration is guarded. A hook file, the code owners, a lint, test or coverage
-/// configuration, a workflow, and klin's own state are ordinary files.
+/// A hook file, the code owners, a lint, test or coverage configuration and a workflow are
+/// ordinary files. klin's own state left this list with ADR 0032.
 #[test]
 fn allows_an_edit_of_everything_the_configuration_is_not() {
     for file in [
@@ -427,7 +427,6 @@ fn allows_an_edit_of_everything_the_configuration_is_not() {
         ".coveragerc",
         "codecov.yml",
         ".github/workflows/ci.yml",
-        ".git/klin/turn",
         "pyproject.toml",
     ] {
         allowed(&edit("Write", file), file);
@@ -436,18 +435,26 @@ fn allows_an_edit_of_everything_the_configuration_is_not() {
     }
 }
 
-/// klin's own state carries a stamp a report restores, so a write to it is nobody's question.
+/// klin's own state takes the three decisions the configuration takes: a redirect onto it is a
+/// deny, and a command that only names it is an ask. The refs are not the state directory and
+/// stay ordinary. ADR 0032.
 #[test]
-fn allows_a_command_that_writes_klins_own_state() {
-    for command in [
-        "echo x > .git/klin/turn",
-        "rm -rf .git/klin",
-        "git update-ref -d refs/worktree/klin/turn",
-        "find .git/klin -delete",
-        "rm -rf .git/worktrees/wt1/klin",
+fn a_command_that_writes_klins_own_state_is_denied_or_asked_about() {
+    denied(
+        &bash("echo x > .git/klin/turn"),
+        "a redirect onto the stamp",
+    );
+    for (command, named) in [
+        ("rm -rf .git/klin", ".git/klin"),
+        ("find .git/klin -delete", ".git/klin"),
+        ("rm -rf .git/worktrees/wt1/klin", ".git/worktrees/wt1/klin"),
     ] {
-        allowed(&bash(command), command);
+        asked(&bash(command), named, command);
     }
+    allowed(
+        &bash("git update-ref -d refs/worktree/klin/turn"),
+        "the turn ref, which is not the state directory",
+    );
 }
 
 /// A command substitution starts a fresh quoting context, so the `<<` inside one opens a
@@ -501,4 +508,56 @@ fn allows_a_reader_that_names_the_config_beside_a_substitution() {
     ] {
         allowed(&bash(command), command);
     }
+}
+
+/// ADR 0032: klin's own state is guarded the way the configuration is. Spec 9.4.
+#[test]
+fn an_edit_to_klins_own_state_is_refused_and_names_the_command_a_person_runs() {
+    denied(&edit("Write", ".git/klin/turn"), "a stamp written by hand");
+    denied(
+        &edit("Edit", "/repo/.git/klin/build-blocked"),
+        "an absolute state path",
+    );
+    denied(
+        &edit("Write", "/repo/.git/worktrees/second/klin/turn"),
+        "a worktree's own state",
+    );
+    denied(
+        &bash("echo green > .git/klin/turn"),
+        "a redirect onto the stamp",
+    );
+    assert!(
+        edit("Write", ".git/klin/turn").says("klin turn reset"),
+        "the refusal names no command a person runs"
+    );
+}
+
+#[test]
+fn a_reader_of_klins_own_state_is_allowed_and_a_writer_that_only_names_it_asks() {
+    allowed(&bash("cat .git/klin/turn"), "a reader of the stamp");
+    allowed(
+        &edit("Read", ".git/klin/turn"),
+        "the read tool on the stamp",
+    );
+    asked(
+        &bash("sed -i s/red/green/ .git/klin/turn"),
+        ".git/klin/turn",
+        "sed on the stamp",
+    );
+}
+
+#[test]
+fn a_path_that_only_looks_like_klins_state_is_allowed() {
+    allowed(
+        &edit("Write", ".github/workflows/klin.yml"),
+        "a workflow file",
+    );
+    allowed(
+        &edit("Write", "vendor/klin/notes.md"),
+        "a klin directory of the project's own",
+    );
+    allowed(
+        &edit("Write", ".git/COMMIT_EDITMSG"),
+        "a git file that is not klin's",
+    );
 }

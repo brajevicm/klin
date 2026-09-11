@@ -519,3 +519,45 @@ fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
         run.out
     );
 }
+
+/// Spec 8.2: a stop that blocks records every finding it reported, so the report must name
+/// every deletion that record holds. A window of more than a screenful still names each one,
+/// and the stop after it lets all of them through.
+#[test]
+fn a_stop_that_blocks_names_every_deleted_test_it_then_lets_through() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    for at in 0..25 {
+        tree.write(
+            &format!("tests/test_{at:02}.py"),
+            &format!("def test_{at:02}():\n    assert True\n"),
+        );
+    }
+    tree.base();
+    for at in 0..25 {
+        tree.remove(&format!("tests/test_{at:02}.py"));
+    }
+    let asked = stop(&tree);
+    assert_eq!(asked.code, 2, "{}", asked.out);
+    for at in 0..25 {
+        let named = format!("tests/test_{at:02}.py:0  missing 1, was missing 0");
+        assert!(asked.says(&named), "no {named} in: {}", asked.out);
+    }
+    let after = second_stop(&tree);
+    assert_eq!(after.code, 0, "{}", after.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", after.out);
+}
+
+/// Spec 16.5: a hook run whose host event klin cannot read reports to stderr and exits 1. A
+/// stop that only has something to tell takes that rule too, so a caller with no event reads
+/// the note instead of a JSON object it cannot place.
+#[test]
+fn a_stop_with_no_host_event_writes_its_note_to_stderr_and_blocks_nothing() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    assert_eq!(stop(&tree).code, 2);
+    let after = harness::feed(tree.root(), &["gate", "--hook", "--gate", "inventory"], "");
+    assert_eq!(after.code, 1, "{}", after.out);
+    assert!(after.printed.is_empty(), "printed: {}", after.printed);
+    assert!(after.says("went in this window"), "{}", after.out);
+}

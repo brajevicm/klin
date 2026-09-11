@@ -34,13 +34,16 @@ them.
 Three details carry the rest:
 
 - The rule keys on `--hook`, not on the window kind. A stop whose stamp is
-  gone judges a branch window, and the guard allows edits to the state
-  directory, so a kind-keyed rule would let an agent delete the stamp and
-  skip the question.
+  gone judges a branch window, so a kind-keyed rule would ask nothing once
+  the stamp went. Keying on `--hook` fails the safe way: a stamp that is
+  gone takes the record of what was asked with it, so the stop asks again
+  rather than asking less.
 - The record of what was asked lives in the `turn` file and goes when the
   stamp moves. The build stamp reads as zero under a new prompt, and Cursor
   delivers a stop's follow-up as a new user message, so a record there would
-  ask the same question again.
+  ask the same question again. The guard refuses an agent's write to that
+  file, so forging the record is not the one-line bypass it would otherwise
+  be (ADR 0032).
 - Where a deletion is let through, its base entry carries `missing: 1`. The
   one judge holds the site, and an accepted entry that already names the
   test still takes the match, so no existing entry turns into one that
@@ -56,6 +59,11 @@ that opens a pull request, meets no question at all.
 The agent's answer is not checked. An agent that deleted a failing test on
 purpose can say the removal was intended. The question catches the
 reflexive shortcut and not a determined one.
+
+The record of what was asked is klin's own, on the same disk as the tree.
+ADR 0032 puts the guard in front of it, which is the same worth the guard
+has for `klin.json`: it refuses the routes klin can read as a write, and an
+agent with no hook meets none of it.
 
 A deletion does not stay red. Every other gate failure stays red across
 turns until a person fixes, accepts or resets it. A deleted test is green

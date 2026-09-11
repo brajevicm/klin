@@ -840,13 +840,14 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
 /// a person, told through the host. A `--json` run hands its report to stderr, because a host
-/// that reads JSON reads the report itself. Spec 9.1, 14.
+/// that reads JSON reads the report itself, and so does a run whose host event klin cannot
+/// read, because then klin does not know whose shape to tell it in. Spec 9.1, 16.5.
 fn nothing_blocks(args: &Args, told: usize, report: &str) -> u8 {
     if told == 0 {
         return 0;
     }
     let said = format!("klin: nothing blocks the stop, and the run left a note:\n{report}");
-    if args.json {
+    if args.json || host::read(args.host.as_deref()).is_none() {
         eprint!("{said}");
         return 1;
     }
