@@ -442,6 +442,10 @@ from a subdirectory. A configuration per package is not supported.
 - `accepted` (list) OPTIONAL, section 4.8
 - `radius` (object) OPTIONAL, ADR 0014, with `lines` and `directories` as whole
   numbers. Derived from history when absent.
+- `journal` (object) OPTIONAL, with `prompt` a boolean. `false` turns off the
+  prompt excerpt of 11.4; the excerpt is recorded by default. A configuration
+  klin cannot read carries no excerpt either: the one case where klin cannot
+  see this setting is the case where it MUST NOT record the text.
 - `gates` (list) OPTIONAL, section 8.3. Each entry is a `name`, a `check`, a
   `with` and an optional `off`, and each is its own gate.
 - one key per gate, named for its section, or `false` to exclude the gate
@@ -1562,6 +1566,15 @@ passes, and the stop that could not run its gates alike. Two stops write
 nothing: a tree that holds no `klin.json` runs nothing, per 5.1, and a config
 only a person can fix ends the stop before it reads anything, per 14.
 
+Three more events append the other kinds 11.4 defines. `klin radius` on a
+`UserPromptSubmit` event MUST append a `prompt` line; a `SessionStart` event
+moves the mark and raises the counter of 6.2 the same way but appends no
+line of its own, because it opens a window and ends no turn. The guard MUST
+append a `guard` line for an `ask` or a `deny`, and MUST append none for an
+`allow`, because the guard runs on every tool call under its 50 millisecond
+budget (13) and an allow tells a reader nothing. `klin turn reset` MUST
+append a `reset` line.
+
 The write MUST NOT change a block or a pass: it is best-effort, a failed
 append prints nothing to the agent, and a state directory klin cannot write
 costs the record and nothing else, by the rule of 14. The hook never prunes
@@ -1679,18 +1692,22 @@ the way `--json` does. `--sarif` with `--json` is a usage error.
 
 ### 11.4 The journal record
 
-One JSON line per stop, appended per 9.6. The line is the 11.2 object the
-stop's run built — the gates, a build failure, or an error alike — plus what
-only the hook knew:
+One JSON line per event of 9.6. Every kind shares four fields:
 
 - `schema` integer, 1 for this record. A reader MUST skip a line whose
   `schema` it does not know, and MUST count what it skipped so a report can
   say so. A schema bump without an upgrade in the reader MUST NOT ship.
 - `version`, the klin version that wrote the line, and `time`, seconds since
   the epoch.
-- `kind`, `"stop"`. Other kinds are #154's.
-- `host`, the adapter's name, and `session`, the host's id for its grouping
-  of turns. Null where the event was unreadable or carried none.
+- `kind`, `"stop"`, `"prompt"`, `"guard"` or `"reset"`.
+- `session`, the host's id for its grouping of turns, null where the event
+  carried none or named no host, and always null on a `reset` line, which
+  `klin turn reset` writes over no host event at all.
+
+The `stop` line is the 11.2 object the stop's run built — the gates, a build
+failure, or an error alike — plus what only the hook knew:
+
+- `host`, the adapter's name, null where the event was unreadable.
 - `prompt`, the counter of 6.2 the stop ran under.
 - `hook` `{blocked, delivery, gate_spent, build_blocks, blocked_before}`.
   `blocked` is whether this stop exited 2. `delivery` is `block` or `none`;
@@ -1712,6 +1729,37 @@ only the hook knew:
 - `config_hash`, a hash of the config file in force, so a later reader can
   tell a fix from a config change without a schema bump. Recorded and not
   read.
+
+The `prompt` line is the `UserPromptSubmit` event `klin radius` ran on:
+
+- `prompt`, the counter this event raised it to.
+- `text`, the prompt's first line cut at 80 characters. Absent where
+  `journal.prompt` (5.2) is `false`, where the configuration would not load,
+  or where the event carried no prompt text.
+- `radius` `{lines, formatting, moved, directories, wide}`, the facts `klin
+  radius` measures (ADR 0014), present only where radius could measure them:
+  a first prompt, with no mark yet to measure from, carries none. `wide` is
+  whether the turn spread past the project's usual change, the same test
+  that decides whether `klin radius` prints its note.
+
+The `guard` line is one `ask` or one `deny`, never an `allow`: the guard
+runs on every tool call under its 50 millisecond budget (13), and an allow
+tells a reader nothing.
+
+- `decision`, `"ask"` or `"deny"`: the answer the host delivered, not the one
+  the guard reached. A host with no question to ask refuses instead (9.1), so
+  an ask that reached the agent as a refusal is recorded as `"deny"`.
+- `reason`, a hyphenated tag naming why the guard decided as it did:
+  `config-write` and `state-write` for a proven write an edit tool's path or
+  a redirect names, `config-mention` and `state-mention` for a command that
+  only names a guarded path as a writer's argument, which klin cannot prove
+  the way it proves the first two (ADR 0033), and `init` and `turn-reset`
+  for one of klin's own subcommands that only a person runs.
+
+The `reset` line is `klin turn reset`:
+
+- `prompt`, the counter the stamp carried over. A reset does not end the
+  turn, so the counter is unchanged by it (6.2).
 
 The file is a public surface. `klin stats --json` (11.5) is what a harness
 reads, and the two readers of the design read nothing else.

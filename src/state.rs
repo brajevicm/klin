@@ -28,14 +28,20 @@ pub fn ready(root: &Path) -> Result<PathBuf, String> {
             root.display()
         ));
     };
-    if let Err(why) = std::fs::create_dir_all(&at) {
+    prepared(&at, root)
+}
+
+/// The same, for a caller that resolved the directory already: `dir` runs a git subprocess, and
+/// the guard holds its answer under a 50 millisecond budget (13).
+pub fn prepared(at: &Path, root: &Path) -> Result<PathBuf, String> {
+    if let Err(why) = std::fs::create_dir_all(at) {
         return Err(format!("{} could not be written: {why}", at.display()));
     }
     let named = at.join(REPOSITORY);
     if std::env::var_os(OVERRIDE).is_some() && !named.is_file() {
         let _ = std::fs::write(&named, worktree(root).display().to_string() + "\n");
     }
-    Ok(at)
+    Ok(at.to_path_buf())
 }
 
 fn key(common: &Path, root: &Path) -> String {

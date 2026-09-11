@@ -45,6 +45,15 @@ fn journal(tree: &Tree) -> Vec<Value> {
         .collect()
 }
 
+/// Only the stop lines, for a test that does not care about the prompt line `prompt(&tree)`
+/// also appends.
+fn stops(tree: &Tree) -> Vec<Value> {
+    journal(tree)
+        .into_iter()
+        .filter(|line| field(line, &["kind"]) == "stop")
+        .collect()
+}
+
 fn field<'a>(line: &'a Value, path: &[&str]) -> &'a Value {
     let mut held = line;
     for key in path {
@@ -63,7 +72,7 @@ fn a_stop_appends_one_line_holding_the_record_and_what_the_hook_knew() {
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
-    let lines = journal(&tree);
+    let lines = stops(&tree);
     assert_eq!(lines.len(), 1, "{lines:?}");
     let line = &lines[0];
     assert_eq!(field(line, &["schema"]), 1, "{line}");
@@ -106,7 +115,7 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
 
-    let lines = journal(&tree);
+    let lines = stops(&tree);
     assert_eq!(lines.len(), 2, "{lines:?}");
     assert_eq!(field(&lines[0], &["hook", "blocked"]), true, "{}", lines[0]);
     assert_eq!(
@@ -149,7 +158,7 @@ fn every_gate_row_carries_ms_and_the_held_count_its_ok_line_prints() {
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
-    let lines = journal(&tree);
+    let lines = stops(&tree);
     let gates = field(&lines[0], &["gates"])
         .as_array()
         .unwrap_or_else(|| panic!("no gates list in {}", lines[0]));
@@ -270,7 +279,7 @@ fn a_gate_row_holds_what_the_ratchet_let_through_and_not_what_the_window_dropped
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
-    let lines = journal(&tree);
+    let lines = stops(&tree);
     let gates = field(&lines[0], &["gates"])
         .as_array()
         .unwrap_or_else(|| panic!("no gates list in {}", lines[0]));
@@ -304,4 +313,247 @@ fn a_stamp_that_could_not_be_written_says_so_and_not_that_there_was_none() {
         "the turn stamp could not be written, so this stop wrote no verdict",
         "{line}"
     );
+}
+
+// #154: the journal knows the session, the prompt, the guard's refusals and resets.
+
+const RADIUS_PINNED: &str = r#"{
+  "project": "t",
+  "radius": { "lines": 50, "directories": 2 }
+}"#;
+
+fn radius_tree() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", RADIUS_PINNED);
+    tree.write("src/a.rs", "// held\n");
+    tree.base();
+    tree
+}
+
+#[test]
+fn a_prompt_event_appends_a_line_with_the_counter_the_session_and_the_excerpt() {
+    let tree = radius_tree();
+    let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-9",
+                    "prompt": "Fix the thing\nmore context on a second line"}"#;
+    let run = harness::feed(tree.root(), &["radius"], event);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let line = &lines[0];
+    assert_eq!(field(line, &["schema"]), 1, "{line}");
+    assert_eq!(field(line, &["kind"]), "prompt", "{line}");
+    assert_eq!(field(line, &["prompt"]), 1, "{line}");
+    assert_eq!(field(line, &["session"]), "s-9", "{line}");
+    assert_eq!(field(line, &["text"]), "Fix the thing", "{line}");
+}
+
+/// A session start moves the mark and raises the counter, but it is not a prompt event and
+/// appends no prompt line. The prompt after it measures against that mark. Spec 9.6, 11.4.
+#[test]
+fn a_prompt_after_a_measurable_change_carries_the_radius_facts() {
+    let tree = radius_tree();
+    let session = r#"{"hook_event_name": "SessionStart", "session_id": "s-9"}"#;
+    assert_eq!(harness::feed(tree.root(), &["radius"], session).code, 0);
+    tree.write("src/a.rs", "// held\n// more\n");
+
+    let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-9", "prompt": "go"}"#;
+    let run = harness::feed(tree.root(), &["radius"], event);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "prompt", "{line}");
+    assert_eq!(field(line, &["prompt"]), 2, "{line}");
+    assert!(field(line, &["radius", "lines"]).is_u64(), "{line}");
+    assert!(field(line, &["radius", "formatting"]).is_u64(), "{line}");
+    assert!(field(line, &["radius", "moved"]).is_u64(), "{line}");
+    assert_eq!(field(line, &["radius", "directories"]), 1, "{line}");
+    assert_eq!(field(line, &["radius", "wide"]), false, "{line}");
+}
+
+#[test]
+fn journal_prompt_false_turns_off_the_excerpt_and_keeps_the_rest() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"project": "t", "journal": {"prompt": false}}"#,
+    );
+    tree.base();
+
+    let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
+                    "prompt": "a secret plan"}"#;
+    let run = harness::feed(tree.root(), &["radius"], event);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "prompt", "{line}");
+    assert_eq!(field(line, &["session"]), "s-1", "{line}");
+    assert!(line.get("text").is_none(), "{line}");
+}
+
+/// The privacy switch fails closed. A configuration klin cannot parse is the one case where it
+/// cannot see `journal.prompt`, so the excerpt stays out of the record. Spec 5.2, 11.4.
+#[test]
+fn a_configuration_that_will_not_load_turns_off_the_excerpt() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"project": "t", "journal": {"prompt": false},}"#,
+    );
+    tree.base();
+
+    let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
+                    "prompt": "a secret plan"}"#;
+    let run = harness::feed(tree.root(), &["radius"], event);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "prompt", "{line}");
+    assert!(line.get("text").is_none(), "{line}");
+}
+
+fn guard(tree: &Tree, event: &str) -> harness::Run {
+    harness::feed(tree.root(), &["guard"], event)
+}
+
+#[test]
+fn a_guard_deny_for_the_configuration_appends_a_line_with_config_write() {
+    let tree = tree(EVERY_GATE);
+    let event = format!(
+        r#"{{"tool_name": "Write", "tool_input": {{"file_path": {:?}}}, "session_id": "s-7"}}"#,
+        tree.at("klin.json")
+    );
+    let run = guard(&tree, &event);
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let lines = journal(&tree);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let line = &lines[0];
+    assert_eq!(field(line, &["schema"]), 1, "{line}");
+    assert_eq!(field(line, &["kind"]), "guard", "{line}");
+    assert_eq!(field(line, &["session"]), "s-7", "{line}");
+    assert_eq!(field(line, &["decision"]), "deny", "{line}");
+    assert_eq!(field(line, &["reason"]), "config-write", "{line}");
+}
+
+#[test]
+fn a_guard_deny_for_the_state_directory_appends_a_line_with_state_write() {
+    let tree = tree(EVERY_GATE);
+    let run = guard(
+        &tree,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "echo x > .git/klin/turn"}}"#,
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "guard", "{line}");
+    assert_eq!(field(line, &["decision"]), "deny", "{line}");
+    assert_eq!(field(line, &["reason"]), "state-write", "{line}");
+}
+
+#[test]
+fn a_guard_ask_naming_the_configuration_appends_a_line_with_config_mention() {
+    let tree = tree(EVERY_GATE);
+    let run = guard(
+        &tree,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "guard", "{line}");
+    assert_eq!(field(line, &["decision"]), "ask", "{line}");
+    assert_eq!(field(line, &["reason"]), "config-mention", "{line}");
+}
+
+/// The ask side of `state-write`: a shell command only names the state directory as a write
+/// argument, which klin cannot prove the way a direct edit or a redirect does (ADR 0033), so it
+/// asks rather than denies. The reason mirrors `config-mention`'s.
+#[test]
+fn a_guard_ask_naming_the_state_directory_appends_a_line_with_state_mention() {
+    let tree = tree(EVERY_GATE);
+    let run = guard(
+        &tree,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "rm .git/klin/turn"}}"#,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "guard", "{line}");
+    assert_eq!(field(line, &["decision"]), "ask", "{line}");
+    assert_eq!(field(line, &["reason"]), "state-mention", "{line}");
+}
+
+#[test]
+fn a_guard_deny_for_klin_init_appends_a_line_with_init() {
+    let tree = tree(EVERY_GATE);
+    let run = guard(
+        &tree,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "klin init"}}"#,
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "guard", "{line}");
+    assert_eq!(field(line, &["decision"]), "deny", "{line}");
+    assert_eq!(field(line, &["reason"]), "init", "{line}");
+}
+
+/// Codex CLI has no question to ask on this event, so the ask reaches the agent as a refusal.
+/// The journal records the answer the host delivered, not the one the guard reached, so a
+/// reader of 11.4 counts a real refusal as a deny. Spec 9.1, 11.4.
+#[test]
+fn an_ask_a_host_delivers_as_a_refusal_is_journaled_as_a_deny() {
+    let tree = tree(EVERY_GATE);
+    let run = guard(
+        &tree,
+        r#"{"turn_id": "t-1", "tool_name": "Bash", "session_id": "s-8",
+            "tool_input": {"command": "rm klin.json"}}"#,
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "guard", "{line}");
+    assert_eq!(field(line, &["session"]), "s-8", "{line}");
+    assert_eq!(field(line, &["decision"]), "deny", "{line}");
+    assert_eq!(field(line, &["reason"]), "config-mention", "{line}");
+}
+
+#[test]
+fn a_guard_allow_appends_no_line() {
+    let tree = tree(EVERY_GATE);
+    let run = guard(
+        &tree,
+        r#"{"tool_name": "Read", "tool_input": {"file_path": "klin.json"}}"#,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(journal(&tree).is_empty(), "{:?}", journal(&tree));
+}
+
+#[test]
+fn turn_reset_appends_a_line_with_the_prompt_counter() {
+    let tree = tree(EVERY_GATE);
+    prompt(&tree);
+    prompt(&tree);
+    tree.words("README.md", 30);
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+
+    let run = tree.run(&["turn", "reset"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = lines.last().unwrap_or_else(|| panic!("an empty journal"));
+    assert_eq!(field(line, &["kind"]), "reset", "{line}");
+    assert_eq!(field(line, &["session"]), &Value::Null, "{line}");
+    assert_eq!(field(line, &["prompt"]), 2, "{line}");
 }

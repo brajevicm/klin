@@ -13,6 +13,7 @@
 | `build` | the commands a run builds with, each an entry of a `run` and an optional `root` | no | derived when absent | one entry per manifest, from the fixed table of ADR 0012 | — |
 | `accepted` | the debt a person accepted, each entry a site and a reason. Only a person writes it | no | pinned only | — | nothing is accepted |
 | `radius` | the change radius a turn may not pass, as `lines` and `directories` | no | derived when absent | the 90th percentile over the last 200 non-merge commits, and no section below 50 commits | — |
+| `journal` | how the journal records a turn, as `prompt`, `false` to record no prompt excerpt | no | pinned only | — | the prompt excerpt is recorded |
 | `gates` | extra gates, each an entry of a `name`, a `check`, a `with` and an optional `off` | no | pinned only | — | no gate beyond the sections |
 
 ## Sections

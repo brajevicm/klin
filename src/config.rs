@@ -11,7 +11,7 @@ const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
 /// one reads it through the declaration here, and `klin reference` prints them. Spec 5.2, 5.8.
-pub const KEYS: &[Key] = &[PROJECT, VERSION, BUILD, ACCEPTED, RADIUS, GATES];
+pub const KEYS: &[Key] = &[PROJECT, VERSION, BUILD, ACCEPTED, RADIUS, JOURNAL, GATES];
 
 pub const PROJECT: Key = Key {
     name: "project",
@@ -53,6 +53,14 @@ pub const RADIUS: Key = Key {
         "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
     ),
     default: "",
+};
+
+pub const JOURNAL: Key = Key {
+    name: "journal",
+    holds: "how the journal records a turn, as `prompt`, `false` to record no prompt excerpt",
+    required: false,
+    rule: None,
+    default: "the prompt excerpt is recorded",
 };
 
 pub const GATES: Key = Key {

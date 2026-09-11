@@ -61,32 +61,47 @@ struct Spread {
 }
 
 /// The report on a prompt: the facts, and only when the turn passed a value. It asks for
-/// nothing, and anything it cannot measure it says nothing about. ADR 0014.
-pub fn spread(root: &Path, at: &Path, opened: Option<&str>, tree: Option<&str>, out: &mut String) {
+/// nothing, and anything it cannot measure it says nothing about. ADR 0014. The facts measured,
+/// for the journal's prompt line (spec 11.4), and `None` for a turn nothing here could measure.
+/// Takes the config the caller already loaded for the same event.
+pub fn spread(
+    config: &Config,
+    root: &Path,
+    at: &Path,
+    opened: Option<&str>,
+    tree: Option<&str>,
+    out: &mut String,
+) -> Option<Value> {
     let (Some(opened), Some(tree)) = (opened, tree) else {
-        return;
+        return None;
     };
-    let Ok(usual) = usual(root, Some(at)) else {
-        return;
+    let Ok(usual) = usual(config, root, Some(at)) else {
+        return None;
     };
-    let Some(spread) = measured(root, opened, tree) else {
-        return;
-    };
-    if spread.lines <= usual.lines && spread.directories.len() as u64 <= usual.directories {
-        return;
+    let spread = measured(root, opened, tree)?;
+    let wide = spread.lines > usual.lines || spread.directories.len() as u64 > usual.directories;
+    if wide {
+        let _ = writeln!(
+            out,
+            "klin: the previous turn was wider than this project's usual change."
+        );
+        describe(&spread, &usual, out);
     }
-    let _ = writeln!(
-        out,
-        "klin: the previous turn was wider than this project's usual change."
-    );
-    describe(&spread, &usual, out);
+    Some(serde_json::json!({
+        "lines": spread.lines,
+        "formatting": spread.formatting,
+        "moved": spread.moved,
+        "directories": spread.directories.len(),
+        "wide": wide,
+    }))
 }
 
 /// `klin radius --report`, which a person runs. It moves nothing, it raises no counter, and
 /// unlike the hook it names what it cannot read rather than staying quiet. ADR 0014.
 pub fn asked(root: &Path, out: &mut String) -> Result<u8, Error> {
     let at = state::ready(root).map_err(Error)?;
-    let usual = usual(root, Some(&at))?;
+    let config = Config::load(None, root)?;
+    let usual = usual(&config, root, Some(&at))?;
     let opened = turn::mark(root, &at).ok_or_else(|| {
         Error("no prompt mark is readable, so there is no turn to measure".to_string())
     })?;
@@ -167,10 +182,11 @@ fn count(many: u64, name: &str) -> String {
 }
 
 /// The values a turn is measured against: what the config pins, and history for a key it does
-/// not pin. The hook drops the error and prints nothing, and `--report` raises it. #92.
-fn usual(root: &Path, at: Option<&Path>) -> Result<Usual, Error> {
-    let config = Config::load(None, root)?;
-    let (lines, directories) = numbers(&config)?;
+/// not pin. The hook drops the error and prints nothing, and `--report` raises it. #92. Takes
+/// the config already loaded, so a caller with one loaded for another reason reads klin.json
+/// once and not twice.
+fn usual(config: &Config, root: &Path, at: Option<&Path>) -> Result<Usual, Error> {
+    let (lines, directories) = numbers(config)?;
     if let (Some(lines), Some(directories)) = (lines, directories) {
         return Ok(Usual {
             lines,
@@ -181,7 +197,7 @@ fn usual(root: &Path, at: Option<&Path>) -> Result<Usual, Error> {
             ],
         });
     }
-    let history = history(root, at).map_err(|why| unpinned(&config, lines, directories, &why))?;
+    let history = history(root, at).map_err(|why| unpinned(config, lines, directories, &why))?;
     let said = |key, pinned: Option<u64>, found| match pinned {
         Some(value) => pinned_line(key, value),
         None => derived_line(key, found, history.commits),

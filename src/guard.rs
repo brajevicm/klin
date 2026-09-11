@@ -2,6 +2,7 @@ use std::cell::OnceCell;
 use std::path::{Component, Path, PathBuf};
 
 use crate::host::{self, Decision, Event};
+use crate::journal;
 use crate::state;
 
 const SPLIT: char = '\u{0}';
@@ -30,10 +31,11 @@ const INIT_REFUSAL: &str = "klin: refused — `klin init` writes the configurati
 const RESET_REFUSAL: &str = "klin: refused — `klin turn reset` reopens the window a gate \
     failed in. Only a person runs it.";
 
-/// klin's own subcommands that only a person runs, and the reason each is refused.
-const KLIN_REFUSED: &[(&[&str], &str)] = &[
-    (&["init"], INIT_REFUSAL),
-    (&["turn", "reset"], RESET_REFUSAL),
+/// klin's own subcommands that only a person runs, the reason each is refused, and the
+/// hyphenated tag a journal line names the refusal by. Spec 9.6.
+const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
+    (&["init"], INIT_REFUSAL, "init"),
+    (&["turn", "reset"], RESET_REFUSAL, "turn-reset"),
 ];
 
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
@@ -60,16 +62,25 @@ pub fn run(args: &Args) -> u8 {
     let Some(event) = host::read(args.host.as_deref()) else {
         return 0;
     };
-    event.host.decide(&decided(&event))
+    let guarded = Guarded::default();
+    let (decision, reason) = decided(&guarded, &event);
+    let delivered = event.host.decide(&decision);
+    if !matches!(decision, Decision::Allow)
+        && let Some(paths) = guarded.paths()
+        && let (Some(root), Some(at)) = (paths.config.parent(), paths.state.as_deref())
+    {
+        journal::guard(root, at, &event, delivered, reason);
+    }
+    delivered
 }
 
 /// The strictest decision over every path an edit call names, and when none of them decides
-/// anything, the decision over its command. Section 9.4.
-fn decided(event: &Event) -> Decision {
-    let guarded = Guarded::default();
+/// anything, the decision over its command, paired with the hyphenated reason a journal line
+/// names it by. Section 9.4, spec 9.6.
+fn decided(guarded: &Guarded, event: &Event) -> (Decision, &'static str) {
     let edits = !READ_TOOLS.contains(&event.tool.as_str());
     let paths = edits.then(|| {
-        Decision::strictest(
+        strictest(
             event
                 .file_paths
                 .iter()
@@ -77,9 +88,29 @@ fn decided(event: &Event) -> Decision {
         )
     });
     match paths {
-        Some(Decision::Allow) | None => command_decision(&guarded, &event.command),
-        Some(decision) => decision,
+        Some((Decision::Allow, _)) | None => command_decision(guarded, &event.command),
+        Some(decided) => decided,
     }
+}
+
+/// The strictest `(decision, reason)` pair over a set, by section 9.4's priority — a deny
+/// anywhere, otherwise the first ask, otherwise allow — so the reason always names the decision
+/// the guard actually gave. The public `Decision` stays as it is; only this private pairing
+/// carries the reason. Spec 9.6.
+fn strictest(
+    decisions: impl IntoIterator<Item = (Decision, &'static str)>,
+) -> (Decision, &'static str) {
+    let mut asked = None;
+    for (decision, reason) in decisions {
+        match decision {
+            Decision::Deny(_) => return (decision, reason),
+            Decision::Ask(_) => {
+                asked.get_or_insert((decision, reason));
+            }
+            Decision::Allow => {}
+        }
+    }
+    asked.unwrap_or((Decision::Allow, ""))
 }
 
 /// What klin guards in this tree: the configuration beside the tree root, and the state
@@ -117,25 +148,28 @@ impl Guarded {
     }
 
     /// What one path an edit tool or a redirect names is worth: a deny for the one file only a
-    /// person changes, a deny for klin's own record of the turn, and nothing otherwise.
-    fn denied(&self, path: &str) -> Option<Decision> {
-        let why = match self.which(path)? {
-            Which::Config => REFUSAL,
-            Which::State => STATE_REFUSAL,
+    /// person changes, a deny for klin's own record of the turn, and nothing otherwise. Paired
+    /// with the hyphenated reason a journal line names the deny by. Spec 9.6.
+    fn denied(&self, path: &str) -> Option<(Decision, &'static str)> {
+        let (why, reason) = match self.which(path)? {
+            Which::Config => (REFUSAL, "config-write"),
+            Which::State => (STATE_REFUSAL, "state-write"),
         };
-        Some(Decision::Deny(why.to_string()))
+        Some((Decision::Deny(why.to_string()), reason))
     }
 
     /// The guarded path a writer takes as an argument. klin can prove the write, and a person
-    /// decides whether it goes through.
-    fn asked(&self, token: &str) -> Option<Decision> {
-        let what = match self.which(token)? {
-            Which::Config => "the configuration klin guards",
-            Which::State => "klin's own record of the turn",
+    /// decides whether it goes through. Paired with the hyphenated reason a journal line names
+    /// the ask by. Spec 9.6.
+    fn asked(&self, token: &str) -> Option<(Decision, &'static str)> {
+        let (what, reason) = match self.which(token)? {
+            Which::Config => ("the configuration klin guards", "config-mention"),
+            Which::State => ("klin's own record of the turn", "state-mention"),
         };
-        Some(Decision::Ask(format!(
-            "this names \"{token}\", which is {what}."
-        )))
+        Some((
+            Decision::Ask(format!("this names \"{token}\", which is {what}.")),
+            reason,
+        ))
     }
 }
 
@@ -197,9 +231,9 @@ fn basename(path: &str) -> &str {
     path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
-fn command_decision(guarded: &Guarded, command: &str) -> Decision {
+fn command_decision(guarded: &Guarded, command: &str) -> (Decision, &'static str) {
     let Some(segments) = segments(command) else {
-        return Decision::Allow;
+        return (Decision::Allow, "");
     };
     let words: Vec<Vec<&str>> = segments
         .iter()
@@ -207,22 +241,22 @@ fn command_decision(guarded: &Guarded, command: &str) -> Decision {
         .collect();
     let proven = !UNREADABLE.iter().any(|shell| command.contains(shell))
         && !words.iter().any(|words| words.first() == Some(&CD));
-    Decision::strictest(
+    strictest(
         words
             .iter()
             .map(|words| segment_decision(guarded, words, proven)),
     )
 }
 
-fn segment_decision(guarded: &Guarded, words: &[&str], proven: bool) -> Decision {
-    if let Some(why) = a_persons_command(words) {
-        return Decision::Deny(why.to_string());
+fn segment_decision(guarded: &Guarded, words: &[&str], proven: bool) -> (Decision, &'static str) {
+    if let Some((why, reason)) = a_persons_command(words) {
+        return (Decision::Deny(why.to_string()), reason);
     }
     if !proven {
-        return Decision::Allow;
+        return (Decision::Allow, "");
     }
     let written = written_by(words).unwrap_or_default();
-    Decision::strictest(
+    strictest(
         redirect_targets(words)
             .into_iter()
             .flat_map(|target| guarded.denied(target))
@@ -292,8 +326,9 @@ impl Quotes {
     }
 }
 
-/// One of klin's own subcommands that only a person runs, whatever flags it carries.
-fn a_persons_command(words: &[&str]) -> Option<&'static str> {
+/// One of klin's own subcommands that only a person runs, whatever flags it carries, paired
+/// with the hyphenated reason a journal line names the refusal by.
+fn a_persons_command(words: &[&str]) -> Option<(&'static str, &'static str)> {
     let at = words.iter().position(|word| {
         basename(word).trim_end_matches(".exe") == "klin" && !word.starts_with('-')
     })?;
@@ -307,8 +342,8 @@ fn a_persons_command(words: &[&str]) -> Option<&'static str> {
         .collect();
     KLIN_REFUSED
         .iter()
-        .find(|(command, _)| rest.starts_with(command))
-        .map(|(_, why)| *why)
+        .find(|(command, _, _)| rest.starts_with(command))
+        .map(|(_, why, reason)| (*why, *reason))
 }
 
 /// What may stand in front of a command without changing which command it is: an assignment,

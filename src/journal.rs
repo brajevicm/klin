@@ -4,6 +4,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
+use crate::config::{self, Config};
 use crate::host;
 use crate::state;
 
@@ -75,19 +76,27 @@ impl Stop {
     }
 }
 
+/// The fields of 11.4 every kind of line carries, so a fifth verb cannot forget one. Spec 9.6.
+fn base(kind: &'static str) -> Map<String, Value> {
+    let mut line = Map::new();
+    line.insert("schema".into(), SCHEMA.into());
+    line.insert("version".into(), env!("CARGO_PKG_VERSION").into());
+    line.insert("time".into(), now().into());
+    line.insert("kind".into(), kind.into());
+    line
+}
+
 /// The stop's line: the 11.2 object the run built, plus what only the hook knew. Spec 11.4.
 pub fn stop(root: &Path, stop: &Stop) {
     let Ok(at) = state::ready(root) else {
         return;
     };
-    let mut line = match &stop.report {
-        Some(Value::Object(fields)) => fields.clone(),
-        _ => Map::new(),
-    };
-    line.insert("schema".into(), SCHEMA.into());
-    line.insert("version".into(), env!("CARGO_PKG_VERSION").into());
-    line.insert("time".into(), now().into());
-    line.insert("kind".into(), "stop".into());
+    let mut line = base("stop");
+    if let Some(Value::Object(fields)) = &stop.report {
+        for (key, value) in fields {
+            line.entry(key.clone()).or_insert(value.clone());
+        }
+    }
     line.insert("host".into(), stop.host.clone().into());
     line.insert("session".into(), stop.session.clone().into());
     line.insert("prompt".into(), stop.prompt.into());
@@ -120,6 +129,102 @@ pub fn stop(root: &Path, stop: &Stop) {
     line.insert("asked".into(), stop.asked.clone().into());
     line.insert("flags".into(), stop.flags.clone().into());
     line.insert("config_hash".into(), stop.config_hash.clone().into());
+    append(&at, &Value::Object(line));
+}
+
+/// The prompt event `klin radius` runs on: the counter, the session, the prompt's first line cut
+/// at 80 characters unless `journal.prompt` is `false`, and the radius facts when radius measured
+/// them. `enabled` is `prompt_enabled` of the config the caller already loaded for the same
+/// event, so this appends without reading klin.json a second time. Spec 9.6, 11.4.
+pub fn prompt(
+    root: &Path,
+    counter: u64,
+    event: Option<&host::Event>,
+    enabled: bool,
+    radius: Option<Value>,
+) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let mut line = base("prompt");
+    line.insert("prompt".into(), counter.into());
+    line.insert(
+        "session".into(),
+        event
+            .map(|event| event.session.clone())
+            .filter(|session| !session.is_empty())
+            .into(),
+    );
+    let text = event
+        .filter(|_| enabled)
+        .map(|event| excerpt(&event.prompt))
+        .filter(|text| !text.is_empty());
+    if let Some(text) = text {
+        line.insert("text".into(), text.into());
+    }
+    if let Some(radius) = radius {
+        line.insert("radius".into(), radius);
+    }
+    append(&at, &Value::Object(line));
+}
+
+/// The first line of a prompt, cut at 80 characters and not bytes, so a multi-byte character is
+/// never split.
+fn excerpt(text: &str) -> String {
+    text.lines()
+        .next()
+        .unwrap_or_default()
+        .chars()
+        .take(80)
+        .collect()
+}
+
+/// Whether `journal.prompt` lets a prompt line carry the excerpt. On by default. Takes the
+/// config already loaded, so a caller with one loaded for another reason reads klin.json once
+/// and not twice. Spec 5.2.
+pub fn prompt_enabled(loaded: &Config) -> bool {
+    match loaded.pinned(config::JOURNAL.name) {
+        Some(Value::Object(section)) => section
+            .get("prompt")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        _ => true,
+    }
+}
+
+/// A guard ask or deny: the decision the host delivered, and the hyphenated reason the guard
+/// built it with. `delivered` is the adapter's own exit code, because a host that cannot ask
+/// refuses instead (9.1), and 11.4 must count that refusal as the deny it is. An allow appends
+/// nothing, because the guard runs on every tool call under its 50 ms budget and an allow tells
+/// a reader nothing. `at` is the state directory the guard resolved already. Spec 9.6, 11.4.
+pub fn guard(root: &Path, at: &Path, event: &host::Event, delivered: u8, reason: &'static str) {
+    let kind = match delivered {
+        0 => "ask",
+        _ => "deny",
+    };
+    let Ok(at) = state::prepared(at, root) else {
+        return;
+    };
+    let mut line = base("guard");
+    line.insert(
+        "session".into(),
+        (!event.session.is_empty())
+            .then(|| event.session.clone())
+            .into(),
+    );
+    line.insert("decision".into(), kind.into());
+    line.insert("reason".into(), reason.into());
+    append(&at, &Value::Object(line));
+}
+
+/// `klin turn reset`: the prompt counter the stamp carried over. Spec 9.6, 11.4.
+pub fn reset(root: &Path, counter: u64) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let mut line = base("reset");
+    line.insert("session".into(), Value::Null);
+    line.insert("prompt".into(), counter.into());
     append(&at, &Value::Object(line));
 }
 

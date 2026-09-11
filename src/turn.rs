@@ -6,8 +6,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Window};
-use crate::config::Error;
+use crate::config::{Config, Error};
 use crate::host;
+use crate::journal;
 use crate::radius;
 use crate::state;
 
@@ -78,16 +79,40 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let opened = mark(start, &at);
     let tree = tree(start, &at);
     let held = held(start, &at, &mut Vec::new(), out);
-    if prompt {
-        radius::spread(start, &at, opened.as_deref(), tree.as_deref(), out);
-    }
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
+    if prompt {
+        journaled_prompt(start, &at, prompts, opened.as_deref(), tree.as_deref(), out);
+    }
     let mark = tree.as_deref().and_then(|tree| marked(start, tree));
     if let Some(stamp) = next(start, tree.as_deref(), never, held, prompts, out) {
         let mark = mark.or(stamp.mark);
         write(&at, &Stamp { mark, ..stamp }, out);
     }
     Ok(0)
+}
+
+/// The prompt line of spec 9.6 and 11.4: the counter, the session and excerpt from the event,
+/// and the radius facts, behind one config load so a `UserPromptSubmit` event reads klin.json
+/// once and not twice. A config klin cannot read carries no excerpt: the one case where klin
+/// cannot see `journal.prompt` is the case where it must not record the text.
+fn journaled_prompt(
+    start: &Path,
+    at: &Path,
+    prompts: u64,
+    opened: Option<&str>,
+    tree: Option<&str>,
+    out: &mut String,
+) {
+    let event = host::read(None);
+    let config = Config::load(None, start).ok();
+    let (enabled, facts) = match &config {
+        Some(config) => (
+            journal::prompt_enabled(config),
+            radius::spread(config, start, at, opened, tree, out),
+        ),
+        None => (false, None),
+    };
+    journal::prompt(start, prompts, event.as_ref(), enabled, facts);
 }
 
 /// A session start opens a window and ends no turn, so only a prompt carries the spread
@@ -161,6 +186,7 @@ pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> 
     };
     let mark = tree.as_deref().and_then(|tree| marked(start, tree));
     write(&at, &Stamp { mark, ..stamp }, out);
+    journal::reset(start, prompts);
     let _ = writeln!(
         out,
         "klin: a person moved the turn stamp to the working tree."

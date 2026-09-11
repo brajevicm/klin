@@ -47,6 +47,9 @@ pub struct Event {
     /// The host's grouping of many turns under one id, which klin records and never judges.
     /// Empty when the host sends none.
     pub session: String,
+    /// The text of a `UserPromptSubmit` event. Empty for every other event and for a host that
+    /// sends none. Spec 9.6.
+    pub prompt: String,
 }
 
 /// What the guard decides about a tool call. ADR 0020. A deny exits 2 with the reason on
@@ -56,24 +59,6 @@ pub enum Decision {
     Allow,
     Ask(String),
     Deny(String),
-}
-
-impl Decision {
-    /// The decision that wins over a set: a deny anywhere, otherwise the first ask, otherwise
-    /// allow. Section 9.4.
-    pub fn strictest(decisions: impl IntoIterator<Item = Decision>) -> Decision {
-        let mut asked = None;
-        for decision in decisions {
-            match decision {
-                Decision::Deny(_) => return decision,
-                Decision::Ask(_) => {
-                    asked.get_or_insert(decision);
-                }
-                Decision::Allow => {}
-            }
-        }
-        asked.unwrap_or(Decision::Allow)
-    }
 }
 
 pub enum Stop {
@@ -98,7 +83,14 @@ pub fn named() -> Option<String> {
     (!name.is_empty()).then_some(name)
 }
 
+/// The event on stdin, read once per process and cached: `named` and `read` each ask for it, and
+/// stdin has only one reading.
 fn payload() -> Option<Value> {
+    static PAYLOAD: std::sync::OnceLock<Option<Value>> = std::sync::OnceLock::new();
+    PAYLOAD.get_or_init(read_stdin).clone()
+}
+
+fn read_stdin() -> Option<Value> {
     if std::io::stdin().is_terminal() {
         return None;
     }

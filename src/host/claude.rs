@@ -65,6 +65,7 @@ impl Adapter for Claude {
             command: input(payload, "command"),
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
+            prompt: text(payload.get("prompt")),
         }
     }
 
