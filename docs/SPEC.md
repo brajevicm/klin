@@ -1703,7 +1703,7 @@ same in all three.
 
 Hooks only. klin puts every failure in front of the agent once per turn, keeps
 the window open until the failure is fixed, accepted or reset by a person,
-and refuses its edits to the config and asks about its writes to the stamp.
+and refuses its edits to the config. The config is the only guarded file (9.4).
 Nothing prevents a PATH
 shim or a `chmod -x`, and the guard sees only the tool calls the host shows
 it. This level is what a person gets with no CI, and this document makes no

@@ -35,11 +35,9 @@ adopting stricter quality gates.
 /plugin install klin@klin
 ```
 
-That is the whole install. The plugin carries the hooks, and its
-[wrapper](plugins/claude-code/bin/klin) fetches the pinned release on first
-use and caches it. No `init` step, and no binary to install by hand. Two
-commands come with it: `/klin:gate` runs the gates over the changed files,
-and `/klin:gates` lists every gate and what it measures.
+The plugin carries the hooks. Its [wrapper](plugins/claude-code/bin/klin)
+fetches and caches the pinned release. `/klin:gate` runs changed-file gates;
+`/klin:gates` lists them.
 
 ### Codex CLI
 
@@ -50,12 +48,7 @@ codex plugin marketplace add brajevicm/klin
 codex plugin add klin@klin
 ```
 
-Codex asks you to review the plugin's hooks once. After that the install is
-Claude Code's: the plugin carries the hooks, and its wrapper fetches the
-pinned release on first use. The Codex IDE extension loads no plugins.
-
-Codex rejects an `ask` on `PreToolUse`, so an ambiguous guard decision is a
-block (exit 2) with the reason on stderr. Allowed calls exit 0.
+Codex asks you to review the hooks once. The IDE extension loads no plugins.
 
 A team that wants the hooks committed, where CODEOWNERS covers them, installs
 the binary as below and writes the project hook file:
@@ -64,30 +57,24 @@ the binary as below and writes the project hook file:
 klin init --hooks --host codex
 ```
 
-`--global` writes the user-level file instead. Both write nothing while the
-plugin is enabled, so klin never runs twice on an event.
+`--global` writes the user-level file instead. Neither form duplicates an
+enabled plugin. Both hook-file forms reach the Feedback level below.
 
-### Every other host
+### Standalone binary
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
 ```
 
-It verifies a checksum and puts `klin` in `~/.local/bin`.
-[19.1](docs/SPEC.md) pins a version or moves that directory.
+The installer verifies its checksum and writes to `~/.local/bin`; [§19.1](docs/SPEC.md)
+describes pinning a version or another directory.
 
 ### Update
 
-Each route updates with the tool it came from:
-
-- The plugin, with `/plugin marketplace update`, or on its own when Claude
-  Code's plugin auto-update is on. The wrapper fetches the new version on the
-  next run.
-- The installer or a downloaded binary, with `klin update`.
-- CI, by moving the tag in `uses: brajevicm/klin@vX.Y.Z`, which Renovate and
-  Dependabot do.
-
-One tag names every route, so they never disagree. [ADR 0029](docs/adr/0029-the-release-tag-is-the-one-version.md).
+Update the plugin with `/plugin marketplace update` or Claude's auto-update;
+its wrapper fetches the new version. Use `klin update` for standalone installs.
+Move CI's `uses` tag manually or with Renovate or Dependabot. One tag names
+every route ([ADR 0029](docs/adr/0029-the-release-tag-is-the-one-version.md)).
 
 ## What it checks
 
@@ -102,15 +89,33 @@ development:
 - **inventory** — important declarations that disappear
 - **lockfile** and **SARIF** integration
 
-## Local feedback, CI authority
+## Conformance levels
 
-Agent hooks give fast feedback during a turn, but an agent controls its own
-working tree and can work around them. The authoritative verdict belongs in CI,
-on a checkout the agent never touched.
+klin supports **Claude Code and Codex CLI**.
 
-klin targets **Claude Code and Codex CLI**. A Cursor adapter is planned.
+### Feedback
 
-### CI
+Hooks put failures in front of the agent during a turn. A gate failure keeps
+the turn window open until it is fixed, accepted, or reset by a person. A
+deleted test is asked about once, then reported to the person while the next
+stop ends green.
+
+The guard protects `klin.json` alone. Hook files, CODEOWNERS, verification
+files, klin's state directory, and its stamp refs are ordinary files. An agent
+controls its working tree and can remove or bypass local hooks, so this level
+is feedback, not enforcement. Installing the plugin reaches this level.
+
+### Enforced
+
+Enforcement adds `klin gate --strict` in CI, on a checkout the agent never
+touched and against a protected branch. CODEOWNERS must cover `klin.json`, the
+workflow, the hook settings, and CODEOWNERS itself. Loosening a gate then takes
+a reviewed commit by a person.
+
+A deleted test remains a note in CI. It is held only by the hook's one question
+and a review of the diff.
+
+### CI setup
 
 ```yaml
 steps:
@@ -131,12 +136,9 @@ cargo build --release
 ./target/release/klin gate --strict
 ```
 
-A release is the `cut-release` workflow under Actions. Press "Run workflow",
-pick `patch`, `minor` or `major`, or type an exact version, and it runs
-`cargo release` on `main`. That moves the version in `Cargo.toml`, the
-plugin, its wrapper and this file, commits, tags `vX.Y.Z` and pushes. The tag
-builds and publishes the release. The same command runs locally with
-[cargo-release](https://github.com/crate-ci/cargo-release) installed:
+The `cut-release` workflow accepts `patch`, `minor`, `major`, or an exact
+version. It updates every version reference, commits, tags, pushes, and lets
+the tag publish the release. The equivalent local command is:
 
 ```sh
 cargo release minor --execute
