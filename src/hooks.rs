@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Map, Value};
 
@@ -75,9 +75,6 @@ fn line(arguments: &str) -> String {
 
 const HOOKS: &str = "hooks";
 
-/// klin's name in a host's list of enabled plugins.
-const PLUGIN: &str = "klin";
-
 pub fn run(root: &Path, named: Option<&str>, shared: bool, out: &mut String) -> Result<u8, Error> {
     let hosts = wanted(root, named)?;
     if let Some(host) = refused(named, &hosts) {
@@ -111,7 +108,7 @@ fn hooked(port: &Port, root: &Path, shared: bool, out: &mut String) -> Result<()
 /// and the prompt counter moves by two. A plugin is one copy. A user-level install klin wrote
 /// itself is the other, because a host reads its user file and the tree's together.
 fn elsewhere(host: &dyn Adapter, root: &Path, shared: bool, target: &Path) -> Option<String> {
-    if let Some(settings) = enabling(host, root, shared) {
+    if let Some(settings) = host.plugin_enabled(root, shared) {
         return Some(registered(&settings, target));
     }
     if shared {
@@ -213,50 +210,6 @@ fn pending(port: &Port, shared: bool) -> Error {
         },
         built()
     ))
-}
-
-/// The settings file that enables klin's plugin for the file klin is about to write, if one
-/// does. The plugin carries the same entries, so a second copy of them runs klin twice on
-/// every event: two gates race for the turn stamp, and the prompt counter moves by two.
-///
-/// A write into a tree is covered by that tree's settings, the local settings beside them and
-/// the user's. A write into the home directory is covered by the user's alone, because a
-/// plugin one repository enables gates that repository and not the machine. A host with no
-/// plugin key has no plugin of klin's to look for.
-fn enabling(host: &dyn Adapter, root: &Path, shared: bool) -> Option<PathBuf> {
-    let key = host.plugin_key()?;
-    let file = host.hook_file();
-    let mut looked = Vec::new();
-    if !shared {
-        looked.push(root.join(file));
-        looked.push(root.join(file.replace(".json", ".local.json")));
-    }
-    if let Some(home) = std::env::home_dir() {
-        looked.push(home.join(file));
-    }
-    looked
-        .into_iter()
-        .find(|settings| lists_klin(settings, key))
-}
-
-fn lists_klin(settings: &Path, key: &str) -> bool {
-    let Ok(held) = read(settings) else {
-        return false;
-    };
-    held.get(key)
-        .and_then(Value::as_object)
-        .into_iter()
-        .flatten()
-        .any(|(named, on)| named_klin(named) && on.as_bool().unwrap_or(false))
-}
-
-/// The name a host lists the plugin under is klin's own name, or that name and the marketplace
-/// it came from. A plugin whose name only starts with klin's is another plugin.
-fn named_klin(named: &str) -> bool {
-    named == PLUGIN
-        || named
-            .strip_prefix(PLUGIN)
-            .is_some_and(|rest| rest.starts_with('@'))
 }
 
 fn registered(settings: &Path, file: &Path) -> String {

@@ -2,6 +2,7 @@ mod claude;
 mod codex;
 
 use std::io::{IsTerminal, Read};
+use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
@@ -16,11 +17,10 @@ pub trait Adapter: Sync {
     fn hook_file(&self) -> &'static str;
     /// The tools the guard reads on the pre-tool event, in the host's matcher syntax.
     fn matcher(&self) -> &'static str;
-    /// The key the host's hook file lists enabled plugins under. `None` for a host that
-    /// enables plugins somewhere else, or has no klin plugin to enable.
-    fn plugin_key(&self) -> Option<&'static str> {
-        None
-    }
+    /// The settings file that enables klin's plugin for a write into `root`, or into the home
+    /// directory when `shared`. The plugin carries the hooks itself, so the file klin would
+    /// write must then stay as it is. Section 19.3.
+    fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf>;
     /// Whether an event with no `--host` has this host's shape.
     fn placed(&self, payload: &Value) -> bool;
     /// The event in klin's own words.
@@ -135,6 +135,15 @@ pub fn stop(stop: &Stop) -> u8 {
 fn refused(reason: &str) -> u8 {
     eprintln!("{reason}");
     2
+}
+
+/// The name a host lists klin's plugin under: klin's own name, or that name and the
+/// marketplace it came from. A plugin whose name only starts with klin's is another plugin.
+fn plugin_named_klin(named: &str) -> bool {
+    named == "klin"
+        || named
+            .strip_prefix("klin")
+            .is_some_and(|rest| rest.starts_with('@'))
 }
 
 fn text(value: Option<&Value>) -> String {

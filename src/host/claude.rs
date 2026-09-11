@@ -1,6 +1,8 @@
+use std::path::{Path, PathBuf};
+
 use serde_json::Value;
 
-use super::{Adapter, Decision, Event, flag, input, refused, text};
+use super::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
 
 /// A field only Claude Code sends. One of them is enough to place the event.
 const FIELDS: &[&str] = &[
@@ -34,8 +36,17 @@ impl Adapter for Claude {
         "Write|Edit|MultiEdit|NotebookEdit|Bash"
     }
 
-    fn plugin_key(&self) -> Option<&'static str> {
-        Some("enabledPlugins")
+    /// A write into a tree is covered by that tree's settings, the local settings beside them
+    /// and the user's. A write into the home directory is covered by the user's alone, because
+    /// a plugin one repository enables gates that repository and not the machine.
+    fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf> {
+        let mut looked = Vec::new();
+        if !shared {
+            looked.push(root.join(self.hook_file()));
+            looked.push(root.join(".claude/settings.local.json"));
+        }
+        looked.extend(std::env::home_dir().map(|home| home.join(self.hook_file())));
+        looked.into_iter().find(|settings| lists_klin(settings))
     }
 
     fn placed(&self, payload: &Value) -> bool {
@@ -73,6 +84,21 @@ impl Adapter for Claude {
             Decision::Deny(reason) => refused(reason),
         }
     }
+}
+
+/// Claude Code lists its enabled plugins under `enabledPlugins` in the settings file.
+fn lists_klin(settings: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(settings) else {
+        return false;
+    };
+    let Ok(held) = serde_json::from_str::<Value>(&text) else {
+        return false;
+    };
+    held.get("enabledPlugins")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .any(|(named, on)| plugin_named_klin(named) && on.as_bool().unwrap_or(false))
 }
 
 fn ask(reason: &str) -> String {

@@ -1,6 +1,8 @@
+use std::path::{Path, PathBuf};
+
 use serde_json::Value;
 
-use super::{Adapter, Decision, Event, flag, input, refused, text};
+use super::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
 
 /// The field Codex CLI adds to every turn-scoped event and Claude Code never sends.
 /// `permission_mode` is not it: both hosts send that one.
@@ -13,6 +15,10 @@ const HEADERS: &[&str] = &[
     "*** Update File: ",
     "*** Move to: ",
 ];
+
+/// The file Codex lists its enabled plugins in, beside the hook file. Each plugin is a table
+/// named `[plugins."name@marketplace"]`, on by default and off under `enabled = false`.
+const CONFIG: &str = ".codex/config.toml";
 
 pub struct Codex;
 
@@ -33,6 +39,17 @@ impl Adapter for Codex {
     /// is `mcp__server__tool`.
     fn matcher(&self) -> &'static str {
         "Bash|apply_patch|mcp__.*"
+    }
+
+    /// A write into a tree is covered by the tree's config and the user's. A write into the
+    /// home directory is covered by the user's alone.
+    fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf> {
+        let mut looked = Vec::new();
+        if !shared {
+            looked.push(root.join(CONFIG));
+        }
+        looked.extend(std::env::home_dir().map(|home| home.join(CONFIG)));
+        looked.into_iter().find(|config| lists_klin(config))
     }
 
     fn placed(&self, payload: &Value) -> bool {
@@ -68,6 +85,40 @@ impl Adapter for Codex {
             Decision::Deny(reason) => refused(reason),
         }
     }
+}
+
+/// Whether the config holds a klin plugin table that is not switched off. A line scan, the way
+/// the lockfile check reads `Cargo.toml`: a `[plugins."klin@..."]` header opens the table, and
+/// the table runs to the next header.
+fn lists_klin(config: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(config) else {
+        return false;
+    };
+    let mut in_klin = false;
+    let mut on = false;
+    for line in text.lines().map(str::trim) {
+        if line.starts_with('[') {
+            on |= in_klin;
+            in_klin = plugin_table(line).is_some_and(plugin_named_klin);
+        } else if in_klin && disabled(line) {
+            in_klin = false;
+        }
+    }
+    on || in_klin
+}
+
+/// The plugin a `[plugins.NAME]` header names, with its quotes removed.
+fn plugin_table(header: &str) -> Option<&str> {
+    let inner = header.strip_prefix('[')?.strip_suffix(']')?.trim();
+    let named = inner.strip_prefix("plugins.")?.trim();
+    Some(named.trim_matches(['"', '\'']))
+}
+
+fn disabled(line: &str) -> bool {
+    let Some((key, value)) = line.split_once('=') else {
+        return false;
+    };
+    key.trim() == "enabled" && value.trim().starts_with("false")
 }
 
 fn patch_paths(patch: &str) -> Vec<String> {

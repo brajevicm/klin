@@ -665,8 +665,52 @@ fn hooks_global_writes_codex_cli_hooks_to_the_users_file() {
     assert_eq!(tree.status(), "", "{}", run.out);
 }
 
-/// Codex CLI enables plugins in `config.toml`, not under a key in `hooks.json`, and klin ships
-/// no Codex plugin. So Claude Code's plugin key in the Codex file means nothing to klin.
+const A_CODEX_PLUGIN: &str = "[plugins.\"klin@klin\"]\nenabled = true\n";
+const A_CODEX_PLUGIN_OFF: &str =
+    "[plugins.\"klin@klin\"]\nenabled = false\n\n[plugins.\"other@klin\"]\n";
+
+/// Codex CLI lists its plugins in `config.toml`, and a plugin table is on unless it says
+/// `enabled = false`. Spec 19.3.
+#[test]
+fn hooks_adds_nothing_when_the_codex_plugin_is_enabled() {
+    let tree = two_documents();
+    tree.write(".codex/config.toml", A_CODEX_PLUGIN);
+
+    let run = tree.run(&["init", "--hooks", "--host", "codex"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!tree.path(".codex/hooks.json").exists(), "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
+    assert!(run.says("config.toml"), "{}", run.out);
+}
+
+#[test]
+fn hooks_writes_for_codex_when_its_plugin_table_is_switched_off() {
+    let tree = two_documents();
+    tree.write(".codex/config.toml", A_CODEX_PLUGIN_OFF);
+
+    let run = tree.run(&["init", "--hooks", "--host", "codex"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        commands(&codex_settings(&tree), "Stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn hooks_global_adds_nothing_when_the_users_codex_config_enables_the_plugin() {
+    let (tree, home) = a_home();
+    home.write(".codex/config.toml", A_CODEX_PLUGIN);
+
+    let run = globally(&tree, &home, &["--host", "codex"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!home.path(".codex/hooks.json").exists(), "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
+}
+
+/// Codex CLI enables plugins in `config.toml`, not under a key in `hooks.json`. So Claude
+/// Code's plugin key in the Codex file means nothing to klin.
 #[test]
 fn hooks_for_codex_ignore_claudes_plugin_key() {
     let tree = two_documents();
