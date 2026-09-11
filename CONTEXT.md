@@ -73,3 +73,18 @@ holds.
 
 
 _Avoid_: default, inferred, guessed
+
+**Session**:
+The host's grouping of many turns under one id, which klin records and never
+judges. A host that sends no id leaves it empty.
+_Avoid_: conversation, run
+
+**Intervention**:
+One gate failure on a stop where klin spent the prompt's gate block. A failure
+seen after the block is spent is an observation, not an intervention.
+_Avoid_: catch, block, hit, prevention
+
+**Journal**:
+The per-worktree record of what each stop, guard refusal and reset observed,
+written best-effort and read for stats and benchmarks.
+_Avoid_: log, telemetry, audit trail, history
