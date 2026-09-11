@@ -882,3 +882,35 @@ fn hooks_follows_a_settings_file_that_is_a_link() {
     };
     assert_eq!(mode.permissions().mode() & 0o777, 0o600, "{}", run.out);
 }
+
+#[test]
+fn init_writes_the_derived_stubs_section() {
+    let tree = in_debt();
+
+    let run = tree.run(&["init"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let config = config(&tree);
+    assert_eq!(
+        config["stubs"],
+        serde_json::json!({"roots": ["src", "tests"], "languages": ["rust"]}),
+        "{config}"
+    );
+}
+
+#[test]
+fn force_re_pins_the_stubs_section() {
+    let tree = in_debt();
+    tree.write(
+        "klin.json",
+        r#"{ "stubs": { "roots": ["old"], "languages": ["go"] } }"#,
+    );
+
+    let run = tree.run(&["init", "--force"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let config = config(&tree);
+    assert_eq!(
+        config["stubs"],
+        serde_json::json!({"roots": ["src", "tests"], "languages": ["rust"]}),
+        "{config}"
+    );
+}

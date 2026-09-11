@@ -94,9 +94,10 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
+    assert!(run.says("ok    stubs"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
     assert!(run.says("derived: escapes roots src"), "{}", run.out);
-    assert!(run.says("4 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -122,7 +123,7 @@ fn a_status_row_per_gate_and_a_summary_line() {
     assert!(run.says("ok    doc-citations"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("4 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -154,7 +155,7 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
         "{}",
         run.out
     );
-    assert!(run.says("4 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("5 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -168,7 +169,7 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("4 gate(s), 2 failed."), "{}", run.out);
+    assert!(run.says("5 gate(s), 2 failed."), "{}", run.out);
 }
 
 #[test]
@@ -181,7 +182,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("3 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("4 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -195,7 +196,7 @@ fn a_tool_error_alone_exits_two() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("3 gate(s), 1 excluded, 1 tool error."),
+        run.says("4 gate(s), 1 excluded, 1 tool error."),
         "{}",
         run.out
     );
@@ -220,9 +221,8 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
-        "doc-size — runs\ndoc-citations — runs\nescapes — runs\ncomplexity — runs\n\
-         lockfile — needs a section a person writes\n\
-         stubs — needs a section a person writes\n\
+        "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
+         complexity — runs\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -569,7 +569,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("3 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("4 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -944,7 +944,7 @@ fn one_check_backs_two_gates_over_different_roots() {
     assert!(run.says("ok    complexity-src"), "{}", run.out);
     assert!(run.says("FAIL  complexity-tests"), "{}", run.out);
     assert!(!run.says("ok    complexity\n"), "{}", run.out);
-    assert!(run.says("6 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("7 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -994,7 +994,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
-        run.says("3 gate(s), 1 excluded, all passed."),
+        run.says("4 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1008,9 +1008,8 @@ fn list_names_the_excluded_gates() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
-        "doc-size — runs\ndoc-citations — runs\ncomplexity — runs\nescapes — excluded\n\
-         lockfile — needs a section a person writes\n\
-         stubs — needs a section a person writes\n\
+        "doc-size — runs\ndoc-citations — runs\nstubs — runs\ncomplexity — runs\n\
+         escapes — excluded\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -1118,7 +1117,8 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
               "doc_size": [{"file": "README.md", "ceiling": 10}],
               "doc_citations": [{"file": "README.md", "roots": ["."]}],
               "complexity": false,
-              "escapes": false }"#,
+              "escapes": false,
+              "stubs": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
@@ -1177,13 +1177,14 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
               "doc_size": [{"file": "README.md", "ceiling": 10}],
               "doc_citations": false,
               "complexity": false,
-              "escapes": false }"#,
+              "escapes": false,
+              "stubs": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 gate(s), 3 excluded, all passed."),
+        run.says("1 gate(s), 4 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1193,7 +1194,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
 fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let tree = tree(
         r#"{ "project": "t", "doc_size": false, "doc_citations": false, "escapes": false,
-              "complexity": false }"#,
+              "stubs": false, "complexity": false }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
@@ -1201,8 +1202,8 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     assert_eq!(
         rows(&run),
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
-         complexity — excluded\nlockfile — needs a section a person writes\n\
-         stubs — needs a section a person writes\n\
+         stubs — excluded\ncomplexity — excluded\n\
+         lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -1212,7 +1213,9 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let judged = tree.run(&["gate"]);
     assert_eq!(judged.code, 2, "{}", judged.out);
     assert!(
-        judged.says("excludes every gate it names: doc-size, doc-citations, escapes, complexity"),
+        judged.says(
+            "excludes every gate it names: doc-size, doc-citations, escapes, stubs, complexity"
+        ),
         "{}",
         judged.out
     );
@@ -1286,7 +1289,7 @@ fn a_version_the_binary_does_not_carry_is_a_note_and_nothing_else() {
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("0.0.1"), "{}", run.out);
     assert!(run.says(env!("CARGO_PKG_VERSION")), "{}", run.out);
-    assert!(run.says("4 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]

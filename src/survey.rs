@@ -4,7 +4,7 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::changed::git;
-use crate::{cache, escapes, files, state, turn};
+use crate::{cache, escapes, files, state, stubs, turn};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
 /// commit. Spec 6.6.
@@ -73,6 +73,7 @@ const DERIVABLE: &[(&str, &[&str])] = &[
     ("escapes", &["roots", "languages"]),
     ("inventory", &[]),
     ("lockfile", &["manifests"]),
+    ("stubs", &["roots", "languages"]),
 ];
 
 pub fn keys(section: &str) -> Option<&'static [&'static str]> {
@@ -756,6 +757,7 @@ fn sections(found: &Survey, numbers: &Numbers, pinned: &Value) -> Map<String, Va
         }
     };
     add("escapes", escapes_section(found));
+    add("stubs", stubs_section(found));
     add("complexity", complexity_section(found, numbers));
     add("doc_size", doc_size_section(found, numbers));
     add("doc_citations", doc_citations_section(found));
@@ -788,12 +790,28 @@ fn key_by_key(pins: &Map<String, Value>, mut fields: Map<String, Value>) -> Valu
 }
 
 fn escapes_section(found: &Survey) -> Option<Value> {
-    if found.roots.is_empty() || found.languages.is_empty() {
+    markers_section(&found.roots, &found.languages)
+}
+
+/// The stubs table names fewer languages than the escapes table, and a section naming one it
+/// lacks would refuse every run, so the survey leaves such a language out. Spec 5.4.
+fn stubs_section(found: &Survey) -> Option<Value> {
+    let languages: Vec<String> = found
+        .languages
+        .iter()
+        .filter(|language| stubs::holds_rows_for(language))
+        .cloned()
+        .collect();
+    markers_section(&found.roots, &languages)
+}
+
+fn markers_section(roots: &[String], languages: &[String]) -> Option<Value> {
+    if roots.is_empty() || languages.is_empty() {
         return None;
     }
     let mut section = Map::new();
-    section.insert("roots".into(), list(&found.roots));
-    section.insert("languages".into(), list(&found.languages));
+    section.insert("roots".into(), list(roots));
+    section.insert("languages".into(), list(languages));
     Some(Value::Object(section))
 }
 

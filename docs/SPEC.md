@@ -467,6 +467,10 @@ Each check documents its rule. The rules for the shipped checks:
   subset whose name or files match the language's test convention.
 - `languages`: the languages of the files under `roots`, in the derivation
   commit and in `after`.
+- `stubs`: the same `roots` and `languages` as `escapes`, less every language
+  the stubs table holds no rows for, so a language only the escapes table
+  names does not refuse the run. A tree with no language left gets no
+  `stubs` section, and the gate needs a section a person writes.
 - `doc_size`: every Markdown file at the tree root, in the derivation commit
   and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next

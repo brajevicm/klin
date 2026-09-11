@@ -377,7 +377,8 @@ fn a_project_pattern_alone_judges_no_body_shape() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "stubs": { "roots": ["src"], "patterns": { "banned": "NOCOMMIT" } } }"#,
+        r#"{ "stubs": { "roots": ["src"], "languages": [],
+                        "patterns": { "banned": "NOCOMMIT" } } }"#,
     );
     tree.write("src/a.py", "def save(key):\n    pass\n");
     tree.write("src/a.rs", "fn f() {\n    // ...\n}\n");
@@ -385,4 +386,57 @@ fn a_project_pattern_alone_judges_no_body_shape() {
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: 0 stub site(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_tree_with_no_stubs_section_gates_its_markers_over_what_the_survey_found() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "fn f() {\n    todo!()\n}\n");
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  stubs"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  not implemented"), "{}", run.out);
+    assert!(run.says("derived: stubs roots ."), "{}", run.out);
+    assert!(run.says("derived: stubs languages rust"), "{}", run.out);
+}
+
+#[test]
+fn a_language_the_stubs_table_does_not_name_is_left_out_of_the_derived_section() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.write("src/app.swift", "func f() {}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: stubs languages rust,"), "{}", run.out);
+    assert!(!run.says("stubs languages rust, swift"), "{}", run.out);
+}
+
+#[test]
+fn a_tree_with_no_language_the_stubs_table_names_needs_a_person_for_the_section() {
+    let tree = Tree::new();
+    tree.write("src/app.swift", "func f() {}\n");
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("escapes — runs"), "{}", run.out);
+    assert!(
+        run.says("stubs — needs a section a person writes"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_pinned_stubs_key_is_kept_and_the_survey_supplies_the_other() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "stubs": { "roots": ["src"] } }"#);
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.write("lib/todo.rs", "fn f() {\n    todo!()\n}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("pinned: stubs roots src"), "{}", run.out);
+    assert!(run.says("derived: stubs languages rust"), "{}", run.out);
 }
