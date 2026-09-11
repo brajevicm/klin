@@ -69,9 +69,6 @@ fn decided(event: &Event) -> Decision {
         if let Some(decision) = paths_decision(&event.file_paths) {
             return decision;
         }
-        if matches!(event.host, host::Host::Codex) && event.tool == "apply_patch" {
-            return Decision::Allow;
-        }
     }
     command_decision(&event.command)
 }

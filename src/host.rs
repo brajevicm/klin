@@ -92,20 +92,18 @@ fn fell_back(why: &str) -> Host {
 fn mapped(event: &Value, host: Host) -> Event {
     let input = |key: &str| text(event.get("tool_input").and_then(|input| input.get(key)));
     let tool = text(event.get("tool_name"));
-    let command = input("command");
-    let path = input("file_path");
-    let file_paths = match (host, tool.as_str()) {
-        (Host::Codex, "apply_patch") => patch_paths(&command),
+    let payload = input("command");
+    let (file_paths, command) = match (host, tool.as_str()) {
+        (Host::Codex, "apply_patch") => (patch_paths(&payload), String::new()),
         _ => {
-            let path = match path.is_empty() {
-                true => input("notebook_path"),
-                false => path,
+            let path = match input("file_path") {
+                path if path.is_empty() => input("notebook_path"),
+                path => path,
             };
-            if path.is_empty() {
-                Vec::new()
-            } else {
-                vec![path]
-            }
+            (
+                (!path.is_empty()).then_some(path).into_iter().collect(),
+                payload,
+            )
         }
     };
     Event {
