@@ -96,6 +96,9 @@ pub struct Records {
     pub coverage: Option<Value>,
     /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
     pub derived: Vec<Value>,
+    /// The count the check's own `OK:` line prints as held at the base, which the runner puts
+    /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
+    pub held: Option<u64>,
 }
 
 pub struct Flags {

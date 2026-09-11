@@ -203,6 +203,9 @@ struct Comparison {
     unmatched_findings: Vec<Finding>,
     rose: Vec<(Finding, Values)>,
     unmatched_accepted: Vec<Values>,
+    /// How many findings a base site or an accepted entry held, which is every finding on a
+    /// passing run and none of the new or risen ones on a failing one. Spec 11.2.
+    held: usize,
 }
 
 impl Comparison {
@@ -379,7 +382,7 @@ fn take(comparison: &mut Comparison, pairs: Vec<(Finding, Values)>, metrics: &[&
     for (finding, entry) in pairs {
         match compare(&finding, &entry, metrics) {
             Outcome::Rose => comparison.rose.push((finding, entry)),
-            Outcome::Held => {}
+            Outcome::Held => comparison.held += 1,
         }
     }
 }
@@ -464,7 +467,10 @@ fn report(
     flags: &Flags,
     out: &mut String,
 ) -> u8 {
-    flags.record(|records| collect(comparison, evaluator, &flags.gate, records));
+    flags.record(|records| {
+        records.held = Some(records.held.unwrap_or(0) + comparison.held as u64);
+        collect(comparison, evaluator, &flags.gate, records);
+    });
     if comparison.failed() {
         failures(comparison, evaluator, held, out);
         notes(comparison, evaluator, out);

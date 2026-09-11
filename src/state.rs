@@ -63,7 +63,7 @@ fn git(root: &Path, flag: &str) -> Option<PathBuf> {
     (!text.is_empty()).then(|| PathBuf::from(text))
 }
 
-fn hash(bytes: &[u8]) -> u64 {
+pub fn hash(bytes: &[u8]) -> u64 {
     let mut sum: u64 = 0xcbf2_9ce4_8422_2325;
     for byte in bytes {
         sum ^= u64::from(*byte);

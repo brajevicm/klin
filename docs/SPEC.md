@@ -819,11 +819,12 @@ report exists to discourage.
 Nothing into the working tree. `init` writes `klin.json` and hook files, and
 only when a person runs it.
 
-klin's own state is three things: the turn stamp with the prompt mark of
-6.2.1, the build stamp, and the survey cache. All are per working tree. The
-cache is safe to delete. All three are guarded, because the guard guards the
-directory they share (9.4). Deleting the turn stamp buys nothing, because a
-stop without one judges the whole branch (6.2). They live in the state directory:
+klin's own state is four things: the turn stamp with the prompt mark of
+6.2.1, the build stamp, the survey cache, and the journal of 9.6. All are per
+working tree. The cache is safe to delete. All four are guarded, because the
+guard guards the directory they share (9.4). Deleting the turn stamp buys
+nothing, because a stop without one judges the whole branch (6.2). They live
+in the state directory:
 
 - By default, `klin/` under the directory `git rev-parse --git-dir` returns.
   Git never tracks it, never lists it as untracked, `git clean` never removes
@@ -836,7 +837,8 @@ stop without one judges the whole branch (6.2). They live in the state directory
 An implementation MUST print the state directory under `klin gate --list`.
 `klin cache clean` MUST remove the survey cache for the current tree, and with
 `--all` the survey cache under every entry of `KLIN_STATE_DIR` whose repository
-no longer exists. It MUST NOT remove a stamp. A repository path that does not
+no longer exists. It MUST NOT remove a stamp, and it MUST leave the journal
+alone: the journal is history, not a cache. A repository path that does not
 resolve on the machine running the command, such as a worktree a container
 does not mount, is no proof that the tree is gone, and a stamp is the one piece
 of state whose loss lets a block go unspent.
@@ -1552,6 +1554,20 @@ the same report and a line saying the window stays open until a person fixes,
 accepts or resets it.
 The `--json` form is available for a host that reads JSON.
 
+### 9.6 The journal
+
+Every `klin gate --hook` stop MUST append one line, the record of 11.4, to
+`journal.jsonl` in the state directory — the stop that blocks, the stop that
+passes, and the stop that could not run its gates alike. Two stops write
+nothing: a tree that holds no `klin.json` runs nothing, per 5.1, and a config
+only a person can fix ends the stop before it reads anything, per 14.
+
+The write MUST NOT change a block or a pass: it is best-effort, a failed
+append prints nothing to the agent, and a state directory klin cannot write
+costs the record and nothing else, by the rule of 14. The hook never prunes
+the file, and `cache clean` leaves it alone (7.4). Only the reader of 11.4
+tolerates what an interrupted writer can leave: a truncated last line.
+
 ## 10. Runner and CI Contract
 
 - `klin gate` runs every applicable gate cheapest first and prints a status
@@ -1611,11 +1627,15 @@ One object on stdout. Fields:
   line 11.1 ends with
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
-- `gates` list of `{name, status, findings, notes, coverage}`, where
-  `status` is the row of 11.1, `findings` and `notes` are how many that gate
-  left in the two lists below, and `coverage` is the
+- `gates` list of `{name, status, findings, notes, coverage, ms, held}`,
+  where `status` is the row of 11.1, `findings` and `notes` are how many that
+  gate left in the two lists below, `coverage` is the
   `{found, measured, excluded, unreadable}` counts of 11.1, or null for a
-  gate that could not run far enough to measure a scope
+  gate that could not run far enough to measure a scope, `ms` is how long the
+  gate's own measure and judge took, and `held` counts the findings the run
+  let through because a base site or an accepted entry carried them — on a
+  passing run, the count the gate's `OK:` line of 11.1 prints — or null for a
+  gate that never got that far
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The
@@ -1643,8 +1663,8 @@ One object on stdout. Fields:
   exits 0, so a harness that wants the process's answer reads `exit` and one
   that wants the verdict reads `status`. Under `--hook` the stop's own code is
   16.3's and is decided after this object is built, so `exit` there is the
-  gates' code and not the stop's; #153 records the stop's own outcome beside
-  this object rather than inside it.
+  gates' code and not the stop's; the journal line of 11.4 records the stop's
+  own outcome beside this object rather than inside it.
 
 A finding has no column, so the JSON carries none rather than a wrong one.
 
@@ -1655,6 +1675,44 @@ gate and one result per failing finding (#65). Text output on stdout is
 unchanged by the flag, which is why the log goes to a file and not to stdout
 the way `--json` does. `--sarif` with `--json` is a usage error.
 
+### 11.4 The journal record
+
+One JSON line per stop, appended per 9.6. The line is the 11.2 object the
+stop's run built — the gates, a build failure, or an error alike — plus what
+only the hook knew:
+
+- `schema` integer, 1 for this record. A reader MUST skip a line whose
+  `schema` it does not know, and MUST count what it skipped so a report can
+  say so. A schema bump without an upgrade in the reader MUST NOT ship.
+- `version`, the klin version that wrote the line, and `time`, seconds since
+  the epoch.
+- `kind`, `"stop"`. Other kinds are #154's.
+- `host`, the adapter's name, and `session`, the host's id for its grouping
+  of turns. Null where the event was unreadable or carried none.
+- `prompt`, the counter of 6.2 the stop ran under.
+- `hook` `{blocked, delivery, gate_spent, build_blocks, blocked_before}`.
+  `blocked` is whether this stop exited 2. `delivery` is `block` or `none`;
+  `follow-up` and `report` are reserved for a host whose stop cannot block
+  (#67). `gate_spent` and `build_blocks` are the build stamp of 16.3 as this
+  stop left it, and `blocked_before` is the host's flag.
+- `verdict`, `green`, `red`, or `none` for a stop that wrote no verdict —
+  the lock timed out, or the state directory held no stamp klin could write —
+  with a `why` string beside `none`.
+- `timing` `{total_ms, build_ms, lock_ms, klin_ms}`, where `klin_ms` is the
+  total less the build, so the budget of 13 reads straight off it.
+- `asked`, the site ids this stop asked about, as the turn stamp records
+  them (8.2).
+- `flags`, the unusual paths this stop took, empty on a clean stop:
+  `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
+  window because no stamp resolved), `count-unwritable` (a build stamp that
+  would not write, 14).
+- `config_hash`, a hash of the config file in force, so a later reader can
+  tell a fix from a config change without a schema bump. Recorded and not
+  read.
+
+The file is a public surface: a harness may read it until `klin stats --json`
+(#155) lands, and the two readers of the design read nothing else.
+
 ## 12. Determinism
 
 - Every `git diff` klin runs MUST pin `--diff-algorithm=histogram` and pass
@@ -1664,9 +1722,12 @@ the way `--json` does. `--sarif` with `--json` is a usage error.
 - Grammars are compiled into the binary. A grammar version change is a klin
   version change, and the survey cache key includes the version.
 - No check MAY read the network.
-- The only clock is a pinned dated ceiling (5.5), read in UTC, and
-  `KLIN_TODAY` overrides it. The report age check of 8.3 compares file
-  times and is the one other place time enters.
+- The only clock a judgment reads is a pinned dated ceiling (5.5), read in
+  UTC, and `KLIN_TODAY` overrides it. The report age check of 8.3 compares
+  file times and is the one other place time enters a verdict. The `ms` of
+  11.2 and the `time` and `timing` of 11.4 are measurements about the run,
+  recorded and never judged, so they do not break determinism: every field a
+  verdict depends on is still a pure function of the trees.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
 - A derived number is a pure function of the derivation commit and the binary

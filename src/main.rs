@@ -17,6 +17,7 @@ mod host;
 mod hunks;
 mod init;
 mod inventory;
+mod journal;
 mod lockfile;
 mod markers;
 mod radius;

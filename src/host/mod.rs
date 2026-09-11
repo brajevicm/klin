@@ -44,6 +44,9 @@ pub struct Event {
     pub file_paths: Vec<String>,
     pub command: String,
     pub blocked_before: bool,
+    /// The host's grouping of many turns under one id, which klin records and never judges.
+    /// Empty when the host sends none.
+    pub session: String,
 }
 
 /// What the guard decides about a tool call. ADR 0020. A deny exits 2 with the reason on

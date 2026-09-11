@@ -77,7 +77,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let never = !at.join(INDEX).exists();
     let opened = mark(start, &at);
     let tree = tree(start, &at);
-    let held = held(start, &at, out);
+    let held = held(start, &at, &mut Vec::new(), out);
     if prompt {
         radius::spread(start, &at, opened.as_deref(), tree.as_deref(), out);
     }
@@ -242,11 +242,12 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
 /// The stamp a prompt and a stop read alike: the `turn` file, or the ref as the recovery copy
 /// when that file is gone. A stamp restored from the ref is red, so the next stop judges
 /// everything since it, and a NOTE says the restore happened. Spec 6.2, 16.1.
-fn held(root: &Path, at: &Path, out: &mut String) -> Option<Stamp> {
+fn held(root: &Path, at: &Path, flags: &mut Vec<&'static str>, out: &mut String) -> Option<Stamp> {
     if let Some(stamp) = read(at).filter(|stamp| resolves(root, stamp)) {
         return Some(stamp);
     }
     let stamp = kept(root)?;
+    flags.push("turn-restored");
     note(
         out,
         "the turn file was gone and the ref still held the stamp, so klin restored it with \
@@ -309,14 +310,18 @@ fn restored(
 /// The window a stop in the hook judges: the turn stamp, or the whole branch when the stamp
 /// was deleted, which the stop then writes as the stamp so the window stops widening. A state
 /// directory klin cannot keep costs the same widening and nothing else. Spec 6.2, 14, 16.1.
-pub fn window(root: &Path, out: &mut String) -> Result<Window, Error> {
+pub fn window(
+    root: &Path,
+    flags: &mut Vec<&'static str>,
+    out: &mut String,
+) -> Result<Window, Error> {
     let Ok(at) = state::ready(root) else {
         return match kept(root) {
             Some(stamp) => Ok(turn(&stamp)),
             None => branch(root, out),
         };
     };
-    let held = held(root, &at, out);
+    let held = held(root, &at, flags, out);
     if let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) {
         return Ok(turn(stamp));
     }
@@ -368,12 +373,12 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
 /// The verdict this stop leaves for the next prompt to read, and the findings its block put in
 /// front of the agent. Green lets the stamp move, red keeps it, so the debt stays new until a
 /// person fixes, accepts or resets it. Spec 6.2, 8.2.
-pub fn verdict(root: &Path, green: bool, asked: &[String], out: &mut String) {
+pub fn verdict(root: &Path, green: bool, asked: &[String], out: &mut String) -> bool {
     let Ok(at) = state::ready(root) else {
-        return;
+        return false;
     };
     let Some(held) = read(&at) else {
-        return;
+        return false;
     };
     let mut all = held.asked.clone();
     all.extend(asked.iter().cloned());
@@ -387,7 +392,7 @@ pub fn verdict(root: &Path, green: bool, asked: &[String], out: &mut String) {
             ..held
         },
         out,
-    );
+    )
 }
 
 /// How long ago the stamp was taken, from the time the stamp holds. An age rather than a date,
@@ -471,7 +476,7 @@ pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
         .then(|| String::from_utf8_lossy(&done.stdout).trim().to_string())
 }
 
-fn write(at: &Path, stamp: &Stamp, out: &mut String) {
+fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
     let mut fields = Map::new();
     let fields_of = [
         ("commit", &stamp.commit),
@@ -496,13 +501,14 @@ fn write(at: &Path, stamp: &Stamp, out: &mut String) {
     let text = Value::Object(fields).to_string() + "\n";
     let writing = at.join(WRITING);
     if std::fs::write(&writing, text).is_ok() && std::fs::rename(&writing, at.join(FILE)).is_ok() {
-        return;
+        return true;
     }
     let _ = std::fs::remove_file(&writing);
     note(
         out,
         &format!("{} could not be written", at.join(FILE).display()),
     );
+    false
 }
 
 fn now() -> u64 {

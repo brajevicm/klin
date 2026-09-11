@@ -100,6 +100,7 @@ fn evaluate(
 ) -> Result<u8, Error> {
     let documents = documents(flags, named, ceiling, start, out)?;
     let against = against(flags, &documents, start, out)?;
+    flags.record(|records| records.held = Some(0));
     let mut over = 0;
     for document in &documents {
         over += usize::from(one(document, &against, flags, out)?);
@@ -192,6 +193,7 @@ fn judge(
         let Some(before) = held else {
             return failed(document, words, flags, out);
         };
+        flags.record(|records| records.held = Some(records.held.unwrap_or(0) + 1));
         if !flags.quiet {
             let _ = writeln!(
                 out,

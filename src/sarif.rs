@@ -113,6 +113,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
+    flags.record(|records| records.held = Some(judged.held));
     let ok = said(&judged, entry.differential) + &coverage.said(flags);
     let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, flags, &ok, out);
     ratchet::noted(&found.notes, flags, out);

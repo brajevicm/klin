@@ -71,6 +71,7 @@ impl Adapter for Codex {
             file_paths,
             command,
             blocked_before: flag(payload, "stop_hook_active"),
+            session: text(payload.get("session_id")),
         }
     }
 

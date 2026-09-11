@@ -5,14 +5,14 @@ use std::time::Duration;
 
 use serde_json::{Map, Value};
 
-use crate::base::{self, Prior, Window};
+use crate::base::{self, Kind, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{self, Config, DELETED, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
 use crate::reference::{self, Key};
 use crate::{
-    build, complexity, coverage, doc_citations, doc_size, escapes, inventory, lockfile, sarif,
-    state, stubs, survey, turn,
+    build, complexity, coverage, doc_citations, doc_size, escapes, inventory, journal, lockfile,
+    sarif, state, stubs, survey, turn,
 };
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -266,23 +266,63 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// next prompt reads. The lock is held from before the run measures until after the verdict is
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
 fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
+    let begun = std::time::Instant::now();
     let root = root(args, start);
-    let lock = state::ready(&root).ok().map(|at| state::lock(&at, BUDGET));
+    let event = host::read(args.host.as_deref());
+    let mut log = journal::Stop::begun(event.as_ref(), config_hash(args, start));
+    let (lock, lock_ms) =
+        journal::timed(|| state::ready(&root).ok().map(|at| state::lock(&at, BUDGET)));
+    log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
-    let window = turn::window(&root, out).ok();
-    let (code, green, asked) = ran(args, start, window.as_ref(), out);
+    let window = turn::window(&root, &mut log.flags, out).ok();
+    if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
+        log.flags.push("branch-fallback");
+    }
+    let (code, green, asked) = ran(args, start, window.as_ref(), event.as_ref(), &mut log, out);
+    log.blocked = code == 2;
+    log.asked = asked.clone();
     if lost {
         eprintln!(
             "klin: NOTE: another stop in this worktree held the state directory for the whole \
              {} ms klin waits, so this stop wrote no verdict and the window stays as it is.",
             BUDGET.as_millis()
         );
-        return code;
+        log.why = Some("another stop held the state directory, so this stop wrote no verdict");
+    } else {
+        let mut said = String::new();
+        let wrote = turn::verdict(&root, green, &asked, &mut said);
+        eprint!("{said}");
+        match (wrote, green) {
+            (true, true) => log.verdict = "green",
+            (true, false) => log.verdict = "red",
+            (false, _) => log.why = Some("the state directory holds no stamp klin could write"),
+        }
     }
-    let mut said = String::new();
-    turn::verdict(&root, green, &asked, &mut said);
-    eprint!("{said}");
+    if let Ok(at) = state::ready(&root) {
+        let held = count(&at);
+        log.gate_spent = held.gate_spent;
+        log.build_blocks = held.builds;
+        log.prompt = held.prompt;
+    }
+    log.timing.total_ms = journal::millis(begun.elapsed());
+    journal::stop(&root, &log);
     code
+}
+
+/// A hash of the config in force, recorded in the journal and not read, so a later reader can
+/// tell a fix from a config change. A tree with no file says `derived`, and a file klin could
+/// not read says `unreadable`, so neither reads as an edit to the other.
+fn config_hash(args: &Args, start: &Path) -> String {
+    let Ok(config) = Config::load(args.config.as_deref(), start) else {
+        return "unreadable".to_string();
+    };
+    if !config.written() {
+        return "derived".to_string();
+    }
+    match std::fs::read_to_string(&config.file) {
+        Ok(text) => format!("{:016x}", state::hash(text.as_bytes())),
+        Err(_) => "unreadable".to_string(),
+    }
 }
 
 /// One stop's run: the exit code the host reads, whether the gates left the tree green, and the
@@ -292,15 +332,23 @@ fn ran(
     args: &Args,
     start: &Path,
     window: Option<&Window>,
+    event: Option<&host::Event>,
+    log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, bool, Vec<String>) {
-    match built(args, start, window) {
+    let (outcome, build_ms) = journal::timed(|| built(args, start, window));
+    log.timing.build_ms = build_ms;
+    match outcome {
         Ok(Some((root, failure))) => (
-            does_not_build(args, &root, &failure, window, out),
+            does_not_build(args, &root, &failure, window, log, out),
             false,
             Vec::new(),
         ),
-        Err(problem) => (handed(args, start, Err(problem), out), false, Vec::new()),
+        Err(problem) => (
+            handed(args, start, Err(problem), event, log, out),
+            false,
+            Vec::new(),
+        ),
         Ok(None) => {
             let judged = judge(args, start, window, out);
             let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
@@ -308,7 +356,7 @@ fn ran(
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let code = handed(args, start, judged, out);
+            let code = handed(args, start, judged, event, log, out);
             let asked = match code {
                 2 => reported,
                 _ => Vec::new(),
@@ -319,18 +367,42 @@ fn ran(
 }
 
 /// What the hook does with a run it finished: report it, and block the stop or let it end.
-fn handed(args: &Args, start: &Path, outcome: Result<Tally, Error>, out: &mut String) -> u8 {
-    let tally = match refused(args, outcome, out) {
+fn handed(
+    args: &Args,
+    start: &Path,
+    outcome: Result<Tally, Error>,
+    event: Option<&host::Event>,
+    log: &mut journal::Stop,
+    out: &mut String,
+) -> u8 {
+    let mut tally = match refused(args, outcome, out) {
         Ok(tally) => tally,
         Err(problem) => {
             let _ = writeln!(out, "FAIL: {problem}");
+            let mut records = Records::default();
+            records.findings.push(record("error", &problem.to_string()));
             Tally {
                 errored: 1,
+                record: Some(as_json(
+                    ERROR,
+                    2,
+                    &format!("klin: {problem}"),
+                    records,
+                    None,
+                )),
                 ..Tally::default()
             }
         }
     };
-    hook(args, tally, &std::mem::take(out), &root(args, start))
+    log.report = tally.record.take();
+    hook(
+        args,
+        tally,
+        &std::mem::take(out),
+        &root(args, start),
+        event,
+        log,
+    )
 }
 
 /// What one run came to: the gates that failed, the gates that could not run, and the notes
@@ -342,6 +414,8 @@ struct Tally {
     told: usize,
     /// The site id of every finding the run reported, which a stop that blocks records as asked.
     reported: Vec<String>,
+    /// The 11.2 object the run built, which the journal writes as the stop's line. Spec 11.4.
+    record: Option<Value>,
 }
 
 /// What the hook says about a tree that does not build. Both messages name the bound from
@@ -414,15 +488,16 @@ fn does_not_build(
     root: &Path,
     failure: &str,
     window: Option<&Window>,
+    log: &mut journal::Stop,
     out: &mut String,
 ) -> u8 {
-    let builds = raised(root);
+    let builds = raised(root, log);
     let stopped = builds.is_some_and(|builds| builds > BLOCKS);
     let code = match builds {
         Some(builds) if builds <= BLOCKS => 2,
         _ => 0,
     };
-    reported(args, failure, window, stopped, code, out);
+    log.report = Some(reported(args, failure, window, stopped, code, out));
     code
 }
 
@@ -430,10 +505,10 @@ fn does_not_build(
 /// because the state directory is gone or because the record itself would not write. Neither
 /// count could bound the blocks, so the NOTE names the write that failed and the stop is not
 /// blocked. Spec 14.
-fn raised(root: &Path) -> Option<u64> {
+fn raised(root: &Path, log: &mut journal::Stop) -> Option<u64> {
     let at = match state::ready(root) {
         Ok(at) => at,
-        Err(why) => return unbounded(&why),
+        Err(why) => return unbounded(&why, log),
     };
     let held = count(&at);
     let count = Count {
@@ -442,14 +517,15 @@ fn raised(root: &Path) -> Option<u64> {
     };
     match counted(&at, &count) {
         true => Some(count.builds),
-        false => unbounded(&format!(
-            "{} could not be written",
-            at.join(BUILD_BLOCKED).display()
-        )),
+        false => unbounded(
+            &format!("{} could not be written", at.join(BUILD_BLOCKED).display()),
+            log,
+        ),
     }
 }
 
-fn unbounded(why: &str) -> Option<u64> {
+fn unbounded(why: &str, log: &mut journal::Stop) -> Option<u64> {
+    log.flags.push("count-unwritable");
     eprintln!(
         "klin: NOTE: {why} — so no count could bound the build blocks, and this build failure \
          blocks nothing."
@@ -466,16 +542,8 @@ fn reported(
     stopped: bool,
     code: u8,
     out: &mut String,
-) {
+) -> Value {
     let said = does_not_build_said();
-    if !args.json {
-        eprintln!("klin: {said}:");
-        eprint!("{failure}");
-        if stopped {
-            eprintln!("klin: {}", stopped_blocking());
-        }
-        return;
-    }
     let mut records = Records::default();
     records
         .findings
@@ -483,12 +551,18 @@ fn reported(
     if stopped {
         records.notes.push(record("note", &stopped_blocking()));
     }
+    let object = as_json(ERROR, code, &format!("klin: {said}."), records, window);
+    if !args.json {
+        eprintln!("klin: {said}:");
+        eprint!("{failure}");
+        if stopped {
+            eprintln!("klin: {}", stopped_blocking());
+        }
+        return object;
+    }
     out.clear();
-    let _ = writeln!(
-        out,
-        "{}",
-        as_json(ERROR, code, &format!("klin: {said}."), records, window)
-    );
+    let _ = writeln!(out, "{object}");
+    object
 }
 
 /// The build the config names, run before any gate judges the tree it produces. The key
@@ -552,11 +626,19 @@ fn judge(
     let against = against(args, &wanted, &config, window, out)?;
     said(args, &config, out);
     let rootless = no_source_root(args, &plan, &config, out)?;
-    let (tally, mut records) = each(args, &wanted, &config, start, &against, out);
+    let (mut tally, mut records) = each(args, &wanted, &config, start, &against, out);
     records.notes.extend(note);
     records.notes.extend(rootless);
     records.derived = config.derived_values();
-    finish(args, &plan, wanted.len(), &tally, records, &against, out);
+    tally.record = Some(finish(
+        args,
+        &plan,
+        wanted.len(),
+        &tally,
+        records,
+        &against,
+        out,
+    ));
     Ok(tally)
 }
 
@@ -727,7 +809,7 @@ fn finish(
     records: Records,
     against: &Against,
     out: &mut String,
-) {
+) -> Value {
     let (failed, errored) = (tally.failed, tally.errored);
     let excluded = match plan.excluded.len() {
         0 => String::new(),
@@ -737,23 +819,21 @@ fn finish(
         "klin: {gates} gate(s), {excluded}{}",
         summary(failed, errored)
     );
+    let code = code(tally);
+    let object = as_json(
+        status_row(code),
+        code,
+        &line,
+        records,
+        against.base.as_ref(),
+    );
     if !args.json {
         let _ = writeln!(out, "{line}");
-        return;
+        return object;
     }
     out.clear();
-    let code = code(tally);
-    let _ = writeln!(
-        out,
-        "{}",
-        as_json(
-            status_row(code),
-            code,
-            &line,
-            records,
-            against.base.as_ref()
-        )
-    );
+    let _ = writeln!(out, "{object}");
+    object
 }
 
 /// Every value this run derived and every one the config pinned beside it, printed once for
@@ -781,9 +861,9 @@ fn status_row(code: u8) -> &'static str {
 /// `exit` is exactly the code the caller is about to return, which holds for a direct `--json`
 /// run. A `--hook` stop instead asks `hook()` for its own code afterward, from state this
 /// function never sees, so `exit` there is the gates' code and not the stop's — the gap
-/// `does_not_build` closes for itself, and #153 closes for the rest by recording the stop's own
-/// outcome beside this object rather than inside it.
-fn as_json(status: &str, code: u8, tally: &str, records: Records, base: Option<&Window>) -> String {
+/// `does_not_build` closes for itself, and the journal closes for the rest by recording the
+/// stop's own outcome beside this object rather than inside it. Spec 11.4.
+fn as_json(status: &str, code: u8, tally: &str, records: Records, base: Option<&Window>) -> Value {
     let mut out = Map::new();
     out.insert("status".into(), status.into());
     out.insert("summary".into(), tally.into());
@@ -795,7 +875,7 @@ fn as_json(status: &str, code: u8, tally: &str, records: Records, base: Option<&
     out.insert("findings".into(), Value::Array(records.findings));
     out.insert("notes".into(), Value::Array(records.notes));
     out.insert("exit".into(), code.into());
-    Value::Object(out).to_string()
+    Value::Object(out)
 }
 
 fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Result<Tally, Error> {
@@ -807,14 +887,12 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
     }
     let mut records = Records::default();
     records.findings.push(record("error", &problem.to_string()));
+    let object = as_json(ERROR, 2, &format!("klin: {problem}"), records, None);
     out.clear();
-    let _ = writeln!(
-        out,
-        "{}",
-        as_json(ERROR, 2, &format!("klin: {problem}"), records, None)
-    );
+    let _ = writeln!(out, "{object}");
     Ok(Tally {
         errored: 1,
+        record: Some(object),
         ..Tally::default()
     })
 }
@@ -842,14 +920,21 @@ fn record(outcome: &str, text: &str) -> Value {
     Value::Object(out)
 }
 
-fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
+fn hook(
+    args: &Args,
+    tally: Tally,
+    report: &str,
+    root: &Path,
+    event: Option<&host::Event>,
+    log: &mut journal::Stop,
+) -> u8 {
     let (failed, errored) = (tally.failed, tally.errored);
     let held = state::ready(root).ok().map(|at| (count(&at), at));
     unwritable(root);
     if failed == 0 && errored == 0 {
-        return nothing_blocks(args, tally.told, report);
+        return nothing_blocks(args, tally.told, report, event);
     }
-    let Some(event) = host::read(args.host.as_deref()) else {
+    let Some(event) = event else {
         eprint!("{report}");
         return 1;
     };
@@ -861,7 +946,7 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     eprintln!("klin: {}{tail}", lead(failed, errored));
     eprint!("{report}");
     if !again {
-        return spend(held);
+        return spend(held, log);
     }
     eprintln!(
         "klin: not blocking a second time; the window stays open until a person fixes, accepts \
@@ -874,12 +959,12 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
 /// a person, told through the host. A `--json` run hands its report to stderr, because a host
 /// that reads JSON reads the report itself, and so does a run whose host event klin cannot
 /// read, because then klin does not know whose shape to tell it in. Spec 9.1, 16.5.
-fn nothing_blocks(args: &Args, told: usize, report: &str) -> u8 {
+fn nothing_blocks(args: &Args, told: usize, report: &str, event: Option<&host::Event>) -> u8 {
     if told == 0 {
         return 0;
     }
     let said = format!("klin: nothing blocks the stop, and the run left a note:\n{report}");
-    if args.json || host::read(args.host.as_deref()).is_none() {
+    if args.json || event.is_none() {
         eprint!("{said}");
         return 1;
     }
@@ -897,15 +982,17 @@ fn gate_spent(held: Option<&(Count, PathBuf)>, blocked_before: bool) -> bool {
 }
 
 /// The block the gate takes, recorded so the stop after it reports and lets the turn end.
-fn spend(held: Option<(Count, PathBuf)>) -> u8 {
-    if let Some((count, at)) = held {
-        counted(
+fn spend(held: Option<(Count, PathBuf)>, log: &mut journal::Stop) -> u8 {
+    if let Some((count, at)) = held
+        && !counted(
             &at,
             &Count {
                 gate_spent: true,
                 ..count
             },
-        );
+        )
+    {
+        log.flags.push("count-unwritable");
     }
     host::stop(&Stop::Block)
 }
@@ -1180,7 +1267,8 @@ fn each(
     let mut tally = Tally::default();
     let mut totals = Records::default();
     for gate in wanted {
-        let (code, text, records) = one(args, gate, config, start, against);
+        let ((code, text, records), ms) =
+            journal::timed(|| one(args, gate, config, start, against));
         match code {
             0 => (),
             1 => tally.failed += 1,
@@ -1190,7 +1278,7 @@ fn each(
         for line in text.lines() {
             let _ = writeln!(out, "        {line}");
         }
-        totals.gates.push(row(gate, code, &records));
+        totals.gates.push(row(gate, code, &records, ms));
         gather(&mut totals, records, &gate.name);
     }
     tally.told = totals.notes.iter().filter(|note| told(note)).count();
@@ -1203,8 +1291,9 @@ fn each(
 }
 
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
-/// it left, and the scope it measured. Spec 11.2.
-fn row(gate: &Gate, code: u8, records: &Records) -> Value {
+/// it left, the scope it measured, how long its own measure and judge took, and the count its
+/// `OK:` line prints as held at the base. Spec 11.2.
+fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     let mut out = Map::new();
     out.insert("name".into(), gate.name.clone().into());
     out.insert("status".into(), status(code).trim_end().into());
@@ -1214,6 +1303,8 @@ fn row(gate: &Gate, code: u8, records: &Records) -> Value {
         "coverage".into(),
         records.coverage.clone().unwrap_or(Value::Null),
     );
+    out.insert("ms".into(), ms.into());
+    out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
     Value::Object(out)
 }
 

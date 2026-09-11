@@ -64,6 +64,7 @@ impl Adapter for Claude {
             file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
             command: input(payload, "command"),
             blocked_before: flag(payload, "stop_hook_active"),
+            session: text(payload.get("session_id")),
         }
     }
 
