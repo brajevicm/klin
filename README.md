@@ -144,7 +144,8 @@ cargo release minor --execute
 
 ## Design
 
-The behaviour is defined by the
-[specification](docs/SPEC.md), [ADRs](docs/adr/), and CLI tests.
+The behaviour is defined by the [specification](docs/SPEC.md),
+[ADRs](docs/adr/), and CLI tests. `klin reference` prints the
+[configuration reference](docs/REFERENCE.md), every key klin reads.
 
 Apache-2.0.

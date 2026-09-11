@@ -18,8 +18,41 @@ use crate::coverage::Coverage;
 use crate::gate;
 use crate::hunks::Hunks;
 use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::Key;
 
 const SECTION: &str = "sarif";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[
+    Key {
+        name: "name",
+        holds: "the gate's own name, which `--gate` takes",
+        required: true,
+        rule: "",
+        default: "",
+    },
+    Key {
+        name: "report",
+        holds: "the SARIF file this gate reads",
+        required: true,
+        rule: "",
+        default: "",
+    },
+    Key {
+        name: "run",
+        holds: "the command that writes the report before the gate reads it",
+        required: false,
+        rule: "",
+        default: "klin reads the report as it finds it and refuses one that predates the change",
+    },
+    Key {
+        name: "differential",
+        holds: "whether only a finding on a line the window changed is judged",
+        required: false,
+        rule: "",
+        default: "`false`",
+    },
+];
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];
 /// How many `originalUriBaseIds` entries one location is resolved through, so a report whose

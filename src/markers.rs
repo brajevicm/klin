@@ -12,6 +12,7 @@ use crate::config::{Config, Error, Flags};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::{self, Key};
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
 /// a site it matches. A row that names no remedy carries the empty string.
@@ -29,6 +30,9 @@ pub struct Language {
 pub struct Kind {
     pub section: &'static str,
     pub languages: &'static [Language],
+    /// The configuration keys this section reads, which `klin reference` prints. The two kinds
+    /// share most of them and differ in the rule that derives `languages`. Spec 5.8.
+    pub keys: &'static [Key],
     /// The values key a matched row's name is recorded under.
     pub label: &'static str,
     /// Whether a site inside an inline Rust test module is one the config may skip. A stub in a
@@ -39,6 +43,24 @@ pub struct Kind {
     /// Whether the function walk judges body shapes too, which only a parser can see. #114.
     pub reads_shapes: bool,
     pub evaluator: Evaluator<'static>,
+}
+
+/// The one key a marker section has that no other section has.
+pub const PATTERNS: Key = Key {
+    name: "patterns",
+    holds: "the project's own patterns, each a regex or a {\"match\", \"remedy\"} pair",
+    required: false,
+    rule: "",
+    default: "no pattern of the project's own",
+};
+
+/// Every language name a kind's table holds, with the extensions that name selects.
+pub fn language_extensions(kind: &Kind) -> Vec<(String, String)> {
+    reference::extensions_by_name(
+        kind.languages
+            .iter()
+            .map(|language| (language.names, language.suffixes)),
+    )
 }
 
 const EVERY_FILE: &str = "";

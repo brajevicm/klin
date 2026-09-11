@@ -8,8 +8,27 @@ use crate::ceiling::{self, Ceiling};
 use crate::changed;
 use crate::config::{Config, Error, Flags};
 use crate::coverage::Coverage;
+use crate::reference::Key;
 
 const SECTION: &str = "doc_size";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[
+    Key {
+        name: "file",
+        holds: "the document this entry judges, as a path under the tree root",
+        required: true,
+        rule: "one entry per Markdown file at the tree root that the derivation commit holds",
+        default: "",
+    },
+    Key {
+        name: "ceiling",
+        holds: "the words the document may not pass",
+        required: true,
+        rule: "the word count at the derivation commit, rounded up to the next 50 and never below 50",
+        default: "",
+    },
+];
 const MARGIN_FRACTION: f64 = 0.02;
 const REMEDY: &str = "An instruction that can be a gate costs no words — encode it as a gate and \
     point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling \

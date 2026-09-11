@@ -14,17 +14,17 @@ fn tree_with_a_test() -> Tree {
 }
 
 #[test]
-fn a_deleted_test_file_fails_as_worsened_naming_the_path() {
+fn a_deleted_test_file_blocks_the_stop_naming_the_path() {
     let tree = tree_with_a_test();
     tree.remove("tests/test_foo.py");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 test site(s) got worse"), "{}", run.out);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("tests/test_foo.py:0  missing 1, was missing 0"),
         "{}",
         run.out
     );
+    assert!(run.says(QUESTION), "{}", run.out);
 }
 
 #[test]
@@ -94,12 +94,8 @@ fn with_no_configuration_the_derived_test_roots_are_judged_under_changed() {
     tree.base();
     tree.remove("tests/test_foo.py");
     let run = tree.run(&["gate", "--gate", "inventory", "--changed"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(
-        run.says("tests/test_foo.py:0  missing 1, was missing 0"),
-        "{}",
-        run.out
-    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("tests/test_foo.py:0  test file"), "{}", run.out);
 }
 
 #[test]
@@ -111,8 +107,8 @@ fn each_vanished_file_is_its_own_finding() {
     tree.base();
     tree.remove("tests/test_one.py");
     tree.remove("tests/test_two.py");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("2 test site(s) got worse"), "{}", run.out);
     assert!(run.says("tests/test_one.py:0"), "{}", run.out);
     assert!(run.says("tests/test_two.py:0"), "{}", run.out);
@@ -214,32 +210,169 @@ fn tree_with(pattern: &Pattern) -> Tree {
     tree
 }
 
+const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
+const QUESTION: &str = "say why in your reply and stop again";
+
+fn stop(tree: &Tree) -> harness::Run {
+    harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--gate", "inventory"],
+        A_STOP,
+    )
+}
+
 #[test]
-fn deleting_a_test_function_from_a_file_that_stays_fails_as_worsened() {
+fn deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why() {
     for pattern in PATTERNS {
         let tree = tree_with(pattern);
         tree.write(pattern.file, pattern.stays);
-        let run = tree.run(&["gate", "--gate", "inventory"]);
-        assert_eq!(run.code, 1, "{}: {}", pattern.marker, run.out);
-        assert!(
-            run.says("1 test site(s) got worse"),
-            "{}: {}",
-            pattern.marker,
-            run.out
-        );
+        let run = stop(&tree);
+        assert_eq!(run.code, 2, "{}: {}", pattern.marker, run.out);
         assert!(
             run.says(&format!("missing 1, was missing 0  {}", pattern.site)),
             "{}: {}",
             pattern.marker,
             run.out
         );
+        assert!(run.says(QUESTION), "{}: {}", pattern.marker, run.out);
+        assert!(!run.says("accepted"), "{}: {}", pattern.marker, run.out);
+    }
+}
+
+#[test]
+fn a_deleted_test_function_is_a_note_that_fails_nothing_outside_the_hook() {
+    for pattern in PATTERNS {
+        let tree = tree_with(pattern);
+        tree.write("src/lib.rs", "pub fn kept() {}\n");
+        tree.write(pattern.file, pattern.stays);
+        let run = tree.run(&["gate", "--gate", "inventory", "--strict"]);
+        assert_eq!(run.code, 0, "{}: {}", pattern.marker, run.out);
         assert!(
-            run.says("Restore the test, or record in the accepted list"),
+            run.says("NOTE: 1 test site(s) the base holds went in this window:"),
             "{}: {}",
             pattern.marker,
             run.out
         );
+        assert!(run.says(pattern.site), "{}: {}", pattern.marker, run.out);
     }
+}
+
+const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
+
+#[test]
+fn the_stop_after_the_question_passes_and_leaves_a_green_verdict() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    let asked = stop(&tree);
+    assert_eq!(asked.code, 2, "{}", asked.out);
+    let again = harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--gate", "inventory"],
+        A_SECOND_STOP,
+    );
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", again.out);
+}
+
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
+const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
+
+fn second_stop(tree: &Tree) -> harness::Run {
+    harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--gate", "inventory"],
+        A_SECOND_STOP,
+    )
+}
+
+/// What a stop hands the person through the host's `systemMessage`, or nothing.
+fn told(run: &harness::Run) -> String {
+    run.out
+        .lines()
+        .find_map(|line| {
+            let held: serde_json::Value = serde_json::from_str(line).ok()?;
+            held.get("systemMessage")?.as_str().map(str::to_string)
+        })
+        .unwrap_or_default()
+}
+
+#[test]
+fn a_stop_that_lets_a_deletion_through_tells_the_person_which_test_went() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    assert_eq!(stop(&tree).code, 2);
+    let again = second_stop(&tree);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(
+        told(&again).contains("tests/suite.rs:7  fn beta() {"),
+        "{}",
+        again.out
+    );
+}
+
+#[test]
+fn a_prompt_between_two_stops_does_not_ask_about_the_same_test_again() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    assert_eq!(stop(&tree).code, 2);
+    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(prompt.code, 0, "{}", prompt.out);
+    let after = stop(&tree);
+    assert_eq!(after.code, 0, "{}", after.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", after.out);
+}
+
+#[test]
+fn a_test_deleted_after_the_question_gets_its_own_question() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write("tests/test_one.py", "def test_one():\n    assert True\n");
+    tree.write("tests/test_two.py", "def test_two():\n    assert 2\n");
+    tree.base();
+    tree.remove("tests/test_one.py");
+    assert_eq!(stop(&tree).code, 2);
+    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    tree.remove("tests/test_two.py");
+    let after = stop(&tree);
+    assert_eq!(after.code, 2, "{}", after.out);
+    assert!(
+        after.says("tests/test_two.py:0  missing 1, was missing 0"),
+        "{}",
+        after.out
+    );
+    assert!(
+        !after.says("tests/test_one.py:0  missing 1, was missing 0"),
+        "{}",
+        after.out
+    );
+}
+
+#[test]
+fn a_stop_whose_stamp_was_deleted_still_asks_about_a_deleted_test() {
+    let tree = tree_with(&PATTERNS[0]);
+    assert_eq!(harness::feed(tree.root(), &["radius"], A_SESSION).code, 0);
+    tree.remove(".git/klin/turn");
+    tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(QUESTION), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_for_a_deleted_test_holds_it_under_strict_and_matches() {
+    let tree = tree_with(&PATTERNS[0]);
+    tree.write("src/lib.rs", "pub fn kept() {}\n");
+    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
+    tree.write(
+        "klin.json",
+        r#"{"inventory": [{"name": "tests", "path": "tests"}],
+            "accepted": [{"gate": "inventory", "file": "tests/suite.rs",
+                          "text": "fn beta() {", "missing": 1}]}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "inventory", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("matched nothing"), "{}", run.out);
 }
 
 #[test]
@@ -304,8 +437,8 @@ fn a_test_function_edited_as_it_moved_is_reported_as_gone() {
         "tests/moved.rs",
         "#[test]\nfn renamed() {\n    assert!(2 == 2);\n}\n",
     );
-    let run = tree.run(&["gate", "--gate", "inventory"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("tests/suite.rs:7  missing 1, was missing 0  fn beta() {"),
         "{}",
@@ -323,8 +456,8 @@ fn an_entry_that_names_one_file_judges_the_functions_in_it() {
     tree.write("tests/suite.rs", PATTERNS[0].base);
     tree.base();
     tree.write("tests/suite.rs", PATTERNS[0].stays);
-    let run = tree.run(&["gate", "--gate", "inventory"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("missing 1, was missing 0  fn beta() {"),
         "{}",
@@ -378,8 +511,8 @@ fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
         "tests/suite.rs",
         "pub fn test_alpha() {\n    let x = 1;\n}\n",
     );
-    let run = tree.run(&["gate", "--gate", "inventory"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("missing 1, was missing 0  pub fn test_beta() {"),
         "{}",

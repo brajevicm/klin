@@ -10,8 +10,46 @@ use crate::config::{Config, Error, Flags, UNPARSED};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::{self, Key};
 
 const SECTION: &str = "complexity";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[
+    reference::ROOTS.required(),
+    reference::LANGUAGES
+        .derived("")
+        .defaulting("every language the table below names"),
+    Key {
+        name: "ceilings.cc",
+        holds: "the cyclomatic complexity a function may not pass",
+        required: true,
+        rule: "the 95th percentile of `cc` over every function under the derivation commit's \
+               roots, rounded up to the next whole number, with a floor of 5, and the floor \
+               itself below 50 functions",
+        default: "",
+    },
+    Key {
+        name: "ceilings.lines",
+        holds: "the body length a function may not pass",
+        required: true,
+        rule: "the 95th percentile of `lines`, by the same rule as `ceilings.cc`, with a floor \
+               of 25",
+        default: "",
+    },
+    reference::EXCLUDE,
+    reference::SKIP_DIRS,
+    reference::EXCLUDE_EXCEPT,
+];
+
+/// Every language name the table holds, with the extensions that name selects.
+pub fn language_extensions() -> Vec<(String, String)> {
+    reference::extensions_by_name(
+        LANGUAGES
+            .iter()
+            .map(|language| (language.names, language.extensions)),
+    )
+}
 
 struct Language {
     name: &'static str,

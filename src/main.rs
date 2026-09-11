@@ -21,6 +21,7 @@ mod lockfile;
 mod markers;
 mod radius;
 mod ratchet;
+mod reference;
 mod sarif;
 mod state;
 mod stubs;
@@ -70,6 +71,8 @@ enum Command {
     Radius(turn::Args),
     /// Move the turn stamp to the working tree, which only a person does
     Turn(turn::Moved),
+    /// Print the configuration reference, as Markdown, from the keys the checks declare
+    Reference,
     /// Install the newest release over this binary, through the klin-update beside it
     Update,
 }
@@ -104,6 +107,7 @@ fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8,
         | Command::Guard(_)
         | Command::Radius(_)
         | Command::Turn(_)
+        | Command::Reference
         | Command::Update => {
             return None;
         }
@@ -119,6 +123,7 @@ fn tool(command: &Command, start: &Path, out: &mut String) -> Result<u8, config:
         Command::Radius(args) => turn::run(args, start, out),
         Command::Turn(args) => turn::moved(args, start, out),
         Command::Guard(args) => Ok(guard::run(args)),
+        Command::Reference => reference::run(out),
         _ => Ok(0),
     }
 }

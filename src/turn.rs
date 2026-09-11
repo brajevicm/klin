@@ -54,6 +54,9 @@ pub struct Stamp {
     pub time: u64,
     pub green: bool,
     pub prompts: u64,
+    /// The findings a stop's block already put in front of the agent under this stamp, by the
+    /// site id of spec 11.2. A fresh stamp holds none. Spec 8.2.
+    pub asked: Vec<String>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -173,6 +176,16 @@ pub fn prompts(at: &Path) -> u64 {
     read(at).map_or(0, |held| held.prompts)
 }
 
+/// The findings a stop's block already put in front of the agent under the current stamp. The
+/// record lives beside the stamp and not in the build stamp, so a prompt event between two
+/// stops keeps it, and it goes when the stamp moves. Empty when no stamp is readable. Spec 8.2.
+pub fn asked(root: &Path) -> Vec<String> {
+    state::dir(root)
+        .and_then(|at| read(&at))
+        .map(|held| held.asked)
+        .unwrap_or_default()
+}
+
 fn read(at: &Path) -> Option<Stamp> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;
@@ -191,6 +204,16 @@ fn read(at: &Path) -> Option<Stamp> {
         prompts: held
             .get("prompts")
             .and_then(Value::as_u64)
+            .unwrap_or_default(),
+        asked: held
+            .get("asked")
+            .and_then(Value::as_array)
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect()
+            })
             .unwrap_or_default(),
     })
 }
@@ -212,6 +235,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         time: now(),
         green: false,
         prompts,
+        asked: Vec::new(),
     })
 }
 
@@ -254,6 +278,7 @@ fn kept(root: &Path) -> Option<Stamp> {
         time: now(),
         green: false,
         prompts: 0,
+        asked: Vec::new(),
     })
 }
 
@@ -277,6 +302,7 @@ fn restored(
         time: now(),
         green: false,
         prompts,
+        asked: Vec::new(),
     })
 }
 
@@ -305,6 +331,7 @@ pub fn window(root: &Path, out: &mut String) -> Result<Window, Error> {
             time: now(),
             green: false,
             prompts: held.as_ref().map_or(0, |held| held.prompts),
+            asked: Vec::new(),
         },
         out,
     );
@@ -338,16 +365,29 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
     })
 }
 
-/// The verdict this stop leaves for the next prompt to read. Green lets the stamp move, red
-/// keeps it, so the debt stays new until a person fixes, accepts or resets it. Spec 6.2.
-pub fn verdict(root: &Path, green: bool, out: &mut String) {
+/// The verdict this stop leaves for the next prompt to read, and the findings its block put in
+/// front of the agent. Green lets the stamp move, red keeps it, so the debt stays new until a
+/// person fixes, accepts or resets it. Spec 6.2, 8.2.
+pub fn verdict(root: &Path, green: bool, asked: &[String], out: &mut String) {
     let Ok(at) = state::ready(root) else {
         return;
     };
     let Some(held) = read(&at) else {
         return;
     };
-    write(&at, &Stamp { green, ..held }, out);
+    let mut all = held.asked.clone();
+    all.extend(asked.iter().cloned());
+    all.sort();
+    all.dedup();
+    write(
+        &at,
+        &Stamp {
+            green,
+            asked: all,
+            ..held
+        },
+        out,
+    );
 }
 
 /// How long ago the stamp was taken, from the time the stamp holds. An age rather than a date,
@@ -450,6 +490,9 @@ fn write(at: &Path, stamp: &Stamp, out: &mut String) {
     };
     fields.insert("verdict".into(), verdict.into());
     fields.insert("prompts".into(), stamp.prompts.into());
+    if !stamp.asked.is_empty() {
+        fields.insert("asked".into(), stamp.asked.clone().into());
+    }
     let text = Value::Object(fields).to_string() + "\n";
     let writing = at.join(WRITING);
     if std::fs::write(&writing, text).is_ok() && std::fs::rename(&writing, at.join(FILE)).is_ok() {

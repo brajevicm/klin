@@ -514,6 +514,7 @@ fn hook_does_not_block_the_stop_after_that() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("not blocking a second time"), "{}", run.out);
     assert!(!run.says("then stop again"), "{}", run.out);
+    assert!(!run.says("CI will refuse"), "{}", run.out);
 }
 
 #[test]
@@ -1227,7 +1228,8 @@ fn hook_notes_a_file_no_grammar_reads_and_does_not_block_the_stop() {
     tree.write("src/flow.rs", "%%% not rust %%%\n");
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#"{"systemMessage":"#), "{}", run.out);
     assert!(run.says("NOTE:"), "{}", run.out);
     assert!(run.says("src/flow.rs"), "{}", run.out);
     assert!(run.says("the Rust grammar rejected it"), "{}", run.out);

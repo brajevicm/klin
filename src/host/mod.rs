@@ -76,6 +76,8 @@ impl Decision {
 pub enum Stop {
     Pass,
     Block,
+    /// Let the stop end, and put this text in front of the person.
+    Tell(String),
 }
 
 /// The event on stdin, or `None` when there is nothing to read or the text is not JSON. A
@@ -122,11 +124,17 @@ fn fell_back(why: &str) -> &'static dyn Adapter {
     UNPLACED
 }
 
-/// Every host klin reads blocks a stop the same way, with exit 2 and the report on stderr.
+/// Every host klin reads blocks a stop the same way, with exit 2 and the report on stderr, and
+/// tells a person the same way, with a JSON `systemMessage` on stdout under exit 0. Codex CLI
+/// refuses plain text on a stop that exits 0, and Claude Code does not show it. Spec 9.1.
 pub fn stop(stop: &Stop) -> u8 {
     match stop {
         Stop::Block => 2,
         Stop::Pass => 0,
+        Stop::Tell(text) => {
+            println!("{}", serde_json::json!({ "systemMessage": text }));
+            0
+        }
     }
 }
 

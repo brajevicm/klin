@@ -3,8 +3,26 @@ use std::path::Path;
 use crate::config::{Error, Flags};
 use crate::markers::{self, Args, Kind, Language};
 use crate::ratchet::{Evaluator, Values};
+use crate::reference::{self, Key};
 
 const SECTION: &str = "escapes";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+const KEYS: &[Key] = &[
+    reference::ROOTS.defaulting("the tree root"),
+    reference::LANGUAGES.defaulting("none, and the section must then name `patterns`"),
+    markers::PATTERNS,
+    reference::EXCLUDE,
+    reference::SKIP_DIRS,
+    Key {
+        name: "skip_rust_tests",
+        holds: "whether an inline Rust test module is left out",
+        required: false,
+        rule: "",
+        default: "`true`",
+    },
+];
+
 const LABEL: &str = "escape";
 
 const LANGUAGES: &[Language] = &[
@@ -106,9 +124,10 @@ const LANGUAGES: &[Language] = &[
     },
 ];
 
-const KIND: Kind = Kind {
+pub const KIND: Kind = Kind {
     section: SECTION,
     languages: LANGUAGES,
+    keys: KEYS,
     label: LABEL,
     skips_tests: true,
     skips_literals: false,

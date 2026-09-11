@@ -8,7 +8,7 @@ use crate::config::{Config, Error, Flags, Records};
 
 /// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
 /// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
-/// `noted`, `scoped`, and `Evaluator` with its `evaluate` call. Everything else here, the
+/// `noted`, `scoped`, `identity`, and `Evaluator` with its `evaluate` call. Everything else here, the
 /// matcher and the reporter included, is private.
 pub type Values = Map<String, Value>;
 
@@ -651,7 +651,7 @@ fn site(outcome: &str, file: &str, line: Option<u64>, text: &str) -> Values {
 /// site and not the finding, so two findings 4.4 keys the same way share it. The path is
 /// hashed too, so a rename changes the id while the site of 4.4 survives. FNV-1a, written out
 /// here, so one site keeps one id across builds of klin. Spec 11.2.
-fn identity(gate: &str, finding: &Finding) -> String {
+pub fn identity(gate: &str, finding: &Finding) -> String {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     let parts = [
         gate.as_bytes(),

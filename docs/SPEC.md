@@ -442,6 +442,8 @@ from a subdirectory. A configuration per package is not supported.
 - `accepted` (list) OPTIONAL, section 4.8
 - `radius` (object) OPTIONAL, ADR 0014, with `lines` and `directories` as whole
   numbers. Derived from history when absent.
+- `gates` (list) OPTIONAL, section 8.3. Each entry is a `name`, a `check`, a
+  `with` and an optional `off`, and each is its own gate.
 - one key per gate, named for its section, or `false` to exclude the gate
 
 A key klin does not know MUST be an error naming the key. A section with a
@@ -549,6 +551,38 @@ from an agent like it refuses `init` itself.
 `init` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
 
+### 5.8 The configuration reference
+
+`klin reference` prints the configuration reference as Markdown on stdout and
+exits 0. It reads no configuration and no tree, so it runs anywhere.
+
+Every check declares its keys beside the code that reads them, and the
+reference prints one table per section. Each row states the key, what it
+holds, whether it is required, whether the survey derives it or only a person
+pins it, the derivation rule of 5.4 where there is one, and the default where
+there is one. The reference states the top-level keys of 5.2 the same way, and
+the dated ceiling shape of 5.5.
+
+The reference MUST also state what the key tables alone do not say:
+
+- the language names of each check that selects by language, with the
+  extensions each name selects, printed from the tables in the binary. The
+  checks share language names and not file sets: for `complexity`,
+  `typescript` selects `.ts`, `.mts`, `.cts` and `.tsx`, and `.js` needs
+  `javascript`, while for `escapes` and `stubs` either name selects both sets.
+- that `skip_dirs` adds to a shared default list, which it prints, and that
+  `exclude_except` answers `exclude` globs only. It cannot bring back a file
+  under a skipped directory, and only `complexity` reads it.
+- what else a walk drops and the key tables do not say: the files git ignores,
+  the dot directories that `complexity` and `inventory` skip and the other
+  checks read, and the shape an `exclude` glob takes. A glob is matched
+  against the basename and against the absolute path, so a glob written from
+  the tree root matches nothing.
+
+`docs/REFERENCE.md` holds the printed reference, and a CLI test fails when the
+committed copy differs from what the binary prints, so CI fails on a reference
+that drifted. A person regenerates it with `klin reference > docs/REFERENCE.md`.
+
 ## 6. Window Selection
 
 ### 6.1 The hook uses the turn window
@@ -604,8 +638,9 @@ whole branch. When no base of 6.3 resolves either, the stop judges from HEAD
 and says so.
 
 The stamp holds the stamped commit id, the time, the verdict of the last
-stop, a prompt counter, and the prompt mark of 6.2.1. `klin gate --hook`
-writes the verdict. `klin radius` applies the rule above and raises the
+stop, a prompt counter, the prompt mark of 6.2.1, and the `asked` record of
+8.2. `klin gate --hook` writes the verdict and adds to `asked`. A fresh stamp
+holds an empty `asked`, so the record goes whenever the stamp moves. `klin radius` applies the rule above and raises the
 counter by one on every session start and prompt submitted, whether or not
 the stamp moved. The counter is what makes "once per turn" in 9.3 literal,
 because the stamp itself moves only after a green stop. The stamp is not
@@ -672,8 +707,8 @@ work on it unchanged. The RECOMMENDED stamping sequence is `git add -A` with
 refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp,
 makes it visible to `git log --all`, and is the copy a stop restores the
 `turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
-in the state directory holds the time, the verdict and the prompt counter
-beside the commit id.
+in the state directory holds the time, the verdict, the prompt counter and
+the `asked` record of 8.2 beside the commit id.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
 worktree share one window and one `turn` file. A stop MUST hold an advisory
@@ -844,11 +879,30 @@ the binary and 8.2.1 states it. `inventory` ratchets one value, `missing`,
 which is 0 for every test site in `before` and 1 for a site `after` no
 longer holds, so a vanished site is `worsened` under the one judge of 16.4.
 Both identities reach that judge together and count in one unit, `test
-site(s)`. The remedy names the vanished site and says to restore the test,
-or to record in the accepted list why it went, and a person writes that
-entry. The second pass of 4.4 matches a renamed test by body hash before it
-counts as missing, so a rename with the body unchanged is `held`. A rename
-that also edits the body is `worsened`. A deletion that removed the subject
+site(s)`. The second pass of 4.4 matches a renamed test by body hash before
+it counts as missing, so a rename with the body unchanged is `held`.
+
+Removing a test is ordinary work, and deleting a failing one is the
+cheapest route to green in section 1. klin cannot tell which it was, so it
+asks once and does not judge the answer (ADR 0031):
+
+- Under `--hook`, a vanished site is `worsened` and blocks the stop, and the
+  remedy asks the agent to restore the test and fix the code if the test
+  failed, or to say why the removal is intended and stop again. A stop that
+  blocks records the site id (11.2) of every finding it reported in the
+  `turn` file, beside the stamp (6.5). A vanished site that record holds is
+  let through: its `before` entry carries `missing: 1`, so the one judge
+  holds it, and the run lists it in a NOTE. The record goes when the stamp
+  moves. The rule keys on `--hook` and not on the window kind, because a
+  stop whose stamp was deleted judges a branch window (6.2).
+- Everywhere else, every vanished site is let through the same way and is a
+  NOTE, `--strict` included.
+
+An accepted entry that names a vanished site still takes the match, by
+entry order (16.5), so it neither fails nor turns into an entry that matched
+nothing. Nothing klin prints asks for one.
+
+A deletion that removed the subject
 too is a NOTE: for a file, the subject file went in the same window, and
 for a function, the file that held it went. The subject of a test file is
 the file in `before` whose path equals the test's path with the test
@@ -912,8 +966,8 @@ other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
 The table above names what each shipped check measures. This section states
 how, so a second implementation reproduces klin's own numbers and so a rule
 that looks wrong is disputed as a rule, not rediscovered in source. Every
-rule here is pinned by a CLI test under `tests/`, named beside it. #18 owns
-the configuration keys that choose roots, languages and exclusions, and
+rule here is pinned by a CLI test under `tests/`, named beside it. Section 5.8
+owns the configuration keys that choose roots, languages and exclusions, and
 links here.
 
 **`doc-size` counts words.** A word is a maximal run of characters that are
@@ -1057,7 +1111,11 @@ a directory or a single file, and its `pattern` limits both identities the
 same way. A file the working tree's grammar refuses holds no function site,
 so the functions in it are not judged and the file is the unparsed refusal
 of ADR 0003. Pinned by
-`deleting_a_test_function_from_a_file_that_stays_fails_as_worsened`,
+`deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`,
+`a_deleted_test_function_is_a_note_that_fails_nothing_outside_the_hook`,
+`the_stop_after_the_question_passes_and_leaves_a_green_verdict`,
+`a_prompt_between_two_stops_does_not_ask_about_the_same_test_again`,
+`a_stop_whose_stamp_was_deleted_still_asks_about_a_deleted_test`,
 `a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,
@@ -1333,10 +1391,16 @@ event to one internal record:
 And maps one internal decision to the host's output. For Claude Code:
 pre-tool decisions go out as `hookSpecificOutput.permissionDecision` with
 `allow`, `deny` or `ask` and a reason. Stop blocks are exit 2 with the report
-on stderr. Prompt and session-start text go to stdout on exit 0.
+on stderr. A stop that ends with something for the person, such as a note
+about a file no grammar read or a deleted test the run let through, writes
+it as a JSON `systemMessage` on stdout under exit 0. Prompt and
+session-start text go to stdout on exit 0.
 For Codex CLI, `allow` is exit 0 and both `deny` and `ask` are exit 2 with
 the reason on stderr, because Codex rejects `permissionDecision: ask` on
-`PreToolUse` as unsupported. Stop blocks also use exit 2.
+`PreToolUse` as unsupported. Stop blocks also use exit 2, and Codex makes the
+reason a continuation prompt inside the same turn, which runs no
+`UserPromptSubmit`. A stop that tells the person uses `systemMessage` too,
+because Codex rejects plain text on a stop that exits 0.
 
 In hook mode the exit code is the host's protocol, not the verdict. Exit 2
 means "block this stop", whatever caused it. The verdict of section 4.9 lives
@@ -1386,7 +1450,10 @@ two processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
 the current Claude Code documentation. klin MUST bound its own blocks (ADR
-0022). A gate failure blocks once per turn. A build failure blocks at each
+0022). A gate failure blocks once per turn. A deleted test is the one gate
+failure that does not stay red: the stop that blocks on it records the
+question beside the stamp, and the next stop lets it through as a NOTE and
+ends green (8.2, ADR 0031). A build failure blocks at each
 stop until the tree builds, up to eight in one turn, and then the hook
 reports, says that it stopped blocking, and lets the turn end. The build
 stamp holds the count and the prompt counter of 6.2 the count was taken
@@ -1608,7 +1675,8 @@ same in all three.
 | No base resolves outside the hook | exit 2 naming what was tried |
 | `turn` file missing in the hook, ref present | restored from the ref with a RED verdict, and a NOTE says so |
 | `turn` file and ref both missing in the hook | a branch window from the base of 6.3, or from HEAD when none resolves, a NOTE names the missing stamp, and the stop writes that base as the stamp |
-| A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE. |
+| A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE, told to the person through `systemMessage` on a stop that ends (9.1). |
+| A deleted test (8.2) | Hook: blocks the first stop that finds it, once. The next stop lets it through as a NOTE, tells the person, and ends green. Outside the hook: a NOTE, `--strict` included. |
 | The build fails in the hook | block with the build output, no gate runs. Outside the hook the build step does not run (ADR 0012). |
 | Host event unreadable in the hook | report to stderr and exit 1, never block |
 | Host event unreadable in the guard | allow |
@@ -1635,6 +1703,11 @@ Feedback level plus: a CI run with `--strict`, on a checkout the agent never
 touched, against a protected branch, with `klin.json`, the workflow, the hook
 settings and CODEOWNERS under CODEOWNERS. At this level a gate holds against
 an agent, and loosening it takes a reviewed commit by a person.
+
+One finding is the exception. A deleted test is a NOTE in CI (8.2), so at
+this level it holds only through the hook's one question and the reviewer
+who reads the diff. An agent that runs with no hook meets no question at
+all. ADR 0031 records the cost.
 
 The README MUST name both levels and say which one a setup reaches.
 
@@ -1742,14 +1815,25 @@ hook(event):
     write_verdict_atomic(state/turn, RED)
     if count.builds > 8: report(failure, "stopped blocking after eight"); return 0
     block(failure)
-  (failed, errored) = run_gates(config_or(survey), window, scope=changed)
-  write_verdict_atomic(state/turn, GREEN if failed == 0 and errored == 0 else RED)
-  if failed == 0 and errored == 0: return 0
+  (failed, errored, reported, told) = run_gates(config_or(survey), window, scope=changed)
+  if failed == 0 and errored == 0:
+    write_verdict_atomic(state/turn, GREEN)
+    if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
+    return 0
+  write_verdict_atomic(state/turn, RED)
   if count.gate_spent: report(); return 0
   if count.builds == 0 and host.blocked_before(event): report(); return 0
   count.gate_spent = True; write_atomic(state/build-blocked, count)
+  add_asked_atomic(state/turn, reported)           # 8.2, cleared when the stamp moves
   block(report)
 ```
+
+`reported` is the site id (11.2) of every finding the run printed, and `told`
+counts the notes a person needs even when nothing blocks: a file no grammar
+read, a file measured in `before` only, and a deleted test the run let
+through. Only a stop that blocks on a gate adds to `asked`, so a question the
+agent never saw is asked again at the next stop that blocks. `inventory`
+reads `asked` under `--hook` (8.2).
 
 The build stamp is one record per prompt: the prompt counter it belongs to,
 the number of build blocks, and whether the turn's one gate block is spent.
@@ -1786,9 +1870,12 @@ site matches its `before` entry.
 `missing: 1` where `after` has no match by site and then by body hash, and
 `missing: 0` where it has one. The `before` entries carry `missing: 0`, so a
 vanished site is `worsened` under the one `judge` and nothing else changes.
-A site the accepted list names is matched like any other, so a person accepts
-a deletion the same way they accept any other debt. A vanished site whose
-subject went in the same window is a NOTE, not a finding.
+A vanished site the run lets through, outside the hook or in a stop's
+`asked` record (8.2, 16.3), has a `before` entry of `missing: 1` instead, so
+the same judge holds it and the run lists it in a NOTE. A site the accepted
+list names is matched like any other, ahead of the `before` entry by entry
+order. A vanished site whose subject went in the same window is a NOTE, not
+a finding.
 
 ### 16.5 Match one site
 
@@ -1900,8 +1987,13 @@ Core:
   does not move the derived ceiling.
 
 - `inventory`: a deleted test file whose subject was deleted too is a NOTE, a
-  deleted test function fails, a renamed test function with its body
-  unchanged is held, a deleted test function whose file went too is a NOTE.
+  deleted test function or file blocks the first hook stop that finds it and
+  asks why it went, the next stop passes and tells the person which tests
+  went, a prompt between the two stops does not ask again, a stop whose
+  stamp was deleted still asks, outside the hook a deletion is a NOTE under
+  `--strict` too, an accepted entry naming a deleted test matches, a renamed
+  test function with its body unchanged is held, a deleted test function
+  whose file went too is a NOTE.
 - `sarif`: a result on a changed line fails, on an unchanged line in a changed
   file is held, `differential` fails every result, `run` writes the report
   before it is read, a report older than a changed file is ERR.
@@ -2045,8 +2137,8 @@ Distribution, in this order, because each step depends on the one before:
 
 Recommended:
 
-- [ ] Configuration reference (#18) generated from each check's declared keys
-      and derivation rules
+- [x] Configuration reference (#18) generated from each check's declared keys
+      and derivation rules, section 5.8
 - [ ] `--sarif` output
 
 Before calling it 1.0:

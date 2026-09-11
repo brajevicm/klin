@@ -3,8 +3,25 @@ use std::path::Path;
 use crate::config::{Error, Flags};
 use crate::markers::{self, Args, Kind, Language};
 use crate::ratchet::{Evaluator, Values};
+use crate::reference::{self, Key};
 
 const SECTION: &str = "stubs";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+const KEYS: &[Key] = &[
+    reference::ROOTS.defaulting("the tree root"),
+    reference::LANGUAGES
+        .derived(
+            "the same languages as `escapes`, less every language the stubs table holds no \
+             rows for. This section refuses a `skip_rust_tests` key, because a stub inside an \
+             inline test module is a stub",
+        )
+        .defaulting("none, and the section must then name `patterns`"),
+    markers::PATTERNS,
+    reference::EXCLUDE,
+    reference::SKIP_DIRS,
+];
+
 const LABEL: &str = "stub";
 
 const BODY: &str = "implement the body";
@@ -62,9 +79,10 @@ const LANGUAGES: &[Language] = &[
     },
 ];
 
-const KIND: Kind = Kind {
+pub const KIND: Kind = Kind {
     section: SECTION,
     languages: LANGUAGES,
+    keys: KEYS,
     label: LABEL,
     skips_tests: false,
     skips_literals: true,

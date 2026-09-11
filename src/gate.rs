@@ -7,8 +7,9 @@ use serde_json::{Map, Value};
 
 use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
-use crate::config::{self, Config, Error, Flags, Records, UNPARSED};
+use crate::config::{self, Config, DELETED, Error, Flags, Records, UNPARSED};
 use crate::host::{self, Stop};
+use crate::reference::Key;
 use crate::{
     build, complexity, coverage, doc_citations, doc_size, escapes, inventory, lockfile, sarif,
     state, stubs, survey, turn,
@@ -31,6 +32,9 @@ const UNDER: &str = "      ";
 struct Check {
     name: &'static str,
     section: &'static str,
+    /// The configuration keys the section reads, declared in the check's own module and printed
+    /// by `klin reference`. Spec 5.8.
+    keys: &'static [Key],
     run: fn(&Flags, &Path, &mut String) -> Result<u8, Error>,
     needs: Needs,
     takes_scope: bool,
@@ -67,6 +71,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "doc-size",
         section: "doc_size",
+        keys: doc_size::KEYS,
         run: doc_size::gate,
         needs: Needs::Nothing,
         takes_scope: false,
@@ -75,6 +80,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "doc-citations",
         section: "doc_citations",
+        keys: doc_citations::KEYS,
         run: doc_citations::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -83,6 +89,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "lockfile",
         section: "lockfile",
+        keys: lockfile::KEYS,
         run: lockfile::gate,
         needs: Needs::TheTree,
         takes_scope: false,
@@ -91,6 +98,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "escapes",
         section: "escapes",
+        keys: escapes::KIND.keys,
         run: escapes::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -99,6 +107,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "stubs",
         section: "stubs",
+        keys: stubs::KIND.keys,
         run: stubs::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -107,6 +116,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "inventory",
         section: "inventory",
+        keys: inventory::KEYS,
         run: inventory::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -115,6 +125,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "complexity",
         section: "complexity",
+        keys: complexity::KEYS,
         run: complexity::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -123,6 +134,7 @@ const CHECKS: &[Check] = &[
     Check {
         name: "sarif",
         section: "sarif",
+        keys: sarif::KEYS,
         run: sarif::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
@@ -134,6 +146,11 @@ const CHECKS: &[Check] = &[
 /// command name that is not that section. A new check is one edit, here.
 pub fn sections() -> impl Iterator<Item = &'static str> {
     CHECKS.iter().map(|check| check.section)
+}
+
+/// Each check's section and the keys it reads, in the order a run takes the checks. Spec 5.8.
+pub fn catalogue() -> impl Iterator<Item = (&'static str, &'static [Key])> {
+    CHECKS.iter().map(|check| (check.section, check.keys))
 }
 
 pub fn command_named(key: &str) -> Option<&'static str> {
@@ -217,7 +234,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     if !args.hook {
         let judged = judge(args, start, None, out);
-        return refused(args, judged, out).map(code);
+        return refused(args, judged, out).map(|tally| code(&tally));
     }
     Ok(stopped(args, start, out))
 }
@@ -234,7 +251,7 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
     let lock = state::ready(&root).ok().map(|at| state::lock(&at, BUDGET));
     let lost = matches!(&lock, Some(None));
     let window = turn::window(&root, out).ok();
-    let (code, green) = ran(args, start, window.as_ref(), out);
+    let (code, green, asked) = ran(args, start, window.as_ref(), out);
     if lost {
         eprintln!(
             "klin: NOTE: another stop in this worktree held the state directory for the whole \
@@ -244,19 +261,40 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
         return code;
     }
     let mut said = String::new();
-    turn::verdict(&root, green, &mut said);
+    turn::verdict(&root, green, &asked, &mut said);
     eprint!("{said}");
     code
 }
 
-fn ran(args: &Args, start: &Path, window: Option<&Window>, out: &mut String) -> (u8, bool) {
+/// One stop's run: the exit code the host reads, whether the gates left the tree green, and the
+/// findings a block put in front of the agent, which are none unless the stop blocked on a
+/// gate. Spec 8.2, 16.3.
+fn ran(
+    args: &Args,
+    start: &Path,
+    window: Option<&Window>,
+    out: &mut String,
+) -> (u8, bool, Vec<String>) {
     match built(args, start, window) {
-        Ok(Some((root, failure))) => (does_not_build(args, &root, &failure, window, out), false),
-        Err(problem) => (handed(args, start, Err(problem), out), false),
+        Ok(Some((root, failure))) => (
+            does_not_build(args, &root, &failure, window, out),
+            false,
+            Vec::new(),
+        ),
+        Err(problem) => (handed(args, start, Err(problem), out), false, Vec::new()),
         Ok(None) => {
             let judged = judge(args, start, window, out);
             let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
-            (handed(args, start, judged, out), green)
+            let reported = judged
+                .as_ref()
+                .map(|tally| tally.reported.clone())
+                .unwrap_or_default();
+            let code = handed(args, start, judged, out);
+            let asked = match code {
+                2 => reported,
+                _ => Vec::new(),
+            };
+            (code, green, asked)
         }
     }
 }
@@ -276,13 +314,15 @@ fn handed(args: &Args, start: &Path, outcome: Result<Tally, Error>, out: &mut St
     hook(args, tally, &std::mem::take(out), &root(args, start))
 }
 
-/// What one run came to: the gates that failed, the gates that could not run, and the files
-/// no grammar read, which fail nothing in the hook and still reach a person.
-#[derive(Default, Clone, Copy)]
+/// What one run came to: the gates that failed, the gates that could not run, and the notes
+/// that fail nothing in the hook and still reach a person.
+#[derive(Default)]
 struct Tally {
     failed: usize,
     errored: usize,
-    unmeasured: usize,
+    told: usize,
+    /// The site id of every finding the run reported, which a stop that blocks records as asked.
+    reported: Vec<String>,
 }
 
 /// What the hook says about a tree that does not build. Both messages name the bound from
@@ -488,7 +528,7 @@ fn judge(
     let (tally, mut records) = each(args, &wanted, &config, start, &against, out);
     records.notes.extend(note);
     records.notes.extend(rootless);
-    finish(args, &plan, wanted.len(), tally, records, &against, out);
+    finish(args, &plan, wanted.len(), &tally, records, &against, out);
     Ok(tally)
 }
 
@@ -655,7 +695,7 @@ fn finish(
     args: &Args,
     plan: &Plan,
     gates: usize,
-    tally: Tally,
+    tally: &Tally,
     records: Records,
     against: &Against,
     out: &mut String,
@@ -759,7 +799,7 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     let held = state::ready(root).ok().map(|at| (count(&at), at));
     unwritable(root);
     if failed == 0 && errored == 0 {
-        return nothing_blocks(tally.unmeasured, report);
+        return nothing_blocks(args, tally.told, report);
     }
     let Some(event) = host::read(args.host.as_deref()) else {
         eprint!("{report}");
@@ -775,18 +815,26 @@ fn hook(args: &Args, tally: Tally, report: &str, root: &Path) -> u8 {
     if !again {
         return spend(held);
     }
-    eprintln!("klin: not blocking a second time; the failure stands and CI will refuse it.");
+    eprintln!(
+        "klin: not blocking a second time; the window stays open until a person fixes, accepts \
+         or resets it."
+    );
     host::stop(&Stop::Pass)
 }
 
-/// What the hook says about a stop nothing blocks: nothing at all, or the note the run left.
-fn nothing_blocks(unmeasured: usize, report: &str) -> u8 {
-    if unmeasured == 0 {
+/// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
+/// a person, told through the host. A `--json` run hands its report to stderr, because a host
+/// that reads JSON reads the report itself. Spec 9.1, 14.
+fn nothing_blocks(args: &Args, told: usize, report: &str) -> u8 {
+    if told == 0 {
         return 0;
     }
-    eprintln!("klin: nothing blocks the stop, and the run left a note:");
-    eprint!("{report}");
-    1
+    let said = format!("klin: nothing blocks the stop, and the run left a note:\n{report}");
+    if args.json {
+        eprint!("{said}");
+        return 1;
+    }
+    host::stop(&Stop::Tell(said))
 }
 
 /// Whether the turn's one gate block is already spent. The build stamp is the record. The
@@ -1087,7 +1135,12 @@ fn each(
         totals.gates.push(row(gate, code, &records));
         gather(&mut totals, records, &gate.name);
     }
-    tally.unmeasured = totals.notes.iter().filter(|note| unmeasured(note)).count();
+    tally.told = totals.notes.iter().filter(|note| told(note)).count();
+    tally.reported = totals
+        .findings
+        .iter()
+        .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
+        .collect();
     (tally, totals)
 }
 
@@ -1106,10 +1159,11 @@ fn row(gate: &Gate, code: u8, records: &Records) -> Value {
     Value::Object(out)
 }
 
-/// A note about a file the run could not read or stopped measuring, which the hook hands back
-/// even when nothing blocks the stop. Spec 8.6, 14.
-fn unmeasured(note: &Value) -> bool {
-    note.get("outcome").and_then(Value::as_str) == Some(UNPARSED) || coverage::is_lost(note)
+/// A note the hook tells a person even when nothing blocks the stop: a file the run could not
+/// read or stopped measuring, and a deleted test the run let through. Spec 8.2, 8.6, 14.
+fn told(note: &Value) -> bool {
+    let outcome = note.get("outcome").and_then(Value::as_str);
+    matches!(outcome, Some(UNPARSED | DELETED)) || coverage::is_lost(note)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str) {
@@ -1122,7 +1176,7 @@ fn gather(totals: &mut Records, mut records: Records, name: &str) {
     totals.notes.append(&mut records.notes);
 }
 
-fn code(tally: Tally) -> u8 {
+fn code(tally: &Tally) -> u8 {
     if tally.errored > 0 {
         2
     } else if tally.failed > 0 {

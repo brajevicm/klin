@@ -36,8 +36,10 @@ is visible in the diff a person reviews.
 - Editing `klin.json`. An edit tool that names it is denied, and a shell
   command that names it is put to the person. Never add an entry to
   `accepted`, and never raise a ceiling.
-- Deleting or renaming a test. The inventory gate reads that as a declaration
-  that disappeared.
+- Deleting a failing test. The inventory gate asks once why each deleted test
+  went. If it failed because the code is wrong, restore it and fix the code.
+  If the removal is intended, say why in your reply, and the stop after that
+  lets it through.
 - Marking a test skipped, silencing a check, or swallowing an error. The
   escapes gate reads each of those as a new escape.
 - Leaving a placeholder where the work belongs. The stubs gate names it.

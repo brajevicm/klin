@@ -12,6 +12,8 @@ pub struct Tree {
 pub struct Run {
     pub code: i32,
     pub out: String,
+    /// What the run wrote on stdout alone, which is what a redirect into a file captures.
+    pub printed: String,
 }
 
 impl Run {
@@ -280,9 +282,10 @@ fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -
         .write_all(stdin.as_bytes())
         .expect("write stdin");
     let done = child.wait_with_output().expect("wait for klin");
+    let printed = String::from_utf8_lossy(&done.stdout).to_string();
     Run {
         code: done.status.code().expect("exit code"),
-        out: String::from_utf8_lossy(&done.stdout).to_string()
-            + &String::from_utf8_lossy(&done.stderr),
+        out: printed.clone() + &String::from_utf8_lossy(&done.stderr),
+        printed,
     }
 }

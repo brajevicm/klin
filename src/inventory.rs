@@ -7,17 +7,47 @@ use serde_json::{Map, Value};
 use crate::base;
 use crate::changed::git;
 use crate::complexity;
-use crate::config::{Config, Error, Flags};
+use crate::config::{Config, DELETED, Error, Flags};
 use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::Key;
 use crate::survey::{ROOT, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
+use crate::turn;
 
 const SECTION: &str = "inventory";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[
+    Key {
+        name: "name",
+        holds: "what a finding calls this entry",
+        required: true,
+        rule: "the test root's path",
+        default: "",
+    },
+    Key {
+        name: "path",
+        holds: "the directory whose test sites this entry holds",
+        required: true,
+        rule: "one entry per test root the survey found",
+        default: "",
+    },
+    Key {
+        name: "pattern",
+        holds: "a glob on the basename that limits the entry",
+        required: false,
+        rule: "",
+        default: "every file under `path`",
+    },
+];
 const LABEL: &str = "test file";
 const MISSING: &str = "missing";
-const REMEDY: &str = "Restore the test, or record in the accepted list why it went. A deleted \
-    test is the cheapest route to green, so only a person accepts one, in a reviewed commit.";
+/// The question the hook's block puts to the agent. Removing a test is ordinary work, and
+/// deleting a failing one is the cheapest route to green, so klin asks once and does not judge
+/// the answer. Spec 8.2.
+const REMEDY: &str = "If a test failed because the code is wrong, restore the test and fix the \
+    code. If the removal is intended, say why in your reply and stop again.";
 
 /// The one affix table of spec 8.2, which the survey reads to find a test root and this gate
 /// reads to name a test file's subject. Printed with the NOTE.
@@ -96,32 +126,24 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
             )
         }))
         .collect();
-    let before: Vec<Finding> = judged
-        .iter()
-        .map(|site| finding(&site.path, LABEL, 0, false))
-        .chain(functions.iter().map(|function| {
-            finding(
-                &function.site.file,
-                &function.site.text,
-                function.site.line,
-                false,
-            )
-        }))
-        .collect();
+    let (before, went) = let_through(&now, flags, config.root());
     let held = ratchet::scoped(&now, flags.only.as_deref());
     let accepted = ratchet::accepted(&config, &flags.gate, evaluator().metrics)?;
     let said = covered(&judged, &paired, &measured.unparsed, flags).said(flags);
-    let code = evaluator().evaluate(
-        now,
-        before,
-        accepted,
-        flags,
-        &format!("OK: {held} test site(s) the base holds, all still there{said}"),
-        out,
-    );
+    let ok = standing(held, went.len(), &said);
+    let code = evaluator().evaluate(now, before, accepted, flags, &ok, out);
+    deleted(&went, flags, out);
     noted(&paired, flags, out);
     orphaned(&orphans, flags, out);
     Ok(complexity::unread(&measured.unparsed, flags, code, out))
+}
+
+/// The OK line: how many test sites the base holds, and how many of them the run let go.
+fn standing(held: usize, gone: usize, said: &str) -> String {
+    match gone {
+        0 => format!("OK: {held} test site(s) the base holds, all still there{said}"),
+        gone => format!("OK: {held} test site(s) the base holds, {gone} of them gone{said}"),
+    }
 }
 
 /// Every test function the base holds under the entries, with what the working tree says about
@@ -320,6 +342,75 @@ fn finding(path: &str, text: &str, line: u64, gone: bool) -> Finding {
         values,
         body: None,
     }
+}
+
+fn gone(site: &Finding) -> bool {
+    site.values.get(MISSING).and_then(Value::as_u64) == Some(1)
+}
+
+/// The base's entry for every finding, and the deleted tests this run lets through: outside the
+/// hook every one, and in the hook the ones a stop's block already asked the agent about. The
+/// base entry of a deletion let through carries `missing: 1`, so the one judge holds it and an
+/// accepted entry naming it still takes the match. Spec 8.2, 16.4.
+fn let_through(now: &[Finding], flags: &Flags, root: &Path) -> (Vec<Finding>, Vec<Finding>) {
+    let asked = match flags.hook {
+        true => turn::asked(root),
+        false => Vec::new(),
+    };
+    let through = |site: &Finding| {
+        gone(site) && (!flags.hook || asked.contains(&ratchet::identity(&flags.gate, site)))
+    };
+    let before = now
+        .iter()
+        .map(|site| finding(&site.file, &site.text, site.line, through(site)))
+        .collect();
+    let went = now
+        .iter()
+        .filter(|site| through(site) && in_scope(flags, &site.file))
+        .map(|site| finding(&site.file, &site.text, site.line, true))
+        .collect();
+    (before, went)
+}
+
+fn in_scope(flags: &Flags, file: &str) -> bool {
+    flags
+        .only
+        .as_deref()
+        .is_none_or(|only| only.iter().any(|named| named == file))
+}
+
+/// The deleted tests this run lets through, which are a NOTE and not a finding. Removing a test
+/// is ordinary work, and klin cannot tell why a test went, so outside the hook a deletion is
+/// left to the reviewer who reads the diff. Spec 8.2.
+fn deleted(went: &[Finding], flags: &Flags, out: &mut String) {
+    if went.is_empty() {
+        return;
+    }
+    let _ = writeln!(
+        out,
+        "NOTE: {} test site(s) the base holds went in this window:",
+        went.len()
+    );
+    for site in went {
+        let _ = writeln!(out, "  {}:{}  {}", site.file, site.line, site.text);
+    }
+    flags.record(|records| {
+        for site in went {
+            let mut record = Map::new();
+            record.insert("outcome".into(), DELETED.into());
+            record.insert("file".into(), site.file.clone().into());
+            record.insert("line".into(), site.line.into());
+            record.insert(
+                "text".into(),
+                format!(
+                    "the test site {} in {} went in this window",
+                    site.text, site.file
+                )
+                .into(),
+            );
+            records.notes.push(Value::Object(record));
+        }
+    });
 }
 
 /// A deleted test function whose file went in the same window, which is a NOTE and not a

@@ -4,14 +4,62 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
+use crate::reference::Key;
 use crate::survey;
 
 const FILENAME: &str = "klin.json";
 const VERSION: &str = "version";
 
-/// The keys of section 5.2. The gate sections come from the checks themselves, so the two
-/// lists cannot drift apart.
-const KEYS: &[&str] = &["project", VERSION, "build", "accepted", "radius", "gates"];
+/// The top-level keys, beside one key per gate named for its section. `klin reference`
+/// prints them. Spec 5.2, 5.8.
+const KEYS: &[Key] = &[
+    Key {
+        name: "project",
+        holds: "a name for reports",
+        required: false,
+        rule: "",
+        default: "no name",
+    },
+    Key {
+        name: "version",
+        holds: "the klin version this configuration was written for. A run under another version prints a NOTE naming both and continues",
+        required: false,
+        rule: "",
+        default: "no version",
+    },
+    Key {
+        name: "build",
+        holds: "the commands a run builds with, each an entry of a `run` and an optional `root`",
+        required: false,
+        rule: "one entry per manifest, from the fixed table of ADR 0012",
+        default: "",
+    },
+    Key {
+        name: "accepted",
+        holds: "the debt a person accepted, each entry a site and a reason. Only a person writes it",
+        required: false,
+        rule: "",
+        default: "nothing is accepted",
+    },
+    Key {
+        name: "radius",
+        holds: "the change radius a turn may not pass, as `lines` and `directories`",
+        required: false,
+        rule: "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
+        default: "",
+    },
+    Key {
+        name: "gates",
+        holds: "extra gates, each an entry of a `name`, a `check`, a `with` and an optional `off`",
+        required: false,
+        rule: "",
+        default: "no gate beyond the sections",
+    },
+];
+
+pub fn keys() -> &'static [Key] {
+    KEYS
+}
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -31,6 +79,10 @@ impl Error {
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
 /// person must close, and nothing else in a run turns on it.
 pub const UNPARSED: &str = "unparsed";
+
+/// The outcome of a test the base holds that went in the window, which fails nothing. A stop the
+/// hook lets end hands it to a person. Spec 8.2.
+pub const DELETED: &str = "deleted";
 
 #[derive(Default)]
 pub struct Records {
@@ -316,7 +368,9 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
     let Some(fields) = data.as_object() else {
         return Ok(());
     };
-    let known = |key: &str| KEYS.contains(&key) || crate::gate::sections().any(|read| read == key);
+    let known = |key: &str| {
+        KEYS.iter().any(|held| held.name == key) || crate::gate::sections().any(|read| read == key)
+    };
     let Some(unknown) = fields.keys().find(|key| !known(key)) else {
         return Ok(());
     };
@@ -331,7 +385,7 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
         "{}: \"{unknown}\" is not a key klin reads — one of: {}",
         file.display(),
         KEYS.iter()
-            .copied()
+            .map(|key| key.name)
             .chain(crate::gate::sections())
             .collect::<Vec<&str>>()
             .join(", ")

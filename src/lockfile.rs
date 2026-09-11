@@ -6,9 +6,23 @@ use serde_json::Value;
 use crate::config::{Config, Error, Flags};
 use crate::coverage::Coverage;
 use crate::ratchet::{self, Evaluator, Finding, Section, Values};
+use crate::reference::{self, Key};
 use crate::{base, changed, files};
 
 const SECTION: &str = "lockfile";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[
+    Key {
+        name: "manifests",
+        holds: "the manifest files this check proves against their lockfiles",
+        required: true,
+        rule: "one entry per manifest klin has a lockfile reader for: `Cargo.toml`, `package.json` \
+               and `go.mod`",
+        default: "",
+    },
+    reference::EXCLUDE,
+];
 const MANIFESTS: &str = "manifests";
 const EXCLUDE: &str = "exclude";
 const UNLOCKED: &str = "unlocked";

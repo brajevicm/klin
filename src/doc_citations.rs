@@ -9,8 +9,35 @@ use crate::config::{Config, Error, Flags};
 use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::Key;
 
 const SECTION: &str = "doc_citations";
+
+/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[
+    Key {
+        name: "file",
+        holds: "the document this entry reads citations from",
+        required: true,
+        rule: "one entry per Markdown file at the tree root",
+        default: "",
+    },
+    Key {
+        name: "roots",
+        holds: "the directories a citation may resolve under",
+        required: false,
+        rule: "the tree root",
+        default: "the tree root",
+    },
+    Key {
+        name: "extensions",
+        holds: "the file extensions a citation may name",
+        required: false,
+        rule: "",
+        default: "`.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, \
+               `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`",
+    },
+];
 const DEFAULT_EXTENSIONS: &[&str] = &[
     ".py", ".ts", ".tsx", ".js", ".jsx", ".swift", ".rs", ".go", ".kt", ".java", ".rb", ".sh",
     ".md", ".json", ".yml", ".yaml", ".toml",
