@@ -171,6 +171,7 @@ fn a_failing_build_under_json_prints_one_json_object() {
         Err(why) => panic!("{why} — the run printed:\n{}", run.out),
     };
     assert_eq!(report["status"], "ERROR", "{report}");
+    assert_eq!(report["exit"], serde_json::json!(2), "{report}");
     assert!(
         report["findings"][0]["text"]
             .as_str()
@@ -288,6 +289,7 @@ fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
             .contains("stops blocking"),
         "{report}"
     );
+    assert_eq!(report["exit"], serde_json::json!(0), "{report}");
 }
 
 #[test]

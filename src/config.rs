@@ -94,6 +94,8 @@ pub struct Records {
     pub gates: Vec<Value>,
     /// What scope the gate measured, which every check records once. Spec 11.2.
     pub coverage: Option<Value>,
+    /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
+    pub derived: Vec<Value>,
 }
 
 pub struct Flags {
@@ -242,6 +244,17 @@ impl Config {
     /// once for the whole run, before any check reads a section of its own.
     pub fn derived_said(&self) -> &[String] {
         &self.derivation().lines
+    }
+
+    /// The `derived_said` lines again, as the `{section, key, value, rule}` entries `--json`
+    /// prints instead. One entry per `derived:` line, built beside it so the two cannot drift.
+    /// Empty without running the survey when the config pins every derivable section, so a
+    /// fully-pinned run reports `derived` as empty without walking the tree for it. Spec 11.2.
+    pub fn derived_values(&self) -> Vec<Value> {
+        if !self.derives_anything() {
+            return Vec::new();
+        }
+        self.derivation().derived.clone()
     }
 
     fn derivation(&self) -> &survey::Derived {

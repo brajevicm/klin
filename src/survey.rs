@@ -57,6 +57,9 @@ pub struct Survey {
 pub struct Derived {
     pub sections: Map<String, Value>,
     pub lines: Vec<String>,
+    /// One `{section, key, value, rule}` entry per line of `lines` that is a `derived:` one, in
+    /// the same order, built by the same pass so the two cannot say different things. Spec 11.2.
+    pub derived: Vec<Value>,
     /// The derived roots the derivation commit's survey did not hold. A site under one matches
     /// nothing in `before`, so a directory that becomes a root brings no inherited debt with
     /// it. Empty when there is no commit to survey. Spec 7.1.
@@ -121,11 +124,11 @@ fn held<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
 pub fn pinned_lines(section: &str, value: &Value) -> Vec<String> {
     let supplies = keys(section).unwrap_or_default();
     if supplies.is_empty() || !value.is_object() {
-        return vec![said(section, None, value, true)];
+        return vec![said(section, None, value, true).line];
     }
     supplies
         .iter()
-        .filter_map(|key| Some(said(section, Some(leaf(key)), held(value, key)?, true)))
+        .filter_map(|key| Some(said(section, Some(leaf(key)), held(value, key)?, true).line))
         .collect()
 }
 
@@ -162,13 +165,20 @@ pub fn derive(root: &Path, pinned: &Value) -> Derived {
     let at_commit = surveyed.as_ref().zip(commit.as_deref());
     let numbers = numbers(root, at.as_deref(), at_commit, &found, pinned);
     let sections = sections(&found, &numbers, pinned);
-    let lines = lines(&found, &sections, &numbers, pinned);
+    let said = lines(&found, &sections, &numbers, pinned);
+    let mut lines = Vec::with_capacity(said.len());
+    let mut derived = Vec::new();
+    for item in said {
+        lines.push(item.line);
+        derived.extend(item.entry);
+    }
     let unheld = unheld(&found, &held, surveyed.is_some());
     Derived {
         unheld,
         roots: found.roots,
         sections,
         lines,
+        derived,
     }
 }
 
@@ -979,7 +989,7 @@ fn lines(
     sections: &Map<String, Value>,
     numbers: &Numbers,
     pinned: &Value,
-) -> Vec<String> {
+) -> Vec<Said> {
     let mut out = Vec::new();
     for (name, value) in sections {
         match value {
@@ -994,12 +1004,21 @@ fn lines(
             _ => out.push(said(name, None, value, false)),
         }
     }
-    out.extend(noted(&numbers.unjudged));
+    out.extend(
+        noted(&numbers.unjudged)
+            .into_iter()
+            .map(|line| Said { line, entry: None }),
+    );
     if !found.test_roots.is_empty() {
-        out.push(format!(
-            "derived: test roots {}, the roots that match a language's test convention",
-            found.test_roots.join(", ")
-        ));
+        let rule = "the roots that match a language's test convention";
+        let value = list(&found.test_roots);
+        out.push(Said {
+            line: format!(
+                "derived: test roots {}, {rule}",
+                found.test_roots.join(", ")
+            ),
+            entry: Some(derived_value(inventory::SECTION, None, &value, rule)),
+        });
     }
     out
 }
@@ -1011,7 +1030,7 @@ fn keys_of(
     fields: &Map<String, Value>,
     numbers: &Numbers,
     pinned: &Value,
-) -> Vec<String> {
+) -> Vec<Said> {
     fields
         .iter()
         .flat_map(|(key, held)| match (name, key.as_str()) {
@@ -1024,14 +1043,21 @@ fn keys_of(
 /// The two complexity ceilings, each on its own line, so a run says what set each number and
 /// whether a person pinned it. Pinning one and leaving the other to the survey is allowed, and
 /// then one line says `pinned` and the other `derived`. Spec 4.3, 5.4.
-fn ceiling_lines(held: &Value, numbers: &Numbers, pinned: &Value) -> Vec<String> {
+fn ceiling_lines(held: &Value, numbers: &Numbers, pinned: &Value) -> Vec<Said> {
     [("cc", &numbers.cc), ("lines", &numbers.lines)]
         .iter()
         .filter_map(|(key, number)| {
-            let value = shown(held.get(key)?);
+            let raw = held.get(key)?;
+            let value = shown(raw);
             Some(match pins_ceiling(pinned, key) {
-                true => format!("pinned: {COMPLEXITY} {key} {value}"),
-                false => format!("derived: {COMPLEXITY} {key} {value} ({})", number.rule),
+                true => Said {
+                    line: format!("pinned: {COMPLEXITY} {key} {value}"),
+                    entry: None,
+                },
+                false => Said {
+                    line: format!("derived: {COMPLEXITY} {key} {value} ({})", number.rule),
+                    entry: Some(derived_value(COMPLEXITY, Some(key), raw, &number.rule)),
+                },
             })
         })
         .collect()
@@ -1055,15 +1081,41 @@ fn noted(unjudged: &[(String, u64)]) -> Vec<String> {
         .collect()
 }
 
-fn said(section: &str, key: Option<&str>, value: &Value, pinned: bool) -> String {
+/// A `pinned:` or `derived:` line, and the `{section, key, value, rule}` entry beside a
+/// `derived:` one, built together so the two cannot say different things. Spec 11.2.
+struct Said {
+    line: String,
+    entry: Option<Value>,
+}
+
+fn said(section: &str, key: Option<&str>, value: &Value, pinned: bool) -> Said {
     let named = match key {
         Some(key) => format!("{section} {key}"),
         None => section.to_string(),
     };
-    match pinned {
-        true => format!("pinned: {named} {}", shown(value)),
-        false => format!("derived: {named} {}, {}", shown(value), rule(section, key)),
+    if pinned {
+        return Said {
+            line: format!("pinned: {named} {}", shown(value)),
+            entry: None,
+        };
     }
+    let rule = rule(section, key);
+    Said {
+        line: format!("derived: {named} {}, {rule}", shown(value)),
+        entry: Some(derived_value(section, key, value, rule)),
+    }
+}
+
+/// The `{section, key, value, rule}` entry `--json` prints beside a `derived:` line, built from
+/// the same facts so the two cannot disagree. `key` is `null` for a section with no keys of its
+/// own. Spec 11.2.
+fn derived_value(section: &str, key: Option<&str>, value: &Value, rule: &str) -> Value {
+    let mut out = Map::new();
+    out.insert("section".into(), section.into());
+    out.insert("key".into(), key.map_or(Value::Null, Value::from));
+    out.insert("value".into(), value.clone());
+    out.insert("rule".into(), rule.into());
+    Value::Object(out)
 }
 
 fn rule(section: &str, key: Option<&str>) -> &'static str {

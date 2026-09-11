@@ -4,6 +4,7 @@ mod harness;
 mod text;
 
 use harness::{Run, Tree};
+use serde_json::Value;
 
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const TANGLED: &str = "fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
@@ -75,6 +76,67 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
         run.says("derived: test roots tests, the roots that match a language's test convention"),
         "{}",
         run.out
+    );
+}
+
+fn parsed(run: &Run) -> Value {
+    match serde_json::from_str(&run.out) {
+        Ok(report) => report,
+        Err(why) => panic!("{why} — the run printed:\n{}", run.out),
+    }
+}
+
+fn find(entries: &[Value], matches: impl Fn(&Value) -> bool) -> &Value {
+    entries
+        .iter()
+        .find(|entry| matches(entry))
+        .unwrap_or_else(|| panic!("no matching entry in {entries:?}"))
+}
+
+#[test]
+fn every_derived_line_has_a_matching_json_entry() {
+    let tree = project();
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = parsed(&run);
+    let derived = report["derived"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no derived array in {report}"));
+
+    let roots = find(derived, |e| {
+        e["section"] == "complexity" && e["key"] == "roots"
+    });
+    assert_eq!(
+        roots["value"],
+        serde_json::json!(["src", "tests"]),
+        "{report}"
+    );
+    let rule = roots["rule"].as_str().unwrap_or_default();
+    assert!(rule.contains("shallowest directories"), "{report}");
+
+    let cc = find(derived, |e| {
+        e["section"] == "complexity" && e["key"] == "cc"
+    });
+    let rule = cc["rule"].as_str().unwrap_or_default();
+    assert!(rule.contains("the floor of 5"), "{report}");
+
+    let doc_size = find(derived, |e| e["section"] == "doc_size");
+    assert!(doc_size["key"].is_null(), "{report}");
+    assert_eq!(doc_size["value"][0]["file"], "README.md", "{report}");
+
+    let build = find(derived, |e| e["section"] == "build");
+    assert!(build["key"].is_null(), "{report}");
+    assert_eq!(build["value"], "cargo build --all-targets", "{report}");
+
+    let test_roots = find(derived, |e| {
+        e["rule"] == "the roots that match a language's test convention"
+    });
+    assert_eq!(test_roots["section"], "inventory", "{report}");
+    assert_eq!(
+        test_roots["value"],
+        serde_json::json!(["tests"]),
+        "{report}"
     );
 }
 

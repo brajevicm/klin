@@ -415,11 +415,12 @@ fn does_not_build(
 ) -> u8 {
     let builds = raised(root);
     let stopped = builds.is_some_and(|builds| builds > BLOCKS);
-    reported(args, failure, window, stopped, out);
-    match builds {
+    let code = match builds {
         Some(builds) if builds <= BLOCKS => 2,
         _ => 0,
-    }
+    };
+    reported(args, failure, window, stopped, code, out);
+    code
 }
 
 /// The block this build failure spends, or `None` when klin could not record it, either
@@ -455,7 +456,14 @@ fn unbounded(why: &str) -> Option<u64> {
 
 /// The build failure as a person and an agent read it, and as `--json` records it. The note
 /// says that klin stopped blocking, because the exit code alone no longer says it. Spec 11.
-fn reported(args: &Args, failure: &str, window: Option<&Window>, stopped: bool, out: &mut String) {
+fn reported(
+    args: &Args,
+    failure: &str,
+    window: Option<&Window>,
+    stopped: bool,
+    code: u8,
+    out: &mut String,
+) {
     let said = does_not_build_said();
     if !args.json {
         eprintln!("klin: {said}:");
@@ -476,7 +484,7 @@ fn reported(args: &Args, failure: &str, window: Option<&Window>, stopped: bool, 
     let _ = writeln!(
         out,
         "{}",
-        as_json(2, &format!("klin: {said}."), records, window)
+        as_json(code, &format!("klin: {said}."), records, window)
     );
 }
 
@@ -544,6 +552,7 @@ fn judge(
     let (tally, mut records) = each(args, &wanted, &config, start, &against, out);
     records.notes.extend(note);
     records.notes.extend(rootless);
+    records.derived = config.derived_values();
     finish(args, &plan, wanted.len(), &tally, records, &against, out);
     Ok(tally)
 }
@@ -748,6 +757,11 @@ fn said(args: &Args, config: &Config, out: &mut String) {
     }
 }
 
+/// The object of spec 11.2. `exit` is exactly the code the caller is about to return, which
+/// holds for a direct `--json` run. A `--hook` stop instead asks `hook()` for its own code
+/// afterward, from state this function never sees, so `exit` here can differ from the stop's
+/// real one — the gap `does_not_build` closes for itself, and #153 closes for the rest by
+/// recording the stop's own outcome beside this object rather than inside it.
 fn as_json(code: u8, tally: &str, records: Records, base: Option<&Window>) -> String {
     let status = match code {
         0 => "PASS",
@@ -760,9 +774,11 @@ fn as_json(code: u8, tally: &str, records: Records, base: Option<&Window>) -> St
     if let Some(base) = base {
         out.insert("window".into(), base.record());
     }
+    out.insert("derived".into(), Value::Array(records.derived));
     out.insert("gates".into(), Value::Array(records.gates));
     out.insert("findings".into(), Value::Array(records.findings));
     out.insert("notes".into(), Value::Array(records.notes));
+    out.insert("exit".into(), code.into());
     Value::Object(out).to_string()
 }
 

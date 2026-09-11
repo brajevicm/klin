@@ -725,6 +725,7 @@ fn json_prints_one_object_holding_every_failing_finding() {
     assert_eq!(run.code, 1, "{}", run.out);
     let report = json(&run);
     assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
+    assert_eq!(report.get("exit"), Some(&Value::from(1)), "{}", run.out);
     assert!(
         field(&report, "summary").contains("2 failed"),
         "{}",
@@ -832,9 +833,48 @@ fn a_passing_json_run_holds_no_findings() {
     assert_eq!(run.code, 0, "{}", run.out);
     let report = json(&run);
     assert_eq!(field(&report, "status"), "PASS", "{}", run.out);
+    assert_eq!(report.get("exit"), Some(&Value::from(0)), "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert!(list(&report, "notes").is_empty(), "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
+}
+
+#[test]
+fn a_json_run_prints_one_derived_entry_per_derived_line() {
+    let tree = tree(EVERY_GATE);
+
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = json(&run);
+    let derived = list(&report, "derived");
+    assert_eq!(derived.len(), 2, "{}", run.out);
+    let roots = derived
+        .iter()
+        .find(|entry| field(entry, "key") == "roots")
+        .unwrap_or_else(|| panic!("no roots entry in {report}"));
+    assert_eq!(field(roots, "section"), "stubs", "{}", run.out);
+    assert_eq!(
+        roots.get("value"),
+        Some(&Value::from(vec!["src"])),
+        "{}",
+        run.out
+    );
+    assert!(
+        field(roots, "rule").contains("shallowest directories"),
+        "{}",
+        run.out
+    );
+    let languages = derived
+        .iter()
+        .find(|entry| field(entry, "key") == "languages")
+        .unwrap_or_else(|| panic!("no languages entry in {report}"));
+    assert_eq!(field(languages, "section"), "stubs", "{}", run.out);
+    assert_eq!(
+        languages.get("value"),
+        Some(&Value::from(vec!["rust"])),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -845,6 +885,7 @@ fn a_config_the_run_cannot_read_is_a_json_object_too() {
     assert_eq!(run.code, 2, "{}", run.out);
     let report = json(&run);
     assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
+    assert_eq!(report.get("exit"), Some(&Value::from(2)), "{}", run.out);
     let finding = &list(&report, "findings")[0];
     assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
     assert!(
