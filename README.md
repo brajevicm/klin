@@ -56,9 +56,9 @@ For Codex CLI, write the project hooks after installing the binary:
 klin init --hooks --host codex
 ```
 
-Use `--global` to install them once in `~/.codex/hooks.json`. Codex CLI does
-not document an `ask` result for `PreToolUse`, so klin treats an ambiguous
-guard decision as a block (exit 2); clear allowed calls still exit 0.
+Use `--global` to install them once, in the user-level Codex hooks file. Codex CLI
+rejects an `ask` result on `PreToolUse`, so klin returns an ambiguous guard
+decision as a block (exit 2) with the reason on stderr. Allowed calls exit 0.
 
 ### Update
 

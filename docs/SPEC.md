@@ -1298,11 +1298,13 @@ Hosts come in two kinds, and a port starts by naming which kind the host is.
 
 A shell-hook host runs a command with a JSON event on stdin and reads a
 decision from stdout or from the exit code. Claude Code, Codex CLI, Cursor
-and Hermes are this kind. Each one is a row in the host table, which holds
-the name, the marker directory, the project file, the user file, the file
-shape and the event mapping, and a variant in the host adapter, which reads
-the payload and writes the decision. A port of a shell-hook host touches
-those two places and nothing else.
+and Hermes are this kind. Each one is one module under the host adapter that
+implements the adapter's trait: the name `--host` takes, the marker
+directory, the hook file, the guard's tool matcher, the key its hook file
+lists plugins under if it has one, how an unlabelled event is recognised as
+this host's, how the event is read, and how a decision goes back. A port of a
+shell-hook host adds that module and registers it in the adapter list, and
+touches nothing else. No other module names a host.
 
 A program-hook host loads a module in its own process and has no shell hook.
 OpenCode and Pi are this kind, and klin cannot be the hook. A shim outside
@@ -1316,7 +1318,7 @@ field. A host's guard event carries a list of paths, because one event may
 name more than one file, and the adapter maps that list onto the record
 below.
 
-One `Host` value, chosen from the event's shape or from `--host`, maps a host
+One adapter, chosen from the event's shape or from `--host`, maps a host
 event to one internal record:
 
 - `tool` (string), `file_paths` (list), `command` (string) for the guard
@@ -1328,21 +1330,25 @@ And maps one internal decision to the host's output. For Claude Code:
 pre-tool decisions go out as `hookSpecificOutput.permissionDecision` with
 `allow`, `deny` or `ask` and a reason. Stop blocks are exit 2 with the report
 on stderr. Prompt and session-start text go to stdout on exit 0.
-For Codex CLI, `allow` is exit 0 and both `deny` and the undocumented `ask`
-case are exit 2 with the reason on stderr; stop blocks also use exit 2.
+For Codex CLI, `allow` is exit 0 and both `deny` and `ask` are exit 2 with
+the reason on stderr, because Codex rejects `permissionDecision: ask` on
+`PreToolUse` as unsupported. Stop blocks also use exit 2.
 
 In hook mode the exit code is the host's protocol, not the verdict. Exit 2
 means "block this stop", whatever caused it. The verdict of section 4.9 lives
 in the report and in the `turn` file. Outside hook mode the exit code is the
 verdict.
 
-The Cursor variant is a separate ticket (#67). Codex CLI uses the same event
-fields as Claude Code plus `turn_id` and `permission_mode`, which the adapter
-checks before Claude's fields. Its `Bash` and MCP tool calls carry a shell
-command in `tool_input.command`; `apply_patch` carries one or more file paths
-in its patch headers. Codex has no documented `ask` result for `PreToolUse`,
-so an `ask` is returned as exit 2 with its reason on stderr. The adapter is
-the only module that reads a host's JSON.
+The Cursor variant is a separate ticket (#67). Codex CLI sends Claude Code's
+event fields plus `turn_id` on every turn-scoped event. `turn_id` alone
+places an event as Codex, and it is tried before Claude Code's fields.
+`permission_mode` places nothing, because both hosts send it. A session
+start is not turn-scoped, so Codex's is read in Claude Code's shape, which
+runs the same `radius`. Codex's `Bash` tool carries a shell command in
+`tool_input.command`. An MCP tool carries its own arguments, so the guard
+reads a `command` there only when the tool has one. `apply_patch` carries
+one or more file paths in its patch headers. The adapter is the only module
+that reads a host's JSON.
 
 ### 9.2 Events
 
@@ -1424,9 +1430,9 @@ even inside a double quote, so a body passed as `--body "$(cat <<'EOF' ...
 EOF)"` is data and not a list of commands.
 
 For Codex CLI, an `apply_patch` call is judged by every path in its `*** Add
-File:`, `*** Delete File:`, `*** Update File:`, `*** Move to:` or `*** Copy
-to:` headers. Patch body text is data. A deny for any path wins; otherwise an
-ask wins over allow.
+File:`, `*** Delete File:`, `*** Update File:` or `*** Move to:` headers.
+Patch body text is data. A deny for any path wins; otherwise an ask wins over
+allow.
 
 A command substitution is a command of its own, so it leaves the line it sat
 in. The guard reads the command inside it on its own, and the words after the
@@ -2140,7 +2146,9 @@ binary the way Claude Code's plugin does. So the binary comes from 19.1 and
   `beforeShellExecution` and the file-edit events carry the guard.
   `beforeSubmitPrompt` carries `radius`. `stop` carries the gate.
 - Codex CLI reads a `hooks.json` with `PreToolUse`, `UserPromptSubmit` and
-  `Stop` at turn scope. The mapping is one to one with Claude Code's.
+  `Stop` at turn scope. The mapping is one to one with Claude Code's. Codex
+  enables plugins in `config.toml`, and klin ships no Codex plugin, so the
+  plugin check below does not apply to it.
 
 `init --hooks` detects a host by the presence of `.claude/`, `.cursor/` or
 `.codex/` at the root, or takes `--host NAME`. It adds klin's entries and

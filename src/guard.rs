@@ -60,31 +60,19 @@ pub fn run(args: &Args) -> u8 {
     let Some(event) = host::read(args.host.as_deref()) else {
         return 0;
     };
-    host::decide(&event, &decided(&event))
+    event.host.decide(&decided(&event))
 }
 
+/// The strictest decision over every path an edit call names, and when none of them decides
+/// anything, the decision over its command. Section 9.4.
 fn decided(event: &Event) -> Decision {
     let edits = !READ_TOOLS.contains(&event.tool.as_str());
-    if edits {
-        if let Some(decision) = paths_decision(&event.file_paths) {
-            return decision;
-        }
+    let paths =
+        edits.then(|| Decision::strictest(event.file_paths.iter().flat_map(|path| touched(path))));
+    match paths {
+        Some(Decision::Allow) | None => command_decision(&event.command),
+        Some(decision) => decision,
     }
-    command_decision(&event.command)
-}
-
-/// The strictest decision for all paths one edit call names. A direct guarded path is a deny;
-/// the ordering also preserves an ask if another host adds one later. Section 9.1.
-fn paths_decision(paths: &[String]) -> Option<Decision> {
-    let mut asked = None;
-    for path in paths {
-        match touched(path) {
-            Some(Decision::Deny(reason)) => return Some(Decision::Deny(reason)),
-            Some(Decision::Ask(reason)) => asked = asked.or(Some(Decision::Ask(reason))),
-            Some(Decision::Allow) | None => {}
-        }
-    }
-    asked
 }
 
 /// What one path an edit tool or a redirect names is worth: a deny for the one file only a
@@ -111,23 +99,15 @@ fn basename(path: &str) -> &str {
     path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
-/// A deny anywhere in the command wins, and otherwise the first ask does.
 fn command_decision(command: &str) -> Decision {
     let command = without_heredoc_bodies(command).replace("\\\n", " ");
     let (outer, inner) = lifted(&command);
-    let mut asked = None;
     let lines = std::iter::once(outer).chain(inner);
-    for segment in lines.flat_map(|text| segments(&text).unwrap_or_else(|| blind_segments(&text))) {
-        match segment_decision(&segment) {
-            Decision::Deny(why) => return Decision::Deny(why),
-            Decision::Ask(why) => asked = asked.or(Some(why)),
-            Decision::Allow => {}
-        }
-    }
-    match asked {
-        Some(why) => Decision::Ask(why),
-        None => Decision::Allow,
-    }
+    Decision::strictest(
+        lines
+            .flat_map(|text| segments(&text).unwrap_or_else(|| blind_segments(&text)))
+            .map(|segment| segment_decision(&segment)),
+    )
 }
 
 /// A command substitution is a command of its own, so it leaves the line it sat in. The words
@@ -292,17 +272,9 @@ fn segment_decision(segment: &str) -> Decision {
     path_tokens(segment).find_map(mentioned).unwrap_or(redirect)
 }
 
-/// What the segment's redirect targets are worth. A deny wins, and otherwise the first ask.
+/// What the segment's redirect targets are worth.
 fn redirected(words: &[&str]) -> Decision {
-    let mut asked = Decision::Allow;
-    for target in redirect_targets(words) {
-        match touched(target) {
-            Some(Decision::Deny(why)) => return Decision::Deny(why),
-            Some(ask) if matches!(asked, Decision::Allow) => asked = ask,
-            _ => {}
-        }
-    }
-    asked
+    Decision::strictest(redirect_targets(words).into_iter().flat_map(touched))
 }
 
 /// The guarded path a command outside the reader list names. klin cannot tell a write from a

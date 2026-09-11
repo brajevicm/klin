@@ -30,6 +30,8 @@ const AN_AMBIGUOUS_COMMAND: &str = r#"{
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
+/// Claude Code sends `permission_mode` on most events, and so does Codex. Only `turn_id` is Codex's.
+const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"python3 x.py klin.json"}}"#;
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
 const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":true}"#;
 
@@ -102,6 +104,13 @@ fn a_stop_that_says_it_already_blocked_this_turn_is_read_that_way() {
 }
 
 #[test]
+fn a_claude_event_that_carries_permission_mode_is_still_asked() {
+    let run = guard(&[], A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#""permissionDecision":"ask""#), "{}", run.out);
+}
+
+#[test]
 fn a_codex_stop_honors_its_blocked_before_flag() {
     let first = stop(&failing(), A_CODEX_STOP, &[]);
     assert_eq!(first.code, 2, "{}", first.out);
@@ -146,13 +155,19 @@ fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("permissionDecision"), "{}", run.out);
 
-    let denied = codex(
-        "apply_patch",
-        "*** Begin Patch\n*** Update File: src/main.rs\n*** Update File: klin.json\n*** End Patch",
-    );
-    let run = guard(&[], &denied);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("refused"), "{}", run.out);
+    for headers in [
+        "*** Update File: src/main.rs\n*** Update File: klin.json",
+        "*** Update File: a.json\n*** Move to: klin.json",
+        "*** Add File: sub/klin.json",
+    ] {
+        let denied = codex(
+            "apply_patch",
+            &format!("*** Begin Patch\n{headers}\n*** End Patch"),
+        );
+        let run = guard(&[], &denied);
+        assert_eq!(run.code, 2, "{headers}: {}", run.out);
+        assert!(run.says("refused"), "{headers}: {}", run.out);
+    }
 }
 
 /// A malformed event says nothing about the turn, so the guard allows and the stop is not blocked.

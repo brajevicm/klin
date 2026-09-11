@@ -5,7 +5,8 @@ use harness::{Run, Tree};
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 const A_CODEX_PROMPT: &str = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1","turn_id":"t1","permission_mode":"default"}"#;
-const A_CODEX_SESSION: &str = r#"{"hook_event_name":"SessionStart","session_id":"s1","turn_id":"t1","permission_mode":"default"}"#;
+/// A session start is not turn-scoped, so Codex sends it without `turn_id`.
+const A_CODEX_SESSION: &str = r#"{"hook_event_name":"SessionStart","session_id":"s1","cwd":"/x","model":"m","source":"startup"}"#;
 const CONFIG: &str = r#"{
   "project": "t",
   "radius": { "lines": 50, "directories": 2 }

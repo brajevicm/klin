@@ -665,15 +665,22 @@ fn hooks_global_writes_codex_cli_hooks_to_the_users_file() {
     assert_eq!(tree.status(), "", "{}", run.out);
 }
 
+/// Codex CLI enables plugins in `config.toml`, not under a key in `hooks.json`, and klin ships
+/// no Codex plugin. So Claude Code's plugin key in the Codex file means nothing to klin.
 #[test]
-fn hooks_adds_nothing_when_the_codex_plugin_is_enabled() {
+fn hooks_for_codex_ignore_claudes_plugin_key() {
     let tree = two_documents();
     tree.write(".codex/hooks.json", A_PLUGIN);
 
     let run = tree.run(&["init", "--hooks", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(codex_settings(&tree)["hooks"], Value::Null, "{}", run.out);
-    assert!(run.says("plugin"), "{}", run.out);
+    assert_eq!(
+        commands(&codex_settings(&tree), "Stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+    assert!(!run.says("plugin"), "{}", run.out);
 }
 
 #[test]
@@ -682,10 +689,9 @@ fn a_codex_hook_line_says_nothing_when_no_binary_resolves() {
     tree.write(".codex/hooks.json", "{}\n");
     assert_eq!(tree.run(&["init", "--hooks", "--host", "codex"]).code, 0);
 
-    let command = commands(&codex_settings(&tree), "Stop")
-        .into_iter()
-        .next()
-        .expect("Codex Stop hook");
+    let Some(command) = commands(&codex_settings(&tree), "Stop").into_iter().next() else {
+        panic!("no Codex Stop hook was written")
+    };
     let outcome = std::process::Command::new("/bin/sh")
         .args(["-c", &command])
         .env("PATH", "")
