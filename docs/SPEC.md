@@ -1710,8 +1710,70 @@ only the hook knew:
   tell a fix from a config change without a schema bump. Recorded and not
   read.
 
-The file is a public surface: a harness may read it until `klin stats --json`
-(#155) lands, and the two readers of the design read nothing else.
+The file is a public surface. `klin stats --json` (11.5) is what a harness
+reads, and the two readers of the design read nothing else.
+
+### 11.5 `klin stats`
+
+`klin stats` reads the journal of 11.4 and reports what klin caught, for the
+person and not for the agent. `--since Nd` sets the window, seven days by
+default. `--all` lifts the cap of five items per group. `--json` prints the
+episodes instead of the text. The command exits 0 whatever it finds: it
+reports and judges nothing.
+
+The reader turns lines into episodes with no I/O and no clock of its own. An
+**intervention** is one gate's failure on a stop that spent the prompt's gate
+block, so one stop with three failing gates is one blocked stop and three
+interventions. Its **outcome** is a relation between that line and the lines
+after it, which the writer never stores:
+
+- `fixed-next`, the gate ran and passed on the next stop
+- `fixed-later`, the gate ran and passed on a later stop in the window
+- `asked-once`, a later stop recorded the site as one klin let through after
+  it asked (8.2), so the code is as the agent left it and the fix is the
+  person's to make
+- `reset`, a person moved the turn stamp before the gate went clear
+- `open`, no stop in the window ran the gate and passed it
+
+A gate the stop's `gates` list of 11.2 carries no row for did not run, and a
+row that says `ERR` measured nothing. Neither ends an episode, because neither
+says the site went.
+
+Nothing in the reader names a check. A line for a gate the binary has no
+check for is read and printed like any other.
+
+`--json` prints one object: `window` `{days}`, `stops`, `skipped` (the lines
+of 11.4 the reader could not read or does not know), `unreadable` (how many distinct
+files the window's stops could not read or measure, counted once each), `counts` `{caught, fixed-next,
+fixed-later, reset, open, asked-once}`, and `episodes`, a list of `{gate,
+file, line, text, remedy, time, more, outcome}` newest first, where `more` is
+how many further findings that gate left on that stop.
+
+The text has these line shapes:
+
+- the title, `klin, SCOPE in PLACE`, where SCOPE is `today`, `this week`,
+  `this month` or `the last N days`, and PLACE is `this repository` where the
+  repository has one worktree and `this worktree` where it has more
+- `klin caught N shortcuts.`, and `The agent fixed N of them before you saw
+  them.` beside it where any were, then `klin asked you about N shortcuts.`
+  and `One is still there.` or `N are still there.` on their own lines
+- the groups `Still there`, `Fixed after klin asked`, `You were asked` and
+  `You started the judgment over`, in that order. An open item carries its
+  check's remedy on the line under it; every other group is headed by the day
+  it happened on: `Today`, `Yesterday`, the weekday name inside seven days,
+  then `YYYY-MM-DD`. The local offset is read from the system once per
+  report, with UTC as the fallback.
+- `and N more. klin stats --all` under a group the cap trimmed
+- `klin ran N times and took N seconds in total.`
+- `Measurement`, with what klin skipped or could not read under it, printed
+  only where there was something. Green with half the tree unparsed is the
+  one lie the report must not tell.
+- `klin caught no shortcuts. klin ran N times and asked nothing.` for a
+  window with no intervention, and `klin started watching today. Come back
+  after a few turns.` for a journal with no line at all.
+
+No word of the agent's glossary appears in the text, and the report carries
+no score, no color, no glyph, no praise and no estimate of time saved.
 
 ## 12. Determinism
 

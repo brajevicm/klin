@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -152,4 +152,42 @@ fn now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|since| since.as_secs())
         .unwrap_or_default()
+}
+
+/// Every line of this worktree's journal, newest last, and how many the reader skipped. A line
+/// it cannot parse is a truncated last write, and a line whose `schema` it does not know is a
+/// record a newer klin wrote: both are skipped and counted, so a report can say its numbers are
+/// short. Spec 11.4.
+pub fn read(root: &Path) -> (Vec<Value>, u64) {
+    let Some(at) = state::dir(root) else {
+        return (Vec::new(), 0);
+    };
+    let Ok(file) = std::fs::File::open(at.join(FILE)) else {
+        return (Vec::new(), 0);
+    };
+    let mut lines = Vec::new();
+    let mut skipped = 0;
+    for read in BufReader::new(file).lines() {
+        let Ok(text) = read else {
+            skipped += 1;
+            continue;
+        };
+        if text.trim().is_empty() {
+            continue;
+        }
+        match serde_json::from_str::<Value>(&text) {
+            Ok(line) if known(&line) => lines.push(line),
+            _ => skipped += 1,
+        }
+    }
+    (lines, skipped)
+}
+
+/// Whether this binary understands the line's format. The match is exhaustive up to the current
+/// schema, so a bump without an upgrade arm does not compile.
+fn known(line: &Value) -> bool {
+    match line.get("schema").and_then(Value::as_u64) {
+        Some(1) => true,
+        Some(_) | None => false,
+    }
 }
