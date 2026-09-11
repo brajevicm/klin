@@ -17,6 +17,14 @@ pub struct Run {
 }
 
 impl Run {
+    /// Everything the run printed, as the one JSON object `--json` writes.
+    pub fn json(&self) -> serde_json::Value {
+        match serde_json::from_str(&self.out) {
+            Ok(report) => report,
+            Err(why) => panic!("{why} — the run printed:\n{}", self.out),
+        }
+    }
+
     pub fn says(&self, text: &str) -> bool {
         self.out.contains(text)
     }

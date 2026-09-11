@@ -79,18 +79,37 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
     );
 }
 
-fn parsed(run: &Run) -> Value {
-    match serde_json::from_str(&run.out) {
-        Ok(report) => report,
-        Err(why) => panic!("{why} — the run printed:\n{}", run.out),
-    }
-}
-
 fn find(entries: &[Value], matches: impl Fn(&Value) -> bool) -> &Value {
     entries
         .iter()
         .find(|entry| matches(entry))
         .unwrap_or_else(|| panic!("no matching entry in {entries:?}"))
+}
+
+/// The whole of the first acceptance criterion of #152: one JSON entry per `derived:` line the
+/// text report prints, counted from the two reports of one tree rather than from a number a
+/// test holds.
+#[test]
+fn the_json_derived_list_is_as_long_as_the_reports_derived_lines() {
+    let tree = project();
+
+    let text = gate(&tree);
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(text.code, 0, "{}", text.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let said = text
+        .out
+        .lines()
+        .filter(|line| line.trim_start().starts_with("derived:"))
+        .count();
+    assert!(said > 0, "{}", text.out);
+    let report = run.json();
+    assert_eq!(
+        report["derived"].as_array().map(Vec::len),
+        Some(said),
+        "{report}\n{}",
+        text.out
+    );
 }
 
 #[test]
@@ -99,7 +118,7 @@ fn every_derived_line_has_a_matching_json_entry() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let report = parsed(&run);
+    let report = run.json();
     let derived = report["derived"]
         .as_array()
         .unwrap_or_else(|| panic!("no derived array in {report}"));
@@ -133,6 +152,7 @@ fn every_derived_line_has_a_matching_json_entry() {
         e["rule"] == "the roots that match a language's test convention"
     });
     assert_eq!(test_roots["section"], "inventory", "{report}");
+    assert_eq!(test_roots["key"], "test roots", "{report}");
     assert_eq!(
         test_roots["value"],
         serde_json::json!(["tests"]),

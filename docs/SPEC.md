@@ -1607,6 +1607,8 @@ compared, and a person can dispute a wrong match.
 
 One object on stdout. Fields:
 
+- `status`, the row of 11.1 for the run as a whole, and `summary`, the one
+  line 11.1 ends with
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
 - `gates` list of `{name, status, findings, notes, coverage}`, where
@@ -1636,7 +1638,13 @@ One object on stdout. Fields:
   a file a grammar refused in the hook, `lost` for a file `before` measured
   and `after` did not (8.6), and `note` for what a check left out of its
   count. `text` carries the reason, as the `NOTE:` line printed it.
-- `exit` integer
+- `exit` integer, the code a run without `--hook` returns. It is not read off
+  `status`: a build failure that has spent its blocks is an `ERROR` run that
+  exits 0, so a harness that wants the process's answer reads `exit` and one
+  that wants the verdict reads `status`. Under `--hook` the stop's own code is
+  16.3's and is decided after this object is built, so `exit` there is the
+  gates' code and not the stop's; #153 records the stop's own outcome beside
+  this object rather than inside it.
 
 A finding has no column, so the JSON carries none rather than a wrong one.
 

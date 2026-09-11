@@ -290,6 +290,7 @@ fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
         "{report}"
     );
     assert_eq!(report["exit"], serde_json::json!(0), "{report}");
+    assert_eq!(report["status"], "ERROR", "{report}");
 }
 
 #[test]

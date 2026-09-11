@@ -31,6 +31,10 @@ pub const TEST_SUFFIXES: &[&str] = &["_test", "_spec", ".test", ".spec", "Test",
 const COMPLEXITY: &str = "complexity";
 const DOC_SIZE: &str = "doc_size";
 
+/// What the `derived:` line and the `{section, key, value, rule}` entry both call the test-root
+/// set. It is a derived value of 4.3 and not a key any config states, so the two say it once.
+const TEST_ROOTS: &str = "test roots";
+
 /// The floor a derived complexity ceiling never falls below, and the sample a percentile needs
 /// before it is taken at all. Spec 5.4.
 const CC_FLOOR: u64 = 5;
@@ -59,7 +63,7 @@ pub struct Derived {
     pub lines: Vec<String>,
     /// One `{section, key, value, rule}` entry per line of `lines` that is a `derived:` one, in
     /// the same order, built by the same pass so the two cannot say different things. Spec 11.2.
-    pub derived: Vec<Value>,
+    pub values: Vec<Value>,
     /// The derived roots the derivation commit's survey did not hold. A site under one matches
     /// nothing in `before`, so a directory that becomes a root brings no inherited debt with
     /// it. Empty when there is no commit to survey. Spec 7.1.
@@ -167,10 +171,10 @@ pub fn derive(root: &Path, pinned: &Value) -> Derived {
     let sections = sections(&found, &numbers, pinned);
     let said = lines(&found, &sections, &numbers, pinned);
     let mut lines = Vec::with_capacity(said.len());
-    let mut derived = Vec::new();
+    let mut values = Vec::new();
     for item in said {
         lines.push(item.line);
-        derived.extend(item.entry);
+        values.extend(item.entry);
     }
     let unheld = unheld(&found, &held, surveyed.is_some());
     Derived {
@@ -178,7 +182,7 @@ pub fn derive(root: &Path, pinned: &Value) -> Derived {
         roots: found.roots,
         sections,
         lines,
-        derived,
+        values,
     }
 }
 
@@ -1014,10 +1018,15 @@ fn lines(
         let value = list(&found.test_roots);
         out.push(Said {
             line: format!(
-                "derived: test roots {}, {rule}",
+                "derived: {TEST_ROOTS} {}, {rule}",
                 found.test_roots.join(", ")
             ),
-            entry: Some(derived_value(inventory::SECTION, None, &value, rule)),
+            entry: Some(derived_value(
+                inventory::SECTION,
+                Some(TEST_ROOTS),
+                &value,
+                rule,
+            )),
         });
     }
     out

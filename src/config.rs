@@ -254,7 +254,7 @@ impl Config {
         if !self.derives_anything() {
             return Vec::new();
         }
-        self.derivation().derived.clone()
+        self.derivation().values.clone()
     }
 
     fn derivation(&self) -> &survey::Derived {

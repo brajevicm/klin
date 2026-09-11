@@ -686,10 +686,6 @@ fn the_ladder_writes_nothing() {
     );
 }
 
-fn json(run: &harness::Run) -> Value {
-    object(&run.out, run)
-}
-
 fn object(text: &str, run: &harness::Run) -> Value {
     match serde_json::from_str(text) {
         Ok(report) => report,
@@ -723,7 +719,7 @@ fn json_prints_one_object_holding_every_failing_finding() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
     assert_eq!(report.get("exit"), Some(&Value::from(1)), "{}", run.out);
     assert!(
@@ -747,7 +743,7 @@ fn a_json_finding_carries_the_site_the_values_and_the_advice() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     let finding = &list(&report, "findings")[0];
     assert_eq!(field(finding, "file"), "src/lib.rs", "{}", run.out);
     assert_eq!(finding.get("line"), Some(&Value::from(2)), "{}", run.out);
@@ -780,7 +776,7 @@ fn a_json_record_names_no_column_and_no_violation() {
 
     let run = tree.run(&["gate", "--json", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     let banned = ["column", "violation", "invariant"];
     assert!(!list(&report, "findings").is_empty(), "{}", run.out);
     assert!(!list(&report, "notes").is_empty(), "{}", run.out);
@@ -800,7 +796,7 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
 
     let run = tree.run(&["gate", "--json", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert_eq!(
@@ -817,7 +813,7 @@ fn a_gate_that_could_not_run_is_a_json_finding_too() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
     let finding = &list(&report, "findings")[0];
     assert_eq!(field(finding, "gate"), "escapes", "{}", run.out);
@@ -831,7 +827,7 @@ fn a_passing_json_run_holds_no_findings() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert_eq!(field(&report, "status"), "PASS", "{}", run.out);
     assert_eq!(report.get("exit"), Some(&Value::from(0)), "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
@@ -845,7 +841,7 @@ fn a_json_run_prints_one_derived_entry_per_derived_line() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     let derived = list(&report, "derived");
     assert_eq!(derived.len(), 2, "{}", run.out);
     let roots = derived
@@ -883,7 +879,7 @@ fn a_config_the_run_cannot_read_is_a_json_object_too() {
 
     let run = tree.run(&["gate", "--json", "--config", "absent.json"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
     assert_eq!(report.get("exit"), Some(&Value::from(2)), "{}", run.out);
     let finding = &list(&report, "findings")[0];
@@ -902,7 +898,7 @@ fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert_eq!(
         outcomes(list(&report, "findings")),
         [("complexity", "unparsed")],
@@ -1369,7 +1365,7 @@ fn the_version_note_reaches_the_json_notes() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     let notes = list(&report, "notes");
     let note = notes
         .iter()
@@ -1470,7 +1466,7 @@ fn a_coverage_loss_is_a_note_under_the_gate_in_the_json() {
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let report = json(&run);
+    let report = run.json();
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert_eq!(
         outcomes(list(&report, "notes")),

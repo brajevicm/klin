@@ -28,6 +28,9 @@ const BLOCKS: u64 = 8;
 const GATES: &str = config::GATES.name;
 /// What `--list` indents a gate's own lines by, under the row that names it.
 const UNDER: &str = "      ";
+/// The `ERR` row of 11.1 as `--json` names it, which a run that could not measure prints
+/// whatever exit code it ends with.
+const ERROR: &str = "ERROR";
 
 struct Check {
     name: &'static str,
@@ -484,7 +487,7 @@ fn reported(
     let _ = writeln!(
         out,
         "{}",
-        as_json(code, &format!("klin: {said}."), records, window)
+        as_json(ERROR, code, &format!("klin: {said}."), records, window)
     );
 }
 
@@ -739,10 +742,17 @@ fn finish(
         return;
     }
     out.clear();
+    let code = code(tally);
     let _ = writeln!(
         out,
         "{}",
-        as_json(code(tally), &line, records, against.base.as_ref())
+        as_json(
+            status_row(code),
+            code,
+            &line,
+            records,
+            against.base.as_ref()
+        )
     );
 }
 
@@ -757,17 +767,23 @@ fn said(args: &Args, config: &Config, out: &mut String) {
     }
 }
 
-/// The object of spec 11.2. `exit` is exactly the code the caller is about to return, which
-/// holds for a direct `--json` run. A `--hook` stop instead asks `hook()` for its own code
-/// afterward, from state this function never sees, so `exit` here can differ from the stop's
-/// real one — the gap `does_not_build` closes for itself, and #153 closes for the rest by
-/// recording the stop's own outcome beside this object rather than inside it.
-fn as_json(code: u8, tally: &str, records: Records, base: Option<&Window>) -> String {
-    let status = match code {
+/// The row of 11.1 a run's own exit code names, for the runs whose status and code agree.
+fn status_row(code: u8) -> &'static str {
+    match code {
         0 => "PASS",
         1 => "FAIL",
-        _ => "ERROR",
-    };
+        _ => ERROR,
+    }
+}
+
+/// The object of spec 11.2. `status` is the row of 11.1, which a caller gives rather than reads
+/// off `code`, because a build failure that stops blocking is an `ERROR` row that exits 0.
+/// `exit` is exactly the code the caller is about to return, which holds for a direct `--json`
+/// run. A `--hook` stop instead asks `hook()` for its own code afterward, from state this
+/// function never sees, so `exit` there is the gates' code and not the stop's — the gap
+/// `does_not_build` closes for itself, and #153 closes for the rest by recording the stop's own
+/// outcome beside this object rather than inside it.
+fn as_json(status: &str, code: u8, tally: &str, records: Records, base: Option<&Window>) -> String {
     let mut out = Map::new();
     out.insert("status".into(), status.into());
     out.insert("summary".into(), tally.into());
@@ -795,7 +811,7 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
     let _ = writeln!(
         out,
         "{}",
-        as_json(2, &format!("klin: {problem}"), records, None)
+        as_json(ERROR, 2, &format!("klin: {problem}"), records, None)
     );
     Ok(Tally {
         errored: 1,
