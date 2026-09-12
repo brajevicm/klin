@@ -379,8 +379,8 @@ fn a_gate_that_did_not_run_is_no_answer_and_never_reads_as_a_fix() {
         stop(100, false, vec![], vec![]),
     ]);
     let json = later.run(&["stats", "--json"]).json();
-    assert_eq!(json["counts"]["fixed-later"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
+    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
+    assert_eq!(json["counts"]["fixed-later"], 0, "{json}");
 }
 
 #[test]
@@ -493,7 +493,7 @@ fn a_guard_deny_a_reset_and_a_deleted_test_each_read_as_a_sentence_under_you_wer
         "{}",
         run.out
     );
-    assert!(run.says("The agent asked you 3 times."), "{}", run.out);
+    assert!(run.says("The agent asked you once."), "{}", run.out);
     assert!(!run.says("You started the judgment over"), "{}", run.out);
 
     let json = tree.run(&["stats", "--json"]).json();
@@ -723,6 +723,108 @@ fn a_red_pass_through_tells_the_person_one_shortcut_is_still_there() {
         "{}",
         through.out
     );
+}
+
+// #164: the report reads the record the way spec 11.5 says.
+
+fn timed(mut line: Value, total_ms: u64, build_ms: u64) -> Value {
+    line["timing"] = json!({"total_ms": total_ms, "build_ms": build_ms, "lock_ms": 0,
+                            "klin_ms": total_ms - build_ms});
+    line
+}
+
+#[test]
+fn the_cost_line_counts_klins_own_time_and_not_the_build() {
+    let site = finding("escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let tree = tree(&[
+        timed(stop(200, true, vec![site], vec![]), 9_000, 7_000),
+        timed(stop(100, false, vec![], vec![]), 9_000, 8_000),
+    ]);
+
+    let run = tree.run(&["stats"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin ran 2 times and took 3 seconds in total."),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_reset_and_a_guard_refusal_ask_the_person_nothing_and_still_print_under_you_were_asked() {
+    let site = finding("escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let tree = tree(&[
+        guard(400, "deny", "config-write"),
+        stop(300, true, vec![site], vec![]),
+        reset(200),
+        stop(100, false, vec![], vec![]),
+    ]);
+
+    let run = tree.run(&["stats"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("klin caught 1 shortcut."), "{}", run.out);
+    assert!(!run.says("asked you"), "{}", run.out);
+    assert!(run.says("You were asked"), "{}", run.out);
+    assert!(run.says("klin refused an edit to klin.json"), "{}", run.out);
+    assert!(run.says("You set aside 1 shortcut."), "{}", run.out);
+}
+
+#[test]
+fn a_deleted_test_is_matched_by_its_site_so_the_one_restored_beside_it_reads_as_fixed() {
+    let tree = tree(&[
+        stop(
+            200,
+            true,
+            vec![
+                finding("inventory", "tests/pay.rs", 20, "fn refund_twice() {", ""),
+                finding("inventory", "tests/pay.rs", 40, "fn refund_once() {", ""),
+            ],
+            vec![],
+        ),
+        stop(
+            100,
+            false,
+            vec![],
+            vec![
+                json!({"gate": "inventory", "outcome": "deleted", "file": "tests/pay.rs",
+                        "line": 20, "text": "the test site went in this window"}),
+            ],
+        ),
+    ]);
+
+    let json = tree.run(&["stats", "--json"]).json();
+    assert_eq!(json["counts"]["asked-once"], 1, "{json}");
+    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
+    assert_eq!(json["asked"][0]["line"], 20, "{json}");
+}
+
+fn when(mut line: Value, time: u64) -> Value {
+    line["time"] = json!(time);
+    line
+}
+
+#[test]
+fn turn_reads_exactly_the_lines_at_or_after_the_time_the_stamp_was_taken() {
+    let tree = hooked();
+    prompt(&tree);
+    let taken: u64 = tree
+        .field("time")
+        .parse()
+        .unwrap_or_else(|_| panic!("the stamp holds its time"));
+    let old = finding("escapes", "src/old.rs", 1, "unwrap()", UNWRAP);
+    let new = finding("stubs", "src/new.rs", 1, "todo!()", "Do the work.");
+    journal(
+        &tree,
+        &[
+            when(stop(0, true, vec![old], vec![]), taken - 1),
+            when(stop(0, true, vec![new], vec![]), taken),
+        ],
+    );
+
+    let run = tree.run(&["stats", "--turn"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("todo!() in src/new.rs:1"), "{}", run.out);
+    assert!(!run.says("src/old.rs"), "{}", run.out);
 }
 
 /// A journal whose last weekly line went out eight days ago, from a stop under a stamp long gone.

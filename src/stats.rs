@@ -80,7 +80,7 @@ pub struct Episode {
     pub text: String,
     pub remedy: String,
     pub time: u64,
-    /// How many more findings that gate left on that stop beside the one named here.
+    /// How many more findings that gate left on that stop that ended the same way as this one.
     pub more: usize,
     pub outcome: Outcome,
     /// Where, in the lines the episode was read from, the line that ended it sits.
@@ -210,32 +210,27 @@ fn scoped(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Vec<Value> {
                 .cloned()
                 .collect()
         }
-        Scope::Turn => this_turn(lines, turn::commit(root).as_deref()).to_vec(),
+        Scope::Turn => this_turn(lines, turn::taken_at(root)),
         Scope::Session => this_session(lines),
     }
 }
 
-/// The lines since the turn stamp moved. The stamp moves on a reset, on the prompt after a green
-/// stop, and wherever a stop found none to judge against, so the turn opens after the last reset,
-/// the last green stop a prompt followed, and the last stop that judged against another stamp.
-/// Spec 6.2, 11.5.
-fn this_turn<'a>(lines: &'a [Value], stamp: Option<&str>) -> &'a [Value] {
-    let prompted = lines.iter().rposition(|line| kind(line) == "prompt");
-    let moved = |index: usize, line: &Value| {
-        kind(line) == "reset"
-            || judged(line).is_some_and(|before| Some(before) != stamp)
-            || (word(line, "verdict") == "green" && prompted.is_some_and(|after| after > index))
+/// The lines at or after the time the turn stamp was taken, and none where no stamp is readable.
+/// A journal time is a whole second, so a line from the second a reset moved the stamp in would
+/// read as part of the turn, and the reset's own line bounds it instead. Spec 6.2, 11.5.
+fn this_turn(lines: &[Value], since: Option<u64>) -> Vec<Value> {
+    let Some(since) = since else {
+        return Vec::new();
     };
-    let start = (0..lines.len())
-        .rev()
-        .find(|index| moved(*index, &lines[*index]))
+    let reset = lines
+        .iter()
+        .rposition(|line| kind(line) == "reset")
         .map_or(0, |index| index + 1);
-    &lines[start..]
-}
-
-/// The stamp a stop judged against, as its window records it.
-fn judged(line: &Value) -> Option<&str> {
-    line.get("window")?.get("before")?.as_str()
+    lines[reset..]
+        .iter()
+        .filter(|line| at(line) >= since)
+        .cloned()
+        .collect()
 }
 
 /// The lines carrying the newest session id, and the resets among them, which a person runs
@@ -297,9 +292,17 @@ pub fn episodes(lines: &[Value]) -> Vec<Episode> {
         let prompt = excerpt(lines, *index);
         for gate in gates_that_failed(line) {
             let sites: Vec<&Value> = failures(line, &gate).collect();
-            let Some(first) = sites.first() else { continue };
-            let ended = resolve(lines, &stops, turn, &gate, word(first, "file"));
-            out.push(episode(first, &gate, line, sites.len() - 1, ended, &prompt));
+            for (outcome, ended, held) in resolve(lines, &stops, turn, &gate, sites) {
+                let more = held.len() - 1;
+                out.push(episode(
+                    held[0],
+                    &gate,
+                    line,
+                    more,
+                    (outcome, ended),
+                    &prompt,
+                ));
+            }
         }
     }
     out.sort_by_key(|one| Reverse(one.time));
@@ -365,36 +368,57 @@ fn gates_that_failed(line: &Value) -> Vec<String> {
 
 /// How the episode ended, and where the line that ended it sits, read from the lines after the
 /// stop that blocked. A site klin let through after it asked is an ask, and never a fix: the code
-/// is as the agent left it.
-fn resolve(
+/// is as the agent left it. The sites it let through end apart from the ones beside them.
+fn resolve<'a>(
     lines: &[Value],
     stops: &[usize],
     turn: usize,
     gate: &str,
-    file: &str,
-) -> (Outcome, Option<usize>) {
+    mut left: Vec<&'a Value>,
+) -> Vec<(Outcome, Option<usize>, Vec<&'a Value>)> {
     let from = stops.get(turn).map_or(lines.len(), |index| index + 1);
+    let mut ended = Vec::new();
     let mut seen = 0;
     for (index, line) in lines.iter().enumerate().skip(from) {
         match kind(line) {
-            "reset" => return (Outcome::Reset, Some(index)),
-            "stop" => {}
+            "reset" => {
+                ended.push((Outcome::Reset, Some(index), left));
+                return ended;
+            }
+            "stop" if measured(line, gate) => {}
             _ => continue,
         }
         seen += 1;
-        if let_through(line, gate, file) {
-            return (Outcome::AskedOnce, Some(index));
+        let (through, rest) = left
+            .into_iter()
+            .partition::<Vec<_>, _>(|site| let_through(line, gate, site));
+        if !through.is_empty() {
+            ended.push((Outcome::AskedOnce, Some(index), through));
         }
-        if !clear(line, gate) {
-            continue;
+        left = rest;
+        if left.is_empty() || clear(line, gate) {
+            return cleared(ended, seen, index, left);
         }
-        let outcome = match seen {
-            1 => Outcome::FixedNext,
-            _ => Outcome::FixedLater,
-        };
-        return (outcome, Some(index));
     }
-    (Outcome::Open, None)
+    ended.push((Outcome::Open, None, left));
+    ended
+}
+
+fn cleared<'a>(
+    mut ended: Vec<(Outcome, Option<usize>, Vec<&'a Value>)>,
+    seen: usize,
+    index: usize,
+    left: Vec<&'a Value>,
+) -> Vec<(Outcome, Option<usize>, Vec<&'a Value>)> {
+    if left.is_empty() {
+        return ended;
+    }
+    let outcome = match seen {
+        1 => Outcome::FixedNext,
+        _ => Outcome::FixedLater,
+    };
+    ended.push((outcome, Some(index), left));
+    ended
 }
 
 /// Whether this stop ran the gate and the gate passed. A gate the stop carries no row for did
@@ -406,13 +430,20 @@ fn clear(line: &Value, gate: &str) -> bool {
         .any(|row| word(row, "name") == gate && word(row, "status") == "ok")
 }
 
+fn measured(line: &Value, gate: &str) -> bool {
+    list(line, "gates")
+        .iter()
+        .any(|row| word(row, "name") == gate && word(row, "status") != "ERR")
+}
+
 /// Whether this stop recorded the site as one it let through after an earlier stop asked about
 /// it, which is a note and not a finding. Spec 8.2.
-fn let_through(line: &Value, gate: &str, file: &str) -> bool {
+fn let_through(line: &Value, gate: &str, site: &Value) -> bool {
     list(line, "notes").iter().any(|note| {
         word(note, "gate") == gate
-            && word(note, "file") == file
             && word(note, "outcome") == "deleted"
+            && word(note, "file") == word(site, "file")
+            && note.get("line") == site.get("line")
     })
 }
 
@@ -789,9 +820,20 @@ fn text(out: &mut String, args: &Args, start: &Path, read: &Reading) {
     measurement(out, read.lines, read.skipped);
 }
 
+fn questions(asked: &[Asked]) -> usize {
+    asked
+        .iter()
+        .filter(|asked| match asked {
+            Asked::Guard { decision, .. } => *decision == "ask",
+            Asked::Reset { .. } => false,
+            Asked::Deleted(_) => true,
+        })
+        .count()
+}
+
 fn lead(out: &mut String, read: &Reading) {
     if read.episodes.is_empty() {
-        let asked = match read.asked.len() {
+        let asked = match questions(read.asked) {
             0 => "asked nothing".to_string(),
             count => format!("asked you {}", times(count)),
         };
@@ -802,7 +844,7 @@ fn lead(out: &mut String, read: &Reading) {
         );
         return;
     }
-    let (head, still) = headline(read.episodes, read.asked.len());
+    let (head, still) = headline(read.episodes, questions(read.asked));
     let _ = writeln!(out, "{head}");
     if let Some(still) = still {
         let _ = writeln!(out, "{still}");
@@ -865,7 +907,7 @@ fn periods(days: u64) -> (String, String) {
 fn ran(lines: &[Value]) -> String {
     let ms: u64 = lines
         .iter()
-        .filter_map(|line| line.get("timing").and_then(|timing| timing.get("total_ms")))
+        .filter_map(|line| line.get("timing").and_then(|timing| timing.get("klin_ms")))
         .filter_map(Value::as_u64)
         .sum();
     let spent = match ms {

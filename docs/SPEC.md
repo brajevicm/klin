@@ -1826,10 +1826,10 @@ reports and judges nothing.
 
 Two more scopes replace the window of days, and the three exclude each other:
 
-- `--turn` reads the lines since the current turn stamp moved: after the last
-  `reset` line, after the last green stop a `prompt` line followed, and after
-  the last stop whose `window` names another stamp. A reset starts the report
-  over, as it starts the judgment over (6.2).
+- `--turn` reads the lines at or after the time the current turn stamp was
+  taken (6.2), and none where no stamp is readable. A journal time is a whole
+  second, so the last `reset` line bounds the scope too: a reset starts the
+  report over, as it starts the judgment over.
 - `--session` reads the lines carrying the newest `session` id the journal
   holds, and the `reset` lines among them, which carry none and still end the
   episodes before them.
@@ -1840,17 +1840,18 @@ block, so one stop with three failing gates is one blocked stop and three
 interventions. Its **outcome** is a relation between that line and the lines
 after it, which the writer never stores:
 
-- `fixed-next`, the gate ran and passed on the next stop
-- `fixed-later`, the gate ran and passed on a later stop in the window
-- `asked-once`, a later stop recorded the site as one klin let through after
-  it asked (8.2), so the code is as the agent left it and the fix is the
-  person's to make
+- `fixed-next`, the gate passed on the next stop that ran it
+- `fixed-later`, the gate passed on a later stop in the window that ran it
+- `asked-once`, a later stop recorded the site, by its gate, file and line,
+  as one klin let through after it asked (8.2), so the code is as the agent
+  left it and the fix is the person's to make. The sites that stop let through
+  end apart from the rest of the intervention, which ends as its gate does
 - `reset`, a person moved the turn stamp before the gate went clear
 - `open`, no stop in the window ran the gate and passed it
 
 A gate the stop's `gates` list of 11.2 carries no row for did not run, and a
 row that says `ERR` measured nothing. Neither ends an episode, because neither
-says the site went.
+says the site went, and neither counts as the next stop.
 
 Nothing in the reader names a check. A line for a gate the binary has no
 check for is read and printed like any other.
@@ -1862,8 +1863,8 @@ files the window's stops could not read or measure, counted once each), `counts`
 fixed-later, reset, open, asked-once}`, `episodes`, `asked` and `earlier`.
 `episodes` is a list of `{gate, file, line, text, remedy, time, more, outcome,
 prompt}` newest first, where `more` is how many further findings that gate
-left on that stop and `prompt` is the excerpt of 11.4 the stop ran under, or
-null. `asked` is a list of `{time, kind, decision, reason, file, line}` newest
+left on that stop ended the same way and `prompt` is the excerpt of 11.4 the
+stop ran under, or null. `asked` is a list of `{time, kind, decision, reason, file, line}` newest
 first, one for each item of `You were asked`: `kind` is `guard`, `reset` or
 `asked-once`, and a field that does not apply to the kind is null. `earlier`
 is `{caught, open}` for the window before this one, or null where the journal
@@ -1880,9 +1881,10 @@ The text has these line shapes:
   of them on its own and asked you N times.` The fixed half reads `fixed it`,
   `fixed both` or `fixed all N` where the agent fixed every one, and `asked
   you once` for one. Each half is left out where its count is zero, so the
-  sentence can read `The agent asked you once.` The asked count is the items
-  of `You were asked`. Then `One is still there.` or `N are still there.` on
-  its own line
+  sentence can read `The agent asked you once.` The asked count is the guard
+  asks and `asked-once` episodes of `You were asked`: a guard refusal and a
+  reset ask the person nothing. Then `One is still there.` or `N are still
+  there.` on its own line
 - the groups `Still there`, `Fixed after klin asked` and `You were asked`, in
   that order, and no heading carries a count. An open item reads `SITE in
   FILE:LINE, left on DAY` and carries its check's remedy on the line under it;
@@ -1921,13 +1923,14 @@ The text has these line shapes:
   journal is read. The two names follow the title: `Yesterday` and `Today`,
   `Last week` and `This week`, `Last month` and `This month`, or `The N days
   before` and `These N days`
-- `klin ran N times and took N seconds in total.`
+- `klin ran N times and took N seconds in total.`, where the seconds are
+  klin's own time, the `klin_ms` of 11.4, and never the project's build (13)
 - `Measurement`, with what klin skipped or could not read under it, printed
   only where there was something. Green with half the tree unparsed is the
   one lie the report must not tell.
 - `klin caught no shortcuts. klin ran N times and asked nothing.` for a
   window with no intervention, with `asked you N times` in place of `asked
-  nothing` where `You were asked` holds items, and `klin started watching today. Come back
+  nothing` where the window holds guard asks, and `klin started watching today. Come back
   after a few turns.` for a journal with no line at all.
 
 No word of the agent's glossary appears in the text, and the report carries

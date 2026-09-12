@@ -205,12 +205,11 @@ pub fn prompts(at: &Path) -> u64 {
     read(at).map_or(0, |held| held.prompts)
 }
 
-/// The commit the current turn stamp names, which every stop under it judged against, and `None`
-/// when no stamp is readable. Spec 11.5.
-pub fn commit(root: &Path) -> Option<String> {
+/// When the current turn stamp was taken, and `None` when no stamp is readable. Spec 11.5.
+pub fn taken_at(root: &Path) -> Option<u64> {
     state::dir(root)
         .and_then(|at| read(&at))
-        .and_then(|held| held.commit)
+        .map(|held| held.time)
 }
 
 /// The findings a stop's block already put in front of the agent under the current stamp. The
