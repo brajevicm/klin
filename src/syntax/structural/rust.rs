@@ -11,6 +11,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     methods_in: &["impl_item", "trait_item"],
     visible,
     imported,
+    remapped,
 };
 
 const PATTERNS: &str = r"
@@ -70,6 +71,30 @@ fn bound(node: Node, source: &[u8], out: &mut Vec<String>) {
         "use_list" => listed(node, source, out),
         _ => {}
     }
+}
+
+/// The file an attribute above a module declaration sends it to, which Rust writes
+/// `#[path = "other.rs"]`. Resolving it is #50's work, so the name is kept as it was written.
+fn remapped(node: Node, source: &[u8]) -> Option<String> {
+    let mut above = node.prev_named_sibling();
+    while let Some(held) = above.filter(|held| held.kind() == "attribute_item") {
+        if let Some(file) = sends_to(held, source) {
+            return Some(file);
+        }
+        above = held.prev_named_sibling();
+    }
+    None
+}
+
+fn sends_to(item: Node, source: &[u8]) -> Option<String> {
+    let attribute = item
+        .named_child(0)
+        .filter(|held| held.kind() == "attribute")?;
+    if text_of(attribute.named_child(0)?, source) != "path" {
+        return None;
+    }
+    let named = attribute.child_by_field_name("value")?;
+    Some(text_of(named, source).trim_matches('"').to_string())
 }
 
 fn follow(node: Node, field: &str, source: &[u8], out: &mut Vec<String>) {

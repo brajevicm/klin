@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use regex::Regex;
 use serde_json::Value;
-use tree_sitter::Node;
 
 use crate::base;
 use crate::config::{Config, Error, Flags};
@@ -79,12 +78,6 @@ pub fn language_extensions(kind: &Kind) -> Vec<(&'static str, String)> {
 }
 
 const EVERY_FILE: &str = "";
-const PRELUDE: &[&str] = &[
-    "attribute_item",
-    "line_comment",
-    "block_comment",
-    "doc_comment",
-];
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -537,7 +530,7 @@ fn cached(
         .entry(rel.to_string())
         .or_insert_with(|| Skipped {
             tests: match kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
-                true => rust_test_ranges(rel, text),
+                true => syntax::convention::test_module_ranges(rel, text),
                 false => Vec::new(),
             },
             literals: match kind.skips_literals {
@@ -673,45 +666,4 @@ fn closing(bytes: &[u8], from: usize, quote: u8) -> Option<usize> {
         }
     }
     None
-}
-
-/// The line ranges an inline Rust test module covers, read off whatever the grammar could
-/// make of the text, so a file it only partly read still has its tests skipped.
-fn rust_test_ranges(path: &str, source: &str) -> Vec<(u64, u64)> {
-    let Some(file) = syntax::tolerant(path, source) else {
-        return Vec::new();
-    };
-    let mut out = Vec::new();
-    test_ranges(file.root(), file.bytes(), &mut out);
-    out
-}
-
-fn test_ranges(node: Node, source: &[u8], out: &mut Vec<(u64, u64)>) {
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        if child.kind() == "attribute_item" && is_cfg_test(child, source) {
-            out.push((
-                child.start_position().row as u64 + 1,
-                item_after(child).end_position().row as u64 + 1,
-            ));
-            continue;
-        }
-        test_ranges(child, source, out);
-    }
-}
-
-fn item_after(attribute: Node) -> Node {
-    let mut node = attribute;
-    while let Some(next) = node.next_named_sibling() {
-        node = next;
-        if !PRELUDE.contains(&node.kind()) {
-            break;
-        }
-    }
-    node
-}
-
-fn is_cfg_test(node: Node, source: &[u8]) -> bool {
-    node.utf8_text(source)
-        .is_ok_and(|text| text.split_whitespace().collect::<String>() == "#[cfg(test)]")
 }

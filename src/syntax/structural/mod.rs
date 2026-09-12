@@ -31,6 +31,10 @@ pub struct Declaration {
     pub name: String,
     pub kind: DeclarationKind,
     pub line: u64,
+    /// The last line the declaration covers, so a consumer can tell a reference written inside
+    /// the declaration from one written outside it. A declaration with no body ends where it
+    /// starts.
+    pub end: u64,
     pub text: String,
     /// True where the syntax alone shows the declaration is exposed past the file that holds
     /// it. A doubt reads as exposed, so a dead-symbol check under-reports and never over-reports.
@@ -51,6 +55,9 @@ pub struct ModuleDecl {
     pub line: u64,
     pub text: String,
     pub name: String,
+    /// The file the declaration names instead of its own name, where the language can say so.
+    /// Rust writes it `#[path = "other.rs"]`. Resolving either to a file is #50's work.
+    pub path: Option<String>,
 }
 
 pub struct Reference {
@@ -120,6 +127,22 @@ pub fn supports(id: LanguageId) -> bool {
     adapter(id).is_some()
 }
 
+/// The languages a structural check can be configured for, each with the one name it is named
+/// by. A grammar variant is not one of them: `tsx` selects a grammar for the `complexity`
+/// table and can never name a structural language here, because a `.tsx` file is TypeScript.
+/// Every structural consumer reads its `languages` key through this, so none of them holds a
+/// language name of its own. ADR 0035.
+pub fn languages() -> Vec<(&'static str, LanguageId)> {
+    let mut out: Vec<(&'static str, LanguageId)> = Vec::new();
+    for language in LANGUAGES.iter().filter(|row| supports(row.id)) {
+        let named = out.iter().any(|(_, id)| *id == language.id);
+        if let (false, Some(name)) = (named, language.names.first()) {
+            out.push((name, language.id));
+        }
+    }
+    out
+}
+
 /// What one language adapter states. A query names the node kinds that declare something, and
 /// the capture name says what kind of thing; everything else is the handful of judgments a
 /// query cannot make.
@@ -131,6 +154,8 @@ pub(crate) struct Adapter {
     pub methods_in: &'static [&'static str],
     pub visible: fn(Node) -> bool,
     pub imported: fn(Node, &[u8]) -> Imported,
+    /// The file a module declaration was remapped to, for a language that writes such a thing.
+    pub remapped: fn(Node, &[u8]) -> Option<String>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept
@@ -250,6 +275,7 @@ impl<'a> Reading<'a> {
             line: self.row(node),
             text: self.text(node),
             name: text_of(name, self.source),
+            path: (self.adapter.remapped)(node, self.source),
         });
     }
 
@@ -265,6 +291,7 @@ impl<'a> Reading<'a> {
             name: text_of(name, self.source),
             kind: self.kind(capture, node),
             line: self.row(node),
+            end: node.end_position().row as u64 + 1,
             text: self.text(node),
             externally_visible: (self.adapter.visible)(node),
         });
@@ -553,6 +580,40 @@ export function charge(at: number): number {
         for name in ["Outcome", "Money", "NAME"] {
             assert!(!declaration(&facts, name).externally_visible, "{name}");
         }
+    }
+
+    /// What #52 tells a reference inside a declaration from one outside it by.
+    #[test]
+    fn a_declaration_spans_from_its_line_to_its_end() {
+        let source = "pub const CEILING: u64 = 10;\npub fn charge() -> u64 {\n    1\n}\n";
+        let facts = measured_facts("src/pay.rs", source);
+        let ceiling = declaration(&facts, "CEILING");
+        assert_eq!((ceiling.line, ceiling.end), (1, 1));
+        let charge = declaration(&facts, "charge");
+        assert_eq!((charge.line, charge.end), (2, 4));
+    }
+
+    #[test]
+    fn a_rust_module_declaration_keeps_the_file_an_attribute_sends_it_to() {
+        let source = "#[path = \"other.rs\"]\nmod moved;\n\nmod plain;\n";
+        let facts = measured_facts("src/pay.rs", source);
+        let held: Vec<(&str, Option<&str>)> = facts
+            .module_declarations
+            .iter()
+            .map(|found| (found.name.as_str(), found.path.as_deref()))
+            .collect();
+        assert_eq!(held, vec![("moved", Some("other.rs")), ("plain", None)]);
+    }
+
+    #[test]
+    fn the_structural_languages_are_named_once_each_and_tsx_is_not_one() {
+        assert_eq!(
+            languages(),
+            vec![
+                ("rust", LanguageId::Rust),
+                ("typescript", LanguageId::TypeScript)
+            ]
+        );
     }
 
     #[test]

@@ -6,7 +6,7 @@
 use tree_sitter::Node;
 
 use crate::ratchet;
-use crate::syntax::{Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read};
+use crate::syntax::{Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read, tolerant};
 
 /// The declaration a language's test convention names a test function by, anywhere on the
 /// declaration line, so a modifier before it is allowed. Fixed in the binary, the way the
@@ -45,10 +45,15 @@ pub fn tests(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Vec<Test
         });
         return Vec::new();
     };
+    tests_in(&file)
+}
+
+/// The same, for a caller that already holds the parse, so no check reads one file twice.
+pub fn tests_in(file: &ParsedFile) -> Vec<Test> {
     let lines = file.lines();
     file.functions()
         .into_iter()
-        .filter_map(|node| declared(path, node, &lines))
+        .filter_map(|node| declared(file.path, node, &lines))
         .collect()
 }
 
@@ -299,4 +304,55 @@ fn named(node: Node, source: &[u8], wanted: &[&str]) -> bool {
     let text = node.utf8_text(source).unwrap_or_default();
     let tail = text.rsplit('.').next().unwrap_or(text);
     wanted.contains(&tail)
+}
+
+/// The declarations Rust may write between an attribute and the item it marks, which the walk
+/// steps over to reach that item.
+const PRELUDE: &[&str] = &[
+    "attribute_item",
+    "line_comment",
+    "block_comment",
+    "doc_comment",
+];
+
+/// The line ranges an inline Rust test module covers, which `escapes` skips by the rule of
+/// spec 8.2. Read off whatever the grammar could make of the text, so a file it only partly
+/// read still has its tests skipped. Nothing for a path no grammar here reads.
+pub fn test_module_ranges(path: &str, source: &str) -> Vec<(u64, u64)> {
+    let Some(file) = tolerant(path, source) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    marked_ranges(file.root(), file.bytes(), &mut out);
+    out
+}
+
+fn marked_ranges(node: Node, source: &[u8], out: &mut Vec<(u64, u64)>) {
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "attribute_item" && is_cfg_test(child, source) {
+            out.push((
+                child.start_position().row as u64 + 1,
+                item_after(child).end_position().row as u64 + 1,
+            ));
+            continue;
+        }
+        marked_ranges(child, source, out);
+    }
+}
+
+fn item_after(attribute: Node) -> Node {
+    let mut node = attribute;
+    while let Some(next) = node.next_named_sibling() {
+        node = next;
+        if !PRELUDE.contains(&node.kind()) {
+            break;
+        }
+    }
+    node
+}
+
+fn is_cfg_test(node: Node, source: &[u8]) -> bool {
+    node.utf8_text(source)
+        .is_ok_and(|text| text.split_whitespace().collect::<String>() == "#[cfg(test)]")
 }

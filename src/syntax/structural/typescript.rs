@@ -18,6 +18,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     methods_in: &[],
     visible,
     imported,
+    remapped,
 };
 
 const PATTERNS: &str = r#"
@@ -53,6 +54,11 @@ fn imported(node: Node, source: &[u8]) -> Imported {
             .map(|from| specifier(from, source)),
         names: bindings(node, source),
     }
+}
+
+/// TypeScript writes no module declaration, so none of them is remapped.
+fn remapped(_: Node, _: &[u8]) -> Option<String> {
+    None
 }
 
 fn specifier(node: Node, source: &[u8]) -> String {

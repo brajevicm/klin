@@ -11,13 +11,13 @@ check the foundation of every syntax-aware feature klin plans.
 ## The decision
 
 `syntax` owns the parser mechanics, and nothing above it builds a
-`tree_sitter::Parser`:
+`tree_sitter::Parser` or reads a node kind of a language's grammar:
 
 - the language registry, and which grammar reads which path
 - the parse, and the file the grammar rejected (ADR 0003)
 - the function node kinds a language writes
-- the test convention and the placeholder body shapes, which `inventory` and
-  `stubs` share
+- the test convention, the placeholder body shapes and the inline test module,
+  which `inventory`, `stubs` and `escapes` share
 
 `complexity` keeps complexity policy: the decision node kinds, the operators,
 the cyclomatic calculation, the two ceilings and the findings. A check that
@@ -38,8 +38,12 @@ only.
 A logical language is not a grammar variant. `.ts`, `.mts` and `.cts` are read
 by one grammar and `.tsx` by another, and both report the language
 `TypeScript`. TSX is a name inside the registry, printed when that grammar
-rejects a file; it is never a structural language a configuration or a
-consumer can name.
+rejects a file, and `complexity` has long let a configuration select it as a
+file set.
+
+`structural::languages()` is where a structural check reads its configured
+languages from, and `tsx` is not in what it returns. One list, so no consumer
+holds a language name of its own and none of them has to refuse that one.
 
 ### Resolution is by name, and it is deliberately coarse
 
@@ -58,8 +62,13 @@ extractor. A consumer that needs a sharper answer sharpens the adapter, not
 the consumer.
 
 Resolving an import or a `mod foo;` to a file is a separate capability, owned
-by #50. The raw specifier and the module name are kept so that work needs no
-second parse.
+by #50. The raw specifier, the module name and the file an attribute remapped
+the module to are kept so that work needs no second parse.
+
+A declaration carries the line it ends on as well as the line it starts on,
+because a check that asks whether anything outside a declaration uses it
+cannot ask without that. A consumer that already holds a parse reads the test
+convention off it rather than parsing the file again.
 
 ### A file nothing measured says so
 

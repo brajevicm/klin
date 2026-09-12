@@ -279,7 +279,7 @@ pub fn read<'a>(
 /// The tree a grammar made of a text, error nodes and all, for a reader that wants whatever
 /// could be read rather than a verdict on the file. Nothing here is an unparsed file: ADR 0003
 /// belongs to `read`, and a reader that comes this way says so in its own words.
-pub fn tolerant<'a>(path: &'a str, source: &'a str) -> Option<ParsedFile<'a>> {
+pub(crate) fn tolerant<'a>(path: &'a str, source: &'a str) -> Option<ParsedFile<'a>> {
     let language = language_of(path)?;
     Some(ParsedFile {
         path,
