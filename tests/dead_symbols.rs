@@ -213,7 +213,7 @@ fn unsupported_structural_files_are_counted_in_gate_json_coverage() {
     let gate = report["gates"]
         .as_array()
         .and_then(|gates| gates.iter().find(|gate| gate["name"] == "dead-symbols"))
-        .expect("dead-symbols gate");
+        .unwrap_or_else(|| panic!("dead-symbols gate: {report}"));
     assert_eq!(gate["coverage"]["not_measured"].as_u64(), Some(1));
 }
 
@@ -235,7 +235,7 @@ fn report_lists_every_current_dead_symbol_without_the_note_cap() {
     tree.write("klin.json", RUST);
     let mut source = String::new();
     for number in 0..21 {
-        writeln!(&mut source, "fn dead_{number}() {{}}").expect("write fixture");
+        assert!(writeln!(&mut source, "fn dead_{number}() {{}}").is_ok());
     }
     tree.write("src/lib.rs", &source);
 

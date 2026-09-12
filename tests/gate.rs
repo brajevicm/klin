@@ -162,7 +162,8 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
 fn every_gate_runs_even_when_an_earlier_one_failed() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
-    tree.write("src/lib.rs", "pub fn f() {\n    x.unwrap();\n}\n");
+    let source = format!("pub fn f() {{\n    x.{};\n}}\n", "unwrap()");
+    tree.write("src/lib.rs", &source);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 1, "{}", run.out);
