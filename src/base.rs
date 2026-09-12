@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::changed::{self, Change, git};
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -165,25 +166,25 @@ fn written(
 
 /// The base commit a gate judges against: the one the runner chose, or the one this gate
 /// chooses for itself and names once in the report. Spec 6.1.
-pub fn commit(root: &Path, flags: &Flags, out: &mut String) -> Result<String, Error> {
-    match &flags.base {
-        Some(commit) => Ok(commit.clone()),
-        None => Ok(announced(root, flags, out)?.before),
+pub fn commit(root: &Path, at: &Context, out: &mut Sink) -> Result<String, Error> {
+    match at.base {
+        Some(commit) => Ok(commit.to_string()),
+        None => Ok(announced(root, at, out)?.before),
     }
 }
 
 /// The base a gate the runner did not lay out chooses for itself, named once in the report.
-pub fn announced(root: &Path, flags: &Flags, out: &mut String) -> Result<Window, Error> {
-    let base = choose(root, flags.strict)?;
-    if flags.context {
-        let _ = writeln!(out, "{}", base.line());
+pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Error> {
+    let base = choose(root, at.strict)?;
+    if at.context() {
+        let _ = writeln!(out.text, "{}", base.line());
     }
     Ok(base)
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
-pub fn own(config: &Config, flags: &Flags, out: &mut String) -> Result<Prior, Error> {
-    let base = announced(config.root(), flags, out)?;
+pub fn own(config: &Config, at: &Context, out: &mut Sink) -> Result<Prior, Error> {
+    let base = announced(config.root(), at, out)?;
     materialize(config, &base.before, None)
 }
 

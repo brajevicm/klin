@@ -1,0 +1,348 @@
+//! What a check is, told once. A check is handed an immutable `Context` — who called it, which
+//! gate it judges under, what base it compares against, what scope it may look at — and it
+//! writes to an explicit `Sink`: the report text a person reads, and the `Records` the runner
+//! turns into the 11.2 object. Nothing about a run reaches a check any other way, so the runner
+//! keeps no side channel into it and a check keeps no state of its own.
+//!
+//! The `CATALOGUE` is the one table of the checks klin has. The runner takes its gates from it,
+//! `config` takes the section names it accepts from it, `reference` prints it, and `survey`
+//! reads which sections it derives from it. A new check is one row here beside its Clap command,
+//! and a CLI test fails when only one of the two is written. ADR 0036.
+
+use std::path::Path;
+
+use serde_json::Value;
+
+use crate::config::{Config, Error};
+use crate::reference::{Key, Languages};
+use crate::{
+    complexity, doc_citations, doc_size, escapes, inventory, lockfile, markers, sarif, stubs,
+    syntax,
+};
+
+/// The outcome of a file no grammar reads. The hook counts these to report the holes a
+/// person must close, and nothing else in a run turns on it.
+pub const UNPARSED: &str = "unparsed";
+
+/// The outcome of a test the base holds that went in the window, which fails nothing. A stop the
+/// hook lets end hands it to a person. Spec 8.2.
+pub const DELETED: &str = "deleted";
+
+/// Everything a run records about what it judged, which the runner prints as the one object of
+/// spec 11.2 and the journal writes as the stop's line. There is one of these per gate, gathered
+/// into one for the run. A check a person runs by hand has none, and records nothing.
+#[derive(Default)]
+pub struct Records {
+    pub findings: Vec<Value>,
+    pub notes: Vec<Value>,
+    /// One row per gate the run judged, which only the runner fills in. Spec 11.2.
+    pub gates: Vec<Value>,
+    /// What scope the gate measured, which every check records once. Spec 11.2.
+    pub coverage: Option<Value>,
+    /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
+    pub derived: Vec<Value>,
+    /// The count the check's own `OK:` line prints as held at the base, which the runner puts
+    /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
+    pub held: Option<u64>,
+}
+
+/// Who ran this check. A person running one by hand gets the run's own context lines and no
+/// records; the runner gets neither, because it prints the context once for the whole run; the
+/// stop hook is the runner again, where a hole the agent cannot fix is a note and not a failure.
+/// Spec 4.3, 8.2, 11.1.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Caller {
+    Hand,
+    Gate,
+    Hook,
+}
+
+/// What a check needs of the base: nothing, the commit the window names, or that commit laid
+/// out as a tree beside the working one. A check that needs the commit or the tree is also the
+/// kind `--strict` reaches, because it has a comparison or an accepted list to judge. Spec
+/// 4.6, 10.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Needs {
+    Nothing,
+    TheCommit,
+    TheTree,
+}
+
+impl Needs {
+    /// Whether the run resolves the base commit for this check, which is also whether
+    /// `--strict` reaches it. Spec 4.6, 10.
+    pub fn the_commit(self) -> bool {
+        self >= Needs::TheCommit
+    }
+
+    /// Whether the run lays the base commit out as a tree for this check.
+    pub fn the_tree(self) -> bool {
+        self == Needs::TheTree
+    }
+}
+
+/// Everything one check is told, and nothing it writes. Borrowed for the length of the call, so
+/// a check cannot keep any of it and cannot change it.
+pub struct Context<'a> {
+    /// The name of the gate being run, which the accepted list names.
+    pub gate: &'a str,
+    /// The working directory the run started in, which the config is found from.
+    pub start: &'a Path,
+    pub config: Option<&'a Path>,
+    /// The base commit, already laid out as a directory by the runner.
+    pub prior: Option<&'a Path>,
+    /// The base commit the runner chose, for a gate that reads the base tree out of git.
+    pub base: Option<&'a str>,
+    /// The files a scoped run judges, and `None` for a run that judges everything.
+    pub only: Option<&'a [String]>,
+    /// The section a `gates` entry states for this one gate, which stands in for the config's.
+    pub with: Option<(&'a str, &'a Value)>,
+    pub caller: Caller,
+    pub strict: bool,
+    /// Print nothing on success: no `OK:` line, and nothing under it.
+    pub quiet: bool,
+}
+
+impl Context<'_> {
+    /// Whether this check says the run's own context for itself: the `window:` line and the
+    /// `derived:` lines. The runner prints those once for the whole run, so only a check a
+    /// person ran by hand says them here. Spec 4.3, 11.1.
+    pub fn context(&self) -> bool {
+        self.caller == Caller::Hand && !self.quiet
+    }
+
+    /// Whether the Stop hook runs this gate, so a hole the agent cannot fix is a note, not a
+    /// failure.
+    pub fn hook(&self) -> bool {
+        self.caller == Caller::Hook
+    }
+
+    /// The `derived:` and `pinned:` lines about one section, written out by a check a person ran
+    /// by hand and by nothing else. Spec 4.3.
+    pub fn say(&self, config: &Config, section: &str, out: &mut Sink) {
+        if self.context() {
+            config.say(section, out.text);
+        }
+    }
+}
+
+impl<'a> Context<'a> {
+    /// A check a person ran by hand: no runner, so no base laid out for it, no scope from a
+    /// window and no `gates` entry standing in for its section. A command states the rest.
+    pub fn by_hand(gate: &'a str, start: &'a Path, config: Option<&'a Path>) -> Context<'a> {
+        Context {
+            gate,
+            start,
+            config,
+            prior: None,
+            base: None,
+            only: None,
+            with: None,
+            caller: Caller::Hand,
+            strict: false,
+            quiet: false,
+        }
+    }
+}
+
+/// Where a check writes: the report a person reads, and the records the runner keeps. A check a
+/// person runs by hand has no records, and every `record` call on it does nothing.
+pub struct Sink<'a> {
+    pub text: &'a mut String,
+    pub records: Option<&'a mut Records>,
+}
+
+impl<'a> Sink<'a> {
+    /// A sink that only prints, for a check a person runs by hand. Nothing records the run, so
+    /// every `record` call on it does nothing.
+    pub fn unrecorded(text: &'a mut String) -> Sink<'a> {
+        Sink {
+            text,
+            records: None,
+        }
+    }
+
+    pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
+        if let Some(records) = self.records.as_deref_mut() {
+            add(records);
+        }
+    }
+}
+
+pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
+
+/// One row of the catalogue: one check, as the runner, the configuration, the reference and
+/// the survey all read it.
+pub struct Row {
+    /// What a `gates` entry and `--gate` call this check, which for two checks is not the name
+    /// of the section they read.
+    pub name: &'static str,
+    pub section: &'static str,
+    /// The configuration keys the section reads, declared in the check's own module and printed
+    /// by `klin reference`. Spec 5.8.
+    pub keys: &'static [Key],
+    /// The language names this section selects a file set by, and none for a check that selects
+    /// no language. Spec 5.8.
+    pub languages: Option<Languages>,
+    /// The keys the survey supplies for this section, an empty list for a section it supplies
+    /// whole, and `None` for a section it never derives. Spec 4.3, 5.2.
+    pub derives: Option<&'static [&'static str]>,
+    pub run: Run,
+    pub needs: Needs,
+    pub takes_scope: bool,
+    /// Whether the section is a list of entries a person writes, each its own gate under its
+    /// own `name`, rather than one section the whole check runs under. Spec 8.3.
+    pub gate_per_entry: bool,
+}
+
+pub const CATALOGUE: &[Row] = &[
+    Row {
+        name: "doc-size",
+        section: doc_size::SECTION,
+        keys: doc_size::KEYS,
+        languages: None,
+        derives: Some(&[]),
+        run: doc_size::gate,
+        needs: Needs::Nothing,
+        takes_scope: false,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "doc-citations",
+        section: doc_citations::SECTION,
+        keys: doc_citations::KEYS,
+        languages: None,
+        derives: Some(&[]),
+        run: doc_citations::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "lockfile",
+        section: lockfile::SECTION,
+        keys: lockfile::KEYS,
+        languages: None,
+        derives: Some(lockfile::DERIVED),
+        run: lockfile::gate,
+        needs: Needs::TheTree,
+        takes_scope: false,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "escapes",
+        section: escapes::SECTION,
+        keys: escapes::KIND.keys,
+        languages: Some(escapes::language_extensions),
+        derives: Some(markers::DERIVED),
+        run: escapes::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "stubs",
+        section: stubs::SECTION,
+        keys: stubs::KIND.keys,
+        languages: Some(stubs::language_extensions),
+        derives: Some(markers::DERIVED),
+        run: stubs::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "inventory",
+        section: inventory::SECTION,
+        keys: inventory::KEYS,
+        languages: None,
+        derives: Some(&[]),
+        run: inventory::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "complexity",
+        section: complexity::SECTION,
+        keys: complexity::KEYS,
+        languages: Some(syntax::language_extensions),
+        derives: Some(complexity::DERIVED),
+        run: complexity::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "sarif",
+        section: sarif::SECTION,
+        keys: sarif::KEYS,
+        languages: None,
+        derives: None,
+        run: sarif::gate,
+        needs: Needs::TheCommit,
+        takes_scope: false,
+        gate_per_entry: true,
+    },
+];
+
+/// The section each check reads, which config.rs judges the top-level keys against.
+pub fn sections() -> impl Iterator<Item = &'static str> {
+    CATALOGUE.iter().map(|check| check.section)
+}
+
+/// The section behind a key that is what the command is called, so an error can say which of
+/// the two the config wants. `None` for a check whose name is its section.
+pub fn command_named(key: &str) -> Option<&'static str> {
+    CATALOGUE
+        .iter()
+        .find(|check| check.name != check.section && check.name == key)
+        .map(|check| check.section)
+}
+
+/// Every check by name, for the errors that list what a person may write.
+pub fn names() -> impl Iterator<Item = &'static str> {
+    CATALOGUE.iter().map(|check| check.name)
+}
+
+/// The keys the survey supplies for a section, and `None` for a section it never derives.
+pub fn derives(section: &str) -> Option<&'static [&'static str]> {
+    CATALOGUE
+        .iter()
+        .find(|check| check.section == section)?
+        .derives
+}
+
+/// The key every entry of a named section carries, whichever check reads the section.
+pub const NAMED: Key = Key {
+    name: "name",
+    holds: "the gate's own name, which `--gate` takes",
+    required: true,
+    rule: None,
+    default: "",
+};
+
+/// The entries of a section a person writes entry by entry, each with the name its gate takes.
+/// Such a section is a list, and an entry with no `name` is a config error naming the key,
+/// because nothing in a tree says which tool the entry runs. The check that reads one entry
+/// reads its own list through this, so a gate's name is the name the check judges under.
+/// Spec 8.3.
+pub fn named_entries(config: &Config, section: &str) -> Result<Vec<(String, Value)>, Error> {
+    let held = config.section(section)?;
+    let listed = held.as_array().ok_or_else(|| {
+        Error(format!(
+            "{}: \"{section}\" is a list of entries, each its own gate under its own \"name\"",
+            config.file.display()
+        ))
+    })?;
+    listed
+        .iter()
+        .map(|entry| {
+            let name = entry
+                .get(NAMED.name)
+                .and_then(Value::as_str)
+                .ok_or_else(|| config.missing(section, NAMED.name))?;
+            Ok((name.to_string(), entry.clone()))
+        })
+        .collect()
+}

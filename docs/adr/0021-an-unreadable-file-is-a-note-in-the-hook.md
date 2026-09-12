@@ -2,6 +2,9 @@
 
 > Amends ADR 0003. The CI behaviour it chose stands. The hook behaviour
 > changes.
+>
+> Spec 8.6 narrows this record for one case (#133): a `lockfile` manifest the
+> survey derived that did not parse at either commit is a NOTE in every run.
 
 ADR 0003 made a file the grammar cannot read a named tool error, exit 2, with
 every other finding still printed. Its reason holds: a file klin cannot

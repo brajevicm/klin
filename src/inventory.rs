@@ -6,7 +6,8 @@ use serde_json::{Map, Value};
 
 use crate::base;
 use crate::changed::git;
-use crate::config::{Config, DELETED, Error, Flags};
+use crate::check::{Context, DELETED, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
@@ -101,19 +102,19 @@ struct Walk {
     unparsed: Vec<Unparsed>,
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::open(flags, start)?;
-    config.say(flags, SECTION, out);
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    let config = Config::load_with(at.config, at.start, at.with)?;
+    at.say(&config, SECTION, out);
     let entries = entries(&config)?;
-    let commit = base::commit(config.root(), flags, out)?;
+    let commit = base::commit(config.root(), at, out)?;
     let listed = at_the_base(config.root(), &commit)?;
     let sites = sites(&entries, &listed, config.root());
     let (judged, mut paired): (Vec<Site>, Vec<Site>) =
         sites.into_iter().partition(|site| site.subject.is_none());
-    let measured = tests(&config, &entries, flags, &commit)?;
+    let measured = tests(&config, &entries, at, &commit)?;
     let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
         measured.functions.into_iter().partition(Function::orphaned);
-    if let Some(only) = flags.only.as_deref() {
+    if let Some(only) = at.only {
         paired.retain(|site| only.contains(&site.path));
         orphans.retain(|function| only.contains(&function.site.file));
     }
@@ -129,16 +130,16 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
             )
         }))
         .collect();
-    let (before, went) = let_through(&now, flags, config.root());
-    let held = ratchet::scoped(&now, flags.only.as_deref());
-    let accepted = ratchet::accepted(&config, &flags.gate, evaluator().metrics)?;
-    let said = covered(&judged, &paired, &measured.unparsed, flags).said(flags);
+    let (before, went) = let_through(&now, at, config.root());
+    let held = ratchet::scoped(&now, at.only);
+    let accepted = ratchet::accepted(&config, at.gate, evaluator().metrics)?;
+    let said = covered(&judged, &paired, &measured.unparsed, at).said(out);
     let ok = standing(held, went.len(), &said);
-    let code = evaluator().evaluate(now, before, accepted, flags, &ok, out);
-    deleted(&went, flags, out);
-    noted(&paired, flags, out);
-    orphaned(&orphans, flags, out);
-    Ok(syntax::unread(&measured.unparsed, flags, code, out))
+    let code = evaluator().evaluate(now, before, accepted, at, &ok, out);
+    deleted(&went, out);
+    noted(&paired, out);
+    orphaned(&orphans, out);
+    Ok(syntax::unread(&measured.unparsed, at, code, out))
 }
 
 /// The OK line: how many test sites the base holds, and how many of them the run let go.
@@ -156,11 +157,11 @@ fn standing(held: usize, gone: usize, said: &str) -> String {
 fn tests(
     config: &Config,
     entries: &[Entry],
-    flags: &Flags,
+    at: &Context,
     commit: &str,
 ) -> Result<Measured, Error> {
     let owned;
-    let prior = match flags.prior.as_deref() {
+    let prior = match at.prior {
         Some(dir) => dir,
         None => {
             owned = base::materialize(config, commit, None)?;
@@ -291,8 +292,8 @@ fn under(root: &Path, path: &str) -> PathBuf {
 /// the file scope the function identity reads. A deleted test whose subject went with it is
 /// found and not measured, because it is a NOTE and not a site the gate judges. A file no
 /// grammar read is unreadable and not measured, because no function in it was seen. Spec 8.6.
-fn covered(judged: &[Site], paired: &[Site], unparsed: &[Unparsed], flags: &Flags) -> Coverage {
-    let only = flags.only.as_deref();
+fn covered(judged: &[Site], paired: &[Site], unparsed: &[Unparsed], at: &Context) -> Coverage {
+    let only = at.only;
     let paths =
         |sites: &[Site]| -> Vec<String> { sites.iter().map(|site| site.path.clone()).collect() };
     let refused: Vec<String> = unparsed.iter().map(|file| file.file.clone()).collect();
@@ -346,13 +347,13 @@ fn gone(site: &Finding) -> bool {
 /// hook every one, and in the hook the ones a stop's block already asked the agent about. The
 /// base entry of a deletion let through carries `missing: 1`, so the one judge holds it and an
 /// accepted entry naming it still takes the match. Spec 8.2, 16.4.
-fn let_through(now: &[Finding], flags: &Flags, root: &Path) -> (Vec<Finding>, Vec<Finding>) {
-    let asked = match flags.hook {
+fn let_through(now: &[Finding], at: &Context, root: &Path) -> (Vec<Finding>, Vec<Finding>) {
+    let asked = match at.hook() {
         true => turn::asked(root),
         false => Vec::new(),
     };
     let through = |site: &Finding| {
-        gone(site) && (!flags.hook || asked.contains(&ratchet::identity(&flags.gate, site)))
+        gone(site) && (!at.hook() || asked.contains(&ratchet::identity(at.gate, site)))
     };
     let before = now
         .iter()
@@ -360,35 +361,33 @@ fn let_through(now: &[Finding], flags: &Flags, root: &Path) -> (Vec<Finding>, Ve
         .collect();
     let went = now
         .iter()
-        .filter(|site| through(site) && in_scope(flags, &site.file))
+        .filter(|site| through(site) && in_scope(at, &site.file))
         .map(|site| finding(&site.file, &site.text, site.line, true))
         .collect();
     (before, went)
 }
 
-fn in_scope(flags: &Flags, file: &str) -> bool {
-    flags
-        .only
-        .as_deref()
+fn in_scope(at: &Context, file: &str) -> bool {
+    at.only
         .is_none_or(|only| only.iter().any(|named| named == file))
 }
 
 /// The deleted tests this run lets through, which are a NOTE and not a finding. Removing a test
 /// is ordinary work, and klin cannot tell why a test went, so outside the hook a deletion is
 /// left to the reviewer who reads the diff. Spec 8.2.
-fn deleted(went: &[Finding], flags: &Flags, out: &mut String) {
+fn deleted(went: &[Finding], out: &mut Sink) {
     if went.is_empty() {
         return;
     }
     let _ = writeln!(
-        out,
+        out.text,
         "NOTE: {} test site(s) the base holds went in this window:",
         went.len()
     );
     for site in went {
-        let _ = writeln!(out, "  {}:{}  {}", site.file, site.line, site.text);
+        let _ = writeln!(out.text, "  {}:{}  {}", site.file, site.line, site.text);
     }
-    flags.record(|records| {
+    out.record(|records| {
         for site in went {
             let mut record = Map::new();
             record.insert("outcome".into(), DELETED.into());
@@ -409,23 +408,23 @@ fn deleted(went: &[Finding], flags: &Flags, out: &mut String) {
 
 /// A deleted test function whose file went in the same window, which is a NOTE and not a
 /// finding. #45 judges the file, and for a function the file is the whole subject. Spec 8.2.
-fn orphaned(orphans: &[Function], flags: &Flags, out: &mut String) {
+fn orphaned(orphans: &[Function], out: &mut Sink) {
     if orphans.is_empty() {
         return;
     }
     let _ = writeln!(
-        out,
+        out.text,
         "NOTE: {} deleted test function(s) whose file went in the same window:",
         orphans.len()
     );
     for function in orphans {
         let site = &function.site;
         let _ = writeln!(
-            out,
+            out.text,
             "  {}:{}  {}  its file went too",
             site.file, site.line, site.text
         );
-        flags.record(|records| {
+        out.record(|records| {
             let mut record = Map::new();
             record.insert("outcome".into(), "note".into());
             record.insert("file".into(), site.file.clone().into());
@@ -445,21 +444,21 @@ fn orphaned(orphans: &[Function], flags: &Flags, out: &mut String) {
 
 /// A deleted test whose subject went in the same window, which is a NOTE and not a finding.
 /// Spec 8.2, 16.4.
-fn noted(paired: &[Site], flags: &Flags, out: &mut String) {
+fn noted(paired: &[Site], out: &mut Sink) {
     if paired.is_empty() {
         return;
     }
     let _ = writeln!(
-        out,
+        out.text,
         "NOTE: {} deleted test file(s) whose subject went in the same window:",
         paired.len()
     );
     for site in paired {
         let subject = site.subject.as_deref().unwrap_or("");
-        let _ = writeln!(out, "  {}  its subject {subject} went too", site.path);
+        let _ = writeln!(out.text, "  {}  its subject {subject} went too", site.path);
     }
-    let _ = writeln!(out, "  each subject matched by {RULE}");
-    flags.record(|records| {
+    let _ = writeln!(out.text, "  each subject matched by {RULE}");
+    out.record(|records| {
         for site in paired {
             let mut record = Map::new();
             record.insert("outcome".into(), "note".into());

@@ -4,7 +4,8 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 
 use serde_json::{Map, Value};
 
-use crate::config::{self, Config, Error, Flags, Records};
+use crate::check::{Context, Records, Sink};
+use crate::config::{self, Config, Error};
 
 /// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
 /// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
@@ -168,11 +169,11 @@ fn names_every_value(
 
 /// The NOTE lines a gate leaves about what it did not judge, printed for a person and kept for
 /// `--json`. A note carries no ceiling, so none of these fails anything. Spec 8.6, 11.
-pub fn noted(notes: &[(String, String)], flags: &Flags, out: &mut String) {
+pub fn noted(notes: &[(String, String)], out: &mut Sink) {
     for (_, why) in notes {
-        let _ = writeln!(out, "NOTE: {why}");
+        let _ = writeln!(out.text, "NOTE: {why}");
     }
-    flags.record(|records| {
+    out.record(|records| {
         for (at, why) in notes {
             let mut record = Map::new();
             record.insert("outcome".into(), "note".into());
@@ -444,18 +445,18 @@ impl Evaluator<'_> {
         findings: Vec<Finding>,
         prior: Vec<Finding>,
         accepted: Vec<Values>,
-        flags: &Flags,
+        at: &Context,
         ok_line: &str,
-        out: &mut String,
+        out: &mut Sink,
     ) -> u8 {
         let entries: Vec<Values> = accepted
             .into_iter()
             .chain(prior.iter().map(Finding::entry))
             .collect();
-        let (findings, entries) = restrict(findings, entries, flags.only.as_deref());
+        let (findings, entries) = restrict(findings, entries, at.only);
         let held = entries.len();
         let comparison = judge(findings, entries, self.metrics);
-        report(&comparison, self, held, ok_line, flags, out)
+        report(&comparison, self, held, ok_line, at, out)
     }
 }
 
@@ -464,25 +465,25 @@ fn report(
     evaluator: &Evaluator,
     held: usize,
     ok_line: &str,
-    flags: &Flags,
-    out: &mut String,
+    at: &Context,
+    out: &mut Sink,
 ) -> u8 {
-    flags.record(|records| {
+    out.record(|records| {
         records.held = Some(records.held.unwrap_or(0) + comparison.held as u64);
-        collect(comparison, evaluator, &flags.gate, records);
+        collect(comparison, evaluator, at.gate, records);
     });
     if comparison.failed() {
-        failures(comparison, evaluator, held, out);
-        notes(comparison, evaluator, out);
+        failures(comparison, evaluator, held, out.text);
+        notes(comparison, evaluator, out.text);
         return 1;
     }
-    if !flags.quiet {
-        let _ = writeln!(out, "{ok_line}");
+    if !at.quiet {
+        let _ = writeln!(out.text, "{ok_line}");
     }
-    notes(comparison, evaluator, out);
-    if flags.strict && !comparison.unmatched_accepted.is_empty() {
+    notes(comparison, evaluator, out.text);
+    if at.strict && !comparison.unmatched_accepted.is_empty() {
         let _ = writeln!(
-            out,
+            out.text,
             "FAIL: the accepted list holds {} entr{} that matched nothing — under --strict an \
              entry that no longer describes the code is a failure. Delete the line.",
             comparison.unmatched_accepted.len(),

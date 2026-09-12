@@ -3,6 +3,7 @@ mod build;
 mod cache;
 mod ceiling;
 mod changed;
+mod check;
 mod complexity;
 mod config;
 mod coverage;
@@ -48,8 +49,23 @@ struct Cli {
     command: Command,
 }
 
+/// The three groups a command belongs to. Each is flattened into one subcommand list, so the
+/// command line a person types is unchanged, and each group is matched exhaustively on its own.
+/// A new command is a variant of one group and an arm beside it, and nothing compiles until its
+/// dispatch is decided. ADR 0036.
 #[derive(Subcommand)]
 enum Command {
+    #[command(flatten)]
+    Check(Check),
+    #[command(flatten)]
+    Runner(Runner),
+    #[command(flatten)]
+    Tool(Tool),
+}
+
+/// The checks a person runs one at a time, each judging its own section against the base.
+#[derive(Subcommand)]
+enum Check {
     /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
     Complexity(complexity::Args),
     /// Fail when a document cites a file that resolves nowhere under its roots
@@ -62,6 +78,12 @@ enum Command {
     Stubs(markers::Args),
     /// Fail on a scanner's result that sits on a line this window changed
     Sarif(sarif::Args),
+}
+
+/// The runner, the survey that writes a configuration, the guard over that file, and the cache
+/// the survey keeps.
+#[derive(Subcommand)]
+enum Runner {
     /// Run every gate the configuration names, cheapest first
     Gate(gate::Args),
     /// Survey the tree and write the configuration it can say for itself
@@ -70,6 +92,11 @@ enum Command {
     Guard(guard::Args),
     /// Remove the survey cache klin keeps for this tree, or every orphaned one
     Cache(cache::Args),
+}
+
+/// The turn stamp's two movers, the two commands that only read and print, and the updater.
+#[derive(Subcommand)]
+enum Tool {
     /// Move the turn stamp by its one rule, on a session start and on every prompt
     Radius(turn::Args),
     /// Move the turn stamp to the working tree, which only a person does
@@ -82,63 +109,45 @@ enum Command {
     Update,
 }
 
+/// The guard and the updater answer before the working directory is read, because neither needs
+/// it. Everything else prints through `report`.
 fn main() -> ExitCode {
     match Cli::parse().command {
-        Command::Guard(args) => ExitCode::from(guard::run(&args)),
-        Command::Update => ExitCode::from(update::run()),
-        command => report(|start, out| ran(&command, start, out)),
+        Command::Runner(Runner::Guard(args)) => ExitCode::from(guard::run(&args)),
+        Command::Tool(Tool::Update) => ExitCode::from(update::run()),
+        Command::Check(command) => report(|start, out| check(&command, start, out)),
+        Command::Runner(command) => report(|start, out| runner(&command, start, out)),
+        Command::Tool(command) => report(|start, out| tool(&command, start, out)),
     }
 }
 
-fn ran(command: &Command, start: &Path, out: &mut String) -> Result<u8, config::Error> {
-    match check(command, start, out) {
-        Some(outcome) => outcome,
-        None => tool(command, start, out),
-    }
-}
-
-/// The checks a person runs one at a time, and `None` for a command that is not one of them.
-fn check(command: &Command, start: &Path, out: &mut String) -> Option<Result<u8, config::Error>> {
-    Some(match command {
-        Command::Complexity(args) => complexity::run(args, start, out),
-        Command::DocCitations(args) => doc_citations::run(args, start, out),
-        Command::DocSize(args) => doc_size::run(args, start, out),
-        Command::Escapes(args) => escapes::run(args, start, out),
-        Command::Stubs(args) => stubs::run(args, start, out),
-        Command::Sarif(args) => sarif::run(args, start, out),
-        Command::Gate(_)
-        | Command::Init(_)
-        | Command::Cache(_)
-        | Command::Guard(_)
-        | Command::Radius(_)
-        | Command::Turn(_)
-        | Command::Stats(_)
-        | Command::Reference
-        | Command::Update => {
-            return None;
-        }
-    })
-}
-
-/// The turn stamp's two movers and the commands that only read and print.
-fn tool(command: &Command, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, config::Error> {
     match command {
-        Command::Radius(args) => turn::run(args, start, out),
-        Command::Turn(args) => turn::moved(args, start, out),
-        Command::Stats(args) => stats::run(args, start, out),
-        Command::Reference => reference::run(out),
-        _ => runner(command, start, out),
+        Check::Complexity(args) => complexity::run(args, start, out),
+        Check::DocCitations(args) => doc_citations::run(args, start, out),
+        Check::DocSize(args) => doc_size::run(args, start, out),
+        Check::Escapes(args) => escapes::run(args, start, out),
+        Check::Stubs(args) => stubs::run(args, start, out),
+        Check::Sarif(args) => sarif::run(args, start, out),
     }
 }
 
-/// The runner, the survey and the cache. `main` takes the guard before this.
-fn runner(command: &Command, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, config::Error> {
     match command {
-        Command::Gate(args) => gate::run(args, start, out),
-        Command::Init(args) => init::run(args, start, out),
-        Command::Cache(args) => cache::run(args, start, out),
-        Command::Guard(args) => Ok(guard::run(args)),
-        _ => Ok(0),
+        Runner::Gate(args) => gate::run(args, start, out),
+        Runner::Init(args) => init::run(args, start, out),
+        Runner::Guard(args) => Ok(guard::run(args)),
+        Runner::Cache(args) => cache::run(args, start, out),
+    }
+}
+
+fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+    match command {
+        Tool::Radius(args) => turn::run(args, start, out),
+        Tool::Turn(args) => turn::moved(args, start, out),
+        Tool::Stats(args) => stats::run(args, start, out),
+        Tool::Reference => reference::run(out),
+        Tool::Update => Ok(update::run()),
     }
 }
 

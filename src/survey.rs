@@ -5,8 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::changed::git;
 use crate::{
-    build, cache, complexity, config, doc_citations, doc_size, escapes, files, inventory, lockfile,
-    markers, reference, state, stubs, turn,
+    build, cache, check, complexity, config, doc_citations, doc_size, escapes, files, inventory,
+    lockfile, reference, state, stubs, turn,
 };
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -73,24 +73,14 @@ pub struct Derived {
     pub roots: Vec<String>,
 }
 
-/// The sections klin derives, and for an object section the keys it supplies. A section the
-/// config pins whole is never derived, so the survey does not run for it.
-const DERIVABLE: &[(&str, &[&str])] = &[
-    (config::BUILD.name, &[]),
-    (complexity::SECTION, complexity::DERIVED),
-    (doc_citations::SECTION, &[]),
-    (doc_size::SECTION, &[]),
-    (escapes::SECTION, markers::DERIVED),
-    (inventory::SECTION, &[]),
-    (lockfile::SECTION, lockfile::DERIVED),
-    (stubs::SECTION, markers::DERIVED),
-];
-
+/// The keys klin derives for a section, and `None` for a section it never derives. Every check
+/// says this on its own catalogue row; `build` is the one derivable section no check reads. A
+/// section the config pins whole is never derived, so the survey does not run for it.
 pub fn keys(section: &str) -> Option<&'static [&'static str]> {
-    DERIVABLE
-        .iter()
-        .find(|(name, _)| *name == section)
-        .map(|(_, keys)| *keys)
+    match section == config::BUILD.name {
+        true => Some(&[]),
+        false => check::derives(section),
+    }
 }
 
 /// Whether a section measures code, which is exactly the set the survey supplies roots for. A
@@ -153,7 +143,12 @@ fn leaf(key: &str) -> &str {
 }
 
 pub fn derivable() -> impl Iterator<Item = &'static str> {
-    DERIVABLE.iter().map(|(name, _)| *name)
+    std::iter::once(config::BUILD.name).chain(
+        check::CATALOGUE
+            .iter()
+            .filter(|spec| spec.derives.is_some())
+            .map(|spec| spec.section),
+    )
 }
 
 /// Every derivable value, as the sections the checks read and the lines a run prints. The path

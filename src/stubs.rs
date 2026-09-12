@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use crate::config::{Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::Error;
 use crate::markers::{self, Args, Kind, Language};
 use crate::ratchet::{Evaluator, Values};
 use crate::reference::{self, Key};
@@ -108,8 +109,8 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     markers::run(&KIND, args, start, out)
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    markers::gate(&KIND, flags, start, out)
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    markers::gate(&KIND, at, out)
 }
 
 /// Whether the table holds rows for a language, named as the "languages" key names it.

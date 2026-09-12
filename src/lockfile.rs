@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::ratchet::{self, Evaluator, Finding, Section, Values};
 use crate::reference::{self, Key};
@@ -100,36 +101,39 @@ pub fn reads(name: &str) -> bool {
     FORMATS.iter().any(|format| format.manifest == name)
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::open(flags, start)?;
-    config.say(flags, SECTION, out);
-    let sites = surveyed(&config, flags, out)?;
-    let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    let config = Config::load_with(at.config, at.start, at.with)?;
+    at.say(&config, SECTION, out);
+    let sites = surveyed(&config, at, out)?;
+    let accepted = ratchet::accepted(&config, at.gate, METRICS)?;
     let ok = format!(
         "OK: {} dependenc{} in {} manifest(s), each locked and pinned as the base had it{}",
         sites.judged,
         plural(sites.judged),
         sites.manifests,
-        sites.coverage().said(flags)
+        sites.coverage().said(out)
     );
-    let code = evaluator().evaluate(sites.findings, sites.prior, accepted, flags, &ok, out);
-    ratchet::noted(&sites.notes, flags, out);
+    let code = evaluator().evaluate(sites.findings, sites.prior, accepted, at, &ok, out);
+    ratchet::noted(&sites.notes, out);
     Ok(code)
 }
 
 /// Every manifest the section names, read in both trees, minus the ones `exclude` drops.
-fn surveyed(config: &Config, flags: &Flags, out: &mut String) -> Result<Sites, Error> {
+fn surveyed(config: &Config, at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let section = ratchet::section(config, SECTION)?;
     let manifests = listed(&section, MANIFESTS)?;
+    let pinned = config
+        .pinned(SECTION)
+        .is_some_and(|section| section.get(MANIFESTS.name).is_some());
     let exclude = optional(&section, reference::EXCLUDE)?;
-    let commit = base::commit(config.root(), flags, out)?;
+    let commit = base::commit(config.root(), at, out)?;
     let mut sites = Sites::default();
     let (dropped, judged): (Vec<&String>, Vec<&String>) =
         manifests.iter().partition(|path| excluded(path, &exclude));
     sites.listed = manifests.len();
     sites.excluded = dropped.len();
     for manifest in judged {
-        sites.add(config.root(), &commit, manifest)?;
+        sites.add(config.root(), &commit, manifest, pinned)?;
     }
     Ok(sites)
 }
@@ -192,8 +196,14 @@ impl Sites {
         }
     }
 
-    fn add(&mut self, root: &Path, commit: &str, manifest: &str) -> Result<(), Error> {
-        let (now, before) = match reading(root, commit, manifest)? {
+    fn add(
+        &mut self,
+        root: &Path,
+        commit: &str,
+        manifest: &str,
+        pinned: bool,
+    ) -> Result<(), Error> {
+        let (now, before) = match reading(root, commit, manifest, pinned)? {
             Reading::Judged(now, before) => (now, before),
             Reading::Noted(at, why) => {
                 self.notes.push((at, why));
@@ -232,12 +242,14 @@ fn finding(manifest: &str, name: &str, values: Values) -> Finding {
 }
 
 /// What one tree says about one manifest: its dependencies with both values already taken, the
-/// lockfile klin read them against, and a lockfile klin found and cannot read.
+/// lockfile klin read them against, a lockfile klin found and cannot read, and why klin could
+/// not parse the manifest itself.
 #[derive(Default)]
 struct State {
     deps: BTreeMap<String, Values>,
     lockfile: Option<String>,
     unreadable: Option<String>,
+    unparsed: Option<String>,
 }
 
 /// Whether klin judges this manifest, and the NOTE that says why not. A manifest the working
@@ -248,7 +260,7 @@ enum Reading {
     Absent,
 }
 
-fn reading(root: &Path, commit: &str, manifest: &str) -> Result<Reading, Error> {
+fn reading(root: &Path, commit: &str, manifest: &str, pinned: bool) -> Result<Reading, Error> {
     let Some(format) = FORMATS
         .iter()
         .find(|format| format.manifest == basename(manifest))
@@ -269,8 +281,11 @@ fn reading(root: &Path, commit: &str, manifest: &str) -> Result<Reading, Error> 
     else {
         return Ok(Reading::Absent);
     };
-    let before =
-        state(&|path| changed::blob(root, commit, path), manifest, format)?.unwrap_or_default();
+    let before = state(&|path| changed::blob(root, commit, path), manifest, format)?;
+    if let Some(noted) = unparseable(&now, before.as_ref(), manifest, pinned)? {
+        return Ok(noted);
+    }
+    let before = before.unwrap_or_default();
     if let Some(at) = now.unreadable.clone().or_else(|| before.unreadable.clone()) {
         return Ok(Reading::Noted(
             at.clone(),
@@ -292,6 +307,31 @@ fn reading(root: &Path, commit: &str, manifest: &str) -> Result<Reading, Error> 
     Ok(Reading::Judged(now, before))
 }
 
+/// A manifest klin cannot parse is a tool error when a person pinned the list, because pinning a
+/// path asserts that it parses, and when it parsed at the base, because the work broke it. A
+/// manifest the survey offered that never parsed is a fixture, and a NOTE. Spec 8.2.1.
+fn unparseable(
+    now: &State,
+    before: Option<&State>,
+    manifest: &str,
+    pinned: bool,
+) -> Result<Option<Reading>, Error> {
+    let parsed_at_base = before.is_some_and(|before| before.unparsed.is_none());
+    if let Some(why) = &now.unparsed {
+        return match pinned || parsed_at_base {
+            true => Err(Error(why.clone())),
+            false => Ok(Some(Reading::Noted(
+                manifest.to_string(),
+                format!("{why}, so the dependencies of {manifest} are not judged"),
+            ))),
+        };
+    }
+    match before.and_then(|before| before.unparsed.clone()) {
+        Some(why) if pinned => Err(Error(why)),
+        _ => Ok(None),
+    }
+}
+
 fn state(
     read: &dyn Fn(&str) -> Option<Vec<u8>>,
     manifest: &str,
@@ -305,8 +345,13 @@ fn state(
         Some((at, bytes)) => (format.locked)(at, bytes)?,
         None => Vec::new(),
     };
+    let (deps, unparsed) = match (format.dependencies)(manifest, &text) {
+        Ok(deps) => (taken(deps, &locked), None),
+        Err(Error(why)) => (BTreeMap::new(), Some(why)),
+    };
     Ok(Some(State {
-        deps: taken((format.dependencies)(manifest, &text)?, &locked),
+        deps,
+        unparsed,
         unreadable: unreadable(read, manifest, format, found.is_some()),
         lockfile: found.map(|(at, _)| at),
     }))

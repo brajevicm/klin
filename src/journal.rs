@@ -15,8 +15,13 @@ use crate::state;
 /// clean` leaves the file alone. Spec 9.6, 11.4.
 pub const FILE: &str = "journal.jsonl";
 
-/// The line format's version. A reader skips a line whose schema it does not know.
-const SCHEMA: u64 = 1;
+/// The line format's version. A reader skips a line whose schema it does not know. A bump adds
+/// a variant, and `known` does not compile until it has an arm for it. Spec 11.4.
+enum Schema {
+    One = 1,
+}
+
+const SCHEMA: Schema = Schema::One;
 
 /// What one stop knew beyond the 11.2 object its run built: gathered as the stop goes, written
 /// as one line at its end.
@@ -83,7 +88,7 @@ impl Stop {
 /// The fields of 11.4 every kind of line carries, so a fifth verb cannot forget one. Spec 9.6.
 fn base(kind: &'static str) -> Map<String, Value> {
     let mut line = Map::new();
-    line.insert("schema".into(), SCHEMA.into());
+    line.insert("schema".into(), (SCHEMA as u64).into());
     line.insert("version".into(), env!("CARGO_PKG_VERSION").into());
     line.insert("time".into(), now().into());
     line.insert("kind".into(), kind.into());
@@ -299,11 +304,11 @@ pub fn read(root: &Path) -> (Vec<Value>, u64) {
     (lines, skipped)
 }
 
-/// Whether this binary understands the line's format. The match is exhaustive up to the current
-/// schema, so a bump without an upgrade arm does not compile.
+/// Whether this binary understands the line's format. The match is on the current schema with no
+/// wildcard arm, so a bump without an upgrade arm does not compile.
 fn known(line: &Value) -> bool {
-    match line.get("schema").and_then(Value::as_u64) {
-        Some(1) => true,
-        Some(_) | None => false,
+    let schema = line.get("schema").and_then(Value::as_u64);
+    match SCHEMA {
+        Schema::One => schema == Some(Schema::One as u64),
     }
 }

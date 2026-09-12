@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::config::{self, Error};
-use crate::{gate, survey};
+use crate::{check, survey};
 
 /// One configuration key, declared beside the code that reads it. `rule` is the rule the survey
 /// derives the key by, and none for a key only a person pins. `default` is the value a run uses
@@ -63,15 +63,6 @@ impl Key {
 
 /// Every language name a section selects a file set by, with the extensions each name selects.
 pub type Languages = fn() -> Vec<(&'static str, String)>;
-
-/// What one section tells the reference about itself, off the same table a run takes its checks
-/// from, so a section klin gates and a section the reference prints cannot drift apart.
-pub struct Section {
-    pub name: &'static str,
-    pub keys: &'static [Key],
-    /// None for a section that selects no language.
-    pub languages: Option<Languages>,
-}
 
 /// The vocabulary of spec 5.3: the keys every section spells the same way and means the same
 /// by. A section takes a row and states only what differs, so one meaning is written once.
@@ -166,9 +157,9 @@ fn sections(out: &mut String) {
          `languages`, `exclude`, `skip_dirs` and `ceilings` mean the same thing everywhere. A \
          section reads only the keys its own table names."
     );
-    for section in gate::catalogue() {
-        let _ = writeln!(out, "\n### `{}`\n", section.name);
-        rows(section.keys, whole(section.name), out);
+    for spec in check::CATALOGUE {
+        let _ = writeln!(out, "\n### `{}`\n", spec.section);
+        rows(spec.keys, whole(spec.section), out);
     }
 }
 
@@ -222,7 +213,9 @@ fn languages(out: &mut String) {
          measures every language `complexity` knows, and one that names none for `escapes` or \
          `stubs` must name `patterns` instead."
     );
-    let named = gate::catalogue().filter_map(|section| Some((section.name, section.languages?)));
+    let named = check::CATALOGUE
+        .iter()
+        .filter_map(|spec| Some((spec.section, spec.languages?)));
     for (section, rows) in named {
         let _ = writeln!(out, "\n### `{section}`\n");
         let _ = writeln!(out, "| Name | Extensions |\n| --- | --- |");

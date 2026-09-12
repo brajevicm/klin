@@ -27,11 +27,11 @@
   ],
   "doc_size": [
     {
-      "ceiling": 800,
+      "ceiling": 700,
       "file": "README.md"
     },
     {
-      "ceiling": 800,
+      "ceiling": 350,
       "file": "CONTEXT.md"
     },
     {

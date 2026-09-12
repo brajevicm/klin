@@ -8,7 +8,8 @@ use std::fmt::Write;
 use serde_json::Value;
 use tree_sitter::{Node, Parser, Tree};
 
-use crate::config::{Error, Flags, UNPARSED};
+use crate::check::{Context, Sink, UNPARSED};
+use crate::config::Error;
 use crate::ratchet::Values;
 use crate::reference;
 
@@ -338,53 +339,52 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 /// What a gate does about the files no grammar read: a NOTE in the hook, and exit 2 outside
 /// it, because an agent cannot fix a grammar and a file klin cannot read is a hole in the
 /// ratchet. ADR 0003, spec 14.
-pub fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u8 {
-    let only = flags.only.as_deref();
+pub fn unread(unparsed: &[Unparsed], at: &Context, code: u8, out: &mut Sink) -> u8 {
     let named: Vec<&Unparsed> = unparsed
         .iter()
-        .filter(|file| only.is_none_or(|only| only.contains(&file.file)))
+        .filter(|file| at.only.is_none_or(|only| only.contains(&file.file)))
         .collect();
     if named.is_empty() {
         return code;
     }
-    match flags.hook {
+    match at.hook() {
         true => {
-            noted(&named, flags, out);
+            noted(&named, out);
             code
         }
         false => {
-            refused(&named, flags, out);
+            refused(&named, out);
             2
         }
     }
 }
 
-fn noted(named: &[&Unparsed], flags: &Flags, out: &mut String) {
+fn noted(named: &[&Unparsed], out: &mut Sink) {
     let _ = writeln!(
-        out,
+        out.text,
         "NOTE: {} file(s) the grammar could not parse, so nothing in them was measured:",
         named.len()
     );
     for file in named {
         let rejected = rejected(file);
-        let _ = writeln!(out, "  {}  {rejected}", file.file);
-        flags.record(|records| records.notes.push(unparsed_site(file, &rejected)));
+        let _ = writeln!(out.text, "  {}  {rejected}", file.file);
+        out.record(|records| records.notes.push(unparsed_site(file, &rejected)));
     }
-    let _ = writeln!(out, "{REMEDY}");
+    let _ = writeln!(out.text, "{REMEDY}");
 }
 
-fn refused(named: &[&Unparsed], flags: &Flags, out: &mut String) {
+fn refused(named: &[&Unparsed], out: &mut Sink) {
     let _ = writeln!(
-        out,
+        out.text,
         "FAIL: {} file(s) the grammar could not parse, so nothing in them was measured:",
         named.len()
     );
     for file in named {
         let rejected = rejected(file);
-        let _ = writeln!(out, "  {}  {rejected}", file.file);
-        flags.record(|records| records.findings.push(unparsed_site(file, &rejected)));
+        let _ = writeln!(out.text, "  {}  {rejected}", file.file);
+        out.record(|records| records.findings.push(unparsed_site(file, &rejected)));
     }
-    let _ = writeln!(out, "{REMEDY}");
+    let _ = writeln!(out.text, "{REMEDY}");
 }
 
 const REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the grammar, or \

@@ -24,9 +24,11 @@ Three things, one data source.
 ## The shape
 
 ```text
-gate.rs stopped()   guard.rs run()   turn.rs reset()   radius on a prompt
+gate.rs stopped()   guard.rs run()   turn.rs reset()   turn.rs on a prompt
         │                │                │                 │
-        └────────────────┴──── journal::append(root, line) ─┘
+  journal::stop    journal::guard   journal::reset   journal::prompt
+        │                │                │                 │
+        └────────────────┴──── append, private ─────────────┘
                                      │
                             <state dir>/journal.jsonl
                                      │
@@ -54,16 +56,21 @@ agent. The hook never prunes. `cache clean` leaves the file alone. The reader
 tolerates a half-written last line and skips a line whose `schema` it does
 not know, and returns how many it skipped so the report can say so.
 
-The upgrade is one `match` on the schema number, exhaustive up to the current
-one. A bump without an upgrade arm does not compile.
+The schema is an enum, `Schema`, and the reader matches on the current
+variant with no wildcard arm. A bump adds a variant, and the reader does not
+compile until it has an arm for that variant. See departure 1.
 
 ### The record is the object `gate --json` already prints
 
 `Records` is the accumulator that flows out of every gate today. The journal
-adds to it and builds nothing beside it. `judge` puts `ms` and `held` on each
-gate row as it goes. `stopped` adds what only the hook knows. There is no
-new struct that carries facts across phases, so there is no
-prepare-process-finalize object to keep in step.
+adds to it and builds nothing beside it. Since #158 it lives in `check` and a
+runner hands each check a `&mut` to it rather than a shared cell, which
+changes who holds it and not what it holds. `judge` puts `ms` and `held` on each
+gate row as it goes.
+
+What only the hook knows lives in one second accumulator, `journal::Stop`.
+`stopped` creates it from the host event, carries it through the stop, and
+writes it as one line at the end. See departure 2.
 
 The stop line, as #153 states it:
 
@@ -76,8 +83,14 @@ verdict: "green" | "red" | "none", with why when none
 timing:  { total_ms, build_ms, lock_ms, klin_ms }
 asked:   the site ids this stop asked about
 flags:   ["turn-restored", "branch-fallback", "count-unwritable"], or empty
+told:    ["note", "turn", "weekly"], or empty
 config_hash
 ```
+
+`exit` on the stop line is the code the stop returned: 2 for a stop that
+blocks, 0 for one that passes. See departure 3. `told` names the parts of
+the `systemMessage` the stop printed, and the reader finds the last weekly
+line from it. See departure 4.
 
 `delivery` is `block` or `none` today. `follow-up` and `report` are reserved
 for a host whose stop cannot block, which #67 brings. `config_hash` is
@@ -87,7 +100,10 @@ change without a schema bump.
 The other three kinds, from #154: `prompt` with the counter, the first line
 of the prompt cut at 80 characters and the radius facts, `guard` with the
 decision and a hyphenated reason, and `reset` with the counter. An allow
-writes nothing.
+writes nothing. The guard's reasons are `config-write`, `state-write`,
+`config-mention`, `state-mention`, `init` and `turn-reset`. A
+`SessionStart` event moves the mark and raises the prompt counter, but
+appends no line. See departure 5.
 
 ### The reader has two layers, and the boundary is a pure function
 
@@ -285,6 +301,38 @@ From the grilling of 2026-09-11. The reason is beside each.
   round has run.
 - A debug trace under an environment variable, richer than the journal.
   Not a ticket until a profiling session needs one.
+
+## Where the implementation departed
+
+Spec 9.6, 11.4 and 11.5 record the result. The reason is beside each.
+
+1. **The schema is an enum.** The design said one `match` on the schema
+   number, exhaustive up to the current one. A `match` on a `u64` needs a
+   wildcard arm, so a bump compiled and the reader then skipped every line
+   the binary wrote. An enum with no wildcard arm makes the bump a compile
+   error, which is what 11.4 asks for (#163).
+2. **The hook's facts travel in `journal::Stop`.** The design said no struct
+   carries facts across phases. The facts of one stop are known at
+   different points: the lock wait before the window, the flags inside the
+   window, the build stamp and the code in `hook`, the verdict and its `why`
+   in `written`, and the `told` parts in `tell`. `Records` reaches none of
+   those functions. One accumulator, written once, keeps one line per stop.
+   The turn end also reads `journal::line` of that accumulator before the
+   append, to count the stop the turn ends on.
+3. **`exit` is the stop's code.** The 11.2 object is built before 16.3
+   decides whether the stop blocks, so the first implementation recorded the
+   gates' code beside `hook.blocked`. A blocked stop showed `exit: 1`. The
+   stop now sets `exit` once its code is known (#163). The object a
+   `--hook --json` run prints on stdout still carries the gates' code.
+4. **`told` is a field.** The design did not name one. The weekly headline
+   prints at most once every seven days, and the reader needs a record of
+   the last one. The journal is that record, so the stop line names each
+   part it printed.
+5. **The guard names a mention apart from a write, and SessionStart writes
+   nothing.** ADR 0033 splits a proven write from a command that only names
+   a guarded path, so the state directory has `state-mention` beside
+   `config-mention`. A `SessionStart` event opens a window and ends no turn,
+   so a line for it would be a `prompt` line with no prompt.
 
 ## Ticket map
 

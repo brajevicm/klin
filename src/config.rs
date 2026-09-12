@@ -1,4 +1,4 @@
-use std::cell::{OnceCell, RefCell};
+use std::cell::OnceCell;
 use std::fmt::{self, Write};
 use std::path::{Path, PathBuf};
 
@@ -86,59 +86,6 @@ impl Error {
     }
 }
 
-/// The outcome of a file no grammar reads. The hook counts these to report the holes a
-/// person must close, and nothing else in a run turns on it.
-pub const UNPARSED: &str = "unparsed";
-
-/// The outcome of a test the base holds that went in the window, which fails nothing. A stop the
-/// hook lets end hands it to a person. Spec 8.2.
-pub const DELETED: &str = "deleted";
-
-#[derive(Default)]
-pub struct Records {
-    pub findings: Vec<Value>,
-    pub notes: Vec<Value>,
-    /// One row per gate the run judged, which only the runner fills in. Spec 11.2.
-    pub gates: Vec<Value>,
-    /// What scope the gate measured, which every check records once. Spec 11.2.
-    pub coverage: Option<Value>,
-    /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
-    pub derived: Vec<Value>,
-    /// The count the check's own `OK:` line prints as held at the base, which the runner puts
-    /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
-    pub held: Option<u64>,
-}
-
-pub struct Flags {
-    pub config: Option<PathBuf>,
-    /// The name of the gate being run, which the accepted list names.
-    pub gate: String,
-    /// The base commit, already laid out as a directory by the runner.
-    pub prior: Option<PathBuf>,
-    /// The base commit the runner chose, for a gate that reads the base tree out of git.
-    pub base: Option<String>,
-    /// Print nothing on success: no `OK:` line, and nothing under it.
-    pub quiet: bool,
-    /// Whether this gate says the run's own context for itself: the `window:` line and the
-    /// `derived:` lines. The runner prints those once for the whole run, so it clears this and
-    /// still gets each gate's `OK:` line. Spec 4.3, 11.1.
-    pub context: bool,
-    pub strict: bool,
-    /// The Stop hook runs this gate, so a hole the agent cannot fix is a note, not a failure.
-    pub hook: bool,
-    pub only: Option<Vec<String>>,
-    pub records: Option<RefCell<Records>>,
-    pub with: Option<(String, Value)>,
-}
-
-impl Flags {
-    pub fn record(&self, add: impl FnOnce(&mut Records)) {
-        if let Some(records) = &self.records {
-            add(&mut records.borrow_mut());
-        }
-    }
-}
-
 pub struct Config {
     pub file: PathBuf,
     root: PathBuf,
@@ -206,11 +153,8 @@ impl Config {
     }
 
     /// The same lines, written out by a check a person ran by hand. The gate runner prints its
-    /// own once for the whole run, so a gate stays quiet here. Spec 4.3.
-    pub fn say(&self, flags: &Flags, section: &str, out: &mut String) {
-        if !flags.context {
-            return;
-        }
+    /// own once for the whole run, so a gate stays quiet here and does not call this. Spec 4.3.
+    pub fn say(&self, section: &str, out: &mut String) {
         for line in self.said().iter().filter(|line| names(line, section)) {
             let _ = writeln!(out, "{line}");
         }
@@ -273,12 +217,19 @@ impl Config {
             .get_or_init(|| survey::derive(&self.root, &self.data))
     }
 
-    pub fn open(flags: &Flags, start: &Path) -> Result<Config, Error> {
-        let mut config = Config::load(flags.config.as_deref(), start)?;
-        if let Some((section, values)) = &flags.with
+    /// The config a check reads, with the section one `gates` entry states for itself put in
+    /// place of the config's own. The entry is the person's statement of how that gate runs.
+    /// Spec 5.2.
+    pub fn load_with(
+        explicit: Option<&Path>,
+        start: &Path,
+        with: Option<(&str, &Value)>,
+    ) -> Result<Config, Error> {
+        let mut config = Config::load(explicit, start)?;
+        if let Some((section, values)) = with
             && let Some(data) = config.data.as_object_mut()
         {
-            data.insert(section.clone(), values.clone());
+            data.insert(section.to_string(), values.clone());
         }
         Ok(config)
     }
@@ -396,12 +347,12 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
         return Ok(());
     };
     let known = |key: &str| {
-        KEYS.iter().any(|held| held.name == key) || crate::gate::sections().any(|read| read == key)
+        KEYS.iter().any(|held| held.name == key) || crate::check::sections().any(|read| read == key)
     };
     let Some(unknown) = fields.keys().find(|key| !known(key)) else {
         return Ok(());
     };
-    if let Some(section) = crate::gate::command_named(unknown) {
+    if let Some(section) = crate::check::command_named(unknown) {
         return Err(Error(format!(
             "{}: \"{unknown}\" is what the command is called — the section it reads is \
              \"{section}\"",
@@ -413,7 +364,7 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
         file.display(),
         KEYS.iter()
             .map(|key| key.name)
-            .chain(crate::gate::sections())
+            .chain(crate::check::sections())
             .collect::<Vec<&str>>()
             .join(", ")
     )))
