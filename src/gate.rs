@@ -138,7 +138,7 @@ const CHECKS: &[Check] = &[
         name: "complexity",
         section: complexity::SECTION,
         keys: complexity::KEYS,
-        languages: Some(complexity::language_extensions),
+        languages: Some(crate::syntax::language_extensions),
         run: complexity::gate,
         needs: Needs::TheTree,
         takes_scope: true,

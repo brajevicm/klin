@@ -1,16 +1,16 @@
-use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use tree_sitter::{Node, Parser};
+use tree_sitter::Node;
 
 use crate::base;
 use crate::ceiling::{self, Ceiling};
-use crate::config::{Config, Error, Flags, UNPARSED};
+use crate::config::{Config, Error, Flags};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
+use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
 
 pub const SECTION: &str = "complexity";
 
@@ -57,74 +57,6 @@ pub const LINES: Key = Key {
     default: "",
 };
 
-/// Every language name the table holds, with the extensions that name selects.
-pub fn language_extensions() -> Vec<(&'static str, String)> {
-    reference::extensions_by_name(
-        LANGUAGES
-            .iter()
-            .map(|language| (language.names, language.extensions)),
-    )
-}
-
-struct Language {
-    name: &'static str,
-    names: &'static [&'static str],
-    extensions: &'static [&'static str],
-    grammar: fn() -> tree_sitter::Language,
-    functions: &'static [&'static str],
-    decisions: &'static [&'static str],
-    operators: &'static [&'static str],
-}
-
-fn rust() -> tree_sitter::Language {
-    tree_sitter_rust::LANGUAGE.into()
-}
-
-fn python() -> tree_sitter::Language {
-    tree_sitter_python::LANGUAGE.into()
-}
-
-fn typescript() -> tree_sitter::Language {
-    tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
-}
-
-fn tsx() -> tree_sitter::Language {
-    tree_sitter_typescript::LANGUAGE_TSX.into()
-}
-
-fn javascript() -> tree_sitter::Language {
-    tree_sitter_javascript::LANGUAGE.into()
-}
-
-fn go() -> tree_sitter::Language {
-    tree_sitter_go::LANGUAGE.into()
-}
-
-fn java() -> tree_sitter::Language {
-    tree_sitter_java::LANGUAGE.into()
-}
-
-fn ruby() -> tree_sitter::Language {
-    tree_sitter_ruby::LANGUAGE.into()
-}
-
-fn swift() -> tree_sitter::Language {
-    tree_sitter_swift::LANGUAGE.into()
-}
-
-fn kotlin() -> tree_sitter::Language {
-    tree_sitter_kotlin_ng::LANGUAGE.into()
-}
-
-const ECMASCRIPT_FUNCTIONS: &[&str] = &[
-    "function_declaration",
-    "function_expression",
-    "generator_function",
-    "generator_function_declaration",
-    "arrow_function",
-    "method_definition",
-];
-
 const ECMASCRIPT_DECISIONS: &[&str] = &[
     "if_statement",
     "while_statement",
@@ -153,190 +85,163 @@ const FALL_THROUGH_ARMS: &[(&str, &str)] = &[
 
 const CATCH_ALL_PATTERNS: &[&str] = &["match_pattern", "case_pattern"];
 
-const LANGUAGES: &[Language] = &[
-    Language {
-        name: "Rust",
-        names: &["rust"],
-        extensions: &[".rs"],
-        grammar: rust,
-        functions: &["function_item"],
-        decisions: &[
-            "if_expression",
-            "while_expression",
-            "loop_expression",
-            "for_expression",
-            "match_arm",
-            "try_expression",
-        ],
-        operators: &["&&", "||"],
-    },
-    Language {
-        name: "Python",
-        names: &["python"],
-        extensions: &[".py"],
-        grammar: python,
-        functions: &["function_definition"],
-        decisions: &[
-            "if_statement",
-            "elif_clause",
-            "while_statement",
-            "for_statement",
-            "for_in_clause",
-            "if_clause",
-            "except_clause",
-            "case_clause",
-            "conditional_expression",
-            "boolean_operator",
-            "assert_statement",
-        ],
-        operators: &[],
-    },
-    Language {
-        name: "TypeScript",
-        names: &["typescript"],
-        extensions: &[".ts", ".mts", ".cts"],
-        grammar: typescript,
-        functions: ECMASCRIPT_FUNCTIONS,
-        decisions: ECMASCRIPT_DECISIONS,
-        operators: ECMASCRIPT_OPERATORS,
-    },
-    Language {
-        name: "TSX",
-        names: &["typescript", "tsx"],
-        extensions: &[".tsx"],
-        grammar: tsx,
-        functions: ECMASCRIPT_FUNCTIONS,
-        decisions: ECMASCRIPT_DECISIONS,
-        operators: ECMASCRIPT_OPERATORS,
-    },
-    Language {
-        name: "JavaScript",
-        names: &["javascript"],
-        extensions: &[".js", ".jsx", ".mjs", ".cjs"],
-        grammar: javascript,
-        functions: ECMASCRIPT_FUNCTIONS,
-        decisions: ECMASCRIPT_DECISIONS,
-        operators: ECMASCRIPT_OPERATORS,
-    },
-    Language {
-        name: "Go",
-        names: &["go"],
-        extensions: &[".go"],
-        grammar: go,
-        functions: &["function_declaration", "method_declaration", "func_literal"],
-        decisions: &[
-            "if_statement",
-            "for_statement",
-            "expression_case",
-            "type_case",
-            "communication_case",
-        ],
-        operators: &["&&", "||"],
-    },
-    Language {
-        name: "Java",
-        names: &["java"],
-        extensions: &[".java"],
-        grammar: java,
-        functions: &[
-            "method_declaration",
-            "constructor_declaration",
-            "compact_constructor_declaration",
-            "static_initializer",
-            "lambda_expression",
-        ],
-        decisions: &[
-            "if_statement",
-            "while_statement",
-            "do_statement",
-            "for_statement",
-            "enhanced_for_statement",
-            "switch_label",
-            "catch_clause",
-            "ternary_expression",
-        ],
-        operators: &["&&", "||"],
-    },
-    Language {
-        name: "Ruby",
-        names: &["ruby"],
-        extensions: &[".rb"],
-        grammar: ruby,
-        functions: &["method", "singleton_method"],
-        decisions: &[
-            "if",
-            "elsif",
-            "unless",
-            "while",
-            "until",
-            "for",
-            "when",
-            "in_clause",
-            "rescue",
-            "conditional",
-            "if_modifier",
-            "unless_modifier",
-            "while_modifier",
-            "until_modifier",
-            "rescue_modifier",
-        ],
-        operators: &["&&", "||", "and", "or"],
-    },
-    Language {
-        name: "Swift",
-        names: &["swift"],
-        extensions: &[".swift"],
-        grammar: swift,
-        functions: &[
-            "function_declaration",
-            "init_declaration",
-            "deinit_declaration",
-            "subscript_declaration",
-            "computed_property",
-            "computed_getter",
-            "computed_setter",
-            "willset_clause",
-            "didset_clause",
-        ],
-        decisions: &[
-            "if_statement",
-            "guard_statement",
-            "while_statement",
-            "repeat_while_statement",
-            "for_statement",
-            "switch_entry",
-            "catch_block",
-            "ternary_expression",
-            "conjunction_expression",
-            "disjunction_expression",
-            "nil_coalescing_expression",
-        ],
-        operators: &[],
-    },
-    Language {
-        name: "Kotlin",
-        names: &["kotlin"],
-        extensions: &[".kt", ".kts"],
-        grammar: kotlin,
-        functions: &[
-            "function_declaration",
-            "anonymous_function",
-            "secondary_constructor",
-            "anonymous_initializer",
-            "getter",
-            "setter",
-        ],
-        decisions: &[
-            "if_expression",
-            "when_entry",
-            "while_statement",
-            "do_while_statement",
-            "for_statement",
-            "catch_block",
-        ],
-        operators: &["&&", "||", "?:"],
-    },
+/// What this check counts in one language: the node kinds that branch, and the operators that
+/// branch without a node of their own. This is complexity's own policy, not syntax, which is
+/// why it stays here and is keyed by the logical language rather than by a grammar variant.
+/// ADR 0001, ADR 0035.
+struct Metrics {
+    decisions: &'static [&'static str],
+    operators: &'static [&'static str],
+}
+
+const METRICS: &[(LanguageId, Metrics)] = &[
+    (
+        LanguageId::Rust,
+        Metrics {
+            decisions: &[
+                "if_expression",
+                "while_expression",
+                "loop_expression",
+                "for_expression",
+                "match_arm",
+                "try_expression",
+            ],
+            operators: &["&&", "||"],
+        },
+    ),
+    (
+        LanguageId::Python,
+        Metrics {
+            decisions: &[
+                "if_statement",
+                "elif_clause",
+                "while_statement",
+                "for_statement",
+                "for_in_clause",
+                "if_clause",
+                "except_clause",
+                "case_clause",
+                "conditional_expression",
+                "boolean_operator",
+                "assert_statement",
+            ],
+            operators: &[],
+        },
+    ),
+    (
+        LanguageId::TypeScript,
+        Metrics {
+            decisions: ECMASCRIPT_DECISIONS,
+            operators: ECMASCRIPT_OPERATORS,
+        },
+    ),
+    (
+        LanguageId::JavaScript,
+        Metrics {
+            decisions: ECMASCRIPT_DECISIONS,
+            operators: ECMASCRIPT_OPERATORS,
+        },
+    ),
+    (
+        LanguageId::Go,
+        Metrics {
+            decisions: &[
+                "if_statement",
+                "for_statement",
+                "expression_case",
+                "type_case",
+                "communication_case",
+            ],
+            operators: &["&&", "||"],
+        },
+    ),
+    (
+        LanguageId::Java,
+        Metrics {
+            decisions: &[
+                "if_statement",
+                "while_statement",
+                "do_statement",
+                "for_statement",
+                "enhanced_for_statement",
+                "switch_label",
+                "catch_clause",
+                "ternary_expression",
+            ],
+            operators: &["&&", "||"],
+        },
+    ),
+    (
+        LanguageId::Ruby,
+        Metrics {
+            decisions: &[
+                "if",
+                "elsif",
+                "unless",
+                "while",
+                "until",
+                "for",
+                "when",
+                "in_clause",
+                "rescue",
+                "conditional",
+                "if_modifier",
+                "unless_modifier",
+                "while_modifier",
+                "until_modifier",
+                "rescue_modifier",
+            ],
+            operators: &["&&", "||", "and", "or"],
+        },
+    ),
+    (
+        LanguageId::Swift,
+        Metrics {
+            decisions: &[
+                "if_statement",
+                "guard_statement",
+                "while_statement",
+                "repeat_while_statement",
+                "for_statement",
+                "switch_entry",
+                "catch_block",
+                "ternary_expression",
+                "conjunction_expression",
+                "disjunction_expression",
+                "nil_coalescing_expression",
+            ],
+            operators: &[],
+        },
+    ),
+    (
+        LanguageId::Kotlin,
+        Metrics {
+            decisions: &[
+                "if_expression",
+                "when_entry",
+                "while_statement",
+                "do_while_statement",
+                "for_statement",
+                "catch_block",
+            ],
+            operators: &["&&", "||", "?:"],
+        },
+    ),
 ];
+
+/// What no table names, which is every language the parser registry holds and this check has
+/// no metric table for. A function in one is counted, and nothing in it branches.
+static NOTHING: Metrics = Metrics {
+    decisions: &[],
+    operators: &[],
+};
+
+fn metrics(id: LanguageId) -> &'static Metrics {
+    METRICS
+        .iter()
+        .find(|(held, _)| *held == id)
+        .map_or(&NOTHING, |(_, table)| table)
+}
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -389,12 +294,6 @@ impl Function {
 struct Ceilings {
     cc: Ceiling,
     lines: Ceiling,
-}
-
-/// One file no grammar read, which every gate that parses names and refuses. ADR 0003.
-pub struct Unparsed {
-    pub file: String,
-    pub language: &'static str,
 }
 
 /// One tree walked: its functions, the files no grammar read, and the files the walk reached,
@@ -453,7 +352,7 @@ fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
         out,
     );
     let code = coverage::lost_said(&lost, flags, code, out);
-    Ok(unread(&sweep.unparsed, flags, code, out))
+    Ok(syntax::unread(&sweep.unparsed, flags, code, out))
 }
 
 fn at_the_base(
@@ -511,73 +410,6 @@ fn scoped<'a>(files: impl Iterator<Item = &'a String>, flags: &Flags) -> usize {
     }
 }
 
-/// What a gate does about the files no grammar read: a NOTE in the hook, and exit 2 outside
-/// it, because an agent cannot fix a grammar and a file klin cannot read is a hole in the
-/// ratchet. ADR 0003, spec 14.
-pub fn unread(unparsed: &[Unparsed], flags: &Flags, code: u8, out: &mut String) -> u8 {
-    let only = flags.only.as_deref();
-    let named: Vec<&Unparsed> = unparsed
-        .iter()
-        .filter(|file| only.is_none_or(|only| only.contains(&file.file)))
-        .collect();
-    if named.is_empty() {
-        return code;
-    }
-    match flags.hook {
-        true => {
-            noted(&named, flags, out);
-            code
-        }
-        false => {
-            refused(&named, flags, out);
-            2
-        }
-    }
-}
-
-fn noted(named: &[&Unparsed], flags: &Flags, out: &mut String) {
-    let _ = writeln!(
-        out,
-        "NOTE: {} file(s) the grammar could not parse, so nothing in them was measured:",
-        named.len()
-    );
-    for file in named {
-        let rejected = rejected(file);
-        let _ = writeln!(out, "  {}  {rejected}", file.file);
-        flags.record(|records| records.notes.push(unparsed_site(file, &rejected)));
-    }
-    let _ = writeln!(out, "{REMEDY}");
-}
-
-fn refused(named: &[&Unparsed], flags: &Flags, out: &mut String) {
-    let _ = writeln!(
-        out,
-        "FAIL: {} file(s) the grammar could not parse, so nothing in them was measured:",
-        named.len()
-    );
-    for file in named {
-        let rejected = rejected(file);
-        let _ = writeln!(out, "  {}  {rejected}", file.file);
-        flags.record(|records| records.findings.push(unparsed_site(file, &rejected)));
-    }
-    let _ = writeln!(out, "{REMEDY}");
-}
-
-const REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the grammar, or \
-                      exclude the file and accept that nothing measures it.";
-
-fn rejected(file: &Unparsed) -> String {
-    format!("the {} grammar rejected it", file.language)
-}
-
-fn unparsed_site(file: &Unparsed, rejected: &str) -> Value {
-    let mut out = Values::new();
-    out.insert("outcome".into(), UNPARSED.into());
-    out.insert("file".into(), file.file.clone().into());
-    out.insert("text".into(), rejected.into());
-    Value::Object(out)
-}
-
 fn evaluator(spec: &Spec) -> Evaluator<'_> {
     Evaluator {
         metrics: &["cc", "lines"],
@@ -623,11 +455,11 @@ fn selection(config: &Config, section: &Values) -> Result<Selection, Error> {
 
 fn languages(config: &Config, named: &[String]) -> Result<Vec<&'static Language>, Error> {
     if named.is_empty() {
-        return Ok(LANGUAGES.iter().collect());
+        return Ok(syntax::LANGUAGES.iter().collect());
     }
     let mut out: Vec<&'static Language> = Vec::new();
     for name in named {
-        let matching = LANGUAGES
+        let matching = syntax::LANGUAGES
             .iter()
             .filter(|language| language.names.contains(&name.as_str()));
         let mut found = false;
@@ -645,7 +477,7 @@ fn languages(config: &Config, named: &[String]) -> Result<Vec<&'static Language>
 }
 
 fn unknown_language(config: &Config, name: &str) -> Error {
-    let mut known: Vec<&str> = LANGUAGES
+    let mut known: Vec<&str> = syntax::LANGUAGES
         .iter()
         .flat_map(|language| language.names.iter().copied())
         .collect();
@@ -734,61 +566,33 @@ fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result
 fn functions(
     path: &Path,
     repo_root: &Path,
-    language: &Language,
+    language: &'static Language,
     unparsed: &mut Vec<Unparsed>,
 ) -> Result<Vec<Function>, Error> {
     let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
     let source = String::from_utf8_lossy(&bytes).to_string();
     let file = files::relative(path, repo_root);
-    let Some(found) = parsed(&source, &file, language)? else {
-        unparsed.push(Unparsed {
-            file,
-            language: language.name,
-        });
-        return Ok(Vec::new());
-    };
-    Ok(found)
+    match syntax::read(&file, &source, language)? {
+        Parsed::Read(read) => Ok(parsed(&read)),
+        Parsed::Rejected(refused) => {
+            unparsed.push(refused);
+            Ok(Vec::new())
+        }
+    }
 }
 
-/// The parse of one source text, and `None` when the grammar rejects it.
-fn tree_of(source: &str, language: &Language) -> Result<Option<tree_sitter::Tree>, Error> {
-    let mut parser = Parser::new();
-    parser.set_language(&(language.grammar)()).map_err(|why| {
-        Error(format!(
-            "the {} grammar could not be loaded: {why}",
-            language.name
-        ))
-    })?;
-    Ok(parser
-        .parse(source, None)
-        .filter(|tree| !tree.root_node().has_error()))
-}
-
-/// Every function one source text holds, and `None` when the grammar rejects the text.
-fn parsed(source: &str, file: &str, language: &Language) -> Result<Option<Vec<Function>>, Error> {
-    let Some(tree) = tree_of(source, language)? else {
-        return Ok(None);
+/// Every function one parse holds, with the two numbers this check ratchets.
+fn parsed(file: &ParsedFile) -> Vec<Function> {
+    let at = Walked {
+        language: file.language,
+        metrics: metrics(file.language.id),
+        file: file.path,
+        source: file.source,
+        lines: file.lines(),
     };
-    let lines: Vec<&str> = source.lines().collect();
     let mut out = Vec::new();
-    collect(tree.root_node(), language, file, source, &lines, &mut out);
-    Ok(Some(out))
-}
-
-/// The file extensions the named languages carry, and every language's when none are named, so
-/// a survey samples exactly the files this gate would measure. Spec 5.4.
-pub fn extensions(named: &[String]) -> Vec<&'static str> {
-    LANGUAGES
-        .iter()
-        .filter(|language| {
-            named.is_empty()
-                || language
-                    .names
-                    .iter()
-                    .any(|name| named.iter().any(|want| want == name))
-        })
-        .flat_map(|language| language.extensions.iter().copied())
-        .collect()
+    collect(file.root(), &at, &mut out);
+    out
 }
 
 /// What one function comes to under this check, for a caller that measures a tree it does not
@@ -798,326 +602,14 @@ pub struct Measured {
     pub lines: u64,
 }
 
-/// The declaration a language's test convention names a test function by, anywhere on the
-/// declaration line, so a modifier before it is allowed. Fixed in the binary, the way the
-/// escapes table is. Spec 8.2.
-const TEST_NAMES: &[&str] = &["fn test_", "def test_", "func test_", "func Test"];
-
-/// The calls a convention declares a test by, at the start of the declaration line, so a call
-/// to one of these names inside a body is not a declaration.
-const TEST_CALLS: &[&str] = &["it(", "test("];
-
-/// The markers it writes as an attribute or an annotation, on the declaration line or on the
-/// run of marker lines above it.
-const TEST_ATTRIBUTES: &[&str] = &["#[test]", "@Test"];
-
-/// One test function a tree holds: the site of ADR 0008, and the body hash the cross-file pass
-/// of spec 4.4 matches on. What `inventory` ratchets the existence of. Spec 8.2.
-#[derive(Clone)]
-pub struct Test {
-    pub file: String,
-    pub line: u64,
-    pub text: String,
-    pub body: u64,
-}
-
-/// Every function in one source text that the language's own test convention marks as a test.
-/// The walk is the one this gate already does, and only the marker table is new. Nothing for a
-/// path no grammar here reads, and nothing for a text the grammar rejects. Spec 8.2.
-pub fn tests(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Vec<Test> {
-    let Some(language) = language_of(path) else {
-        return Vec::new();
-    };
-    let Some(found) = parsed(source, path, language).ok().flatten() else {
-        unparsed.push(Unparsed {
-            file: path.to_string(),
-            language: language.name,
-        });
-        return Vec::new();
-    };
-    let lines: Vec<&str> = source.lines().collect();
-    found
-        .into_iter()
-        .filter_map(|function| {
-            let end = (function.end as usize - 1).min(lines.len().saturating_sub(1));
-            let row = declaration_row(&lines, function.line as usize - 1, end);
-            marks_a_test(&lines, row).then(|| Test {
-                file: function.file,
-                line: row as u64 + 1,
-                text: line_at(&lines, row),
-                body: ratchet::body_hash(&lines[row..=end].join("\n")),
-            })
-        })
-        .collect()
-}
-
-/// The row the declaration of a test sits on. A language that writes the test marker as an
-/// annotation may put it inside the function's own node, so the node's first line is not the
-/// declaration. Neither the site of ADR 0008 nor the body hash of 4.4 may keep that line: an
-/// annotation above the name would hold the name in the body, and a rename would not match.
-fn declaration_row(lines: &[&str], from: usize, to: usize) -> usize {
-    (from..=to)
-        .find(|row| {
-            let line = line_at(lines, *row);
-            !line.is_empty() && !only_a_marker(&line)
-        })
-        .unwrap_or(from)
-}
-
-/// Whether this line carries nothing but an attribute or an annotation, so the declaration it
-/// marks sits on a line below it.
-fn only_a_marker(line: &str) -> bool {
-    (line.starts_with('#') || line.starts_with('@'))
-        && (line.ends_with(']') || line.ends_with(')') || !line.contains(' '))
-}
-
-/// Whether the convention marks the function that starts on this row: a marker on the
-/// declaration line, or an attribute on the run of marker lines directly above it.
-fn marks_a_test(lines: &[&str], row: usize) -> bool {
-    let declaration = line_at(lines, row);
-    TEST_NAMES
-        .iter()
-        .any(|marker| mentions(&declaration, marker))
-        || TEST_CALLS
-            .iter()
-            .any(|marker| declaration.starts_with(marker))
-        || TEST_ATTRIBUTES
-            .iter()
-            .any(|marker| declaration.contains(marker))
-        || attributed(lines, row)
-}
-
-fn attributed(lines: &[&str], row: usize) -> bool {
-    lines[..row.min(lines.len())]
-        .iter()
-        .rev()
-        .map(|line| line.trim())
-        .take_while(|line| only_a_marker(line))
-        .any(|line| TEST_ATTRIBUTES.iter().any(|marker| line.contains(marker)))
-}
-
-/// Whether the text names this marker where no identifier runs into it, so `myfunc Test` is
-/// not a `func Test` declaration.
-fn mentions(text: &str, marker: &str) -> bool {
-    text.match_indices(marker).any(|(at, _)| {
-        text[..at]
-            .chars()
-            .next_back()
-            .is_none_or(|before| !before.is_alphanumeric() && before != '_' && before != '.')
-    })
-}
-
-/// The placeholder body shapes of spec 8.2, and the remedy each one carries. A shape is what a
-/// line pattern cannot see, so `stubs` reads it from this walk. #114.
-pub struct Stub {
-    pub line: u64,
-    pub text: String,
-    pub name: &'static str,
-    pub remedy: &'static str,
-}
-
-const PASS_BODY: (&str, &str) = ("pass body", "implement the body");
-const ELIDED_BODY: (&str, &str) = ("elided body", "implement the body");
-const EMPTY_TEST: (&str, &str) = ("empty test", "write the assertion the test name promises");
-
-/// A comment that stands in for the body it replaces, once the comment markers and the
-/// whitespace are off it. Fixed in the binary, the way the marker table is.
-const ELISIONS: &[&str] = &["...", "rest of the"];
-
-/// The body a shape can be read off: a run of statements, and no expression a function returns.
-/// A concise arrow body such as `() => value` is one expression and does the work of one.
-const BODY_BLOCKS: &[&str] = &[
-    "block",
-    "statement_block",
-    "body_statement",
-    "function_body",
-];
-
-/// A decorator that declares a body is meant to be empty, so no shape of it is a stub.
-const ABSTRACT_DECORATORS: &[&str] = &["abstractmethod", "abstractproperty", "overload"];
-
-/// A base class whose methods declare a shape and no body.
-const ABSTRACT_BASES: &[&str] = &["Protocol", "ABC"];
-
-/// Every placeholder body shape one source text holds, at the declaration line of the function
-/// that holds it. Nothing for a path no grammar here reads, and nothing for a text the grammar
-/// rejects. Spec 8.2.
-pub fn stubs(path: &str, source: &str) -> Vec<Stub> {
-    let Some(language) = language_of(path) else {
-        return Vec::new();
-    };
-    let Some(tree) = tree_of(source, language).ok().flatten() else {
-        return Vec::new();
-    };
-    let lines: Vec<&str> = source.lines().collect();
-    let mut out = Vec::new();
-    shapes(
-        tree.root_node(),
-        language,
-        source.as_bytes(),
-        &lines,
-        &mut out,
-    );
-    out.sort_by_key(|stub| stub.line);
-    out
-}
-
-fn shapes(node: Node, language: &Language, source: &[u8], lines: &[&str], out: &mut Vec<Stub>) {
-    if language.functions.contains(&node.kind()) {
-        let from = node.start_position().row;
-        let to = node
-            .end_position()
-            .row
-            .min(lines.len().saturating_sub(1))
-            .max(from);
-        let row = declaration_row(lines, from, to);
-        if let Some((name, remedy)) = shape(node, language, source, lines, row) {
-            out.push(Stub {
-                line: row as u64 + 1,
-                text: line_at(lines, row),
-                name,
-                remedy,
-            });
-        }
-    }
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        shapes(child, language, source, lines, out);
-    }
-}
-
-/// The shape of one function's body, and `None` when the body does work or when the
-/// declaration is abstract. A declaration that carries no body at all, such as a trait method
-/// without a default or an interface method, has no shape to judge.
-fn shape(
-    node: Node,
-    language: &Language,
-    source: &[u8],
-    lines: &[&str],
-    row: usize,
-) -> Option<(&'static str, &'static str)> {
-    let body = node.child_by_field_name("body")?;
-    if !BODY_BLOCKS.contains(&body.kind())
-        || !owns_the_declaration(node, language)
-        || declared_abstract(node, source)
-    {
-        return None;
-    }
-    let mut cursor = body.walk();
-    let children: Vec<Node> = body.named_children(&mut cursor).collect();
-    let (comments, statements): (Vec<&Node>, Vec<&Node>) = children
-        .iter()
-        .partition(|child| child.kind().contains("comment"));
-    match statements.as_slice() {
-        [only] if only.kind() == "pass_statement" => Some(PASS_BODY),
-        [] if comments.iter().any(|child| elides(child, source)) => Some(ELIDED_BODY),
-        [] if marks_a_test(lines, row) => Some(EMPTY_TEST),
-        _ => None,
-    }
-}
-
-/// Whether the declaration line this function is judged at is its own. A callback written
-/// inside the call that declares a test shares that line, and the shape of its body is not the
-/// shape of the test's.
-fn owns_the_declaration(node: Node, language: &Language) -> bool {
-    let row = node.start_position().row;
-    let mut above = node.parent();
-    while let Some(holder) = above {
-        if holder.start_position().row == row && language.functions.contains(&holder.kind()) {
-            return false;
-        }
-        above = holder.parent();
-    }
-    true
-}
-
-fn elides(comment: &Node, source: &[u8]) -> bool {
-    let text = comment
-        .utf8_text(source)
-        .unwrap_or_default()
-        .trim_start_matches(['/', '#', '*', '!', '-'])
-        .trim_end_matches(['/', '*'])
-        .trim()
-        .to_lowercase();
-    ELISIONS.iter().any(|elision| text.starts_with(elision))
-}
-
-/// Whether a declaration above this function says its body is meant to be empty: a decorator
-/// that names it abstract, or a class that states a shape and no body.
-fn declared_abstract(node: Node, source: &[u8]) -> bool {
-    let mut above = node.parent();
-    while let Some(holder) = above {
-        match holder.kind() {
-            "decorated_definition" if decorated_with(holder, source, ABSTRACT_DECORATORS) => {
-                return true;
-            }
-            "class_definition" => {
-                return holder
-                    .child_by_field_name("superclasses")
-                    .is_some_and(|bases| based_on(bases, source, ABSTRACT_BASES));
-            }
-            _ => {}
-        }
-        above = holder.parent();
-    }
-    false
-}
-
-/// Whether one of this definition's decorators names one of these. The name a decorator calls
-/// is read on its own, so an argument that spells `overload` inside a route is not one.
-fn decorated_with(node: Node, source: &[u8], wanted: &[&str]) -> bool {
-    let mut cursor = node.walk();
-    node.children(&mut cursor)
-        .filter(|child| child.kind() == "decorator")
-        .filter_map(|child| child.named_child(0))
-        .any(|called| named(callee(called), source, wanted))
-}
-
-/// Whether one of the bases in this argument list names one of these. Whole names only, so
-/// `StoreABC` is not `ABC`.
-fn based_on(bases: Node, source: &[u8], wanted: &[&str]) -> bool {
-    let mut cursor = bases.walk();
-    bases
-        .named_children(&mut cursor)
-        .any(|base| named(callee(base), source, wanted))
-}
-
-/// The name a call or a subscript is written on, and the node itself when it is a name already.
-fn callee(node: Node) -> Node {
-    match node.kind() {
-        "call" => node.child_by_field_name("function").unwrap_or(node),
-        "subscript" => node.child_by_field_name("value").unwrap_or(node),
-        _ => node,
-    }
-}
-
-/// Whether this name, or the last segment of this dotted name, is one of these.
-fn named(node: Node, source: &[u8], wanted: &[&str]) -> bool {
-    let text = node.utf8_text(source).unwrap_or_default();
-    let tail = text.rsplit('.').next().unwrap_or(text);
-    wanted.contains(&tail)
-}
-
-fn language_of(path: &str) -> Option<&'static Language> {
-    LANGUAGES.iter().find(|language| {
-        language
-            .extensions
-            .iter()
-            .any(|extension| path.ends_with(extension))
-    })
-}
-
 /// The cyclomatic complexity and body length of every function in one source text, for the
 /// percentile the survey takes over the derivation commit. Nothing for a path no grammar here
 /// reads, and nothing for a text the grammar rejects. Spec 5.4.
 pub fn measured(path: &str, source: &str) -> Vec<Measured> {
-    let Some(language) = language_of(path) else {
+    let Ok(Some(Parsed::Read(file))) = syntax::parse(path, source) else {
         return Vec::new();
     };
-    parsed(source, path, language)
-        .ok()
-        .flatten()
-        .unwrap_or_default()
+    parsed(&file)
         .iter()
         .map(|function| Measured {
             cc: function.cc,
@@ -1126,44 +618,46 @@ pub fn measured(path: &str, source: &str) -> Vec<Measured> {
         .collect()
 }
 
-fn collect(
-    node: Node,
-    language: &Language,
-    file: &str,
-    source: &str,
-    lines: &[&str],
-    out: &mut Vec<Function>,
-) {
-    if language.functions.contains(&node.kind()) && !holds_a_body(node, language) {
+/// One tree being walked, with everything the walk reads off the language and this check.
+struct Walked<'a> {
+    language: &'static Language,
+    metrics: &'static Metrics,
+    file: &'a str,
+    source: &'a str,
+    lines: Vec<&'a str>,
+}
+
+fn collect(node: Node, at: &Walked, out: &mut Vec<Function>) {
+    if at.language.functions.contains(&node.kind()) && !holds_a_body(node, at.language) {
         out.push(Function {
-            file: file.to_string(),
+            file: at.file.to_string(),
             line: node.start_position().row as u64 + 1,
             end: node.end_position().row as u64 + 1,
-            cc: 1 + decisions(node, language),
-            text: site(node, lines),
-            body: ratchet::body_hash(node.utf8_text(source.as_bytes()).unwrap_or_default()),
+            cc: 1 + decisions(node, at),
+            text: site(node, &at.lines),
+            body: ratchet::body_hash(node.utf8_text(at.source.as_bytes()).unwrap_or_default()),
         });
     }
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect(child, language, file, source, lines, out);
+        collect(child, at, out);
     }
 }
 
-fn decisions(node: Node, language: &Language) -> u64 {
+fn decisions(node: Node, at: &Walked) -> u64 {
     let mut count = 0;
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        if language.functions.contains(&child.kind()) {
+        if at.language.functions.contains(&child.kind()) {
             continue;
         }
         let table = if child.is_named() {
-            language.decisions
+            at.metrics.decisions
         } else {
-            language.operators
+            at.metrics.operators
         };
         count += u64::from(table.contains(&child.kind()) && !falls_through(child))
-            + decisions(child, language);
+            + decisions(child, at);
     }
     count
 }
@@ -1197,9 +691,13 @@ fn site(node: Node, lines: &[&str]) -> String {
     let row = node.start_position().row;
     match holder_row(node) {
         Some(holder) if holder < row => {
-            format!("{} {}", line_at(lines, holder), line_at(lines, row))
+            format!(
+                "{} {}",
+                syntax::line_at(lines, holder),
+                syntax::line_at(lines, row)
+            )
         }
-        _ => line_at(lines, row),
+        _ => syntax::line_at(lines, row),
     }
 }
 
@@ -1211,10 +709,6 @@ fn holder_row(node: Node) -> Option<usize> {
         above = holder.parent();
     }
     row
-}
-
-fn line_at(lines: &[&str], row: usize) -> String {
-    lines.get(row).unwrap_or(&"").trim().to_string()
 }
 
 fn has_child(node: Node, wanted: impl Fn(&str) -> bool) -> bool {

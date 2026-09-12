@@ -1308,12 +1308,19 @@ and reads no project dependencies, such as ruff.
 #51), `changed-coverage` and `crap` over one coverage reader with a postflight
 run (#53, #54, #55, #70), `hotspots` as a report (#60), SARIF output (#65).
 
-The reference extractor resolves a reference by name to every declaration of
-that name under the roots. That errs toward "referenced", so `dead-symbols`
-and `reachability` fail less, never more. Rust, TypeScript and Python come
-first, and a file in a language the extractor has no table for is counted as
-not measured on the coverage line of 8.6, so a green run over such a tree is
-visibly a run over nothing.
+The reference extractor is the `syntax` module (#49, ADR 0035). It owns the
+grammars, the parser and the file no grammar read, and it hands a check
+declarations, imports, module declarations and references, so no check holds
+another language's node kinds. It resolves a reference by name to every
+declaration of that name under the roots. That errs toward "referenced", so
+`dead-symbols` and `reachability` fail less, never more.
+
+Rust and TypeScript are the first structural languages, and TSX is TypeScript
+rather than a language of its own. A file in a language no structural adapter
+reads is counted as not measured on the coverage line of 8.6, so a green run
+over such a tree is visibly a run over nothing. Resolving an import or a Rust
+`mod foo;` to a file belongs to #50, and the specifier is kept as written for
+it.
 
 A `test-hygiene` check, a count of habits across the test roots against a
 dated ceiling, was considered and is not a check. A habit that rose is an

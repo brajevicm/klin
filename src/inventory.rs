@@ -6,13 +6,14 @@ use serde_json::{Map, Value};
 
 use crate::base;
 use crate::changed::git;
-use crate::complexity;
 use crate::config::{Config, DELETED, Error, Flags};
 use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
 use crate::survey::{ROOT, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
+use crate::syntax::convention::{self, Test};
+use crate::syntax::{self, Unparsed};
 use crate::turn;
 
 pub const SECTION: &str = "inventory";
@@ -74,7 +75,7 @@ struct Site {
 /// holds it by site or by body, and whether the file that held it went in the same window.
 /// The second identity of spec 8.2.
 struct Function {
-    site: complexity::Test,
+    site: Test,
     gone: bool,
     file_went: bool,
 }
@@ -91,13 +92,13 @@ impl Function {
 /// files in the working tree no grammar read. ADR 0003.
 struct Measured {
     functions: Vec<Function>,
-    unparsed: Vec<complexity::Unparsed>,
+    unparsed: Vec<Unparsed>,
 }
 
 /// One tree walked for test functions: the sites it holds, and the files no grammar read.
 struct Walk {
-    tests: Vec<complexity::Test>,
-    unparsed: Vec<complexity::Unparsed>,
+    tests: Vec<Test>,
+    unparsed: Vec<Unparsed>,
 }
 
 pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -137,7 +138,7 @@ pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> 
     deleted(&went, flags, out);
     noted(&paired, flags, out);
     orphaned(&orphans, flags, out);
-    Ok(complexity::unread(&measured.unparsed, flags, code, out))
+    Ok(syntax::unread(&measured.unparsed, flags, code, out))
 }
 
 /// The OK line: how many test sites the base holds, and how many of them the run let go.
@@ -191,7 +192,7 @@ fn tests(
 
 /// Which of the base's test functions the working tree still holds: by site first, then by
 /// body hash across files, and one to one on both passes. Spec 4.4, 16.4.
-fn still_there(before: &[complexity::Test], after: &[complexity::Test]) -> Vec<bool> {
+fn still_there(before: &[Test], after: &[Test]) -> Vec<bool> {
     let mut taken = vec![false; after.len()];
     let mut found = vec![false; before.len()];
     for (at, site) in before.iter().enumerate() {
@@ -210,11 +211,7 @@ fn still_there(before: &[complexity::Test], after: &[complexity::Test]) -> Vec<b
 /// Whether the working tree holds a test function this rule names that no earlier site has
 /// already claimed. Pairing is one to one, so two tests that share a site and lose one of the
 /// pair leave that one gone. Spec 4.4.
-fn claimed(
-    after: &[complexity::Test],
-    taken: &mut [bool],
-    matches: impl Fn(&complexity::Test) -> bool,
-) -> bool {
+fn claimed(after: &[Test], taken: &mut [bool], matches: impl Fn(&Test) -> bool) -> bool {
     let found = after
         .iter()
         .enumerate()
@@ -232,7 +229,7 @@ fn claimed(
 /// walk is the one the complexity gate does, over the files an entry holds and no others, so
 /// the pattern that limits an entry limits this identity too.
 fn walked(entries: &[Entry], root: &Path) -> Result<Walk, Error> {
-    let extensions = complexity::extensions(&[]);
+    let extensions = syntax::extensions(&[]);
     let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
         extensions: &extensions,
@@ -253,7 +250,7 @@ fn walked(entries: &[Entry], root: &Path) -> Result<Walk, Error> {
         let bytes = std::fs::read(&path).map_err(|why| Error::unreadable(&path, why))?;
         let source = String::from_utf8_lossy(&bytes);
         walk.tests
-            .extend(complexity::tests(&file, &source, &mut walk.unparsed));
+            .extend(convention::tests(&file, &source, &mut walk.unparsed));
     }
     walk.tests
         .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
@@ -294,12 +291,7 @@ fn under(root: &Path, path: &str) -> PathBuf {
 /// the file scope the function identity reads. A deleted test whose subject went with it is
 /// found and not measured, because it is a NOTE and not a site the gate judges. A file no
 /// grammar read is unreadable and not measured, because no function in it was seen. Spec 8.6.
-fn covered(
-    judged: &[Site],
-    paired: &[Site],
-    unparsed: &[complexity::Unparsed],
-    flags: &Flags,
-) -> Coverage {
+fn covered(judged: &[Site], paired: &[Site], unparsed: &[Unparsed], flags: &Flags) -> Coverage {
     let only = flags.only.as_deref();
     let paths =
         |sites: &[Site]| -> Vec<String> { sites.iter().map(|site| site.path.clone()).collect() };

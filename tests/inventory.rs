@@ -480,6 +480,26 @@ fn a_function_whose_name_only_holds_a_marker_is_not_a_test_site() {
     assert!(run.says("2 test site(s) the base holds"), "{}", run.out);
 }
 
+/// The test convention reads a declaration line, not a node kind, so a language whose
+/// accessors are function nodes declares no test by holding one. Spec 8.2, ADR 0035.
+#[test]
+fn a_swift_accessor_is_not_a_test_site() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write(
+        "tests/Charge.swift",
+        "var testValue: Int {\n    get { return 1 }\n}\n\nfunc test_charge() {\n    _ = 1\n}\n",
+    );
+    tree.base();
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("OK: 2 test site(s) the base holds, all still there"),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
     let tree = Tree::new();

@@ -28,6 +28,7 @@ mod state;
 mod stats;
 mod stubs;
 mod survey;
+mod syntax;
 mod turn;
 mod update;
 

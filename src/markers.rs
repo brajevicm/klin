@@ -4,15 +4,15 @@ use std::path::{Path, PathBuf};
 
 use regex::Regex;
 use serde_json::Value;
-use tree_sitter::{Node, Parser};
+use tree_sitter::Node;
 
 use crate::base;
-use crate::complexity;
 use crate::config::{Config, Error, Flags};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
+use crate::syntax;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
 /// a site it matches. A row that names no remedy carries the empty string.
@@ -501,7 +501,7 @@ fn findings(
             let past = cached(kind, search, &rel, &text, &mut cache);
             skipped += tally(set, &rel, &text, &past, &mut seen);
             if set.shapes && shaped.insert(rel.clone()) {
-                for stub in complexity::stubs(&rel, &text) {
+                for stub in syntax::convention::stubs(&rel, &text) {
                     record(
                         &mut seen,
                         &rel,
@@ -537,7 +537,7 @@ fn cached(
         .entry(rel.to_string())
         .or_insert_with(|| Skipped {
             tests: match kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
-                true => rust_test_ranges(text),
+                true => rust_test_ranges(rel, text),
                 false => Vec::new(),
             },
             literals: match kind.skips_literals {
@@ -675,19 +675,14 @@ fn closing(bytes: &[u8], from: usize, quote: u8) -> Option<usize> {
     None
 }
 
-fn rust_test_ranges(source: &str) -> Vec<(u64, u64)> {
-    let mut parser = Parser::new();
-    if parser
-        .set_language(&tree_sitter_rust::LANGUAGE.into())
-        .is_err()
-    {
-        return Vec::new();
-    }
-    let Some(tree) = parser.parse(source, None) else {
+/// The line ranges an inline Rust test module covers, read off whatever the grammar could
+/// make of the text, so a file it only partly read still has its tests skipped.
+fn rust_test_ranges(path: &str, source: &str) -> Vec<(u64, u64)> {
+    let Some(file) = syntax::tolerant(path, source) else {
         return Vec::new();
     };
     let mut out = Vec::new();
-    test_ranges(tree.root_node(), source.as_bytes(), &mut out);
+    test_ranges(file.root(), file.bytes(), &mut out);
     out
 }
 

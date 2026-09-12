@@ -321,7 +321,7 @@ impl Sampled {
                 true => held.roots.clone(),
                 false => roots,
             },
-            extensions: crate::complexity::extensions(&named("languages")),
+            extensions: crate::syntax::extensions(&named("languages")),
             exclude: named("exclude"),
             skip_dirs: named("skip_dirs"),
         }
