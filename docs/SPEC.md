@@ -1179,7 +1179,19 @@ not a finding, while a pin the base held and a lockfile entry the base held
 are both `worsened` when they go. A manifest with no lockfile in either tree
 is a NOTE and no finding, and a lockfile only the base held makes every
 dependency of that manifest `unlocked`, so deleting a lockfile fails. A
-supported file klin cannot parse is a tool error naming the file. The check
+supported lockfile klin cannot parse is a tool error naming the file. A
+manifest the survey derived that klin cannot parse now, and that did not
+parse at the base or that the base did not hold, is a NOTE naming the
+manifest in every run, hook or not (8.6). It judges none of that manifest's
+dependencies, and every other manifest is still judged, so a fixture that is
+invalid on purpose does not turn the gate red. A derived manifest that parsed
+at the base and does not parse now is a tool error naming the file, because
+the work broke it and the agent can fix it. A derived manifest that did not
+parse at the base and parses now is judged against a base that named no
+dependency. A `manifests` list a person pinned, in `klin.json` or a `gates`
+entry, asserts that every path in it parses, so there a manifest klin cannot
+parse in either tree is a tool error naming the file. Only the npm reader can
+reject a manifest, because the Cargo and Go readers are line scans. The check
 judges every manifest under `--changed` as well, because a lockfile change
 judges a manifest whose own text did not change and the whole set is a
 handful of files. Pinned by
@@ -1197,15 +1209,15 @@ handful of files. Pinned by
 `a_renamed_dependency_is_locked_by_the_package_the_lockfile_records`,
 `both_npm_lockfile_versions_hold_a_dependency_in_the_base_state`,
 `an_unreadable_lockfile_format_is_a_note_and_judges_no_manifest`,
-`a_malformed_lockfile_is_a_tool_error_naming_the_file` and
+`a_malformed_lockfile_is_a_tool_error_naming_the_file`,
+`a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
+`a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
+`a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
+`a_pinned_manifest_klin_cannot_parse_is_a_tool_error_naming_the_file` and
 `under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged`
-in `tests/lockfile.rs`. Known limits: the Cargo and Go readers are line
+in `tests/lockfile.rs`. Known limit: the Cargo and Go readers are line
 scans, so a manifest that states a dependency in a shape the scan does not
-know contributes no site rather than a wrong one. And a repository that
-carries a deliberately invalid manifest as a test fixture makes the whole
-gate a tool error, because the derived `manifests` list holds every manifest
-the survey found and an unparseable one is an error by the rule above. The
-escape is an `exclude` glob, which needs a `klin.json` a person writes.
+know contributes no site rather than a wrong one.
 
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a
@@ -1376,7 +1388,11 @@ Every check MUST:
   record under the gate's notes (11.2).
 - name a file it could not measure. Outside the hook that is exit 2, with or
   without `--strict` (ADR 0021). In the hook it is a NOTE, because the agent
-  has no remedy.
+  has no remedy. One exception narrows ADR 0021: a `lockfile` manifest the
+  survey derived, which klin cannot parse now and could not parse at the base
+  or which the base did not hold, is a NOTE in every run (8.2.1). A tooling
+  repository keeps such a manifest as a fixture on purpose, so it is not a
+  hole the work opened, and no run could ever end green around it.
 - run under `klin gate` and under its own subcommand with the same output
 - carry tests through the binary only, on a throwaway tree with a base
 
@@ -2313,8 +2329,10 @@ Core:
   fails, a path dependency is not judged, a new dependency with a range and a
   lockfile entry is green, a deleted lockfile fails every dependency, a
   workspace lockfile above the member manifest is found, both npm lockfile
-  versions are read, an unreadable format is a NOTE and a malformed supported
-  file is a tool error.
+  versions are read, an unreadable format is a NOTE, a malformed supported
+  lockfile is a tool error, a derived manifest klin cannot parse at either
+  commit is a NOTE, a derived manifest the work broke is a tool error, and a
+  pinned one is a tool error.
 - Coverage: a file present in both trees and measured in `before` only is a
   NOTE in the hook and exit 2 under `--strict`, whether it left through an
   exclusion or a grammar error.

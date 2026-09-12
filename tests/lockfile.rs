@@ -267,6 +267,90 @@ fn a_malformed_lockfile_is_a_tool_error_naming_the_file() {
     );
 }
 
+fn derived_tree() -> Tree {
+    let tree = Tree::new();
+    tree.write("Cargo.toml", &manifest("serde = \"=1.0.0\"\n"));
+    tree.write("Cargo.lock", &locked(&["serde"]));
+    tree.write("src/main.rs", "fn main() {}\n");
+    tree
+}
+
+#[test]
+fn a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged() {
+    let tree = derived_tree();
+    tree.write("testdata/broken/package.json", "{ not json");
+    tree.base();
+    tree.write(
+        "Cargo.toml",
+        &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("NOTE: testdata/broken/package.json is not valid JSON"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Cargo.toml:0  unlocked 1, unpinned 0  regex"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error() {
+    let tree = derived_tree();
+    tree.write("tools/package.json", r#"{"dependencies": {}}"#);
+    tree.base();
+    tree.write("tools/package.json", "{ not json");
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("tools/package.json is not valid JSON"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() {
+    let tree = derived_tree();
+    tree.write("tools/package.json", "{ not json");
+    tree.write(
+        "tools/package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {}}"#,
+    );
+    tree.base();
+    tree.write(
+        "tools/package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0"}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("tools/package.json:0  unlocked 1, unpinned 0  left-pad"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_pinned_manifest_klin_cannot_parse_is_a_tool_error_naming_the_file() {
+    let gates = r#"{"gates": [{"name": "deps", "check": "lockfile",
+                               "with": {"manifests": ["package.json"]}}]}"#;
+    for (config, gate) in [(NPM, "lockfile"), (gates, "deps")] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+        tree.write("package.json", "{ not json");
+        tree.write("package-lock.json", NPM_V3);
+        tree.base();
+        let run = tree.run(&["gate", "--gate", gate]);
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert!(run.says("package.json is not valid JSON"), "{}", run.out);
+    }
+}
+
 fn go_tree() -> Tree {
     let tree = Tree::new();
     tree.write("klin.json", GO);
