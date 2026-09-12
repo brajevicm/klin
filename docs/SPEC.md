@@ -1703,13 +1703,13 @@ One object on stdout. Fields:
   a file a grammar refused in the hook, `lost` for a file `before` measured
   and `after` did not (8.6), and `note` for what a check left out of its
   count. `text` carries the reason, as the `NOTE:` line printed it.
-- `exit` integer, the code a run without `--hook` returns. It is not read off
+- `exit` integer, the code the run returns. It is not read off
   `status`: a build failure that has spent its blocks is an `ERROR` run that
   exits 0, so a harness that wants the process's answer reads `exit` and one
-  that wants the verdict reads `status`. Under `--hook` the stop's own code is
-  16.3's and is decided after this object is built, so `exit` there is the
-  gates' code and not the stop's; the journal line of 11.4 records the stop's
-  own outcome beside this object rather than inside it.
+  that wants the verdict reads `status`. Under `--hook`, 16.3 decides the
+  stop's code after this object is built, so the journal line of 11.4 is the
+  record that carries it in `exit`: 2 for a stop that blocks, 0 for one that
+  passes.
 
 A finding has no column, so the JSON carries none rather than a wrong one.
 

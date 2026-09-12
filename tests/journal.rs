@@ -86,7 +86,7 @@ fn a_stop_appends_one_line_holding_the_record_and_what_the_hook_knew() {
     assert_eq!(field(line, &["hook", "blocked_before"]), false, "{line}");
     assert_eq!(field(line, &["hook", "build_blocks"]), 0, "{line}");
     assert_eq!(field(line, &["window", "kind"]), "turn", "{line}");
-    assert_eq!(field(line, &["exit"]), 1, "{line}");
+    assert_eq!(field(line, &["exit"]), 2, "{line}");
     assert_eq!(field(line, &["flags"]), &Value::Array(Vec::new()), "{line}");
     for key in [
         "version",
@@ -118,6 +118,8 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
     let lines = stops(&tree);
     assert_eq!(lines.len(), 2, "{lines:?}");
     assert_eq!(field(&lines[0], &["hook", "blocked"]), true, "{}", lines[0]);
+    assert_eq!(field(&lines[0], &["exit"]), 2, "{}", lines[0]);
+    assert_eq!(field(&lines[1], &["exit"]), 0, "{}", lines[1]);
     assert_eq!(
         field(&lines[1], &["hook", "blocked"]),
         false,

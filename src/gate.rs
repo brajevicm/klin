@@ -129,8 +129,11 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
     }
     let (code, green, asked, note) =
         ran(args, start, window.as_ref(), event.as_ref(), &mut log, out);
-    if let (Some(Value::Object(report)), Some(window)) = (&mut log.report, &window) {
-        report.entry("window").or_insert_with(|| window.record());
+    if let Some(Value::Object(report)) = &mut log.report {
+        report.insert("exit".into(), code.into());
+        if let Some(window) = &window {
+            report.entry("window").or_insert_with(|| window.record());
+        }
     }
     log.blocked = code == 2;
     written(&root, lost, green, asked.as_deref(), &mut log);
@@ -744,11 +747,6 @@ fn status_row(code: u8) -> &'static str {
 
 /// The object of spec 11.2. `status` is the row of 11.1, which a caller gives rather than reads
 /// off `code`, because a build failure that stops blocking is an `ERROR` row that exits 0.
-/// `exit` is exactly the code the caller is about to return, which holds for a direct `--json`
-/// run. A `--hook` stop instead asks `hook()` for its own code afterward, from state this
-/// function never sees, so `exit` there is the gates' code and not the stop's — the gap
-/// `does_not_build` closes for itself, and the journal closes for the rest by recording the
-/// stop's own outcome beside this object rather than inside it. Spec 11.4.
 fn as_json(status: &str, code: u8, tally: &str, records: Records, base: Option<&Window>) -> Value {
     let mut out = Map::new();
     out.insert("status".into(), status.into());

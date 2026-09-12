@@ -78,7 +78,7 @@ fn stop(ago: u64, blocked: bool, findings: Vec<Value>, notes: Vec<Value>) -> Val
         "timing": {"total_ms": 20, "build_ms": 0, "lock_ms": 0, "klin_ms": 20},
         "asked": [],
         "flags": [],
-        "exit": if blocked { 1 } else { 0 },
+        "exit": if blocked { 2 } else { 0 },
     })
 }
 
