@@ -6,7 +6,8 @@ use serde_json::{Map, Value};
 use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::reference::Key;
 
@@ -68,47 +69,42 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
-    evaluate(&flags(args), args.file.as_deref(), args.ceiling, start, out)
+    evaluate(
+        &context(args, start),
+        args.file.as_deref(),
+        args.ceiling,
+        &mut Sink::unrecorded(out),
+    )
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(flags, None, None, start, out)
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    evaluate(at, None, None, out)
 }
 
-fn flags(args: &Args) -> Flags {
-    Flags {
-        config: args.config.clone(),
-        gate: SECTION.to_string(),
-        prior: None,
-        base: None,
+fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+    Context {
         quiet: args.quiet,
-        context: !args.quiet,
-        strict: false,
-        hook: false,
-        only: None,
-        records: None,
-        with: None,
+        ..Context::by_hand(SECTION, start, args.config.as_deref())
     }
 }
 
 fn evaluate(
-    flags: &Flags,
+    at: &Context,
     named: Option<&Path>,
     ceiling: Option<u64>,
-    start: &Path,
-    out: &mut String,
+    out: &mut Sink,
 ) -> Result<u8, Error> {
-    let documents = documents(flags, named, ceiling, start, out)?;
-    let against = against(flags, &documents, start, out)?;
-    flags.record(|records| records.held = Some(0));
+    let documents = documents(at, named, ceiling, out)?;
+    let against = against(at, &documents, out)?;
+    out.record(|records| records.held = Some(0));
     let mut over = 0;
     for document in &documents {
-        over += usize::from(one(document, &against, flags, out)?);
+        over += usize::from(one(document, &against, at, out)?);
     }
     let measured = documents.len();
-    let said = Coverage::whole(measured).said(flags);
-    if over == 0 && !flags.quiet {
-        let _ = writeln!(out, "OK: {measured} document(s) judged{said}");
+    let said = Coverage::whole(measured).said(out);
+    if over == 0 && !at.quiet {
+        let _ = writeln!(out.text, "OK: {measured} document(s) judged{said}");
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
@@ -119,8 +115,8 @@ fn evaluate(
 fn one(
     document: &Document,
     against: &Option<(String, PathBuf)>,
-    flags: &Flags,
-    out: &mut String,
+    at: &Context,
+    out: &mut Sink,
 ) -> Result<bool, Error> {
     if !document.path.is_file() {
         return Err(Error(format!("no such file: {}", document.path.display())));
@@ -130,7 +126,7 @@ fn one(
         document,
         words,
         held(against, document, words),
-        flags,
+        at,
         out,
     ))
 }
@@ -139,28 +135,27 @@ fn one(
 /// `None` outside a repository and wherever no base resolves, and then the ceiling judges the
 /// working tree alone.
 fn against(
-    flags: &Flags,
+    at: &Context,
     documents: &[Document],
-    start: &Path,
-    out: &mut String,
+    out: &mut Sink,
 ) -> Result<Option<(String, PathBuf)>, Error> {
     if !documents.iter().any(|document| document.relative.is_some()) {
         return Ok(None);
     }
-    let config = Config::open(flags, start)?;
-    let Some(commit) = commit(&config, flags, out) else {
+    let config = Config::load_with(at.config, at.start, at.with)?;
+    let Some(commit) = commit(&config, at, out) else {
         return Ok(None);
     };
     Ok(Some((commit, config.root().to_path_buf())))
 }
 
-fn commit(config: &Config, flags: &Flags, out: &mut String) -> Option<String> {
-    if let Some(named) = &flags.base {
-        return Some(named.clone());
+fn commit(config: &Config, at: &Context, out: &mut Sink) -> Option<String> {
+    if let Some(named) = at.base {
+        return Some(named.to_string());
     }
-    let base = base::choose(config.root(), flags.strict).ok()?;
-    if flags.context {
-        let _ = writeln!(out, "{}", base.line());
+    let base = base::choose(config.root(), at.strict).ok()?;
+    if at.context() {
+        let _ = writeln!(out.text, "{}", base.line());
     }
     Some(base.before)
 }
@@ -181,38 +176,32 @@ fn held(against: &Option<(String, PathBuf)>, document: &Document, words: u64) ->
     (before > document.ceiling.value && words <= before).then_some(before)
 }
 
-fn judge(
-    document: &Document,
-    words: u64,
-    held: Option<u64>,
-    flags: &Flags,
-    out: &mut String,
-) -> bool {
+fn judge(document: &Document, words: u64, held: Option<u64>, at: &Context, out: &mut Sink) -> bool {
     let (name, ceiling) = (&document.name, &document.ceiling);
     if words > ceiling.value {
         let Some(before) = held else {
-            return failed(document, words, flags, out);
+            return failed(document, words, out);
         };
-        flags.record(|records| records.held = Some(records.held.unwrap_or(0) + 1));
-        if !flags.quiet {
+        out.record(|records| records.held = Some(records.held.unwrap_or(0) + 1));
+        if !at.quiet {
             let _ = writeln!(
-                out,
+                out.text,
                 "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base \
                  at {before} words"
             );
         }
         return false;
     }
-    if !flags.quiet {
-        let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
+    if !at.quiet {
+        let _ = writeln!(out.text, "OK: {name} is {words} words, ceiling {ceiling}");
     }
     let remaining = ceiling.value - words;
     if remaining as f64 <= ceiling.value as f64 * MARGIN_FRACTION {
         let _ = writeln!(
-            out,
+            out.text,
             "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
         );
-        flags.record(|records| {
+        out.record(|records| {
             let near = site("near-ceiling", name, words, ceiling.value);
             records.notes.push(Value::Object(near));
         });
@@ -220,14 +209,14 @@ fn judge(
     false
 }
 
-fn failed(document: &Document, words: u64, flags: &Flags, out: &mut String) -> bool {
+fn failed(document: &Document, words: u64, out: &mut Sink) -> bool {
     let (name, ceiling) = (&document.name, &document.ceiling);
     let _ = writeln!(
-        out,
+        out.text,
         "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
     );
-    let _ = writeln!(out, "{REMEDY}");
-    flags.record(|records| {
+    let _ = writeln!(out.text, "{REMEDY}");
+    out.record(|records| {
         let mut over = site("new", name, words, ceiling.value);
         over.insert("condition".into(), "over its word ceiling".into());
         over.insert("fix_advice".into(), REMEDY.into());
@@ -248,11 +237,10 @@ fn site(outcome: &str, name: &str, words: u64, ceiling: u64) -> Map<String, Valu
 }
 
 fn documents(
-    flags: &Flags,
+    at: &Context,
     named: Option<&Path>,
     ceiling: Option<u64>,
-    start: &Path,
-    out: &mut String,
+    out: &mut Sink,
 ) -> Result<Vec<Document>, Error> {
     if let (Some(named), Some(ceiling)) = (named, ceiling) {
         return Ok(vec![Document {
@@ -265,9 +253,9 @@ fn documents(
             relative: None,
         }]);
     }
-    let config = Config::open(flags, start)?;
+    let config = Config::load_with(at.config, at.start, at.with)?;
     let listed = listed_documents(&config)?;
-    config.say(flags, SECTION, out);
+    at.say(&config, SECTION, out);
     let Some(named) = named else {
         return Ok(listed);
     };

@@ -6,7 +6,8 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::base;
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
@@ -155,11 +156,11 @@ pub fn run(kind: &Kind, args: &Args, start: &Path, out: &mut String) -> Result<u
         list_languages(kind, out);
         return Ok(0);
     }
-    evaluate(kind, &flags(kind, args), start, out)
-}
-
-pub fn gate(kind: &Kind, flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(kind, flags, start, out)
+    gate(
+        kind,
+        &context(kind, args, start),
+        &mut Sink::unrecorded(out),
+    )
 }
 
 /// A matched row's name, its count and its remedy, as one report column.
@@ -191,43 +192,43 @@ pub fn holds(kind: &'static Kind, file: &str) -> Option<&'static Language> {
     })
 }
 
-fn evaluate(kind: &Kind, flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::open(flags, start)?;
+pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    let config = Config::load_with(at.config, at.start, at.with)?;
     let spec = spec(kind, &config)?;
-    config.say(flags, kind.section, out);
+    at.say(&config, kind.section, out);
     let read = findings(kind, &spec.search, &spec.roots, config.root())?;
-    let sites = ratchet::scoped(&read.findings, flags.only.as_deref());
+    let sites = ratchet::scoped(&read.findings, at.only);
     let aside = match read.skipped {
         0 => String::new(),
         count => format!(" ({count} in inline Rust tests skipped)"),
     };
     let unit = kind.evaluator.unit;
-    let said = read.files.coverage(flags.only.as_deref()).said(flags);
-    let (prior, before) = at_the_base(kind, &config, &spec, flags, out)?;
-    let lost = read.files.lost(&before, &config, flags.only.as_deref());
+    let said = read.files.coverage(at.only).said(out);
+    let (prior, before) = at_the_base(kind, &config, &spec, at, out)?;
+    let lost = read.files.lost(&before, &config, at.only);
     let code = kind.evaluator.evaluate(
         read.findings,
         prior,
-        ratchet::accepted(&config, &flags.gate, kind.evaluator.metrics)?,
-        flags,
+        ratchet::accepted(&config, at.gate, kind.evaluator.metrics)?,
+        at,
         &format!("OK: {sites} {unit} in the tree, all held at the base{aside}{said}"),
         out,
     );
-    Ok(coverage::lost_said(&lost, flags, code, out))
+    Ok(coverage::lost_said(&lost, at, code, out))
 }
 
 fn at_the_base(
     kind: &Kind,
     config: &Config,
     spec: &Spec,
-    flags: &Flags,
-    out: &mut String,
+    at: &Context,
+    out: &mut Sink,
 ) -> Result<(Vec<Finding>, Files), Error> {
     let owned;
-    let prior = match flags.prior.as_deref() {
+    let prior = match at.prior {
         Some(dir) => dir,
         None => {
-            owned = base::own(config, flags, out)?;
+            owned = base::own(config, at, out)?;
             owned.root()
         }
     };
@@ -246,19 +247,12 @@ fn at_the_base(
     Ok((held, before.files))
 }
 
-fn flags(kind: &Kind, args: &Args) -> Flags {
-    Flags {
-        config: args.config.clone(),
-        gate: kind.section.to_string(),
-        prior: None,
-        base: None,
-        quiet: args.quiet,
-        context: !args.quiet,
+fn context<'a>(kind: &'a Kind, args: &'a Args, start: &'a Path) -> Context<'a> {
+    Context {
+        only: args.only.as_deref(),
         strict: args.strict,
-        hook: false,
-        only: args.only.clone(),
-        records: None,
-        with: None,
+        quiet: args.quiet,
+        ..Context::by_hand(kind.section, start, args.config.as_deref())
     }
 }
 

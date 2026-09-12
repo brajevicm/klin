@@ -13,9 +13,9 @@ use std::time::SystemTime;
 use serde_json::{Map, Value};
 
 use crate::base;
-use crate::config::{Config, Error, Flags};
+use crate::check::{self, Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::Coverage;
-use crate::gate;
 use crate::hunks::Hunks;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
@@ -23,7 +23,7 @@ use crate::reference::Key;
 pub const SECTION: &str = "sarif";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[gate::NAMED, REPORT, RUN, DIFFERENTIAL];
+pub const KEYS: &[Key] = &[check::NAMED, REPORT, RUN, DIFFERENTIAL];
 
 const REPORT: Key = Key {
     name: "report",
@@ -84,38 +84,34 @@ pub struct Args {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let config = Config::load(args.config.as_deref(), start)?;
     let mut worst = 0;
-    for (name, entry) in gate::named_entries(&config, SECTION)? {
-        worst = worst.max(gate(&flags(args, &name, entry), start, out)?);
+    for (name, entry) in check::named_entries(&config, SECTION)? {
+        worst = worst.max(gate(
+            &context(args, start, &name, &entry),
+            &mut Sink::unrecorded(out),
+        )?);
     }
     Ok(worst)
 }
 
-fn flags(args: &Args, name: &str, entry: Value) -> Flags {
-    Flags {
-        config: args.config.clone(),
-        gate: name.to_string(),
-        prior: None,
-        base: None,
-        quiet: args.quiet,
-        context: !args.quiet,
+fn context<'a>(args: &'a Args, start: &'a Path, name: &'a str, entry: &'a Value) -> Context<'a> {
+    Context {
+        with: Some((SECTION, entry)),
         strict: args.strict,
-        hook: false,
-        only: None,
-        records: None,
-        with: Some((SECTION.to_string(), entry)),
+        quiet: args.quiet,
+        ..Context::by_hand(name, start, args.config.as_deref())
     }
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::open(flags, start)?;
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    let config = Config::load_with(at.config, at.start, at.with)?;
     let entry = entry(&config)?;
-    let (found, changed) = read(&config, &entry, flags, out)?;
+    let (found, changed) = read(&config, &entry, at, out)?;
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
-    let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
-    let ok = said(&judged, entry.differential) + &coverage.said(flags);
-    let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, flags, &ok, out);
-    ratchet::noted(&found.notes, flags, out);
+    let accepted = ratchet::accepted(&config, at.gate, METRICS)?;
+    let ok = said(&judged, entry.differential) + &coverage.said(out);
+    let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, at, &ok, out);
+    ratchet::noted(&found.notes, out);
     Ok(code)
 }
 
@@ -187,15 +183,15 @@ fn only_the_new(config: &Config, held: Option<&Value>) -> Result<bool, Error> {
 fn read(
     config: &Config,
     entry: &Entry,
-    flags: &Flags,
-    out: &mut String,
+    at: &Context,
+    out: &mut Sink,
 ) -> Result<(Placed, Hunks), Error> {
     let root = config.root();
     if let Some(command) = &entry.run {
         wrote(root, command, &entry.report)?;
     }
     let data = sarif(&entry.report)?;
-    let changed = Hunks::read(root, &base::commit(root, flags, out)?, None)?;
+    let changed = Hunks::read(root, &base::commit(root, at, out)?, None)?;
     if entry.run.is_none() {
         fresh(&entry.report, root, &changed)?;
     }

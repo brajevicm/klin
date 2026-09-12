@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -7,13 +6,10 @@ use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::{self, Change};
-use crate::config::{self, Config, DELETED, Error, Flags, Records, UNPARSED};
+use crate::check::{self, Caller, Context, DELETED, Records, Sink, UNPARSED};
+use crate::config::{self, Config, Error};
 use crate::host::{self, Stop};
-use crate::reference::{self, Key};
-use crate::{
-    build, complexity, coverage, doc_citations, doc_size, escapes, inventory, journal, lockfile,
-    sarif, state, stats, stubs, survey, turn,
-};
+use crate::{build, coverage, journal, state, stats, survey, turn};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks are left and whether the turn's gate block is still unspent. In the state
@@ -32,156 +28,9 @@ const UNDER: &str = "      ";
 /// whatever exit code it ends with.
 const ERROR: &str = "ERROR";
 
-struct Check {
-    name: &'static str,
-    section: &'static str,
-    /// The configuration keys the section reads, declared in the check's own module and printed
-    /// by `klin reference`. Spec 5.8.
-    keys: &'static [Key],
-    /// The language names this section selects a file set by, and none for a check that selects
-    /// no language. Spec 5.8.
-    languages: Option<reference::Languages>,
-    run: fn(&Flags, &Path, &mut String) -> Result<u8, Error>,
-    needs: Needs,
-    takes_scope: bool,
-    /// Whether the section is a list of entries a person writes, each its own gate under its
-    /// own `name`, rather than one section the whole check runs under. Spec 8.3.
-    gate_per_entry: bool,
-}
-
-/// What a check needs of the base: nothing, the commit the window names, or that commit laid
-/// out as a tree beside the working one. A check that needs the commit or the tree is also the
-/// kind `--strict` reaches, because it has a comparison or an accepted list to judge. Spec
-/// 4.6, 10.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Needs {
-    Nothing,
-    TheCommit,
-    TheTree,
-}
-
-impl Needs {
-    /// Whether the run resolves the base commit for this check, which is also whether
-    /// `--strict` reaches it. Spec 4.6, 10.
-    fn the_commit(self) -> bool {
-        self >= Needs::TheCommit
-    }
-
-    /// Whether the run lays the base commit out as a tree for this check.
-    fn the_tree(self) -> bool {
-        self == Needs::TheTree
-    }
-}
-
-const CHECKS: &[Check] = &[
-    Check {
-        name: "doc-size",
-        section: doc_size::SECTION,
-        keys: doc_size::KEYS,
-        languages: None,
-        run: doc_size::gate,
-        needs: Needs::Nothing,
-        takes_scope: false,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "doc-citations",
-        section: doc_citations::SECTION,
-        keys: doc_citations::KEYS,
-        languages: None,
-        run: doc_citations::gate,
-        needs: Needs::TheTree,
-        takes_scope: true,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "lockfile",
-        section: lockfile::SECTION,
-        keys: lockfile::KEYS,
-        languages: None,
-        run: lockfile::gate,
-        needs: Needs::TheTree,
-        takes_scope: false,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "escapes",
-        section: escapes::SECTION,
-        keys: escapes::KIND.keys,
-        languages: Some(escapes::language_extensions),
-        run: escapes::gate,
-        needs: Needs::TheTree,
-        takes_scope: true,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "stubs",
-        section: stubs::SECTION,
-        keys: stubs::KIND.keys,
-        languages: Some(stubs::language_extensions),
-        run: stubs::gate,
-        needs: Needs::TheTree,
-        takes_scope: true,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "inventory",
-        section: inventory::SECTION,
-        keys: inventory::KEYS,
-        languages: None,
-        run: inventory::gate,
-        needs: Needs::TheTree,
-        takes_scope: true,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "complexity",
-        section: complexity::SECTION,
-        keys: complexity::KEYS,
-        languages: Some(crate::syntax::language_extensions),
-        run: complexity::gate,
-        needs: Needs::TheTree,
-        takes_scope: true,
-        gate_per_entry: false,
-    },
-    Check {
-        name: "sarif",
-        section: sarif::SECTION,
-        keys: sarif::KEYS,
-        languages: None,
-        run: sarif::gate,
-        needs: Needs::TheCommit,
-        takes_scope: false,
-        gate_per_entry: true,
-    },
-];
-
-/// The section each check reads, which config.rs judges the top-level keys against, and the
-/// command name that is not that section. A new check is one edit, here.
-pub fn sections() -> impl Iterator<Item = &'static str> {
-    CHECKS.iter().map(|check| check.section)
-}
-
-/// What each check tells `klin reference` about its section, in the order a run takes the
-/// checks. Spec 5.8.
-pub fn catalogue() -> impl Iterator<Item = reference::Section> {
-    CHECKS.iter().map(|check| reference::Section {
-        name: check.section,
-        keys: check.keys,
-        languages: check.languages,
-    })
-}
-
-pub fn command_named(key: &str) -> Option<&'static str> {
-    CHECKS
-        .iter()
-        .find(|check| check.name != check.section && check.name == key)
-        .map(|check| check.section)
-}
-
 struct Gate {
     name: String,
-    check: &'static Check,
+    check: &'static check::Row,
     with: Option<Value>,
 }
 
@@ -191,7 +40,7 @@ struct Plan {
     excluded: Vec<String>,
     /// The checks klin offers that neither the config nor the survey supplies a section for.
     /// Each needs a section a person writes, and none of them runs.
-    needs_a_section: Vec<&'static Check>,
+    needs_a_section: Vec<&'static check::Row>,
 }
 
 struct Entry {
@@ -723,11 +572,7 @@ fn base(
     window: Option<&Window>,
     out: &mut String,
 ) -> Result<Option<Window>, Error> {
-    if !args.changed
-        && !wanted
-            .iter()
-            .any(|gate| gate.check.needs >= Needs::TheCommit)
-    {
+    if !args.changed && !wanted.iter().any(|gate| gate.check.needs.the_commit()) {
         return Ok(None);
     }
     let base = chosen(window, config, args.strict)?;
@@ -1100,7 +945,7 @@ fn names<'a>(named: impl Iterator<Item = &'a str>) -> String {
 }
 
 fn every_check() -> String {
-    names(CHECKS.iter().map(|check| check.name))
+    names(check::names())
 }
 
 fn no_gate(config: &Config, plan: &Plan) -> Error {
@@ -1132,7 +977,7 @@ fn no_gate(config: &Config, plan: &Plan) -> Error {
 fn plan(config: &Config) -> Result<Plan, Error> {
     let entries = entries(config)?;
     let mut plan = Plan::default();
-    for check in CHECKS {
+    for check in check::CATALOGUE {
         add(config, check, &entries, &mut plan)?;
     }
     distinct(config, &plan)?;
@@ -1144,7 +989,7 @@ fn plan(config: &Config) -> Result<Plan, Error> {
 /// beside it and the whole tree is not measured twice. Spec 5.2.
 fn add(
     config: &Config,
-    check: &'static Check,
+    check: &'static check::Row,
     entries: &[Entry],
     plan: &mut Plan,
 ) -> Result<(), Error> {
@@ -1168,14 +1013,14 @@ fn add(
 
 fn from_section(
     config: &Config,
-    check: &'static Check,
+    check: &'static check::Row,
     section: Option<&Value>,
     plan: &mut Plan,
 ) -> Result<(), Error> {
     match section {
         Some(Value::Bool(false)) => plan.excluded.push(check.name.to_string()),
         Some(_) if check.gate_per_entry => {
-            for (name, entry) in named_entries(config, check.section)? {
+            for (name, entry) in check::named_entries(config, check.section)? {
                 plan.gates.push(Gate {
                     name,
                     check,
@@ -1193,41 +1038,7 @@ fn from_section(
     Ok(())
 }
 
-/// The key every entry of a named section carries, whichever check reads the section.
-pub const NAMED: Key = Key {
-    name: "name",
-    holds: "the gate's own name, which `--gate` takes",
-    required: true,
-    rule: None,
-    default: "",
-};
-
-/// The entries of a section a person writes entry by entry, each with the name its gate takes.
-/// Such a section is a list, and an entry with no `name` is a config error naming the key,
-/// because nothing in a tree says which tool the entry runs. The check that reads one entry
-/// reads its own list through this, so a gate's name is the name the check judges under.
-/// Spec 8.3.
-pub fn named_entries(config: &Config, section: &str) -> Result<Vec<(String, Value)>, Error> {
-    let held = config.section(section)?;
-    let listed = held.as_array().ok_or_else(|| {
-        Error(format!(
-            "{}: \"{section}\" is a list of entries, each its own gate under its own \"name\"",
-            config.file.display()
-        ))
-    })?;
-    listed
-        .iter()
-        .map(|entry| {
-            let name = entry
-                .get(NAMED.name)
-                .and_then(Value::as_str)
-                .ok_or_else(|| config.missing(section, NAMED.name))?;
-            Ok((name.to_string(), entry.clone()))
-        })
-        .collect()
-}
-
-fn from_entry(check: &'static Check, entry: &Entry, plan: &mut Plan) {
+fn from_entry(check: &'static check::Row, entry: &Entry, plan: &mut Plan) {
     if entry.off {
         plan.excluded.push(entry.name.clone());
         return;
@@ -1283,12 +1094,12 @@ fn entry(config: &Config, item: &Map<String, Value>) -> Result<Entry, Error> {
             .ok_or_else(|| config.missing(GATES, key))
     };
     let entry = Entry {
-        name: text(NAMED.name)?,
+        name: text(check::NAMED.name)?,
         check: text("check")?,
         with: item.get("with").cloned(),
         off: item.get("off").and_then(Value::as_bool).unwrap_or(false),
     };
-    if !CHECKS.iter().any(|check| check.name == entry.check) {
+    if !check::CATALOGUE.iter().any(|held| held.name == entry.check) {
         return Err(Error(format!(
             "{}: the gate {} names no check called \"{}\" — one of: {}",
             config.file.display(),
@@ -1426,31 +1237,36 @@ fn one(
     against: &Against,
 ) -> (u8, String, Records) {
     let mut text = String::new();
-    let flags = Flags {
-        config: config.written().then(|| config.file.clone()),
-        gate: gate.name.clone(),
-        prior: against.dir().map(Path::to_path_buf),
-        base: against.base.as_ref().map(|base| base.before.clone()),
-        quiet: false,
-        context: false,
-        strict: args.strict && gate.check.needs.the_commit(),
-        hook: args.hook,
-        only: against
-            .scope
-            .as_deref()
-            .filter(|_| gate.check.takes_scope)
-            .map(<[String]>::to_vec),
-        records: Some(RefCell::new(Records::default())),
+    let mut records = Records::default();
+    let at = Context {
+        gate: &gate.name,
+        start,
+        config: config.written().then_some(config.file.as_path()),
+        prior: against.dir(),
+        base: against.base.as_ref().map(|base| base.before.as_str()),
+        only: against.scope.as_deref().filter(|_| gate.check.takes_scope),
         with: gate
             .with
-            .clone()
-            .map(|values| (gate.check.section.to_string(), values)),
+            .as_ref()
+            .map(|values| (gate.check.section, values)),
+        caller: match args.hook {
+            true => Caller::Hook,
+            false => Caller::Gate,
+        },
+        strict: args.strict && gate.check.needs.the_commit(),
+        quiet: false,
     };
-    let (code, text) = match (gate.check.run)(&flags, start, &mut text) {
+    let outcome = (gate.check.run)(
+        &at,
+        &mut Sink {
+            text: &mut text,
+            records: Some(&mut records),
+        },
+    );
+    let (code, text) = match outcome {
         Ok(code) => (code, text),
         Err(problem) => (2, text + &format!("FAIL: {problem}")),
     };
-    let mut records = flags.records.map(RefCell::into_inner).unwrap_or_default();
     if code == 2 && records.findings.is_empty() {
         records.findings.push(record("error", &text));
     }

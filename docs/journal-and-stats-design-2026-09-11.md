@@ -60,7 +60,9 @@ one. A bump without an upgrade arm does not compile.
 ### The record is the object `gate --json` already prints
 
 `Records` is the accumulator that flows out of every gate today. The journal
-adds to it and builds nothing beside it. `judge` puts `ms` and `held` on each
+adds to it and builds nothing beside it. Since #158 it lives in `check` and a
+runner hands each check a `&mut` to it rather than a shared cell, which
+changes who holds it and not what it holds. `judge` puts `ms` and `held` on each
 gate row as it goes. `stopped` adds what only the hook knows. There is no
 new struct that carries facts across phases, so there is no
 prepare-process-finalize object to keep in step.

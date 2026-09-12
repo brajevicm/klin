@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::ratchet::{self, Evaluator, Finding, Section, Values};
 use crate::reference::{self, Key};
@@ -100,29 +101,29 @@ pub fn reads(name: &str) -> bool {
     FORMATS.iter().any(|format| format.manifest == name)
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::open(flags, start)?;
-    config.say(flags, SECTION, out);
-    let sites = surveyed(&config, flags, out)?;
-    let accepted = ratchet::accepted(&config, &flags.gate, METRICS)?;
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    let config = Config::load_with(at.config, at.start, at.with)?;
+    at.say(&config, SECTION, out);
+    let sites = surveyed(&config, at, out)?;
+    let accepted = ratchet::accepted(&config, at.gate, METRICS)?;
     let ok = format!(
         "OK: {} dependenc{} in {} manifest(s), each locked and pinned as the base had it{}",
         sites.judged,
         plural(sites.judged),
         sites.manifests,
-        sites.coverage().said(flags)
+        sites.coverage().said(out)
     );
-    let code = evaluator().evaluate(sites.findings, sites.prior, accepted, flags, &ok, out);
-    ratchet::noted(&sites.notes, flags, out);
+    let code = evaluator().evaluate(sites.findings, sites.prior, accepted, at, &ok, out);
+    ratchet::noted(&sites.notes, out);
     Ok(code)
 }
 
 /// Every manifest the section names, read in both trees, minus the ones `exclude` drops.
-fn surveyed(config: &Config, flags: &Flags, out: &mut String) -> Result<Sites, Error> {
+fn surveyed(config: &Config, at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let section = ratchet::section(config, SECTION)?;
     let manifests = listed(&section, MANIFESTS)?;
     let exclude = optional(&section, reference::EXCLUDE)?;
-    let commit = base::commit(config.root(), flags, out)?;
+    let commit = base::commit(config.root(), at, out)?;
     let mut sites = Sites::default();
     let (dropped, judged): (Vec<&String>, Vec<&String>) =
         manifests.iter().partition(|path| excluded(path, &exclude));

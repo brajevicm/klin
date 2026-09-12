@@ -5,7 +5,8 @@ use tree_sitter::Node;
 
 use crate::base;
 use crate::ceiling::{self, Ceiling};
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
@@ -322,50 +323,46 @@ struct Spec {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(&flags(args), start, out)
+    gate(&context(args, start), &mut Sink::unrecorded(out))
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(flags, start, out)
-}
-
-fn evaluate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::open(flags, start)?;
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    let config = Config::load_with(at.config, at.start, at.with)?;
     let spec = spec(&config)?;
-    config.say(flags, SECTION, out);
+    at.say(&config, SECTION, out);
     let sweep = measure(&spec.roots, &spec.selection, config.root())?;
     let now = over(&sweep.functions, &spec);
-    let judged = scoped(sweep.functions.iter().map(|function| &function.file), flags);
-    let count = scoped(now.iter().map(|finding| &finding.file), flags);
-    let said = sweep.files.coverage(flags.only.as_deref()).said(flags);
-    let (prior, before) = at_the_base(&config, &spec, flags, out)?;
-    let lost = sweep.files.lost(&before, &config, flags.only.as_deref());
+    let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
+    let count = scoped(now.iter().map(|finding| &finding.file), at);
+    let said = sweep.files.coverage(at.only).said(out);
+    let (prior, before) = at_the_base(&config, &spec, at, out)?;
+    let lost = sweep.files.lost(&before, &config, at.only);
     let code = evaluator(&spec).evaluate(
         now,
         prior,
-        ratchet::accepted(&config, &flags.gate, evaluator(&spec).metrics)?,
-        flags,
+        ratchet::accepted(&config, at.gate, evaluator(&spec).metrics)?,
+        at,
         &format!(
             "OK: {judged} function(s) judged, {count} over the gate{}, all held at the base{said}",
             ceiling::in_force(&[("cc", &spec.ceilings.cc), ("lines", &spec.ceilings.lines)])
         ),
         out,
     );
-    let code = coverage::lost_said(&lost, flags, code, out);
-    Ok(syntax::unread(&sweep.unparsed, flags, code, out))
+    let code = coverage::lost_said(&lost, at, code, out);
+    Ok(syntax::unread(&sweep.unparsed, at, code, out))
 }
 
 fn at_the_base(
     config: &Config,
     spec: &Spec,
-    flags: &Flags,
-    out: &mut String,
+    at: &Context,
+    out: &mut Sink,
 ) -> Result<(Vec<Finding>, Files), Error> {
     let owned;
-    let prior = match flags.prior.as_deref() {
+    let prior = match at.prior {
         Some(dir) => dir,
         None => {
-            owned = base::own(config, flags, out)?;
+            owned = base::own(config, at, out)?;
             owned.root()
         }
     };
@@ -387,24 +384,17 @@ fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
         .collect()
 }
 
-fn flags(args: &Args) -> Flags {
-    Flags {
-        config: args.config.clone(),
-        gate: SECTION.to_string(),
-        prior: None,
-        base: None,
-        quiet: args.quiet,
-        context: !args.quiet,
+fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+    Context {
+        only: args.only.as_deref(),
         strict: args.strict,
-        hook: false,
-        only: args.only.clone(),
-        records: None,
-        with: None,
+        quiet: args.quiet,
+        ..Context::by_hand(SECTION, start, args.config.as_deref())
     }
 }
 
-fn scoped<'a>(files: impl Iterator<Item = &'a String>, flags: &Flags) -> usize {
-    match flags.only.as_deref() {
+fn scoped<'a>(files: impl Iterator<Item = &'a String>, at: &Context) -> usize {
+    match at.only {
         Some(only) => files.filter(|file| only.contains(file)).count(),
         None => files.count(),
     }

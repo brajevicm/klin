@@ -5,7 +5,8 @@ use serde_json::Value;
 
 use crate::base;
 use crate::changed::{self, git};
-use crate::config::{Config, Error, Flags};
+use crate::check::{Context, Sink};
+use crate::config::{Config, Error};
 use crate::coverage::{self, Coverage};
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
@@ -103,53 +104,49 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
-    evaluate(&flags(args), args.file.as_deref(), &args.roots, start, out)
+    evaluate(
+        &context(args, start),
+        args.file.as_deref(),
+        &args.roots,
+        &mut Sink::unrecorded(out),
+    )
 }
 
-pub fn gate(flags: &Flags, start: &Path, out: &mut String) -> Result<u8, Error> {
-    evaluate(flags, None, &[], start, out)
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    evaluate(at, None, &[], out)
 }
 
-fn flags(args: &Args) -> Flags {
-    Flags {
-        config: args.config.clone(),
-        gate: SECTION.to_string(),
-        prior: None,
-        base: None,
-        quiet: args.quiet,
-        context: !args.quiet,
+fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+    Context {
         strict: args.strict,
-        hook: false,
-        only: None,
-        records: None,
-        with: None,
+        quiet: args.quiet,
+        ..Context::by_hand(SECTION, start, args.config.as_deref())
     }
 }
 
 fn evaluate(
-    flags: &Flags,
+    at: &Context,
     named: Option<&Path>,
     roots: &[PathBuf],
-    start: &Path,
-    out: &mut String,
+    out: &mut Sink,
 ) -> Result<u8, Error> {
-    let listing = listing(flags, named, roots, start)?;
+    let listing = listing(at, named, roots)?;
     if let Some(config) = &listing.config {
-        config.say(flags, SECTION, out);
+        at.say(config, SECTION, out);
     }
-    let commit = base::commit(&listing.root, flags, out)?;
+    let commit = base::commit(&listing.root, at, out)?;
     let (now, before) = sides(&listing, &commit)?;
-    let sites = ratchet::scoped(&now, flags.only.as_deref());
+    let sites = ratchet::scoped(&now, at.only);
     let accepted = match &listing.config {
-        Some(config) => ratchet::accepted(config, &flags.gate, evaluator().metrics)?,
+        Some(config) => ratchet::accepted(config, at.gate, evaluator().metrics)?,
         None => Vec::new(),
     };
-    let said = covered(&listing, flags).said(flags);
+    let said = covered(&listing, at).said(out);
     Ok(evaluator().evaluate(
         now,
         before,
         accepted,
-        flags,
+        at,
         &format!("OK: {sites} citation(s) resolve nowhere, all held at the base{said}"),
         out,
     ))
@@ -158,8 +155,8 @@ fn evaluate(
 /// What this gate discovered: one document per entry, and the ones it read. A document the
 /// working tree no longer holds is found and not measured, because only the base holds its
 /// citations. Spec 8.6.
-fn covered(listing: &Listing, flags: &Flags) -> Coverage {
-    let only = flags.only.as_deref();
+fn covered(listing: &Listing, at: &Context) -> Coverage {
+    let only = at.only;
     let named = |document: &Document| document.name.clone();
     let listed: Vec<String> = listing.documents.iter().map(named).collect();
     let read: Vec<String> = listing
@@ -427,12 +424,7 @@ fn not_under(path: &str, index: &Index) -> String {
     }
 }
 
-fn listing(
-    flags: &Flags,
-    named: Option<&Path>,
-    roots: &[PathBuf],
-    start: &Path,
-) -> Result<Listing, Error> {
+fn listing(at: &Context, named: Option<&Path>, roots: &[PathBuf]) -> Result<Listing, Error> {
     if let Some(named) = named
         && !roots.is_empty()
     {
@@ -443,11 +435,11 @@ fn listing(
                 extensions: default_extensions(),
                 name: named.display().to_string(),
             }],
-            root: start.to_path_buf(),
+            root: at.start.to_path_buf(),
             config: None,
         });
     }
-    let config = Config::open(flags, start)?;
+    let config = Config::load_with(at.config, at.start, at.with)?;
     let listed = listed_documents(&config)?;
     let root = config.root().to_path_buf();
     let Some(named) = named else {
