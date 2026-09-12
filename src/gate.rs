@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::{self, Change};
-use crate::check::{self, Caller, Context, DELETED, Records, Sink, UNPARSED};
+use crate::check::{self, Caller, Context, DELETED, NOT_MEASURED, Records, Sink, UNPARSED};
 use crate::config::{self, Config, Error};
 use crate::host::{self, Stop};
 use crate::{build, coverage, journal, state, stats, survey, turn};
@@ -1168,7 +1168,7 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
 /// read or stopped measuring, and a deleted test the run let through. Spec 8.2, 8.6, 14.
 fn told(note: &Value) -> bool {
     let outcome = note.get("outcome").and_then(Value::as_str);
-    matches!(outcome, Some(UNPARSED | DELETED)) || coverage::is_lost(note)
+    matches!(outcome, Some(UNPARSED | DELETED | NOT_MEASURED)) || coverage::is_lost(note)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str) {

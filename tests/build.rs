@@ -2,7 +2,7 @@ mod harness;
 
 use harness::Tree;
 
-const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
+const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 const BUILD_BLOCKED: &str = ".git/klin/build-blocked";

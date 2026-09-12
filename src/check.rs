@@ -16,8 +16,8 @@ use serde_json::Value;
 use crate::config::{Config, Error};
 use crate::reference::{Key, Languages};
 use crate::{
-    complexity, doc_citations, doc_size, escapes, inventory, lockfile, markers, sarif, stubs,
-    syntax,
+    complexity, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile, markers,
+    sarif, stubs, syntax,
 };
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -27,6 +27,10 @@ pub const UNPARSED: &str = "unparsed";
 /// The outcome of a test the base holds that went in the window, which fails nothing. A stop the
 /// hook lets end hands it to a person. Spec 8.2.
 pub const DELETED: &str = "deleted";
+
+/// The outcome of a parser-readable file for which no semantic adapter exists. It is a hole in
+/// a structural gate, not a green measurement. Spec 8.4, 8.6.
+pub const NOT_MEASURED: &str = "not-measured";
 
 /// Everything a run records about what it judged, which the runner prints as the one object of
 /// spec 11.2 and the journal writes as the stop's line. There is one of these per gate, gathered
@@ -269,6 +273,17 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(syntax::language_extensions),
         derives: Some(complexity::DERIVED),
         run: complexity::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "dead-symbols",
+        section: dead_symbols::SECTION,
+        keys: dead_symbols::KEYS,
+        languages: Some(dead_symbols::language_extensions),
+        derives: Some(dead_symbols::DERIVED),
+        run: dead_symbols::gate,
         needs: Needs::TheTree,
         takes_scope: true,
         gate_per_entry: false,

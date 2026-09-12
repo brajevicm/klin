@@ -209,6 +209,7 @@ fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<
         "lockfile",
         "escapes",
         "stubs",
+        "dead_symbols",
         "complexity",
     ] {
         let section = found.sections.get(name).cloned().filter(stated);

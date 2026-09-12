@@ -82,6 +82,7 @@ klin is not a linter or test runner. Its checks target agent-driven
 development:
 
 - **complexity** — functions that become more complex or longer
+- **dead-symbols** — private declarations that become unreferenced
 - **escapes** — new skipped tests, silenced checks, or swallowed errors
 - **stubs** — placeholder work left behind
 - **doc-size** — documents that keep growing

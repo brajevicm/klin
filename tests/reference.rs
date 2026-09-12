@@ -25,6 +25,7 @@ fn the_reference_names_every_top_level_key_and_every_section() {
     }
     for section in [
         "### `complexity`",
+        "### `dead_symbols`",
         "### `escapes`",
         "### `stubs`",
         "### `inventory`",

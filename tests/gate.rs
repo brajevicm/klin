@@ -3,7 +3,7 @@ mod harness;
 use harness::Tree;
 use serde_json::Value;
 
-const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
+const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const EVERY_GATE: &str = r#"{
   "project": "t",
@@ -97,7 +97,7 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     assert!(run.says("ok    stubs"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
     assert!(run.says("derived: escapes roots src"), "{}", run.out);
-    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn a_status_row_per_gate_and_a_summary_line() {
     assert!(run.says("ok    doc-citations"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -155,21 +155,21 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
         "{}",
         run.out
     );
-    assert!(run.says("5 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("6 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
 fn every_gate_runs_even_when_an_earlier_one_failed() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
-    tree.write("src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
+    tree.write("src/lib.rs", "pub fn f() {\n    x.unwrap();\n}\n");
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("5 gate(s), 2 failed."), "{}", run.out);
+    assert!(run.says("6 gate(s), 2 failed."), "{}", run.out);
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("4 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("5 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -196,7 +196,7 @@ fn a_tool_error_alone_exits_two() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("4 gate(s), 1 excluded, 1 tool error."),
+        run.says("5 gate(s), 1 excluded, 1 tool error."),
         "{}",
         run.out
     );
@@ -222,7 +222,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
-         complexity — runs\nlockfile — needs a section a person writes\n\
+         complexity — runs\ndead-symbols — runs\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -262,6 +262,7 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          escapes — needs a section a person writes\n\
          stubs — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         dead-symbols — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
         run.out
@@ -373,7 +374,7 @@ fn tangled(name: &str) -> String {
     let arms: String = (0..12)
         .map(|step| format!("        {step} => n + {step},\n"))
         .collect();
-    format!("fn {name}(n: i32) -> i32 {{\n    match n {{\n{arms}        _ => n,\n    }}\n}}\n")
+    format!("pub fn {name}(n: i32) -> i32 {{\n    match n {{\n{arms}        _ => n,\n    }}\n}}\n")
 }
 
 fn based(config: &str, files: &[(&str, &str)]) -> Tree {
@@ -570,7 +571,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("4 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("5 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -843,10 +844,10 @@ fn a_json_run_prints_one_derived_entry_per_derived_line() {
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     let derived = list(&report, "derived");
-    assert_eq!(derived.len(), 2, "{}", run.out);
+    assert_eq!(derived.len(), 4, "{}", run.out);
     let roots = derived
         .iter()
-        .find(|entry| field(entry, "key") == "roots")
+        .find(|entry| field(entry, "key") == "roots" && field(entry, "section") == "stubs")
         .unwrap_or_else(|| panic!("no roots entry in {report}"));
     assert_eq!(field(roots, "section"), "stubs", "{}", run.out);
     assert_eq!(
@@ -862,7 +863,7 @@ fn a_json_run_prints_one_derived_entry_per_derived_line() {
     );
     let languages = derived
         .iter()
-        .find(|entry| field(entry, "key") == "languages")
+        .find(|entry| field(entry, "key") == "languages" && field(entry, "section") == "stubs")
         .unwrap_or_else(|| panic!("no languages entry in {report}"));
     assert_eq!(field(languages, "section"), "stubs", "{}", run.out);
     assert_eq!(
@@ -901,7 +902,7 @@ fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
     let report = run.json();
     assert_eq!(
         outcomes(list(&report, "findings")),
-        [("complexity", "unparsed")],
+        [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
         "{}",
         run.out
     );
@@ -982,7 +983,7 @@ fn one_check_backs_two_gates_over_different_roots() {
     assert!(run.says("ok    complexity-src"), "{}", run.out);
     assert!(run.says("FAIL  complexity-tests"), "{}", run.out);
     assert!(!run.says("ok    complexity\n"), "{}", run.out);
-    assert!(run.says("7 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("8 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -1032,7 +1033,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
-        run.says("4 gate(s), 1 excluded, all passed."),
+        run.says("5 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1047,6 +1048,7 @@ fn list_names_the_excluded_gates() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nstubs — runs\ncomplexity — runs\n\
+         dead-symbols — runs\n\
          escapes — excluded\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
@@ -1156,7 +1158,8 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
               "doc_citations": [{"file": "README.md", "roots": ["."]}],
               "complexity": false,
               "escapes": false,
-              "stubs": false }"#,
+              "stubs": false,
+              "dead_symbols": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
@@ -1216,13 +1219,14 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
               "doc_citations": false,
               "complexity": false,
               "escapes": false,
-              "stubs": false }"#,
+              "stubs": false,
+              "dead_symbols": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 gate(s), 4 excluded, all passed."),
+        run.says("1 gate(s), 5 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1232,7 +1236,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
 fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let tree = tree(
         r#"{ "project": "t", "doc_size": false, "doc_citations": false, "escapes": false,
-              "stubs": false, "complexity": false }"#,
+              "stubs": false, "complexity": false, "dead_symbols": false }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
@@ -1241,6 +1245,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
         rows(&run),
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
          stubs — excluded\ncomplexity — excluded\n\
+         dead-symbols — excluded\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
@@ -1252,7 +1257,8 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     assert_eq!(judged.code, 2, "{}", judged.out);
     assert!(
         judged.says(
-            "excludes every gate it names: doc-size, doc-citations, escapes, stubs, complexity"
+            "excludes every gate it names: doc-size, doc-citations, escapes, stubs, complexity, \
+             dead-symbols"
         ),
         "{}",
         judged.out
@@ -1306,7 +1312,7 @@ fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
     let report = object(run.out.lines().last().unwrap_or_default(), &run);
     assert_eq!(
         outcomes(list(&report, "notes")),
-        [("complexity", "unparsed")],
+        [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
         "{}",
         run.out
     );
@@ -1328,7 +1334,7 @@ fn a_version_the_binary_does_not_carry_is_a_note_and_nothing_else() {
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("0.0.1"), "{}", run.out);
     assert!(run.says(env!("CARGO_PKG_VERSION")), "{}", run.out);
-    assert!(run.says("5 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -1454,7 +1460,7 @@ const A_LOST_FILE: &str = r#"{ "project": "t",
 fn lost_file() -> Tree {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 5);
-    tree.write("src/gone.rs", "fn other() -> i32 { 2 }\n");
+    tree.write("src/gone.rs", "pub fn other() -> i32 { 2 }\n");
     tree.base();
     tree.write("klin.json", A_LOST_FILE);
     tree

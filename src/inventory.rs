@@ -304,6 +304,7 @@ fn covered(judged: &[Site], paired: &[Site], unparsed: &[Unparsed], at: &Context
     Coverage {
         found: measured + unreadable + coverage::scoped(&paths(paired), only),
         measured,
+        not_measured: 0,
         excluded: 0,
         unreadable,
     }

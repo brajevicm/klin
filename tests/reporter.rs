@@ -145,6 +145,7 @@ fn the_json_carries_the_coverage_of_every_gate() {
     assert_eq!(row.get("status").and_then(Value::as_str), Some("ok"));
     assert_eq!(count(row, "found"), 2, "{}", run.out);
     assert_eq!(count(row, "measured"), 1, "{}", run.out);
+    assert_eq!(count(row, "not_measured"), 0, "{}", run.out);
     assert_eq!(count(row, "excluded"), 1, "{}", run.out);
     assert_eq!(count(row, "unreadable"), 0, "{}", run.out);
     assert_eq!(row.get("findings").and_then(Value::as_u64), Some(0));

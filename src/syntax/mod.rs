@@ -14,9 +14,9 @@ use crate::ratchet::Values;
 use crate::reference;
 
 pub mod convention;
-/// Dead until the first structural consumer lands (#51, #52). An expectation rather than an
-/// allowance, so the compiler names this line the moment the module has a caller.
-#[cfg_attr(not(test), expect(dead_code))]
+/// The shared API is larger than V1's first consumer; later structural checks use its import
+/// and module facts too.
+#[cfg_attr(not(test), allow(dead_code))]
 pub mod structural;
 
 /// One logical language, which is what a structural consumer names. A grammar variant is not

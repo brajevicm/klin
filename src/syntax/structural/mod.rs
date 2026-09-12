@@ -65,6 +65,13 @@ pub struct Reference {
     pub line: u64,
 }
 
+/// One source location whose name the index can resolve to declarations.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ReferenceSite<'a> {
+    pub file: &'a str,
+    pub line: u64,
+}
+
 pub struct FileFacts {
     pub file: String,
     pub language: LanguageId,
@@ -127,6 +134,15 @@ pub fn supports(id: LanguageId) -> bool {
     adapter(id).is_some()
 }
 
+/// Whether this declaration is the language's ordinary executable entry point, which a
+/// dead-symbol consumer leaves out by default.
+pub fn is_default_entry_point(file: &FileFacts, declaration: &Declaration) -> bool {
+    matches!(
+        (file.language, declaration.name.as_str()),
+        (LanguageId::Rust, "main")
+    )
+}
+
 /// The languages a structural check can be configured for, each with the one name it is named
 /// by. A grammar variant is not one of them: `tsx` selects a grammar for the `complexity`
 /// table and can never name a structural language here, because a `.tsx` file is TypeScript.
@@ -141,6 +157,23 @@ pub fn languages() -> Vec<(&'static str, LanguageId)> {
         }
     }
     out
+}
+
+/// The configured names and extensions of structural adapters, with grammar variants merged
+/// under their logical language.
+pub fn language_extensions() -> Vec<(&'static str, String)> {
+    languages()
+        .into_iter()
+        .map(|(name, id)| {
+            let extensions: Vec<String> = LANGUAGES
+                .iter()
+                .filter(|row| row.id == id)
+                .flat_map(|row| row.extensions.iter().copied())
+                .map(|extension| format!("`{extension}`"))
+                .collect();
+            (name, extensions.join(", "))
+        })
+        .collect()
 }
 
 /// What one language adapter states. A query names the node kinds that declare something, and
@@ -395,6 +428,27 @@ impl SourceIndex {
 
     pub fn files(&self) -> &[FileFacts] {
         &self.files
+    }
+
+    /// References with this name, in deterministic repository order. Resolution is deliberately
+    /// name-only, so every declaration with the name sees the same sites.
+    pub fn references(&self, name: &str) -> Vec<ReferenceSite<'_>> {
+        let mut out = self
+            .files
+            .iter()
+            .flat_map(|file| {
+                file.references
+                    .iter()
+                    .filter(|reference| reference.name == name)
+                    .map(|reference| ReferenceSite {
+                        file: file.file.as_str(),
+                        line: reference.line,
+                    })
+            })
+            .collect::<Vec<_>>();
+        out.sort();
+        out.dedup();
+        out
     }
 
     /// Every declaration of this name under the roots, in file order and then line order.

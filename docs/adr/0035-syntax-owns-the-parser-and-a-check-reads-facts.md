@@ -101,12 +101,11 @@ the rejected file is a grammar that will not load, which already reported
 through `config::Error`, and a single-variant enum would state nothing the
 message does not. `thiserror` was available and is not used.
 
-The structural facts have no consumer until #51 or #52 lands, so they are
-tested where they can be: at the module seam, against hand-written Rust and
-TypeScript fixtures. The binary's command line stays the one seam for
-everything a person can see, and the first structural gate brings these facts
-to it. Until then the module carries a lint expectation, not a lint
-allowance, so the compiler names the line the moment it has a caller.
+The structural facts are consumed by `dead-symbols` and will be shared by
+`reachability` and later structural checks. They are tested at the module
+seam against hand-written Rust and TypeScript fixtures, and at the binary's
+command line for everything a person can see. A new structural consumer reads
+these facts rather than parsing again.
 
 `survey` still reads `escapes::suffixes` and `escapes::language_of` to find a
 tree's sources and name its languages. That table covers shell, which no

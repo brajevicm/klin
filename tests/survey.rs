@@ -6,9 +6,9 @@ mod text;
 use harness::{Run, Tree};
 use serde_json::Value;
 
-const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
-const TANGLED: &str = "fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
-const MIDDLING: &str = "fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    0\n}\n";
+const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
+const TANGLED: &str = "pub fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
+const MIDDLING: &str = "pub fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    0\n}\n";
 const MANIFEST: &str = "[package]\nname = \"t\"\nversion = \"0.1.0\"\n";
 
 /// A project klin can survey whole: source, a test root, a document and a manifest, with the
@@ -39,8 +39,9 @@ fn a_tree_with_no_configuration_runs_every_derivable_gate() {
     assert!(run.says("ok    stubs"), "{}", run.out);
     assert!(run.says("ok    inventory"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
+    assert!(run.says("ok    dead-symbols"), "{}", run.out);
     assert!(run.says("ok    lockfile"), "{}", run.out);
-    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -59,6 +60,13 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
     );
     assert!(
         run.says("derived: escapes languages rust, the languages of the files under those roots"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says(
+            "derived: dead_symbols languages rust, the languages of the files under those roots"
+        ),
         "{}",
         run.out
     );
@@ -188,7 +196,7 @@ fn a_section_set_to_false_excludes_its_gate_with_nothing_else_configured() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
     assert!(
-        run.says("6 gate(s), 1 excluded, all passed."),
+        run.says("7 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
