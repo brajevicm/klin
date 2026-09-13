@@ -16,6 +16,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
         "shorthand_property_identifier",
     ],
     methods_in: &[],
+    entry_points: &[],
     visible,
     imported,
     remapped,

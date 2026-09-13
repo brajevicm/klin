@@ -9,6 +9,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     patterns: PATTERNS,
     identifiers: &["identifier", "type_identifier", "field_identifier"],
     methods_in: &["impl_item", "trait_item"],
+    entry_points: &["main"],
     visible,
     imported,
     remapped,

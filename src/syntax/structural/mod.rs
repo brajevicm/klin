@@ -4,11 +4,15 @@
 //! and TypeScript are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 use std::sync::OnceLock;
 
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
 use crate::config::Error;
+use crate::coverage::Files;
+use crate::files::{self, Found};
+use crate::syntax::convention;
 use crate::syntax::{
     LANGUAGES, Language, LanguageId, Parsed, ParsedFile, Unparsed, line_at, parse, walk,
 };
@@ -39,6 +43,9 @@ pub struct Declaration {
     /// True where the syntax alone shows the declaration is exposed past the file that holds
     /// it. A doubt reads as exposed, so a dead-symbol check under-reports and never over-reports.
     pub externally_visible: bool,
+    /// True where syntax or the shared test convention proves that the runtime or a framework
+    /// calls this declaration without a source reference.
+    pub entry_point: bool,
 }
 
 /// One import, holding the specifier as it was written. Resolving it to a file is #50's work.
@@ -95,6 +102,20 @@ pub enum Outcome {
     Foreign,
 }
 
+pub struct Unsupported {
+    pub file: String,
+    pub language: &'static str,
+}
+
+/// One structural measurement over a discovered file set. Consumers receive the semantic index
+/// and explicit coverage outcomes; none of them parses files or reconstructs capability gaps.
+pub struct Measurement {
+    pub index: SourceIndex,
+    pub unparsed: Vec<Unparsed>,
+    pub unsupported: Vec<Unsupported>,
+    pub files: Files,
+}
+
 /// What structural analysis makes of one path.
 pub fn of(path: &str, source: &str) -> Result<Outcome, Error> {
     match parse(path, source)? {
@@ -102,6 +123,45 @@ pub fn of(path: &str, source: &str) -> Result<Outcome, Error> {
         Some(Parsed::Rejected(file)) => Ok(Outcome::Unparsed(file)),
         Some(Parsed::Read(file)) => measured(&file),
     }
+}
+
+pub fn measure(found: Found, repo_root: &Path) -> Result<Measurement, Error> {
+    let mut facts = Vec::new();
+    let mut unparsed = Vec::new();
+    let mut unsupported = Vec::new();
+    let mut measured = Vec::new();
+    for path in found.kept {
+        let file = files::relative(&path, repo_root);
+        let bytes = std::fs::read(&path).map_err(|why| Error::unreadable(&path, why))?;
+        let source = String::from_utf8_lossy(&bytes);
+        match of(&file, &source)? {
+            Outcome::Facts(found) => {
+                measured.push(found.file.clone());
+                facts.push(found);
+            }
+            Outcome::Unsupported(language) => unsupported.push(Unsupported { file, language }),
+            Outcome::Unparsed(file) => unparsed.push(file),
+            Outcome::Foreign => {}
+        }
+    }
+    let excluded = found
+        .excluded
+        .iter()
+        .map(|file| files::relative(file, repo_root))
+        .collect();
+    let unreadable = unparsed.iter().map(|file| file.file.clone()).collect();
+    let not_measured = unsupported.iter().map(|file| file.file.clone()).collect();
+    Ok(Measurement {
+        index: SourceIndex::of(facts),
+        unparsed,
+        unsupported,
+        files: Files {
+            measured,
+            not_measured,
+            excluded,
+            unreadable,
+        },
+    })
 }
 
 fn measured(file: &ParsedFile) -> Result<Outcome, Error> {
@@ -132,15 +192,6 @@ fn adapter(id: LanguageId) -> Option<&'static Adapter> {
 /// file as one it could have measured.
 pub fn supports(id: LanguageId) -> bool {
     adapter(id).is_some()
-}
-
-/// Whether this declaration is the language's ordinary executable entry point, which a
-/// dead-symbol consumer leaves out by default.
-pub fn is_default_entry_point(file: &FileFacts, declaration: &Declaration) -> bool {
-    matches!(
-        (file.language, declaration.name.as_str()),
-        (LanguageId::Rust, "main")
-    )
 }
 
 /// The languages a structural check can be configured for, each with the one name it is named
@@ -176,6 +227,52 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
         .collect()
 }
 
+/// Extensions selected by configured logical-language names. With no names, select every
+/// structural adapter; an explicitly named parser language remains discoverable so measurement
+/// can report that it has no structural adapter.
+pub fn selected_extensions(names: &[String]) -> Option<Vec<&'static str>> {
+    let supported: Vec<LanguageId> = languages().into_iter().map(|(_, id)| id).collect();
+    let selected: Vec<&Language> = if names.is_empty() {
+        LANGUAGES
+            .iter()
+            .filter(|language| supported.contains(&language.id))
+            .collect()
+    } else {
+        let mut selected: Vec<&Language> = Vec::new();
+        for name in names {
+            let found: Vec<&Language> = LANGUAGES
+                .iter()
+                .filter(|language| language.names.first() == Some(&name.as_str()))
+                .collect();
+            if found.is_empty() {
+                return None;
+            }
+            for language in found {
+                if !selected.iter().any(|held| std::ptr::eq(*held, language)) {
+                    selected.push(language);
+                }
+            }
+        }
+        selected
+    };
+    Some(
+        selected
+            .into_iter()
+            .flat_map(|language| language.extensions.iter().copied())
+            .collect(),
+    )
+}
+
+pub fn known_languages() -> Vec<&'static str> {
+    let mut known: Vec<&str> = LANGUAGES
+        .iter()
+        .filter_map(|language| language.names.first().copied())
+        .collect();
+    known.sort_unstable();
+    known.dedup();
+    known
+}
+
 /// What one language adapter states. A query names the node kinds that declare something, and
 /// the capture name says what kind of thing; everything else is the handful of judgments a
 /// query cannot make.
@@ -185,6 +282,8 @@ pub(crate) struct Adapter {
     pub identifiers: &'static [&'static str],
     /// The node kinds that turn a function into a method when one holds it.
     pub methods_in: &'static [&'static str],
+    /// Names invoked by the runtime without a source reference.
+    pub entry_points: &'static [&'static str],
     pub visible: fn(Node) -> bool,
     pub imported: fn(Node, &[u8]) -> Imported,
     /// The file a module declaration was remapped to, for a language that writes such a thing.
@@ -320,13 +419,16 @@ impl<'a> Reading<'a> {
         if inside_a_function(node, self.language) {
             return;
         }
+        let name = text_of(name, self.source);
+        let entry_point = self.adapter.entry_points.contains(&name.as_str());
         self.declarations.push(Declaration {
-            name: text_of(name, self.source),
+            name,
             kind: self.kind(capture, node),
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
             text: self.text(node),
             externally_visible: (self.adapter.visible)(node),
+            entry_point,
         });
     }
 
@@ -377,6 +479,12 @@ impl<'a> Reading<'a> {
     }
 
     fn finish(mut self, file: &ParsedFile) -> FileFacts {
+        let tests = convention::tests_in(file);
+        for declaration in &mut self.declarations {
+            declaration.entry_point |= tests
+                .iter()
+                .any(|test| test.line == declaration.line && test.text == declaration.text);
+        }
         let mut references = self.references(file.root());
         self.declarations
             .sort_by(|a, b| (a.line, &a.name, a.kind).cmp(&(b.line, &b.name, b.kind)));
@@ -796,6 +904,20 @@ export function charge(at: number): number {
         let facts = measured_facts("src/view.tsx", "export const view = () => <p>hi</p>;\n");
         assert_eq!(facts.language, LanguageId::TypeScript);
         assert_eq!(declaration(&facts, "view").kind, DeclarationKind::Constant);
+    }
+
+    #[test]
+    fn declarations_carry_runtime_and_test_entry_points_as_semantic_facts() {
+        let rust = measured_facts(
+            "src/lib.rs",
+            "fn main() {}\n#[test]\nfn works() {}\nfn helper() {}\n",
+        );
+        assert!(declaration(&rust, "main").entry_point);
+        assert!(declaration(&rust, "works").entry_point);
+        assert!(!declaration(&rust, "helper").entry_point);
+
+        let typescript = measured_facts("src/index.ts", "function main() {}\n");
+        assert!(!declaration(&typescript, "main").entry_point);
     }
 
     #[test]

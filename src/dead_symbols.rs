@@ -14,13 +14,11 @@ use serde_json::{Map, Value};
 use crate::base;
 use crate::check::{self, Context, Sink};
 use crate::config::{Config, Error};
-use crate::coverage::{self, Files};
+use crate::coverage;
 use crate::files;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
-use crate::syntax::convention::{self, Test};
-use crate::syntax::structural::{self, FileFacts, SourceIndex};
-use crate::syntax::{self, Language, LanguageId, Parsed};
+use crate::syntax::{self, structural};
 
 pub const SECTION: &str = "dead_symbols";
 
@@ -69,7 +67,7 @@ pub struct Args {
 
 #[derive(Clone)]
 struct Selection {
-    languages: Vec<&'static Language>,
+    extensions: Vec<&'static str>,
     skip_dirs: Vec<String>,
     exclude: Vec<String>,
 }
@@ -78,19 +76,6 @@ struct Spec {
     roots: Vec<PathBuf>,
     selection: Selection,
     ignore: Vec<String>,
-}
-
-struct NotMeasured {
-    file: String,
-    language: &'static str,
-}
-
-struct Sweep {
-    index: SourceIndex,
-    tests: Vec<Test>,
-    unparsed: Vec<syntax::Unparsed>,
-    unsupported: Vec<NotMeasured>,
-    files: Files,
 }
 
 struct State {
@@ -129,8 +114,8 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     at.say(&config, SECTION, out);
     let commit = base::commit(config.root(), at, out)?;
     let (before, after) = sweeps(at, &config, &spec, &commit)?;
-    let before_states = states(&before.index, &before.tests, &spec.ignore);
-    let after_states = states(&after.index, &after.tests, &spec.ignore);
+    let before_states = states(&before.index, &spec.ignore);
+    let after_states = states(&after.index, &spec.ignore);
     let held_before = held(&before_states, &config);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = dead_findings(&after_states, &before, &after, &held_before);
@@ -151,17 +136,9 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         ),
         out,
     );
-    Ok(finish(
-        code,
-        at,
-        &config,
-        &before,
-        &after,
-        &after_states,
-        &held_before,
-        report,
-        out,
-    ))
+    let code = coverage_result(code, at, &config, &before, &after, out);
+    reports(report, &after_states, &held_before, at.only, out);
+    Ok(code)
 }
 
 fn sweeps(
@@ -169,13 +146,18 @@ fn sweeps(
     config: &Config,
     spec: &Spec,
     commit: &str,
-) -> Result<(Sweep, Sweep), Error> {
+) -> Result<(structural::Measurement, structural::Measurement), Error> {
     let after = measure(&spec.roots, &spec.selection, config.root())?;
     let before = before(at, config, spec, commit)?;
     Ok((before, after))
 }
 
-fn before(at: &Context, config: &Config, spec: &Spec, commit: &str) -> Result<Sweep, Error> {
+fn before(
+    at: &Context,
+    config: &Config,
+    spec: &Spec,
+    commit: &str,
+) -> Result<structural::Measurement, Error> {
     let owned = base_tree(config, at, commit)?;
     let prior_root = match owned.as_ref() {
         Some(prior) => prior.root(),
@@ -207,8 +189,8 @@ fn held<'a>(states: &'a [State], config: &Config) -> Vec<&'a State> {
 
 fn dead_findings(
     states: &[State],
-    before: &Sweep,
-    after: &Sweep,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
     held_before: &[&State],
 ) -> Vec<Finding> {
     states
@@ -218,15 +200,12 @@ fn dead_findings(
         .collect()
 }
 
-fn finish(
+fn coverage_result(
     code: u8,
     at: &Context,
     config: &Config,
-    before: &Sweep,
-    after: &Sweep,
-    after_states: &[State],
-    held_before: &[&State],
-    report: bool,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
     out: &mut Sink,
 ) -> u8 {
     let code = unsupported(&after.unsupported, at, code, out);
@@ -236,12 +215,20 @@ fn finish(
         code,
         out,
     );
-    let code = syntax::unread(&after.unparsed, at, code, out);
+    syntax::unread(&after.unparsed, at, code, out)
+}
+
+fn reports(
+    report: bool,
+    after_states: &[State],
+    held_before: &[&State],
+    only: Option<&[String]>,
+    out: &mut Sink,
+) {
     if report {
-        report_dead(&after_states, at.only, out);
+        report_dead(after_states, only, out);
     }
-    base_note(&held_before, at.only, out);
-    code
+    base_note(held_before, only, out);
 }
 
 fn spec(config: &Config) -> Result<Spec, Error> {
@@ -261,57 +248,24 @@ fn spec(config: &Config) -> Result<Spec, Error> {
 
 fn selection(config: &Config, values: &Values) -> Result<Selection, Error> {
     let named = files::strings(config, SECTION, values, reference::LANGUAGES)?;
-    let languages = languages(config, &named)?;
+    let extensions =
+        structural::selected_extensions(&named).ok_or_else(|| unknown_language(config, &named))?;
     Ok(Selection {
-        languages,
+        extensions,
         skip_dirs: files::skip_dirs(config, SECTION, values)?,
         exclude: files::strings(config, SECTION, values, reference::EXCLUDE)?,
     })
 }
 
-fn languages(config: &Config, named: &[String]) -> Result<Vec<&'static Language>, Error> {
-    let supported: Vec<LanguageId> = structural::languages()
-        .into_iter()
-        .map(|(_, id)| id)
-        .collect();
-    if named.is_empty() {
-        return Ok(syntax::LANGUAGES
-            .iter()
-            .filter(|language| supported.contains(&language.id))
-            .collect());
-    }
-    let mut out: Vec<&'static Language> = Vec::new();
-    for name in named {
-        let mut found = false;
-        for language in syntax::LANGUAGES.iter().filter(|language| {
-            language
-                .names
-                .first()
-                .is_some_and(|canonical| *canonical == name.as_str())
-        }) {
-            found = true;
-            if !out.iter().any(|held| std::ptr::eq(*held, language)) {
-                out.push(language);
-            }
-        }
-        if !found {
-            return Err(unknown_language(config, name));
-        }
-    }
-    Ok(out)
-}
-
-fn unknown_language(config: &Config, name: &str) -> Error {
-    let mut known: Vec<&str> = syntax::LANGUAGES
+fn unknown_language(config: &Config, named: &[String]) -> Error {
+    let name = named
         .iter()
-        .filter_map(|language| language.names.first().copied())
-        .collect();
-    known.sort_unstable();
-    known.dedup();
+        .find(|name| structural::selected_extensions(&[(*name).clone()]).is_none())
+        .map_or("", String::as_str);
     Error(format!(
         "{}: \"{SECTION}\" measures no language called \"{name}\" — one of: {}",
         config.file.display(),
-        known.join(", ")
+        structural::known_languages().join(", ")
     ))
 }
 
@@ -319,95 +273,27 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
-fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result<Sweep, Error> {
-    let extensions: Vec<&str> = selection
-        .languages
-        .iter()
-        .flat_map(|language| language.extensions.iter().copied())
-        .collect();
+fn measure(
+    roots: &[PathBuf],
+    selection: &Selection,
+    repo_root: &Path,
+) -> Result<structural::Measurement, Error> {
     let wanted = files::Wanted {
-        extensions: &extensions,
+        extensions: &selection.extensions,
         skip_dirs: &selection.skip_dirs,
         exclude: &selection.exclude,
         exclude_except: &[],
         skip_hidden: true,
     };
     let found = files::found(roots, &wanted)?;
-    let mut facts = Vec::new();
-    let mut tests = Vec::new();
-    let mut unparsed = Vec::new();
-    let mut unsupported = Vec::new();
-    let mut measured = Vec::new();
-    for path in found.kept {
-        collect_file(
-            &path,
-            repo_root,
-            &mut facts,
-            &mut tests,
-            &mut unparsed,
-            &mut unsupported,
-            &mut measured,
-        )?;
-    }
-    let excluded = found
-        .excluded
-        .iter()
-        .map(|file| files::relative(file, repo_root))
-        .collect();
-    let unreadable = unparsed.iter().map(|file| file.file.clone()).collect();
-    let not_measured = unsupported.iter().map(|file| file.file.clone()).collect();
-    Ok(Sweep {
-        index: SourceIndex::of(facts),
-        tests,
-        unparsed,
-        unsupported,
-        files: Files {
-            measured,
-            not_measured,
-            excluded,
-            unreadable,
-        },
-    })
+    structural::measure(found, repo_root)
 }
 
-fn collect_file(
-    path: &Path,
-    repo_root: &Path,
-    facts: &mut Vec<FileFacts>,
-    tests: &mut Vec<Test>,
-    unparsed: &mut Vec<syntax::Unparsed>,
-    unsupported: &mut Vec<NotMeasured>,
-    measured: &mut Vec<String>,
-) -> Result<(), Error> {
-    let name = files::relative(path, repo_root);
-    let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
-    let source = String::from_utf8_lossy(&bytes).into_owned();
-    let Some(parsed) = syntax::parse(&name, &source)? else {
-        return Ok(());
-    };
-    match parsed {
-        Parsed::Rejected(file) => unparsed.push(file),
-        Parsed::Read(file) => {
-            tests.extend(convention::tests_in(&file));
-            if let Some(found) = structural::facts(&file)? {
-                measured.push(found.file.clone());
-                facts.push(found);
-            } else {
-                unsupported.push(NotMeasured {
-                    file: name.clone(),
-                    language: file.language.name,
-                });
-            }
-        }
-    }
-    Ok(())
-}
-
-fn states(index: &SourceIndex, tests: &[Test], ignore: &[String]) -> Vec<State> {
+fn states(index: &structural::SourceIndex, ignore: &[String]) -> Vec<State> {
     let mut out = Vec::new();
     for file in index.files() {
         for declaration in &file.declarations {
-            if !eligible(file, declaration, tests, ignore) {
+            if !eligible(declaration, ignore) {
                 continue;
             }
             out.push(state(index, file, declaration));
@@ -417,24 +303,16 @@ fn states(index: &SourceIndex, tests: &[Test], ignore: &[String]) -> Vec<State> 
     out
 }
 
-fn eligible(
-    file: &structural::FileFacts,
-    declaration: &structural::Declaration,
-    tests: &[Test],
-    ignore: &[String],
-) -> bool {
+fn eligible(declaration: &structural::Declaration, ignore: &[String]) -> bool {
     !declaration.externally_visible
-        && !structural::is_default_entry_point(file, declaration)
-        && !tests.iter().any(|test| {
-            test.file == file.file && test.line == declaration.line && test.text == declaration.text
-        })
+        && !declaration.entry_point
         && !ignore
             .iter()
             .any(|glob| files::glob_matches(glob.as_bytes(), declaration.name.as_bytes()))
 }
 
 fn state(
-    index: &SourceIndex,
+    index: &structural::SourceIndex,
     file: &structural::FileFacts,
     declaration: &structural::Declaration,
 ) -> State {
@@ -467,8 +345,8 @@ fn finding(state: &State) -> Finding {
 
 fn finding_with_lost_reference(
     state: &State,
-    before: &Sweep,
-    after: &Sweep,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
     before_states: &[&State],
 ) -> Finding {
     let mut finding = finding(state);
@@ -480,8 +358,8 @@ fn finding_with_lost_reference(
 
 fn lost_reference(
     state: &State,
-    before: &Sweep,
-    after: &Sweep,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
     before_states: &[&State],
 ) -> Option<String> {
     let held = before_states.iter().find(|candidate| {
@@ -536,8 +414,8 @@ fn in_scope(file: &str, only: Option<&[String]>) -> bool {
     only.is_none_or(|only| only.iter().any(|wanted| wanted == file))
 }
 
-fn unsupported(files: &[NotMeasured], at: &Context, code: u8, out: &mut Sink) -> u8 {
-    let files: Vec<&NotMeasured> = files
+fn unsupported(files: &[structural::Unsupported], at: &Context, code: u8, out: &mut Sink) -> u8 {
+    let files: Vec<&structural::Unsupported> = files
         .iter()
         .filter(|file| in_scope(&file.file, at.only))
         .collect();
