@@ -2075,24 +2075,38 @@ separate row. The test records the klin version, fixture counts, cache state,
 changed-file counts, iteration count and median milliseconds; it does not
 enforce the budgets on contributor hardware.
 
-The same performance test file also provides two source-dense structural rows:
-`structural_300k` holds 10,000 source files and exactly 312,077 source lines,
-and `structural_1m` holds the same 5,000 Rust plus 5,000 TypeScript split and
-exactly 989,077 source lines. Both retain 50 deterministic `.tsx` files and
-use parseable functions, methods, types, constants, imports, references,
-visibility, tests, entry points and duplicate-name buckets. Their configured
-Rust and TypeScript module families exercise `complexity`, `dead-symbols` and
-`reachability` through the real binary. Each source-dense row runs the same
-warm hook, cold survey and whole-tree strict measurements five times and
-prints the runner's existing per-gate `ms` rows for those three structural
-gates. The rows are ignored/manual and independently selectable; the `base_2k`
-and `base_10k` filters select the original rows. Fixture generation asserts
-actual file counts, exact LoC, language split, TSX count, deterministic bytes
-and representative structure; the CLI runs assert the changed-file count and
-gate timings. The output includes actual source LoC, file and language counts,
-cache state, changed files, iteration count, version and host platform, and
-explicitly excludes project build time from hook timing. These rows record
-measurements and do not add a wall-clock SLA.
+The same test also measures two source-dense structural rows. The
+`KLIN_PERF_ROW` environment variable selects one row:
+`KLIN_PERF_ROW=structural_300k cargo test --release --test performance --
+--ignored perf` or `KLIN_PERF_ROW=structural_1m`. Without the variable the
+test runs the 2k, 10k and guard rows as before. `structural_300k` holds 10,000
+source files and exactly 325,077 source lines. `structural_1m` holds the same
+5,000 Rust plus 5,000 TypeScript split and exactly 1,033,827 source lines. Both
+keep 50 `.tsx` files, tests, entry points and held escape and stub sites.
+
+Each dense file repeats one structural unit: two constants, a struct or
+interface, a type alias, an `impl` or class with a method, a function in one of
+256 duplicate-name buckets, an exported value function that imports and calls
+its neighbour, and a branching function. `structural_300k` writes one unit per
+file and `structural_1m` writes three or four. The rows differ in source volume
+and keep the same shape, so fixture generation asserts that both hold 270 to
+290 declaration lines per 1,000 source lines. Generation also asserts file
+counts, the language split, the TSX count, exact LoC, the exact declaration
+count, an FNV-1a digest of every generated path and byte, and representative
+structure. Configured Rust and TypeScript module families exercise
+`complexity`, `dead-symbols` and `reachability` through the real binary.
+
+Each dense row runs warm hook, cold survey and whole-tree strict five times
+and prints the median total and the median `ms` of those three gates. The warm
+hook row reads each gate's `ms` from the journal line of the stop it timed.
+The cold and strict rows read it from `--json`. A gate's `ms` covers its whole
+run: reading and parsing files, building its structural index, and its own
+algorithm. The rows therefore do not separate parse cost from judging cost,
+and they do not show a parse that two gates repeat. The output records source
+LoC, declarations, digest, file and language counts, cache state, changed
+files, iteration count, version and host platform, and excludes project build
+time from hook timing. These rows record measurements and add no wall-clock
+budget.
 
 A check that cannot take scope, such as a whole-tree duplication share, MUST
 say so in `gate --list` and MAY be skipped by the hook under a `hook: false`

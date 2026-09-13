@@ -23,24 +23,57 @@ during this session; the before and after columns share that load.
 
 Recorded 2026-09-13 on a MacBook Pro 18,3 with an Apple M1 Pro (8 cores),
 macOS 26.6.2, Darwin 25.6.0 arm64, using klin 0.1.1 release build. Each
-timing is the median of five iterations; each row changed 10 Rust and 10
-TypeScript files, and project builds were excluded from hook timings.
+timing is the median of five iterations. Each row changed 10 Rust and 10
+TypeScript files, and hook timings exclude project builds. All rows ran in one
+session.
 
-| Row | Source files and LoC | Warm hook | Cold survey | Strict |
-| --- | --- | ---: | ---: | ---: |
-| 300k | 5,000 Rust + 5,000 TypeScript, 50 TSX; 312,077 LoC | 18,300 ms | 26,130 ms | 20,383 ms |
-| 1M | 5,000 Rust + 5,000 TypeScript, 50 TSX; 989,077 LoC | 37,709 ms | 52,934 ms | 44,561 ms |
+Both dense rows repeat the same structural unit, so they differ in volume and
+not in shape: 276.9 and 282.9 declaration lines per 1,000 source lines.
 
-The existing runner reported these per-gate medians:
+| Row | Files | LoC | Declarations | Warm hook | Cold survey | Strict |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2k | 2,000 | 16,762 | 2,185 | 1,541 ms | 2,266 ms | 1,638 ms |
+| 10k | 10,000 | 84,102 | 10,941 | 5,014 ms | 14,330 ms | 6,285 ms |
+| 300k | 10,000 | 325,077 | 90,007 | 17,257 ms | 24,178 ms | 19,068 ms |
+| 1M | 10,000 | 1,033,827 | 292,507 | 57,303 ms | 77,136 ms | 64,957 ms |
+
+Per-gate medians. The warm hook row reads them from the journal line of the
+stop it timed, and the other rows read them from `--json`. The 2k and 10k rows
+configure no reachability section, and the survey derived none.
 
 | Row / mode | Complexity | Dead symbols | Reachability |
 | --- | ---: | ---: | ---: |
-| 300k warm hook | 1,583 ms | 6,370 ms | 7,075 ms |
-| 300k cold survey | 3,245 ms | 4,850 ms | 5,501 ms |
-| 300k strict | 3,203 ms | 4,788 ms | 5,404 ms |
-| 1M warm hook | 4,220 ms | 13,182 ms | 13,951 ms |
-| 1M cold survey | 8,297 ms | 11,899 ms | 12,245 ms |
-| 1M strict | 8,315 ms | 11,565 ms | 12,231 ms |
+| 10k warm hook | 564 ms | 2,735 ms | — |
+| 10k strict | 1,087 ms | 1,337 ms | — |
+| 300k warm hook | 1,578 ms | 6,085 ms | 6,678 ms |
+| 300k cold survey | 3,082 ms | 4,658 ms | 5,190 ms |
+| 300k strict | 3,069 ms | 4,659 ms | 5,139 ms |
+| 1M warm hook | 4,341 ms | 21,008 ms | 25,853 ms |
+| 1M cold survey | 8,793 ms | 20,603 ms | 26,193 ms |
+| 1M strict | 8,541 ms | 19,522 ms | 24,194 ms |
+
+What the rows show:
+
+- At a fixed 10,000 files, time grows with source volume. From 300k to 1M
+  (3.2 times the LoC), strict grows 3.4 times and the warm hook 3.3 times.
+- `dead-symbols` and `reachability` take 67% of the 1M strict run. Each grows
+  faster than LoC (4.2 and 4.7 times), and `complexity` grows at LoC's rate
+  (2.8 times).
+- Cold survey minus strict is 5,110 ms at 300k and 12,179 ms at 1M. The
+  per-gate times of the two rows match, so this cost sits outside the gates,
+  in the survey.
+- In the warm hook, `dead-symbols` takes longer than in strict (6,085 against
+  4,659 ms at 300k), and this time the numbers come from the same stop that
+  was timed. These rows do not explain the difference.
+- A gate's `ms` covers reading, parsing, indexing and judging, and each
+  structural gate parses its own files. The rows therefore cannot separate
+  parse cost from resolution cost, or show a parse two gates repeat.
+
+Budget: SPEC 13's budgets are for a 2,000-file tree, and the 2k row meets all
+three. The 300k row exceeds the 5-second hook budget, and the 1M row exceeds
+all three. A separate large-repository budget is warranted. It needs its own
+decision, and that decision should wait until gate timings separate parsing
+from judging, because two gates hold most of the cost.
 
 ## 0.1.1
 
