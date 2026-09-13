@@ -818,3 +818,59 @@ fn codex(tool: &str, command: String) -> String {
     })
     .to_string()
 }
+
+
+#[test]
+#[ignore = "temporary root-count benchmark"]
+fn monorepo_root_count_benchmark() {
+    for packages in [2usize, 100, 500] {
+        let files = 2_000usize;
+        assert_eq!(files % packages, 0);
+        let per_package = files / packages;
+        let tree = Tree::bare();
+        tree.repository();
+        tree.write(
+            "klin.json",
+            r#"{"build":[],"complexity":false,"stubs":false,"dead_symbols":false,"reachability":false,"doc_size":false,"doc_citations":false,"inventory":false,"lockfile":false,"escapes":{"languages":["rust"]}}"#,
+        );
+        for package in 0..packages {
+            tree.write(
+                &format!("packages/p{package:04}/Cargo.toml"),
+                &format!("[package]\nname=\"p{package:04}\"\nversion=\"0.1.0\"\nedition=\"2024\"\n"),
+            );
+            for file in 0..per_package {
+                tree.write(
+                    &format!("packages/p{package:04}/src/f{file:04}.rs"),
+                    &format!("pub fn f_{package}_{file}() -> usize {{ {file} }}\n"),
+                );
+            }
+        }
+        tree.base();
+
+        let prime = tree.run(&["gate", "--hook", "--changed"]);
+        assert_eq!(prime.code, 0, "prime {packages}: {}", prime.out);
+
+        for package in 0..packages.min(20) {
+            tree.write(
+                &format!("packages/p{package:04}/src/f0000.rs"),
+                &format!("pub fn f_{package}_0() -> usize {{ 1 }}\n"),
+            );
+        }
+
+        let warm_started = Instant::now();
+        let warm = tree.run(&["gate", "--hook", "--changed"]);
+        let warm_ms = warm_started.elapsed().as_millis();
+        assert_eq!(warm.code, 0, "warm {packages}: {}", warm.out);
+
+        let cleaned = tree.run(&["cache", "clean"]);
+        assert_eq!(cleaned.code, 0, "clean {packages}: {}", cleaned.out);
+        let cold_started = Instant::now();
+        let cold = tree.run(&["gate", "--strict", "--gate", "escapes"]);
+        let cold_ms = cold_started.elapsed().as_millis();
+        assert_eq!(cold.code, 0, "cold {packages}: {}", cold.out);
+
+        println!(
+            "monorepo roots: packages={packages}, source_files={files}, files_per_package={per_package}, warm_ms={warm_ms}, cold_ms={cold_ms}"
+        );
+    }
+}
