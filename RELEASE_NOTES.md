@@ -1,5 +1,24 @@
 # Release notes
 
+## Unreleased
+
+### Cold survey reads the derivation commit through one git process
+
+The complexity sample used to read each sampled file with its own `git show`.
+It now reads every sampled file through one `git cat-file --batch` process.
+Measured 2026-09-13 on the 0.1.1 baseline machine (MacBook Pro 18,3, Apple
+M1 Pro, macOS 26.6.2), release build, median of five iterations, before and
+after the change in the same session:
+
+| Row | Warm hook before | Warm hook after | Cold survey before | Cold survey after | Strict before | Strict after |
+| --- | ---------------: | --------------: | -----------------: | ----------------: | ------------: | ------------: |
+| 2k  |         1,703 ms |        1,602 ms |          15,363 ms |          2,034 ms |      1,745 ms |      1,716 ms |
+| 10k |         5,451 ms |        5,406 ms |          74,465 ms |         10,755 ms |      6,787 ms |      6,760 ms |
+
+The guard row was 9,025 ms before and 8,992 ms after for 1,000 events. The
+warm rows sit above the 0.1.1 table because the machine carried other load
+during this session; the before and after columns share that load.
+
 ## 0.1.1
 
 ### Performance baseline

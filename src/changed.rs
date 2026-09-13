@@ -1,5 +1,6 @@
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Child, Command, Stdio};
 
 use crate::config::Error;
 
@@ -67,6 +68,74 @@ pub fn blob(root: &Path, commit: &str, path: &str) -> Option<Vec<u8>> {
     done.status.success().then_some(done.stdout)
 }
 
+/// The bytes many files held at one commit, read through one git process and handed over one
+/// at a time in request order, so a cold survey pays one process rather than one per file.
+/// `None` for a path the commit does not hold as a blob, which is not an empty blob; an empty
+/// blob is `Some` of nothing. Nothing here reads the working tree. The whole read is `None`
+/// when git could not be run or stopped answering, and every path answered before that was
+/// already handed over.
+pub fn blobs(
+    root: &Path,
+    commit: &str,
+    paths: &[&str],
+    mut each: impl FnMut(&str, Option<&[u8]>),
+) -> Option<()> {
+    if paths.is_empty() {
+        return Some(());
+    }
+    let mut git = Reaped(
+        Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(["cat-file", "--batch"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .ok()?,
+    );
+    let mut requests = git.0.stdin.take()?;
+    let mut answers = BufReader::new(git.0.stdout.take()?);
+    let mut held = Vec::new();
+    for path in paths {
+        writeln!(requests, "{commit}:./{path}").ok()?;
+        let is_blob = answer(&mut answers, &mut held)?;
+        each(path, is_blob.then_some(held.as_slice()));
+    }
+    Some(())
+}
+
+/// One answer from `cat-file --batch`: `Some(true)` for a blob whose bytes now fill `held`,
+/// `Some(false)` for a path the commit does not hold as a blob, and `None` when git stopped
+/// answering.
+fn answer(answers: &mut impl BufRead, held: &mut Vec<u8>) -> Option<bool> {
+    let mut header = String::new();
+    if answers.read_line(&mut header).ok()? == 0 {
+        return None;
+    }
+    let mut fields = header.split_whitespace().rev();
+    let size = fields.next().and_then(|size| size.parse::<usize>().ok());
+    let (Some(size), Some(kind)) = (size, fields.next()) else {
+        return Some(false);
+    };
+    held.clear();
+    held.resize(size, 0);
+    answers.read_exact(held).ok()?;
+    answers.read_exact(&mut [0u8; 1]).ok()?;
+    Some(kind == "blob")
+}
+
+/// A git process that is killed and reaped when the read ends, on success or failure, so no
+/// zombie and no open pipe outlives the call.
+struct Reaped(Child);
+
+impl Drop for Reaped {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 pub fn git(root: &Path, args: &[&str]) -> Option<String> {
     let done = Command::new("git")
         .arg("-C")
@@ -79,4 +148,153 @@ pub fn git(root: &Path, args: &[&str]) -> Option<String> {
     done.status
         .success()
         .then(|| String::from_utf8_lossy(&done.stdout).into_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn git_in(root: &Path, args: &[&str]) {
+        let done = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(
+            done.status.success(),
+            "{}",
+            String::from_utf8_lossy(&done.stderr)
+        );
+    }
+
+    fn repository(files: &[(&str, &[u8])]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        git_in(dir.path(), &["init", "-q"]);
+        git_in(dir.path(), &["config", "user.email", "t@example.com"]);
+        git_in(dir.path(), &["config", "user.name", "t"]);
+        for (name, bytes) in files {
+            let path = dir.path().join(name);
+            std::fs::create_dir_all(path.parent().expect("a parent")).expect("dirs");
+            std::fs::write(path, bytes).expect("a file");
+        }
+        git_in(dir.path(), &["add", "-A"]);
+        git_in(dir.path(), &["commit", "-q", "-m", "base"]);
+        dir
+    }
+
+    fn read(root: &Path, paths: &[&str]) -> Vec<(String, Option<Vec<u8>>)> {
+        let mut out = Vec::new();
+        blobs(root, "HEAD", paths, |path, bytes| {
+            out.push((path.to_string(), bytes.map(<[u8]>::to_vec)));
+        })
+        .expect("git read the commit");
+        out
+    }
+
+    #[test]
+    fn many_blobs_come_back_in_request_order_with_missing_and_empty_told_apart() {
+        let dir = repository(&[
+            ("src/a.rs", b"fn a() {}\n"),
+            ("src/empty.rs", b""),
+            ("docs/with space.md", b"# hi\n"),
+            ("src/\u{e9}t\u{e9}.rs", b"fn ete() {}\n"),
+        ]);
+        let found = read(
+            dir.path(),
+            &[
+                "src/empty.rs",
+                "src/missing.rs",
+                "src/a.rs",
+                "docs/with space.md",
+                "src/\u{e9}t\u{e9}.rs",
+                "src",
+            ],
+        );
+        assert_eq!(
+            found,
+            vec![
+                ("src/empty.rs".to_string(), Some(Vec::new())),
+                ("src/missing.rs".to_string(), None),
+                ("src/a.rs".to_string(), Some(b"fn a() {}\n".to_vec())),
+                ("docs/with space.md".to_string(), Some(b"# hi\n".to_vec())),
+                (
+                    "src/\u{e9}t\u{e9}.rs".to_string(),
+                    Some(b"fn ete() {}\n".to_vec())
+                ),
+                ("src".to_string(), None),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_commit_is_read_and_never_the_working_tree() {
+        let dir = repository(&[("src/a.rs", b"fn a() {}\n")]);
+        std::fs::write(dir.path().join("src/a.rs"), b"fn changed() {}\n").expect("a write");
+        std::fs::write(dir.path().join("src/new.rs"), b"fn new() {}\n").expect("a write");
+        assert_eq!(
+            read(dir.path(), &["src/a.rs", "src/new.rs"]),
+            vec![
+                ("src/a.rs".to_string(), Some(b"fn a() {}\n".to_vec())),
+                ("src/new.rs".to_string(), None),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_batch_wider_than_one_pipe_buffer_reads_every_blob_in_order() {
+        let large = vec![b'x'; 300_000];
+        let held: Vec<(String, Vec<u8>)> = (0..400)
+            .map(|at| {
+                (
+                    format!("src/f{at:04}.rs"),
+                    format!("fn f{at}() {{}}\n").into_bytes(),
+                )
+            })
+            .chain(std::iter::once(("src/large.rs".to_string(), large.clone())))
+            .collect();
+        let files: Vec<(&str, &[u8])> = held
+            .iter()
+            .map(|(name, bytes)| (name.as_str(), bytes.as_slice()))
+            .collect();
+        let dir = repository(&files);
+        let paths: Vec<&str> = files.iter().map(|(name, _)| *name).collect();
+        let found = read(dir.path(), &paths);
+        assert_eq!(found.len(), paths.len());
+        for ((name, bytes), (found_name, found_bytes)) in held.iter().zip(&found) {
+            assert_eq!(name, found_name);
+            assert_eq!(Some(bytes), found_bytes.as_ref());
+        }
+    }
+
+    #[test]
+    fn a_commit_git_does_not_hold_reads_as_every_path_missing() {
+        let dir = repository(&[("src/a.rs", b"fn a() {}\n")]);
+        let mut seen = Vec::new();
+        let outcome = blobs(
+            dir.path(),
+            "no-such-commit",
+            &["src/a.rs"],
+            |path, bytes| {
+                seen.push((path.to_string(), bytes.is_some()));
+            },
+        );
+        assert!(outcome.is_some());
+        assert_eq!(seen, vec![("src/a.rs".to_string(), false)]);
+    }
+
+    #[test]
+    fn a_root_git_cannot_open_is_a_failure_and_hands_over_nothing() {
+        let mut seen = 0;
+        let outcome = blobs(
+            Path::new("/nonexistent/klin"),
+            "HEAD",
+            &["src/a.rs"],
+            |_, _| {
+                seen += 1;
+            },
+        );
+        assert!(outcome.is_none());
+        assert_eq!(seen, 0);
+    }
 }

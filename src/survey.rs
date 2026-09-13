@@ -377,22 +377,31 @@ fn sample(root: &Path, at: Option<&Path>, commit: &str, sampled: &Sampled) -> Sa
 
 /// Every function at the derivation commit, under the roots that commit's own survey holds. A
 /// function that exists only in the working tree is not read here, so a directory that becomes
-/// a root cannot move the ceiling it is judged against. One git process reads each file, which
-/// the whole-tree parse of 6.6 pays for once per derivation commit. Spec 4.3, 5.4.
+/// a root cannot move the ceiling it is judged against. One git process reads every file, which
+/// the whole-tree parse of 6.6 pays for once per derivation commit. A read git did not finish
+/// is no sample at all, as a commit git could not list is, so a torn read never lowers a
+/// ceiling. Spec 4.3, 5.4.
 fn counts(root: &Path, commit: &str, sampled: &Sampled) -> Sample {
     let mut cc = Vec::new();
     let mut lines = Vec::new();
-    for path in listed(root, commit).unwrap_or_default() {
-        if !sampled.keeps(&path) {
-            continue;
-        }
-        let Some(text) = crate::changed::blob(root, commit, &path) else {
-            continue;
+    let listed = listed(root, commit).unwrap_or_default();
+    let kept: Vec<&str> = listed
+        .iter()
+        .map(String::as_str)
+        .filter(|path| sampled.keeps(path))
+        .collect();
+    let read = crate::changed::blobs(root, commit, &kept, |path, text| {
+        let Some(text) = text else {
+            return;
         };
-        for function in crate::complexity::measured(&path, &String::from_utf8_lossy(&text)) {
+        for function in crate::complexity::measured(path, &String::from_utf8_lossy(text)) {
             cc.push(function.cc);
             lines.push(function.lines);
         }
+    });
+    if read.is_none() {
+        cc.clear();
+        lines.clear();
     }
     Sample {
         functions: cc.len(),
