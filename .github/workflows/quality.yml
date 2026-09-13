@@ -15,6 +15,10 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - run: cargo build --release --locked
+      - name: Config A/B — current
+        run: KLIN_PERF_CONFIG=current cargo test --release --locked performance_fixture -- --ignored --nocapture
+      - name: Config A/B — compact
+        run: KLIN_PERF_CONFIG=compact cargo test --release --locked performance_fixture -- --ignored --nocapture
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest@0.9.143
