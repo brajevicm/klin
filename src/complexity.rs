@@ -9,6 +9,7 @@ use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Files};
 use crate::files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
@@ -323,24 +324,25 @@ struct Spec {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    gate(&context(args, start), &mut Sink::unrecorded(out))
+    let project = Project::load(args.config.as_deref(), start)?;
+    gate(&context(args, &project), &mut Sink::unrecorded(out))
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let spec = spec(&config)?;
-    at.say(&config, SECTION, out);
-    let sweep = measure(&spec.roots, &spec.selection, config.root())?;
+    let project = at.project;
+    let spec = spec(project)?;
+    at.say(SECTION, out);
+    let sweep = measure(project.tree(), &spec.roots, &spec.selection, project.root())?;
     let now = over(&sweep.functions, &spec);
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = sweep.files.coverage(at.only).said(out);
-    let (prior, before) = at_the_base(&config, &spec, at, out)?;
-    let lost = sweep.files.lost(&before, &config, at.only);
+    let (prior, before) = at_the_base(&spec, at, out)?;
+    let lost = sweep.files.lost(&before, project, at.only);
     let code = evaluator(&spec).evaluate(
         now,
         prior,
-        ratchet::accepted(&config, at.gate, evaluator(&spec).metrics)?,
+        ratchet::accepted(&project.config, at.gate, evaluator(&spec).metrics)?,
         at,
         &format!(
             "OK: {judged} function(s) judged, {count} over the gate{}, all held at the base{said}",
@@ -352,27 +354,33 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(syntax::unread(&sweep.unparsed, at, code, out))
 }
 
-fn at_the_base(
-    config: &Config,
-    spec: &Spec,
-    at: &Context,
-    out: &mut Sink,
-) -> Result<(Vec<Finding>, Files), Error> {
+fn at_the_base(spec: &Spec, at: &Context, out: &mut Sink) -> Result<(Vec<Finding>, Files), Error> {
     let owned;
     let prior = match at.prior {
-        Some(dir) => dir,
+        Some(prior) => prior,
         None => {
-            owned = base::own(config, at, out)?;
-            owned.root()
+            owned = base::own(at, out)?;
+            &owned
         }
     };
+    let project = at.project;
     let selection = Selection {
-        exclude: files::base_exclusions(config, SECTION, prior, &spec.selection.exclude),
+        exclude: files::base_exclusions(
+            &project.config,
+            SECTION,
+            prior.root(),
+            &spec.selection.exclude,
+        ),
         ..spec.selection.clone()
     };
-    let before = measure(&base::roots(&spec.roots, config, prior)?, &selection, prior)?;
+    let before = measure(
+        prior.tree(),
+        &base::roots(&spec.roots, project, prior.root())?,
+        &selection,
+        prior.root(),
+    )?;
     let mut found = over(&before.functions, spec);
-    found.retain(|finding| config.was_held(&finding.file));
+    found.retain(|finding| project.was_held(&finding.file));
     Ok((found, before.files))
 }
 
@@ -384,12 +392,12 @@ fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
         .collect()
 }
 
-fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
     Context {
         only: args.only.as_deref(),
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand(SECTION, start, args.config.as_deref())
+        ..Context::by_hand(SECTION, project)
     }
 }
 
@@ -412,8 +420,8 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
     }
 }
 
-fn spec(config: &Config) -> Result<Spec, Error> {
-    let section = ratchet::section(config, SECTION)?;
+fn spec(project: &Project) -> Result<Spec, Error> {
+    let section = ratchet::section(project, SECTION)?;
     let values = &section.values;
     let ceilings = ceilings(section.config, values)?;
     Ok(Spec {
@@ -504,7 +512,12 @@ fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
     })
 }
 
-fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result<Sweep, Error> {
+fn measure(
+    tree: &Tree,
+    roots: &[PathBuf],
+    selection: &Selection,
+    repo_root: &Path,
+) -> Result<Sweep, Error> {
     let extensions: Vec<&str> = selection
         .languages
         .iter()
@@ -520,7 +533,7 @@ fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result
         exclude_except: &selection.exclude_except,
         skip_hidden: true,
     };
-    let found = files::found(roots, &wanted)?;
+    let found = files::found(tree, roots, &wanted)?;
     let mut read: Vec<String> = Vec::new();
     for file in found.kept {
         let name = file.to_string_lossy().to_string();

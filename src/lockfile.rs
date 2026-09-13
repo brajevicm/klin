@@ -4,7 +4,7 @@ use std::path::Path;
 use serde_json::Value;
 
 use crate::check::{Context, Sink};
-use crate::config::{Config, Error};
+use crate::config::Error;
 use crate::coverage::Coverage;
 use crate::ratchet::{self, Evaluator, Finding, Section, Values};
 use crate::reference::{self, Key};
@@ -102,10 +102,9 @@ pub fn reads(name: &str) -> bool {
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    at.say(&config, SECTION, out);
-    let sites = surveyed(&config, at, out)?;
-    let accepted = ratchet::accepted(&config, at.gate, METRICS)?;
+    at.say(SECTION, out);
+    let sites = surveyed(at, out)?;
+    let accepted = ratchet::accepted(at.config(), at.gate, METRICS)?;
     let ok = format!(
         "OK: {} dependenc{} in {} manifest(s), each locked and pinned as the base had it{}",
         sites.judged,
@@ -119,8 +118,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 }
 
 /// Every manifest the section names, read in both trees, minus the ones `exclude` drops.
-fn surveyed(config: &Config, at: &Context, out: &mut Sink) -> Result<Sites, Error> {
-    let section = ratchet::section(config, SECTION)?;
+fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
+    let config = at.config();
+    let section = ratchet::section(at.project, SECTION)?;
     let manifests = listed(&section, MANIFESTS)?;
     let pinned = config
         .pinned(SECTION)

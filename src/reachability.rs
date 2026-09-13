@@ -17,8 +17,10 @@ use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
+use crate::scope::under_or_at;
 use crate::survey::{self, Survey};
 use crate::syntax::structural::{self, Declaration, DeclarationKind, Measurement, SourceIndex};
 use crate::syntax::{self, LanguageId};
@@ -96,9 +98,7 @@ struct Family {
 impl Family {
     /// Whether the family's root and pattern select this path, before any exclusion.
     fn selects(&self, path: &str) -> bool {
-        self.roots
-            .iter()
-            .any(|root| survey::under_or_at(path, root))
+        self.roots.iter().any(|root| under_or_at(path, root))
             && self.extensions.iter().any(|end| path.ends_with(end))
             && files::glob_matches(self.pattern.as_bytes(), basename(path).as_bytes())
     }
@@ -126,27 +126,29 @@ struct State {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start)?;
     let at = Context {
         only: args.only.as_deref(),
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand(SECTION, start, args.config.as_deref())
+        ..Context::by_hand(SECTION, &project)
     };
     gate(&at, &mut Sink::unrecorded(out))
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let families = families(&config)?;
-    at.say(&config, SECTION, out);
+    let project = at.project;
+    let config = &project.config;
+    let families = families(project)?;
+    at.say(SECTION, out);
     let commit = base::commit(config.root(), at, out)?;
-    let after = measure(&families, config.root())?;
-    let (before, before_families) = before(at, &config, &families, &commit)?;
+    let after = measure(project.tree(), &families, config.root())?;
+    let (before, before_families) = before(at, &families, &commit)?;
     let (before_states, _) = states(&before.index, &before_families);
     let (after_states, unjudged) = states(&after.index, &families);
     let held_before: Vec<&State> = before_states
         .iter()
-        .filter(|state| config.was_held(&state.file))
+        .filter(|state| project.was_held(&state.file))
         .collect();
     let prior = held_before
         .iter()
@@ -168,7 +170,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = evaluator.evaluate(
         now,
         prior,
-        ratchet::accepted(&config, at.gate, evaluator.metrics)?,
+        ratchet::accepted(config, at.gate, evaluator.metrics)?,
         at,
         &format!(
             "OK: {judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
@@ -179,7 +181,6 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = coverage_result(
         code,
         at,
-        &config,
         (&before, &before_families),
         (&after, &families),
         out,
@@ -188,8 +189,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-fn families(config: &Config) -> Result<Vec<Family>, Error> {
-    let held = config.section(SECTION)?;
+fn families(project: &Project) -> Result<Vec<Family>, Error> {
+    let config = &project.config;
+    let held = project.section(SECTION)?;
     let listed = held.as_array().ok_or_else(|| {
         Error(format!(
             "{}: \"{SECTION}\" is a list of families, each a \"name\", \"roots\" and \"pattern\"",
@@ -249,7 +251,7 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 
 /// The whole tree under the root, in the families' languages, because a caller may sit
 /// anywhere in the repository and a member is reached by any of them. Spec 8.4.
-fn measure(families: &[Family], repo_root: &Path) -> Result<Measurement, Error> {
+fn measure(tree: &Tree, families: &[Family], repo_root: &Path) -> Result<Measurement, Error> {
     let mut extensions: Vec<&str> = families
         .iter()
         .flat_map(|family| family.extensions.iter().copied())
@@ -264,7 +266,7 @@ fn measure(families: &[Family], repo_root: &Path) -> Result<Measurement, Error> 
         exclude_except: &[],
         skip_hidden: true,
     };
-    let found = files::found(&[repo_root.to_path_buf()], &wanted)?;
+    let found = files::found(tree, &[repo_root.to_path_buf()], &wanted)?;
     structural::measure(found, repo_root)
 }
 
@@ -272,22 +274,21 @@ fn measure(families: &[Family], repo_root: &Path) -> Result<Measurement, Error> 
 /// so a file an exclusion this run added shows as lost rather than vanishing. Spec 8.6.
 fn before(
     at: &Context,
-    config: &Config,
     families: &[Family],
     commit: &str,
 ) -> Result<(Measurement, Vec<Family>), Error> {
     let owned = (at.prior.is_none() || at.only.is_some())
-        .then(|| base::materialize(config, commit, None))
+        .then(|| base::materialize(at.project, commit, None))
         .transpose()?;
-    let prior_root = match owned.as_ref() {
-        Some(prior) => prior.root(),
+    let prior = match owned.as_ref() {
+        Some(prior) => prior,
         None => at
             .prior
             .ok_or_else(|| Error("a runner gives structural checks a base tree".into()))?,
     };
     Ok((
-        measure(families, prior_root)?,
-        base_families(config, prior_root, families),
+        measure(prior.tree(), families, prior.root())?,
+        base_families(at.config(), prior.root(), families),
     ))
 }
 
@@ -445,7 +446,6 @@ fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
 fn coverage_result(
     code: u8,
     at: &Context,
-    config: &Config,
     (before, before_families): (&Measurement, &[Family]),
     (after, families): (&Measurement, &[Family]),
     out: &mut Sink,
@@ -460,7 +460,8 @@ fn coverage_result(
         })
         .collect();
     let code = coverage::not_measured_said(&unsupported, at, code, out);
-    let lost = covered(after, families).lost(&covered(before, before_families), config, at.only);
+    let lost =
+        covered(after, families).lost(&covered(before, before_families), at.project, at.only);
     let code = coverage::lost_said(&lost, at, code, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
@@ -569,13 +570,8 @@ fn members_at(root: &Path, commit: &str, held: &Survey) -> Option<Vec<String>> {
         survey::listed(root, commit)?
             .into_iter()
             .filter(|path| extensions.iter().any(|end| path.ends_with(end)))
-            .filter(|path| held.roots.iter().any(|at| survey::under_or_at(path, at)))
-            .filter(|path| {
-                !held
-                    .test_roots
-                    .iter()
-                    .any(|at| survey::under_or_at(path, at))
-            })
+            .filter(|path| held.roots.iter().any(|at| under_or_at(path, at)))
+            .filter(|path| !held.test_roots.iter().any(|at| under_or_at(path, at)))
             .collect(),
     )
 }
@@ -719,7 +715,7 @@ fn patterns(stem: &str, extension: &str) -> Vec<String> {
 fn candidate(paths: &[String], directory: &str, pattern: String) -> Candidate {
     let cohort = paths
         .iter()
-        .filter(|path| survey::under_or_at(path, directory))
+        .filter(|path| under_or_at(path, directory))
         .filter(|path| files::glob_matches(pattern.as_bytes(), basename(path).as_bytes()))
         .cloned()
         .collect();

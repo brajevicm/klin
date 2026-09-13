@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -5,10 +6,13 @@ use std::time::Duration;
 use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Prior, Window};
-use crate::changed::{self, Change};
-use crate::check::{self, Caller, Context, DELETED, NOT_MEASURED, Records, Sink, UNPARSED};
-use crate::config::{self, Config, Error};
+use crate::changed::Change;
+use crate::check::{
+    self, Activation, Caller, Context, DELETED, NOT_MEASURED, Records, Sink, UNPARSED,
+};
+use crate::config::{self, Error};
 use crate::host::{self, Stop};
+use crate::project::Project;
 use crate::{build, coverage, journal, state, stats, survey, turn};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -21,7 +25,6 @@ const BUILD_WRITING: &str = "build-blocked.writing";
 /// How many stops one prompt's build failures may block. klin bounds this itself, because the
 /// host documents no cap of its own. ADR 0022, spec 9.3.
 const BLOCKS: u64 = 8;
-const GATES: &str = config::GATES.name;
 /// What `--list` indents a gate's own lines by, under the row that names it.
 const UNDER: &str = "      ";
 /// The `ERR` row of 11.1 as `--json` names it, which a run that could not measure prints
@@ -31,7 +34,6 @@ const ERROR: &str = "ERROR";
 struct Gate {
     name: String,
     check: &'static check::Row,
-    with: Option<Value>,
 }
 
 #[derive(Default)]
@@ -43,11 +45,14 @@ struct Plan {
     needs_a_section: Vec<&'static check::Row>,
 }
 
-struct Entry {
-    name: String,
-    check: String,
-    with: Option<Value>,
-    off: bool,
+impl Plan {
+    /// The one gate a check runs as when its section is not a list of named entries.
+    fn one(&mut self, check: &'static check::Row) {
+        self.gates.push(Gate {
+            name: check.name.to_string(),
+            check,
+        });
+    }
 }
 
 #[derive(clap::Args)]
@@ -92,19 +97,21 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.hook && !config::present(args.config.as_deref(), start) {
         return Ok(0);
     }
-    if args.hook
-        && let Some(problem) = unfixable_config(args, start)
-    {
-        eprintln!(
-            "klin: FAIL: {problem} — only a person edits that file, so this stop is not blocked."
-        );
-        return Ok(1);
-    }
+    let loaded = Project::load(args.config.as_deref(), start);
     if !args.hook {
-        let judged = judge(args, start, None, out);
+        let judged = loaded.and_then(|project| judge(args, &project, None, out));
         return refused(args, judged, out).map(|tally| code(&tally));
     }
-    Ok(stopped(args, start, out))
+    match loaded {
+        Ok(project) => Ok(stopped(args, &project, out)),
+        Err(problem) => {
+            eprintln!(
+                "klin: FAIL: {problem} — only a person edits that file, so this stop is not \
+                 blocked."
+            );
+            Ok(1)
+        }
+    }
 }
 
 /// How long a stop waits for the stop before it to finish. A fraction of the hook's five
@@ -114,21 +121,27 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// One stop in the hook: the lock, the turn window, the build, the gates, and the verdict the
 /// next prompt reads. The lock is held from before the run measures until after the verdict is
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
-fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
+fn stopped(args: &Args, project: &Project, out: &mut String) -> u8 {
     let begun = std::time::Instant::now();
-    let root = root(args, start);
+    let root = project.root();
     let event = host::read(args.host.as_deref());
-    let mut log = journal::Stop::begun(event.as_ref(), config_hash(args, start));
+    let mut log = journal::Stop::begun(event.as_ref(), config_hash(project));
     let (lock, lock_ms) =
-        journal::timed(|| state::ready(&root).ok().map(|at| state::lock(&at, BUDGET)));
+        journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
-    let window = turn::window(&root, &mut log.flags, out).ok();
+    let window = turn::window(root, &mut log.flags, out).ok();
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
         log.flags.push("branch-fallback");
     }
-    let (code, green, asked, note) =
-        ran(args, start, window.as_ref(), event.as_ref(), &mut log, out);
+    let (code, green, asked, note) = ran(
+        args,
+        project,
+        window.as_ref(),
+        event.as_ref(),
+        &mut log,
+        out,
+    );
     if let Some(Value::Object(report)) = &mut log.report {
         report.insert("exit".into(), code.into());
         if let Some(window) = &window {
@@ -136,17 +149,17 @@ fn stopped(args: &Args, start: &Path, out: &mut String) -> u8 {
         }
     }
     log.blocked = code == 2;
-    written(&root, lost, green, asked.as_deref(), &mut log);
+    written(root, lost, green, asked.as_deref(), &mut log);
     log.asked = asked.unwrap_or_default();
-    if let Ok(at) = state::ready(&root) {
+    if let Ok(at) = state::ready(root) {
         let held = count(&at);
         log.gate_spent = held.gate_spent;
         log.build_blocks = held.builds;
         log.prompt = held.prompt;
     }
-    let said = tell(args, &root, code, note, &mut log);
+    let said = tell(args, root, code, note, &mut log);
     log.timing.total_ms = journal::millis(begun.elapsed());
-    journal::stop(&root, &log);
+    journal::stop(root, &log);
     if let Some(said) = said {
         host::stop(&Stop::Tell(said));
     }
@@ -207,14 +220,11 @@ fn tell(
 /// A hash of the config in force, recorded in the journal and not read, so a later reader can
 /// tell a fix from a config change. A tree with no file says `derived`, and a file klin could
 /// not read says `unreadable`, so neither reads as an edit to the other.
-fn config_hash(args: &Args, start: &Path) -> String {
-    let Ok(config) = Config::load(args.config.as_deref(), start) else {
-        return "unreadable".to_string();
-    };
-    if !config.written() {
+fn config_hash(project: &Project) -> String {
+    if !project.config.written() {
         return "derived".to_string();
     }
-    match std::fs::read_to_string(&config.file) {
+    match std::fs::read_to_string(&project.config.file) {
         Ok(text) => format!("{:016x}", state::hash(text.as_bytes())),
         Err(_) => "unreadable".to_string(),
     }
@@ -225,33 +235,33 @@ fn config_hash(args: &Args, start: &Path) -> String {
 /// a gate, and the note a stop nothing blocks leaves for the person. Spec 8.2, 16.3.
 fn ran(
     args: &Args,
-    start: &Path,
+    project: &Project,
     window: Option<&Window>,
     event: Option<&host::Event>,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, bool, Option<Vec<String>>, Option<String>) {
-    let (outcome, build_ms) = journal::timed(|| built(args, start, window));
+    let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     match outcome {
-        Ok(Some((root, failure))) => (
-            does_not_build(args, &root, &failure, window, log, out),
+        Ok(Some(failure)) => (
+            does_not_build(args, project.root(), &failure, window, log, out),
             false,
             None,
             None,
         ),
         Err(problem) => {
-            let (code, note) = handed(args, start, Err(problem), event, log, out);
+            let (code, note) = handed(args, project, Err(problem), event, log, out);
             (code, false, None, note)
         }
         Ok(None) => {
-            let judged = judge(args, start, window, out);
+            let judged = judge(args, project, window, out);
             let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
             let reported = judged
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let (code, note) = handed(args, start, judged, event, log, out);
+            let (code, note) = handed(args, project, judged, event, log, out);
             let asked = (code == 2).then_some(reported);
             (code, green, asked, note)
         }
@@ -262,7 +272,7 @@ fn ran(
 /// the note it leaves for the person.
 fn handed(
     args: &Args,
-    start: &Path,
+    project: &Project,
     outcome: Result<Tally, Error>,
     event: Option<&host::Event>,
     log: &mut journal::Stop,
@@ -292,7 +302,7 @@ fn handed(
         args,
         tally,
         &std::mem::take(out),
-        &root(args, start),
+        project.root(),
         event,
         log,
     )
@@ -460,69 +470,52 @@ fn reported(
 
 /// The build the config names, run before any gate judges the tree it produces. The key
 /// belongs to the hook, so a config with no "build" builds nothing and that is not an error.
-fn built(
-    args: &Args,
-    start: &Path,
-    window: Option<&Window>,
-) -> Result<Option<(PathBuf, String)>, Error> {
-    let Ok(config) = Config::load(args.config.as_deref(), start) else {
-        return Ok(None);
-    };
-    let entries = build::entries(&config)?;
+fn built(args: &Args, project: &Project, window: Option<&Window>) -> Result<Option<String>, Error> {
+    let entries = build::entries(project)?;
     if entries.is_empty() {
         return Ok(None);
     }
-    let changes = scoped(args, &config, &entries, window)?;
-    let failure = build::failure(config.root(), &build::wanted(&entries, changes.as_deref()));
-    Ok(failure.map(|text| (config.root().to_path_buf(), text)))
+    let changes = scoped(args, project, &entries, window)?;
+    Ok(build::failure(
+        project.root(),
+        &build::wanted(&entries, changes.as_deref()),
+    ))
 }
 
-/// A config the hook cannot act on: the file is there and reading it failed. The agent cannot
-/// edit it, so a block would repeat every stop, the loop ADR 0021 closed. Section 14.
-fn unfixable_config(args: &Args, start: &Path) -> Option<Error> {
-    let problem = Config::load(args.config.as_deref(), start).err()?;
-    config::present(args.config.as_deref(), start).then_some(problem)
-}
-
-fn root(args: &Args, start: &Path) -> PathBuf {
-    Config::load(args.config.as_deref(), start)
-        .map(|config| config.root().to_path_buf())
-        .unwrap_or_else(|_| start.to_path_buf())
-}
-
-fn scoped(
+/// The changed set the build is narrowed to, which is the one the gates read after it. Spec 9.
+fn scoped<'a>(
     args: &Args,
-    config: &Config,
+    project: &'a Project,
     entries: &[build::Entry],
     window: Option<&Window>,
-) -> Result<Option<Vec<Change>>, Error> {
+) -> Result<Option<Cow<'a, [Change]>>, Error> {
     if !args.changed || entries.iter().all(|entry| entry.root.is_none()) {
         return Ok(None);
     }
-    let base = chosen(window, config, args.strict)?;
-    changed::files(config.root(), &base.before).map(Some)
+    let base = chosen(window, project, args.strict)?;
+    project.changes(&base.before).map(Some)
 }
 
 fn judge(
     args: &Args,
-    start: &Path,
+    project: &Project,
     window: Option<&Window>,
     out: &mut String,
 ) -> Result<Tally, Error> {
-    let config = Config::load(args.config.as_deref(), start)?;
-    let note = version(args, &config, out);
-    let plan = plan(&config)?;
+    let note = version(args, project, out);
+    let plan = plan(project)?;
     if args.list {
-        return listed(&config, &plan, out);
+        return listed(project, &plan, out);
     }
-    let wanted = select(&args.gates, &plan, &config)?;
-    let against = against(args, &wanted, &config, window, out)?;
-    said(args, &config, out);
-    let rootless = no_source_root(args, &plan, &config, out)?;
-    let (mut tally, mut records) = each(args, &wanted, &config, start, &against, out);
+    let wanted = select(&args.gates, &plan, project)?;
+    let against = against(args, &wanted, project, window, out)?;
+    let only = selected(args, &wanted);
+    said(args, project, only.as_deref(), out);
+    let rootless = no_source_root(args, &plan, project, out)?;
+    let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     records.notes.extend(note);
     records.notes.extend(rootless);
-    records.derived = config.derived_values();
+    records.derived = project.derived_values(only.as_deref());
     tally.record = Some(finish(
         args,
         &plan,
@@ -535,6 +528,16 @@ fn judge(
     Ok(tally)
 }
 
+/// The sections whose derived values this run says: every one for a run of every gate, and
+/// only the named gates' own for a run that names them, so naming one gate derives nothing
+/// another would need. Spec 4.3, ADR 0038.
+fn selected(args: &Args, wanted: &[&Gate]) -> Option<Vec<&'static str>> {
+    if args.gates.is_empty() {
+        return None;
+    }
+    Some(wanted.iter().map(|gate| gate.check.section).collect())
+}
+
 /// What this run judges the working tree against: the base commit, laid out, and the files
 /// a scoped run looks at.
 #[derive(Default)]
@@ -544,26 +547,20 @@ struct Against {
     prior: Option<Prior>,
 }
 
-impl Against {
-    fn dir(&self) -> Option<&Path> {
-        self.prior.as_ref().map(Prior::root)
-    }
-}
-
 fn against(
     args: &Args,
     wanted: &[&Gate],
-    config: &Config,
+    project: &Project,
     window: Option<&Window>,
     out: &mut String,
 ) -> Result<Against, Error> {
-    let base = base(args, wanted, config, window, out)?;
-    let changes = changes(args, config, base.as_ref(), out)?;
+    let base = base(args, wanted, project, window, out)?;
+    let changes = changes(args, project, base.as_ref(), out)?;
     Ok(Against {
         scope: changes
             .as_ref()
             .map(|changed| changed.iter().map(|change| change.path.clone()).collect()),
-        prior: prior(config, base.as_ref(), changes.as_deref(), wanted)?,
+        prior: prior(project, base.as_ref(), changes.as_deref(), wanted)?,
         base,
     })
 }
@@ -571,14 +568,14 @@ fn against(
 fn base(
     args: &Args,
     wanted: &[&Gate],
-    config: &Config,
+    project: &Project,
     window: Option<&Window>,
     out: &mut String,
 ) -> Result<Option<Window>, Error> {
     if !args.changed && !wanted.iter().any(|gate| gate.check.needs.the_commit()) {
         return Ok(None);
     }
-    let base = chosen(window, config, args.strict)?;
+    let base = chosen(window, project, args.strict)?;
     if !args.json {
         let _ = writeln!(out, "  {}", base.line());
     }
@@ -587,28 +584,28 @@ fn base(
 
 /// The window the run judges: the one the hook already read, or the base a run by hand and CI
 /// choose for themselves. Spec 6.1, 6.3.
-fn chosen(window: Option<&Window>, config: &Config, strict: bool) -> Result<Window, Error> {
+fn chosen(window: Option<&Window>, project: &Project, strict: bool) -> Result<Window, Error> {
     match window {
         Some(window) => Ok(window.clone()),
-        None => base::choose(config.root(), strict),
+        None => base::choose(project.root(), strict),
     }
 }
 
-fn listed(config: &Config, plan: &Plan, out: &mut String) -> Result<Tally, Error> {
+fn listed(project: &Project, plan: &Plan, out: &mut String) -> Result<Tally, Error> {
     if plan.gates.is_empty() && plan.excluded.is_empty() {
-        return Err(no_gate(config, plan));
+        return Err(no_gate(project, plan));
     }
-    list(config, plan, out);
-    if let Some(at) = state::dir(config.root()) {
+    list(project, plan, out);
+    if let Some(at) = state::dir(project.root()) {
         let _ = writeln!(out, "state: {}", at.display());
     }
     Ok(Tally::default())
 }
 
-fn list(config: &Config, plan: &Plan, out: &mut String) {
+fn list(project: &Project, plan: &Plan, out: &mut String) {
     for gate in &plan.gates {
         let _ = writeln!(out, "{} — runs", gate.name);
-        for line in stated(config, gate) {
+        for line in stated(project, gate) {
             let _ = writeln!(out, "{UNDER}{line}");
         }
     }
@@ -622,35 +619,18 @@ fn list(config: &Config, plan: &Plan, out: &mut String) {
 
 /// Where each of a gate's values came from: the run's own `derived:` and `pinned:` lines for
 /// the section it reads, and the `pinned:` lines of a section the config states in full, which
-/// a run derives nothing for and so says nothing about. Spec 10.
-fn stated(config: &Config, gate: &Gate) -> Vec<String> {
+/// a run derives nothing for and so says nothing about. Only this gate's section is derived
+/// for it. Spec 10.
+fn stated(project: &Project, gate: &Gate) -> Vec<String> {
     let section = gate.check.section;
-    let states = gate.with.as_ref().or_else(|| {
-        config
-            .pinned(section)
-            .filter(|pinned| survey::pinned_whole(section, pinned))
-    });
-    match states {
-        Some(value) => beside(config, section, value),
-        None => config.said_about(section),
+    let whole = project
+        .config
+        .pinned(section)
+        .filter(|pinned| survey::pinned_whole(section, pinned));
+    match whole {
+        Some(value) => survey::pinned_lines(section, value),
+        None => project.said_about(section),
     }
-}
-
-/// A section a person states, key by key. An entry that states some of its check's keys leaves
-/// the rest to the survey, and the run fills those in, so the row says `pinned` for what the
-/// person named and `derived` for what the survey supplied. Spec 5.2, 10.
-fn beside(config: &Config, section: &str, with: &Value) -> Vec<String> {
-    let mut out = survey::pinned_lines(section, with);
-    let said = config.said_about(section);
-    for key in survey::underived(section, with) {
-        let derived = format!("derived: {section} {key} ");
-        out.extend(
-            said.iter()
-                .filter(|line| line.starts_with(&derived))
-                .cloned(),
-        );
-    }
-    out
 }
 
 /// A survey that finds no source root, with a check that measures code left for it to supply:
@@ -665,21 +645,21 @@ fn beside(config: &Config, section: &str, with: &Value) -> Vec<String> {
 fn no_source_root(
     args: &Args,
     plan: &Plan,
-    config: &Config,
+    project: &Project,
     out: &mut String,
 ) -> Result<Option<Value>, Error> {
     let dropped = plan
         .needs_a_section
         .iter()
         .any(|check| survey::reads_code(check.section));
-    if !dropped || !config.found_no_source_root() {
+    if !dropped || !project.found_no_source_root() {
         return Ok(None);
     }
     let said = format!(
         "the survey of {} found no source root — a source root is a directory that holds \
          nothing but source files, so no gate that reads code ran here at all; run klin from \
          the tree you mean to gate, or set those gates to false to exclude them",
-        config.root().display()
+        project.root().display()
     );
     if args.strict {
         return Err(Error(said));
@@ -727,11 +707,11 @@ fn finish(
 
 /// Every value this run derived and every one the config pinned beside it, printed once for
 /// the whole run. Spec 4.3.
-fn said(args: &Args, config: &Config, out: &mut String) {
-    if args.json || !config.derives_anything() {
+fn said(args: &Args, project: &Project, only: Option<&[&str]>, out: &mut String) {
+    if args.json {
         return;
     }
-    for line in config.derived_said() {
+    for line in project.derived_said(only) {
         let _ = writeln!(out, "  {line}");
     }
 }
@@ -784,8 +764,8 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
 /// The note a config that names another klin version leaves: printed above the gates, and
 /// carried into the JSON records. A version klin does not carry fails nothing. Section 5.2.
 /// The hook drops a report that blocks nothing, so there the note goes straight to stderr.
-fn version(args: &Args, config: &Config, out: &mut String) -> Option<Value> {
-    let text = config.version_note()?;
+fn version(args: &Args, project: &Project, out: &mut String) -> Option<Value> {
+    let text = project.config.version_note()?;
     if args.hook {
         eprintln!("klin: {text}");
     } else if !args.json {
@@ -906,7 +886,7 @@ fn lead(failed: usize, errored: usize) -> &'static str {
 }
 
 fn prior(
-    config: &Config,
+    project: &Project,
     base: Option<&Window>,
     changes: Option<&[Change]>,
     wanted: &[&Gate],
@@ -914,19 +894,21 @@ fn prior(
     let Some(base) = base.filter(|_| wanted.iter().any(|gate| gate.check.needs.the_tree())) else {
         return Ok(None);
     };
-    base::materialize(config, &base.before, changes).map(Some)
+    base::materialize(project, &base.before, changes).map(Some)
 }
 
-fn changes(
+/// The changed set the scoped gates judge, computed once for the run and reused by the base
+/// laid out for them. Spec 4.5, ADR 0038.
+fn changes<'a>(
     args: &Args,
-    config: &Config,
+    project: &'a Project,
     base: Option<&Window>,
     out: &mut String,
-) -> Result<Option<Vec<Change>>, Error> {
+) -> Result<Option<Cow<'a, [Change]>>, Error> {
     let (true, Some(base)) = (args.changed, base) else {
         return Ok(None);
     };
-    let changed = changed::files(config.root(), &base.before)?;
+    let changed = project.changes(&base.before)?;
     if !args.json {
         let _ = writeln!(
             out,
@@ -946,7 +928,8 @@ fn every_check() -> String {
     names(check::names())
 }
 
-fn no_gate(config: &Config, plan: &Plan) -> Error {
+fn no_gate(project: &Project, plan: &Plan) -> Error {
+    let config = &project.config;
     if !plan.excluded.is_empty() {
         return Error(format!(
             "{} excludes every gate it names: {} — a run that measures nothing cannot pass, \
@@ -972,83 +955,42 @@ fn no_gate(config: &Config, plan: &Plan) -> Error {
     ))
 }
 
-fn plan(config: &Config) -> Result<Plan, Error> {
-    let entries = entries(config)?;
+fn plan(project: &Project) -> Result<Plan, Error> {
     let mut plan = Plan::default();
     for check in check::CATALOGUE {
-        add(config, check, &entries, &mut plan)?;
+        add(project, check, &mut plan)?;
     }
-    distinct(config, &plan)?;
+    distinct(project, &plan)?;
     Ok(plan)
 }
 
-/// A check's gates: the one its section names, and one per `gates` entry that names it. A
-/// `gates` entry is the person's statement of how that check runs, so klin derives no section
-/// beside it and the whole tree is not measured twice. Spec 5.2.
-fn add(
-    config: &Config,
-    check: &'static check::Row,
-    entries: &[Entry],
-    plan: &mut Plan,
-) -> Result<(), Error> {
-    let mine: Vec<&Entry> = entries
-        .iter()
-        .filter(|entry| entry.check == check.name)
-        .collect();
-    let section = match mine.is_empty() {
-        true => config.section(check.section).ok(),
-        false => config.pinned(check.section),
+/// A check's gates, from what the config states for its section and, where it states nothing,
+/// from what the section's absence means for this check: an Automatic check runs over what
+/// the survey supplies, and a Policy or Integration check runs nothing until a person writes
+/// the section. Whether the survey supplies a section is read off the tree's facts alone, so
+/// planning derives no number. Spec 4.6, 5.2, ADR 0038.
+fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result<(), Error> {
+    let Some(stated) = project.config.pinned(check.section) else {
+        let derived = check.activation == Activation::Automatic && project.supplies(check.section);
+        match derived {
+            true => plan.one(check),
+            false => plan.needs_a_section.push(check),
+        }
+        return Ok(());
     };
-    if section.is_none() && mine.is_empty() {
-        plan.needs_a_section.push(check);
-    }
-    from_section(config, check, section, plan)?;
-    for entry in mine {
-        from_entry(check, entry, plan);
-    }
-    Ok(())
-}
-
-fn from_section(
-    config: &Config,
-    check: &'static check::Row,
-    section: Option<&Value>,
-    plan: &mut Plan,
-) -> Result<(), Error> {
-    match section {
-        Some(Value::Bool(false)) => plan.excluded.push(check.name.to_string()),
-        Some(_) if check.gate_per_entry => {
-            for (name, entry) in check::named_entries(config, check.section)? {
-                plan.gates.push(Gate {
-                    name,
-                    check,
-                    with: Some(entry),
-                });
+    match stated {
+        Value::Bool(false) => plan.excluded.push(check.name.to_string()),
+        _ if check.gate_per_entry => {
+            for (name, _) in check::named_entries(&project.config, check.section)? {
+                plan.gates.push(Gate { name, check });
             }
         }
-        Some(_) => plan.gates.push(Gate {
-            name: check.name.to_string(),
-            check,
-            with: None,
-        }),
-        None => (),
+        _ => plan.one(check),
     }
     Ok(())
 }
 
-fn from_entry(check: &'static check::Row, entry: &Entry, plan: &mut Plan) {
-    if entry.off {
-        plan.excluded.push(entry.name.clone());
-        return;
-    }
-    plan.gates.push(Gate {
-        name: entry.name.clone(),
-        check,
-        with: entry.with.clone(),
-    });
-}
-
-fn distinct(config: &Config, plan: &Plan) -> Result<(), Error> {
+fn distinct(project: &Project, plan: &Plan) -> Result<(), Error> {
     let mut seen: Vec<&str> = Vec::new();
     let named = plan
         .gates
@@ -1059,7 +1001,7 @@ fn distinct(config: &Config, plan: &Plan) -> Result<(), Error> {
         if seen.contains(&name) {
             return Err(Error(format!(
                 "{}: two gates are named {name} — a name selects one gate, so each must differ",
-                config.file.display()
+                project.config.file.display()
             )));
         }
         seen.push(name);
@@ -1067,64 +1009,17 @@ fn distinct(config: &Config, plan: &Plan) -> Result<(), Error> {
     Ok(())
 }
 
-fn entries(config: &Config) -> Result<Vec<Entry>, Error> {
-    let Ok(named) = config.section(GATES) else {
-        return Ok(Vec::new());
-    };
-    let shape = || {
-        Error(format!(
-            "{}: \"{GATES}\" is a list of {{\"name\", \"check\", \"with\"}} entries",
-            config.file.display()
-        ))
-    };
-    let mut out = Vec::new();
-    for item in named.as_array().ok_or_else(shape)? {
-        out.push(entry(config, item.as_object().ok_or_else(shape)?)?);
-    }
-    Ok(out)
-}
-
-fn entry(config: &Config, item: &Map<String, Value>) -> Result<Entry, Error> {
-    let text = |key: &str| {
-        item.get(key)
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| config.missing(GATES, key))
-    };
-    let entry = Entry {
-        name: text(check::NAMED.name)?,
-        check: text("check")?,
-        with: item.get("with").cloned(),
-        off: item.get("off").and_then(Value::as_bool).unwrap_or(false),
-    };
-    if !check::CATALOGUE.iter().any(|held| held.name == entry.check) {
-        return Err(Error(format!(
-            "{}: the gate {} names no check called \"{}\" — one of: {}",
-            config.file.display(),
-            entry.name,
-            entry.check,
-            every_check()
-        )));
-    }
-    if entry.with.is_none() && !entry.off {
-        return Err(config.missing(GATES, "with"));
-    }
-    Ok(entry)
-}
-
 fn each(
     args: &Args,
     wanted: &[&Gate],
-    config: &Config,
-    start: &Path,
+    project: &Project,
     against: &Against,
     out: &mut String,
 ) -> (Tally, Records) {
     let mut tally = Tally::default();
     let mut totals = Records::default();
     for gate in wanted {
-        let ((code, text, records), ms) =
-            journal::timed(|| one(args, gate, config, start, against));
+        let ((code, text, records), ms) = journal::timed(|| one(args, gate, project, against));
         match code {
             0 => (),
             1 => tally.failed += 1,
@@ -1191,9 +1086,9 @@ fn code(tally: &Tally) -> u8 {
     }
 }
 
-fn select<'a>(named: &[String], plan: &'a Plan, config: &Config) -> Result<Vec<&'a Gate>, Error> {
+fn select<'a>(named: &[String], plan: &'a Plan, project: &Project) -> Result<Vec<&'a Gate>, Error> {
     for name in named {
-        known(name, plan, config)?;
+        known(name, plan, project)?;
     }
     let wanted: Vec<&Gate> = plan
         .gates
@@ -1201,12 +1096,13 @@ fn select<'a>(named: &[String], plan: &'a Plan, config: &Config) -> Result<Vec<&
         .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == &gate.name))
         .collect();
     if wanted.is_empty() {
-        return Err(no_gate(config, plan));
+        return Err(no_gate(project, plan));
     }
     Ok(wanted)
 }
 
-fn known(name: &str, plan: &Plan, config: &Config) -> Result<(), Error> {
+fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
+    let config = &project.config;
     if plan.gates.iter().any(|gate| gate.name == name) {
         return Ok(());
     }
@@ -1227,26 +1123,15 @@ fn known(name: &str, plan: &Plan, config: &Config) -> Result<(), Error> {
     )))
 }
 
-fn one(
-    args: &Args,
-    gate: &Gate,
-    config: &Config,
-    start: &Path,
-    against: &Against,
-) -> (u8, String, Records) {
+fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, String, Records) {
     let mut text = String::new();
     let mut records = Records::default();
     let at = Context {
         gate: &gate.name,
-        start,
-        config: config.written().then_some(config.file.as_path()),
-        prior: against.dir(),
+        project,
+        prior: against.prior.as_ref(),
         base: against.base.as_ref().map(|base| base.before.as_str()),
         only: against.scope.as_deref().filter(|_| gate.check.takes_scope),
-        with: gate
-            .with
-            .as_ref()
-            .map(|values| (gate.check.section, values)),
         caller: match args.hook {
             true => Caller::Hook,
             false => Caller::Gate,

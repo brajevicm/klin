@@ -10,9 +10,11 @@ use crate::check::{Context, DELETED, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Coverage};
 use crate::files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
-use crate::survey::{ROOT, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
+use crate::scope::ROOT;
+use crate::survey::{TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::syntax::convention::{self, Test};
 use crate::syntax::{self, Unparsed};
 use crate::turn;
@@ -103,15 +105,16 @@ struct Walk {
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    at.say(&config, SECTION, out);
-    let entries = entries(&config)?;
+    let project = at.project;
+    let config = &project.config;
+    at.say(SECTION, out);
+    let entries = entries(project)?;
     let commit = base::commit(config.root(), at, out)?;
     let listed = at_the_base(config.root(), &commit)?;
     let sites = sites(&entries, &listed, config.root());
     let (judged, mut paired): (Vec<Site>, Vec<Site>) =
         sites.into_iter().partition(|site| site.subject.is_none());
-    let measured = tests(&config, &entries, at, &commit)?;
+    let measured = tests(&entries, at, &commit)?;
     let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
         measured.functions.into_iter().partition(Function::orphaned);
     if let Some(only) = at.only {
@@ -132,7 +135,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .collect();
     let (before, went) = let_through(&now, at, config.root());
     let held = ratchet::scoped(&now, at.only);
-    let accepted = ratchet::accepted(&config, at.gate, evaluator().metrics)?;
+    let accepted = ratchet::accepted(config, at.gate, evaluator().metrics)?;
     let said = covered(&judged, &paired, &measured.unparsed, at).said(out);
     let ok = standing(held, went.len(), &said);
     let code = evaluator().evaluate(now, before, accepted, at, &ok, out);
@@ -154,22 +157,18 @@ fn standing(held: usize, gone: usize, said: &str) -> String {
 /// it. A match is by site first and then by body hash across files, so a test renamed or moved
 /// with its body unchanged is held and only a test that was edited as it moved reads as gone.
 /// Spec 4.4, 8.2, 16.4.
-fn tests(
-    config: &Config,
-    entries: &[Entry],
-    at: &Context,
-    commit: &str,
-) -> Result<Measured, Error> {
+fn tests(entries: &[Entry], at: &Context, commit: &str) -> Result<Measured, Error> {
+    let config = &at.project.config;
     let owned;
     let prior = match at.prior {
-        Some(dir) => dir,
+        Some(prior) => prior,
         None => {
-            owned = base::materialize(config, commit, None)?;
-            owned.root()
+            owned = base::materialize(at.project, commit, None)?;
+            &owned
         }
     };
-    let after = walked(entries, config.root())?;
-    let before = walked(entries, prior)?.tests;
+    let after = walked(entries, at.project.tree())?;
+    let before = walked(entries, prior.tree())?.tests;
     let found = still_there(&before, &after.tests);
     let refused: BTreeSet<&str> = after
         .unparsed
@@ -229,7 +228,8 @@ fn claimed(after: &[Test], taken: &mut [bool], matches: impl Fn(&Test) -> bool) 
 /// Every test function one tree holds under the entries, by the convention table of 8.2. The
 /// walk is the one the complexity gate does, over the files an entry holds and no others, so
 /// the pattern that limits an entry limits this identity too.
-fn walked(entries: &[Entry], root: &Path) -> Result<Walk, Error> {
+fn walked(entries: &[Entry], tree: &Tree) -> Result<Walk, Error> {
+    let root = tree.root();
     let extensions = syntax::extensions(&[]);
     let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
@@ -243,7 +243,7 @@ fn walked(entries: &[Entry], root: &Path) -> Result<Walk, Error> {
         tests: Vec::new(),
         unparsed: Vec::new(),
     };
-    for path in reachable(entries, root, &wanted)? {
+    for path in reachable(entries, tree, &wanted)? {
         let file = files::relative(&path, root);
         if !entries.iter().any(|entry| entry.holds(&file)) {
             continue;
@@ -262,19 +262,19 @@ fn walked(entries: &[Entry], root: &Path) -> Result<Walk, Error> {
 /// and one that names a single file is that file, so both shapes of `path` reach this identity.
 fn reachable(
     entries: &[Entry],
-    root: &Path,
+    tree: &Tree,
     wanted: &files::Wanted,
 ) -> Result<Vec<PathBuf>, Error> {
     let mut directories = Vec::new();
     let mut singles = Vec::new();
     for entry in entries {
-        let at = under(root, &entry.path);
+        let at = under(tree.root(), &entry.path);
         match at.is_dir() {
             true => directories.push(at),
             false => singles.push(at),
         }
     }
-    let mut found = files::under(&directories, wanted)?;
+    let mut found = files::under(tree, &directories, wanted)?;
     found.extend(singles.into_iter().filter(|path| path.is_file()));
     found.sort();
     found.dedup();
@@ -605,8 +605,9 @@ fn at_the_base(root: &Path, commit: &str) -> Result<BTreeSet<String>, Error> {
         .collect())
 }
 
-fn entries(config: &Config) -> Result<Vec<Entry>, Error> {
-    let Some(listed) = config.section(SECTION)?.as_array() else {
+fn entries(project: &Project) -> Result<Vec<Entry>, Error> {
+    let config = &project.config;
+    let Some(listed) = project.section(SECTION)?.as_array() else {
         return Err(Error(format!(
             "{}: \"{SECTION}\" must be a list of {{\"name\", \"path\"}} entries",
             config.file.display()

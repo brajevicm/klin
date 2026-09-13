@@ -1,12 +1,15 @@
+use std::cell::OnceCell;
 use std::collections::{BTreeMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
 use crate::changed::git;
+use crate::project::{self, Tree};
+use crate::scope::{ROOT, under_or_at};
 use crate::{
-    build, cache, check, complexity, config, doc_citations, doc_size, escapes, files, inventory,
-    lockfile, reachability, reference, state, stubs, syntax, turn,
+    build, cache, check, complexity, config, dead_symbols, doc_citations, doc_size, escapes, files,
+    inventory, lockfile, markers, reachability, reference, state, stubs, syntax, turn,
 };
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -43,8 +46,6 @@ const SAMPLE: usize = 50;
 const PERCENTILE: usize = 95;
 const CEILING_STEP: u64 = 50;
 
-pub const ROOT: &str = ".";
-
 /// What one tree says about itself: where its source is, what languages it is in, the documents
 /// at its top, which roots are tests, and the manifests that build it. Spec 5.4.
 #[derive(Default, Clone)]
@@ -56,14 +57,27 @@ pub struct Survey {
     pub manifests: Vec<String>,
 }
 
-/// The sections a run uses for what the config does not pin, and one line per value saying
-/// whether it was derived or pinned. Spec 4.3.
+/// What one run derives: the facts of the two trees, read once, and each section and number
+/// the config leaves out, computed on the first call that asks for it and never for a section
+/// no selected check reads. A run that names one gate derives that gate's values and no other's.
+/// Spec 4.3, ADR 0038.
 pub struct Derived {
-    pub sections: Map<String, Value>,
-    pub lines: Vec<String>,
-    /// One `{section, key, value, rule}` entry per line of `lines` that is a `derived:` one, in
-    /// the same order, built by the same pass so the two cannot say different things. Spec 11.2.
-    pub values: Vec<Value>,
+    root: PathBuf,
+    /// The state directory the caches sit in, and `None` where klin keeps none.
+    at: Option<PathBuf>,
+    commit: Option<String>,
+    /// The derivation commit's own survey, and `None` where there is no commit to survey.
+    held: Option<Survey>,
+    /// The union of that survey and the working tree's, kept to what the working tree holds.
+    found: Survey,
+    pinned: Value,
+    /// Every derivable section, in the order the lines print, and one cell per section.
+    names: Vec<&'static str>,
+    sections: Vec<OnceCell<Option<Value>>>,
+    /// The complexity sample of the derivation commit, and `None` where no run needs it.
+    sample: OnceCell<Option<(Sample, String)>>,
+    documents: OnceCell<BTreeMap<String, u64>>,
+    families: OnceCell<Option<Value>>,
     /// The derived roots the derivation commit's survey did not hold. A site under one matches
     /// nothing in `before`, so a directory that becomes a root brings no inherited debt with
     /// it. Empty when there is no commit to survey. Spec 7.1.
@@ -126,18 +140,6 @@ pub fn pinned_lines(section: &str, value: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The keys of a section the value does not state, as the label a `derived:` line names each
-/// by. A `gates` entry may state some of its check's keys and leave the rest to the survey.
-/// Spec 10.
-pub fn underived(section: &str, value: &Value) -> Vec<&'static str> {
-    keys(section)
-        .unwrap_or_default()
-        .iter()
-        .filter(|key| !stated(value, key))
-        .map(|key| leaf(key))
-        .collect()
-}
-
 fn leaf(key: &str) -> &str {
     key.rsplit_once('.').map_or(key, |(_, last)| last)
 }
@@ -151,83 +153,169 @@ pub fn derivable() -> impl Iterator<Item = &'static str> {
     )
 }
 
-/// Every derivable value, as the sections the checks read and the lines a run prints. The path
-/// sets are the union of the derivation commit's survey and a walk of the working tree, kept to
-/// what the working tree still holds, because a root it no longer has has nothing to measure.
-/// Spec 4.3.
-pub fn derive(root: &Path, pinned: &Value) -> Derived {
+/// The facts every derivable value is read from: the derivation commit's survey and a walk of
+/// the working tree, as one union kept to what the working tree still holds, because a root it
+/// no longer has has nothing to measure. Nothing expensive is computed here. Spec 4.3.
+pub fn derive(tree: &Tree, pinned: &Value) -> Derived {
+    let root = tree.root();
     let at = state::ready(root).ok();
     let commit = turn::derivation(root, at.as_deref());
     let surveyed = at_commit(root, at.as_deref(), commit.as_deref());
     let held = surveyed.clone().unwrap_or_default();
-    let found = union(&held, &walked(root), root);
-    let at_commit = surveyed.as_ref().zip(commit.as_deref());
-    let numbers = numbers(root, at.as_deref(), at_commit, &found, pinned);
-    let sections = sections(&found, &numbers, pinned);
-    let said = lines(&found, &sections, &numbers, pinned);
-    let mut lines = Vec::with_capacity(said.len());
-    let mut values = Vec::new();
-    for item in said {
-        lines.push(item.line);
-        values.extend(item.entry);
-    }
+    let found = union(&held, &walked(tree), root);
     let unheld = unheld(&found, &held, surveyed.is_some());
+    let mut names: Vec<&'static str> = derivable().collect();
+    names.sort_unstable();
     Derived {
+        root: root.to_path_buf(),
+        at,
+        commit,
+        held: surveyed,
+        roots: found.roots.clone(),
+        found,
+        pinned: pinned.clone(),
+        sections: names.iter().map(|_| OnceCell::new()).collect(),
+        names,
+        sample: OnceCell::new(),
+        documents: OnceCell::new(),
+        families: OnceCell::new(),
         unheld,
-        roots: found.roots,
-        sections,
-        lines,
-        values,
     }
 }
+
+impl Derived {
+    fn at_commit(&self) -> Option<(&Survey, &str)> {
+        self.held.as_ref().zip(self.commit.as_deref())
+    }
+
+    /// The section the survey supplies under this name, merged under what the config pins, and
+    /// `None` where the tree gives the survey nothing to say. Computed once. Spec 5.2.
+    pub fn section(&self, name: &str) -> Option<&Value> {
+        let at = self.names.iter().position(|held| *held == name)?;
+        self.sections[at]
+            .get_or_init(|| self.computed(name))
+            .as_ref()
+    }
+
+    fn computed(&self, name: &str) -> Option<Value> {
+        let (_, derive) = SECTIONS.iter().find(|(section, _)| *section == name)?;
+        Some(merged(self.pinned.get(name), derive(self)?))
+    }
+
+    /// Whether the survey supplies this section at all, from the facts alone where a number
+    /// would otherwise be computed only to answer yes. Planning a run asks this. Spec 10.
+    pub fn supplies(&self, name: &str) -> bool {
+        match name {
+            COMPLEXITY => !self.found.roots.is_empty(),
+            DOC_SIZE => !self.found.documents.is_empty(),
+            _ => self.section(name).is_some(),
+        }
+    }
+
+    /// The two complexity ceilings the derivation commit sets, and the line each is explained
+    /// by. Parsed once per commit and cached under it, the first time a run needs them.
+    fn ceilings(&self) -> (Number, Number) {
+        let taken = self.sample.get_or_init(|| {
+            self.at_commit()
+                .filter(|_| needs_ceilings(&self.found, &self.pinned))
+                .map(|(held, commit)| {
+                    let sampled = Sampled::of(&self.pinned, held);
+                    (
+                        sample(&self.root, self.at.as_deref(), commit, &sampled),
+                        commit.to_string(),
+                    )
+                })
+        });
+        let counted = taken
+            .as_ref()
+            .map(|(sample, commit)| (sample.functions, commit.as_str()));
+        let (cc, lines) = taken
+            .as_ref()
+            .map_or((CC_FLOOR, LINES_FLOOR), |(at, _)| (at.cc, at.lines));
+        (
+            number(cc, CC_FLOOR, counted),
+            number(lines, LINES_FLOOR, counted),
+        )
+    }
+
+    /// One word ceiling per document the derivation commit holds, read once per commit and
+    /// cached under it. A document the commit lacks is not here. Spec 5.4.
+    fn document_ceilings(&self) -> &BTreeMap<String, u64> {
+        self.documents.get_or_init(|| {
+            match self
+                .at_commit()
+                .filter(|_| wants_documents(&self.found, &self.pinned))
+            {
+                Some((held, commit)) => {
+                    document_ceilings(&self.root, self.at.as_deref(), commit, held)
+                }
+                None => BTreeMap::new(),
+            }
+        })
+    }
+
+    /// The reachability families the commit proves, and `None` where it proves none or the
+    /// config states the section. Policy read from the commit alone, never from the tree.
+    fn families(&self) -> &Option<Value> {
+        self.families.get_or_init(|| {
+            self.at_commit()
+                .filter(|_| !states(&self.pinned, reachability::SECTION))
+                .and_then(|(held, commit)| {
+                    reachability::derived(&self.root, self.at.as_deref(), commit, held)
+                })
+        })
+    }
+
+    /// One `derived:` or `pinned:` line per value, for the sections named and for every
+    /// section when none is. Spec 4.3.
+    pub fn lines(&self, only: Option<&[&str]>) -> Vec<String> {
+        self.said(only).into_iter().map(|said| said.line).collect()
+    }
+
+    /// The `{section, key, value, rule}` entry beside each `derived:` line, built by the same
+    /// pass so the two cannot say different things. Spec 11.2.
+    pub fn values(&self, only: Option<&[&str]>) -> Vec<Value> {
+        self.said(only)
+            .into_iter()
+            .filter_map(|said| said.entry)
+            .collect()
+    }
+}
+
+/// How each derivable section is read off the facts. The three that need a number of the
+/// derivation commit ask the cell that holds it, so the number is computed for that section
+/// and no other.
+type Derive = fn(&Derived) -> Option<Value>;
+
+const SECTIONS: &[(&str, Derive)] = &[
+    (escapes::SECTION, |derived| escapes_section(&derived.found)),
+    (stubs::SECTION, |derived| stubs_section(&derived.found)),
+    (dead_symbols::SECTION, |derived| {
+        dead_symbols_section(&derived.found)
+    }),
+    (reachability::SECTION, |derived| derived.families().clone()),
+    (COMPLEXITY, |derived| {
+        complexity_section(&derived.found, &derived.ceilings())
+    }),
+    (DOC_SIZE, |derived| {
+        doc_size_section(&derived.found, derived.document_ceilings())
+    }),
+    (doc_citations::SECTION, |derived| {
+        doc_citations_section(&derived.found)
+    }),
+    (inventory::SECTION, |derived| {
+        inventory_section(&derived.found)
+    }),
+    (lockfile::SECTION, |derived| {
+        lockfile_section(&derived.found)
+    }),
+    (config::BUILD.name, |derived| build_section(&derived.found)),
+];
 
 /// A number one commit sets, and what the line that prints it says about where it came from.
 struct Number {
     value: u64,
     rule: String,
-}
-
-/// The numbers the derivation commit sets: the two complexity ceilings, and one word ceiling
-/// per document that commit holds. A document the commit lacks is not here, so no ceiling of
-/// it is read out of the working tree. Both are cached under the commit. Spec 4.3, 5.4, 6.6.
-struct Numbers {
-    cc: Number,
-    lines: Number,
-    documents: BTreeMap<String, u64>,
-    /// Every document the working tree holds and the commit does not, with the word count a
-    /// NOTE names, so nothing that turns facts into lines has to read the tree.
-    unjudged: Vec<(String, u64)>,
-    /// The reachability families the commit proves, and `None` where it proves none or the
-    /// config states the section. Policy read from the commit alone, never from the tree.
-    families: Option<Value>,
-}
-
-fn numbers(
-    root: &Path,
-    at: Option<&Path>,
-    at_commit: Option<(&Survey, &str)>,
-    found: &Survey,
-    pinned: &Value,
-) -> Numbers {
-    let taken = at_commit
-        .filter(|_| needs_ceilings(found, pinned))
-        .map(|(held, commit)| (sample(root, at, commit, &Sampled::of(pinned, held)), commit));
-    let counted = taken.map(|(sample, commit)| (sample.functions, commit));
-    let (cc, lines) = taken.map_or((CC_FLOOR, LINES_FLOOR), |(at, _)| (at.cc, at.lines));
-    let documents = match at_commit.filter(|_| wants_documents(found, pinned)) {
-        Some((held, commit)) => document_ceilings(root, at, commit, held),
-        None => BTreeMap::new(),
-    };
-    let families = at_commit
-        .filter(|_| !states(pinned, reachability::SECTION))
-        .and_then(|(held, commit)| reachability::derived(root, at, commit, held));
-    Numbers {
-        cc: number(cc, CC_FLOOR, counted),
-        lines: number(lines, LINES_FLOOR, counted),
-        unjudged: unjudged(found, &documents, root, pinned),
-        documents,
-        families,
-    }
 }
 
 /// Every document the working tree holds that the derivation commit does not, and the words it
@@ -552,22 +640,14 @@ pub(crate) fn listed(root: &Path, commit: &str) -> Option<Vec<String>> {
     )
 }
 
-/// Every path the working tree holds. `files::under` prunes the default skip set and every path
-/// `.gitignore` excludes, and this walk reads names only. Spec 4.3.
-fn walked(root: &Path) -> Survey {
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &[""],
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let found = files::under(&[root.to_path_buf()], &wanted).unwrap_or_default();
-    of(&found
+/// Every path the working tree holds, off the tree's one file list, which prunes the default
+/// skip set and every path `.gitignore` excludes and reads names only. Spec 4.3.
+fn walked(tree: &Tree) -> Survey {
+    let files = tree.files().unwrap_or_default();
+    of(&files
         .iter()
-        .map(|path| files::relative(path, root))
         .filter(|path| surveyed(path))
+        .cloned()
         .collect::<Vec<String>>())
 }
 
@@ -635,8 +715,9 @@ fn mixed(paths: &[String]) -> HashSet<&str> {
     found
 }
 
+/// Whether a path is source, which is a fact of the path and no check's opinion. ADR 0038.
 fn source(path: &str) -> bool {
-    escapes::suffixes().any(|suffix| path.ends_with(suffix))
+    project::language_of(path).is_some()
 }
 
 fn languages(paths: &[String], roots: &[String]) -> Vec<String> {
@@ -644,7 +725,7 @@ fn languages(paths: &[String], roots: &[String]) -> Vec<String> {
         paths
             .iter()
             .filter(|path| roots.iter().any(|root| under_or_at(path, root)))
-            .filter_map(|path| escapes::language_of(path))
+            .filter_map(|path| project::language_of(path))
             .map(str::to_string),
     )
 }
@@ -691,14 +772,6 @@ fn above(directory: &str) -> Option<String> {
         ROOT => None,
         other => Some(parent(other)),
     }
-}
-
-pub fn under_or_at(path: &str, directory: &str) -> bool {
-    directory == ROOT
-        || path == directory
-        || path
-            .strip_prefix(directory)
-            .is_some_and(|rest| rest.starts_with('/'))
 }
 
 fn under(path: &str, directory: &str) -> bool {
@@ -775,28 +848,6 @@ fn list(values: &[String]) -> Value {
     Value::Array(values.iter().map(|value| value.clone().into()).collect())
 }
 
-/// The derived sections, each merged under what the config pins, so a section may pin one key
-/// and leave the other to the survey. Spec 5.2.
-fn sections(found: &Survey, numbers: &Numbers, pinned: &Value) -> Map<String, Value> {
-    let mut out = Map::new();
-    let mut add = |name: &str, value: Option<Value>| {
-        if let Some(value) = value {
-            out.insert(name.to_string(), merged(pinned.get(name), value));
-        }
-    };
-    add("escapes", escapes_section(found));
-    add("stubs", stubs_section(found));
-    add("dead_symbols", dead_symbols_section(found));
-    add(reachability::SECTION, numbers.families.clone());
-    add("complexity", complexity_section(found, numbers));
-    add("doc_size", doc_size_section(found, numbers));
-    add("doc_citations", doc_citations_section(found));
-    add("inventory", inventory_section(found));
-    add("lockfile", lockfile_section(found));
-    add("build", build_section(found));
-    out
-}
-
 /// What the config pins wins over what the survey found, key by key at any depth where both
 /// are objects and whole otherwise, so a config may pin one ceiling and leave the other to the
 /// survey.
@@ -819,8 +870,17 @@ fn key_by_key(pins: &Map<String, Value>, mut fields: Map<String, Value>) -> Valu
     Value::Object(fields)
 }
 
+/// The escapes table names its rows by the languages the tree is classified into, and a
+/// language it holds no rows for would refuse every run, so the survey leaves such a language
+/// out. Spec 5.4.
 fn escapes_section(found: &Survey) -> Option<Value> {
-    markers_section(&found.roots, &found.languages)
+    let languages: Vec<String> = found
+        .languages
+        .iter()
+        .filter(|language| markers::holds_rows_for(&escapes::KIND, language))
+        .cloned()
+        .collect();
+    markers_section(&found.roots, &languages)
 }
 
 /// The stubs table names fewer languages than the escapes table, and a section naming one it
@@ -829,7 +889,7 @@ fn stubs_section(found: &Survey) -> Option<Value> {
     let languages: Vec<String> = found
         .languages
         .iter()
-        .filter(|language| stubs::holds_rows_for(language))
+        .filter(|language| markers::holds_rows_for(&stubs::KIND, language))
         .cloned()
         .collect();
     markers_section(&found.roots, &languages)
@@ -861,13 +921,13 @@ fn markers_section(roots: &[String], languages: &[String]) -> Option<Value> {
     Some(Value::Object(section))
 }
 
-fn complexity_section(found: &Survey, numbers: &Numbers) -> Option<Value> {
+fn complexity_section(found: &Survey, (cc, lines): &(Number, Number)) -> Option<Value> {
     if found.roots.is_empty() {
         return None;
     }
     let mut ceilings = Map::new();
-    ceilings.insert(complexity::CC.inner().into(), numbers.cc.value.into());
-    ceilings.insert(complexity::LINES.inner().into(), numbers.lines.value.into());
+    ceilings.insert(complexity::CC.inner().into(), cc.value.into());
+    ceilings.insert(complexity::LINES.inner().into(), lines.value.into());
     let mut section = Map::new();
     section.insert(reference::ROOTS.name.into(), list(&found.roots));
     section.insert(complexity::CEILINGS.into(), Value::Object(ceilings));
@@ -879,14 +939,14 @@ fn complexity_section(found: &Survey, numbers: &Numbers) -> Option<Value> {
 /// the only number it could be given is one read out of the working tree, which 4.3 forbids.
 /// A tree whose documents are all new therefore gates on none of them, and the gate is still
 /// there, so a run under `--strict` has its decision. Spec 4.3, 5.4.
-fn doc_size_section(found: &Survey, numbers: &Numbers) -> Option<Value> {
+fn doc_size_section(found: &Survey, ceilings: &BTreeMap<String, u64>) -> Option<Value> {
     if found.documents.is_empty() {
         return None;
     }
     let entries: Vec<Value> = found
         .documents
         .iter()
-        .filter_map(|name| Some((name, numbers.documents.get(name)?)))
+        .filter_map(|name| Some((name, ceilings.get(name)?)))
         .map(|(name, ceiling)| {
             let mut entry = Map::new();
             entry.insert(doc_size::FILE.name.into(), name.clone().into());
@@ -1014,41 +1074,66 @@ fn entry(at: &str, run: &str) -> Value {
     Value::Object(out)
 }
 
-/// One line per derived value, and one per value the config pinned beside a derived one, so a
-/// run says where every number and every path set came from. A section the config states in
-/// full derived nothing and prints nothing. Spec 4.3, 5.2.
-fn lines(
-    found: &Survey,
-    sections: &Map<String, Value>,
-    numbers: &Numbers,
-    pinned: &Value,
-) -> Vec<Said> {
-    let mut out = Vec::new();
-    for (name, value) in sections {
+impl Derived {
+    /// One line per derived value, and one per value the config pinned beside a derived one, so
+    /// a run says where every number and every path set came from. A section the config states
+    /// in full derived nothing and prints nothing, and a section no selected gate reads is not
+    /// derived for its line. Spec 4.3, 5.2.
+    fn said(&self, only: Option<&[&str]>) -> Vec<Said> {
+        let wanted = |name: &str| only.is_none_or(|only| only.contains(&name));
+        let mut out = Vec::new();
+        for name in self.names.iter().filter(|name| wanted(name)) {
+            out.extend(self.section_said(name));
+        }
+        if wanted(DOC_SIZE) {
+            out.extend(self.unjudged_said());
+        }
+        if wanted(inventory::SECTION) {
+            out.extend(self.test_roots_said());
+        }
+        out
+    }
+
+    /// The lines of one section: one per key of an object the survey filled in, one for a
+    /// section with no keys of its own, and none for a section the config states.
+    fn section_said(&self, name: &str) -> Vec<Said> {
+        let Some(value) = self.section(name) else {
+            return Vec::new();
+        };
         match value {
-            Value::Object(fields) => {
-                if states(pinned, name) {
-                    continue;
-                }
-                out.extend(keys_of(name, fields, numbers, pinned));
-            }
-            Value::Array(entries) if entries.is_empty() => continue,
-            _ if pins(pinned, name, None) => continue,
-            _ => out.push(said(name, None, value, false)),
+            Value::Object(_) if states(&self.pinned, name) => Vec::new(),
+            Value::Object(fields) => self.keys_of(name, fields),
+            Value::Array(entries) if entries.is_empty() => Vec::new(),
+            _ if pins(&self.pinned, name, None) => Vec::new(),
+            _ => vec![said(name, None, value, false)],
         }
     }
-    out.extend(
-        noted(&numbers.unjudged)
+
+    /// One NOTE per document the derivation commit does not hold. Spec 4.3, 5.4.
+    fn unjudged_said(&self) -> Vec<Said> {
+        let unjudged = unjudged(
+            &self.found,
+            self.document_ceilings(),
+            &self.root,
+            &self.pinned,
+        );
+        noted(&unjudged)
             .into_iter()
-            .map(|line| Said { line, entry: None }),
-    );
-    if !found.test_roots.is_empty() {
+            .map(|line| Said { line, entry: None })
+            .collect()
+    }
+
+    /// The test-root set, which is a derived value of 4.3 and no key a config states.
+    fn test_roots_said(&self) -> Vec<Said> {
+        if self.found.test_roots.is_empty() {
+            return Vec::new();
+        }
         let rule = "the roots that match a language's test convention";
-        let value = list(&found.test_roots);
-        out.push(Said {
+        let value = list(&self.found.test_roots);
+        vec![Said {
             line: format!(
                 "derived: {TEST_ROOTS} {}, {rule}",
-                found.test_roots.join(", ")
+                self.found.test_roots.join(", ")
             ),
             entry: Some(derived_value(
                 inventory::SECTION,
@@ -1056,33 +1141,32 @@ fn lines(
                 &value,
                 rule,
             )),
-        });
+        }]
     }
-    out
-}
 
-/// One line per key of a section the survey filled in, with the two complexity ceilings as
-/// lines of their own so each says what set it.
-fn keys_of(
-    name: &str,
-    fields: &Map<String, Value>,
-    numbers: &Numbers,
-    pinned: &Value,
-) -> Vec<Said> {
-    fields
-        .iter()
-        .flat_map(|(key, held)| match (name, key.as_str()) {
-            (COMPLEXITY, "ceilings") => ceiling_lines(held, numbers, pinned),
-            _ => vec![said(name, Some(key), held, pins(pinned, name, Some(key)))],
-        })
-        .collect()
+    /// One line per key of a section the survey filled in, with the two complexity ceilings as
+    /// lines of their own so each says what set it.
+    fn keys_of(&self, name: &str, fields: &Map<String, Value>) -> Vec<Said> {
+        fields
+            .iter()
+            .flat_map(|(key, held)| match (name, key.as_str()) {
+                (COMPLEXITY, "ceilings") => ceiling_lines(held, &self.ceilings(), &self.pinned),
+                _ => vec![said(
+                    name,
+                    Some(key),
+                    held,
+                    pins(&self.pinned, name, Some(key)),
+                )],
+            })
+            .collect()
+    }
 }
 
 /// The two complexity ceilings, each on its own line, so a run says what set each number and
 /// whether a person pinned it. Pinning one and leaving the other to the survey is allowed, and
 /// then one line says `pinned` and the other `derived`. Spec 4.3, 5.4.
-fn ceiling_lines(held: &Value, numbers: &Numbers, pinned: &Value) -> Vec<Said> {
-    [("cc", &numbers.cc), ("lines", &numbers.lines)]
+fn ceiling_lines(held: &Value, (cc, lines): &(Number, Number), pinned: &Value) -> Vec<Said> {
+    [("cc", cc), ("lines", lines)]
         .iter()
         .filter_map(|(key, number)| {
             let raw = held.get(key)?;

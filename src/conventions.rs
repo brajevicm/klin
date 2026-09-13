@@ -20,11 +20,13 @@ use serde_json::{Map, Value};
 use crate::check::{Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::coverage::Files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
+use crate::scope::{self, Selector};
 use crate::syntax::pattern::{self, Pattern};
 use crate::syntax::{self, Parsed, Unparsed};
-use crate::{base, changed, files, survey};
+use crate::{base, files};
 
 mod report;
 
@@ -138,8 +140,8 @@ struct Convention {
     name: String,
     matcher: Matcher,
     written: String,
-    within: Vec<String>,
-    except: Vec<String>,
+    within: Vec<Selector>,
+    except: Vec<Selector>,
     language: Option<&'static str>,
     remedy: String,
 }
@@ -155,16 +157,12 @@ impl Convention {
 
     /// Whether `in` holds this path, before `except` takes anything out.
     fn selects(&self, file: &str) -> bool {
-        self.within.is_empty() || under(file, &self.within)
+        self.within.is_empty() || scope::any_holds(&self.within, file)
     }
 
     fn applies(&self, file: &str) -> bool {
-        self.selects(file) && !under(file, &self.except)
+        self.selects(file) && !scope::any_holds(&self.except, file)
     }
-}
-
-fn under(file: &str, selectors: &[String]) -> bool {
-    selectors.iter().any(|at| survey::under_or_at(file, at))
 }
 
 /// A convention with its language resolved and its pattern compiled, which is what a tree is
@@ -294,23 +292,24 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if let Some(named) = &args.report {
         return report::run(named.as_deref(), args, start, out);
     }
+    let project = Project::load(args.config.as_deref(), start)?;
     let at = Context {
         only: args.only.as_deref(),
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand(SECTION, start, args.config.as_deref())
+        ..Context::by_hand(SECTION, &project)
     };
     gate(&at, &mut Sink::unrecorded(out))
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let conventions = conventions(&config)?;
-    let places = walked(&config, config.root())?;
-    let rules = every_rule(&config, &conventions, &places)?;
+    let config = at.config();
+    let conventions = conventions(config)?;
+    let places = walked(config, at.project.tree())?;
+    let rules = every_rule(config, &conventions, &places)?;
     let mut after = measure(&rules, &places)?;
-    let mut before = at_the_base(&config, &rules, at, out)?;
-    let code = every_convention(&config, &rules, (&mut after, &mut before), at, out)?;
+    let mut before = at_the_base(&rules, at, out)?;
+    let code = every_convention(config, &rules, (&mut after, &mut before), at, out)?;
     let code = holes_said(&holes(&conventions, &places), at, code, out);
     Ok(syntax::unread(&after.unparsed, at, code, out))
 }
@@ -445,7 +444,7 @@ pub fn no_stale_debt(file: &Path, data: &Value) -> Result<(), Error> {
 }
 
 fn conventions(config: &Config) -> Result<Vec<Convention>, Error> {
-    let listed = config.section(SECTION)?.as_object().ok_or_else(|| {
+    let listed = config.required(SECTION)?.as_object().ok_or_else(|| {
         Error(format!(
             "{}: \"{SECTION}\" is an object of convention names, each with a \"remedy\" and one of: \
              text, code, files",
@@ -502,8 +501,11 @@ fn remedy(fields: &Map<String, Value>) -> Result<String, String> {
         .ok_or_else(|| "has no \"remedy\" — write the exact action to take instead".to_string())
 }
 
-fn scope(fields: &Map<String, Value>) -> Result<(Vec<String>, Vec<String>), String> {
-    Ok((selectors(fields, IN)?, selectors(fields, EXCEPT)?))
+fn scope(fields: &Map<String, Value>) -> Result<(Vec<Selector>, Vec<Selector>), String> {
+    Ok((
+        scope::selectors(fields, IN)?,
+        scope::selectors(fields, EXCEPT)?,
+    ))
 }
 
 /// A key a convention does not read would measure nothing, so it is refused, naming the key a
@@ -681,71 +683,23 @@ fn language(
     }
 }
 
-fn selectors(fields: &Map<String, Value>, key: Key) -> Result<Vec<String>, String> {
-    let malformed = || {
-        format!(
-            "has an \"{}\" that is not a repository-relative path or a non-empty list of them",
-            key.name
-        )
-    };
-    let listed: Vec<&Value> = match fields.get(key.name) {
-        None => return Ok(Vec::new()),
-        Some(Value::Array(items)) if !items.is_empty() => items.iter().collect(),
-        Some(one @ Value::String(_)) => vec![one],
-        Some(_) => return Err(malformed()),
-    };
-    listed
-        .into_iter()
-        .map(|item| selector(key, item.as_str().ok_or_else(malformed)?))
-        .collect()
-}
-
-/// One `in` or `except` path, which names itself and everything below it. It is never a glob and
-/// never outside the repository, so a path that could only match nothing is refused.
-fn selector(key: Key, written: &str) -> Result<String, String> {
-    let path = written
-        .strip_prefix("./")
-        .unwrap_or(written)
-        .trim_end_matches('/');
-    let absolute = written.starts_with(['/', '~']) || written.as_bytes().get(1) == Some(&b':');
-    let why = if absolute {
-        "is absolute — write it from the repository root"
-    } else if path.contains(['*', '?', '[', '\\']) {
-        "is not a path — it names a path and everything below it, and is never a glob"
-    } else if path != survey::ROOT && path.split('/').any(|part| matches!(part, "" | "." | "..")) {
-        "does not name a path inside the repository"
-    } else {
-        return Ok(path.to_string());
-    };
-    Err(format!(
-        "has an \"{}\" path \"{written}\" that {why}",
-        key.name
-    ))
-}
-
 /// Every file the walk every gate shares reaches under a tree, by its repository-relative path:
 /// no skipped directory, no hidden directory, nothing git ignores, and no symbolic link. The
 /// configuration is not one of them: it states each convention, so it holds every literal a
 /// convention forbids.
-fn walked(config: &Config, root: &Path) -> Result<Vec<Place>, Error> {
+fn walked(config: &Config, tree: &Tree) -> Result<Vec<Place>, Error> {
     let stated = files::relative(&config.file, config.root());
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &[""],
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    Ok(files::under(&[root.to_path_buf()], &wanted)?
-        .into_iter()
-        .map(|path| {
-            let file = files::relative(&path, root);
-            Place {
-                held: file.clone(),
-                file,
-                path,
-            }
+    Ok(tree
+        .files()?
+        .iter()
+        .filter(|file| {
+            let (parents, _) = file.rsplit_once('/').unwrap_or(("", file));
+            !parents.split('/').any(|segment| segment.starts_with('.'))
+        })
+        .map(|file| Place {
+            held: file.clone(),
+            file: file.clone(),
+            path: tree.root().join(file),
         })
         .filter(|place| place.file != stated && !place.file.split('/').any(files::skipped))
         .collect())
@@ -974,29 +928,26 @@ fn findings(tally: Tally) -> Vec<Finding> {
 /// The base tree measured under the same rules. The base's copy of a renamed file is laid out at
 /// today's path, so its sites keep their key, and its `held` path is the one the base commit holds,
 /// so the scope and a `files` glob read what the base held. Spec 8.4.
-fn at_the_base(
-    config: &Config,
-    rules: &[Rule],
-    at: &Context,
-    out: &mut Sink,
-) -> Result<Measured, Error> {
+fn at_the_base(rules: &[Rule], at: &Context, out: &mut Sink) -> Result<Measured, Error> {
+    let project = at.project;
     let owned;
     let (prior, commit) = match (at.prior, at.base) {
         (Some(prior), Some(commit)) => (prior, commit.to_string()),
         _ => {
-            let window = base::announced(config.root(), at, out)?;
-            owned = base::materialize(config, &window.before, None)?;
-            (owned.root(), window.before)
+            let window = base::announced(project.root(), at, out)?;
+            owned = base::materialize(project, &window.before, None)?;
+            (&owned, window.before)
         }
     };
-    let was: BTreeMap<String, String> = changed::files(config.root(), &commit)?
-        .into_iter()
+    let was: BTreeMap<String, String> = project
+        .changes(&commit)?
+        .iter()
         .filter_map(|change| {
-            let was = change.was.filter(|was| *was != change.path)?;
-            Some((change.path, was))
+            let was = change.was.as_ref().filter(|was| **was != change.path)?;
+            Some((change.path.clone(), was.clone()))
         })
         .collect();
-    let places: Vec<Place> = walked(config, prior)?
+    let places: Vec<Place> = walked(&project.config, prior.tree())?
         .into_iter()
         .map(|place| Place {
             held: was
@@ -1034,15 +985,13 @@ fn holes<'a>(conventions: &'a [Convention], places: &[Place]) -> Vec<Hole<'a>> {
     let mut out = Vec::new();
     for convention in conventions {
         for (key, listed) in [(IN, &convention.within), (EXCEPT, &convention.except)] {
-            let empty = listed.iter().filter(|at| {
-                !places
-                    .iter()
-                    .any(|place| survey::under_or_at(&place.file, at))
-            });
+            let empty = listed
+                .iter()
+                .filter(|at| !places.iter().any(|place| at.holds(&place.file)));
             out.extend(empty.map(|path| Hole {
                 convention: &convention.name,
                 key: key.name,
-                path,
+                path: path.as_str(),
             }));
         }
     }

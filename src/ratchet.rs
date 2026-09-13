@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::check::{Context, Records, Sink};
 use crate::config::{self, Config, Error};
+use crate::project::Project;
 
 /// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
 /// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
@@ -39,8 +40,9 @@ pub struct Section<'a> {
     pub values: Values,
 }
 
-pub fn section<'a>(config: &'a Config, name: &'a str) -> Result<Section<'a>, Error> {
-    let Some(values) = config.section(name)?.as_object() else {
+pub fn section<'a>(project: &'a Project, name: &'a str) -> Result<Section<'a>, Error> {
+    let config = &project.config;
+    let Some(values) = project.section(name)?.as_object() else {
         return Err(Error(format!(
             "{}: \"{name}\" must be an object",
             config.file.display()
@@ -116,7 +118,7 @@ impl Finding {
 /// every value the gate ratchets, or it would hold a site at any value it grows to.
 pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Values>, Error> {
     let section = config::ACCEPTED.name;
-    let Ok(listed) = config.section(section) else {
+    let Some(listed) = config.pinned(section) else {
         return Ok(Vec::new());
     };
     let shape = || {

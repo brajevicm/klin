@@ -9,11 +9,11 @@
 //! reads which sections it derives from it. A new check is one row here beside its Clap command,
 //! and a CLI test fails when only one of the two is written. ADR 0036.
 
-use std::path::Path;
-
 use serde_json::Value;
 
+use crate::base::Prior;
 use crate::config::{Config, Error};
+use crate::project::Project;
 use crate::reference::{Key, Languages};
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile,
@@ -85,22 +85,32 @@ impl Needs {
     }
 }
 
+/// What absence of a check's section means, which is the one thing a person needs to know
+/// about a check before writing its section. Spec 4.6, ADR 0038.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Activation {
+    /// Absence means the check runs over what the survey derives from the tree.
+    Automatic,
+    /// Absence means the project has no such policy, so the check does not run.
+    Policy,
+    /// Absence means no external tool is configured, so the check does not run.
+    Integration,
+}
+
 /// Everything one check is told, and nothing it writes. Borrowed for the length of the call, so
 /// a check cannot keep any of it and cannot change it.
 pub struct Context<'a> {
     /// The name of the gate being run, which the accepted list names.
     pub gate: &'a str,
-    /// The working directory the run started in, which the config is found from.
-    pub start: &'a Path,
-    pub config: Option<&'a Path>,
-    /// The base commit, already laid out as a directory by the runner.
-    pub prior: Option<&'a Path>,
+    /// The one configuration the run loaded, and the facts of the working tree, read once for
+    /// every check the run selects. ADR 0038.
+    pub project: &'a Project,
+    /// The base commit, already laid out as a tree by the runner.
+    pub prior: Option<&'a Prior>,
     /// The base commit the runner chose, for a gate that reads the base tree out of git.
     pub base: Option<&'a str>,
     /// The files a scoped run judges, and `None` for a run that judges everything.
     pub only: Option<&'a [String]>,
-    /// The section a `gates` entry states for this one gate, which stands in for the config's.
-    pub with: Option<(&'a str, &'a Value)>,
     pub caller: Caller,
     pub strict: bool,
     /// Print nothing on success: no `OK:` line, and nothing under it.
@@ -123,25 +133,28 @@ impl Context<'_> {
 
     /// The `derived:` and `pinned:` lines about one section, written out by a check a person ran
     /// by hand and by nothing else. Spec 4.3.
-    pub fn say(&self, config: &Config, section: &str, out: &mut Sink) {
+    pub fn say(&self, section: &str, out: &mut Sink) {
         if self.context() {
-            config.say(section, out.text);
+            self.project.say(section, out.text);
         }
+    }
+
+    /// The configuration the run loaded, which every check reads its section from.
+    pub fn config(&self) -> &Config {
+        &self.project.config
     }
 }
 
 impl<'a> Context<'a> {
-    /// A check a person ran by hand: no runner, so no base laid out for it, no scope from a
-    /// window and no `gates` entry standing in for its section. A command states the rest.
-    pub fn by_hand(gate: &'a str, start: &'a Path, config: Option<&'a Path>) -> Context<'a> {
+    /// A check a person ran by hand: no runner, so no base laid out for it and no scope from a
+    /// window. A command states the rest.
+    pub fn by_hand(gate: &'a str, project: &'a Project) -> Context<'a> {
         Context {
             gate,
-            start,
-            config,
+            project,
             prior: None,
             base: None,
             only: None,
-            with: None,
             caller: Caller::Hand,
             strict: false,
             quiet: false,
@@ -178,10 +191,12 @@ pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 /// One row of the catalogue: one check, as the runner, the configuration, the reference and
 /// the survey all read it.
 pub struct Row {
-    /// What a `gates` entry and `--gate` call this check, which for two checks is not the name
-    /// of the section they read.
+    /// What `--gate` calls this check, which for two checks is not the name of the section
+    /// they read.
     pub name: &'static str,
     pub section: &'static str,
+    /// What the section's absence means: derive it, or run nothing. Spec 4.6.
+    pub activation: Activation,
     /// The configuration keys the section reads, declared in the check's own module and printed
     /// by `klin reference`. Spec 5.8.
     pub keys: &'static [Key],
@@ -189,7 +204,8 @@ pub struct Row {
     /// no language. Spec 5.8.
     pub languages: Option<Languages>,
     /// The keys the survey supplies for this section, an empty list for a section it supplies
-    /// whole, and `None` for a section it never derives. Spec 4.3, 5.2.
+    /// whole, and `None` for a section it never derives. Which values are derived, and not
+    /// whether the check runs: `activation` says that. Spec 4.3, 5.2.
     pub derives: Option<&'static [&'static str]>,
     pub run: Run,
     pub needs: Needs,
@@ -203,6 +219,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "doc-size",
         section: doc_size::SECTION,
+        activation: Activation::Automatic,
         keys: doc_size::KEYS,
         languages: None,
         derives: Some(&[]),
@@ -214,6 +231,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "doc-citations",
         section: doc_citations::SECTION,
+        activation: Activation::Automatic,
         keys: doc_citations::KEYS,
         languages: None,
         derives: Some(&[]),
@@ -225,6 +243,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "lockfile",
         section: lockfile::SECTION,
+        activation: Activation::Automatic,
         keys: lockfile::KEYS,
         languages: None,
         derives: Some(lockfile::DERIVED),
@@ -236,6 +255,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "escapes",
         section: escapes::SECTION,
+        activation: Activation::Automatic,
         keys: escapes::KIND.keys,
         languages: Some(escapes::language_extensions),
         derives: Some(markers::DERIVED),
@@ -247,6 +267,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "stubs",
         section: stubs::SECTION,
+        activation: Activation::Automatic,
         keys: stubs::KIND.keys,
         languages: Some(stubs::language_extensions),
         derives: Some(markers::DERIVED),
@@ -258,6 +279,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "inventory",
         section: inventory::SECTION,
+        activation: Activation::Automatic,
         keys: inventory::KEYS,
         languages: None,
         derives: Some(&[]),
@@ -269,6 +291,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "complexity",
         section: complexity::SECTION,
+        activation: Activation::Automatic,
         keys: complexity::KEYS,
         languages: Some(syntax::language_extensions),
         derives: Some(complexity::DERIVED),
@@ -280,6 +303,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "dead-symbols",
         section: dead_symbols::SECTION,
+        activation: Activation::Automatic,
         keys: dead_symbols::KEYS,
         languages: Some(dead_symbols::language_extensions),
         derives: Some(dead_symbols::DERIVED),
@@ -291,6 +315,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "reachability",
         section: reachability::SECTION,
+        activation: Activation::Automatic,
         keys: reachability::KEYS,
         languages: Some(reachability::language_extensions),
         derives: Some(&[]),
@@ -302,6 +327,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "conventions",
         section: conventions::SECTION,
+        activation: Activation::Policy,
         keys: conventions::KEYS,
         languages: Some(syntax::pattern::language_extensions),
         derives: None,
@@ -313,6 +339,7 @@ pub const CATALOGUE: &[Row] = &[
     Row {
         name: "sarif",
         section: sarif::SECTION,
+        activation: Activation::Integration,
         keys: sarif::KEYS,
         languages: None,
         derives: None,
@@ -365,7 +392,7 @@ pub const NAMED: Key = Key {
 /// reads its own list through this, so a gate's name is the name the check judges under.
 /// Spec 8.3.
 pub fn named_entries(config: &Config, section: &str) -> Result<Vec<(String, Value)>, Error> {
-    let held = config.section(section)?;
+    let held = config.required(section)?;
     let listed = held.as_array().ok_or_else(|| {
         Error(format!(
             "{}: \"{section}\" is a list of entries, each its own gate under its own \"name\"",

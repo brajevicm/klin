@@ -1,17 +1,15 @@
-use std::cell::OnceCell;
-use std::fmt::{self, Write};
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
 use crate::reference::Key;
-use crate::survey;
 
 const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
 /// one reads it through the declaration here, and `klin reference` prints them. Spec 5.2, 5.8.
-pub const KEYS: &[Key] = &[PROJECT, VERSION, BUILD, ACCEPTED, RADIUS, JOURNAL, GATES];
+pub const KEYS: &[Key] = &[PROJECT, VERSION, BUILD, ACCEPTED, RADIUS, JOURNAL];
 
 pub const PROJECT: Key = Key {
     name: "project",
@@ -63,14 +61,6 @@ pub const JOURNAL: Key = Key {
     default: "the prompt excerpt is recorded",
 };
 
-pub const GATES: Key = Key {
-    name: "gates",
-    holds: "extra gates, each an entry of a `name`, a `check`, a `with` and an optional `off`",
-    required: false,
-    rule: None,
-    default: "no gate beyond the sections",
-};
-
 #[derive(Debug)]
 pub struct Error(pub String);
 
@@ -86,13 +76,12 @@ impl Error {
     }
 }
 
+/// The policy a person wrote, and nothing klin computed. What the file leaves out is derived
+/// from the tree by the run that reads it, through `project::Project`, never here. ADR 0038.
 pub struct Config {
     pub file: PathBuf,
     root: PathBuf,
     data: Value,
-    /// What the survey says for the sections the config does not pin, computed on the first
-    /// section that needs it and never for a config that pins everything. Spec 4.3.
-    derived: OnceCell<survey::Derived>,
 }
 
 impl Config {
@@ -106,12 +95,7 @@ impl Config {
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
         well_formed(&file, &data)?;
-        Ok(Config {
-            file,
-            root,
-            data,
-            derived: OnceCell::new(),
-        })
+        Ok(Config { file, root, data })
     }
 
     /// A tree with no configuration at all. The file it names is the one `init` would write, so
@@ -122,7 +106,6 @@ impl Config {
             file: root.join(FILENAME),
             root,
             data: Value::Object(serde_json::Map::new()),
-            derived: OnceCell::new(),
         }
     }
 
@@ -132,106 +115,21 @@ impl Config {
         self.file.is_file()
     }
 
-    /// One line per value the run derived, and one per value the config pinned beside it. Empty
-    /// for a config that pinned every section, because then nothing was derived. Spec 4.3.
-    pub fn said(&self) -> &[String] {
-        match self.derived.get() {
-            Some(derived) => &derived.lines,
-            None => &[],
-        }
-    }
-
-    /// Whether the derivation commit's survey held the path this finding sits under. A site the
-    /// survey did not hold matches nothing in `before`, whatever `before` holds there, so a
-    /// directory that becomes a root cannot bring inherited debt with it. Spec 7.1.
-    pub fn was_held(&self, file: &str) -> bool {
-        let unheld = match self.derived.get() {
-            Some(derived) => &derived.unheld,
-            None => return true,
-        };
-        !unheld.iter().any(|root| survey::under_or_at(file, root))
-    }
-
-    /// The same lines, written out by a check a person ran by hand. The gate runner prints its
-    /// own once for the whole run, so a gate stays quiet here and does not call this. Spec 4.3.
-    pub fn say(&self, section: &str, out: &mut String) {
-        for line in self.said().iter().filter(|line| names(line, section)) {
-            let _ = writeln!(out, "{line}");
-        }
-    }
-
     /// The section as the config itself states it, with nothing the survey would supply.
     pub fn pinned(&self, name: &str) -> Option<&Value> {
         self.data.get(name)
     }
 
-    /// Whether any derivable section is left for the survey to fill in. A config that states
-    /// every one of them derives nothing, so nothing walks the tree for it.
-    pub fn derives_anything(&self) -> bool {
-        survey::derivable().any(|name| match self.data.get(name) {
-            Some(pinned) => !survey::pinned_whole(name, pinned),
-            None => true,
-        })
+    /// Everything the file states, which the survey reads to tell a pinned key from a derived one.
+    pub fn values(&self) -> &Value {
+        &self.data
     }
 
-    /// Whether the survey found no source root in this tree. The caller asks only when a check
-    /// that measures code takes its roots from the survey, so a config that names its own roots
-    /// surveys nothing for this. Spec 10, 14.
-    pub fn found_no_source_root(&self) -> bool {
-        self.derivation().roots.is_empty()
-    }
-
-    /// The `derived:` and `pinned:` lines about one section, which `--list` prints under the
-    /// gate that reads it. Empty without running the survey when the config pins every
-    /// derivable section, so `--list` on a fully pinned config walks no tree. Spec 10.
-    pub fn said_about(&self, section: &str) -> Vec<String> {
-        if !self.derives_anything() {
-            return Vec::new();
-        }
-        self.derived_said()
-            .iter()
-            .filter(|line| names(line, section))
-            .cloned()
-            .collect()
-    }
-
-    /// The lines above, with the survey run if it has not run yet. The gate runner prints these
-    /// once for the whole run, before any check reads a section of its own.
-    pub fn derived_said(&self) -> &[String] {
-        &self.derivation().lines
-    }
-
-    /// The `derived_said` lines again, as the `{section, key, value, rule}` entries `--json`
-    /// prints instead. One entry per `derived:` line, built beside it so the two cannot drift.
-    /// Empty without running the survey when the config pins every derivable section, so a
-    /// fully-pinned run reports `derived` as empty without walking the tree for it. Spec 11.2.
-    pub fn derived_values(&self) -> Vec<Value> {
-        if !self.derives_anything() {
-            return Vec::new();
-        }
-        self.derivation().values.clone()
-    }
-
-    fn derivation(&self) -> &survey::Derived {
-        self.derived
-            .get_or_init(|| survey::derive(&self.root, &self.data))
-    }
-
-    /// The config a check reads, with the section one `gates` entry states for itself put in
-    /// place of the config's own. The entry is the person's statement of how that gate runs.
-    /// Spec 5.2.
-    pub fn load_with(
-        explicit: Option<&Path>,
-        start: &Path,
-        with: Option<(&str, &Value)>,
-    ) -> Result<Config, Error> {
-        let mut config = Config::load(explicit, start)?;
-        if let Some((section, values)) = with
-            && let Some(data) = config.data.as_object_mut()
-        {
-            data.insert(section.to_string(), values.clone());
-        }
-        Ok(config)
+    /// A section the file must state, because nothing derives it: the value, or the error that
+    /// names the file and the key. Spec 5.1, 14.
+    pub fn required(&self, name: &str) -> Result<&Value, Error> {
+        self.pinned(name)
+            .ok_or_else(|| Error(format!("{} has no \"{name}\" section", self.file.display())))
     }
 
     /// What to say when the config names a klin version other than the one running, and
@@ -251,26 +149,6 @@ impl Config {
 
     pub fn root(&self) -> &Path {
         &self.root
-    }
-
-    /// The section a check reads: what the config pins, filled in from the survey for a key it
-    /// leaves out. A section klin cannot derive and the config does not name is an error naming
-    /// the key. Spec 5.1, 5.2.
-    pub fn section(&self, name: &str) -> Result<&Value, Error> {
-        let missing = || Error(format!("{} has no \"{name}\" section", self.file.display()));
-        if survey::keys(name).is_none() {
-            return self.data.get(name).ok_or_else(missing);
-        }
-        if let Some(pinned) = self.data.get(name)
-            && survey::pinned_whole(name, pinned)
-        {
-            return Ok(pinned);
-        }
-        self.derivation()
-            .sections
-            .get(name)
-            .or_else(|| self.data.get(name))
-            .ok_or_else(missing)
     }
 
     pub fn path(&self, relative: &str) -> PathBuf {
@@ -369,14 +247,6 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
             .collect::<Vec<&str>>()
             .join(", ")
     )))
-}
-
-/// Whether a `derived:` or `pinned:` line is about this section, so a check a person ran by
-/// hand prints the values it used and not another gate's.
-fn names(line: &str, section: &str) -> bool {
-    line.split_once(": ")
-        .and_then(|(_, rest)| rest.strip_prefix(section))
-        .is_some_and(|rest| rest.starts_with(' '))
 }
 
 /// The file this run reads, and `None` when there is none to read. An explicit `--config` that

@@ -10,6 +10,7 @@ use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Files};
 use crate::files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
 use crate::syntax;
@@ -156,9 +157,10 @@ pub fn run(kind: &Kind, args: &Args, start: &Path, out: &mut String) -> Result<u
         list_languages(kind, out);
         return Ok(0);
     }
+    let project = Project::load(args.config.as_deref(), start)?;
     gate(
         kind,
-        &context(kind, args, start),
+        &context(kind, args, &project),
         &mut Sink::unrecorded(out),
     )
 }
@@ -176,27 +178,25 @@ pub fn show(label: &str, values: &Values) -> String {
     }
 }
 
-/// Every suffix a built-in pattern set reads, so a survey can find a tree's sources.
-pub fn suffixes(kind: &'static Kind) -> impl Iterator<Item = &'static str> {
+/// Whether this kind's table holds rows for a language the survey classified a tree into, so a
+/// derived section names no language the check would refuse. Spec 5.4.
+pub fn holds_rows_for(kind: &Kind, language: &str) -> bool {
     kind.languages
         .iter()
-        .flat_map(|language| language.suffixes.iter().copied())
-}
-
-pub fn holds(kind: &'static Kind, file: &str) -> Option<&'static Language> {
-    kind.languages.iter().find(|language| {
-        language
-            .suffixes
-            .iter()
-            .any(|suffix| file.ends_with(suffix))
-    })
+        .any(|held| held.names.contains(&language))
 }
 
 pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let spec = spec(kind, &config)?;
-    at.say(&config, kind.section, out);
-    let read = findings(kind, &spec.search, &spec.roots, config.root())?;
+    let project = at.project;
+    let spec = spec(kind, project)?;
+    at.say(kind.section, out);
+    let read = findings(
+        kind,
+        &spec.search,
+        project.tree(),
+        &spec.roots,
+        project.root(),
+    )?;
     let sites = ratchet::scoped(&read.findings, at.only);
     let aside = match read.skipped {
         0 => String::new(),
@@ -204,12 +204,12 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     };
     let unit = kind.evaluator.unit;
     let said = read.files.coverage(at.only).said(out);
-    let (prior, before) = at_the_base(kind, &config, &spec, at, out)?;
-    let lost = read.files.lost(&before, &config, at.only);
+    let (prior, before) = at_the_base(kind, &spec, at, out)?;
+    let lost = read.files.lost(&before, project, at.only);
     let code = kind.evaluator.evaluate(
         read.findings,
         prior,
-        ratchet::accepted(&config, at.gate, kind.evaluator.metrics)?,
+        ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
         at,
         &format!("OK: {sites} {unit} in the tree, all held at the base{aside}{said}"),
         out,
@@ -219,45 +219,51 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
 
 fn at_the_base(
     kind: &Kind,
-    config: &Config,
     spec: &Spec,
     at: &Context,
     out: &mut Sink,
 ) -> Result<(Vec<Finding>, Files), Error> {
     let owned;
     let prior = match at.prior {
-        Some(dir) => dir,
+        Some(prior) => prior,
         None => {
-            owned = base::own(config, at, out)?;
-            owned.root()
+            owned = base::own(at, out)?;
+            &owned
         }
     };
+    let project = at.project;
     let search = Search {
-        exclude: files::base_exclusions(config, kind.section, prior, &spec.search.exclude),
+        exclude: files::base_exclusions(
+            &project.config,
+            kind.section,
+            prior.root(),
+            &spec.search.exclude,
+        ),
         ..spec.search.clone()
     };
     let before = findings(
         kind,
         &search,
-        &base::roots(&spec.roots, config, prior)?,
-        prior,
+        prior.tree(),
+        &base::roots(&spec.roots, project, prior.root())?,
+        prior.root(),
     )?;
     let mut held = before.findings;
-    held.retain(|finding| config.was_held(&finding.file));
+    held.retain(|finding| project.was_held(&finding.file));
     Ok((held, before.files))
 }
 
-fn context<'a>(kind: &'a Kind, args: &'a Args, start: &'a Path) -> Context<'a> {
+fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<'a> {
     Context {
         only: args.only.as_deref(),
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand(kind.section, start, args.config.as_deref())
+        ..Context::by_hand(kind.section, project)
     }
 }
 
-fn spec(kind: &Kind, config: &Config) -> Result<Spec, Error> {
-    let section = ratchet::section(config, kind.section)?;
+fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
+    let section = ratchet::section(project, kind.section)?;
     let values = &section.values;
     Ok(Spec {
         search: search(kind, section.config, values)?,
@@ -456,6 +462,7 @@ fn project_patterns(
 fn findings(
     kind: &Kind,
     search: &Search,
+    tree: &Tree,
     roots: &[PathBuf],
     repo_root: &Path,
 ) -> Result<Read, Error> {
@@ -474,7 +481,7 @@ fn findings(
             exclude_except: &[],
             skip_hidden: false,
         };
-        let found = files::found(roots, &wanted)?;
+        let found = files::found(tree, roots, &wanted)?;
         excluded.extend(
             found
                 .excluded
@@ -488,16 +495,7 @@ fn findings(
             let past = cached(kind, search, &rel, &text, &mut cache);
             skipped += tally(set, &rel, &text, &past, &mut seen);
             if set.shapes && shaped.insert(rel.clone()) {
-                for stub in syntax::convention::stubs(&rel, &text) {
-                    record(
-                        &mut seen,
-                        &rel,
-                        stub.line,
-                        &stub.text,
-                        stub.name,
-                        stub.remedy,
-                    );
-                }
+                shapes(&rel, &text, &mut seen);
             }
             measured.insert(rel);
         }
@@ -512,6 +510,13 @@ fn findings(
             unreadable: Vec::new(),
         },
     })
+}
+
+/// The body shapes of one file's functions, which only a parser sees, recorded as sites. #114.
+fn shapes(rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
+    for stub in syntax::convention::stubs(rel, text) {
+        record(seen, rel, stub.line, &stub.text, stub.name, stub.remedy);
+    }
 }
 
 fn cached(

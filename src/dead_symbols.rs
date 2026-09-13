@@ -16,6 +16,7 @@ use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
 use crate::syntax::{self, structural};
@@ -88,8 +89,9 @@ struct State {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start)?;
     evaluate(
-        &context(args, start),
+        &context(args, &project),
         args.report,
         &mut Sink::unrecorded(out),
     )
@@ -99,24 +101,24 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, false, out)
 }
 
-fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
     Context {
         only: args.only.as_deref(),
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand("dead-symbols", start, args.config.as_deref())
+        ..Context::by_hand("dead-symbols", project)
     }
 }
 
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let spec = spec(&config)?;
-    at.say(&config, SECTION, out);
-    let commit = base::commit(config.root(), at, out)?;
-    let (before, after) = sweeps(at, &config, &spec, &commit)?;
+    let project = at.project;
+    let spec = spec(project)?;
+    at.say(SECTION, out);
+    let commit = base::commit(project.root(), at, out)?;
+    let (before, after) = sweeps(at, &spec, &commit)?;
     let before_states = states(&before.index, &spec.ignore);
     let after_states = states(&after.index, &spec.ignore);
-    let held_before = held(&before_states, &config);
+    let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = dead_findings(&after_states, &before, &after, &held_before);
     let judged = after_states
@@ -129,61 +131,62 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let code = evaluator.evaluate(
         now,
         prior,
-        ratchet::accepted(&config, at.gate, evaluator.metrics)?,
+        ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
         at,
         &format!(
             "OK: {judged} declaration(s) judged, {dead} dead symbol(s), all held at the base{said}"
         ),
         out,
     );
-    let code = coverage_result(code, at, &config, &before, &after, out);
+    let code = coverage_result(code, at, &before, &after, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)
 }
 
 fn sweeps(
     at: &Context,
-    config: &Config,
     spec: &Spec,
     commit: &str,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
-    let after = measure(&spec.roots, &spec.selection, config.root())?;
-    let before = before(at, config, spec, commit)?;
+    let project = at.project;
+    let after = measure(project.tree(), &spec.roots, &spec.selection, project.root())?;
+    let before = before(at, spec, commit)?;
     Ok((before, after))
 }
 
-fn before(
-    at: &Context,
-    config: &Config,
-    spec: &Spec,
-    commit: &str,
-) -> Result<structural::Measurement, Error> {
-    let owned = base_tree(config, at, commit)?;
-    let prior_root = match owned.as_ref() {
-        Some(prior) => prior.root(),
+fn before(at: &Context, spec: &Spec, commit: &str) -> Result<structural::Measurement, Error> {
+    let owned = base_tree(at, commit)?;
+    let prior = match owned.as_ref() {
+        Some(prior) => prior,
         None => at
             .prior
             .ok_or_else(|| Error("a runner gives structural checks a base tree".into()))?,
     };
-    let before_roots = base::roots(&spec.roots, config, prior_root)?;
+    let project = at.project;
+    let before_roots = base::roots(&spec.roots, project, prior.root())?;
     let before_selection = Selection {
-        exclude: files::base_exclusions(config, SECTION, prior_root, &spec.selection.exclude),
+        exclude: files::base_exclusions(
+            &project.config,
+            SECTION,
+            prior.root(),
+            &spec.selection.exclude,
+        ),
         ..spec.selection.clone()
     };
-    measure(&before_roots, &before_selection, prior_root)
+    measure(prior.tree(), &before_roots, &before_selection, prior.root())
 }
 
-fn base_tree(config: &Config, at: &Context, commit: &str) -> Result<Option<base::Prior>, Error> {
+fn base_tree(at: &Context, commit: &str) -> Result<Option<base::Prior>, Error> {
     let owned = (at.prior.is_none() || at.only.is_some())
-        .then(|| base::materialize(config, commit, None))
+        .then(|| base::materialize(at.project, commit, None))
         .transpose()?;
     Ok(owned)
 }
 
-fn held<'a>(states: &'a [State], config: &Config) -> Vec<&'a State> {
+fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
     states
         .iter()
-        .filter(|state| config.was_held(&state.file))
+        .filter(|state| project.was_held(&state.file))
         .collect()
 }
 
@@ -203,14 +206,13 @@ fn dead_findings(
 fn coverage_result(
     code: u8,
     at: &Context,
-    config: &Config,
     before: &structural::Measurement,
     after: &structural::Measurement,
     out: &mut Sink,
 ) -> u8 {
     let code = coverage::not_measured_said(&after.unsupported, at, code, out);
     let code = coverage::lost_said(
-        &after.files.lost(&before.files, config, at.only),
+        &after.files.lost(&before.files, at.project, at.only),
         at,
         code,
         out,
@@ -231,8 +233,9 @@ fn reports(
     base_note(held_before, only, out);
 }
 
-fn spec(config: &Config) -> Result<Spec, Error> {
-    let section = ratchet::section(config, SECTION)?;
+fn spec(project: &Project) -> Result<Spec, Error> {
+    let config = &project.config;
+    let section = ratchet::section(project, SECTION)?;
     Ok(Spec {
         roots: files::roots(
             section.config,
@@ -262,6 +265,7 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 }
 
 fn measure(
+    tree: &Tree,
     roots: &[PathBuf],
     selection: &Selection,
     repo_root: &Path,
@@ -273,7 +277,7 @@ fn measure(
         exclude_except: &[],
         skip_hidden: true,
     };
-    let found = files::found(roots, &wanted)?;
+    let found = files::found(tree, roots, &wanted)?;
     structural::measure(found, repo_root)
 }
 

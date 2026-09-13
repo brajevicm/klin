@@ -9,6 +9,7 @@ use crate::changed;
 use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::Coverage;
+use crate::project::Project;
 use crate::reference::Key;
 
 pub const SECTION: &str = "doc_size";
@@ -69,8 +70,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
+    let project = Project::load(args.config.as_deref(), start)?;
     evaluate(
-        &context(args, start),
+        &context(args, &project),
         args.file.as_deref(),
         args.ceiling,
         &mut Sink::unrecorded(out),
@@ -81,10 +83,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, None, None, out)
 }
 
-fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
     Context {
         quiet: args.quiet,
-        ..Context::by_hand(SECTION, start, args.config.as_deref())
+        ..Context::by_hand(SECTION, project)
     }
 }
 
@@ -142,8 +144,8 @@ fn against(
     if !documents.iter().any(|document| document.relative.is_some()) {
         return Ok(None);
     }
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let Some(commit) = commit(&config, at, out) else {
+    let config = at.config();
+    let Some(commit) = commit(config, at, out) else {
         return Ok(None);
     };
     Ok(Some((commit, config.root().to_path_buf())))
@@ -253,9 +255,9 @@ fn documents(
             relative: None,
         }]);
     }
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let listed = listed_documents(&config)?;
-    at.say(&config, SECTION, out);
+    let config = at.config();
+    let listed = listed_documents(at.project)?;
+    at.say(SECTION, out);
     let Some(named) = named else {
         return Ok(listed);
     };
@@ -272,8 +274,9 @@ fn documents(
     )))
 }
 
-fn listed_documents(config: &Config) -> Result<Vec<Document>, Error> {
-    let Some(entries) = config.section(SECTION)?.as_array() else {
+fn listed_documents(project: &Project) -> Result<Vec<Document>, Error> {
+    let config = &project.config;
+    let Some(entries) = project.section(SECTION)?.as_array() else {
         return Err(Error(format!(
             "{}: \"{SECTION}\" must be a list of {{\"{}\", \"{}\"}} entries",
             config.file.display(),

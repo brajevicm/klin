@@ -39,14 +39,11 @@ fn subcommands() -> Vec<String> {
         .collect()
 }
 
-/// Every check the catalogue holds, read off the error the runner prints when a `gates` entry
-/// names a check klin does not have.
+/// Every check the catalogue holds, read off the error the runner prints when a written
+/// configuration names no gate over a tree the survey finds nothing in.
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"gates": [{"name": "g", "check": "no-such-check", "with": {}}]}"#,
-    );
+    tree.write("klin.json", "{}");
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {

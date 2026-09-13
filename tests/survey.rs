@@ -264,27 +264,6 @@ fn a_tree_in_debt_is_green_against_itself_with_no_configuration() {
     assert!(run.says("ok    complexity"), "{}", run.out);
 }
 
-/// A gates entry states how a check runs, so klin derives no section beside it and the whole
-/// tree is not measured twice under two names.
-#[test]
-fn a_gates_entry_leaves_its_check_underived() {
-    let tree = project();
-    tree.write(
-        "klin.json",
-        r#"{ "gates": [{"name": "complexity", "check": "complexity",
-                        "with": {"roots": ["src"], "ceilings": {"cc": 8, "lines": 60}}}] }"#,
-    );
-
-    let run = tree.run(&["gate", "--list"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let rows = run
-        .out
-        .lines()
-        .filter(|line| line.starts_with("complexity"))
-        .count();
-    assert_eq!(rows, 1, "{}", run.out);
-}
-
 /// The ceiling comes from the derivation commit, so growing a document past it fails rather
 /// than moving the number the run judges against.
 #[test]

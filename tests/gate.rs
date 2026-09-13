@@ -953,16 +953,6 @@ fn deleting_a_section_leaves_the_gate_running_over_a_derived_section() {
     );
 }
 
-const TWO_COMPLEXITY_GATES: &str = r#"{
-  "project": "t",
-  "gates": [
-    {"name": "complexity-src", "check": "complexity",
-     "with": {"roots": ["src"], "ceilings": {"cc": 8, "lines": 60}}},
-    {"name": "complexity-tests", "check": "complexity",
-     "with": {"roots": ["tests"], "ceilings": {"cc": 8, "lines": 60}}}
-  ]
-}"#;
-
 const AN_EXCLUDED_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
@@ -979,41 +969,29 @@ const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
 }"#;
 
 #[test]
-fn one_check_backs_two_gates_over_different_roots() {
-    let tree = tree(TWO_COMPLEXITY_GATES);
-    tree.write("tests/big.rs", &tangled("big"));
-
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("ok    complexity-src"), "{}", run.out);
-    assert!(run.says("FAIL  complexity-tests"), "{}", run.out);
-    assert!(!run.says("ok    complexity\n"), "{}", run.out);
-    assert!(run.says("8 gate(s), 1 failed."), "{}", run.out);
-}
-
-#[test]
 fn a_named_gate_runs_alone_when_the_command_line_names_it() {
-    let tree = tree(TWO_COMPLEXITY_GATES);
-    tree.write("tests/big.rs", &tangled("big"));
+    let tree = tree(AN_EXCLUDED_GATE);
+    tree.write("src/big.rs", &tangled("big"));
 
-    let run = tree.run(&["gate", "--gate", "complexity-src"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("ok    complexity-src"), "{}", run.out);
-    assert!(!run.says("complexity-tests"), "{}", run.out);
-    assert!(run.says("1 gate(s), all passed."), "{}", run.out);
+    let run = tree.run(&["gate", "--gate", "complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  complexity"), "{}", run.out);
+    assert!(!run.says("doc-size"), "{}", run.out);
+    assert!(run.says("1 gate(s), 1 excluded, 1 failed."), "{}", run.out);
 }
 
+/// The top-level `gates` list is gone: a gate's multiplicity belongs to its own section, as the
+/// named entries of `sarif` and the named conventions have it. ADR 0038.
 #[test]
-fn a_gates_entry_naming_no_check_is_a_tool_error() {
+fn a_gates_key_is_not_one_klin_reads() {
     let tree = tree(
         r#"{ "project": "t",
-              "gates": [{"name": "n", "check": "spelling", "with": {}}] }"#,
+              "gates": [{"name": "n", "check": "complexity", "with": {}}] }"#,
     );
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("no check called \"spelling\""), "{}", run.out);
-    assert!(run.says("complexity"), "{}", run.out);
+    assert!(run.says("\"gates\" is not a key klin reads"), "{}", run.out);
 }
 
 #[test]
@@ -1021,7 +999,7 @@ fn two_gates_of_one_name_are_a_tool_error() {
     let tree = tree(
         r#"{ "project": "t",
               "doc_size": [{"file": "README.md", "ceiling": 10}],
-              "gates": [{"name": "doc-size", "check": "doc-size", "with": []}] }"#,
+              "sarif": [{"name": "doc-size", "report": "out/lint.sarif"}] }"#,
     );
 
     let run = tree.run(&["gate"]);
@@ -1089,19 +1067,6 @@ fn list_names_a_gate_the_survey_supplies_as_one_that_runs() {
         "{}",
         run.out
     );
-}
-
-#[test]
-fn a_gate_entry_set_off_is_excluded_too() {
-    let tree = tree(
-        r#"{ "project": "t",
-              "doc_size": [{"file": "README.md", "ceiling": 10}],
-              "gates": [{"name": "complexity-tests", "check": "complexity", "off": true}] }"#,
-    );
-
-    let run = tree.run(&["gate", "--list"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("complexity-tests — excluded"), "{}", run.out);
 }
 
 #[test]
@@ -1175,17 +1140,42 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
 }
 
 #[test]
-fn list_says_derived_for_a_key_a_gates_entry_leaves_out() {
+fn list_says_derived_for_a_key_a_section_leaves_out() {
     let tree = tree(
         r#"{ "project": "t",
               "doc_size": [{"file": "README.md", "ceiling": 10}],
-              "gates": [{"name": "esc-src", "check": "escapes", "with": {"roots": ["src"]}}] }"#,
+              "escapes": {"roots": ["src"]} }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("pinned: escapes roots src"), "{}", run.out);
     assert!(run.says("derived: escapes languages rust"), "{}", run.out);
+}
+
+/// A run that names its gates derives the values those gates read and no other's. The
+/// document ceilings are the case: a `--gate escapes` run does not read the words of a
+/// document only the working tree holds, and a run of every gate still does. ADR 0038.
+#[test]
+fn a_named_gate_derives_nothing_another_gate_would_need() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree.words("README.md", 5);
+
+    let every = tree.run(&["gate"]);
+    assert_eq!(every.code, 0, "{}", every.out);
+    assert!(
+        every.says("NOTE: doc_size README.md is 5 words and is not judged"),
+        "{}",
+        every.out
+    );
+
+    let one = tree.run(&["gate", "--gate", "escapes"]);
+    assert_eq!(one.code, 0, "{}", one.out);
+    assert!(one.says("derived: escapes roots"), "{}", one.out);
+    assert!(!one.says("doc_size"), "{}", one.out);
+    assert!(!one.says("derived: complexity"), "{}", one.out);
 }
 
 #[test]

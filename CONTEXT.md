@@ -63,6 +63,21 @@ _Avoid_: warning, advisory
 The pair of trees a run compares, and their source: turn, branch, push.
 _Avoid_: scope, range, diff
 
+**Tree**:
+One set of files at one point: the working tree, or the base laid out beside
+it. A run reads a tree's file list once, and every gate selects from it.
+_Avoid_: snapshot, index, catalogue
+
+**Project**:
+One run's composition of the config a person wrote and the facts of its
+trees, read once and borrowed by every check the run selects.
+_Avoid_: context, container, environment
+
+**Scope**:
+The `in` and `except` paths a section applies to, each a selector naming
+itself and everything below it, never a glob.
+_Avoid_: filter, include, exclude, glob
+
 **Derived**:
 A value klin computed because the config did not pin the value. A number
 comes from one commit; a set of paths adds what the tree holds.

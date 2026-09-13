@@ -17,6 +17,7 @@ use crate::check::{self, Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::hunks::Hunks;
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
 
@@ -82,33 +83,32 @@ pub struct Args {
 /// Every entry of the section, judged one after another, which is what `klin gate` does with
 /// one gate per entry. The worst outcome is the command's. Spec 8.3, 8.6.
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::load(args.config.as_deref(), start)?;
+    let project = Project::load(args.config.as_deref(), start)?;
     let mut worst = 0;
-    for (name, entry) in check::named_entries(&config, SECTION)? {
+    for (name, _) in check::named_entries(&project.config, SECTION)? {
         worst = worst.max(gate(
-            &context(args, start, &name, &entry),
+            &context(args, &project, &name),
             &mut Sink::unrecorded(out),
         )?);
     }
     Ok(worst)
 }
 
-fn context<'a>(args: &'a Args, start: &'a Path, name: &'a str, entry: &'a Value) -> Context<'a> {
+fn context<'a>(args: &'a Args, project: &'a Project, name: &'a str) -> Context<'a> {
     Context {
-        with: Some((SECTION, entry)),
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand(name, start, args.config.as_deref())
+        ..Context::by_hand(name, project)
     }
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let entry = entry(&config)?;
-    let (found, changed) = read(&config, &entry, at, out)?;
+    let config = at.config();
+    let entry = entry(config, at.gate)?;
+    let (found, changed) = read(config, &entry, at, out)?;
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
-    let accepted = ratchet::accepted(&config, at.gate, METRICS)?;
+    let accepted = ratchet::accepted(config, at.gate, METRICS)?;
     let ok = said(&judged, entry.differential) + &coverage.said(out);
     let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, at, &ok, out);
     ratchet::noted(&found.notes, out);
@@ -138,11 +138,15 @@ fn distinct<'a>(places: impl Iterator<Item = &'a str>) -> usize {
     places.len()
 }
 
-fn entry(config: &Config) -> Result<Entry, Error> {
-    let held = config
-        .section(SECTION)?
-        .as_object()
+/// The one entry of the section this gate runs under, found by the name the runner gave it.
+/// Spec 8.3.
+fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
+    let entries = check::named_entries(config, SECTION)?;
+    let (_, held) = entries
+        .into_iter()
+        .find(|(name, _)| name == gate)
         .ok_or_else(|| shape(config))?;
+    let held = held.as_object().ok_or_else(|| shape(config))?;
     let report = held
         .get(REPORT.name)
         .and_then(Value::as_str)

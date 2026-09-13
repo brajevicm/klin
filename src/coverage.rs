@@ -4,7 +4,7 @@ use std::fmt::Write;
 use serde_json::{Map, Value};
 
 use crate::check::{self, Context, Sink};
-use crate::config::Config;
+use crate::project::Project;
 use crate::syntax::structural::Unsupported;
 
 /// The scope one gate measured, said on its `OK:` line and carried in the JSON under
@@ -111,14 +111,14 @@ impl Files {
     /// reads one configuration, so only `after` can say why. A file under a root the
     /// derivation commit's survey did not hold matches nothing in `before` (7.1), so it is not
     /// lost either. Spec 8.6.
-    pub fn lost(&self, before: &Files, config: &Config, only: Option<&[String]>) -> Vec<Lost> {
+    pub fn lost(&self, before: &Files, project: &Project, only: Option<&[String]>) -> Vec<Lost> {
         let measured: BTreeSet<&String> = self.measured.iter().collect();
         before
             .measured
             .iter()
             .filter(|file| only.is_none_or(|only| only.contains(file)))
-            .filter(|file| !measured.contains(file) && config.was_held(file))
-            .filter(|file| config.root().join(file).is_file())
+            .filter(|file| !measured.contains(file) && project.was_held(file))
+            .filter(|file| project.root().join(file).is_file())
             .map(|file| Lost {
                 file: file.clone(),
                 why: if self.unreadable.contains(file) {

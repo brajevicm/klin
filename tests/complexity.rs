@@ -1349,3 +1349,24 @@ fn a_file_the_grammar_refuses_now_is_unreadable_and_a_coverage_loss_too() {
     );
     assert!(run.says("the grammar refused it"), "{}", run.out);
 }
+
+/// A root is selected out of the tree's one file list, so a spelling the old walk read off the
+/// disk must select the same files: a leading `./`, a trailing slash, and a directory reached
+/// through a symbolic link, which the list does not follow. ADR 0038.
+#[test]
+fn a_root_spelled_with_dot_slash_a_trailing_slash_or_a_symlink_measures_its_files() {
+    let tree = Tree::new();
+    tree.write("real/knot.rs", RUST);
+    assert!(std::os::unix::fs::symlink(tree.path("real"), tree.path("linked")).is_ok());
+    tree.base();
+    for root in ["./real", "real/", "linked"] {
+        tree.write(
+            "klin.json",
+            &format!(r#"{{ "complexity": {{ "roots": ["{root}"], "ceilings": {{"cc": 1, "lines": 60}} }} }}"#),
+        );
+        let run = tree.run(&["complexity"]);
+        assert_eq!(run.code, 0, "{root}: {}", run.out);
+        assert!(run.says("1 over the gate"), "{root}: {}", run.out);
+        assert!(run.says("1 measured"), "{root}: {}", run.out);
+    }
+}

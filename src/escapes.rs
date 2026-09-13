@@ -152,22 +152,6 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     markers::gate(&KIND, at, out)
 }
 
-/// Every suffix a built-in pattern set reads, so a survey can find a tree's sources.
-pub fn suffixes() -> impl Iterator<Item = &'static str> {
-    markers::suffixes(&KIND)
-}
-
-/// The language a file belongs to, named as the "languages" key names it.
-pub fn language_of(file: &str) -> Option<&'static str> {
-    markers::holds(&KIND, file).map(|language| match language.names {
-        ["javascript", "typescript"] => match file.rsplit('.').next() {
-            Some("ts" | "tsx" | "mts" | "cts") => "typescript",
-            _ => "javascript",
-        },
-        _ => language.names[0],
-    })
-}
-
 fn show(values: &Values) -> String {
     markers::show(LABEL, values)
 }

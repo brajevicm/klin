@@ -337,18 +337,14 @@ fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() 
 
 #[test]
 fn a_pinned_manifest_klin_cannot_parse_is_a_tool_error_naming_the_file() {
-    let gates = r#"{"gates": [{"name": "deps", "check": "lockfile",
-                               "with": {"manifests": ["package.json"]}}]}"#;
-    for (config, gate) in [(NPM, "lockfile"), (gates, "deps")] {
-        let tree = Tree::new();
-        tree.write("klin.json", config);
-        tree.write("package.json", "{ not json");
-        tree.write("package-lock.json", NPM_V3);
-        tree.base();
-        let run = tree.run(&["gate", "--gate", gate]);
-        assert_eq!(run.code, 2, "{}", run.out);
-        assert!(run.says("package.json is not valid JSON"), "{}", run.out);
-    }
+    let tree = Tree::new();
+    tree.write("klin.json", NPM);
+    tree.write("package.json", "{ not json");
+    tree.write("package-lock.json", NPM_V3);
+    tree.base();
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("package.json is not valid JSON"), "{}", run.out);
 }
 
 fn go_tree() -> Tree {

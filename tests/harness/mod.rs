@@ -267,8 +267,14 @@ fn empty_home() -> &'static Path {
     .path()
 }
 
+/// The binary under test: the one this build made, or the one `KLIN_BIN` names, so the
+/// performance rows can be taken under an earlier release for a comparison.
+fn binary() -> String {
+    std::env::var("KLIN_BIN").unwrap_or_else(|_| env!("CARGO_BIN_EXE_klin").to_string())
+}
+
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_klin"));
+    let mut command = Command::new(binary());
     command
         .args(args)
         .env("HOME", empty_home())

@@ -1,10 +1,13 @@
+use std::collections::HashSet;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
 use crate::changed::git;
 use crate::config::{Config, Error};
+use crate::project::Tree;
 use crate::ratchet::Values;
 use crate::reference::{EXCLUDE, Key, SKIP_DIRS};
+use crate::scope;
 use serde_json::Value;
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[
@@ -134,14 +137,21 @@ pub struct Found {
     pub excluded: Vec<PathBuf>,
 }
 
-pub fn under(roots: &[PathBuf], wanted: &Wanted) -> Result<Vec<PathBuf>, Error> {
-    Ok(found(roots, wanted)?.kept)
+pub fn under(tree: &Tree, roots: &[PathBuf], wanted: &Wanted) -> Result<Vec<PathBuf>, Error> {
+    Ok(found(tree, roots, wanted)?.kept)
 }
 
-pub fn found(roots: &[PathBuf], wanted: &Wanted) -> Result<Found, Error> {
+/// The files under each root that the check wants, read off the tree's one file list, so
+/// however many roots a section names the tree is walked once and git is asked once what it
+/// ignores. A root the list did not reach — outside the tree, under a directory every walk
+/// skips, or behind a symbolic link — is walked on its own, as every root once was. ADR 0038.
+pub fn found(tree: &Tree, roots: &[PathBuf], wanted: &Wanted) -> Result<Found, Error> {
     let mut found = Found::default();
     for root in roots {
-        walk(root, wanted, &ignored(root), &mut found)?;
+        match tree.covers(root) {
+            Some(directory) => select(tree, &directory, wanted, &mut found)?,
+            None => walk(root, wanted, &ignored(root), &mut found)?,
+        }
     }
     for files in [&mut found.kept, &mut found.excluded] {
         files.sort();
@@ -150,9 +160,49 @@ pub fn found(roots: &[PathBuf], wanted: &Wanted) -> Result<Found, Error> {
     Ok(found)
 }
 
+/// One root's files out of the tree's list, under the same rules the walk applies below a
+/// root: a hidden or skipped directory below it is not descended, and the file's name and its
+/// path decide the rest. Spec 5.6, ADR 0038.
+fn select(tree: &Tree, directory: &str, wanted: &Wanted, into: &mut Found) -> Result<(), Error> {
+    for file in tree.files()? {
+        if !scope::under_or_at(file, directory) {
+            continue;
+        }
+        let below = match directory {
+            scope::ROOT => file.as_str(),
+            _ => &file[directory.len() + 1..],
+        };
+        let (parents, name) = below.rsplit_once('/').unwrap_or(("", below));
+        if !parents.is_empty() && !parents.split('/').all(|segment| wanted.descends(segment)) {
+            continue;
+        }
+        keep(tree.root().join(file), name, wanted, into);
+    }
+    Ok(())
+}
+
+/// Every file under the root, by its relative path, sorted: the default skip set pruned, every
+/// path git ignores pruned, and no symbolic link. Hidden directories are walked, and a caller
+/// that skips them filters them out. Read once per tree, by `project::Tree`. Spec 4.3.
+pub fn listing(root: &Path) -> Result<Vec<String>, Error> {
+    let skip_dirs = default_skip_dirs();
+    let wanted = Wanted {
+        extensions: &[""],
+        skip_dirs: &skip_dirs,
+        exclude: &[],
+        exclude_except: &[],
+        skip_hidden: false,
+    };
+    let mut found = Found::default();
+    walk(root, &wanted, &ignored(root), &mut found)?;
+    let mut files: Vec<String> = found.kept.iter().map(|path| relative(path, root)).collect();
+    files.sort();
+    Ok(files)
+}
+
 /// What git ignores under a root. A gate judges the tree git describes, so a generated file
 /// beside it is not measured: the base commit holds no copy of it to ratchet against.
-fn ignored(root: &Path) -> Vec<PathBuf> {
+fn ignored(root: &Path) -> HashSet<PathBuf> {
     let listed = git(
         root,
         &[
@@ -171,7 +221,12 @@ fn ignored(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-fn walk(root: &Path, wanted: &Wanted, ignored: &[PathBuf], into: &mut Found) -> Result<(), Error> {
+fn walk(
+    root: &Path,
+    wanted: &Wanted,
+    ignored: &HashSet<PathBuf>,
+    into: &mut Found,
+) -> Result<(), Error> {
     let listing = std::fs::read_dir(root).map_err(|why| Error::unreadable(root, why))?;
     for entry in listing {
         let entry = entry.map_err(|why| Error::unreadable(root, why))?;
@@ -183,7 +238,7 @@ fn walk(root: &Path, wanted: &Wanted, ignored: &[PathBuf], into: &mut Found) -> 
 fn visit(
     entry: &DirEntry,
     wanted: &Wanted,
-    ignored: &[PathBuf],
+    ignored: &HashSet<PathBuf>,
     into: &mut Found,
 ) -> Result<(), Error> {
     let path = entry.path();

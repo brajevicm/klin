@@ -9,7 +9,9 @@ use std::path::Path;
 
 use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
+use crate::project::Project;
 use crate::ratchet::{self, Finding};
+use crate::scope::Selector;
 use crate::syntax::{Unparsed, pattern};
 
 use super::{
@@ -48,15 +50,16 @@ pub(super) fn run(
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let config = Config::load(args.config.as_deref(), start)?;
-    let conventions = conventions(&config)?;
-    let places = walked(&config, config.root())?;
+    let project = Project::load(args.config.as_deref(), start)?;
+    let config = &project.config;
+    let conventions = conventions(config)?;
+    let places = walked(config, project.tree())?;
     let (rules, problems) = partitioned(&conventions, &places);
     let mut after = measure(&rules, &places)?;
-    let at = Context::by_hand(SECTION, start, args.config.as_deref());
+    let at = Context::by_hand(SECTION, &project);
     let mut window = String::new();
     let compared = statuses(
-        &config,
+        config,
         &rules,
         &after,
         &at,
@@ -77,7 +80,7 @@ pub(super) fn run(
         .collect();
     match named {
         None => Ok(summary(&explained, &compared, out)),
-        Some(name) => detail(&config, name, &explained, (&window, &compared), out),
+        Some(name) => detail(config, name, &explained, (&window, &compared), out),
     }
 }
 
@@ -106,7 +109,7 @@ fn statuses(
     at: &Context,
     out: &mut Sink,
 ) -> Compared {
-    let mut before = at_the_base(config, rules, at, out)?;
+    let mut before = at_the_base(rules, at, out)?;
     let mut judged = BTreeMap::new();
     for rule in rules {
         let name = &rule.convention.name;
@@ -391,8 +394,8 @@ fn forbids(one: &Explained) -> String {
 }
 
 fn scope(convention: &Convention) -> String {
-    let names = |paths: &[String]| {
-        let names: Vec<&str> = paths.iter().map(String::as_str).collect();
+    let names = |paths: &[Selector]| {
+        let names: Vec<&str> = paths.iter().map(Selector::as_str).collect();
         joined(&names, "and")
     };
     let within = match convention.within.is_empty() {

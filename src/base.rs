@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::changed::{self, Change, git};
+use crate::changed::{Change, blob, git};
 use crate::check::{Context, Sink};
-use crate::config::{Config, Error};
+use crate::config::Error;
+use crate::project::{Project, Tree};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -14,15 +15,28 @@ const EMPTY: &str = "0000000000000000000000000000000000000000";
 /// only the changed files, each at the path it has today, so a rename is not a tree of new debt.
 pub struct Prior {
     dir: tempfile::TempDir,
-    /// Where the configuration's own directory sits inside that tree.
-    root: PathBuf,
+    /// The base tree's files, read once however many gates measure it. ADR 0038.
+    tree: Tree,
     from_worktree: Option<PathBuf>,
 }
 
 impl Prior {
+    fn new(root: PathBuf, dir: tempfile::TempDir, from_worktree: Option<PathBuf>) -> Prior {
+        Prior {
+            tree: Tree::at(&root),
+            dir,
+            from_worktree,
+        }
+    }
+
     /// The base's copy of the directory the configuration sits in, which paths are relative to.
     pub fn root(&self) -> &Path {
-        &self.root
+        self.tree.root()
+    }
+
+    /// The base tree's file list, read once for every gate that measures it. ADR 0038.
+    pub fn tree(&self) -> &Tree {
+        &self.tree
     }
 }
 
@@ -45,7 +59,7 @@ impl Drop for Prior {
 }
 
 pub fn materialize(
-    config: &Config,
+    project: &Project,
     before: &str,
     scope: Option<&[Change]>,
 ) -> Result<Prior, Error> {
@@ -54,8 +68,8 @@ pub fn materialize(
         .tempdir()
         .map_err(|why| Error(format!("a directory for the base could not be made: {why}")))?;
     match scope {
-        Some(changes) => written(config, before, changes, dir),
-        None => checked_out(config, before, dir),
+        Some(changes) => written(project, before, changes, dir),
+        None => checked_out(project, before, dir),
     }
 }
 
@@ -63,8 +77,8 @@ fn short(commit: &str) -> &str {
     &commit[..7.min(commit.len())]
 }
 
-fn checked_out(config: &Config, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
-    let root = config.root();
+fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
+    let root = project.root();
     let inside = under_the_repository(root)?;
     git(
         root,
@@ -84,16 +98,12 @@ fn checked_out(config: &Config, before: &str, dir: tempfile::TempDir) -> Result<
             short(before)
         ))
     })?;
-    let prior = Prior {
-        root: dir.path().join(inside),
-        dir,
-        from_worktree: Some(root.to_path_buf()),
-    };
-    for change in changed::files(root, before)? {
-        let Some(was) = change.was.filter(|was| *was != change.path) else {
+    let prior = Prior::new(dir.path().join(inside), dir, Some(root.to_path_buf()));
+    for change in project.changes(before)?.iter() {
+        let Some(was) = change.was.as_deref().filter(|was| *was != change.path) else {
             continue;
         };
-        move_within(prior.root(), &was, &change.path)?;
+        move_within(prior.root(), was, &change.path)?;
     }
     Ok(prior)
 }
@@ -130,22 +140,18 @@ fn move_within(root: &Path, was: &str, now: &str) -> Result<(), Error> {
 }
 
 fn written(
-    config: &Config,
+    project: &Project,
     before: &str,
     changes: &[Change],
     dir: tempfile::TempDir,
 ) -> Result<Prior, Error> {
-    let root = config.root();
-    let prior = Prior {
-        root: dir.path().to_path_buf(),
-        dir,
-        from_worktree: None,
-    };
+    let root = project.root();
+    let prior = Prior::new(dir.path().to_path_buf(), dir, None);
     for change in changes {
         let Some(was) = &change.was else {
             continue;
         };
-        let bytes = changed::blob(root, before, was).ok_or_else(|| {
+        let bytes = blob(root, before, was).ok_or_else(|| {
             Error(format!(
                 "the base commit {} holds no {was}, which git says it changed — the base and the \
                  working tree disagree, so klin cannot judge this run",
@@ -183,13 +189,14 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
-pub fn own(config: &Config, at: &Context, out: &mut Sink) -> Result<Prior, Error> {
-    let base = announced(config.root(), at, out)?;
-    materialize(config, &base.before, None)
+pub fn own(at: &Context, out: &mut Sink) -> Result<Prior, Error> {
+    let base = announced(at.project.root(), at, out)?;
+    materialize(at.project, &base.before, None)
 }
 
 /// Where a gate's roots are in the base tree. A root the base does not hold measures nothing.
-pub fn roots(roots: &[PathBuf], config: &Config, prior: &Path) -> Result<Vec<PathBuf>, Error> {
+pub fn roots(roots: &[PathBuf], project: &Project, prior: &Path) -> Result<Vec<PathBuf>, Error> {
+    let config = &project.config;
     roots
         .iter()
         .map(|root| {

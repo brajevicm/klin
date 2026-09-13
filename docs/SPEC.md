@@ -367,12 +367,23 @@ configured or derived instance of a check. A check declares:
 - `gate_per_entry`, whether the section is a list of entries a person writes,
   each its own gate under its own `name`, rather than one section the whole
   check runs under. Only `sarif` sets it (8.3).
-- `derive`, a function from a surveyed tree to a section, or none when the
-  check cannot apply without a person, such as `sarif`
+- `derive`, the keys the survey supplies for the section, or none when the
+  survey never supplies it
+- `activation`, what the section's absence means. An Automatic check runs
+  over what the survey derives. A Policy check, such as `conventions`, runs
+  only once a person writes the policy. An Integration check, such as
+  `sarif`, runs only once a person names the external tool. `derive` says
+  which values are derived and not whether the check runs (ADR 0038).
 - `cost`, an ordinal that orders the run cheapest first
 
-A check with no `derive` runs only when its section is present. Every other
-check runs unless its section is `false`.
+A Policy or Integration check runs only when its section is present. An
+Automatic check runs unless its section is `false`.
+
+A run loads and validates the configuration once and reads every tree's file
+list once, however many gates run and however many roots their sections
+name. The configuration is the policy a person wrote; what a tree holds is a
+fact the run reads for itself; the runner composes the two and a check
+borrows what it needs (ADR 0038).
 
 ### 4.7 Ceiling
 
@@ -448,9 +459,10 @@ from a subdirectory. A configuration per package is not supported.
   prompt excerpt of 11.4; the excerpt is recorded by default. A configuration
   klin cannot read carries no excerpt either: the one case where klin cannot
   see this setting is the case where it MUST NOT record the text.
-- `gates` (list) OPTIONAL, section 8.3. Each entry is a `name`, a `check`, a
-  `with` and an optional `off`, and each is its own gate.
-- one key per gate, named for its section, or `false` to exclude the gate
+- one key per gate, named for its section, or `false` to exclude the gate.
+  A check that runs as several gates holds them in its own section, as the
+  named entries of `sarif` (8.3) and the named conventions (8.4) do. There
+  is no top-level list of extra gates (ADR 0038).
 
 A key klin does not know MUST be an error naming the key. A section with a
 `baseline` key MUST be an error saying the key is gone (ADR 0009). A section
@@ -1267,8 +1279,8 @@ invalid on purpose does not turn the gate red. A derived manifest that parsed
 at the base and does not parse now is a tool error naming the file, because
 the work broke it and the agent can fix it. A derived manifest that did not
 parse at the base and parses now is judged against a base that named no
-dependency. A `manifests` list a person pinned, in `klin.json` or a `gates`
-entry, asserts that every path in it parses, so there a manifest klin cannot
+dependency. A `manifests` list a person pinned in `klin.json` asserts that
+every path in it parses, so there a manifest klin cannot
 parse in either tree is a tool error naming the file. Only the npm reader can
 reject a manifest, because the Cargo and Go readers are line scans. The check
 judges every manifest under `--changed` as well, because a lockfile change
@@ -2275,6 +2287,17 @@ LoC, declarations, digest, file and language counts, cache state, changed
 files, iteration count, version and host platform, and excludes project build
 time from hook timing. These rows record measurements and add no wall-clock
 budget.
+
+`KLIN_PERF_ROW=source_areas` selects the root-count rows: the same 2,000
+source files, 1,000 Rust and 1,000 TypeScript, split over 2, 100 and 500
+directories that hold nothing but source under a manifest directory that holds
+more, so each is a root the survey derives and no configuration pins one. Each
+row is the whole-tree strict run, five times, median. A run reads a tree's
+file list once and asks git once what it ignores, whatever the root count, so
+the three rows MUST read alike; a row that grows with the root count is a walk
+or a process per root coming back (ADR 0038). `KLIN_BIN` names another klin
+binary for the harness to run, so a row can be taken under an earlier release
+beside the current one.
 
 A check that cannot take scope, such as a whole-tree duplication share, MUST
 say so in `gate --list` and MAY be skipped by the hook under a `hook: false`

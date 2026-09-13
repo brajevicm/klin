@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::changed::Change;
 use crate::config::{self, Config, Error};
+use crate::project::Project;
 
 const BUILD: &str = config::BUILD.name;
 /// The two keys one entry of the `build` list holds, which `config::BUILD` states.
@@ -17,14 +18,15 @@ pub struct Entry {
     pub run: String,
 }
 
-pub fn entries(config: &Config) -> Result<Vec<Entry>, Error> {
+pub fn entries(project: &Project) -> Result<Vec<Entry>, Error> {
+    let config = &project.config;
     let shape = || {
         Error(format!(
             "{}: \"{BUILD}\" is a command, or a list of {{\"root\", \"run\"}} entries",
             config.file.display()
         ))
     };
-    match config.section(BUILD) {
+    match project.section(BUILD) {
         Err(_) => Ok(Vec::new()),
         Ok(Value::String(run)) => Ok(vec![Entry {
             root: None,

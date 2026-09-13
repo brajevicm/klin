@@ -9,6 +9,7 @@ use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Coverage};
 use crate::files;
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
 
@@ -78,10 +79,10 @@ struct Document {
 }
 
 /// The documents a run judges, and the directory their paths and the base commit are read from.
-struct Listing {
+struct Listing<'a> {
     documents: Vec<Document>,
     root: PathBuf,
-    config: Option<Config>,
+    config: Option<&'a Config>,
 }
 
 /// What a citation may resolve against in one tree: the paths a root holds, and the file names
@@ -104,8 +105,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
+    let project = Project::load(args.config.as_deref(), start)?;
     evaluate(
-        &context(args, start),
+        &context(args, &project),
         args.file.as_deref(),
         &args.roots,
         &mut Sink::unrecorded(out),
@@ -116,11 +118,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, None, &[], out)
 }
 
-fn context<'a>(args: &'a Args, start: &'a Path) -> Context<'a> {
+fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
     Context {
         strict: args.strict,
         quiet: args.quiet,
-        ..Context::by_hand(SECTION, start, args.config.as_deref())
+        ..Context::by_hand(SECTION, project)
     }
 }
 
@@ -131,11 +133,11 @@ fn evaluate(
     out: &mut Sink,
 ) -> Result<u8, Error> {
     let listing = listing(at, named, roots)?;
-    if let Some(config) = &listing.config {
-        at.say(config, SECTION, out);
+    if listing.config.is_some() {
+        at.say(SECTION, out);
     }
     let commit = base::commit(&listing.root, at, out)?;
-    let (now, before) = sides(&listing, &commit)?;
+    let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = ratchet::scoped(&now, at.only);
     let accepted = match &listing.config {
         Some(config) => ratchet::accepted(config, at.gate, evaluator().metrics)?,
@@ -175,7 +177,11 @@ fn covered(listing: &Listing, at: &Context) -> Coverage {
 }
 
 /// What each document cites and resolves nowhere today, and what it did at the base.
-fn sides(listing: &Listing, commit: &str) -> Result<(Vec<Finding>, Vec<Finding>), Error> {
+fn sides(
+    listing: &Listing,
+    tree: &Tree,
+    commit: &str,
+) -> Result<(Vec<Finding>, Vec<Finding>), Error> {
     let (mut now, mut before) = (Vec::new(), Vec::new());
     let mut trees: HashMap<Vec<PathBuf>, Index> = HashMap::new();
     let mut priors: HashMap<Vec<PathBuf>, Index> = HashMap::new();
@@ -184,7 +190,9 @@ fn sides(listing: &Listing, commit: &str) -> Result<(Vec<Finding>, Vec<Finding>)
         if document.path.exists() {
             let text = std::fs::read(&document.path)
                 .map_err(|why| Error::unreadable(&document.path, why))?;
-            let index = cached(&mut trees, &document.roots, || working(&document.roots))?;
+            let index = cached(&mut trees, &document.roots, || {
+                working(tree, &document.roots)
+            })?;
             now.extend(found(document, &String::from_utf8_lossy(&text), index));
         }
         let repo = repo_path(&document.path, &listing.root);
@@ -308,7 +316,7 @@ fn candidate(span: &str, extensions: &[String]) -> Option<String> {
     (candidate.contains('/') || candidate.contains('.')).then(|| candidate.to_string())
 }
 
-fn working(roots: &[PathBuf]) -> Result<Index, Error> {
+fn working(tree: &Tree, roots: &[PathBuf]) -> Result<Index, Error> {
     let wanted = files::Wanted {
         extensions: &[EVERY_FILE],
         skip_dirs: &files::default_skip_dirs(),
@@ -324,7 +332,7 @@ fn working(roots: &[PathBuf]) -> Result<Index, Error> {
         if !root.is_dir() {
             continue;
         }
-        for file in files::under(std::slice::from_ref(root), &wanted)? {
+        for file in files::under(tree, std::slice::from_ref(root), &wanted)? {
             index.add(&files::relative(&file, root));
         }
     }
@@ -425,7 +433,11 @@ fn not_under(path: &str, index: &Index) -> String {
     }
 }
 
-fn listing(at: &Context, named: Option<&Path>, roots: &[PathBuf]) -> Result<Listing, Error> {
+fn listing<'a>(
+    at: &Context<'a>,
+    named: Option<&Path>,
+    roots: &[PathBuf],
+) -> Result<Listing<'a>, Error> {
     if let Some(named) = named
         && !roots.is_empty()
     {
@@ -436,12 +448,12 @@ fn listing(at: &Context, named: Option<&Path>, roots: &[PathBuf]) -> Result<List
                 extensions: default_extensions(),
                 name: named.display().to_string(),
             }],
-            root: at.start.to_path_buf(),
+            root: at.project.start().to_path_buf(),
             config: None,
         });
     }
-    let config = Config::load_with(at.config, at.start, at.with)?;
-    let listed = listed_documents(&config)?;
+    let config = &at.project.config;
+    let listed = listed_documents(at.project)?;
     let root = config.root().to_path_buf();
     let Some(named) = named else {
         return Ok(Listing {
@@ -467,8 +479,9 @@ fn listing(at: &Context, named: Option<&Path>, roots: &[PathBuf]) -> Result<List
     )))
 }
 
-fn listed_documents(config: &Config) -> Result<Vec<Document>, Error> {
-    let Some(entries) = config.section(SECTION)?.as_array() else {
+fn listed_documents(project: &Project) -> Result<Vec<Document>, Error> {
+    let config = &project.config;
+    let Some(entries) = project.section(SECTION)?.as_array() else {
         return Err(Error(format!(
             "{}: \"{SECTION}\" must be a list of {{\"file\", \"roots\"}} entries",
             config.file.display()

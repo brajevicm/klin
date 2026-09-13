@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::config::{self, Error};
+use crate::project::Tree;
 use crate::{hooks, radius, survey};
 
 const FILENAME: &str = "klin.json";
@@ -186,7 +187,7 @@ struct Surveyed {
 }
 
 fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<Surveyed, Error> {
-    let found = survey::derive(root, &pinned(&config, force));
+    let found = survey::derive(&Tree::at(root), &pinned(&config, force));
     let mut written = Vec::new();
     let mut add = |key: &str, value: Option<Value>, said: String| {
         added(&mut config, &mut written, force, key, value, said);
@@ -213,7 +214,7 @@ fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<
         "reachability",
         "complexity",
     ] {
-        let section = found.sections.get(name).cloned().filter(stated);
+        let section = found.section(name).cloned().filter(stated);
         add(name, section, name.to_string());
     }
     let derived = match radius::history(root, None) {
@@ -233,7 +234,7 @@ fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<
     Ok(Surveyed {
         config,
         written,
-        derived: found.lines.into_iter().chain(derived).collect(),
+        derived: found.lines(None).into_iter().chain(derived).collect(),
     })
 }
 

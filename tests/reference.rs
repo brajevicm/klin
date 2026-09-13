@@ -19,7 +19,6 @@ fn the_reference_names_every_top_level_key_and_every_section() {
         "`build`",
         "`accepted`",
         "`radius`",
-        "`gates`",
     ] {
         assert!(out.contains(key), "no {key} in: {out}");
     }

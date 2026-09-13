@@ -216,10 +216,12 @@ fn usual(config: &Config, root: &Path, at: Option<&Path>) -> Result<Usual, Error
 /// one key and leave the other, and a section that is not an object pins neither and says so
 /// rather than deriving in silence. Spec 5.2.
 fn numbers(config: &Config) -> Result<(Option<u64>, Option<u64>), Error> {
-    let section = match config.section(SECTION) {
-        Err(_) => return Ok((None, None)),
-        Ok(Value::Object(section)) => section,
-        Ok(_) => return Err(config.malformed(SECTION, LINES, "under a section that is an object")),
+    let section = match config.pinned(SECTION) {
+        None => return Ok((None, None)),
+        Some(Value::Object(section)) => section,
+        Some(_) => {
+            return Err(config.malformed(SECTION, LINES, "under a section that is an object"));
+        }
     };
     let number = |key: &str| match section.get(key) {
         None => Ok(None),

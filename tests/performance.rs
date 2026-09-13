@@ -98,7 +98,10 @@ fn performance_fixture() {
         Err(_) => base_rows(),
         Ok("structural_300k") => run_fixture(5_000, DENSE_300K),
         Ok("structural_1m") => run_fixture(5_000, DENSE_1M),
-        Ok(other) => panic!("KLIN_PERF_ROW={other}: expected structural_300k or structural_1m"),
+        Ok("source_areas") => source_area_rows(),
+        Ok(other) => {
+            panic!("KLIN_PERF_ROW={other}: expected structural_300k, structural_1m or source_areas")
+        }
     }
 }
 
@@ -116,6 +119,77 @@ fn base_rows() {
     let large = Fixture::new(5_000);
     let large_rows = large.measure();
     print_rows(&large, &large_rows);
+}
+
+/// The same 2,000 source files split over 2, 100 and 500 derived source areas, each row the
+/// strict run over a tree with no pinned roots, so every area is a root the survey derives.
+/// The rows read the same when area count adds no walk and no git process. #159.
+const SOURCE_AREAS: &[usize] = &[2, 100, 500];
+
+fn source_area_rows() {
+    for areas in SOURCE_AREAS {
+        let tree = source_areas(1_000, *areas);
+        let primed = strict_run(&tree, "prime survey");
+        assert_eq!(primed.json()["status"], "PASS");
+        let strict = repeat(|| {
+            let started = Instant::now();
+            let run = strict_run(&tree, "source areas");
+            Sample {
+                total: started.elapsed().as_millis(),
+                gates: gate_times(&run.json()),
+            }
+        });
+        println!(
+            "2000 files over {areas} source areas strict: cache=warm, iterations={ITERATIONS}, median_ms={}, {}",
+            median(&strict.total),
+            gate_medians(&strict)
+        );
+    }
+    println!("klin version: {}", env!("CARGO_PKG_VERSION"));
+    println!(
+        "machine: {}/{}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+}
+
+/// A repository whose Rust and TypeScript files sit in `areas` directories that hold nothing
+/// but source, under a manifest directory that holds more, so each is its own derived root.
+fn source_areas(files_per_language: usize, areas: usize) -> Tree {
+    let tree = Tree::bare();
+    tree.repository();
+    tree.write("klin.json", "{}\n");
+    tree.write(
+        "README.md",
+        "The fixture for the source-area rows of #159.\n",
+    );
+    tree.write(
+        "rust/Cargo.toml",
+        "[package]\nname = \"fixture-rust\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("rust/Cargo.lock", "version = 3\n");
+    tree.write(
+        "web/package.json",
+        "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\"}\n",
+    );
+    tree.write(
+        "web/tsconfig.json",
+        "{\"compilerOptions\":{\"strict\":true},\"include\":[\"src\"]}\n",
+    );
+    let per_language = (areas / 2).max(1);
+    for index in 4..files_per_language + 4 {
+        let area = index % per_language;
+        tree.write(
+            &format!("rust/a{area:03}/module_{index:04}.rs"),
+            &rust_source_for(index, files_per_language, BASE),
+        );
+        tree.write(
+            &format!("web/a{area:03}/module_{index:04}.ts"),
+            &typescript_source_for(index, 0, files_per_language, BASE),
+        );
+    }
+    tree.base();
+    tree
 }
 
 fn run_fixture(files_per_language: usize, profile: Profile) {

@@ -113,11 +113,6 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     markers::gate(&KIND, at, out)
 }
 
-/// Whether the table holds rows for a language, named as the "languages" key names it.
-pub fn holds_rows_for(language: &str) -> bool {
-    LANGUAGES.iter().any(|held| held.names.contains(&language))
-}
-
 fn show(values: &Values) -> String {
     markers::show(LABEL, values)
 }
