@@ -1,5 +1,8 @@
 # References read through tree-sitter, user-written rules through ast-grep
 
+The rule shape below, `pattern`, `structural` and a required `example`, is
+superseded by ADR 0037. The choice of `ast-grep-core` stands.
+
 Reference extraction and user-written rules both need syntax trees. ADR 0001
 refused to bundle a foreign runtime for complexity; using a Rust library for
 pattern matching does not require one.

@@ -16,8 +16,8 @@ use serde_json::Value;
 use crate::config::{Config, Error};
 use crate::reference::{Key, Languages};
 use crate::{
-    complexity, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile, markers,
-    reachability, sarif, stubs, syntax,
+    complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile,
+    markers, reachability, sarif, stubs, syntax,
 };
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -295,6 +295,17 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(reachability::language_extensions),
         derives: Some(&[]),
         run: reachability::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "conventions",
+        section: conventions::SECTION,
+        keys: conventions::KEYS,
+        languages: Some(syntax::pattern::language_extensions),
+        derives: None,
+        run: conventions::gate,
         needs: Needs::TheTree,
         takes_scope: true,
         gate_per_entry: false,

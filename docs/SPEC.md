@@ -44,7 +44,8 @@ and Derived, and asks `CONTEXT.md` to take them.
 | 0002 | The plugin ships no binary. | The plugin ships a `bin/klin` wrapper that fetches the pinned release on first run. | The first reason, a pin beside committed baselines, went with ADR 0009. The second, `bin/` unavailable for organization-distributed plugins, is handled by falling back to PATH. Section 19. |
 | 0014, one line | The turn stamp is not guarded, because a report leaves nothing to gain. | The stamp is in the guarded set, and a missing stamp widens the window instead of closing it. | The stamp now holds the verdict that keeps a window open. A stamp that is gone is restored from its ref, or the stop judges the whole branch, so deleting it buys nothing. Sections 6.2 and 9.4. The rest of ADR 0014 stands. ADR 0027 reverses this row again: the stamp left the guarded set with everything but `klin.json`, and 9.4 carries the current rule. |
 
-ADR 0001, 0006, 0008 and 0012 stand as written.
+ADR 0001, 0008 and 0012 stand as written. ADR 0006 stands for its choice of
+`ast-grep-core`, and ADR 0037 replaces the rule shape it named.
 
 Every row above was accepted on 2026-09-08 and is recorded as an ADR: 0016
 for the optional config and derivation, 0017 for the turn stamp as the hook's
@@ -1393,7 +1394,7 @@ and reads no project dependencies, such as ruff.
 
 ### 8.4 Tier 2: build when tier 1 is green
 
-`conventions` with structural rules (#42, ADR 0006), `public-api` (#46),
+`conventions` (#42, ADR 0037), `public-api` (#46),
 `reachability` over one reference extractor (#49, #51), `changed-coverage`
 and `crap` over one coverage reader with a postflight run (#53, #54, #55,
 #70), `hotspots` as a report (#60), SARIF output (#65).
@@ -1424,6 +1425,110 @@ dated ceiling, was considered and is not a check. A habit that rose is an
 escapes `patterns` row with `roots` set to the test roots, and a schedule on
 a whole-tree total fails a tree nobody changed, which is the forced paydown
 7.3 refuses.
+
+**`conventions` judges the project's own rules.** A convention names one
+thing the project forbids, where it applies, and what to do instead:
+
+```json
+{
+  "conventions": {
+    "single-git-boundary": {
+      "code": "Command::new(\"git\")",
+      "except": ["src/project/git.rs", "tests"],
+      "remedy": "Use the shared Git boundary."
+    },
+    "no-old-flags": {
+      "text": "config::Flags",
+      "remedy": "Use the explicit execution context."
+    },
+    "no-scratch-files": {
+      "files": "**/scratch.*",
+      "remedy": "Remove temporary scratch files."
+    }
+  }
+}
+```
+
+The section is a flat object keyed by the convention's name, and the name is
+the convention's identity. A convention MUST state `remedy` and exactly one of
+`text`, `code` and `files`. It MAY state `in` and `except`, and a `code`
+convention MAY state `language`. Any other key is a config error that names
+the convention and the key. There is no regex and no example.
+
+- `text` is literal text, matched line by line. No character in it has a
+  special meaning. A comment or a string that holds the text is a match. A
+  file that holds a NUL byte is not text and is not read.
+- `code` is a code pattern. `$NAME` holds one piece of code and `$$$ARGS`
+  holds a list. It matches code, so a comment or a string that reads like the
+  pattern is not a match. Its languages are `rust` and `typescript`, and a
+  `.tsx` file is TypeScript.
+- `files` is a glob over repository-relative paths. `**/` crosses any number
+  of directories, `*` and `?` stay inside one, and `[...]` is a class. It
+  reads no file.
+
+`in` and `except` each take a repository-relative path or a non-empty list of
+them. A path names itself and everything below it, and it is never a glob:
+`src/syntax` holds `src/syntax/mod.rs`, and `src/main.rs` holds only itself.
+With no `in`, a convention applies to the whole repository, and `except`
+takes paths out of that scope. An absolute path, a path outside the
+repository and a glob are config errors. An `in` path the working tree holds
+nothing at leaves its convention measuring nothing there, so it is exit 2, and
+a NOTE in the hook. An `except` path the working tree holds nothing at is a
+NOTE.
+
+A convention reads what the shared walk reaches. It never reads the default
+skip set, a hidden directory, or what git ignores. It never reads the
+configuration file either, because that file states every literal a convention
+forbids.
+
+A `code` convention with no `language` takes the one language that the files
+in its scope are written in. Two languages, or none, is a config error that
+lists them and asks for `language` or a narrower `in`. Which grammar reads the
+pattern is never evidence of the language. A pattern that no grammar of its
+language can read is a config error. A pattern that one grammar of the
+language reads and another does not matches nothing in the files the other
+reads: a JSX pattern matches no `.ts` file. A pattern that matches nothing in
+the tree is a valid convention.
+
+Each convention is judged as its own gate, `conventions/<name>`, through the
+ratchet of section 7 and the accepted list of 4.8. Two conventions on one line
+are two findings, each with its own remedy and its own accepted entry. A
+`text` or `code` site is the file and the text of the line the match starts
+on, and `count`, the matches at that site, is the ratcheted value. A `files`
+site is the path, at line 0 and a count of 1.
+
+A site that moves to another line of its file is held, and a site in a file
+git renamed keeps its key, as 4.4 has it. A site that moves or is copied to
+another file is `new`. No body hash pairs a site across files. The scope and a
+`files` glob read the path each tree holds, so a file renamed out of `except`
+brings its sites in as `new`, and a path renamed into a `files` glob is `new`.
+
+An accepted entry whose gate names a convention the section defines no longer
+is a config error. When the section is absent or `false`, no convention gate
+runs, and its entries wait for it.
+
+A failure names the convention and prints its `remedy` as the fix. A JSON
+finding carries `convention`, `logical_gate`, `matcher`, `count` and `remedy`
+in its values, and `language` for a `code` convention (11.2).
+
+`klin conventions --report` reads the configuration and writes nothing. For
+each convention it prints:
+
+- the matcher as written, the language, and whether the language was derived
+  or pinned
+- `in`, `except` and the remedy
+- how many files the convention reads, and its current sites
+- each site's outcome against the base and the accepted list, when a base
+  resolves
+- each `in` or `except` path that names nothing, and each file in scope that
+  the grammar could not read
+
+A convention whose language or pattern is a config error is printed with the
+problem, and the report exits 2.
+
+A run walks each tree once. It reads each file once for every `text`
+convention, and it parses each file once for every `code` convention. ADR
+0037.
 
 ### 8.5 Tier 3: defer with a reason
 
@@ -2460,6 +2565,18 @@ Core:
   lockfile is a tool error, a derived manifest klin cannot parse at either
   commit is a NOTE, a derived manifest the work broke is a tool error, and a
   pinned one is a tool error.
+- `conventions`: an unknown key names the convention and the key, a missing
+  remedy, zero or two matchers, a language on a `text` or `files` rule, and an
+  absolute, escaping or glob path are config errors, `in` and `except` select
+  a path and everything below it from wherever klin runs, a literal holds its
+  regex characters as text, a code pattern skips a comment and a string, holes
+  work in Rust, TypeScript and TSX, a scope in two languages or in none is a
+  config error, an `in` path that names nothing is exit 2, a hidden directory
+  is not read, two conventions on one line are two findings, an accepted entry
+  for a removed convention is a config error, a move within a file and a
+  rename inside the scope are held, a move or a copy to another file and a
+  rename out of `except` are `new`, and `--report` explains each convention,
+  names a file the grammar refused, and writes nothing.
 - Coverage: a file present in both trees and measured in `before` only is a
   NOTE in the hook and exit 2 under `--strict`, whether it left through an
   exclusion or a grammar error.

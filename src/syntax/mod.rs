@@ -14,6 +14,7 @@ use crate::ratchet::Values;
 use crate::reference;
 
 pub mod convention;
+pub mod pattern;
 /// The shared API is larger than V1's first consumer; later structural checks use its import
 /// and module facts too.
 #[cfg_attr(not(test), allow(dead_code))]

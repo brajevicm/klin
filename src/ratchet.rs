@@ -71,6 +71,7 @@ pub fn no_retired_key(
     Ok(())
 }
 
+#[derive(Clone)]
 pub struct Finding {
     pub file: String,
     pub line: u64,
@@ -204,9 +205,10 @@ struct Comparison {
     unmatched_findings: Vec<Finding>,
     rose: Vec<(Finding, Values)>,
     unmatched_accepted: Vec<Values>,
-    /// How many findings a base site or an accepted entry held, which is every finding on a
-    /// passing run and none of the new or risen ones on a failing one. Spec 11.2.
-    held: usize,
+    /// The findings a base site or an accepted entry held, with the entry that held each, which
+    /// is every finding on a passing run and none of the new or risen ones on a failing one.
+    /// Spec 11.2.
+    held: Vec<(Finding, Values)>,
 }
 
 impl Comparison {
@@ -383,7 +385,7 @@ fn take(comparison: &mut Comparison, pairs: Vec<(Finding, Values)>, metrics: &[&
     for (finding, entry) in pairs {
         match compare(&finding, &entry, metrics) {
             Outcome::Rose => comparison.rose.push((finding, entry)),
-            Outcome::Held => comparison.held += 1,
+            Outcome::Held => comparison.held.push((finding, entry)),
         }
     }
 }
@@ -460,6 +462,44 @@ impl Evaluator<'_> {
     }
 }
 
+/// What the ratchet makes of each finding, without printing or recording anything: `new`,
+/// `worsened`, `held` by a base site, or `accepted` by an entry a person wrote. For a report that
+/// explains a gate rather than judging it. Spec 8.4.
+pub fn outcomes(
+    findings: Vec<Finding>,
+    prior: Vec<Finding>,
+    accepted: Vec<Values>,
+    metrics: &[&str],
+) -> Vec<(Finding, &'static str)> {
+    let entries = accepted
+        .into_iter()
+        .chain(prior.iter().map(Finding::entry))
+        .collect();
+    let comparison = judge(findings, entries, metrics);
+    let held = comparison.held.into_iter().map(|(finding, entry)| {
+        let outcome = if is_accepted(&entry) {
+            "accepted"
+        } else {
+            "held"
+        };
+        (finding, outcome)
+    });
+    let mut out: Vec<(Finding, &'static str)> = comparison
+        .unmatched_findings
+        .into_iter()
+        .map(|finding| (finding, "new"))
+        .chain(
+            comparison
+                .rose
+                .into_iter()
+                .map(|(finding, _)| (finding, "worsened")),
+        )
+        .chain(held)
+        .collect();
+    out.sort_by(|(a, _), (b, _)| (&a.file, a.line).cmp(&(&b.file, b.line)));
+    out
+}
+
 fn report(
     comparison: &Comparison,
     evaluator: &Evaluator,
@@ -469,7 +509,7 @@ fn report(
     out: &mut Sink,
 ) -> u8 {
     out.record(|records| {
-        records.held = Some(records.held.unwrap_or(0) + comparison.held as u64);
+        records.held = Some(records.held.unwrap_or(0) + comparison.held.len() as u64);
         collect(comparison, evaluator, at.gate, records);
     });
     if comparison.failed() {

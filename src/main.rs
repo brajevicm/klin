@@ -6,6 +6,7 @@ mod changed;
 mod check;
 mod complexity;
 mod config;
+mod conventions;
 mod coverage;
 mod dead_symbols;
 mod doc_citations;
@@ -78,6 +79,8 @@ enum Check {
     Escapes(markers::Args),
     /// Fail on a new placeholder marker — a stub an agent left where the work belongs
     Stubs(markers::Args),
+    /// Fail on a new site a project convention forbids
+    Conventions(conventions::Args),
     /// Fail on a scanner's result that sits on a line this window changed
     Sarif(sarif::Args),
 }
@@ -141,6 +144,7 @@ fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, config::
         Check::DocSize(args) => doc_size::run(args, start, out),
         Check::Escapes(args) => escapes::run(args, start, out),
         Check::Stubs(args) => stubs::run(args, start, out),
+        Check::Conventions(args) => conventions::run(args, start, out),
         Check::Sarif(args) => sarif::run(args, start, out),
     }
 }

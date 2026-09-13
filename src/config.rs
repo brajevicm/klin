@@ -303,6 +303,7 @@ fn well_formed(file: &Path, data: &Value) -> Result<(), Error> {
     a_version_is_a_string(file, data)?;
     every_key_is_one_klin_reads(file, data)?;
     no_section_names_a_retired_key(file, data)?;
+    crate::conventions::no_stale_debt(file, data)?;
     crate::ceiling::every_schedule(file, data)
 }
 
