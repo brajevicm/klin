@@ -191,6 +191,7 @@ impl Sites {
         Coverage {
             found: self.listed - self.absent,
             measured: self.manifests,
+            not_measured: 0,
             excluded: self.excluded,
             unreadable: self.notes.len(),
         }

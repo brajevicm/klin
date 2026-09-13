@@ -10,9 +10,10 @@ use crate::config::Config;
 /// `coverage`. The boundary is the same for every check, and this is where it is written down:
 /// `found` counts every file the check's own discovery rule reached under its roots, before
 /// anything dropped one; `excluded` counts the ones an exclusion dropped; `unreadable` counts
-/// the ones it reached and could not read or parse; `measured` counts the ones it judged. A
-/// scoped run counts only the files in its scope. So a green run over a scope smaller than a
-/// reader expected says so on that one line. Spec 8.6, 11.1, 11.2.
+/// the ones it reached and could not read or parse; `not_measured` counts known-language files
+/// with no structural adapter; `measured` counts the ones it judged. A scoped run counts only
+/// the files in its scope. So a green run over a scope smaller than a reader expected says so on
+/// that one line. Spec 8.6, 11.1, 11.2.
 ///
 /// A check whose scope is not a set of files counts the thing it discovers: a document, a
 /// manifest, a test file the base holds. Every count is of the same thing in one gate, and the
@@ -21,6 +22,7 @@ use crate::config::Config;
 pub struct Coverage {
     pub found: usize,
     pub measured: usize,
+    pub not_measured: usize,
     pub excluded: usize,
     pub unreadable: usize,
 }
@@ -41,6 +43,7 @@ impl Coverage {
         Coverage {
             found: measured,
             measured,
+            not_measured: 0,
             excluded: 0,
             unreadable: 0,
         }
@@ -50,16 +53,23 @@ impl Coverage {
     /// past so one call per check carries both. Spec 8.6.
     pub fn said(&self, out: &mut Sink) -> String {
         out.record(|records| records.coverage = Some(self.record()));
-        format!(
-            " ({} file(s) found, {} measured, {} excluded, {} unreadable)",
-            self.found, self.measured, self.excluded, self.unreadable
-        )
+        match self.not_measured {
+            0 => format!(
+                " ({} file(s) found, {} measured, {} excluded, {} unreadable)",
+                self.found, self.measured, self.excluded, self.unreadable
+            ),
+            not_measured => format!(
+                " ({} file(s) found, {} measured, {} not measured, {} excluded, {} unreadable)",
+                self.found, self.measured, not_measured, self.excluded, self.unreadable
+            ),
+        }
     }
 
     fn record(&self) -> Value {
         let mut out = Map::new();
         out.insert("found".into(), self.found.into());
         out.insert("measured".into(), self.measured.into());
+        out.insert("not_measured".into(), self.not_measured.into());
         out.insert("excluded".into(), self.excluded.into());
         out.insert("unreadable".into(), self.unreadable.into());
         Value::Object(out)
@@ -67,10 +77,12 @@ impl Coverage {
 }
 
 /// The files one walk reached, sorted the way the coverage counts them: the ones the check
-/// judged, the ones an exclusion dropped, and the ones it reached and could not read.
+/// judged, the ones with no structural adapter, the ones an exclusion dropped, and the ones it
+/// reached and could not read.
 #[derive(Default)]
 pub struct Files {
     pub measured: Vec<String>,
+    pub not_measured: Vec<String>,
     pub excluded: Vec<String>,
     pub unreadable: Vec<String>,
 }
@@ -78,19 +90,22 @@ pub struct Files {
 impl Files {
     pub fn coverage(&self, only: Option<&[String]>) -> Coverage {
         let measured = scoped(&self.measured, only);
+        let not_measured = scoped(&self.not_measured, only);
         let excluded = scoped(&self.excluded, only);
         let unreadable = scoped(&self.unreadable, only);
         Coverage {
-            found: measured + excluded + unreadable,
+            found: measured + not_measured + excluded + unreadable,
             measured,
+            not_measured,
             excluded,
             unreadable,
         }
     }
 
     /// Every file `before` measured that this tree still holds and did not measure, with the
-    /// reason this tree gives: an exclusion, a grammar that refused it, or no discovery rule
-    /// left that reaches it. Roots are the union over both trees, so a check can only discover
+    /// reason this tree gives: an exclusion, a grammar that refused it, no structural adapter,
+    /// or no discovery rule left that reaches it. Roots are the union over both trees, so a check
+    /// can only discover
     /// more, and a file that left scrutiny this way left through one of those three. The run
     /// reads one configuration, so only `after` can say why. A file under a root the
     /// derivation commit's survey did not hold matches nothing in `before` (7.1), so it is not
@@ -109,6 +124,8 @@ impl Files {
                     "the grammar refused it"
                 } else if self.excluded.contains(file) {
                     "an exclusion drops it now"
+                } else if self.not_measured.contains(file) {
+                    "no structural adapter measures its language"
                 } else {
                     "no discovery rule places it under a root now"
                 },

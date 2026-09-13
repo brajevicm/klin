@@ -168,6 +168,7 @@ fn covered(listing: &Listing, at: &Context) -> Coverage {
     Coverage {
         found: coverage::scoped(&listed, only),
         measured: coverage::scoped(&read, only),
+        not_measured: 0,
         excluded: 0,
         unreadable: 0,
     }

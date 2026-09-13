@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use crate::changed::git;
 use crate::{
     build, cache, check, complexity, config, doc_citations, doc_size, escapes, files, inventory,
-    lockfile, reference, state, stubs, turn,
+    lockfile, reference, state, stubs, syntax, turn,
 };
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -770,6 +770,7 @@ fn sections(found: &Survey, numbers: &Numbers, pinned: &Value) -> Map<String, Va
     };
     add("escapes", escapes_section(found));
     add("stubs", stubs_section(found));
+    add("dead_symbols", dead_symbols_section(found));
     add("complexity", complexity_section(found, numbers));
     add("doc_size", doc_size_section(found, numbers));
     add("doc_citations", doc_citations_section(found));
@@ -812,6 +813,22 @@ fn stubs_section(found: &Survey) -> Option<Value> {
         .languages
         .iter()
         .filter(|language| stubs::holds_rows_for(language))
+        .cloned()
+        .collect();
+    markers_section(&found.roots, &languages)
+}
+
+/// The structural table names only the languages its adapters can measure, so an unrelated
+/// parser-backed language does not make a default derived gate claim it measured nothing.
+fn dead_symbols_section(found: &Survey) -> Option<Value> {
+    let supported: Vec<&str> = syntax::structural::languages()
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    let languages: Vec<String> = found
+        .languages
+        .iter()
+        .filter(|language| supported.contains(&language.as_str()))
         .cloned()
         .collect();
     markers_section(&found.roots, &languages)

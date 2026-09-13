@@ -494,6 +494,9 @@ Each check documents its rule. The rules for the shipped checks:
   floor is the ceiling. A root or a language the derivation commit lacks has
   the floor as its ceiling, and a function found only in `after` never
   enters the percentile.
+- `dead_symbols`: the same `roots` and structural `languages` in both trees.
+  Its optional `ignore` list is a set of name globs. The survey derives only
+  the roots and languages its structural index can measure.
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
 - `build`: one entry per manifest, per ADR 0012. Manifests are a path set.
@@ -883,6 +886,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 |---|---|---|---|---|---|
 | `escapes` | silenced check, swallowed error, skipped test | file + line text | `count` rises | yes | shipped |
 | `complexity` | tangled function written in a hurry | file + declaration | `cc`, `lines` rise | yes | shipped |
+| `dead-symbols` | private declaration left unreferenced | file + declaration | `dead` rises from 0 to 1 | yes | shipped |
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
@@ -1064,6 +1068,26 @@ judged, and adding one is a spec change with its own legitimate-use fixture.
 Second known limit: a text the grammar rejects keeps its line patterns and
 loses its shapes, and the run says nothing about the loss, so a file that
 does not parse can only under-report.
+
+**`dead-symbols` judges private declarations.** The structural index supplies
+module-level functions, methods, types, constants and variables from Rust and
+TypeScript, with TSX treated as TypeScript. A declaration is dead when no
+reference with the same name exists outside its own declaration. A name
+resolves to every same-name declaration, so ambiguity keeps each declaration
+alive. Declarations marked externally visible, Rust `main`, and functions the
+shared test convention recognizes are not judged. The `ignore` list adds name
+globs. The check is name-only: it does not resolve imports, types, reflection,
+framework entry points or external callers. A declaration that becomes dead
+after being referenced at the base is `worsened`; a dead declaration already
+held at the base is one NOTE and never fails. When it can, a worsened finding
+names the first base file that held a lost reference. `--report` prints the
+complete current dead-symbol list. Pinned by
+`a_new_private_unreferenced_rust_function_fails_as_new`,
+`a_private_typescript_main_is_judged`,
+`losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
+`one_typescript_reference_keeps_duplicate_names_alive` in
+`tests/dead_symbols.rs`; the report cap is covered by
+`report_lists_every_current_dead_symbol_without_the_note_cap`.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens
@@ -1316,16 +1340,16 @@ and reads no project dependencies, such as ruff.
 ### 8.4 Tier 2: build when tier 1 is green
 
 `conventions` with structural rules (#42, ADR 0006), `public-api` (#46),
-`dead-symbols` and `reachability` over one reference extractor (#49, #52,
-#51), `changed-coverage` and `crap` over one coverage reader with a postflight
-run (#53, #54, #55, #70), `hotspots` as a report (#60), SARIF output (#65).
+`reachability` over one reference extractor (#49, #51), `changed-coverage`
+and `crap` over one coverage reader with a postflight run (#53, #54, #55,
+#70), `hotspots` as a report (#60), SARIF output (#65).
 
 The reference extractor is the `syntax` module (#49, ADR 0035). It owns the
 grammars, the parser and the file no grammar read, and it hands a check
 declarations, imports, module declarations and references, so no check holds
 another language's node kinds. It resolves a reference by name to every
 declaration of that name under the roots. That errs toward "referenced", so
-`dead-symbols` and `reachability` fail less, never more.
+`reachability` and other structural checks fail less, never more.
 
 Rust and TypeScript are the first structural languages, and TSX is TypeScript
 rather than a language of its own. A file in a language no structural adapter
@@ -1364,9 +1388,10 @@ Every check MUST:
   fixes those line shapes.
 - print one `OK:` line with what it judged on success, plus any `NOTE:`
   lines, and nothing else. What it judged includes the coverage: how many
-  files it found, measured, excluded and could not read, so a green run over
-  an unexpectedly small scope is visible on its one line. Section 11.1 writes
-  the boundary between those four counts down once, and every check uses it.
+  files it found, measured, not measured, excluded and could not read, so a
+  green run over an unexpectedly small scope is visible on its one line.
+  Section 11.1 writes the boundary between those five counts down once, and
+  every check uses it.
   A check whose section is a list a person writes entry by entry, such as
   `doc_size`, says its entries on a line each and the gate's coverage on one
   line for the gate.
@@ -1663,14 +1688,17 @@ a note. One `window:` line first. One `derived:` line per derived value,
 after the rows.
 
 Every `OK:` line ends in the gate's coverage, as `(N file(s) found, N
-measured, N excluded, N unreadable)`. The boundary is the same for every
-check: `found` counts every file the check's own discovery rule reached under
-its roots, before anything dropped one; `excluded` counts the ones an
-exclusion dropped; `unreadable` counts the ones it reached and could not read
-or parse; `measured` counts the ones it judged. A scoped run counts only the
-files in its scope. A check whose scope is not a set of files counts the
-thing it discovers — a document, a manifest, a test file the base holds — and
-its module docstring names that thing.
+measured, N not measured, N excluded, N unreadable)` when the check has
+unmeasured files; otherwise it keeps the four-count shape
+`(N file(s) found, N measured, N excluded, N unreadable)`. The boundary is
+the same for every check: `found` counts every file the check's own discovery
+rule reached under its roots, before anything dropped one; `excluded` counts
+the ones an exclusion dropped; `unreadable` counts the ones it reached and
+could not read or parse; `not measured` counts known-language files for
+which this check has no structural adapter; `measured` counts the ones it
+judged. A scoped run counts only the files in its scope. A check whose scope
+is not a set of files counts the thing it discovers — a document, a manifest,
+a test file the base holds — and its module docstring names that thing.
 
 Every failure line ends in what the ratchet judged it against: `— matched the
 base site at FILE:LINE`, `— matched the accepted entry for FILE`, or `—
@@ -1689,7 +1717,8 @@ One object on stdout. Fields:
 - `gates` list of `{name, status, findings, notes, coverage, ms, held}`,
   where `status` is the row of 11.1, `findings` and `notes` are how many that
   gate left in the two lists below, `coverage` is the
-  `{found, measured, excluded, unreadable}` counts of 11.1, or null for a
+  `{found, measured, not_measured, excluded, unreadable}` counts of 11.1,
+  or null for a
   gate that could not run far enough to measure a scope, `ms` is how long the
   gate's own measure and judge took, and `held` counts the findings the run
   let through because a base site or an accepted entry carried them, which is
@@ -1717,8 +1746,9 @@ One object on stdout. Fields:
   and `values` where the note has them. `outcome` says which kind each one
   is: `unmatched` for an accepted entry that matched nothing, `unparsed` for
   a file a grammar refused in the hook, `lost` for a file `before` measured
-  and `after` did not (8.6), and `note` for what a check left out of its
-  count. `text` carries the reason, as the `NOTE:` line printed it.
+  and `after` did not (8.6), `not-measured` for a known-language file with
+  no structural adapter, and `note` for what a check left out of its count.
+  `text` carries the reason, as the `NOTE:` line printed it.
 - `exit` integer, the code the run returns. It is not read off
   `status`: a build failure that has spent its blocks is an `ERROR` run that
   exits 0, so a harness that wants the process's answer reads `exit` and one

@@ -7,6 +7,7 @@ mod check;
 mod complexity;
 mod config;
 mod coverage;
+mod dead_symbols;
 mod doc_citations;
 mod doc_size;
 mod escapes;
@@ -68,6 +69,8 @@ enum Command {
 enum Check {
     /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
     Complexity(complexity::Args),
+    /// Fail when a private declaration has no reference outside its own declaration
+    DeadSymbols(dead_symbols::Args),
     /// Fail when a document cites a file that resolves nowhere under its roots
     DocCitations(doc_citations::Args),
     /// Fail when a document has grown past its ceiling
@@ -124,6 +127,7 @@ fn main() -> ExitCode {
 fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, config::Error> {
     match command {
         Check::Complexity(args) => complexity::run(args, start, out),
+        Check::DeadSymbols(args) => dead_symbols::run(args, start, out),
         Check::DocCitations(args) => doc_citations::run(args, start, out),
         Check::DocSize(args) => doc_size::run(args, start, out),
         Check::Escapes(args) => escapes::run(args, start, out),

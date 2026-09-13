@@ -507,6 +507,7 @@ fn findings(
         skipped,
         files: Files {
             measured: measured.into_iter().collect(),
+            not_measured: Vec::new(),
             excluded: excluded.into_iter().collect(),
             unreadable: Vec::new(),
         },

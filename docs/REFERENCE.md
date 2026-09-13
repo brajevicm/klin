@@ -83,6 +83,16 @@ One key per gate, named for its section. The sections share key names: `roots`, 
 | `skip_dirs` | directory names to skip beside the shared list | no | pinned only | — | the shared list only |
 | `exclude_except` | the files an `exclude` glob must not drop | no | pinned only | — | nothing is kept back |
 
+### `dead_symbols`
+
+| Key | Holds | Required | Source | Derivation rule | Default |
+| --- | --- | --- | --- | --- | --- |
+| `roots` | the directories the check reads | yes | derived when absent | the directories that hold source files of a known language, merged up to the shallowest directory that holds nothing but source, over the derivation commit's survey and a walk of the working tree | — |
+| `languages` | the language names that choose the file set | no | derived when absent | the languages of the files under `roots`, in the derivation commit and in the working tree | the structural languages this check supports |
+| `exclude` | globs on the basename and on the path from the tree root | no | pinned only | — | nothing is excluded |
+| `skip_dirs` | directory names to skip beside the shared list | no | pinned only | — | the shared list only |
+| `ignore` | name globs for declarations the check leaves out | no | pinned only | — | Rust `main`, test functions and declarations marked externally visible |
+
 ### `sarif`
 
 | Key | Holds | Required | Source | Derivation rule | Default |
@@ -134,6 +144,13 @@ The checks share language names and not file sets. A name selects the extensions
 | `rust` | `.rs` |
 | `swift` | `.swift` |
 | `tsx` | `.tsx` |
+| `typescript` | `.ts`, `.mts`, `.cts`, `.tsx` |
+
+### `dead_symbols`
+
+| Name | Extensions |
+| --- | --- |
+| `rust` | `.rs` |
 | `typescript` | `.ts`, `.mts`, `.cts`, `.tsx` |
 
 ## Exclusion

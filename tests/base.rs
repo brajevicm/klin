@@ -6,7 +6,7 @@ mod text;
 use harness::Tree;
 use serde_json::Value;
 
-const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
+const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const CONFIG: &str = r#"{
   "project": "t",
@@ -245,7 +245,11 @@ fn a_config_below_the_repository_root_holds_the_debt_the_base_holds() {
 
     let whole = in_the_project(&tree, &["gate"]);
     assert_eq!(whole.code, 0, "{}", whole.out);
-    assert!(!whole.says("src/lib.rs"), "{}", whole.out);
+    assert!(
+        whole.says("NOTE: 1 dead symbol(s) the base already held"),
+        "{}",
+        whole.out
+    );
 }
 
 #[test]

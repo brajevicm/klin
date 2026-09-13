@@ -539,6 +539,7 @@ fn measure(roots: &[PathBuf], selection: &Selection, repo_root: &Path) -> Result
     read.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
     let files = Files {
         measured: read,
+        not_measured: Vec::new(),
         excluded: found
             .excluded
             .iter()

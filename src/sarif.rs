@@ -125,6 +125,7 @@ fn covered(found: &Placed) -> Coverage {
     Coverage {
         found: measured + unreadable,
         measured,
+        not_measured: 0,
         excluded: 0,
         unreadable,
     }

@@ -2,31 +2,78 @@
   <img src="assets/klin-logo.svg" alt="klin" width="280">
 </p>
 
+<h1 align="center">Quality control for coding agents.</h1>
+
 <p align="center">
-  <strong>Quality ratchets for AI-driven development, in one binary.</strong>
+  <strong>Keep agents from getting green the wrong way.</strong>
 </p>
 
-> [!WARNING]
-> **klin is early-stage and under active development.**
-> The specification and CLI are still evolving.
+<p align="center">
+  Deterministic quality gates and feedback loops for Claude Code, Codex, and other coding agents.
+</p>
 
-Coding agents optimize for green. Sometimes the easiest route there is the
-wrong one: skip a test, silence a check, leave a stub, grow an already-complex
-function, or change the guardrails themselves.
+Coding agents are very good at getting to green.
 
-**klin makes existing debt the floor, not the blocker.**
+Sometimes they get there by taking a shortcut you would never accept in review: deleting a failing test, skipping a check, swallowing an error, leaving a stub, making an internal API public, or changing code without wiring it into the product.
+
+**klin catches those regressions while the agent is still working and sends them back for repair.**
 
 ```text
-existing debt     improvement       regression
-     8                 6                 9
-     ✓                 ✓                 ✗
+             ┌──────────────────────────────┐
+             │                              │
+             ▼                              │
+      coding agent works                    │
+             │                              │
+             ▼                              │
+      klin checks the change                │
+             │                              │
+             ▼                              │
+     new regression found?                  │
+          │          │                      │
+         no         yes                     │
+          │          │                      │
+          ▼          └── failure returned ──┘
+        done
+          │
+          ▼
+ independent CI verifies
+   the same quality policy
 ```
 
-It compares the tree before a change with the tree after it and rejects only
-**new or worsened debt**. Existing problems do not have to be fixed before
-adopting stricter quality gates.
+klin does not require a clean codebase first. It compares what existed before the change with what exists after it and rejects only **new or worsened debt**.
 
-## Install
+```text
+quality debt           before      after      result
+unchanged                  8          8         ✓ pass
+improved                   8          6         ✓ pass
+worsened                   8          9         ✗ fail
+```
+
+**Existing problems don't block adoption. klin only stops the change when the measured quality gets worse.**
+
+## What klin catches
+
+klin focuses on changes that can look green while still making the codebase worse.
+
+- **Tests disappear** — a failing test is deleted instead of the behavior being fixed.
+- **Checks get silenced** — tests are skipped, warnings are suppressed, or errors are swallowed.
+- **Work is left unfinished** — TODOs, placeholders, empty implementations, and other stubs remain behind.
+- **Complexity grows** — an already-complex function gets another branch instead of being simplified.
+- **Dependencies drift** — code starts relying on a dependency without the corresponding lock state.
+- **Code is added but never wired in** — finished-looking files or symbols exist, but nothing can reach them.
+- **Internal APIs leak outward** — an existing private/internal symbol becomes public just to make a change work.
+- **Project conventions are ignored** — exact repository-specific rules are violated.
+- **Architecture drifts** — dependencies cross boundaries or introduce cycles they did not before.
+- **Documentation falls behind** — code moves while references to it remain stale.
+- **Changed code loses test coverage** — the implementation changes without equivalent exercised behavior.
+
+These are deterministic checks. klin does not ask an LLM whether code is "good"; it measures specific regressions and gives the agent a concrete failure to repair.
+
+For everything else, keep using the tools that already do it well: linters, type checkers, test runners, security scanners, and human review.
+
+## Quick start
+
+Install the klin plugin for your coding agent.
 
 ### Claude Code
 
@@ -35,119 +82,93 @@ adopting stricter quality gates.
 /plugin install klin@klin
 ```
 
-The plugin carries the hooks. Its [wrapper](plugins/claude-code/bin/klin)
-fetches and caches the pinned release. `/klin:gate` runs changed-file gates;
-`/klin:gates` lists them.
-
-### Codex CLI
-
-The same plugin installs from the repository's marketplace:
+### Codex
 
 ```sh
 codex plugin marketplace add brajevicm/klin
 codex plugin add klin@klin
 ```
 
-Codex asks you to review the hooks once. The IDE extension loads no plugins.
-
-A team that wants the hooks committed, where CODEOWNERS covers them, installs
-the binary as below and writes the project hook file:
+Then opt the repository into klin:
 
 ```sh
-klin init --hooks --host codex
+klin init
 ```
 
-`--global` writes the user-level file instead. Neither form duplicates an
-enabled plugin. Both hook-file forms reach the Feedback level below.
+That's enough for local feedback. When the agent finishes a turn, klin checks what changed and returns new regressions for repair.
 
-### Standalone binary
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-```
-
-The installer verifies its checksum and writes to `~/.local/bin`; [§19.1](docs/SPEC.md)
-describes pinning a version or another directory.
-
-### Update
-
-Update the plugin with `/plugin marketplace update` or Claude's auto-update;
-its wrapper fetches the new version. Use `klin update` for standalone installs.
-Move CI's `uses` tag manually or with Renovate or Dependabot. One tag names
-every route ([ADR 0029](docs/adr/0029-the-release-tag-is-the-one-version.md)).
-
-## What it checks
-
-klin is not a linter or test runner. Its checks target agent-driven
-development:
-
-- **complexity** — functions that become more complex or longer
-- **escapes** — new skipped tests, silenced checks, or swallowed errors
-- **stubs** — placeholder work left behind
-- **doc-size** — documents that keep growing
-- **doc-citations** — references to files that no longer resolve
-- **inventory** — important declarations that disappear
-- **lockfile** and **SARIF** integration
-
-## Conformance levels
-
-klin supports **Claude Code and Codex CLI**.
-
-### Feedback
-
-Hooks put failures in front of the agent during a turn. A gate failure keeps
-the turn window open until it is fixed, accepted, or reset by a person. A
-deleted test is asked about once, then reported to the person while the next
-stop ends green.
-
-The guard protects `klin.json` and klin's own state directory. Hook files,
-CODEOWNERS, verification files and the stamp refs are ordinary files. An agent
-controls its working tree and can remove or bypass local hooks, so this level
-is feedback, not enforcement. Installing the plugin reaches this level.
-
-### Enforced
-
-Enforcement adds `klin gate --strict` in CI, on a checkout the agent never
-touched and against a protected branch. CODEOWNERS must cover `klin.json`, the
-workflow, the hook settings, and CODEOWNERS itself. Loosening a gate then takes
-a reviewed commit by a person.
-
-A deleted test remains a note in CI. It is held only by the hook's one question
-and a review of the diff.
-
-### CI setup
+For independent enforcement, add klin to CI:
 
 ```yaml
-steps:
-  - uses: actions/checkout@v5
-    with:
-      fetch-depth: 0
-  - uses: brajevicm/klin@v0.1.1
+- uses: brajevicm/klin@v1
 ```
 
-The action installs the release its tag names, or the `version` that
-`klin.json` pins, and runs `klin gate --strict`. An `args` input appends
-flags such as `--sarif PATH`.
-
-## Development
-
-```sh
-cargo build --release
-./target/release/klin gate --strict
+```text
+while the agent works     → fast feedback and repair
+before the change merges  → independent verification in CI
 ```
 
-The `cut-release` workflow accepts `patch`, `minor`, `major`, or an exact
-version. It updates every version reference, commits, tags, pushes, and lets
-the tag publish the release. The equivalent local command is:
+A standalone binary and committed hooks are also available for teams that want to manage the integration themselves.
 
-```sh
-cargo release minor --execute
+## Built for the agent loop
+
+**Turn-aware.** klin judges the change against the state of the repository when the agent's turn began, keeping feedback focused on what this agent just changed.
+
+**Ratcheted.** Existing debt is held. Improvements pass. Only new or worsened debt fails, so real codebases can adopt strict checks without a cleanup project first.
+
+**Verified again in CI.** Local hooks are fast feedback, not a security boundary. The same policy runs again in independent CI before merge.
+
+**The agent gets the mechanical failures. Humans keep the judgment calls.**
+
+## Works with your existing tools
+
+klin is not trying to replace your linters, tests, type checkers, coverage tools, or security scanners. Those tools are good at **finding problems**. klin is concerned with what happens next:
+
+```text
+linter / test / scanner / policy
+              ↓
+      deterministic finding
+              ↓
+             klin
+              ↓
+      coding agent gets it
+              ↓
+           repairs
+              ↓
+          checked again
 ```
 
-## Design
+Use the best tool for each kind of analysis. klin adds the turn-aware ratchet, feedback loop, and CI verification around those signals.
 
-The behaviour is defined by the [specification](docs/SPEC.md),
-[ADRs](docs/adr/), and CLI tests. `klin reference` prints the
-[configuration reference](docs/REFERENCE.md), every key klin reads.
+## Does it actually help?
+
+klin is designed to improve the final changes produced by coding agents, not just to add more checks.
+
+Before 1.0, we compare the same agent, task, and starting repository in two modes:
+
+- **Shadow** — klin observes the work but does not send feedback to the agent.
+- **Active** — klin sends failures back during the turn so the agent can repair them.
+
+Each task is judged by an external oracle rather than by klin itself.
+
+The comparison looks at correctness, shortcuts left in the final tree, useful repairs, unwanted interventions, repair work, and runtime overhead.
+
+The full benchmark methodology and results are published separately so positive, negative, and mixed outcomes remain visible.
+
+## What klin is not
+
+klin is one layer of an agentic engineering system, not the whole stack. It is **not**:
+
+- an AI code reviewer;
+- a replacement for tests, linters, or type checkers;
+- a general-purpose SAST or vulnerability scanner;
+- a sandbox or security boundary for coding agents;
+- a hosted dashboard or agent orchestration platform.
+
+klin handles the deterministic quality-control loop around code changes. Humans still own requirements, architecture, judgment, and review.
+
+## Documentation
+
+- [Configuration reference](docs/REFERENCE.md)
 
 Apache-2.0.
