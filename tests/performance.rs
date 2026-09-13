@@ -2,6 +2,7 @@ mod harness;
 
 use harness::{Tree, feed};
 use serde_json::{Value, json};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
 use std::time::Instant;
@@ -9,16 +10,53 @@ use std::time::Instant;
 const ITERATIONS: usize = 5;
 const EVENTS: usize = 1_000;
 
+#[derive(Clone, Copy)]
+struct Profile {
+    name: &'static str,
+    blocks: Option<usize>,
+    expected_loc: Option<usize>,
+}
+
+const BASE: Profile = Profile {
+    name: "file-count",
+    blocks: None,
+    expected_loc: None,
+};
+const DENSE_300K: Profile = Profile {
+    name: "source-dense-300k",
+    blocks: Some(0),
+    expected_loc: Some(312_077),
+};
+const DENSE_1M: Profile = Profile {
+    name: "source-dense-1m",
+    blocks: Some(4),
+    expected_loc: Some(989_077),
+};
+
 struct Fixture {
     tree: Tree,
     files_per_language: usize,
     tsx: usize,
+    loc: usize,
+    profile: Profile,
 }
 
+#[derive(Default)]
 struct Measurements {
-    warm: Vec<u128>,
-    cold: Vec<u128>,
-    strict: Vec<u128>,
+    warm: Samples,
+    cold: Samples,
+    strict: Samples,
+}
+
+#[derive(Default)]
+struct Samples {
+    total: Vec<u128>,
+    gates: BTreeMap<String, Vec<u64>>,
+}
+
+struct Sample {
+    total: u128,
+    gates: BTreeMap<String, u64>,
 }
 
 #[derive(Default)]
@@ -46,18 +84,57 @@ fn performance_fixture() {
     print_rows(&large, &large_rows);
 }
 
+#[test]
+#[ignore = "expensive; run with cargo test --test performance -- --ignored base_2k --nocapture"]
+fn base_2k() {
+    run_fixture(1_000, BASE);
+}
+
+#[test]
+#[ignore = "expensive; run with cargo test --test performance -- --ignored base_10k --nocapture"]
+fn base_10k() {
+    run_fixture(5_000, BASE);
+}
+
+#[test]
+#[ignore = "manual; run with cargo test --test performance -- --ignored structural_300k --nocapture"]
+fn structural_300k() {
+    run_fixture(5_000, DENSE_300K);
+}
+
+#[test]
+#[ignore = "manual; run with cargo test --test performance -- --ignored structural_1m --nocapture"]
+fn structural_1m() {
+    run_fixture(5_000, DENSE_1M);
+}
+
+fn run_fixture(files_per_language: usize, profile: Profile) {
+    let fixture = Fixture::with_profile(files_per_language, profile);
+    let rows = fixture.measure();
+    print_rows(&fixture, &rows);
+}
+
 impl Fixture {
     fn new(files_per_language: usize) -> Fixture {
+        Fixture::with_profile(files_per_language, BASE)
+    }
+
+    fn with_profile(files_per_language: usize, profile: Profile) -> Fixture {
         let tree = Tree::bare();
         tree.repository();
         let tsx = files_per_language / 100;
-        tree.write(
-            "klin.json",
-            &format!(
-                r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}}}"#,
-                env!("CARGO_PKG_VERSION")
-            ),
+        let structural = match profile.blocks {
+            Some(_) => {
+                r#","dead_symbols":{"roots":["rust/src","web/src"],"languages":["rust","typescript"]},"reachability":[{"name":"rust-modules","roots":["rust/src"],"pattern":"module_*.rs","languages":["rust"]},{"name":"typescript-modules","roots":["web/src"],"pattern":"module_*.ts","languages":["typescript"]}]"#
+            }
+            None => "",
+        };
+        let config = format!(
+            r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}{structural}}}"#,
+            env!("CARGO_PKG_VERSION"),
         );
+        assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
+        tree.write("klin.json", &config);
         tree.write(
             "README.md",
             "The Rust tree is `rust/src/module_0004.rs`; the TypeScript tree is `web/src/index.ts`; the manifests are `rust/Cargo.toml` and `web/package.json`.\n",
@@ -79,25 +156,65 @@ impl Fixture {
             "web/tsconfig.json",
             "{\"compilerOptions\":{\"strict\":true},\"include\":[\"src\"]}\n",
         );
+        let mut loc = 0;
         for index in 0..files_per_language {
-            tree.write(&rust_path(index), &rust_source(index, files_per_language));
+            let path = rust_path(index);
+            let source = rust_source_for(index, files_per_language, profile);
+            loc += source.bytes().filter(|byte| *byte == b'\n').count();
+            if profile.blocks.is_some() {
+                assert_eq!(
+                    source,
+                    rust_source_for(index, files_per_language, profile),
+                    "Rust source is deterministic: {path}"
+                );
+            }
+            tree.write(&path, &source);
         }
         for index in 0..files_per_language {
-            tree.write(&typescript_path(index, tsx), &typescript_source(index, tsx));
+            let path = typescript_path(index, tsx);
+            let source = typescript_source_for(index, tsx, files_per_language, profile);
+            loc += source.bytes().filter(|byte| *byte == b'\n').count();
+            if profile.blocks.is_some() {
+                assert_eq!(
+                    source,
+                    typescript_source_for(index, tsx, files_per_language, profile),
+                    "TypeScript source is deterministic: {path}"
+                );
+            }
+            tree.write(&path, &source);
         }
         tree.base();
 
-        let counts = source_counts(tree.root());
+        let counts = count_paths(git_paths(tree.root(), ["ls-files", "-z"]));
         assert_eq!(counts.rust, files_per_language, "Rust source file count");
         assert_eq!(
             counts.typescript, files_per_language,
             "TypeScript source file count"
         );
         assert_eq!(counts.tsx, tsx, "TSX source file count");
+        if let Some(expected) = profile.expected_loc {
+            assert_eq!(loc, expected, "{} source LoC", profile.name);
+        }
+        assert_shape(files_per_language, tsx, profile);
         Fixture {
             tree,
             files_per_language,
             tsx,
+            loc,
+            profile,
+        }
+    }
+
+    fn dense_gate_shape_is_present(&self, samples: &Samples) {
+        if self.profile.blocks.is_none() {
+            return;
+        }
+        for name in ["complexity", "dead-symbols", "reachability"] {
+            assert!(
+                samples.gates.contains_key(name),
+                "{name} gate timing is missing: {:?}",
+                samples.gates.keys().collect::<Vec<_>>()
+            );
         }
     }
 
@@ -119,20 +236,35 @@ impl Fixture {
             let run = self.tree.run(&["gate", "--hook", "--changed"]);
             assert_eq!(run.code, 0, "warm hook: {}", run.out);
             assert!(run.out.is_empty(), "warm hook: {}", run.out);
-            started.elapsed().as_millis()
+            let total = started.elapsed().as_millis();
+            let timed = self.tree.run(&["gate", "--changed", "--json"]);
+            assert_eq!(timed.code, 0, "warm gate timings: {}", timed.out);
+            Sample {
+                total,
+                gates: gate_times(&timed),
+            }
         });
         let cold = repeat(|| {
             let cleaned = self.tree.run(&["cache", "clean"]);
             assert_eq!(cleaned.code, 0, "cache clean: {}", cleaned.out);
             let started = Instant::now();
-            let _ = strict_run(&self.tree, "cold survey");
-            started.elapsed().as_millis()
+            let run = strict_run(&self.tree, "cold survey");
+            Sample {
+                total: started.elapsed().as_millis(),
+                gates: gate_times(&run),
+            }
         });
         let strict = repeat(|| {
             let started = Instant::now();
-            let _ = strict_run(&self.tree, "strict");
-            started.elapsed().as_millis()
+            let run = strict_run(&self.tree, "strict");
+            Sample {
+                total: started.elapsed().as_millis(),
+                gates: gate_times(&run),
+            }
         });
+        self.dense_gate_shape_is_present(&warm);
+        self.dense_gate_shape_is_present(&cold);
+        self.dense_gate_shape_is_present(&strict);
         Measurements { warm, cold, strict }
     }
 
@@ -141,62 +273,121 @@ impl Fixture {
             let rust = offset + 4;
             self.tree.write(
                 &rust_path(rust),
-                &rust_source(rust, self.files_per_language).replace("base", "turn"),
+                &rust_source_for(rust, self.files_per_language, self.profile)
+                    .replace("base", "turn"),
             );
             let typescript = offset + 4 + self.tsx;
             self.tree.write(
                 &typescript_path(typescript, self.tsx),
-                &typescript_source(typescript, self.tsx).replace("base", "turn"),
+                &typescript_source_for(typescript, self.tsx, self.files_per_language, self.profile)
+                    .replace("base", "turn"),
             );
         }
     }
 }
 
+fn assert_shape(files_per_language: usize, tsx: usize, profile: Profile) {
+    if profile.blocks.is_none() {
+        return;
+    }
+    let rust_lib = rust_source_for(0, files_per_language, profile);
+    let rust_first = rust_source_for(4, files_per_language, profile);
+    let rust_next = rust_source_for(5, files_per_language, profile);
+    let rust_duplicate = rust_source_for(260, files_per_language, profile);
+    let typescript_first = typescript_source_for(tsx + 4, tsx, files_per_language, profile);
+    let typescript_next = typescript_source_for(tsx + 5, tsx, files_per_language, profile);
+    let typescript_duplicate = typescript_source_for(tsx + 260, tsx, files_per_language, profile);
+    let tsx_file = typescript_source_for(4, tsx, files_per_language, profile);
+
+    assert!(
+        files_per_language >= 40,
+        "dense structural fixture is too small"
+    );
+    assert!(rust_lib.contains("pub mod module_0004;") && rust_lib.contains("fn main()"));
+    assert!(rust_first.contains("pub fn value_0004") && rust_first.contains("struct Record_0004"));
+    assert!(rust_first.contains("const PHASE_0004") && rust_first.contains("fn shared_04"));
+    assert!(rust_first.contains("impl Record_0004") && rust_first.contains("if value % 2"));
+    assert!(rust_next.contains("value_0004") && rust_duplicate.contains("fn shared_04"));
+    assert!(typescript_first.contains("export function value_0054"));
+    assert!(
+        typescript_first.contains("interface Record_0054")
+            && typescript_first.contains("class Holder_0054")
+    );
+    assert!(
+        typescript_first.contains("const PHASE_0054")
+            && typescript_first.contains("function shared_54")
+    );
+    assert!(typescript_first.contains("switch (result % 3)"));
+    assert!(
+        typescript_next.contains("value_0054")
+            && typescript_duplicate.contains("function shared_54")
+    );
+    assert!(tsx_file.contains("<span>{input}</span>"));
+}
+
 fn print_rows(fixture: &Fixture, rows: &Measurements) {
-    let counts = source_counts(fixture.tree.root());
+    let counts = count_paths(git_paths(fixture.tree.root(), ["ls-files", "-z"]));
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {}: rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
-        size, counts.rust, counts.typescript, counts.tsx
+        "fixture {} ({}): loc={}, rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
+        size, fixture.profile.name, fixture.loc, counts.rust, counts.typescript, counts.tsx
     );
     println!(
-        "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, project_build=excluded",
+        "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
         size,
-        median(&rows.warm)
+        median(&rows.warm.total),
+        gate_medians(&rows.warm)
     );
     println!(
-        "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}",
+        "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}, {}",
         size,
-        median(&rows.cold)
+        median(&rows.cold.total),
+        gate_medians(&rows.cold)
     );
     println!(
-        "{} strict: cache=warm, iterations={ITERATIONS}, median_ms={}",
+        "{} strict: cache=warm, iterations={ITERATIONS}, median_ms={}, {}",
         size,
-        median(&rows.strict)
+        median(&rows.strict.total),
+        gate_medians(&rows.strict)
     );
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
+    println!(
+        "machine: {}/{}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
 }
 
-fn repeat(mut run: impl FnMut() -> u128) -> Vec<u128> {
+fn repeat(mut run: impl FnMut() -> Sample) -> Samples {
+    let mut samples = Samples::default();
+    for _ in 0..ITERATIONS {
+        let sample = run();
+        samples.total.push(sample.total);
+        for (name, milliseconds) in sample.gates {
+            samples.gates.entry(name).or_default().push(milliseconds);
+        }
+    }
+    samples
+}
+
+fn repeat_totals(mut run: impl FnMut() -> u128) -> Vec<u128> {
     (0..ITERATIONS).map(|_| run()).collect()
 }
 
-fn median(values: &[u128]) -> u128 {
+fn median<T: Copy + Ord>(values: &[T]) -> T {
     let mut sorted = values.to_vec();
     sorted.sort_unstable();
     sorted[sorted.len() / 2]
 }
 
 fn strict_run(tree: &Tree, label: &str) -> harness::Run {
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["gate", "--strict", "--json"]);
     assert_eq!(run.code, 0, "{label}: {}", run.out);
-    assert!(run.says("gate(s), all passed."), "{label}: {}", run.out);
+    let report = run.json();
+    assert_eq!(report["status"], "PASS", "{label}: {report}");
+    assert_eq!(report["exit"], 0, "{label}: {report}");
     run
-}
-
-fn source_counts(root: &Path) -> Counts {
-    count_paths(git_paths(root, ["ls-files", "-z"]))
 }
 
 fn changed_counts(root: &Path) -> Counts {
@@ -234,6 +425,23 @@ fn git_paths<const N: usize>(root: &Path, args: [&str; N]) -> Vec<Vec<u8>> {
         .filter(|path| !path.is_empty())
         .map(ToOwned::to_owned)
         .collect()
+}
+
+fn gate_times(run: &harness::Run) -> BTreeMap<String, u64> {
+    run.json()["gates"]
+        .as_array()
+        .expect("gate timing rows")
+        .iter()
+        .filter_map(|gate| Some((gate["name"].as_str()?.to_string(), gate["ms"].as_u64()?)))
+        .collect()
+}
+
+fn gate_medians(samples: &Samples) -> String {
+    ["complexity", "dead-symbols", "reachability"]
+        .iter()
+        .filter_map(|name| Some(format!("{name}_ms={}", median(samples.gates.get(*name)?))))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn rust_path(index: usize) -> String {
@@ -275,6 +483,65 @@ fn rust_source(index: usize, total: usize) -> String {
     }
 }
 
+fn rust_source_for(index: usize, total: usize, profile: Profile) -> String {
+    match profile.blocks {
+        Some(blocks) => dense_rust_source(index, total, dense_blocks(index, blocks)),
+        None => rust_source(index, total),
+    }
+}
+
+fn dense_rust_source(index: usize, total: usize, blocks: usize) -> String {
+    let body = dense_rust_body(index, total, blocks);
+    match index {
+        0 => format!(
+            "pub mod held_escape;\npub mod held_stub;\npub mod module_0004;\npub mod module_0005;\nfn main() {{ value_0000(1); }}\n{body}"
+        ),
+        1 => format!(
+            "pub fn held_escape(input: usize) -> usize {{\n    Some(input).unwrap()\n}}\n{body}"
+        ),
+        2 => format!("pub fn held_stub() -> usize {{\n    todo!()\n}}\n{body}"),
+        3 => {
+            format!("#[test]\nfn test_fixture_contract() {{\n    assert_eq!(2 + 2, 4);\n}}\n{body}")
+        }
+        _ => body,
+    }
+}
+
+fn dense_rust_body(index: usize, total: usize, blocks: usize) -> String {
+    let dependency = if index == 0 || index == 4 {
+        total - 1
+    } else {
+        index - 1
+    };
+    let bucket = index % 256;
+    let helper = if blocks == 0 {
+        String::new()
+    } else {
+        format!(" + helper_{index}_{last}(input)", last = blocks - 1)
+    };
+    let mut source = format!(
+        "use crate::module_{dependency:04}::value_{dependency:04};\nconst SLOT_{index:04}: usize = {index};\nconst PHASE_{index:04}: &str = \"base\";\nstruct Record_{index:04} {{\n    value: usize,\n}}\ntype Alias_{index:04} = Record_{index:04};\nfn shared_{bucket:02}(input: usize) -> usize {{\n    input + SLOT_{index:04} + PHASE_{index:04}.len()\n}}\nimpl Record_{index:04} {{\n    fn adjust(&self) -> usize {{\n        self.value + SLOT_{index:04}\n    }}\n}}\npub fn value_{index:04}(input: usize) -> usize {{\n    let record: Alias_{index:04} = Record_{index:04} {{ value: input }};\n    shared_{bucket:02}(record.adjust()) + value_{dependency:04}(input){helper}\n}}\n"
+    );
+    for unit in 0..blocks {
+        let previous = if unit == 0 {
+            String::new()
+        } else {
+            format!(
+                "    value = helper_{index}_{previous}(value);\n",
+                previous = unit - 1
+            )
+        };
+        source.push_str(&format!(
+            "fn helper_{index}_{unit}(mut value: usize) -> usize {{\n{previous}    let bias = SLOT_{index:04} + {unit};\n    if value % 2 == 0 {{\n        value += bias;\n    }} else {{\n        value += bias + 1;\n    }}\n    for step in 0..3 {{\n        value += step;\n    }}\n    match value % 3 {{\n        0 => value,\n        1 => value + 1,\n        _ => value + 2,\n    }}\n}}\n"
+        ));
+    }
+    source
+}
+
+fn dense_blocks(index: usize, base: usize) -> usize {
+    base + usize::from(index % 10 < 7)
+}
+
 fn rust_simple(index: usize, total: usize) -> String {
     let dependency = if index == 4 { total - 1 } else { index - 1 };
     format!(
@@ -287,6 +554,72 @@ fn rust_complex(index: usize, total: usize) -> String {
     format!(
         "use crate::module_{dependency:04}::value_{dependency};\n\npub fn value_{index}(input: usize) -> usize {{\n    input + value_{dependency}(input) + {index}\n}}\n\npub fn branch_{index}(mut value: usize) -> usize {{\n    if value % 2 == 0 {{\n        value += 1;\n    }} else {{\n        value += 2;\n    }}\n    for step in 0..3 {{\n        if step == 1 {{\n            value += step;\n        }}\n    }}\n    if value % 5 == 0 {{\n        value += 5;\n    }}\n    if value % 7 == 0 {{\n        value += 7;\n    }}\n    match value % 3 {{\n        0 => value,\n        1 => value + 1,\n        _ => value + 2,\n    }}\n}}\n// base\n"
     )
+}
+
+fn typescript_source_for(index: usize, tsx: usize, total: usize, profile: Profile) -> String {
+    match profile.blocks {
+        Some(blocks) => dense_typescript_source(index, tsx, total, dense_blocks(index, blocks)),
+        None => typescript_source(index, tsx),
+    }
+}
+
+fn dense_typescript_source(index: usize, tsx: usize, total: usize, blocks: usize) -> String {
+    let body = dense_typescript_body(index, tsx, total, blocks);
+    let first = tsx + 4;
+    let component = (index >= 4 && index < first)
+        .then(|| {
+            format!(
+                "export const Component_{:04} = (input: number) => <span>{{input}}</span>;\n",
+                index - 4
+            )
+        })
+        .unwrap_or_default();
+    match index {
+        0 => format!("export {{ value_{first:04} }} from \"./module_{first:04}\";\n{body}"),
+        1 => format!(
+            "export function heldEscape(input: unknown): unknown {{\n    return input as any;\n}}\n{body}"
+        ),
+        2 => format!(
+            "export function heldStub(): never {{\n    throw new Error(\"not implemented\");\n}}\n{body}"
+        ),
+        3 => format!(
+            "import {{ value_{first:04} }} from \"./module_{first:04}\";\nexport function test_fixture(): number {{\n    return value_{first}(1);\n}}\nit(\"keeps the fixture\", () => value_{first}(1));\n{body}"
+        ),
+        _ => component + &body,
+    }
+}
+
+fn dense_typescript_body(index: usize, tsx: usize, total: usize, blocks: usize) -> String {
+    let dependency = if index == 0 || index == tsx + 4 {
+        total - 1
+    } else {
+        index - 1
+    };
+    let bucket = index % 256;
+    let helper = if blocks == 0 {
+        String::new()
+    } else {
+        format!(" + helper_{index}_{last}(input)", last = blocks - 1)
+    };
+    let import_line =
+        format!("import {{ value_{dependency:04} }} from \"./module_{dependency:04}\";\n");
+    let mut source = format!(
+        "{import_line}const SLOT_{index:04}: number = {index};\nconst PHASE_{index:04} = \"base\";\ninterface Record_{index:04} {{\n    value: number;\n}}\ntype Alias_{index:04} = Record_{index:04};\nclass Holder_{index:04} {{\n    constructor(private value: number) {{}}\n    adjust(): number {{\n        return this.value + SLOT_{index:04};\n    }}\n}}\nfunction shared_{bucket:02}(input: number): number {{\n    return input + SLOT_{index:04} + PHASE_{index:04}.length;\n}}\nexport function value_{index:04}(input: number): number {{\n    const record: Alias_{index:04} = {{ value: input }};\n    const holder = new Holder_{index:04}(record.value);\n    return shared_{bucket:02}(holder.adjust()) + value_{dependency:04}(input){helper};\n}}\n"
+    );
+    for unit in 0..blocks {
+        let previous = if unit == 0 {
+            String::new()
+        } else {
+            format!(
+                "    value = helper_{index}_{previous}(value);\n",
+                previous = unit - 1
+            )
+        };
+        source.push_str(&format!(
+            "function helper_{index}_{unit}(value: number): number {{\n{previous}    let result = value + SLOT_{index:04} + {unit};\n    if (result % 2 === 0) {{\n        result += 1;\n    }} else {{\n        result += 2;\n    }}\n    for (const step of [0, 1, 2]) {{\n        result += step;\n    }}\n    switch (result % 3) {{\n        case 0: return result;\n        case 1: return result + 1;\n        default: return result + 2;\n    }}\n}}\n"
+        ));
+    }
+    source
 }
 
 fn typescript_source(index: usize, tsx: usize) -> String {
@@ -347,7 +680,7 @@ fn typescript_complex(index: usize, tsx: usize) -> String {
 
 fn guard(tree: &Tree) -> Vec<u128> {
     let events: Vec<String> = (0..EVENTS).map(guard_event).collect();
-    repeat(|| {
+    repeat_totals(|| {
         let started = Instant::now();
         for (index, event) in events.iter().enumerate() {
             let run = feed(tree.root(), &["guard"], event);

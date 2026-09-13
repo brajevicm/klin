@@ -2075,6 +2075,25 @@ separate row. The test records the klin version, fixture counts, cache state,
 changed-file counts, iteration count and median milliseconds; it does not
 enforce the budgets on contributor hardware.
 
+The same performance test file also provides two source-dense structural rows:
+`structural_300k` holds 10,000 source files and exactly 312,077 source lines,
+and `structural_1m` holds the same 5,000 Rust plus 5,000 TypeScript split and
+exactly 989,077 source lines. Both retain 50 deterministic `.tsx` files and
+use parseable functions, methods, types, constants, imports, references,
+visibility, tests, entry points and duplicate-name buckets. Their configured
+Rust and TypeScript module families exercise `complexity`, `dead-symbols` and
+`reachability` through the real binary. Each source-dense row runs the same
+warm hook, cold survey and whole-tree strict measurements five times and
+prints the runner's existing per-gate `ms` rows for those three structural
+gates. The rows are ignored/manual and independently selectable; the `base_2k`
+and `base_10k` filters select the original rows. Fixture generation asserts
+actual file counts, exact LoC, language split, TSX count, deterministic bytes
+and representative structure; the CLI runs assert the changed-file count and
+gate timings. The output includes actual source LoC, file and language counts,
+cache state, changed files, iteration count, version and host platform, and
+explicitly excludes project build time from hook timing. These rows record
+measurements and do not add a wall-clock SLA.
+
 A check that cannot take scope, such as a whole-tree duplication share, MUST
 say so in `gate --list` and MAY be skipped by the hook under a `hook: false`
 key on its section.
