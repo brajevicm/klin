@@ -73,7 +73,7 @@ pub struct Reference {
 }
 
 /// One source location whose name the index can resolve to declarations.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct ReferenceSite<'a> {
     pub file: &'a str,
     pub line: u64,
@@ -516,66 +516,71 @@ pub struct Declared<'a> {
 /// gate fail less and never more. ADR 0035, spec 8.4.
 pub struct SourceIndex {
     files: Vec<FileFacts>,
-    by_name: BTreeMap<String, Vec<(usize, usize)>>,
+    declarations_by_name: BTreeMap<String, Vec<(usize, usize)>>,
+    references_by_name: BTreeMap<String, Vec<(usize, u64)>>,
 }
 
 impl SourceIndex {
     pub fn of(mut files: Vec<FileFacts>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
-        let mut by_name: BTreeMap<String, Vec<(usize, usize)>> = BTreeMap::new();
+        let mut declarations_by_name: BTreeMap<String, Vec<(usize, usize)>> = BTreeMap::new();
+        let mut references_by_name: BTreeMap<String, Vec<(usize, u64)>> = BTreeMap::new();
         for (at, file) in files.iter().enumerate() {
             for (which, declaration) in file.declarations.iter().enumerate() {
-                by_name
+                declarations_by_name
                     .entry(declaration.name.clone())
                     .or_default()
                     .push((at, which));
             }
+            for reference in &file.references {
+                references_by_name
+                    .entry(reference.name.clone())
+                    .or_default()
+                    .push((at, reference.line));
+            }
         }
-        SourceIndex { files, by_name }
+        for sites in references_by_name.values_mut() {
+            sites.sort_unstable();
+            sites.dedup();
+        }
+        SourceIndex {
+            files,
+            declarations_by_name,
+            references_by_name,
+        }
     }
 
     pub fn files(&self) -> &[FileFacts] {
         &self.files
     }
 
-    /// References with this name, in deterministic repository order. Resolution is deliberately
-    /// name-only, so every declaration with the name sees the same sites.
-    pub fn references(&self, name: &str) -> Vec<ReferenceSite<'_>> {
-        let mut out = self
-            .files
-            .iter()
-            .flat_map(|file| {
-                file.references
-                    .iter()
-                    .filter(|reference| reference.name == name)
-                    .map(|reference| ReferenceSite {
-                        file: file.file.as_str(),
-                        line: reference.line,
-                    })
+    /// References with this name, in file order and then line order, each site once. Resolution
+    /// is deliberately name-only, so every declaration with the name sees the same sites.
+    pub fn references(&self, name: &str) -> impl Iterator<Item = ReferenceSite<'_>> {
+        self.references_by_name
+            .get(name)
+            .into_iter()
+            .flatten()
+            .map(|(at, line)| ReferenceSite {
+                file: &self.files[*at].file,
+                line: *line,
             })
-            .collect::<Vec<_>>();
-        out.sort();
-        out.dedup();
-        out
     }
 
     /// Every declaration of this name under the roots, in file order and then line order.
-    pub fn declarations(&self, name: &str) -> Vec<Declared<'_>> {
-        let Some(held) = self.by_name.get(name) else {
-            return Vec::new();
-        };
-        held.iter()
-            .filter_map(|(at, which)| self.at(*at, *which))
-            .collect()
-    }
-
-    fn at(&self, at: usize, which: usize) -> Option<Declared<'_>> {
-        let file = self.files.get(at)?;
-        Some(Declared {
-            file: &file.file,
-            language: file.language,
-            declaration: file.declarations.get(which)?,
-        })
+    pub fn declarations(&self, name: &str) -> impl Iterator<Item = Declared<'_>> {
+        self.declarations_by_name
+            .get(name)
+            .into_iter()
+            .flatten()
+            .map(|(at, which)| {
+                let file = &self.files[*at];
+                Declared {
+                    file: &file.file,
+                    language: file.language,
+                    declaration: &file.declarations[*which],
+                }
+            })
     }
 }
 
@@ -955,7 +960,6 @@ export function charge(at: number): number {
         ]);
         let found: Vec<(&str, LanguageId, u64)> = index
             .declarations("refund")
-            .iter()
             .map(|held| (held.file, held.language, held.declaration.line))
             .collect();
         let rust = LanguageId::Rust;
@@ -963,7 +967,143 @@ export function charge(at: number): number {
             found,
             vec![("src/one.rs", rust, 1), ("src/two.rs", rust, 1)]
         );
-        assert!(index.declarations("nothing").is_empty());
+        assert_eq!(index.declarations("nothing").count(), 0);
         assert_eq!(index.files().len(), 2);
+    }
+
+    #[test]
+    fn the_index_resolves_a_name_to_every_reference_of_it_in_one_order() {
+        let index = SourceIndex::of(vec![
+            measured_facts(
+                "src/two.ts",
+                "export const a = refund() + refund();\nrefund();\n",
+            ),
+            measured_facts(
+                "src/one.rs",
+                "fn a() { refund(); other(); }\nfn b() { refund(); }\n",
+            ),
+        ]);
+        let found: Vec<(&str, u64)> = index
+            .references("refund")
+            .map(|site| (site.file, site.line))
+            .collect();
+        assert_eq!(
+            found,
+            vec![
+                ("src/one.rs", 1),
+                ("src/one.rs", 2),
+                ("src/two.ts", 1),
+                ("src/two.ts", 2)
+            ]
+        );
+        assert_eq!(index.references("other").count(), 1);
+        assert_eq!(index.references("nothing").count(), 0);
+    }
+
+    fn synthetic(file: &str, language: LanguageId, names: &[&str]) -> FileFacts {
+        FileFacts {
+            file: file.to_string(),
+            language,
+            declarations: names
+                .iter()
+                .enumerate()
+                .map(|(at, name)| Declaration {
+                    name: name.to_string(),
+                    kind: DeclarationKind::Function,
+                    line: at as u64 + 1,
+                    end: at as u64 + 1,
+                    text: format!("fn {name}"),
+                    externally_visible: false,
+                    entry_point: false,
+                })
+                .collect(),
+            imports: Vec::new(),
+            module_declarations: Vec::new(),
+            references: names
+                .iter()
+                .enumerate()
+                .map(|(at, name)| Reference {
+                    name: format!("use_{name}"),
+                    line: at as u64 + 1,
+                })
+                .collect(),
+        }
+    }
+
+    fn many_files() -> SourceIndex {
+        let mut files = Vec::new();
+        for at in (0..400).rev() {
+            let (language, suffix) = if at % 2 == 0 {
+                (LanguageId::Rust, "rs")
+            } else {
+                (LanguageId::TypeScript, "ts")
+            };
+            let own = format!("only_{at}");
+            let names: Vec<&str> = if at % 100 == 7 {
+                vec!["shared", &own, "shared"]
+            } else {
+                vec![&own]
+            };
+            files.push(synthetic(
+                &format!("src/f{at:04}.{suffix}"),
+                language,
+                &names,
+            ));
+        }
+        SourceIndex::of(files)
+    }
+
+    const SHARED_SITES: [(&str, u64); 8] = [
+        ("src/f0007.ts", 1),
+        ("src/f0007.ts", 3),
+        ("src/f0107.ts", 1),
+        ("src/f0107.ts", 3),
+        ("src/f0207.ts", 1),
+        ("src/f0207.ts", 3),
+        ("src/f0307.ts", 1),
+        ("src/f0307.ts", 3),
+    ];
+
+    #[test]
+    fn a_declaration_lookup_over_many_files_yields_only_its_own_sites_in_file_order() {
+        let index = many_files();
+        let shared: Vec<(&str, LanguageId, u64)> = index
+            .declarations("shared")
+            .map(|held| (held.file, held.language, held.declaration.line))
+            .collect();
+        let expected: Vec<(&str, LanguageId, u64)> = SHARED_SITES
+            .iter()
+            .map(|(file, line)| (*file, LanguageId::TypeScript, *line))
+            .collect();
+        assert_eq!(shared, expected);
+        let one: Vec<&str> = index
+            .declarations("only_42")
+            .map(|held| held.file)
+            .collect();
+        assert_eq!(one, vec!["src/f0042.rs"]);
+        assert_eq!(index.declarations("use_only_42").count(), 0);
+    }
+
+    #[test]
+    fn a_reference_lookup_over_many_files_yields_only_its_own_sites_in_file_order() {
+        let index = many_files();
+        let used: Vec<(&str, u64)> = index
+            .references("use_shared")
+            .map(|site| (site.file, site.line))
+            .collect();
+        assert_eq!(used, SHARED_SITES.to_vec());
+        let one: Vec<&str> = index
+            .references("use_only_42")
+            .map(|site| site.file)
+            .collect();
+        assert_eq!(one, vec!["src/f0042.rs"]);
+        assert_eq!(index.references("only_42").count(), 0);
+        for _ in 0..3 {
+            let again: Vec<u64> = index
+                .references("use_shared")
+                .map(|site| site.line)
+                .collect();
+            assert_eq!(again, vec![1, 3, 1, 3, 1, 3, 1, 3]);
+        }
     }
 }

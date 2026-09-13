@@ -316,7 +316,7 @@ fn state(
     file: &structural::FileFacts,
     declaration: &structural::Declaration,
 ) -> State {
-    let dead = !index.references(&declaration.name).iter().any(|reference| {
+    let dead = !index.references(&declaration.name).any(|reference| {
         reference.file != file.file
             || reference.line < declaration.line
             || reference.line > declaration.end
@@ -375,16 +375,14 @@ fn lost_reference(
     let now: BTreeSet<(&str, u64)> = after
         .index
         .references(&state.name)
-        .into_iter()
         .map(|reference| (reference.file, reference.line))
         .collect();
-    old.into_iter()
-        .filter(|reference| {
-            reference.file != held.file || reference.line < held.line || reference.line > held.end
-        })
-        .filter(|reference| !now.contains(&(reference.file, reference.line)))
-        .map(|reference| reference.file.to_string())
-        .next()
+    old.filter(|reference| {
+        reference.file != held.file || reference.line < held.line || reference.line > held.end
+    })
+    .filter(|reference| !now.contains(&(reference.file, reference.line)))
+    .map(|reference| reference.file.to_string())
+    .next()
 }
 
 fn evaluator() -> Evaluator<'static> {
