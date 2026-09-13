@@ -519,10 +519,17 @@ fn an_in_path_that_names_nothing_fails_and_an_except_path_that_names_nothing_is_
     );
 
     let report = tree.run(&["conventions", "--report"]);
-    assert!(
-        report.says("  hole      has an \"in\" path \"src/mian.rs\" that names nothing"),
+    assert_eq!(
+        row(&report, "c"),
+        "c Its \"in\" path matches nothing.",
         "{}",
         report.out
+    );
+    let detail = tree.run(&["conventions", "--report", "c"]);
+    assert!(
+        detail.says("The \"in\" path src/mian.rs matches nothing in the tree.\n"),
+        "{}",
+        detail.out
     );
 }
 
@@ -686,9 +693,9 @@ fn typescript_and_tsx_are_one_language_and_holes_work_in_both() {
             "no-raw-div web/b.tsx:1"
         ]
     );
-    let report = tree.run(&["conventions", "--report"]);
+    let report = tree.run(&["conventions", "--report", "no-console"]);
     assert!(
-        report.says("  language  typescript (derived)"),
+        report.says("in TypeScript. The language is derived from the files in scope.\n"),
         "{}",
         report.out
     );
@@ -902,22 +909,40 @@ fn the_report_explains_scope_language_and_remedy_and_says_zero_matches_without_f
     tree.base();
     let before = tree.status();
 
-    let run = tree.run(&["conventions", "--report"]);
+    let summary = tree.run(&["conventions", "--report"]);
+    let run = tree.run(&["conventions", "--report", "single-parser-owner"]);
 
+    assert_eq!(summary.code, 0, "{}", summary.out);
+    assert!(
+        summary.says("1 convention, nothing new\n"),
+        "{}",
+        summary.out
+    );
+    assert_eq!(
+        row(&summary, "single-parser-owner"),
+        "single-parser-owner Clear",
+        "{}",
+        summary.out
+    );
+    assert!(
+        summary.says("For details, run: klin conventions --report <name>\n"),
+        "{}",
+        summary.out
+    );
+    assert!(!summary.says("window:"), "{}", summary.out);
     assert_eq!(run.code, 0, "{}", run.out);
     for line in [
-        "single-parser-owner\n",
-        "  code      Parser::new()\n",
-        "  language  rust (derived)\n",
-        "  in        repository\n",
-        "  except    src/syntax\n",
-        "  remedy    Use the shared syntax parser.\n",
-        "  matches   0\n",
+        "window: branch",
+        "\nsingle-parser-owner\n",
+        "Forbids Parser::new() in the repository except src/syntax (1 file).\n",
+        "Reads as an expression or a type in Rust. The language is derived from the files in scope.\n",
+        "No matches.\n",
+        "Fix: Use the shared syntax parser.\n",
     ] {
         assert!(run.says(line), "{line}: {}", run.out);
     }
     for engine in ["ast-grep", "tree-sitter", "Tree-sitter"] {
-        assert!(!run.says(engine), "{}", run.out);
+        assert!(!run.says(engine) && !summary.says(engine), "{}", run.out);
     }
     assert_eq!(tree.status(), before, "the report wrote to the tree");
 }
@@ -935,27 +960,43 @@ fn the_report_lists_each_site_with_what_the_base_and_the_accepted_list_make_of_i
     tree.write("src/legacy/b.rs", "fn b() { Command::new(\"git\"); }\n");
     tree.write("src/legacy/c.rs", "fn c() { Command::new(\"git\"); }\n");
 
-    let run = tree.run(&["conventions", "--report"]);
+    let summary = tree.run(&["conventions", "--report"]);
+    let run = tree.run(&["conventions", "--report", "legacy-direct-git"]);
 
+    assert_eq!(summary.code, 0, "{}", summary.out);
+    assert!(
+        summary.says("1 convention: 1 new site\n"),
+        "{}",
+        summary.out
+    );
+    assert_eq!(
+        row(&summary, "legacy-direct-git"),
+        "legacy-direct-git 1 new src/legacy/c.rs:1",
+        "{}",
+        summary.out
+    );
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("  language  rust (pinned)\n"), "{}", run.out);
-    assert!(run.says("  matches   3\n"), "{}", run.out);
+    assert!(
+        run.says("The language is pinned in klin.json.\n"),
+        "{}",
+        run.out
+    );
     for (site, status) in [
         (
-            "src/legacy/a.rs:1\n    fn a() { Command::new(\"git\"); }",
-            "held",
+            "src/legacy/a.rs:1   fn a() { Command::new(\"git\"); }",
+            "Held",
         ),
         (
-            "src/legacy/b.rs:1\n    fn b() { Command::new(\"git\"); }",
-            "accepted",
+            "src/legacy/b.rs:1   fn b() { Command::new(\"git\"); }",
+            "Accepted",
         ),
         (
-            "src/legacy/c.rs:1\n    fn c() { Command::new(\"git\"); }",
-            "new",
+            "src/legacy/c.rs:1   fn c() { Command::new(\"git\"); }",
+            "New",
         ),
     ] {
         assert!(
-            run.says(&format!("  {site}\n    {status}\n")),
+            run.says(&format!("  {site}   {status}\n")),
             "{site}: {}",
             run.out
         );
@@ -968,9 +1009,9 @@ fn the_rules_klin_means_to_enforce_on_itself_read_as_policy_and_catch_their_viol
         r#"{
           "single-git-boundary": { "code": "Command::new(\"git\")", "except": ["src/project/git.rs", "tests"], "remedy": "Use the shared Git boundary." },
           "single-parser-owner": { "code": "Parser::new()", "except": "src/syntax", "remedy": "Use the shared syntax parser." },
-          "exhaustive-cli-dispatch": { "text": "_ => Ok(0)", "in": "src/main.rs", "remedy": "Handle every CLI command explicitly." },
+          "exhaustive-cli-dispatch": { "code": "_ => Ok(0)", "in": "src/main.rs", "remedy": "Handle every CLI command explicitly." },
           "no-old-flags": { "text": "config::Flags", "remedy": "Use the explicit execution context." },
-          "no-records-side-channel": { "text": "RefCell<Records>", "remedy": "Write through the explicit check Sink." }
+          "no-records-side-channel": { "code": "RefCell<Records>", "remedy": "Write through the explicit check Sink." }
         }"#,
     );
     tree.write(
@@ -1014,10 +1055,88 @@ fn the_report_names_a_file_in_scope_the_grammar_could_not_read() {
     tree.write("src/run.rs", "fn run() {}\n");
     tree.write("src/broken.rs", "fn broken( {\n");
 
-    let run = tree.run(&["conventions", "--report"]);
+    let summary = tree.run(&["conventions", "--report"]);
+    let run = tree.run(&["conventions", "--report", "single-git-boundary"]);
 
+    assert_eq!(
+        row(&summary, "single-git-boundary"),
+        "single-git-boundary Can't parse 1 file.",
+        "{}",
+        summary.out
+    );
     assert!(
-        run.says("  hole      the grammar could not read src/broken.rs"),
+        run.says("klin can't parse src/broken.rs, so nothing in it was measured.\n"),
+        "{}",
+        run.out
+    );
+}
+
+/// The summary row of one convention, with the padding between its columns collapsed.
+fn row(run: &harness::Run, name: &str) -> String {
+    run.out
+        .lines()
+        .find(|line| line.split_whitespace().next() == Some(name))
+        .map(|line| line.split_whitespace().collect::<Vec<&str>>().join(" "))
+        .unwrap_or_default()
+}
+
+#[test]
+fn the_report_summary_names_what_cannot_run_and_the_detail_says_what_to_do() {
+    let tree = tree(
+        r#"{
+          "no-bad": { "code": "fn (", "remedy": "Write a pattern klin can read." },
+          "no-git": { "code": "Command::new(\"git\")", "remedy": "Use the Git boundary." }
+        }"#,
+    );
+    tree.write("src/lib.rs", "fn f() { Command::new(\"git\"); }\n");
+
+    let summary = tree.run(&["conventions", "--report"]);
+    let run = tree.run(&["conventions", "--report", "no-bad"]);
+
+    assert_eq!(summary.code, 2, "{}", summary.out);
+    assert!(
+        summary.says("2 conventions: 1 new site, 1 can't run\n"),
+        "{}",
+        summary.out
+    );
+    assert_eq!(
+        row(&summary, "no-bad"),
+        "no-bad Can't read the pattern.",
+        "{}",
+        summary.out
+    );
+    assert_eq!(
+        row(&summary, "no-git"),
+        "no-git 1 new src/lib.rs:1",
+        "{}",
+        summary.out
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says(
+            "klin can't read this pattern as Rust code in any of these places: code as written, \
+             an expression, a match arm, a type, or a field."
+        ),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Fix: Write a pattern klin can read.\n"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_report_refuses_a_name_the_section_does_not_define() {
+    let tree = tree(NO_OLD_FLAGS);
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["conventions", "--report", "no-old-flag"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("no convention is named \"no-old-flag\" — the conventions are no-old-flags"),
         "{}",
         run.out
     );
@@ -1036,4 +1155,128 @@ fn an_accepted_entry_for_a_section_set_to_false_stops_no_other_gate() {
     let run = tree.run(&["gate", "--gate", "doc-size"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_fragment_reads_as_the_match_arm_it_is_whatever_its_spacing() {
+    let tree = tree(
+        r#"{ "exhaustive-cli-dispatch": { "code": "_ => Ok(0)", "in": "src/main.rs", "remedy": "Handle every CLI command explicitly." } }"#,
+    );
+    tree.write(
+        "src/main.rs",
+        "fn main() {\n    match command {\n        One => Ok(1),\n        _ => Ok(0),\n    }\n    match other { _ => Ok(1) }\n    match x { _=>Ok(0) }\n    // _ => Ok(0)\n}\n",
+    );
+
+    assert_eq!(
+        sites(&judged(&tree)),
+        [
+            "exhaustive-cli-dispatch src/main.rs:4",
+            "exhaustive-cli-dispatch src/main.rs:7"
+        ]
+    );
+    let report = tree.run(&["conventions", "--report", "exhaustive-cli-dispatch"]);
+    assert!(
+        report.says("Reads as a match arm in Rust."),
+        "{}",
+        report.out
+    );
+}
+
+#[test]
+fn a_fragment_reads_as_the_type_it_is_wherever_the_type_is_written() {
+    let tree = tree(
+        r#"{ "no-records-side-channel": { "code": "RefCell<$T>", "remedy": "Write through the explicit check Sink." } }"#,
+    );
+    tree.write(
+        "src/lib.rs",
+        "struct Run { records: RefCell<Records> }\nstruct Held(Rc<RefCell<Records>>);\nfn g(c: Cell<u8>) {}\nconst S: &str = \"RefCell<Records>\";\n",
+    );
+
+    assert_eq!(
+        sites(&judged(&tree)),
+        [
+            "no-records-side-channel src/lib.rs:1",
+            "no-records-side-channel src/lib.rs:2"
+        ]
+    );
+    let report = tree.run(&["conventions", "--report", "no-records-side-channel"]);
+    assert!(report.says("Reads as a type in Rust."), "{}", report.out);
+}
+
+#[test]
+fn a_fragment_with_two_readings_matches_through_both() {
+    let tree = tree(r#"{ "no-array-of-foo": { "code": "Array<Foo>", "remedy": "Use FooList." } }"#);
+    tree.write(
+        "web/a.ts",
+        "let a: Array<Foo> = [];\nconst n = Array<Foo>;\nlet b: Array<Bar> = [];\n",
+    );
+
+    assert_eq!(
+        sites(&judged(&tree)),
+        ["no-array-of-foo web/a.ts:1", "no-array-of-foo web/a.ts:2"]
+    );
+    let report = tree.run(&["conventions", "--report", "no-array-of-foo"]);
+    assert!(
+        report.says("Reads as code as written or a type in TypeScript."),
+        "{}",
+        report.out
+    );
+}
+
+#[test]
+fn a_node_two_readings_match_counts_once_and_two_nested_nodes_count_twice() {
+    let tree = tree(
+        r##"{
+          "no-derive": { "code": "#[derive($$$TRAITS)]", "remedy": "Write the impl." },
+          "no-nested-clone": { "code": "$VALUE.clone()", "remedy": "Borrow it." }
+        }"##,
+    );
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Debug)]\nstruct S;\nfn f() {\n    a.clone().clone();\n}\n",
+    );
+
+    let run = judged(&tree);
+    let report = run.json();
+    let mut counts: Vec<String> = report["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|finding| {
+            format!(
+                "{} {} x{}",
+                finding["values"]["convention"].as_str().unwrap_or_default(),
+                finding["line"],
+                finding["values"]["count"]
+            )
+        })
+        .collect();
+    counts.sort();
+
+    assert_eq!(
+        counts,
+        ["no-derive 1 x1", "no-nested-clone 4 x2"],
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_fragment_no_reading_holds_names_every_reading_klin_tried() {
+    let run = refused(r#"{ "c": { "code": "fn (", "remedy": "Do." } }"#);
+
+    assert!(
+        run.says(
+            "the Rust grammar reads it as none of: code as written, an expression, a match arm, a type, a field"
+        ),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_pattern_that_is_only_a_hole_is_refused_because_it_matches_everything() {
+    let run = refused(r#"{ "c": { "code": "$ANYTHING", "remedy": "Do." } }"#);
+
+    assert!(run.says("reads it as none of"), "{}", run.out);
 }

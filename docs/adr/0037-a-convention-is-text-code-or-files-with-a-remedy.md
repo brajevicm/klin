@@ -103,14 +103,44 @@ of `ast-grep-core` leaves it.
 
 ## Consequences
 
-`klin conventions --report` prints what each convention applies to, the
-language and whether it was derived or pinned, what it matches now, each
-site's outcome against the base, and what the convention cannot see. It
-writes nothing.
+### The report answers first and explains on request
 
-`match $COMMAND { $$$ARMS, _ => Ok(0) }` and `RefCell<Records>` are not Rust
-the grammar reads as one piece of code, so the rules #162 means to pin for
-them are `text` rules.
+`klin conventions --report` gives each convention one row with the first thing
+to act on: why it cannot run, its new sites, a scope that matches nothing, or
+`Clear`. `klin conventions --report <name>` explains one convention in
+sentences: what it forbids and where, what a pattern reads as and whether its
+language is derived or pinned, each site with its outcome, and the fix. Neither
+view writes anything.
+
+The first report printed every field for every convention, so ten conventions
+made a long page in which nothing needed a person. The copy uses klin's own
+words, derived and pinned, and it names no engine, grammar node or window
+unless the detail needs one. The gate's `FAIL:`, `OK:` and `NOTE:` lines of
+spec 11.1 keep their shape, so the report and the gate read differently on
+purpose.
+
+### A fragment is read where the language holds it
+
+`match $COMMAND { $$$ARMS, _ => Ok(0) }` is not Rust the grammar reads, and
+`RefCell<Records>` is not a Rust item or statement. A person who means "no
+wildcard arm that returns `Ok(0)`" should write `_ => Ok(0)`, and a person who
+means the type should write the type.
+
+So each language adapter lists the places a fragment may sit, each as the code
+written around it: for Rust, as written, an expression, a match arm, a type
+and a field, and for TypeScript, as written and a type. klin keeps every place
+where the grammar reads the fragment with no error, no supplied token, and one
+node that is the whole fragment, and a file matches through all of them.
+
+A probe showed why klin never picks one reading. TypeScript reads `Array<Foo>`
+cleanly as written, as an expression, and taking that reading alone matched
+no type annotation. The union matches both, and a node two readings hold is one
+match. The alternatives were worse for a person: a hint key names grammar
+terms, and a `text` rule matches a comment and misses `_=>Ok(0)`.
+
+`klin conventions --report <name>` says what a pattern reads as, so the reading
+klin took is visible before a gate fails. A place added to an adapter later can
+only add readings, and so matches, so it is recorded here when it lands.
 
 ADR 0006's choice of `ast-grep-core` over `ast-grep-language` stands. Its
 rule shape, `pattern`, `structural` and `example`, is superseded here.

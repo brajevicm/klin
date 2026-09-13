@@ -26,6 +26,8 @@ use crate::syntax::pattern::{self, Pattern};
 use crate::syntax::{self, Parsed, Unparsed};
 use crate::{base, changed, files, survey};
 
+mod report;
+
 pub const SECTION: &str = "conventions";
 
 const TEXT: Key = Key {
@@ -38,7 +40,7 @@ const TEXT: Key = Key {
 
 const CODE: Key = Key {
     name: "code",
-    holds: "a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list",
+    holds: "a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list. A fragment, such as a match arm or a type, is read everywhere the language holds one",
     required: false,
     rule: None,
     default: "",
@@ -107,9 +109,6 @@ const CONVENTION: &str = "convention";
 const LOGICAL: &str = "logical_gate";
 const MATCHER: &str = "matcher";
 
-/// What `in` reads as when a convention names none.
-const EVERYWHERE: &str = "repository";
-
 #[derive(clap::Args)]
 pub struct Args {
     /// The klin.json to run under (default: the nearest one above the working directory)
@@ -124,9 +123,9 @@ pub struct Args {
     /// Judge only these repo-relative files, against only their sites at the base
     #[arg(long, num_args = 0.., value_name = "FILE")]
     only: Option<Vec<String>>,
-    /// Print what each convention applies to and what it matches now, then exit
-    #[arg(long)]
-    report: bool,
+    /// Summarize every convention, or explain the one named, then exit
+    #[arg(long, value_name = "NAME", num_args = 0..=1)]
+    report: Option<Option<String>>,
 }
 
 enum Matcher {
@@ -192,6 +191,96 @@ impl Rule<'_> {
     }
 }
 
+/// Why a convention cannot run: its scope holds no language a code pattern is written in, or more
+/// than one, or no place in its language reads the pattern. Each is for a person to settle, and
+/// the gate and the report each say it in their own words. Spec 8.4.
+enum Unresolved {
+    NoLanguage,
+    Languages(Vec<&'static str>),
+    Unreadable {
+        language: &'static str,
+        unread: pattern::Unread,
+    },
+}
+
+impl Unresolved {
+    /// The configuration error a gate raises.
+    fn said(&self, name: &str) -> String {
+        match self {
+            Unresolved::NoLanguage => format!(
+                "convention \"{name}\" applies to no structural language — nothing in its scope is \
+                 written in one of: {}\n\nAdd \"language\", or an \"in\" that holds that source.",
+                pattern::languages().join(", ")
+            ),
+            Unresolved::Languages(found) => format!(
+                "convention \"{name}\" applies to more than one structural language\n\n{}\n\nAdd \
+                 \"language\": \"{}\" or narrow \"in\".",
+                found
+                    .iter()
+                    .map(|language| format!("  {language}"))
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+                found.first().copied().unwrap_or_default()
+            ),
+            Unresolved::Unreadable { language, unread } => format!(
+                "convention \"{name}\" has a \"code\" pattern that is not {language} code: {unread}"
+            ),
+        }
+    }
+
+    /// A few words for the report's summary.
+    fn short(&self) -> &'static str {
+        match self {
+            Unresolved::NoLanguage => "No source in its scope.",
+            Unresolved::Languages(_) => "More than one language in its scope.",
+            Unresolved::Unreadable { .. } => "Can't read the pattern.",
+        }
+    }
+
+    /// What the report's detail says, with what to do about it.
+    fn told(&self) -> String {
+        let called = |names: &[&str]| -> String {
+            let called: Vec<&str> = names.iter().map(|name| pattern::called(name)).collect();
+            joined(&called, "and")
+        };
+        match self {
+            Unresolved::NoLanguage => format!(
+                "Nothing in its scope is written in {}. Add \"language\", or an \"in\" path that \
+                 holds that source.",
+                joined(
+                    &pattern::languages()
+                        .into_iter()
+                        .map(pattern::called)
+                        .collect::<Vec<&str>>(),
+                    "or"
+                )
+            ),
+            Unresolved::Languages(found) => format!(
+                "Its scope holds {}. Add \"language\": \"{}\", or narrow \"in\".",
+                called(found),
+                found.first().copied().unwrap_or_default()
+            ),
+            Unresolved::Unreadable { unread, .. } => format!(
+                "klin can't read this pattern as {} code in any of these places: {}. Write one \
+                 piece of code {} holds in one of them.",
+                unread.language,
+                joined(&unread.tried, "or"),
+                unread.language
+            ),
+        }
+    }
+}
+
+/// Items as a person lists them: `a`, `a and b`, `a, b, and c`.
+fn joined(items: &[&str], conjunction: &str) -> String {
+    match items {
+        [] => String::new(),
+        [only] => only.to_string(),
+        [first, second] => format!("{first} {conjunction} {second}"),
+        [rest @ .., last] => format!("{}, {conjunction} {last}", rest.join(", ")),
+    }
+}
+
 /// One file a walk reached. `file` is the path a `text` or `code` site is keyed by, which is
 /// today's, so a renamed file keeps its sites (spec 4.4). `held` is the path its own tree holds it
 /// at, which the scope, the language and a `files` glob read. `path` is where it is on disk.
@@ -202,8 +291,8 @@ struct Place {
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    if args.report {
-        return report(args, start, out);
+    if let Some(named) = &args.report {
+        return report::run(named.as_deref(), args, start, out);
     }
     let at = Context {
         only: args.only.as_deref(),
@@ -234,9 +323,16 @@ fn every_rule<'a>(
 ) -> Result<Vec<Rule<'a>>, Error> {
     conventions
         .iter()
-        .map(|convention| resolved(convention, places))
-        .collect::<Result<Vec<Rule>, String>>()
-        .map_err(|why| Error(format!("{}: {why}", config.file.display())))
+        .map(|convention| {
+            resolved(convention, places).map_err(|why| {
+                Error(format!(
+                    "{}: {}",
+                    config.file.display(),
+                    why.said(&convention.name)
+                ))
+            })
+        })
+        .collect()
 }
 
 /// Each convention judged in name order, and the one `OK:` line with the coverage of the gate.
@@ -655,7 +751,7 @@ fn walked(config: &Config, root: &Path) -> Result<Vec<Place>, Error> {
         .collect())
 }
 
-fn resolved<'a>(convention: &'a Convention, places: &[Place]) -> Result<Rule<'a>, String> {
+fn resolved<'a>(convention: &'a Convention, places: &[Place]) -> Result<Rule<'a>, Unresolved> {
     let Matcher::Code(written) = &convention.matcher else {
         return Ok(Rule {
             convention,
@@ -666,12 +762,8 @@ fn resolved<'a>(convention: &'a Convention, places: &[Place]) -> Result<Rule<'a>
         Some(named) => (named, false),
         None => (language_in_scope(convention, places)?, true),
     };
-    let pattern = Pattern::compile(written, language).map_err(|why| {
-        format!(
-            "convention \"{}\" has a \"code\" pattern that is not {language} code: {why}",
-            convention.name
-        )
-    })?;
+    let pattern = Pattern::compile(written, language)
+        .map_err(|unread| Unresolved::Unreadable { language, unread })?;
     Ok(Rule {
         convention,
         code: Some(Code {
@@ -684,29 +776,20 @@ fn resolved<'a>(convention: &'a Convention, places: &[Place]) -> Result<Rule<'a>
 
 /// The one language the source in a convention's scope is written in. Which grammar reads the
 /// pattern plays no part: two languages, or none, is a question for a person. Spec 8.4.
-fn language_in_scope(convention: &Convention, places: &[Place]) -> Result<&'static str, String> {
+fn language_in_scope(
+    convention: &Convention,
+    places: &[Place],
+) -> Result<&'static str, Unresolved> {
     let found: BTreeSet<&'static str> = places
         .iter()
         .filter(|place| convention.applies(&place.file))
         .filter_map(|place| pattern::language_of(&place.file))
         .collect();
-    let name = &convention.name;
-    match found.iter().collect::<Vec<_>>().as_slice() {
+    let found: Vec<&'static str> = found.into_iter().collect();
+    match found.as_slice() {
         [one] => Ok(one),
-        [] => Err(format!(
-            "convention \"{name}\" applies to no structural language — nothing in its scope is \
-             written in one of: {}\n\nAdd \"language\", or an \"in\" that holds that source.",
-            pattern::languages().join(", ")
-        )),
-        [first, ..] => Err(format!(
-            "convention \"{name}\" applies to more than one structural language\n\n{}\n\nAdd \
-             \"language\": \"{first}\" or narrow \"in\".",
-            found
-                .iter()
-                .map(|language| format!("  {language}"))
-                .collect::<Vec<String>>()
-                .join("\n")
-        )),
+        [] => Err(Unresolved::NoLanguage),
+        _ => Err(Unresolved::Languages(found)),
     }
 }
 
@@ -991,89 +1074,6 @@ fn holes_said(holes: &[Hole], at: &Context, code: u8, out: &mut Sink) -> u8 {
     }
 }
 
-/// What each convention applies to and matches now, with each site's outcome against the base
-/// when a base resolves. It reads the configuration and writes nothing. Spec 8.4.
-fn report(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let config = Config::load(args.config.as_deref(), start)?;
-    let conventions = conventions(&config)?;
-    let places = walked(&config, config.root())?;
-    let (rules, problems) = partitioned(&conventions, &places);
-    let mut after = measure(&rules, &places)?;
-    let at = Context::by_hand(SECTION, start, args.config.as_deref());
-    let mut said = String::new();
-    let outcomes = statuses(
-        &config,
-        &rules,
-        &after,
-        &at,
-        &mut Sink::unrecorded(&mut said),
-    );
-    status(&outcomes, &said, out);
-    let holes = holes(&conventions, &places);
-    for convention in &conventions {
-        let rule = rules
-            .iter()
-            .find(|rule| std::ptr::eq(rule.convention, convention));
-        let explained = Explained {
-            rule,
-            problem: problems.get(convention.name.as_str()).map(String::as_str),
-            holes: holes_of(convention, rule, &holes, &after.unparsed),
-            read: after
-                .read
-                .get(&convention.name)
-                .copied()
-                .unwrap_or_default(),
-            sites: sites_of(&outcomes, &mut after, &convention.name),
-        };
-        explain(convention, &explained, out);
-    }
-    Ok(if problems.is_empty() { 0 } else { 2 })
-}
-
-/// What the report says of one convention beyond what it states: the rule it resolved to or the
-/// problem that stopped it, what it cannot see, how many files it reads, and its sites.
-struct Explained<'a> {
-    rule: Option<&'a Rule<'a>>,
-    problem: Option<&'a str>,
-    holes: Vec<String>,
-    read: usize,
-    sites: Sites,
-}
-
-/// What a convention cannot see: an `in` or `except` path that names nothing, and a file in its
-/// scope the grammar refused.
-fn holes_of(
-    convention: &Convention,
-    rule: Option<&Rule>,
-    holes: &[Hole],
-    unparsed: &[Unparsed],
-) -> Vec<String> {
-    let named = holes
-        .iter()
-        .filter(|hole| hole.convention == convention.name)
-        .map(Hole::said);
-    let parses = rule.filter(|rule| rule.code.is_some());
-    let refused = unparsed
-        .iter()
-        .filter(|file| parses.is_some_and(|rule| rule.reads(&file.file)))
-        .filter(|file| convention.applies(&file.file))
-        .map(|file| {
-            format!(
-                "the grammar could not read {}, so nothing in it was measured",
-                file.file
-            )
-        });
-    named.chain(refused).collect()
-}
-
-/// The window line the base was chosen by, or why no site has an outcome.
-fn status(outcomes: &Result<BTreeMap<String, Sites>, Error>, said: &str, out: &mut String) {
-    let _ = match outcomes {
-        Ok(_) => write!(out, "{said}"),
-        Err(why) => writeln!(out, "status: unavailable — {why}"),
-    };
-}
-
 /// The rules that read this file, each of them counting it once.
 fn reading(rules: &[Rule], file: &str, read: &mut BTreeMap<String, usize>) -> Vec<usize> {
     let reading: Vec<usize> = (0..rules.len())
@@ -1083,114 +1083,4 @@ fn reading(rules: &[Rule], file: &str, read: &mut BTreeMap<String, usize>) -> Ve
         *read.entry(rules[*at].convention.name.clone()).or_default() += 1;
     }
     reading
-}
-
-/// The conventions that resolved, and why each of the rest did not, so a report explains every
-/// convention and names what a person must settle.
-fn partitioned<'a>(
-    conventions: &'a [Convention],
-    places: &[Place],
-) -> (Vec<Rule<'a>>, BTreeMap<&'a str, String>) {
-    let mut rules = Vec::new();
-    let mut problems = BTreeMap::new();
-    for convention in conventions {
-        match resolved(convention, places) {
-            Ok(rule) => rules.push(rule),
-            Err(why) => {
-                problems.insert(convention.name.as_str(), why);
-            }
-        }
-    }
-    (rules, problems)
-}
-
-type Sites = Vec<(Finding, &'static str)>;
-
-/// One convention's sites now, with each one's outcome when the base resolved and none when it
-/// did not.
-fn sites_of(
-    outcomes: &Result<BTreeMap<String, Sites>, Error>,
-    after: &mut Measured,
-    name: &str,
-) -> Sites {
-    match outcomes {
-        Ok(judged) => judged.get(name).cloned().unwrap_or_default(),
-        Err(_) => after
-            .take(name)
-            .into_iter()
-            .map(|finding| (finding, ""))
-            .collect(),
-    }
-}
-
-fn statuses(
-    config: &Config,
-    rules: &[Rule],
-    after: &Measured,
-    at: &Context,
-    out: &mut Sink,
-) -> Result<BTreeMap<String, Sites>, Error> {
-    let mut before = at_the_base(config, rules, at, out)?;
-    let mut judged = BTreeMap::new();
-    for rule in rules {
-        let name = &rule.convention.name;
-        let gate = format!("{SECTION}/{name}");
-        let now = after.findings.get(name).cloned().unwrap_or_default();
-        let sites = ratchet::outcomes(
-            now,
-            before.take(name),
-            ratchet::accepted(config, &gate, METRICS)?,
-            METRICS,
-        );
-        judged.insert(name.clone(), sites);
-    }
-    Ok(judged)
-}
-
-/// What a convention states and resolves to: the matcher as written, the language and how it was
-/// settled, the scope, and the remedy.
-fn heading(convention: &Convention, rule: Option<&Rule>, out: &mut String) {
-    let _ = writeln!(out, "\n{}", convention.name);
-    let _ = writeln!(out, "  {:<9} {}", convention.kind(), convention.written);
-    if let Some(code) = rule.and_then(|rule| rule.code.as_ref()) {
-        let how = match code.derived {
-            true => "derived",
-            false => "pinned",
-        };
-        let _ = writeln!(out, "  language  {} ({how})", code.language);
-    }
-    let scope = |listed: &[String], none: &str| match listed.is_empty() {
-        true => none.to_string(),
-        false => listed.join(", "),
-    };
-    let _ = writeln!(out, "  in        {}", scope(&convention.within, EVERYWHERE));
-    let _ = writeln!(out, "  except    {}", scope(&convention.except, "nothing"));
-    let _ = writeln!(out, "  remedy    {}", convention.remedy);
-}
-
-fn explain(convention: &Convention, explained: &Explained, out: &mut String) {
-    heading(convention, explained.rule, out);
-    if let Some(problem) = explained.problem {
-        let _ = writeln!(
-            out,
-            "  problem   {}",
-            problem.replace('\n', "\n            ")
-        );
-        return;
-    }
-    let _ = writeln!(out, "  reads     {} file(s)", explained.read);
-    let _ = writeln!(out, "  matches   {}", explained.sites.len());
-    for hole in &explained.holes {
-        let _ = writeln!(out, "  hole      {hole}");
-    }
-    for (finding, status) in &explained.sites {
-        let _ = writeln!(
-            out,
-            "\n  {}:{}\n    {}",
-            finding.file, finding.line, finding.text
-        );
-        if !status.is_empty() {
-            let _ = writeln!(out, "    {status}");
-        }
-    }
 }

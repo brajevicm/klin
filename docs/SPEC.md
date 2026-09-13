@@ -1462,6 +1462,30 @@ the convention and the key. There is no regex and no example.
   holds a list. It matches code, so a comment or a string that reads like the
   pattern is not a match. Its languages are `rust` and `typescript`, and a
   `.tsx` file is TypeScript.
+
+A `code` pattern MAY be a fragment: the piece of code a person means, with
+nothing written around it. klin reads the fragment in each place its language
+lists. For Rust, those places are code as written, an expression, a match
+arm, a type and a field. For TypeScript, they are code as written and a type.
+A reading counts when the grammar reads the fragment there with no error and
+no token it had to supply, and one node is the whole fragment. A file matches
+through every reading, and klin never chooses among them. A node that two
+readings match is one match. A pattern that is only a hole is not a reading,
+because it would match every node. A pattern that no place reads is a config
+error that names every place klin tried.
+
+| `code` | Reads as | Matches | Does not match |
+|---|---|---|---|
+| `_ => Ok(0)` | a match arm | `_ => Ok(0),` and `_=>Ok(0)` | `_ => Ok(1)`, the text in a comment |
+| `RefCell<$T>` | a type | `records: RefCell<Records>`, `Rc<RefCell<Cache>>` | `Cell<u8>`, the text in a string |
+| `Command::new("git")` | an expression | `Command::new("git").arg("status")` | `std::process::Command::new("git")` |
+| `Array<Foo>` | code as written, a type | `let a: Array<Foo>`, `const n = Array<Foo>` | `Array<Bar>` |
+
+A reading matches the code as the grammar reads it, so a path written in full
+is a different piece of code from a path written short, and an element with
+one more attribute is a different element. A name such as `config::Flags`
+inside `use crate::config::Flags;` is part of a longer path, so a `text`
+convention says it better.
 - `files` is a glob over repository-relative paths. `**/` crosses any number
   of directories, `*` and `?` stay inside one, and `[...]` is a class. It
   reads no file.
@@ -1511,20 +1535,59 @@ A failure names the convention and prints its `remedy` as the fix. A JSON
 finding carries `convention`, `logical_gate`, `matcher`, `count` and `remedy`
 in its values, and `language` for a `code` convention (11.2).
 
-`klin conventions --report` reads the configuration and writes nothing. For
-each convention it prints:
+`klin conventions --report` reads the configuration and writes nothing. It
+prints a summary with one row per convention. `--report <name>` explains one
+convention.
 
-- the matcher as written, the language, and whether the language was derived
-  or pinned
-- `in`, `except` and the remedy
-- how many files the convention reads, and its current sites
-- each site's outcome against the base and the accepted list, when a base
-  resolves
-- each `in` or `except` path that names nothing, and each file in scope that
-  the grammar could not read
+```text
+3 conventions: 2 new sites, 1 can't run
 
-A convention whose language or pattern is a config error is printed with the
-problem, and the report exits 2.
+exhaustive-cli-dispatch    1 new                      src/main.rs:4
+no-bad                     Can't read the pattern.
+no-records-side-channel    1 new                      src/main.rs:7
+
+For details, run: klin conventions --report <name>
+```
+
+The first line counts the conventions, the new sites, the sites that got
+worse, and the conventions that cannot run. Each row names the first thing to
+act on, in this order:
+
+1. why the convention cannot run
+2. its new and worse sites, with the place of the first one
+3. an `in` path that matches nothing
+4. the files klin cannot parse
+5. its held and accepted sites
+6. `Clear`, when it matches nothing
+
+```text
+window: branch — base ead8a4f, the merge-base with main
+
+exhaustive-cli-dispatch
+
+Forbids _ => Ok(0) in src/main.rs (1 file).
+Reads as a match arm in Rust. The language is derived from the files in scope.
+
+  src/main.rs:4   _=>Ok(0),   New
+
+Fix: Handle every CLI command explicitly.
+```
+
+The detail prints the window line of 4.2 first. Then it prints:
+
+- what the convention forbids, where, and how many files it reads
+- for a `code` convention, what the pattern reads as, and whether the
+  language is derived or pinned
+- each `in` or `except` path that matches nothing, and each file klin cannot
+  parse
+- why the convention cannot run, when it cannot
+- each site with its outcome against the base and the accepted list
+- the remedy, after `Fix:`
+
+The summary prints no window line, and it counts against the same base. When
+no base resolves, both views say so and give no site an outcome. A convention
+that cannot run makes the report exit 2. A name that the section does not
+define is exit 2.
 
 A run walks each tree once. It reads each file once for every `text`
 convention, and it parses each file once for every `code` convention. ADR
@@ -2570,13 +2633,19 @@ Core:
   absolute, escaping or glob path are config errors, `in` and `except` select
   a path and everything below it from wherever klin runs, a literal holds its
   regex characters as text, a code pattern skips a comment and a string, holes
-  work in Rust, TypeScript and TSX, a scope in two languages or in none is a
+  work in Rust, TypeScript and TSX, a fragment reads as a match arm or a type
+  whatever its spacing, a fragment with two readings matches through both, a
+  node two readings match counts once and two nested nodes count twice, a
+  fragment no place reads names every place tried, a pattern that is only a
+  hole is refused, a scope in two languages or in none is a
   config error, an `in` path that names nothing is exit 2, a hidden directory
   is not read, two conventions on one line are two findings, an accepted entry
   for a removed convention is a config error, a move within a file and a
   rename inside the scope are held, a move or a copy to another file and a
-  rename out of `except` are `new`, and `--report` explains each convention,
-  names a file the grammar refused, and writes nothing.
+  rename out of `except` are `new`, `--report` summarizes every convention in
+  a row that names what to act on first, `--report <name>` explains one
+  convention with its sites and its fix, an unknown name is exit 2, and
+  neither view writes anything.
 - Coverage: a file present in both trees and measured in `before` only is a
   NOTE in the hook and exit 2 under `--strict`, whether it left through an
   exclusion or a grammar error.

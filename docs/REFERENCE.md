@@ -109,7 +109,7 @@ One key per gate, named for its section. The sections share key names: `roots`, 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
 | `text` | the literal text no line may hold, matched as written. Each convention states one of `text`, `code` and `files` | no | pinned only | — | — |
-| `code` | a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list | no | pinned only | — | — |
+| `code` | a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list. A fragment, such as a match arm or a type, is read everywhere the language holds one | no | pinned only | — | — |
 | `files` | a glob over repository-relative paths no file may sit at, where `*` stays inside one directory and `**/` crosses any number | no | pinned only | — | — |
 | `remedy` | the exact action to take instead, printed with every failure | yes | pinned only | — | — |
 | `in` | a repository-relative path, or a list of them, the convention applies to, with everything below each | no | pinned only | — | the whole repository |
