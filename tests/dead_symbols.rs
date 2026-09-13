@@ -114,12 +114,46 @@ fn configured_name_globs_are_ignored() {
 fn a_new_private_typescript_function_fails() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);
-    tree.write("src/index.ts", "function unused() {}\n");
+    tree.write("src/App.tsx", "function Component() { return null; }\n");
 
     let run = tree.run(&["dead-symbols"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/index.ts:1"), "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/App.tsx:1"), "{}", run.out);
+}
+
+#[test]
+fn a_typescript_function_that_loses_its_last_reference_fails_as_worsened() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write("src/lib.ts", "function helper() {}\n");
+    tree.write("src/caller.ts", "export function caller() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.ts", "export function caller() {}\n");
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("lost reference in src/caller.ts"), "{}", run.out);
+}
+
+#[test]
+fn a_dead_typescript_symbol_already_in_the_base_is_held() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write("src/lib.ts", "function old_debt() {}\n");
+    tree.base();
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: 1 dead symbol(s) the base already held:"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
