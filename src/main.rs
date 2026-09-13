@@ -24,6 +24,7 @@ mod lockfile;
 mod markers;
 mod radius;
 mod ratchet;
+mod reachability;
 mod reference;
 mod sarif;
 mod state;
@@ -59,6 +60,8 @@ enum Command {
     #[command(flatten)]
     Check(Check),
     #[command(flatten)]
+    Structural(Structural),
+    #[command(flatten)]
     Runner(Runner),
     #[command(flatten)]
     Tool(Tool),
@@ -67,10 +70,6 @@ enum Command {
 /// The checks a person runs one at a time, each judging its own section against the base.
 #[derive(Subcommand)]
 enum Check {
-    /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
-    Complexity(complexity::Args),
-    /// Fail when a private declaration has no reference outside its own declaration
-    DeadSymbols(dead_symbols::Args),
     /// Fail when a document cites a file that resolves nowhere under its roots
     DocCitations(doc_citations::Args),
     /// Fail when a document has grown past its ceiling
@@ -81,6 +80,17 @@ enum Check {
     Stubs(markers::Args),
     /// Fail on a scanner's result that sits on a line this window changed
     Sarif(sarif::Args),
+}
+
+/// The checks that read source through a grammar, each judging its own section against the base.
+#[derive(Subcommand)]
+enum Structural {
+    /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
+    Complexity(complexity::Args),
+    /// Fail when a private declaration has no reference outside its own declaration
+    DeadSymbols(dead_symbols::Args),
+    /// Fail when a file of a named family is referenced by no other file in the repository
+    Reachability(reachability::Args),
 }
 
 /// The runner, the survey that writes a configuration, the guard over that file, and the cache
@@ -119,6 +129,7 @@ fn main() -> ExitCode {
         Command::Runner(Runner::Guard(args)) => ExitCode::from(guard::run(&args)),
         Command::Tool(Tool::Update) => ExitCode::from(update::run()),
         Command::Check(command) => report(|start, out| check(&command, start, out)),
+        Command::Structural(command) => report(|start, out| structural(&command, start, out)),
         Command::Runner(command) => report(|start, out| runner(&command, start, out)),
         Command::Tool(command) => report(|start, out| tool(&command, start, out)),
     }
@@ -126,13 +137,19 @@ fn main() -> ExitCode {
 
 fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, config::Error> {
     match command {
-        Check::Complexity(args) => complexity::run(args, start, out),
-        Check::DeadSymbols(args) => dead_symbols::run(args, start, out),
         Check::DocCitations(args) => doc_citations::run(args, start, out),
         Check::DocSize(args) => doc_size::run(args, start, out),
         Check::Escapes(args) => escapes::run(args, start, out),
         Check::Stubs(args) => stubs::run(args, start, out),
         Check::Sarif(args) => sarif::run(args, start, out),
+    }
+}
+
+fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+    match command {
+        Structural::Complexity(args) => complexity::run(args, start, out),
+        Structural::DeadSymbols(args) => dead_symbols::run(args, start, out),
+        Structural::Reachability(args) => reachability::run(args, start, out),
     }
 }
 

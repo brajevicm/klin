@@ -9,10 +9,10 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::base;
-use crate::check::{self, Context, Sink};
+use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
@@ -121,7 +121,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let now = dead_findings(&after_states, &before, &after, &held_before);
     let judged = after_states
         .iter()
-        .filter(|state| in_scope(&state.file, at.only))
+        .filter(|state| coverage::in_scope(&state.file, at.only))
         .count();
     let dead = now.len();
     let said = after.files.coverage(at.only).said(out);
@@ -208,7 +208,7 @@ fn coverage_result(
     after: &structural::Measurement,
     out: &mut Sink,
 ) -> u8 {
-    let code = unsupported(&after.unsupported, at, code, out);
+    let code = coverage::not_measured_said(&after.unsupported, at, code, out);
     let code = coverage::lost_said(
         &after.files.lost(&before.files, config, at.only),
         at,
@@ -248,25 +248,13 @@ fn spec(config: &Config) -> Result<Spec, Error> {
 
 fn selection(config: &Config, values: &Values) -> Result<Selection, Error> {
     let named = files::strings(config, SECTION, values, reference::LANGUAGES)?;
-    let extensions =
-        structural::selected_extensions(&named).ok_or_else(|| unknown_language(config, &named))?;
+    let extensions = structural::selected_extensions(&named)
+        .ok_or_else(|| structural::unknown_language(config, SECTION, &named))?;
     Ok(Selection {
         extensions,
         skip_dirs: files::skip_dirs(config, SECTION, values)?,
         exclude: files::strings(config, SECTION, values, reference::EXCLUDE)?,
     })
-}
-
-fn unknown_language(config: &Config, named: &[String]) -> Error {
-    let name = named
-        .iter()
-        .find(|name| structural::selected_extensions(&[(*name).clone()]).is_none())
-        .map_or("", String::as_str);
-    Error(format!(
-        "{}: \"{SECTION}\" measures no language called \"{name}\" — one of: {}",
-        config.file.display(),
-        structural::known_languages().join(", ")
-    ))
 }
 
 pub fn language_extensions() -> Vec<(&'static str, String)> {
@@ -408,54 +396,10 @@ fn show(values: &Values) -> String {
     }
 }
 
-fn in_scope(file: &str, only: Option<&[String]>) -> bool {
-    only.is_none_or(|only| only.iter().any(|wanted| wanted == file))
-}
-
-fn unsupported(files: &[structural::Unsupported], at: &Context, code: u8, out: &mut Sink) -> u8 {
-    let files: Vec<&structural::Unsupported> = files
-        .iter()
-        .filter(|file| in_scope(&file.file, at.only))
-        .collect();
-    if files.is_empty() {
-        return code;
-    }
-    let word = if at.hook() { "NOTE" } else { "FAIL" };
-    let _ = writeln!(
-        out.text,
-        "{word}: {} file(s) in unsupported structural languages were not measured:",
-        files.len()
-    );
-    for file in &files {
-        let _ = writeln!(out.text, "  {}  {}", file.file, file.language);
-    }
-    let _ = writeln!(
-        out.text,
-        "Add a structural adapter for the language, or exclude the file and accept that nothing measures it."
-    );
-    out.record(|records| {
-        for file in &files {
-            let mut record = Map::new();
-            record.insert("outcome".into(), check::NOT_MEASURED.into());
-            record.insert("file".into(), file.file.clone().into());
-            record.insert(
-                "text".into(),
-                format!("{} has no structural adapter", file.language).into(),
-            );
-            if at.hook() {
-                records.notes.push(Value::Object(record));
-            } else {
-                records.findings.push(Value::Object(record));
-            }
-        }
-    });
-    if at.hook() { code } else { 2 }
-}
-
 fn report_dead(states: &[State], only: Option<&[String]>, out: &mut Sink) {
     let dead: Vec<&State> = states
         .iter()
-        .filter(|state| state.dead && in_scope(&state.file, only))
+        .filter(|state| state.dead && coverage::in_scope(&state.file, only))
         .collect();
     let _ = writeln!(out.text, "REPORT: {} dead symbol(s):", dead.len());
     for state in dead {
@@ -470,7 +414,7 @@ fn report_dead(states: &[State], only: Option<&[String]>, out: &mut Sink) {
 fn base_note(states: &[&State], only: Option<&[String]>, out: &mut Sink) {
     let dead: Vec<&State> = states
         .iter()
-        .filter(|state| state.dead && in_scope(&state.file, only))
+        .filter(|state| state.dead && coverage::in_scope(&state.file, only))
         .copied()
         .collect();
     if dead.is_empty() {

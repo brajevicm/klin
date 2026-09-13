@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
-use crate::config::Error;
+use crate::config::{Config, Error};
 use crate::coverage::Files;
 use crate::files::{self, Found};
 use crate::syntax::convention;
@@ -208,6 +208,20 @@ pub fn languages() -> Vec<(&'static str, LanguageId)> {
         }
     }
     out
+}
+
+/// The error a section raises for a language name no structural adapter measures, naming the
+/// first such name and every name it could have used.
+pub fn unknown_language(config: &Config, section: &str, named: &[String]) -> Error {
+    let name = named
+        .iter()
+        .find(|name| selected_extensions(&[(*name).clone()]).is_none())
+        .map_or("", String::as_str);
+    Error(format!(
+        "{}: \"{section}\" measures no language called \"{name}\" — one of: {}",
+        config.file.display(),
+        known_languages().join(", ")
+    ))
 }
 
 /// The configured names and extensions of structural adapters, with grammar variants merged

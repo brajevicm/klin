@@ -210,6 +210,7 @@ fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<
         "escapes",
         "stubs",
         "dead_symbols",
+        "reachability",
         "complexity",
     ] {
         let section = found.sections.get(name).cloned().filter(stated);
@@ -330,11 +331,16 @@ fn entries(held: &[Value], derived: Vec<Value>) -> Value {
     )
 }
 
+/// The held entry a derived one stands for: the one with the same `file`, else the same
+/// `name`, else the one at the same position, so a named family that moved in the list keeps
+/// its own person-written fields and takes no neighbour's.
 fn paired<'a>(held: &'a [Value], at: usize, derived: &Value) -> Option<&'a Value> {
-    match derived.get("file") {
-        Some(file) => held.iter().find(|entry| entry.get("file") == Some(file)),
-        None => held.get(at),
+    for key in ["file", "name"] {
+        if let Some(id) = derived.get(key) {
+            return held.iter().find(|entry| entry.get(key) == Some(id));
+        }
     }
+    held.get(at)
 }
 
 /// A section worth writing down. An empty list is what a survey says when it found the

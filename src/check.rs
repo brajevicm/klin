@@ -17,7 +17,7 @@ use crate::config::{Config, Error};
 use crate::reference::{Key, Languages};
 use crate::{
     complexity, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile, markers,
-    sarif, stubs, syntax,
+    reachability, sarif, stubs, syntax,
 };
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -284,6 +284,17 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(dead_symbols::language_extensions),
         derives: Some(dead_symbols::DERIVED),
         run: dead_symbols::gate,
+        needs: Needs::TheTree,
+        takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "reachability",
+        section: reachability::SECTION,
+        keys: reachability::KEYS,
+        languages: Some(reachability::language_extensions),
+        derives: Some(&[]),
+        run: reachability::gate,
         needs: Needs::TheTree,
         takes_scope: true,
         gate_per_entry: false,

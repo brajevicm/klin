@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use crate::changed::git;
 use crate::{
     build, cache, check, complexity, config, doc_citations, doc_size, escapes, files, inventory,
-    lockfile, reference, state, stubs, syntax, turn,
+    lockfile, reachability, reference, state, stubs, syntax, turn,
 };
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -197,6 +197,9 @@ struct Numbers {
     /// Every document the working tree holds and the commit does not, with the word count a
     /// NOTE names, so nothing that turns facts into lines has to read the tree.
     unjudged: Vec<(String, u64)>,
+    /// The reachability families the commit proves, and `None` where it proves none or the
+    /// config states the section. Policy read from the commit alone, never from the tree.
+    families: Option<Value>,
 }
 
 fn numbers(
@@ -215,11 +218,15 @@ fn numbers(
         Some((held, commit)) => document_ceilings(root, at, commit, held),
         None => BTreeMap::new(),
     };
+    let families = at_commit
+        .filter(|_| !states(pinned, reachability::SECTION))
+        .and_then(|(held, commit)| reachability::derived(root, at, commit, held));
     Numbers {
         cc: number(cc, CC_FLOOR, counted),
         lines: number(lines, LINES_FLOOR, counted),
         unjudged: unjudged(found, &documents, root, pinned),
         documents,
+        families,
     }
 }
 
@@ -533,7 +540,7 @@ fn at_commit(root: &Path, at: Option<&Path>, commit: Option<&str>) -> Option<Sur
 /// Every path the commit holds, as git names them, less the ones no survey reads. `None` when
 /// git could not read the commit, which is not the same as a commit that holds nothing: an
 /// empty survey would discard the whole base and read every site as new. Spec 14.
-fn listed(root: &Path, commit: &str) -> Option<Vec<String>> {
+pub(crate) fn listed(root: &Path, commit: &str) -> Option<Vec<String>> {
     let listed = git(root, &["ls-tree", "-r", "-z", "--name-only", commit])?;
     Some(
         listed
@@ -780,6 +787,7 @@ fn sections(found: &Survey, numbers: &Numbers, pinned: &Value) -> Map<String, Va
     add("escapes", escapes_section(found));
     add("stubs", stubs_section(found));
     add("dead_symbols", dead_symbols_section(found));
+    add(reachability::SECTION, numbers.families.clone());
     add("complexity", complexity_section(found, numbers));
     add("doc_size", doc_size_section(found, numbers));
     add("doc_citations", doc_citations_section(found));
@@ -1148,22 +1156,50 @@ fn derived_value(section: &str, key: Option<&str>, value: &Value, rule: &str) ->
     Value::Object(out)
 }
 
+/// The rule each derived value is explained by: a key's rule holds in every section, and a
+/// section with no keys of its own has one rule for the whole section.
+const RULES: &[(Option<&str>, Option<&str>, &str)] = &[
+    (
+        None,
+        Some("roots"),
+        "the shallowest directories that hold nothing but source",
+    ),
+    (
+        None,
+        Some("languages"),
+        "the languages of the files under those roots",
+    ),
+    (
+        None,
+        Some("manifests"),
+        "the manifests the survey found that klin can read a lockfile for",
+    ),
+    (
+        Some("doc_size"),
+        None,
+        "every Markdown file at the tree root the derivation commit holds, each ceiling its \
+         word count there rounded up to the next 50",
+    ),
+    (
+        Some("doc_citations"),
+        None,
+        "every Markdown file at the tree root, resolved against it",
+    ),
+    (Some("inventory"), None, "one entry per test root"),
+    (
+        Some("reachability"),
+        None,
+        "one family per directory whose files share a name prefix or suffix and one extension, \
+         where the derivation commit proves every member reached without ambiguity",
+    ),
+    (Some("build"), None, "one command per manifest"),
+];
+
 fn rule(section: &str, key: Option<&str>) -> &'static str {
-    match (section, key) {
-        (_, Some("roots")) => "the shallowest directories that hold nothing but source",
-        (_, Some("languages")) => "the languages of the files under those roots",
-        (_, Some("manifests")) => {
-            "the manifests the survey found that klin can read a lockfile for"
-        }
-        ("doc_size", None) => {
-            "every Markdown file at the tree root the derivation commit holds, each ceiling its \
-             word count there rounded up to the next 50"
-        }
-        ("doc_citations", None) => "every Markdown file at the tree root, resolved against it",
-        ("inventory", None) => "one entry per test root",
-        ("build", None) => "one command per manifest",
-        _ => "the survey of this tree",
-    }
+    RULES
+        .iter()
+        .find(|(of, named, _)| of.is_none_or(|of| of == section) && *named == key)
+        .map_or("the survey of this tree", |(_, _, rule)| rule)
 }
 
 /// Whether the config named this value itself, which is what tells a `pinned:` line from a

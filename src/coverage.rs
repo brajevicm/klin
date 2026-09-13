@@ -3,8 +3,9 @@ use std::fmt::Write;
 
 use serde_json::{Map, Value};
 
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Sink};
 use crate::config::Config;
+use crate::syntax::structural::Unsupported;
 
 /// The scope one gate measured, said on its `OK:` line and carried in the JSON under
 /// `coverage`. The boundary is the same for every check, and this is where it is written down:
@@ -177,6 +178,54 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
         lost.len()
     );
     2
+}
+
+/// Whether a scoped run judges this file, which is every file outside a scoped run.
+pub fn in_scope(file: &str, only: Option<&[String]>) -> bool {
+    only.is_none_or(|only| only.iter().any(|wanted| wanted == file))
+}
+
+/// What a structural gate says about the files in a language no adapter measures: a FAIL
+/// outside the hook, because a green run must not imply they were analyzed, and a NOTE in it,
+/// because the agent cannot add an adapter. Spec 8.4, 8.6.
+pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mut Sink) -> u8 {
+    let files: Vec<&Unsupported> = files
+        .iter()
+        .filter(|file| in_scope(&file.file, at.only))
+        .collect();
+    if files.is_empty() {
+        return code;
+    }
+    let word = if at.hook() { "NOTE" } else { "FAIL" };
+    let _ = writeln!(
+        out.text,
+        "{word}: {} file(s) in unsupported structural languages were not measured:",
+        files.len()
+    );
+    for file in &files {
+        let _ = writeln!(out.text, "  {}  {}", file.file, file.language);
+    }
+    let _ = writeln!(
+        out.text,
+        "Add a structural adapter for the language, or exclude the file and accept that nothing measures it."
+    );
+    out.record(|records| {
+        for file in &files {
+            let mut record = Map::new();
+            record.insert("outcome".into(), check::NOT_MEASURED.into());
+            record.insert("file".into(), file.file.clone().into());
+            record.insert(
+                "text".into(),
+                format!("{} has no structural adapter", file.language).into(),
+            );
+            if at.hook() {
+                records.notes.push(Value::Object(record));
+            } else {
+                records.findings.push(Value::Object(record));
+            }
+        }
+    });
+    if at.hook() { code } else { 2 }
 }
 
 /// Whether a note records a file the run could not read or stopped measuring, which the hook

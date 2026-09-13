@@ -63,7 +63,21 @@ the consumer.
 
 Resolving an import or a `mod foo;` to a file is a separate capability, owned
 by #50. The raw specifier, the module name and the file an attribute remapped
-the module to are kept so that work needs no second parse.
+the module to are kept so that work needs no second parse. No consumer
+resolves a specifier for itself in the meantime.
+
+### Ambiguity judges a tree and never writes its policy
+
+The coarse answer has two uses, and they are not the same. Judging a tree
+against its base, a name several declarations share counts for every one of
+them, because the failure that costs is the false one. Deriving a section
+the tree will then be judged by, the same shared name is no evidence at all:
+a family of files pinned as "always reached" on the strength of one
+ambiguous reference would fail the first tree that drops the unrelated
+declaration. So `reachability` derives a family only from members proven
+reached through a name exactly one declaration holds, with a reference from
+another file, and judges the tree afterwards by the coarse rule. A consumer
+that derives policy from these facts holds to the same split.
 
 A declaration carries the line it ends on as well as the line it starts on,
 because a check that asks whether anything outside a declaration uses it
@@ -101,8 +115,8 @@ the rejected file is a grammar that will not load, which already reported
 through `config::Error`, and a single-variant enum would state nothing the
 message does not. `thiserror` was available and is not used.
 
-The structural facts are consumed by `dead-symbols` and will be shared by
-`reachability` and later structural checks. They are tested at the module
+The structural facts are consumed by `dead-symbols` and `reachability`, and
+will be shared by later structural checks. They are tested at the module
 seam against hand-written Rust and TypeScript fixtures, and at the binary's
 command line for everything a person can see. A new structural consumer reads
 these facts rather than parsing again.

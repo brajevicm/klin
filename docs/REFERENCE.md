@@ -93,6 +93,17 @@ One key per gate, named for its section. The sections share key names: `roots`, 
 | `skip_dirs` | directory names to skip beside the shared list | no | pinned only | — | the shared list only |
 | `ignore` | name globs for declarations the check leaves out | no | pinned only | — | Rust `main`, test functions and declarations marked externally visible |
 
+### `reachability`
+
+| Key | Holds | Required | Source | Derivation rule | Default |
+| --- | --- | --- | --- | --- | --- |
+| `name` | what the run calls this family | yes | derived with the section | the root and the pattern, as `src/commands/*_command.rs` | — |
+| `roots` | the directories the check reads | yes | derived with the section | the directory the family's files share | — |
+| `pattern` | a glob on the basename that selects the family's files | yes | derived with the section | a name prefix or suffix at a token boundary with the concrete extension, shared by at least three files of one directory that the derivation commit proves reached | — |
+| `languages` | the language names that choose the file set | no | derived with the section | the one structural language of the family | the structural languages this check supports |
+| `exclude` | globs on the basename and on the path from the tree root | no | pinned only | — | nothing is excluded |
+| `skip_dirs` | directory names to skip beside the shared list | no | pinned only | — | the shared list only |
+
 ### `sarif`
 
 | Key | Holds | Required | Source | Derivation rule | Default |
@@ -147,6 +158,13 @@ The checks share language names and not file sets. A name selects the extensions
 | `typescript` | `.ts`, `.mts`, `.cts`, `.tsx` |
 
 ### `dead_symbols`
+
+| Name | Extensions |
+| --- | --- |
+| `rust` | `.rs` |
+| `typescript` | `.ts`, `.mts`, `.cts`, `.tsx` |
+
+### `reachability`
 
 | Name | Extensions |
 | --- | --- |

@@ -497,6 +497,23 @@ Each check documents its rule. The rules for the shipped checks:
 - `dead_symbols`: the same `roots` and structural `languages` in both trees.
   Its optional `ignore` list is a set of name globs. The survey derives only
   the roots and languages its structural index can measure.
+- `reachability`: one family per directory of the derivation commit whose
+  files share a basename prefix or suffix at a token boundary and one
+  concrete extension, such as `src/commands/*_command.rs`, named for its
+  root and pattern. A family is derived only when its complete cohort under
+  that root holds at least three files, every one structurally measured,
+  every one with an eligible declaration, and every one proven reached: an
+  eligible declaration whose name has exactly one declaration under the
+  index and a reference from another file. A member reached only through a
+  name several files declare is not proof. `*.rs`, `*.ts` and every other
+  bare extension are never a family, nor is a test root or a file under a
+  test directory. Of two candidates the broader wins where its whole cohort
+  is proven, and a narrower one survives a broader one that is not. The
+  policy is read from the derivation commit alone, never from the union with
+  `after`, so the tree being judged cannot widen or weaken it, and it is
+  cached under that commit. When nothing is proven no section is derived,
+  and the gate needs a section a person writes. A pinned list or `false`
+  states the whole section.
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
 - `build`: one entry per manifest, per ADR 0012. Manifests are a path set.
@@ -887,6 +904,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `escapes` | silenced check, swallowed error, skipped test | file + line text | `count` rises | yes | shipped |
 | `complexity` | tangled function written in a hurry | file + declaration | `cc`, `lines` rise | yes | shipped |
 | `dead-symbols` | private declaration left unreferenced | file + declaration | `dead` rises from 0 to 1 | yes | shipped |
+| `reachability` | implementation file nothing in the repository uses | file | `unreached` rises from 0 to 1 | yes | shipped |
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
@@ -1088,6 +1106,42 @@ complete current dead-symbol list. Pinned by
 `one_typescript_reference_keeps_duplicate_names_alive` in
 `tests/dead_symbols.rs`; the report cap is covered by
 `report_lists_every_current_dead_symbol_without_the_note_cap`.
+
+**`reachability` judges files of a named family.** A section is a list of
+families, each a `name`, `roots` and a basename `pattern`, with optional
+`languages`, `exclude` and `skip_dirs`. A member is reached when another
+file holds a reference with the name of one of its eligible declarations:
+functions, types, constants and module-level variables that are not entry
+points. Methods are not eligible, because a name such as `run` or `get`
+recurs across unrelated types and the name-only rule would reach every file
+that declares one. Exported declarations are eligible, unlike in
+`dead-symbols`, because a family says its files are wired inside this
+repository. A reference from the file itself reaches nothing. Resolution is
+the structural index's name-only rule, so a name several files declare
+reaches every one of them: ambiguity makes a file look reached and never
+unreached. The index covers the whole tree in the families' languages, so a
+scoped run still resolves against unchanged callers. Identity is the
+repository-relative path, so a file two families match is judged once,
+under the first family in the list, and an accepted entry names the path. A
+measured member with no eligible declaration is measured and not judged,
+and is neither unreached nor unsupported. A file that leaves the tree is
+`inventory`'s and no finding here. A new unreached member fails as new, a
+member that loses its last external reference is `worsened`, and one
+unreached in both trees is one NOTE. The remedy names the first proven
+reached sibling of the family in path order, and none when every sibling is
+unreached or reached only through a shared name. The check does not resolve
+imports, `mod foo;`, side-effect imports, re-exports, string registries,
+dependency injection, framework discovery by name or attribute, macro or
+build-generated callers, or callers outside the tree, which belong to #50 or
+to no V1 check; a family wired that way is narrowed, excluded or accepted by
+a person. Two files that reference only each other read as reached. Pinned
+by `a_new_command_file_nothing_references_fails_as_new`,
+`losing_the_last_external_reference_is_worsened`,
+`one_ambiguous_reference_reaches_every_file_that_declares_the_name`,
+`a_file_with_only_entry_points_or_methods_is_measured_and_not_judged`,
+`the_remedy_names_a_proven_sibling_and_not_one_reached_by_ambiguity` and
+`a_family_the_base_proves_is_derived_and_judges_a_new_working_tree_member`
+in `tests/reachability.rs`.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens
@@ -1350,6 +1404,13 @@ declarations, imports, module declarations and references, so no check holds
 another language's node kinds. It resolves a reference by name to every
 declaration of that name under the roots. That errs toward "referenced", so
 `reachability` and other structural checks fail less, never more.
+
+That conservative answer is evidence for judging a tree and not for writing
+policy over it. `reachability` judges a file reached through an ambiguous
+name, and derives a family only from members proven reached through a name
+one declaration holds, per 5.4. `dead-symbols` and `reachability` are
+shipped over this extractor; a third structural language is an adapter in
+`syntax`, and neither check branches on a language.
 
 Rust and TypeScript are the first structural languages, and TSX is TypeScript
 rather than a language of its own. A file in a language no structural adapter

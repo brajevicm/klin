@@ -225,6 +225,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
          complexity — runs\ndead-symbols — runs\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         reachability — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
         run.out
@@ -264,6 +265,7 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          stubs — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          dead-symbols — needs a section a person writes\n\
+         reachability — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
         run.out
@@ -1052,6 +1054,7 @@ fn list_names_the_excluded_gates() {
          dead-symbols — runs\n\
          escapes — excluded\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         reachability — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
         run.out
@@ -1249,6 +1252,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
          dead-symbols — excluded\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         reachability — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
         run.out
