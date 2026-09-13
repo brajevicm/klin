@@ -252,10 +252,14 @@ fn write_project_files(tree: &Tree, profile: Profile) {
         }
         None => "",
     };
-    let config = format!(
-        r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}{structural}}}"#,
-        env!("CARGO_PKG_VERSION"),
-    );
+    let config = match std::env::var("KLIN_PERF_CONFIG").as_deref() {
+        Ok("compact") => format!(r#"{{"build":[]{structural}}}"#),
+        Ok("current") | Err(_) => format!(
+            r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}{structural}}}"#,
+            env!("CARGO_PKG_VERSION"),
+        ),
+        Ok(other) => panic!("KLIN_PERF_CONFIG={other}: expected current or compact"),
+    };
     assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
     tree.write("klin.json", &config);
     tree.write(
