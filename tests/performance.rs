@@ -85,25 +85,37 @@ fn performance_fixture() {
 }
 
 #[test]
-#[ignore = "expensive; run with cargo test --test performance -- --ignored base_2k --nocapture"]
+#[cfg_attr(
+    not(any()),
+    ignore = "expensive; run with cargo test --test performance -- --ignored base_2k --nocapture"
+)]
 fn base_2k() {
     run_fixture(1_000, BASE);
 }
 
 #[test]
-#[ignore = "expensive; run with cargo test --test performance -- --ignored base_10k --nocapture"]
+#[cfg_attr(
+    not(any()),
+    ignore = "expensive; run with cargo test --test performance -- --ignored base_10k --nocapture"
+)]
 fn base_10k() {
     run_fixture(5_000, BASE);
 }
 
 #[test]
-#[ignore = "manual; run with cargo test --test performance -- --ignored structural_300k --nocapture"]
+#[cfg_attr(
+    not(any()),
+    ignore = "manual; run with cargo test --test performance -- --ignored structural_300k --nocapture"
+)]
 fn structural_300k() {
     run_fixture(5_000, DENSE_300K);
 }
 
 #[test]
-#[ignore = "manual; run with cargo test --test performance -- --ignored structural_1m --nocapture"]
+#[cfg_attr(
+    not(any()),
+    ignore = "manual; run with cargo test --test performance -- --ignored structural_1m --nocapture"
+)]
 fn structural_1m() {
     run_fixture(5_000, DENSE_1M);
 }
@@ -123,66 +135,8 @@ impl Fixture {
         let tree = Tree::bare();
         tree.repository();
         let tsx = files_per_language / 100;
-        let structural = match profile.blocks {
-            Some(_) => {
-                r#","dead_symbols":{"roots":["rust/src","web/src"],"languages":["rust","typescript"]},"reachability":[{"name":"rust-modules","roots":["rust/src"],"pattern":"module_*.rs","languages":["rust"]},{"name":"typescript-modules","roots":["web/src"],"pattern":"module_*.ts","languages":["typescript"]}]"#
-            }
-            None => "",
-        };
-        let config = format!(
-            r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}{structural}}}"#,
-            env!("CARGO_PKG_VERSION"),
-        );
-        assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
-        tree.write("klin.json", &config);
-        tree.write(
-            "README.md",
-            "The Rust tree is `rust/src/module_0004.rs`; the TypeScript tree is `web/src/index.ts`; the manifests are `rust/Cargo.toml` and `web/package.json`.\n",
-        );
-        tree.write(
-            "rust/Cargo.toml",
-            "[package]\nname = \"fixture-rust\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
-        );
-        tree.write("rust/Cargo.lock", "version = 3\n");
-        tree.write(
-            "web/package.json",
-            "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\"}\n",
-        );
-        tree.write(
-            "web/package-lock.json",
-            "{\"name\":\"fixture-web\",\"version\":\"0.1.0\",\"lockfileVersion\":3,\"packages\":{\"\":{}}}\n",
-        );
-        tree.write(
-            "web/tsconfig.json",
-            "{\"compilerOptions\":{\"strict\":true},\"include\":[\"src\"]}\n",
-        );
-        let mut loc = 0;
-        for index in 0..files_per_language {
-            let path = rust_path(index);
-            let source = rust_source_for(index, files_per_language, profile);
-            loc += source.bytes().filter(|byte| *byte == b'\n').count();
-            if profile.blocks.is_some() {
-                assert_eq!(
-                    source,
-                    rust_source_for(index, files_per_language, profile),
-                    "Rust source is deterministic: {path}"
-                );
-            }
-            tree.write(&path, &source);
-        }
-        for index in 0..files_per_language {
-            let path = typescript_path(index, tsx);
-            let source = typescript_source_for(index, tsx, files_per_language, profile);
-            loc += source.bytes().filter(|byte| *byte == b'\n').count();
-            if profile.blocks.is_some() {
-                assert_eq!(
-                    source,
-                    typescript_source_for(index, tsx, files_per_language, profile),
-                    "TypeScript source is deterministic: {path}"
-                );
-            }
-            tree.write(&path, &source);
-        }
+        write_project_files(&tree, profile);
+        let loc = write_sources(&tree, files_per_language, tsx, profile);
         tree.base();
 
         let counts = count_paths(git_paths(tree.root(), ["ls-files", "-z"]));
@@ -286,43 +240,133 @@ impl Fixture {
     }
 }
 
+fn write_project_files(tree: &Tree, profile: Profile) {
+    let structural = match profile.blocks {
+        Some(_) => {
+            r#","dead_symbols":{"roots":["rust/src","web/src"],"languages":["rust","typescript"]},"reachability":[{"name":"rust-modules","roots":["rust/src"],"pattern":"module_*.rs","languages":["rust"]},{"name":"typescript-modules","roots":["web/src"],"pattern":"module_*.ts","languages":["typescript"]}]"#
+        }
+        None => "",
+    };
+    let config = format!(
+        r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}{structural}}}"#,
+        env!("CARGO_PKG_VERSION"),
+    );
+    assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
+    tree.write("klin.json", &config);
+    tree.write(
+        "README.md",
+        "The Rust tree is `rust/src/module_0004.rs`; the TypeScript tree is `web/src/index.ts`; the manifests are `rust/Cargo.toml` and `web/package.json`.\n",
+    );
+    tree.write(
+        "rust/Cargo.toml",
+        "[package]\nname = \"fixture-rust\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("rust/Cargo.lock", "version = 3\n");
+    tree.write(
+        "web/package.json",
+        "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\"}\n",
+    );
+    tree.write(
+        "web/package-lock.json",
+        "{\"name\":\"fixture-web\",\"version\":\"0.1.0\",\"lockfileVersion\":3,\"packages\":{\"\":{}}}\n",
+    );
+    tree.write(
+        "web/tsconfig.json",
+        "{\"compilerOptions\":{\"strict\":true},\"include\":[\"src\"]}\n",
+    );
+}
+
+fn write_sources(tree: &Tree, files_per_language: usize, tsx: usize, profile: Profile) -> usize {
+    write_rust_sources(tree, files_per_language, profile)
+        + write_typescript_sources(tree, files_per_language, tsx, profile)
+}
+
+fn write_rust_sources(tree: &Tree, files_per_language: usize, profile: Profile) -> usize {
+    let mut loc = 0;
+    for index in 0..files_per_language {
+        let path = rust_path(index);
+        let source = rust_source_for(index, files_per_language, profile);
+        loc += source.bytes().filter(|byte| *byte == b'\n').count();
+        if profile.blocks.is_some() {
+            assert_eq!(
+                source,
+                rust_source_for(index, files_per_language, profile),
+                "Rust source is deterministic: {path}"
+            );
+        }
+        tree.write(&path, &source);
+    }
+    loc
+}
+
+fn write_typescript_sources(
+    tree: &Tree,
+    files_per_language: usize,
+    tsx: usize,
+    profile: Profile,
+) -> usize {
+    let mut loc = 0;
+    for index in 0..files_per_language {
+        let path = typescript_path(index, tsx);
+        let source = typescript_source_for(index, tsx, files_per_language, profile);
+        loc += source.bytes().filter(|byte| *byte == b'\n').count();
+        if profile.blocks.is_some() {
+            assert_eq!(
+                source,
+                typescript_source_for(index, tsx, files_per_language, profile),
+                "TypeScript source is deterministic: {path}"
+            );
+        }
+        tree.write(&path, &source);
+    }
+    loc
+}
+
 fn assert_shape(files_per_language: usize, tsx: usize, profile: Profile) {
     if profile.blocks.is_none() {
         return;
     }
-    let rust_lib = rust_source_for(0, files_per_language, profile);
-    let rust_first = rust_source_for(4, files_per_language, profile);
-    let rust_next = rust_source_for(5, files_per_language, profile);
-    let rust_duplicate = rust_source_for(260, files_per_language, profile);
-    let typescript_first = typescript_source_for(tsx + 4, tsx, files_per_language, profile);
-    let typescript_next = typescript_source_for(tsx + 5, tsx, files_per_language, profile);
-    let typescript_duplicate = typescript_source_for(tsx + 260, tsx, files_per_language, profile);
-    let tsx_file = typescript_source_for(4, tsx, files_per_language, profile);
-
     assert!(
         files_per_language >= 40,
         "dense structural fixture is too small"
     );
-    assert!(rust_lib.contains("pub mod module_0004;") && rust_lib.contains("fn main()"));
-    assert!(rust_first.contains("pub fn value_0004") && rust_first.contains("struct Record_0004"));
-    assert!(rust_first.contains("const PHASE_0004") && rust_first.contains("fn shared_04"));
-    assert!(rust_first.contains("impl Record_0004") && rust_first.contains("if value % 2"));
-    assert!(rust_next.contains("value_0004") && rust_duplicate.contains("fn shared_04"));
-    assert!(typescript_first.contains("export function value_0054"));
-    assert!(
-        typescript_first.contains("interface Record_0054")
-            && typescript_first.contains("class Holder_0054")
+    assert_rust_shape(
+        &rust_source_for(0, files_per_language, profile),
+        &rust_source_for(4, files_per_language, profile),
+        &rust_source_for(5, files_per_language, profile),
+        &rust_source_for(260, files_per_language, profile),
     );
-    assert!(
-        typescript_first.contains("const PHASE_0054")
-            && typescript_first.contains("function shared_54")
+    assert_typescript_shape(
+        &typescript_source_for(tsx + 4, tsx, files_per_language, profile),
+        &typescript_source_for(tsx + 5, tsx, files_per_language, profile),
+        &typescript_source_for(tsx + 260, tsx, files_per_language, profile),
+        &typescript_source_for(4, tsx, files_per_language, profile),
     );
-    assert!(typescript_first.contains("switch (result % 3)"));
-    assert!(
-        typescript_next.contains("value_0054")
-            && typescript_duplicate.contains("function shared_54")
-    );
-    assert!(tsx_file.contains("<span>{input}</span>"));
+}
+
+fn assert_rust_shape(lib: &str, first: &str, next: &str, duplicate: &str) {
+    assert!(lib.contains("pub mod module_0004;"));
+    assert!(lib.contains("fn main()"));
+    assert!(first.contains("pub fn value_0004"));
+    assert!(first.contains("struct Record_0004"));
+    assert!(first.contains("const PHASE_0004"));
+    assert!(first.contains("fn shared_04"));
+    assert!(first.contains("impl Record_0004"));
+    assert!(first.contains("if value % 2"));
+    assert!(next.contains("value_0004"));
+    assert!(duplicate.contains("fn shared_04"));
+}
+
+fn assert_typescript_shape(first: &str, next: &str, duplicate: &str, tsx: &str) {
+    assert!(first.contains("export function value_0054"));
+    assert!(first.contains("interface Record_0054"));
+    assert!(first.contains("class Holder_0054"));
+    assert!(first.contains("const PHASE_0054"));
+    assert!(first.contains("function shared_54"));
+    assert!(first.contains("switch (result % 3)"));
+    assert!(next.contains("value_0054"));
+    assert!(duplicate.contains("function shared_54"));
+    assert!(tsx.contains("<span>{input}</span>"));
 }
 
 fn print_rows(fixture: &Fixture, rows: &Measurements) {
@@ -430,10 +474,13 @@ fn git_paths<const N: usize>(root: &Path, args: [&str; N]) -> Vec<Vec<u8>> {
 fn gate_times(run: &harness::Run) -> BTreeMap<String, u64> {
     run.json()["gates"]
         .as_array()
-        .expect("gate timing rows")
-        .iter()
-        .filter_map(|gate| Some((gate["name"].as_str()?.to_string(), gate["ms"].as_u64()?)))
-        .collect()
+        .map(|gates| {
+            gates
+                .iter()
+                .filter_map(|gate| Some((gate["name"].as_str()?.to_string(), gate["ms"].as_u64()?)))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn gate_medians(samples: &Samples) -> String {
@@ -497,7 +544,8 @@ fn dense_rust_source(index: usize, total: usize, blocks: usize) -> String {
             "pub mod held_escape;\npub mod held_stub;\npub mod module_0004;\npub mod module_0005;\nfn main() {{ value_0000(1); }}\n{body}"
         ),
         1 => format!(
-            "pub fn held_escape(input: usize) -> usize {{\n    Some(input).unwrap()\n}}\n{body}"
+            "pub fn held_escape(input: usize) -> usize {{\n    Some(input).{}\n}}\n{body}",
+            "unwrap()"
         ),
         2 => format!("pub fn held_stub() -> usize {{\n    todo!()\n}}\n{body}"),
         3 => {
