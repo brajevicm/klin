@@ -819,7 +819,6 @@ fn codex(tool: &str, command: String) -> String {
     .to_string()
 }
 
-
 #[test]
 #[ignore = "temporary root-count benchmark"]
 fn monorepo_root_count_benchmark() {
@@ -836,7 +835,9 @@ fn monorepo_root_count_benchmark() {
         for package in 0..packages {
             tree.write(
                 &format!("packages/p{package:04}/Cargo.toml"),
-                &format!("[package]\nname=\"p{package:04}\"\nversion=\"0.1.0\"\nedition=\"2024\"\n"),
+                &format!(
+                    "[package]\nname=\"p{package:04}\"\nversion=\"0.1.0\"\nedition=\"2024\"\n"
+                ),
             );
             for file in 0..per_package {
                 tree.write(
