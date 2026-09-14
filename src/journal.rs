@@ -43,7 +43,7 @@ pub struct Stop {
     /// The site ids this stop asked about, as the turn stamp records them. Spec 8.2.
     pub asked: Vec<String>,
     /// The unusual paths this stop took, empty on a clean one: `turn-restored`,
-    /// `branch-fallback`, `count-unwritable`.
+    /// `branch-fallback`, `count-unwritable`, `no-prompt-event`.
     pub flags: Vec<&'static str>,
     /// The parts of the `systemMessage` this stop put in front of the person, empty when it
     /// printed none: `note`, `turn` and `weekly`. Spec 9.5.

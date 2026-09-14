@@ -1934,6 +1934,15 @@ that order. The stop reads the journal for this only where the turn stamp
 records an intervention, or where the prompt's gate block is spent (16.3),
 and its journal line records which parts it printed (11.4).
 
+A red pass-through that finds the prompt's gate block spent also checks the
+journal for a `prompt` line carrying the stop event's session id. If the event
+has no session id, it checks nothing. If no such line exists, the stop adds a
+note to its `systemMessage`: ``klin: no prompt event reached this session; klin
+will not block again until `klin radius` runs on session start and on prompt
+submitted.`` It still exits 0 and changes neither the block nor the verdict.
+The note is a `note` in `told`, and the stop carries `no-prompt-event` in its
+`flags`.
+
 ### 9.6 The journal
 
 Every `klin gate --hook` stop MUST append one line, the record of 11.4, to
@@ -2120,10 +2129,11 @@ failure, or an error alike — plus what only the hook knew:
 - `flags`, the unusual paths this stop took, empty on a clean stop:
   `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
   window because no stamp resolved), `count-unwritable` (a build stamp that
-  would not write, 14).
+  would not write, 14), `no-prompt-event` (16.3, a spent gate block found no
+  prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
-  empty where it printed none: `note` (8.2, 14), `turn` and `weekly` (9.5). A
-  reader finds the last weekly line from it.
+  empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
+  (9.5). A reader finds the last weekly line from it.
 - `window`, the window the stop judged, which the line carries even where its
   run compared nothing against a base, so a reader knows which turn stamp
   each stop judged against (11.5).
@@ -2567,7 +2577,12 @@ hook(event):
     if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
     return 0
   write_verdict_atomic(state/turn, RED)
-  if count.gate_spent: report(); return 0
+  if count.gate_spent:
+    report()
+    if event.session and no_prompt_line(event.session):
+      systemMessage("klin: no prompt event reached this session; klin will not block again until `klin radius` runs on session start and on prompt submitted.")
+      flags += "no-prompt-event"
+    return 0
   if count.builds == 0 and host.blocked_before(event): report(); return 0
   count.gate_spent = True; write_atomic(state/build-blocked, count)
   add_asked_atomic(state/turn, reported)           # 8.2, cleared when the stamp moves

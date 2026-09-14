@@ -15,7 +15,9 @@ const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
                          "session_id": "s-1"}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true,
                                 "session_id": "s-1"}"#;
-const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1"}"#;
+const A_SECOND_STOP_WITHOUT_SESSION: &str =
+    r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 
 fn tree(config: &str) -> Tree {
     let tree = Tree::new();
@@ -60,6 +62,12 @@ fn field<'a>(line: &'a Value, path: &[&str]) -> &'a Value {
             .unwrap_or_else(|| panic!("no {key} in {line}"));
     }
     held
+}
+
+fn has_flag(line: &Value, wanted: &str) -> bool {
+    line.get("flags")
+        .and_then(Value::as_array)
+        .is_some_and(|flags| flags.iter().any(|flag| flag == wanted))
 }
 
 #[test]
@@ -136,6 +144,57 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
         "{}",
         lines[1]
     );
+    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
+}
+
+#[test]
+fn a_spent_gate_block_tells_the_person_when_no_prompt_event_reached_klin() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(second.says("klin radius"), "{}", second.out);
+
+    let lines = stops(&tree);
+    assert!(has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
+}
+
+#[test]
+fn a_spent_gate_block_with_no_session_does_not_tell_the_person_to_run_radius() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let second = stop(&tree, A_SECOND_STOP_WITHOUT_SESSION);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("klin radius"), "{}", second.out);
+
+    let lines = stops(&tree);
+    assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
+}
+
+#[test]
+fn a_new_prompt_does_not_get_the_no_prompt_note_from_an_earlier_intervention() {
+    let tree = gate_radius_tree();
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let session_start = r#"{"hook_event_name": "SessionStart", "session_id": "s-1"}"#;
+    let started = harness::feed(tree.root(), &["radius"], session_start);
+    assert_eq!(started.code, 0, "{}", started.out);
+
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("klin radius"), "{}", second.out);
+
+    let lines = stops(&tree);
+    assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
 }
 
 #[test]
@@ -320,10 +379,23 @@ const RADIUS_PINNED: &str = r#"{
   "radius": { "lines": 50, "directories": 2 }
 }"#;
 
+const GATE_WITH_RADIUS: &str = r#"{
+  "doc_size": {"README.md": 10},
+  "radius": { "lines": 50, "directories": 2 }
+}"#;
+
 fn radius_tree() -> Tree {
     let tree = Tree::new();
     tree.write("klin.json", RADIUS_PINNED);
     tree.write("src/a.rs", "// held\n");
+    tree.base();
+    tree
+}
+
+fn gate_radius_tree() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", GATE_WITH_RADIUS);
+    tree.words("README.md", 5);
     tree.base();
     tree
 }

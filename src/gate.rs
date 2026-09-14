@@ -207,11 +207,30 @@ fn tell(
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_spent || turn::intervened(root);
     if code == 0 && !args.json && log.host.is_some() && intervened {
+        if log.gate_spent && log.verdict == "red" && no_prompt_event(root, log.session.as_deref()) {
+            log.flags.push("no-prompt-event");
+            parts.push((
+                "note",
+                "klin: no prompt event reached this session; klin will not block again until \
+                 `klin radius` runs on session start and on prompt submitted."
+                    .to_string(),
+            ));
+        }
         parts.extend(stats::turn_end(root, journal::line(log)));
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
     (!said.is_empty()).then(|| said.join("\n"))
+}
+
+fn no_prompt_event(root: &Path, session: Option<&str>) -> bool {
+    let Some(session) = session else {
+        return false;
+    };
+    !journal::read(root).0.iter().any(|line| {
+        line.get("kind").and_then(Value::as_str) == Some("prompt")
+            && line.get("session").and_then(Value::as_str) == Some(session)
+    })
 }
 
 /// A hash of the config in force, recorded in the journal and not read, so a later reader can
