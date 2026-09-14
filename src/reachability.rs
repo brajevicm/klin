@@ -6,7 +6,7 @@
 //! and never unreached. With no section, a family is derived from the derivation commit alone,
 //! and only where every member is proven reached without ambiguity. ADR 0035, spec 8.4.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -366,20 +366,13 @@ fn family_of(families: &[Family], path: &str) -> Option<usize> {
     families.iter().position(|family| family.holds(path))
 }
 
-/// Every file some other file reaches, found from the references: each reference names every
-/// declaration of its name, and a declaration in another file marks that file reached.
-fn reached(index: &SourceIndex) -> BTreeSet<&str> {
-    let mut out = BTreeSet::new();
-    for file in index.files() {
-        for reference in &file.references {
-            for held in index.declarations(file.language, &reference.name) {
-                if held.file != file.file && eligible(held.declaration) {
-                    out.insert(held.file);
-                }
-            }
-        }
-    }
-    out
+/// Whether another file references one of this file's eligible declarations by name. A
+/// reference names every declaration of its name, so ambiguity reaches each of them.
+fn reached(index: &SourceIndex, file: &structural::FileFacts) -> bool {
+    file.declarations
+        .iter()
+        .filter(|declaration| eligible(declaration))
+        .any(|declaration| referenced_elsewhere(index, file, declaration))
 }
 
 /// Whether one eligible declaration of this file is the only one of its name under the index
@@ -390,16 +383,24 @@ fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
         .filter(|declaration| eligible(declaration))
         .any(|declaration| {
             index.declarations(file.language, &declaration.name).count() == 1
-                && index
-                    .references(file.language, &declaration.name)
-                    .any(|site| site.file != file.file)
+                && referenced_elsewhere(index, file, declaration)
         })
+}
+
+/// Whether a file other than the one that holds this declaration references its name.
+fn referenced_elsewhere(
+    index: &SourceIndex,
+    file: &structural::FileFacts,
+    declaration: &Declaration,
+) -> bool {
+    index
+        .references(file.language, &declaration.name)
+        .any(|site| site.file != file.file)
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
 /// none, which are not judged and not unreached.
 fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
-    let reached = reached(index);
     let mut out = Vec::new();
     let mut unjudged = 0;
     for file in index.files() {
@@ -413,7 +414,7 @@ fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
         out.push(State {
             file: file.file.clone(),
             family,
-            unreached: !reached.contains(file.file.as_str()),
+            unreached: !reached(index, file),
             proven: proven(index, file),
         });
     }

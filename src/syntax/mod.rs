@@ -22,7 +22,7 @@ pub mod structural;
 
 /// One logical language, which is what a structural consumer names. A grammar variant is not
 /// one: a `.tsx` file is TypeScript, and TSX is never a language of its own above this module.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum LanguageId {
     Rust,
     Python,
@@ -409,11 +409,19 @@ pub fn line_at(lines: &[&str], row: usize) -> String {
     lines.get(row).unwrap_or(&"").trim().to_string()
 }
 
-/// Every node of one tree, in source order, given to a reader that keeps what it wants.
+/// Every node of one tree, in source order, given to a reader that keeps what it wants. One
+/// cursor walks the whole tree, and it never leaves the node it started at.
 pub fn walk<'t>(node: Node<'t>, keep: &mut impl FnMut(Node<'t>)) {
-    keep(node);
     let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        walk(child, keep);
+    loop {
+        keep(cursor.node());
+        if cursor.goto_first_child() {
+            continue;
+        }
+        while !cursor.goto_next_sibling() {
+            if !cursor.goto_parent() {
+                return;
+            }
+        }
     }
 }

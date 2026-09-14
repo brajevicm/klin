@@ -6,6 +6,7 @@
 
 A run extracts each structural file of a tree once, and gate rows record it
 under `facts`. Measurements: `docs/structural-extraction-2026-09-14.md`.
+Faster index lookups: `docs/structural-hot-path-2026-09-14.md`.
 
 ### Source checks take compact scope policy
 

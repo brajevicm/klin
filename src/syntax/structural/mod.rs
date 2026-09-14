@@ -4,7 +4,7 @@
 //! and TypeScript are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Add;
 use std::path::Path;
 use std::rc::Rc;
@@ -593,44 +593,58 @@ pub struct Declared<'a> {
 /// spec 8.4.
 pub struct SourceIndex {
     files: Vec<Rc<FileFacts>>,
-    declarations_by_name: BTreeMap<(LanguageId, String), Vec<(usize, usize)>>,
-    references_by_name: BTreeMap<(LanguageId, String), Vec<(usize, u64)>>,
+    names: HashMap<LanguageId, HashMap<String, Sites>>,
+}
+
+/// Where one name of one language is declared and referenced, each list in file and line order.
+/// A lookup reads one entry, so the order of the map it sits in reaches no consumer.
+#[derive(Default)]
+struct Sites {
+    declarations: Vec<(usize, usize)>,
+    references: Vec<(usize, u64)>,
 }
 
 impl SourceIndex {
     pub fn of(mut files: Vec<Rc<FileFacts>>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
-        let mut declarations_by_name: BTreeMap<(LanguageId, String), Vec<(usize, usize)>> =
-            BTreeMap::new();
-        let mut references_by_name: BTreeMap<(LanguageId, String), Vec<(usize, u64)>> =
-            BTreeMap::new();
+        let mut names: HashMap<LanguageId, HashMap<String, Sites>> = HashMap::new();
         for (at, file) in files.iter().enumerate() {
+            let named = names.entry(file.language).or_default();
             for (which, declaration) in file.declarations.iter().enumerate() {
-                declarations_by_name
-                    .entry((file.language, declaration.name.clone()))
-                    .or_default()
-                    .push((at, which));
+                record(named, &declaration.name, |sites| {
+                    sites.declarations.push((at, which));
+                });
             }
             for reference in &file.references {
-                references_by_name
-                    .entry((file.language, reference.name.clone()))
-                    .or_default()
-                    .push((at, reference.line));
+                record(named, &reference.name, |sites| {
+                    sites.references.push((at, reference.line));
+                });
             }
         }
-        for sites in references_by_name.values_mut() {
-            sites.sort_unstable();
-            sites.dedup();
+        for sites in names.values_mut().flat_map(HashMap::values_mut) {
+            sites.references.sort_unstable();
+            sites.references.dedup();
         }
-        SourceIndex {
-            files,
-            declarations_by_name,
-            references_by_name,
-        }
+        SourceIndex { files, names }
     }
 
     pub fn files(&self) -> &[Rc<FileFacts>] {
         &self.files
+    }
+
+    /// The facts of the file at this path, and `None` when the index holds no such file.
+    pub fn file(&self, path: &str) -> Option<&FileFacts> {
+        let at = self
+            .files
+            .binary_search_by(|held| held.file.as_str().cmp(path))
+            .ok()?;
+        self.files.get(at).map(Rc::as_ref)
+    }
+
+    /// The sites of one name in one logical language, and `None` when no file of that language
+    /// declares or references it.
+    fn sites(&self, language: LanguageId, name: &str) -> Option<&Sites> {
+        self.names.get(&language)?.get(name)
     }
 
     /// References with this name and logical language, in file and line order, each site once.
@@ -639,10 +653,9 @@ impl SourceIndex {
         language: LanguageId,
         name: &str,
     ) -> impl Iterator<Item = ReferenceSite<'_>> {
-        self.references_by_name
-            .get(&(language, name.to_string()))
+        self.sites(language, name)
             .into_iter()
-            .flatten()
+            .flat_map(|sites| &sites.references)
             .map(|(at, line)| ReferenceSite {
                 file: &self.files[*at].file,
                 line: *line,
@@ -655,10 +668,9 @@ impl SourceIndex {
         language: LanguageId,
         name: &str,
     ) -> impl Iterator<Item = Declared<'_>> {
-        self.declarations_by_name
-            .get(&(language, name.to_string()))
+        self.sites(language, name)
             .into_iter()
-            .flatten()
+            .flat_map(|sites| &sites.declarations)
             .map(|(at, which)| {
                 let file = &self.files[*at];
                 Declared {
@@ -667,6 +679,18 @@ impl SourceIndex {
                     declaration: &file.declarations[*which],
                 }
             })
+    }
+}
+
+/// One site recorded under its name, and the name copied only the first time the index meets it.
+fn record(named: &mut HashMap<String, Sites>, name: &str, into: impl FnOnce(&mut Sites)) {
+    match named.get_mut(name) {
+        Some(sites) => into(sites),
+        None => {
+            let mut sites = Sites::default();
+            into(&mut sites);
+            named.insert(name.to_string(), sites);
+        }
     }
 }
 

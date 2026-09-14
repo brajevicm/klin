@@ -63,6 +63,35 @@ fn losing_the_last_reference_is_worsened_and_names_the_old_reference_file() {
 }
 
 #[test]
+fn references_lost_from_two_files_name_the_first_file_in_path_order() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/zed.rs", "fn helper() {}\nfn spare() {}\n");
+    tree.write("src/lib.rs", "fn helper() {}\n");
+    tree.write("src/b_caller.rs", "fn main() { helper(); spare(); }\n");
+    tree.write("src/a_caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.write("src/b_caller.rs", "fn main() { spare(); }\n");
+    tree.write("src/a_caller.rs", "pub fn call() {}\n");
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 dead symbol(s) got worse"), "{}", run.out);
+    assert_eq!(
+        run.out.matches("lost reference in src/a_caller.rs").count(),
+        2,
+        "{}",
+        run.out
+    );
+    assert!(
+        !run.says("lost reference in src/b_caller.rs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_dead_symbol_already_in_the_base_is_a_note_and_does_not_fail() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);

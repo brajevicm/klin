@@ -333,11 +333,19 @@ fn finding_with_lost_reference(
     finding
 }
 
-fn same_site(held: &State, state: &State) -> bool {
-    held.file == state.file
-        && held.line == state.line
-        && held.name == state.name
-        && held.text == state.text
+/// The first base state at this site. The states are in file, line and name order, so the
+/// site is found by halving them.
+fn held_at<'a>(states: &[&'a State], state: &State) -> Option<&'a State> {
+    let from = states.partition_point(|held| site(held) < site(state));
+    states[from..]
+        .iter()
+        .take_while(|held| site(held) == site(state))
+        .find(|held| held.text == state.text)
+        .copied()
+}
+
+fn site(state: &State) -> (&str, u64, &str) {
+    (&state.file, state.line, &state.name)
 }
 
 fn lost_reference(
@@ -346,18 +354,11 @@ fn lost_reference(
     after: &structural::Measurement,
     before_states: &[&State],
 ) -> Option<String> {
-    let held = before_states
-        .iter()
-        .find(|candidate| same_site(candidate, state))?;
+    let held = held_at(before_states, state)?;
     if held.dead {
         return None;
     }
-    let language = before
-        .index
-        .files()
-        .iter()
-        .find(|file| file.file == state.file)?
-        .language;
+    let language = before.index.file(&state.file)?.language;
     let old = before.index.references(language, &state.name);
     let now: BTreeSet<(&str, u64)> = after
         .index
