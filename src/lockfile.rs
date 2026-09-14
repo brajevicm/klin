@@ -1,35 +1,28 @@
-use std::collections::BTreeMap;
-use std::path::Path;
+//! `lockfile` proves that every dependency a manifest names has an entry in the lockfile beside
+//! it, and that no pin the base held is gone. The manifests are the ones the survey finds that
+//! klin has a reader for; a person narrows them only with `in` and `except`. A site is the
+//! manifest's path and the dependency's name. Every manifest and lockfile is read once per tree,
+//! and a lockfile several manifests share is parsed once. Spec 5.4, 8.2.1, ADR 0040.
+
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use serde_json::Value;
 
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Sink};
 use crate::config::Error;
 use crate::coverage::Coverage;
-use crate::ratchet::{self, Evaluator, Finding, Section, Values};
-use crate::reference::{self, Key};
-use crate::{base, changed, files};
+use crate::project::Project;
+use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::Key;
+use crate::scope::{self, Scope};
+use crate::{base, changed};
 
 pub const SECTION: &str = "lockfile";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[MANIFESTS, reference::EXCLUDE];
+pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
-/// The key of this section the survey supplies, named off the declaration so the two cannot
-/// spell it differently. It is the key below that carries a rule, restated because the survey
-/// merges a section key by key. Spec 5.4.
-pub const DERIVED: &[&str] = &[MANIFESTS.name];
-
-pub const MANIFESTS: Key = Key {
-    name: "manifests",
-    holds: "the manifest files this check proves against their lockfiles",
-    required: true,
-    rule: Some(
-        "one entry per manifest klin has a lockfile reader for: `Cargo.toml`, `package.json` \
-                and `go.mod`",
-    ),
-    default: "",
-};
+const RULE: &str = "the manifests the survey found that klin can read a lockfile for";
 const UNLOCKED: &str = "unlocked";
 const UNPINNED: &str = "unpinned";
 const METRICS: &[&str] = &[UNLOCKED, UNPINNED];
@@ -95,14 +88,28 @@ const FORMATS: &[Format] = &[
     },
 ];
 
-/// Whether klin has a reader for the manifest with this basename, which is what the survey
-/// writes a `manifests` list out of.
-pub fn reads(name: &str) -> bool {
-    FORMATS.iter().any(|format| format.manifest == name)
+/// Every manifest the survey found that klin has a reader for, with that reader. Spec 5.4.
+fn manifests(project: &Project) -> Vec<(&str, &'static Format)> {
+    project
+        .facts()
+        .found
+        .manifests
+        .iter()
+        .filter_map(|path| {
+            let format = FORMATS
+                .iter()
+                .find(|format| format.manifest == basename(path))?;
+            Some((path.as_str(), format))
+        })
+        .collect()
+}
+
+/// Whether the tree holds a manifest this check reads, which is when it runs with no section.
+pub fn applies(project: &Project) -> bool {
+    !manifests(project).is_empty()
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    at.say(SECTION, out);
     let sites = surveyed(at, out)?;
     let accepted = ratchet::accepted(at.config(), at.gate, METRICS)?;
     let ok = format!(
@@ -117,25 +124,154 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// Every manifest the section names, read in both trees, minus the ones `exclude` drops.
+/// Every manifest the survey found, read in both trees, less the ones the scope takes out.
 fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let config = at.config();
-    let section = ratchet::section(at.project, SECTION)?;
-    let manifests = listed(&section, MANIFESTS)?;
-    let pinned = config
-        .pinned(SECTION)
-        .is_some_and(|section| section.get(MANIFESTS.name).is_some());
-    let exclude = optional(&section, reference::EXCLUDE)?;
+    let found = manifests(at.project);
+    let scope = scope(at, &found)?;
+    said(&found, out);
+    let (judged, dropped): (Vec<_>, Vec<_>) =
+        found.iter().partition(|(path, _)| scope.selects(path));
     let commit = base::commit(config.root(), at, out)?;
-    let mut sites = Sites::default();
-    let (dropped, judged): (Vec<&String>, Vec<&String>) =
-        manifests.iter().partition(|path| excluded(path, &exclude));
-    sites.listed = manifests.len();
-    sites.excluded = dropped.len();
-    for manifest in judged {
-        sites.add(config.root(), &commit, manifest, pinned)?;
+    let wanted = candidates(&judged);
+    let mut now = Side::working(config.root(), &wanted);
+    let mut before = Side::at(config.root(), &commit, &wanted)?;
+    let mut sites = Sites {
+        listed: found.len(),
+        excluded: dropped.len(),
+        ..Sites::default()
+    };
+    for (manifest, format) in judged {
+        sites.add(&mut now, &mut before, manifest, format)?;
     }
     Ok(sites)
+}
+
+/// The section's scope, refused when an `in` selects no manifest the survey found.
+fn scope(at: &Context, found: &[(&str, &Format)]) -> Result<Scope, Error> {
+    let config = at.config();
+    let values = config.policy(SECTION, KEYS)?;
+    let scope = Scope::read(config, SECTION, &values)?;
+    if scope.has_in() && !found.iter().any(|(path, _)| scope.selects(path)) {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" has an \"in\" scope with no applicable manifest",
+            config.file.display()
+        )));
+    }
+    Ok(scope)
+}
+
+/// The manifests this run judges, as the one `derived:` line and its JSON entry.
+fn said(found: &[(&str, &Format)], out: &mut Sink) {
+    let names: Vec<&str> = found.iter().map(|(path, _)| *path).collect();
+    out.provenance(
+        format!("derived: {SECTION} manifests {}, {RULE}", names.join(", ")),
+        Some(check::derived_entry(
+            SECTION,
+            Some("manifests"),
+            names.into(),
+            RULE,
+        )),
+    );
+}
+
+/// Every path a judged manifest could read: the manifest, and each lockfile name its format
+/// knows at its own directory and at every directory above it.
+fn candidates(judged: &[&(&str, &Format)]) -> Vec<String> {
+    let mut out = BTreeSet::new();
+    for (manifest, format) in judged {
+        out.insert(manifest.to_string());
+        let names = format.lockfiles.iter().chain(format.unreadable);
+        for name in names {
+            out.extend(nearest(manifest, name));
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// One tree's bytes for every path a judged manifest could read, each read once, and the names
+/// every lockfile holds, parsed once however many manifests share it.
+struct Side {
+    bytes: HashMap<String, Vec<u8>>,
+    locked: HashMap<String, Result<HashSet<String>, String>>,
+}
+
+impl Side {
+    fn working(root: &std::path::Path, paths: &[String]) -> Side {
+        let bytes = paths
+            .iter()
+            .filter_map(|path| Some((path.clone(), std::fs::read(root.join(path)).ok()?)))
+            .collect();
+        Side {
+            bytes,
+            locked: HashMap::new(),
+        }
+    }
+
+    /// The same paths at the base commit, through one git process. A read git refuses is an
+    /// error: an empty base would read every dependency as new.
+    fn at(root: &std::path::Path, commit: &str, paths: &[String]) -> Result<Side, Error> {
+        let mut bytes = HashMap::new();
+        let names: Vec<&str> = paths.iter().map(String::as_str).collect();
+        changed::blobs(root, commit, &names, |path, held| {
+            if let Some(held) = held {
+                bytes.insert(path.to_string(), held.to_vec());
+            }
+        })
+        .ok_or_else(|| {
+            Error(format!(
+                "the base commit {} could not be read — fetch history, or give CI the full clone",
+                &commit[..7.min(commit.len())]
+            ))
+        })?;
+        Ok(Side {
+            bytes,
+            locked: HashMap::new(),
+        })
+    }
+
+    /// What this tree says about one manifest, and `None` when it holds no such manifest.
+    fn state(&mut self, manifest: &str, format: &Format) -> Result<Option<State>, Error> {
+        let Some(text) = self.bytes.get(manifest) else {
+            return Ok(None);
+        };
+        let found = beside(&self.bytes, manifest, format.lockfiles);
+        let none = HashSet::new();
+        let names = match &found {
+            Some(at) => locked(&mut self.locked, &self.bytes, at, format)?,
+            None => &none,
+        };
+        let (deps, unparsed) = match (format.dependencies)(manifest, text) {
+            Ok(deps) => (taken(deps, names), None),
+            Err(Error(why)) => (BTreeMap::new(), Some(why)),
+        };
+        let unreadable = found
+            .is_none()
+            .then(|| beside(&self.bytes, manifest, format.unreadable))
+            .flatten();
+        Ok(Some(State {
+            deps,
+            unparsed,
+            unreadable,
+            lockfile: found,
+        }))
+    }
+}
+
+/// The names one lockfile holds, parsed on the first manifest that reads it and borrowed by
+/// every manifest after, and the error a malformed one gives each of them.
+fn locked<'a>(
+    parsed: &'a mut HashMap<String, Result<HashSet<String>, String>>,
+    bytes: &HashMap<String, Vec<u8>>,
+    at: &str,
+    format: &Format,
+) -> Result<&'a HashSet<String>, Error> {
+    let names = parsed.entry(at.to_string()).or_insert_with(|| {
+        (format.locked)(at, &bytes[at])
+            .map(|names| names.into_iter().collect())
+            .map_err(|Error(why)| why)
+    });
+    names.as_ref().map_err(|why| Error(why.clone()))
 }
 
 fn evaluator() -> Evaluator<'static> {
@@ -178,9 +314,9 @@ struct Sites {
     judged: usize,
     manifests: usize,
     /// What the gate's coverage counts beside `manifests`, the manifests it judged: how many
-    /// the section names, how many of those an exclusion dropped, and how many the working
-    /// tree no longer holds, which it discovers nothing of. A manifest it reached and did not
-    /// read left a NOTE instead, and the coverage calls that one unreadable. Spec 8.6.
+    /// the survey found, how many of those the scope took out, and how many the working tree
+    /// no longer holds, which it discovers nothing of. A manifest it reached and did not read
+    /// left a NOTE instead, and the coverage calls that one unreadable. Spec 8.6.
     listed: usize,
     excluded: usize,
     absent: usize,
@@ -199,12 +335,12 @@ impl Sites {
 
     fn add(
         &mut self,
-        root: &Path,
-        commit: &str,
+        now: &mut Side,
+        before: &mut Side,
         manifest: &str,
-        pinned: bool,
+        format: &Format,
     ) -> Result<(), Error> {
-        let (now, before) = match reading(root, commit, manifest, pinned)? {
+        let (now, before) = match reading(now, before, manifest, format)? {
             Reading::Judged(now, before) => (now, before),
             Reading::Noted(at, why) => {
                 self.notes.push((at, why));
@@ -261,29 +397,17 @@ enum Reading {
     Absent,
 }
 
-fn reading(root: &Path, commit: &str, manifest: &str, pinned: bool) -> Result<Reading, Error> {
-    let Some(format) = FORMATS
-        .iter()
-        .find(|format| format.manifest == basename(manifest))
-    else {
-        return Ok(Reading::Noted(
-            manifest.to_string(),
-            format!(
-                "{manifest} is a manifest klin has no lockfile reader for, so nothing it names \
-                 is judged"
-            ),
-        ));
-    };
-    let Some(now) = state(
-        &|path| std::fs::read(root.join(path)).ok(),
-        manifest,
-        format,
-    )?
-    else {
+fn reading(
+    now: &mut Side,
+    before: &mut Side,
+    manifest: &str,
+    format: &Format,
+) -> Result<Reading, Error> {
+    let Some(now) = now.state(manifest, format)? else {
         return Ok(Reading::Absent);
     };
-    let before = state(&|path| changed::blob(root, commit, path), manifest, format)?;
-    if let Some(noted) = unparseable(&now, before.as_ref(), manifest, pinned)? {
+    let before = before.state(manifest, format)?;
+    if let Some(noted) = unparseable(&now, before.as_ref(), manifest)? {
         return Ok(noted);
     }
     let before = before.unwrap_or_default();
@@ -308,77 +432,33 @@ fn reading(root: &Path, commit: &str, manifest: &str, pinned: bool) -> Result<Re
     Ok(Reading::Judged(now, before))
 }
 
-/// A manifest klin cannot parse is a tool error when a person pinned the list, because pinning a
-/// path asserts that it parses, and when it parsed at the base, because the work broke it. A
-/// manifest the survey offered that never parsed is a fixture, and a NOTE. Spec 8.2.1.
+/// A manifest klin cannot parse now is a tool error when it parsed at the base, because the work
+/// broke it. One that never parsed is a fixture, and a NOTE. Spec 8.2.1.
 fn unparseable(
     now: &State,
     before: Option<&State>,
     manifest: &str,
-    pinned: bool,
 ) -> Result<Option<Reading>, Error> {
-    let parsed_at_base = before.is_some_and(|before| before.unparsed.is_none());
-    if let Some(why) = &now.unparsed {
-        return match pinned || parsed_at_base {
-            true => Err(Error(why.clone())),
-            false => Ok(Some(Reading::Noted(
-                manifest.to_string(),
-                format!("{why}, so the dependencies of {manifest} are not judged"),
-            ))),
-        };
-    }
-    match before.and_then(|before| before.unparsed.clone()) {
-        Some(why) if pinned => Err(Error(why)),
-        _ => Ok(None),
-    }
-}
-
-fn state(
-    read: &dyn Fn(&str) -> Option<Vec<u8>>,
-    manifest: &str,
-    format: &Format,
-) -> Result<Option<State>, Error> {
-    let Some(text) = read(manifest) else {
+    let Some(why) = &now.unparsed else {
         return Ok(None);
     };
-    let found = beside(read, manifest, format.lockfiles);
-    let locked = match &found {
-        Some((at, bytes)) => (format.locked)(at, bytes)?,
-        None => Vec::new(),
-    };
-    let (deps, unparsed) = match (format.dependencies)(manifest, &text) {
-        Ok(deps) => (taken(deps, &locked), None),
-        Err(Error(why)) => (BTreeMap::new(), Some(why)),
-    };
-    Ok(Some(State {
-        deps,
-        unparsed,
-        unreadable: unreadable(read, manifest, format, found.is_some()),
-        lockfile: found.map(|(at, _)| at),
-    }))
+    match before.is_some_and(|before| before.unparsed.is_none()) {
+        true => Err(Error(why.clone())),
+        false => Ok(Some(Reading::Noted(
+            manifest.to_string(),
+            format!("{why}, so the dependencies of {manifest} are not judged"),
+        ))),
+    }
 }
 
 /// Both values of every dependency, taken against the names the lockfile holds.
-fn taken(deps: Vec<Dependency>, locked: &[String]) -> BTreeMap<String, Values> {
+fn taken(deps: Vec<Dependency>, locked: &HashSet<String>) -> BTreeMap<String, Values> {
     deps.into_iter()
         .map(|dep| {
             let unlocked = dep.registry && !locked.contains(&dep.package);
             (dep.name, values(unlocked, dep.registry && !dep.exact))
         })
         .collect()
-}
-
-/// The lockfile klin found and cannot read yet, and nothing when it read one.
-fn unreadable(
-    read: &dyn Fn(&str) -> Option<Vec<u8>>,
-    manifest: &str,
-    format: &Format,
-    found: bool,
-) -> Option<String> {
-    match found {
-        true => None,
-        false => beside(read, manifest, format.unreadable).map(|(at, _)| at),
-    }
 }
 
 fn values(unlocked: bool, unpinned: bool) -> Values {
@@ -388,20 +468,17 @@ fn values(unlocked: bool, unpinned: bool) -> Values {
     out
 }
 
-/// The nearest lockfile at or above the manifest's own directory, which is where a workspace
-/// keeps the one lockfile its members share.
-fn beside(
-    read: &dyn Fn(&str) -> Option<Vec<u8>>,
-    manifest: &str,
-    names: &[&str],
-) -> Option<(String, Vec<u8>)> {
+/// The nearest lockfile of these names at or above the manifest's own directory, which is where
+/// a workspace keeps the one lockfile its members share.
+fn beside(bytes: &HashMap<String, Vec<u8>>, manifest: &str, names: &[&str]) -> Option<String> {
     let mut at = parent(manifest);
     loop {
-        for name in names {
-            let path = joined(&at, name);
-            if let Some(bytes) = read(&path) {
-                return Some((path, bytes));
-            }
+        if let Some(found) = names
+            .iter()
+            .map(|name| joined(&at, name))
+            .find(|path| bytes.contains_key(path))
+        {
+            return Some(found);
         }
         if at.is_empty() {
             return None;
@@ -410,40 +487,17 @@ fn beside(
     }
 }
 
-/// A list the section may leave out, and an empty one when it does.
-fn optional(section: &Section, key: Key) -> Result<Vec<String>, Error> {
-    match section.values.get(key.name) {
-        Some(_) => listed(section, key),
-        None => Ok(Vec::new()),
+/// Every path a lockfile of one name could sit at for this manifest, nearest first.
+fn nearest(manifest: &str, name: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut at = parent(manifest);
+    loop {
+        out.push(joined(&at, name));
+        if at.is_empty() {
+            return out;
+        }
+        at = parent(&at);
     }
-}
-
-fn listed(section: &Section, key: Key) -> Result<Vec<String>, Error> {
-    let held = section.values.get(key.name).and_then(Value::as_array);
-    let Some(items) = held else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must name \"{}\", a list of paths",
-            section.config.file.display(),
-            key.name
-        )));
-    };
-    items
-        .iter()
-        .map(|item| {
-            item.as_str().map(str::to_string).ok_or_else(|| {
-                section
-                    .config
-                    .malformed(SECTION, key.name, "a list of paths")
-            })
-        })
-        .collect()
-}
-
-fn excluded(path: &str, globs: &[String]) -> bool {
-    globs.iter().any(|glob| {
-        files::glob_matches(glob.as_bytes(), path.as_bytes())
-            || files::glob_matches(glob.as_bytes(), basename(path).as_bytes())
-    })
 }
 
 fn basename(path: &str) -> &str {

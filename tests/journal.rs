@@ -6,9 +6,7 @@ use serde_json::Value;
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const EVERY_GATE: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "doc_citations": [{"file": "README.md", "roots": ["."]}],
+  "doc_size": {"README.md": 10},
   "escapes": { "in": "src" },
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
@@ -238,7 +236,6 @@ fn cache_clean_leaves_the_journal_in_place() {
 }
 
 const A_SARIF_GATE: &str = r#"{
-  "project": "t",
   "sarif": [{"name": "eslint", "report": "eslint.sarif"}],
   "accepted": [
     {"gate": "eslint", "file": "src/a.ts", "text": "no-any: on the changed line", "count": 1}
@@ -320,7 +317,6 @@ fn a_stamp_that_could_not_be_written_says_so_and_not_that_there_was_none() {
 // #154: the journal knows the session, the prompt, the guard's refusals and resets.
 
 const RADIUS_PINNED: &str = r#"{
-  "project": "t",
   "radius": { "lines": 50, "directories": 2 }
 }"#;
 
@@ -378,10 +374,7 @@ fn a_prompt_after_a_measurable_change_carries_the_radius_facts() {
 #[test]
 fn journal_prompt_false_turns_off_the_excerpt_and_keeps_the_rest() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"project": "t", "journal": {"prompt": false}}"#,
-    );
+    tree.write("klin.json", r#"{"journal": {"prompt": false}}"#);
     tree.base();
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
@@ -401,10 +394,7 @@ fn journal_prompt_false_turns_off_the_excerpt_and_keeps_the_rest() {
 #[test]
 fn a_configuration_that_will_not_load_turns_off_the_excerpt() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"project": "t", "journal": {"prompt": false},}"#,
-    );
+    tree.write("klin.json", r#"{"journal": {"prompt": false},}"#);
     tree.base();
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",

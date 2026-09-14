@@ -1147,7 +1147,7 @@ fn an_accepted_entry_for_a_section_set_to_false_stops_no_other_gate() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "conventions": false, "doc_size": [{ "file": "README.md", "ceiling": 10 }],
+        r#"{ "conventions": false, "doc_size": {"README.md": 10},
              "accepted": [{ "gate": "conventions/old", "file": "src/lib.rs", "text": "x", "count": 1 }] }"#,
     );
     tree.words("README.md", 5);

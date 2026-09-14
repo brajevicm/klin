@@ -6,7 +6,6 @@ mod text;
 use harness::Tree;
 
 const CONFIG: &str = r#"{
-  "project": "t",
   "escapes": { "in": "src" }
 }"#;
 
@@ -18,7 +17,7 @@ fn tree() -> Tree {
 
 fn accepted(entries: &str) -> String {
     format!(
-        r#"{{ "project": "t", "accepted": [{entries}],
+        r#"{{ "accepted": [{entries}],
              "escapes": {{ "in": "src" }} }}"#
     )
 }
@@ -245,10 +244,7 @@ fn a_clean_quiet_run_prints_nothing() {
 
 fn spread() -> Tree {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "project": "t", "escapes": { "in": "src" } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write(
         "src/thing.py",
         "x = 1  # type: ignore\ny = 1  # noqa\nz = 1  # pragma: no cover\n@skip\ndef f():\n    try:\n        pass\n    except:\n        pass\n",
@@ -725,7 +721,7 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     tree.base();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "escapes": { "in": "src", "except": "src/gone.rs" } }"#,
+        r#"{ "escapes": { "in": "src", "except": "src/gone.rs" } }"#,
     );
 
     let run = tree.run(&["escapes"]);

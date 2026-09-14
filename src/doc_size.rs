@@ -1,12 +1,20 @@
+//! `doc-size` judges each document's word count against a ceiling. Every Markdown file at the
+//! tree root is judged under a ceiling derived from the derivation commit, and a person may pin
+//! a document's ceiling in a map of path to ceiling. A pin names its document by path, which
+//! is how a document outside the tree root is judged too. The identity is the document's path;
+//! nothing here is ratcheted beyond the base's own word count. Spec 5.4, 8.2.1, ADR 0040.
+
+use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
 use crate::base;
+use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Said, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::project::Project;
@@ -14,26 +22,21 @@ use crate::reference::Key;
 
 pub const SECTION: &str = "doc_size";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[FILE, CEILING];
+/// The one kind of key this section holds, which `klin reference` prints. Spec 5.4, 5.8.
+pub const KEYS: &[Key] = &[DOCUMENT];
 
-pub const FILE: Key = Key {
-    name: "file",
-    holds: "the document this entry judges, as a path under the tree root",
-    required: true,
-    rule: Some("one entry per Markdown file at the tree root that the derivation commit holds"),
-    default: "",
-};
-
-pub const CEILING: Key = Key {
-    name: "ceiling",
-    holds: "the words the document may not pass",
-    required: true,
+pub const DOCUMENT: Key = Key {
+    name: "<document path>",
+    holds: "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. Every other document at the tree root keeps a derived ceiling",
+    required: false,
     rule: Some(
-        "the word count at the derivation commit, rounded up to the next 50 and never below 50",
+        "every Markdown file at the tree root that the derivation commit holds: its word count there, rounded up to the next 50 and never below 50",
     ),
     default: "",
 };
+
+const CEILING_STEP: u64 = 50;
+pub const RULE: &str = "the word count at the derivation commit, rounded up to the next 50";
 const MARGIN_FRACTION: f64 = 0.02;
 const REMEDY: &str = "An instruction that can be a gate costs no words — encode it as a gate and \
     point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling \
@@ -44,10 +47,10 @@ pub struct Args {
     /// The klin.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
-    /// Judge this one document instead of the config's list
+    /// Judge this one document instead of every document
     #[arg(long)]
     file: Option<PathBuf>,
-    /// The ceiling for --file (default: its entry in the config)
+    /// The ceiling for --file (default: its pinned or derived ceiling)
     #[arg(long)]
     ceiling: Option<u64>,
     /// Print nothing on success
@@ -62,6 +65,12 @@ struct Document {
     /// Where the base's copy of this document sits, and `None` for a document outside the tree
     /// klin compares, which has no base copy to hold it.
     relative: Option<PathBuf>,
+}
+
+/// The documents a run judges, and what it says about where each ceiling came from.
+struct Listing {
+    documents: Vec<Document>,
+    said: Vec<Said>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -99,10 +108,7 @@ fn evaluate(
     let documents = documents(at, named, ceiling, out)?;
     let against = against(at, &documents, out)?;
     out.record(|records| records.held = Some(0));
-    let mut over = 0;
-    for document in &documents {
-        over += usize::from(one(document, &against, at, out)?);
-    }
+    let over = judged(&documents, &against, at, out)?;
     let measured = documents.len();
     let said = Coverage::whole(measured).said(out);
     if over == 0 && !at.quiet {
@@ -111,8 +117,29 @@ fn evaluate(
     Ok(if over > 0 { 1 } else { 0 })
 }
 
+/// How many documents are over their ceilings. A document that cannot be judged hides no other
+/// document's failure: every document is judged, and the first error comes back after them.
+fn judged(
+    documents: &[Document],
+    against: &Option<(String, PathBuf)>,
+    at: &Context,
+    out: &mut Sink,
+) -> Result<usize, Error> {
+    let mut over = 0;
+    let mut problem = None;
+    for document in documents {
+        match one(document, against, at, out) {
+            Ok(failed) => over += usize::from(failed),
+            Err(why) => {
+                problem.get_or_insert(why);
+            }
+        }
+    }
+    problem.map_or(Ok(over), Err)
+}
+
 /// One document judged, and whether it is over its ceiling. A document the tree does not hold
-/// is an error naming it: the list is a person's, so a path that resolves nowhere is a config
+/// is an error naming it: a pin is a person's, so a path that resolves nowhere is a config
 /// error and not a measurement.
 fn one(
     document: &Document,
@@ -165,7 +192,7 @@ fn commit(config: &Config, at: &Context, out: &mut Sink) -> Option<String> {
 /// Whether the base holds this document over the same ceiling. A ceiling a person lowers must
 /// fail no document the base holds, so a document over the ceiling in both trees that did not
 /// grow is held, whatever the ceiling is. A document the base holds under another path reads as
-/// new debt, and the commit that renames it edits this gate's list anyway.
+/// new debt.
 fn held(against: &Option<(String, PathBuf)>, document: &Document, words: u64) -> Option<u64> {
     if words <= document.ceiling.value {
         return None;
@@ -255,72 +282,191 @@ fn documents(
             relative: None,
         }]);
     }
-    let config = at.config();
-    let listed = listed_documents(at.project)?;
-    at.say(SECTION, out);
+    let listing = listing(at.project)?;
     let Some(named) = named else {
-        return Ok(listed);
+        for (line, entry) in listing.said.into_iter().filter(|_| !at.quiet) {
+            out.provenance(line, entry);
+        }
+        return Ok(listing.documents);
     };
     let wanted = identity(named);
-    for document in listed {
-        if identity(&document.path) == wanted {
-            return Ok(vec![document]);
-        }
-    }
-    Err(Error(format!(
-        "{}: no \"{SECTION}\" entry for {} — pass --ceiling N",
-        config.file.display(),
-        named.display()
-    )))
+    listing
+        .documents
+        .into_iter()
+        .find(|document| identity(&document.path) == wanted)
+        .map(|document| vec![document])
+        .ok_or_else(|| {
+            Error(format!(
+                "{}: no \"{SECTION}\" ceiling for {} — it is neither pinned nor a document the \
+                 derivation commit holds at the tree root; pass --ceiling N",
+                at.config().file.display(),
+                named.display()
+            ))
+        })
 }
 
-fn listed_documents(project: &Project) -> Result<Vec<Document>, Error> {
+/// Every pinned document under its pin, then every discovered document the config does not pin
+/// under its derived ceiling. A discovered document the derivation commit lacks has no ceiling
+/// that is not read out of the working tree, which 4.3 forbids, so a NOTE names it and it is not
+/// judged. Spec 4.3, 5.4.
+fn listing(project: &Project) -> Result<Listing, Error> {
     let config = &project.config;
-    let Some(entries) = project.section(SECTION)?.as_array() else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must be a list of {{\"{}\", \"{}\"}} entries",
-            config.file.display(),
-            FILE.name,
-            CEILING.name
-        )));
+    let none = Map::new();
+    let pins = match config.pinned(SECTION) {
+        Some(Value::Object(fields)) => fields,
+        _ => &none,
     };
-    entries
+    let mut listing = pinned(config, pins)?;
+    let unpinned: Vec<&String> = project
+        .facts()
+        .found
+        .documents
         .iter()
-        .map(|entry| {
-            let name = field(config, entry, FILE)?
-                .as_str()
-                .ok_or_else(|| config.malformed(SECTION, FILE.name, "a path"))?;
-            let ceiling = ceiling::read(
-                config,
-                SECTION,
-                CEILING.name,
-                field(config, entry, CEILING)?,
-                "a whole number of words",
-            )?;
-            let path = config.path(name);
-            Ok(Document {
-                relative: path.strip_prefix(config.root()).ok().map(Path::to_path_buf),
-                path,
-                ceiling,
-                name: name.to_string(),
-            })
+        .filter(|name| {
+            !pins
+                .keys()
+                .any(|pin| config.path(pin) == config.root().join(name))
         })
+        .collect();
+    if !unpinned.is_empty() {
+        derived(project, &unpinned, &mut listing);
+    }
+    Ok(listing)
+}
+
+/// Every document a person pinned, under its pin.
+fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> {
+    let mut listing = Listing {
+        documents: Vec::new(),
+        said: Vec::new(),
+    };
+    for (name, value) in pins {
+        let ceiling = ceiling::read(config, SECTION, name, value, "a whole number of words")?;
+        listing
+            .said
+            .push((format!("pinned: {SECTION} {name} {ceiling}"), None));
+        listing.documents.push(document(config, name, ceiling));
+    }
+    Ok(listing)
+}
+
+/// Every discovered document the config does not pin, under the ceiling the derivation commit
+/// gives it, or named in a NOTE when that commit lacks it.
+fn derived(project: &Project, unpinned: &[&String], listing: &mut Listing) {
+    let config = &project.config;
+    let derived = derived_ceilings(project);
+    for name in unpinned {
+        let Some(value) = derived.get(*name) else {
+            listing.said.push(unjudged(config, name));
+            continue;
+        };
+        listing.said.push((
+            format!("derived: {SECTION} {name} {value}, {RULE}"),
+            Some(check::derived_entry(
+                SECTION,
+                Some(name),
+                (*value).into(),
+                RULE,
+            )),
+        ));
+        let ceiling = Ceiling {
+            value: *value,
+            step: None,
+        };
+        listing.documents.push(document(config, name, ceiling));
+    }
+}
+
+fn unjudged(config: &Config, name: &str) -> Said {
+    let words = count_words(&config.root().join(name)).unwrap_or_default();
+    (
+        format!(
+            "NOTE: {SECTION} {name} is {words} words and is not judged — it gets a ceiling when \
+             the stamp moves and the derivation commit holds it"
+        ),
+        None,
+    )
+}
+
+fn document(config: &Config, name: &str, ceiling: Ceiling) -> Document {
+    let path = config.path(name);
+    Document {
+        relative: path.strip_prefix(config.root()).ok().map(Path::to_path_buf),
+        path,
+        ceiling,
+        name: name.to_string(),
+    }
+}
+
+/// One word ceiling per document the derivation commit holds at the tree root: its word count
+/// there, rounded up to the next 50, so an empty document gets 50 rather than a ceiling its
+/// first word breaks. Read through one git process once per commit and cached under it. A
+/// document the commit lacks is not here. Spec 5.4.
+pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
+    let Some((held, commit, at)) = project.source_derivation() else {
+        return BTreeMap::new();
+    };
+    if let Some(cached) = at
+        .and_then(|at| cache::read(at, commit, SECTION))
+        .and_then(|cached| read_ceilings(&cached))
+    {
+        return cached;
+    }
+    let mut out = BTreeMap::new();
+    let names: Vec<&str> = held.documents.iter().map(String::as_str).collect();
+    let read = changed::blobs(project.root(), commit, &names, |name, bytes| {
+        let words = bytes.map(words_in).unwrap_or_default();
+        out.insert(name.to_string(), (words / CEILING_STEP + 1) * CEILING_STEP);
+    });
+    if read.is_none() {
+        return BTreeMap::new();
+    }
+    if let Some(at) = at {
+        let kept = out
+            .iter()
+            .map(|(name, ceiling)| (name.clone(), Value::from(*ceiling)))
+            .collect();
+        cache::write(at, commit, SECTION, Value::Object(kept));
+    }
+    out
+}
+
+/// The cached ceilings when every one of them is a number, because a file another hand edited
+/// is no more this commit's derivation than one another version wrote.
+fn read_ceilings(cached: &Value) -> Option<BTreeMap<String, u64>> {
+    cached
+        .as_object()?
+        .iter()
+        .map(|(name, words)| Some((name.clone(), words.as_u64()?)))
         .collect()
 }
 
-fn field<'a>(config: &Config, entry: &'a Value, key: Key) -> Result<&'a Value, Error> {
-    entry
-        .get(key.name)
-        .ok_or_else(|| config.missing(SECTION, key.name))
+/// A section a person wrote: each key a document path, each value a ceiling. Refused before any
+/// gate runs, naming what the section holds instead. A dated schedule is judged by `ceiling`.
+pub fn well_formed(file: &Path, fields: &Map<String, Value>) -> Result<(), Error> {
+    if fields.is_empty() {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" must pin at least one document — remove the section to derive \
+             every ceiling",
+            file.display()
+        )));
+    }
+    for (name, value) in fields {
+        let ceiling = value.is_u64() || value.as_object().is_some_and(ceiling::is_schedule);
+        if !ceiling || name.is_empty() {
+            return Err(Error(format!(
+                "{}: \"{SECTION}\" \"{name}\" must be a whole number of words or an object of \
+                 dated steps — \"{SECTION}\" maps a document path to its ceiling, such as \
+                 {{\"README.md\": 1200}}",
+                file.display()
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn identity(path: &Path) -> PathBuf {
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
-}
-
-/// The word count a ceiling is measured against, so a survey can write one a document meets.
-pub fn words(path: &Path) -> Result<u64, Error> {
-    count_words(path)
 }
 
 fn count_words(path: &Path) -> Result<u64, Error> {

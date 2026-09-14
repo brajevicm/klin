@@ -13,7 +13,7 @@ fn tree(ceilings: &str) -> Tree {
     tree.write(
         "klin.json",
         &format!(
-            r#"{{ "project": "t", "complexity": {{ "in": "src", "cc": {}, "lines": {} }} }}"#,
+            r#"{{ "complexity": {{ "in": "src", "cc": {}, "lines": {} }} }}"#,
             ceilings["cc"], ceilings["lines"]
         ),
     );
@@ -164,7 +164,7 @@ fn a_dated_ceiling_on_a_document_names_the_step_and_fails_a_new_document() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "README.md", "ceiling": {"2026-01-01": 10}}]}"#,
+        r#"{"doc_size": {"README.md": {"2026-01-01": 10}}}"#,
     );
     tree.words("README.md", 30);
 
@@ -179,7 +179,7 @@ fn a_lower_step_holds_the_document_the_base_holds_and_fails_one_that_grew() {
     let tree = Tree::bare();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "README.md", "ceiling": {"2026-01-01": 10}}]}"#,
+        r#"{"doc_size": {"README.md": {"2026-01-01": 10}}}"#,
     );
     tree.words("README.md", 30);
     tree.base();
@@ -198,7 +198,7 @@ fn a_document_the_base_lacks_is_new_debt_under_a_dated_ceiling() {
     let tree = Tree::bare();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "README.md", "ceiling": {"2026-01-01": 10}}]}"#,
+        r#"{"doc_size": {"README.md": {"2026-01-01": 10}}}"#,
     );
     tree.words("README.md", 5);
     tree.base();
@@ -213,7 +213,7 @@ fn a_document_over_its_ceiling_outside_a_repository_still_fails() {
     let tree = Tree::bare();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "README.md", "ceiling": {"2026-01-01": 10}}]}"#,
+        r#"{"doc_size": {"README.md": {"2026-01-01": 10}}}"#,
     );
     tree.words("README.md", 30);
 

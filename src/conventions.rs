@@ -504,14 +504,13 @@ fn known(fields: &Map<String, Value>) -> Result<(), String> {
     else {
         return Ok(());
     };
-    let candidates = KEYS
-        .iter()
-        .map(|key| (key.name, key.name))
-        .chain(INSTEAD.iter().copied());
-    let meant = candidates
-        .map(|(near, key)| (distance(unknown, near), key))
-        .filter(|(apart, _)| *apart <= 2)
-        .min();
+    let candidates = || {
+        KEYS.iter()
+            .map(|key| (key.name, key.name))
+            .chain(INSTEAD.iter().copied())
+    };
+    let meant = crate::config::nearest(unknown, candidates().map(|(near, _)| near))
+        .and_then(|near| candidates().find(|(held, _)| *held == near));
     Err(match meant {
         Some((_, key)) => format!("has unknown field \"{unknown}\"\nDid you mean \"{key}\"?"),
         None => format!(
@@ -522,24 +521,6 @@ fn known(fields: &Map<String, Value>) -> Result<(), String> {
                 .join(", ")
         ),
     })
-}
-
-/// The edits that turn one key into another, which is how near a misspelling is.
-fn distance(from: &str, to: &str) -> usize {
-    let to: Vec<char> = to.chars().collect();
-    let mut row: Vec<usize> = (0..=to.len()).collect();
-    for (at, left) in from.chars().enumerate() {
-        let mut diagonal = row[0];
-        row[0] = at + 1;
-        for (column, right) in to.iter().enumerate() {
-            let above = row[column + 1];
-            row[column + 1] = (above + 1)
-                .min(row[column] + 1)
-                .min(diagonal + usize::from(left != *right));
-            diagonal = above;
-        }
-    }
-    row[to.len()]
 }
 
 /// The one matcher key a convention states.

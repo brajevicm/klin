@@ -7,15 +7,12 @@ const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
 
-const GATES: &str = r#""doc_size": [{"file": "README.md", "ceiling": 10}],
+const GATES: &str = r#""doc_size": {"README.md": 10},
   "complexity": { "in": "src", "cc": 8, "lines": 60 }"#;
 
 fn tree(build: &str) -> Tree {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        &format!("{{\n  \"project\": \"t\",\n  {build}\n  {GATES}\n}}"),
-    );
+    tree.write("klin.json", &format!("{{\n  {build}\n  {GATES}\n}}"));
     tree.words("README.md", 5);
     tree.write("src/lib.rs", CLEAN);
     tree.base();
@@ -323,4 +320,98 @@ fn a_passing_stop_leaves_the_gates_one_block_unspent() {
     let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
     assert_eq!(gate.code, 2, "{}", gate.out);
     assert!(!gate.says("not blocking a second time"), "{}", gate.out);
+}
+
+/// A fake toolchain on the path, which records each command the hook runs so a test reads which
+/// derived build ran where, and never runs a real compiler.
+fn toolchain(tree: &Tree) -> String {
+    for tool in ["cargo", "tsc", "go"] {
+        tree.write(
+            &format!("toolchain/{tool}"),
+            &format!(
+                "#!/bin/sh\necho \"{tool} $(basename \"$PWD\")\" >> \"{}\"\n",
+                tree.at("ran")
+            ),
+        );
+        let path = tree.path(&format!("toolchain/{tool}"));
+        let Ok(held) = std::fs::metadata(&path) else {
+            panic!("no {}", path.display())
+        };
+        let mut mode = held.permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut mode, 0o755);
+        assert!(std::fs::set_permissions(&path, mode).is_ok());
+    }
+    format!("{}:/usr/bin:/bin", tree.at("toolchain"))
+}
+
+fn derived(tree: &Tree, path: &str, args: &[&str]) -> harness::Run {
+    harness::feed_with(tree.root(), &[("PATH", path)], args, A_STOP)
+}
+
+/// With no `build` key the hook builds with the command each standard manifest derives, one per
+/// project of a monorepo, and the report says where each came from. ADR 0012, ADR 0040.
+#[test]
+fn with_no_build_key_the_hook_derives_one_command_per_project() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("api/Cargo.toml", "[package]\nname = \"api\"\n");
+    tree.write("api/src/lib.rs", CLEAN);
+    tree.write("web/package.json", "{\"name\": \"web\"}\n");
+    tree.write("web/tsconfig.json", "{}\n");
+    tree.write("web/src/index.ts", "export const a = 1;\n");
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write(
+        "api/src/lib.rs",
+        "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+
+    let run = derived(&tree, &path, &["gate", "--hook", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "cargo api\ntsc web\n", "{}", run.out);
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    assert!(
+        journal.contains("\"rule\":\"one command per manifest\""),
+        "{journal}"
+    );
+}
+
+#[test]
+fn a_derived_build_that_fails_blocks_the_stop_and_names_its_command() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+
+    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("$ cargo build --all-targets"), "{}", run.out);
+}
+
+#[test]
+fn a_build_set_to_false_builds_nothing_where_a_manifest_would_derive_one() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"build": false}"#);
+    tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+
+    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("does not build"), "{}", run.out);
+}
+
+#[test]
+fn a_pinned_command_replaces_the_derived_one() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"build": "echo pinned >> ran"}"#);
+    tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    let path = toolchain(&tree);
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "pinned\n", "{}", run.out);
 }

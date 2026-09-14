@@ -2,10 +2,6 @@ mod harness;
 
 use harness::Tree;
 
-const CARGO: &str = r#"{"lockfile": {"manifests": ["Cargo.toml"]}}"#;
-const NPM: &str = r#"{"lockfile": {"manifests": ["package.json"]}}"#;
-const GO: &str = r#"{"lockfile": {"manifests": ["go.mod"]}}"#;
-
 fn manifest(dependencies: &str) -> String {
     format!("[package]\nname = \"t\"\n\n[dependencies]\n{dependencies}")
 }
@@ -19,7 +15,6 @@ fn locked(names: &[&str]) -> String {
 
 fn rust_tree() -> Tree {
     let tree = Tree::new();
-    tree.write("klin.json", CARGO);
     tree.write("Cargo.toml", &manifest("serde = \"=1.0.0\"\n"));
     tree.write("Cargo.lock", &locked(&["serde"]));
     tree.base();
@@ -106,7 +101,6 @@ fn a_path_a_git_and_a_workspace_dependency_are_not_judged_for_unlocked() {
 #[test]
 fn a_deleted_lockfile_fails_every_dependency_of_its_manifest() {
     let tree = Tree::new();
-    tree.write("klin.json", CARGO);
     tree.write(
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
@@ -124,10 +118,6 @@ fn a_deleted_lockfile_fails_every_dependency_of_its_manifest() {
 #[test]
 fn a_workspace_lockfile_above_the_member_manifest_is_found() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"lockfile": {"manifests": ["crates/a/Cargo.toml"]}}"#,
-    );
     tree.write("crates/a/Cargo.toml", &manifest("serde = \"=1.0.0\"\n"));
     tree.write("Cargo.lock", &locked(&["serde"]));
     tree.base();
@@ -147,7 +137,6 @@ fn a_workspace_lockfile_above_the_member_manifest_is_found() {
 #[test]
 fn a_manifest_with_no_lockfile_in_either_tree_is_a_note_and_no_finding() {
     let tree = Tree::new();
-    tree.write("klin.json", CARGO);
     tree.write("Cargo.toml", &manifest("serde = \"=1.0.0\"\n"));
     tree.base();
     tree.write(
@@ -165,7 +154,6 @@ fn a_manifest_with_no_lockfile_in_either_tree_is_a_note_and_no_finding() {
 
 fn npm_tree(lockfile: &str) -> Tree {
     let tree = Tree::new();
-    tree.write("klin.json", NPM);
     tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
     tree.write("package-lock.json", lockfile);
     tree.base();
@@ -237,7 +225,6 @@ fn an_npm_lockfile_entry_that_went_fails_and_a_pin_that_became_a_range_fails() {
 #[test]
 fn an_unreadable_lockfile_format_is_a_note_and_judges_no_manifest() {
     let tree = Tree::new();
-    tree.write("klin.json", NPM);
     tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
     tree.write("yarn.lock", "left-pad@1.0.0:\n  version \"1.0.0\"\n");
     tree.base();
@@ -254,7 +241,6 @@ fn an_unreadable_lockfile_format_is_a_note_and_judges_no_manifest() {
 #[test]
 fn a_malformed_lockfile_is_a_tool_error_naming_the_file() {
     let tree = Tree::new();
-    tree.write("klin.json", NPM);
     tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
     tree.write("package-lock.json", "{ not json");
     tree.base();
@@ -335,21 +321,58 @@ fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() 
     );
 }
 
+/// The manifests are the ones the survey finds, so a manifest klin cannot parse in either tree is
+/// a fixture and a NOTE, and no person's list can claim otherwise. Spec 8.2.1, ADR 0040.
 #[test]
-fn a_pinned_manifest_klin_cannot_parse_is_a_tool_error_naming_the_file() {
+fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
     let tree = Tree::new();
-    tree.write("klin.json", NPM);
     tree.write("package.json", "{ not json");
     tree.write("package-lock.json", NPM_V3);
     tree.base();
     let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: package.json is not valid JSON"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_in_that_selects_no_manifest_is_a_tool_error() {
+    let tree = rust_tree();
+    tree.write("klin.json", r#"{"lockfile": {"in": "web"}}"#);
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("package.json is not valid JSON"), "{}", run.out);
+    assert!(
+        run.says("\"lockfile\" has an \"in\" scope with no applicable manifest"),
+        "{}",
+        run.out
+    );
+}
+
+/// Two manifests of one workspace share the lockfile above them, and each is judged against it.
+#[test]
+fn two_manifests_that_share_one_lockfile_are_each_judged_against_it() {
+    let tree = Tree::new();
+    tree.write("crates/a/Cargo.toml", &manifest("serde = \"=1.0.0\"\n"));
+    tree.write("crates/b/Cargo.toml", &manifest("regex = \"=1.0.0\"\n"));
+    tree.write("Cargo.lock", &locked(&["serde", "regex"]));
+    tree.base();
+    tree.write("Cargo.lock", &locked(&["serde"]));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says(
+            "crates/b/Cargo.toml:0  unlocked 1, unpinned 0, was unlocked 0, unpinned 0  regex"
+        ),
+        "{}",
+        run.out
+    );
 }
 
 fn go_tree() -> Tree {
     let tree = Tree::new();
-    tree.write("klin.json", GO);
     tree.write(
         "go.mod",
         "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.0.0\n)\n",
@@ -425,8 +448,7 @@ fn an_accepted_entry_keyed_by_the_manifest_and_the_name_holds_a_finding() {
     );
     tree.write(
         "klin.json",
-        r#"{"lockfile": {"manifests": ["Cargo.toml"]},
-            "accepted": [{"gate": "lockfile", "file": "Cargo.toml", "text": "regex",
+        r#"{"accepted": [{"gate": "lockfile", "file": "Cargo.toml", "text": "regex",
                           "unlocked": 1, "unpinned": 0}]}"#,
     );
     let run = tree.run(&["gate", "--gate", "lockfile"]);
@@ -434,16 +456,13 @@ fn an_accepted_entry_keyed_by_the_manifest_and_the_name_holds_a_finding() {
 }
 
 #[test]
-fn an_excluded_manifest_is_not_judged() {
+fn a_manifest_the_scope_takes_out_is_not_judged() {
     let tree = rust_tree();
     tree.write(
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    tree.write(
-        "klin.json",
-        r#"{"lockfile": {"manifests": ["Cargo.toml"], "exclude": ["Cargo.toml"]}}"#,
-    );
+    tree.write("klin.json", r#"{"lockfile": {"except": "Cargo.toml"}}"#);
     let run = tree.run(&["gate", "--gate", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -481,7 +500,6 @@ fn the_survey_derives_the_manifests_of_a_tree_with_no_configuration() {
 #[test]
 fn a_sub_table_and_a_target_table_are_read_like_any_dependency_table() {
     let tree = Tree::new();
-    tree.write("klin.json", CARGO);
     let held = "[package]\nname = \"t\"\n\n[dependencies.serde]\nversion = \"=1.0.0\"\n\
                 features = [\"derive\"]\n\n[dependencies.near]\npath = \"../near\"\n\n\
                 [target.'cfg(unix)'.dependencies]\nlibc = \"=0.2.0\"\n";
@@ -507,7 +525,6 @@ fn a_sub_table_and_a_target_table_are_read_like_any_dependency_table() {
 #[test]
 fn a_dotted_key_states_one_field_and_undoes_nothing_another_line_stated() {
     let tree = Tree::new();
-    tree.write("klin.json", CARGO);
     tree.write("Cargo.toml", &manifest("serde.version = \"=1.0.0\"\n"));
     tree.write("Cargo.lock", &locked(&["serde"]));
     tree.base();
@@ -533,7 +550,6 @@ fn a_dotted_path_key_is_not_judged_for_unlocked_either() {
 #[test]
 fn an_inline_table_written_over_several_lines_is_read_as_one_dependency() {
     let tree = Tree::new();
-    tree.write("klin.json", CARGO);
     tree.write(
         "Cargo.toml",
         &manifest("serde = { version = \"=1.0.0\", features = [\"derive\"] }\n"),

@@ -65,6 +65,10 @@ struct Fixture {
     generated: Generated,
     profile: Profile,
     scope: &'static str,
+    config: &'static str,
+    /// A directory of stand-in `cargo` and `tsc` commands and the `PATH` that puts it first,
+    /// so a configuration that derives the build measures its preparation and no compiler.
+    toolchain: Option<(Tree, String)>,
 }
 
 #[derive(Default)]
@@ -208,12 +212,9 @@ impl Fixture {
         let tree = Tree::bare();
         tree.repository();
         let tsx = files_per_language / 100;
-        let scope = match std::env::var("KLIN_PERF_SCOPE").as_deref() {
-            Err(_) | Ok("whole") => "whole",
-            Ok("rust") => "rust",
-            Ok(other) => panic!("KLIN_PERF_SCOPE={other}: expected whole or rust"),
-        };
-        write_project_files(&tree, scope);
+        let scope = chosen("KLIN_PERF_SCOPE", &["whole", "rust"]);
+        let config = chosen("KLIN_PERF_CONFIG", &["build-off", "empty", "legacy"]);
+        write_project_files(&tree, scope, config);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
             assert_eq!(generated, expected, "{} generated sources", profile.name);
@@ -225,6 +226,9 @@ impl Fixture {
             );
         }
         tree.base();
+        if config == "legacy" {
+            pin_legacy(&tree);
+        }
 
         let counts = count_paths(git_paths(tree.root(), ["ls-files", "-z"]));
         assert_eq!(counts.rust, files_per_language, "Rust source file count");
@@ -241,6 +245,17 @@ impl Fixture {
             generated,
             profile,
             scope,
+            config,
+            toolchain: (config == "empty").then(toolchain),
+        }
+    }
+
+    /// A hook run, through the stand-in toolchain when the configuration derives the build.
+    fn hook(&self) -> harness::Run {
+        let args = ["gate", "--hook", "--changed"];
+        match &self.toolchain {
+            Some((_, path)) => self.tree.run_with(&[("PATH", path)], &args),
+            None => self.tree.run(&args),
         }
     }
 
@@ -260,7 +275,7 @@ impl Fixture {
     fn measure(&self) -> Measurements {
         let primed = self.tree.run(&["radius"]);
         assert_eq!(primed.code, 0, "prime state: {}", primed.out);
-        let primed = self.tree.run(&["gate", "--hook", "--changed"]);
+        let primed = self.hook();
         assert_eq!(primed.code, 0, "prime survey: {}", primed.out);
         assert!(primed.out.is_empty(), "prime survey: {}", primed.out);
 
@@ -273,7 +288,7 @@ impl Fixture {
         let warm = repeat(|| {
             let stops = journal(&self.tree).len();
             let started = Instant::now();
-            let run = self.tree.run(&["gate", "--hook", "--changed"]);
+            let run = self.hook();
             let total = started.elapsed().as_millis();
             assert_eq!(run.code, 0, "warm hook: {}", run.out);
             assert!(run.out.is_empty(), "warm hook: {}", run.out);
@@ -326,15 +341,30 @@ impl Fixture {
     }
 }
 
-fn write_project_files(tree: &Tree, scope: &str) {
+/// The fixture's configuration: the build switched off, the empty opt-in marker, or the one the
+/// running binary's `init --force` pins after the base, which only a pre-#180 binary reads.
+/// The value an environment variable names from a fixed set, and the first when it is unset.
+fn chosen(variable: &str, allowed: &[&'static str]) -> &'static str {
+    let Ok(named) = std::env::var(variable) else {
+        return allowed[0];
+    };
+    allowed
+        .iter()
+        .copied()
+        .find(|held| *held == named)
+        .unwrap_or_else(|| panic!("{variable}={named}: expected one of {allowed:?}"))
+}
+
+fn write_project_files(tree: &Tree, scope: &str, config: &str) {
     let complexity = match scope {
-        "rust" => r#", "complexity":{"in":"rust"}"#,
+        "rust" => r#""complexity":{"in":"rust"}"#,
         _ => "",
     };
-    let config = format!(
-        r#"{{"project":"performance","version":"{}","build":[]{complexity}}}"#,
-        env!("CARGO_PKG_VERSION"),
-    );
+    let config = match (config, complexity.is_empty()) {
+        ("build-off", true) => r#"{"build":[]}"#.to_string(),
+        ("build-off", false) => format!(r#"{{"build":[],{complexity}}}"#),
+        _ => format!("{{{complexity}}}"),
+    };
     assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
     tree.write("klin.json", &config);
     tree.write(
@@ -466,14 +496,40 @@ fn assert_typescript_shape([first, next, duplicate, tsx, test]: [String; 5]) {
     assert!(test.contains("return value_0054(1);"));
 }
 
+/// The fully pinned configuration an earlier klin wrote: every section its survey derived,
+/// written by that binary's own `init --force`, with the build switched off, and committed so
+/// the base records it.
+fn pin_legacy(tree: &Tree) {
+    let run = tree.run(&["init", "--force"]);
+    assert_eq!(run.code, 0, "legacy pin: {}", run.out);
+    let text = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
+    let mut config: Value = serde_json::from_str(&text).unwrap_or_default();
+    config["build"] = json!([]);
+    tree.write("klin.json", &config.to_string());
+    tree.commit("pin the legacy configuration");
+}
+
+/// Stand-in `cargo` and `tsc` commands that succeed at once.
+fn toolchain() -> (Tree, String) {
+    let tools = Tree::bare();
+    for name in ["cargo", "tsc"] {
+        let path = tools.write(name, "#!/bin/sh\nexit 0\n");
+        let mode = std::os::unix::fs::PermissionsExt::from_mode(0o755);
+        assert!(std::fs::set_permissions(&path, mode).is_ok(), "{name}");
+    }
+    let path = format!("{}:/usr/bin:/bin", tools.root().display());
+    (tools, path)
+}
+
 fn print_rows(fixture: &Fixture, rows: &Measurements) {
     let counts = count_paths(git_paths(fixture.tree.root(), ["ls-files", "-z"]));
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {} ({}, complexity_scope={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
+        "fixture {} ({}, complexity_scope={}, config={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
         size,
         fixture.profile.name,
         fixture.scope,
+        fixture.config,
         fixture.generated.loc,
         fixture.generated.declarations,
         fixture.generated.digest,

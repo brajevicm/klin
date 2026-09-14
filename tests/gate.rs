@@ -6,17 +6,14 @@ use serde_json::Value;
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const EVERY_GATE: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "doc_citations": [{"file": "README.md", "roots": ["."]}],
+  "doc_size": {"README.md": 10},
   "escapes": { "in": "src" },
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 /// A config whose escapes scope holds no applicable file, so that gate errors.
 const A_BROKEN_GATE: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}],
+  "doc_size": {"README.md": 10},
   "doc_citations": false,
   "escapes": { "in": "missing" },
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
@@ -24,11 +21,9 @@ const A_BROKEN_GATE: &str = r#"{
 
 /// A config holding one accepted escape that no site in the tree matches.
 const AN_UNMATCHED_ACCEPTED: &str = r#"{
-  "project": "t",
   "accepted": [{"gate": "escapes", "file": "src/gone.rs", "text": "the line that held it",
                 "count": 1}],
-  "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "doc_citations": [{"file": "README.md", "roots": ["."]}],
+  "doc_size": {"README.md": 10},
   "escapes": { "in": "src" },
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
@@ -88,7 +83,7 @@ fn every_configured_gate_runs_in_ladder_order() {
 
 #[test]
 fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
-    let tree = tree(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
+    let tree = tree(r#"{ "doc_size": {"README.md": 10} }"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -102,8 +97,7 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
 
 #[test]
 fn a_gate_the_survey_cannot_supply_does_not_run() {
-    let tree =
-        without_source(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
+    let tree = without_source(r#"{ "doc_size": {"README.md": 10} }"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -237,8 +231,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
 #[test]
 fn list_does_not_derive_source_policy() {
     let tree = tree(
-        r#"{ "project": "t",
-              "doc_size": [{"file": "README.md", "ceiling": 10}],
+        r#"{ "doc_size": {"README.md": 10},
               "complexity": { "in": "src", "cc": 8 } }"#,
     );
 
@@ -309,8 +302,7 @@ fn gate_by_name_is_repeatable_and_keeps_ladder_order() {
 
 #[test]
 fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
-    let tree =
-        without_source(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
+    let tree = without_source(r#"{ "doc_size": {"README.md": 10} }"#);
 
     let run = tree.run(&["gate", "--gate", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -320,7 +312,7 @@ fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
 
 #[test]
 fn a_config_that_configures_no_gate_is_a_tool_error() {
-    let tree = nothing_to_survey(r#"{ "project": "t" }"#);
+    let tree = nothing_to_survey(r#"{}"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -329,7 +321,7 @@ fn a_config_that_configures_no_gate_is_a_tool_error() {
 
 #[test]
 fn a_section_named_after_the_command_is_a_tool_error() {
-    let tree = tree(r#"{ "project": "t", "doc-size": [{"file": "README.md", "ceiling": 1}] }"#);
+    let tree = tree(r#"{ "doc-size": [{"file": "README.md", "ceiling": 1}] }"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -339,7 +331,7 @@ fn a_section_named_after_the_command_is_a_tool_error() {
 
 #[test]
 fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
-    let tree = nothing_to_survey(r#"{ "project": "t" }"#);
+    let tree = nothing_to_survey(r#"{}"#);
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -593,7 +585,7 @@ fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
 
 #[test]
 fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
-    let tree = nothing_to_survey(r#"{ "project": "t" }"#);
+    let tree = nothing_to_survey(r#"{}"#);
 
     let run = stop(&tree, "");
     assert_eq!(run.code, 1, "{}", run.out);
@@ -845,8 +837,12 @@ fn a_passing_json_run_holds_no_findings() {
 }
 
 #[test]
-fn a_json_run_with_pinned_source_policy_invents_no_derived_entries() {
-    let tree = tree(EVERY_GATE);
+fn a_json_run_with_pinned_policy_invents_no_derived_entries() {
+    let tree = tree(
+        r#"{ "doc_size": {"README.md": 10}, "doc_citations": false,
+             "escapes": { "in": "src" },
+             "complexity": { "in": "src", "cc": 8, "lines": 60 } }"#,
+    );
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -916,8 +912,7 @@ fn deleting_a_section_leaves_the_gate_running_over_a_derived_section() {
 
     tree.write(
         "klin.json",
-        r#"{ "project": "t",
-             "doc_size": [{"file": "README.md", "ceiling": 10}],
+        r#"{ "doc_size": {"README.md": 10},
              "complexity": { "in": "src", "cc": 8, "lines": 60 } }"#,
     );
     let deleted = tree.run(&ci_arguments());
@@ -926,17 +921,13 @@ fn deleting_a_section_leaves_the_gate_running_over_a_derived_section() {
 }
 
 const AN_EXCLUDED_GATE: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "doc_citations": [{"file": "README.md", "roots": ["."]}],
+  "doc_size": {"README.md": 10},
   "escapes": false,
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}],
-  "doc_citations": [{"file": "README.md", "roots": ["."]}],
+  "doc_size": {"README.md": 10},
   "complexity": false
 }"#;
 
@@ -956,10 +947,7 @@ fn a_named_gate_runs_alone_when_the_command_line_names_it() {
 /// named entries of `sarif` and the named conventions have it. ADR 0038.
 #[test]
 fn a_gates_key_is_not_one_klin_reads() {
-    let tree = tree(
-        r#"{ "project": "t",
-              "gates": [{"name": "n", "check": "complexity", "with": {}}] }"#,
-    );
+    let tree = tree(r#"{ "gates": [{"name": "n", "check": "complexity", "with": {}}] }"#);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -969,8 +957,7 @@ fn a_gates_key_is_not_one_klin_reads() {
 #[test]
 fn two_gates_of_one_name_are_a_tool_error() {
     let tree = tree(
-        r#"{ "project": "t",
-              "doc_size": [{"file": "README.md", "ceiling": 10}],
+        r#"{ "doc_size": {"README.md": 10},
               "sarif": [{"name": "doc-size", "report": "out/lint.sarif"}] }"#,
     );
 
@@ -1096,9 +1083,7 @@ fn strict_refuses_a_tree_the_survey_finds_no_source_root_in() {
 #[test]
 fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
     let tree = without_source(
-        r#"{ "project": "t",
-              "doc_size": [{"file": "README.md", "ceiling": 10}],
-              "doc_citations": [{"file": "README.md", "roots": ["."]}],
+        r#"{ "doc_size": {"README.md": 10},
               "complexity": false,
               "escapes": false,
               "stubs": false,
@@ -1114,8 +1099,7 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
 #[test]
 fn list_says_a_compact_source_policy_runs() {
     let tree = tree(
-        r#"{ "project": "t",
-              "doc_size": [{"file": "README.md", "ceiling": 10}],
+        r#"{ "doc_size": {"README.md": 10},
               "escapes": {"in": "src"} }"#,
     );
 
@@ -1183,8 +1167,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
     tree.write(
         "klin.json",
-        r#"{ "project": "t",
-              "doc_size": [{"file": "README.md", "ceiling": 10}],
+        r#"{ "doc_size": {"README.md": 10},
               "doc_citations": false,
               "complexity": false,
               "escapes": false,
@@ -1205,7 +1188,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
 #[test]
 fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let tree = tree(
-        r#"{ "project": "t", "doc_size": false, "doc_citations": false, "escapes": false,
+        r#"{ "doc_size": false, "doc_citations": false, "escapes": false,
               "stubs": false, "complexity": false, "dead_symbols": false,
               "reachability": false }"#,
     );
@@ -1292,81 +1275,44 @@ fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
 }
 
 const ANOTHER_VERSION: &str = r#"{
-  "project": "t",
   "version": "0.0.1",
-  "doc_size": [{"file": "README.md", "ceiling": 10}]
+  "doc_size": {"README.md": 10}
 }"#;
 
+/// A configuration names no repository and no klin version: both are facts klin reads, so a
+/// person who still writes either is told to delete it. ADR 0040.
 #[test]
-fn a_version_the_binary_does_not_carry_is_a_note_and_nothing_else() {
-    let tree = tree(ANOTHER_VERSION);
+fn a_project_or_version_key_is_a_config_error_that_says_to_delete_it() {
+    for (key, value) in [("project", "\"t\""), ("version", "\"0.0.1\"")] {
+        let tree = tree(&format!(
+            r#"{{ "{key}": {value}, "doc_size": {{"README.md": 10}} }}"#
+        ));
 
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("NOTE"), "{}", run.out);
-    assert!(run.says("0.0.1"), "{}", run.out);
-    assert!(run.says(env!("CARGO_PKG_VERSION")), "{}", run.out);
-    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
-}
-
-#[test]
-fn the_running_version_and_no_version_both_print_no_note() {
-    let matching = tree(&format!(
-        r#"{{ "project": "t", "version": "{}",
-              "doc_size": [{{"file": "README.md", "ceiling": 10}}] }}"#,
-        env!("CARGO_PKG_VERSION")
-    ));
-    let absent = tree(r#"{ "project": "t", "doc_size": [{"file": "README.md", "ceiling": 10}] }"#);
-
-    for tree in [matching, absent] {
         let run = tree.run(&["gate"]);
-        assert_eq!(run.code, 0, "{}", run.out);
-        assert!(!run.says("NOTE"), "{}", run.out);
+        assert_eq!(run.code, 2, "{key}: {}", run.out);
+        assert!(
+            run.says(&format!("\"{key}\" is not a key klin reads")),
+            "{}",
+            run.out
+        );
+        assert!(run.says("delete the key"), "{}", run.out);
     }
 }
 
 #[test]
-fn a_version_that_is_not_a_string_is_a_tool_error() {
-    let tree = tree(
-        r#"{ "project": "t", "version": 1,
-                         "doc_size": [{"file": "README.md", "ceiling": 10}] }"#,
-    );
-
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"version\""), "{}", run.out);
-}
-
-#[test]
-fn the_version_note_reaches_the_json_notes() {
-    let tree = tree(ANOTHER_VERSION);
-
-    let run = tree.run(&["gate", "--json"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let report = run.json();
-    let notes = list(&report, "notes");
-    let note = notes
-        .iter()
-        .find(|note| field(note, "outcome") == "version")
-        .unwrap_or_else(|| panic!("no version note in:\n{}", run.out));
-    assert!(field(note, "text").contains("0.0.1"), "{}", run.out);
-}
-
-#[test]
-fn the_hook_hands_back_the_version_note_and_does_not_block_the_stop() {
+fn the_hook_reports_a_retired_version_key_and_does_not_block_the_stop() {
     let tree = tree(ANOTHER_VERSION);
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("NOTE"), "{}", run.out);
-    assert!(run.says("0.0.1"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("\"version\""), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
 }
 
 /// A config that names a key no klin version reads, beside a gate that would otherwise pass.
 const AN_UNKNOWN_KEY: &str = r#"{
-  "project": "t",
   "nonsense": true,
-  "doc_size": [{"file": "README.md", "ceiling": 10}]
+  "doc_size": {"README.md": 10}
 }"#;
 
 #[test]
@@ -1407,7 +1353,7 @@ fn no_ci_variable_changes_what_a_run_does() {
 
 #[test]
 fn hook_reports_a_schedule_with_no_step_due_and_does_not_block_the_stop() {
-    let tree = tree(r#"{"doc_size": [{"file": "README.md", "ceiling": {"2999-01-01": 10}}]}"#);
+    let tree = tree(r#"{"doc_size": {"README.md": {"2999-01-01": 10}}}"#);
 
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -1426,8 +1372,8 @@ fn hook_reports_a_section_naming_a_retired_key_and_does_not_block_the_stop() {
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
-const A_LOST_FILE: &str = r#"{ "project": "t",
-  "complexity": { "in": "src", "except": "src/gone.rs", "cc": 8, "lines": 60 } }"#;
+const A_LOST_FILE: &str =
+    r#"{ "complexity": { "in": "src", "except": "src/gone.rs", "cc": 8, "lines": 60 } }"#;
 
 fn lost_file() -> Tree {
     let tree = tree(EVERY_GATE);

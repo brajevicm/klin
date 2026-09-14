@@ -1,20 +1,27 @@
+//! `inventory` ratchets the existence of tests. A test file is a file the base holds that the
+//! test convention of spec 8.2 marks, keyed by its path; a test function is a site of ADR 0008
+//! inside one, keyed by file and declaration line. Its one value, `missing`, rises from 0 to 1
+//! when the working tree no longer holds the site. The tests are derived: every file under a
+//! test root the survey finds, and every source file a test directory segment or a test affix
+//! marks, narrowed only by `in` and `except` under the scope the base records. Spec 5.4, 8.2,
+//! 8.2.1, ADR 0040.
+
 use std::collections::BTreeSet;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use crate::base;
+use crate::base::{self, Prior};
 use crate::changed::git;
-use crate::check::{Context, DELETED, Sink};
-use crate::config::{Config, Error};
+use crate::check::{self, Context, DELETED, Sink};
+use crate::config::Error;
 use crate::coverage::{self, Coverage};
-use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
-use crate::scope::ROOT;
-use crate::survey::{TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
+use crate::scope::{self, Scope, under_or_at};
+use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::syntax::convention::{self, Test};
 use crate::syntax::{self, Unparsed};
 use crate::turn;
@@ -22,31 +29,10 @@ use crate::turn;
 pub const SECTION: &str = "inventory";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[NAME, PATH, PATTERN];
+pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
-pub const NAME: Key = Key {
-    name: "name",
-    holds: "what a finding calls this entry",
-    required: true,
-    rule: Some("the test root's path"),
-    default: "",
-};
-
-pub const PATH: Key = Key {
-    name: "path",
-    holds: "the directory whose test sites this entry holds",
-    required: true,
-    rule: Some("one entry per test root the survey found"),
-    default: "",
-};
-
-const PATTERN: Key = Key {
-    name: "pattern",
-    holds: "a glob on the basename that limits the entry",
-    required: false,
-    rule: None,
-    default: "every file under `path`",
-};
+const TEST_ROOTS: &str = "test roots";
+const ROOTS_RULE: &str = "the roots that match a language's test convention";
 const LABEL: &str = "test file";
 const MISSING: &str = "missing";
 /// The question the hook's block puts to the agent. Removing a test is ordinary work, and
@@ -61,9 +47,27 @@ const RULE: &str = "the affix table: a test_ or spec_ prefix, a _test, _spec, .t
     suffix, a Test or Tests suffix on the basename, and a tests/, test/, spec/ or __tests__/ \
     directory segment";
 
-struct Entry {
-    path: String,
-    pattern: Option<String>,
+/// What this gate calls a test: every file under a test root the survey found, and every
+/// source file a test directory segment or a test affix marks, within the section's scope.
+/// Spec 5.4, 8.2.
+struct Tests<'a> {
+    roots: &'a [String],
+    scope: Scope,
+}
+
+impl Tests<'_> {
+    fn holds(&self, path: &str) -> bool {
+        self.scope.selects(path)
+            && survey::surveyed(path)
+            && (self.roots.iter().any(|root| under_or_at(path, root)) || survey::marked(path))
+    }
+}
+
+/// Whether the derivation commit or the working tree holds a test this gate judges, which is
+/// when it runs with no section. A test only the commit holds is one a window may have deleted.
+pub fn applies(project: &Project) -> bool {
+    let found = &project.facts().found;
+    !found.test_roots.is_empty() || found.tests
 }
 
 /// One test file the base holds: whether the working tree still has it, and the subject that
@@ -107,32 +111,21 @@ struct Walk {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let config = &project.config;
-    at.say(SECTION, out);
-    let entries = entries(project)?;
+    let today = today(project)?;
+    said(project, out);
     let commit = base::commit(config.root(), at, out)?;
-    let listed = at_the_base(config.root(), &commit)?;
-    let sites = sites(&entries, &listed, config.root());
-    let (judged, mut paired): (Vec<Site>, Vec<Site>) =
-        sites.into_iter().partition(|site| site.subject.is_none());
-    let measured = tests(&entries, at, &commit)?;
+    let Found {
+        judged,
+        mut paired,
+        measured,
+    } = found(at, &commit, &today)?;
     let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
         measured.functions.into_iter().partition(Function::orphaned);
     if let Some(only) = at.only {
         paired.retain(|site| only.contains(&site.path));
         orphans.retain(|function| only.contains(&function.site.file));
     }
-    let now: Vec<Finding> = judged
-        .iter()
-        .map(|site| finding(&site.path, LABEL, 0, site.gone))
-        .chain(functions.iter().map(|function| {
-            finding(
-                &function.site.file,
-                &function.site.text,
-                function.site.line,
-                function.gone,
-            )
-        }))
-        .collect();
+    let now = findings(&judged, &functions);
     let (before, went) = let_through(&now, at, config.root());
     let held = ratchet::scoped(&now, at.only);
     let accepted = ratchet::accepted(config, at.gate, evaluator().metrics)?;
@@ -145,6 +138,93 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(syntax::unread(&measured.unparsed, at, code, out))
 }
 
+/// What the base holds of tests: the test files it judges, the ones whose subject went too, and
+/// every test function with what the working tree says about it.
+struct Found {
+    judged: Vec<Site>,
+    paired: Vec<Site>,
+    measured: Measured,
+}
+
+/// The base laid out, when the runner did not lay it out already, and read under the scope it
+/// records, which is also the scope the working tree is read under.
+fn found(at: &Context, commit: &str, today: &Scope) -> Result<Found, Error> {
+    let project = at.project;
+    let config = &project.config;
+    let owned;
+    let prior = match at.prior {
+        Some(prior) => prior,
+        None => {
+            owned = base::materialize(project, commit, None)?;
+            &owned
+        }
+    };
+    let tests = Tests {
+        roots: &project.facts().found.test_roots,
+        scope: Scope::at_base(config, SECTION, prior.root(), today),
+    };
+    let listed = at_the_base(config.root(), commit)?;
+    let (judged, paired) = sites(&tests, &listed, config.root())
+        .into_iter()
+        .partition(|site| site.subject.is_none());
+    Ok(Found {
+        judged,
+        paired,
+        measured: tests_of(&tests, at, prior)?,
+    })
+}
+
+/// One finding per test file and per test function the base holds.
+fn findings(judged: &[Site], functions: &[Function]) -> Vec<Finding> {
+    judged
+        .iter()
+        .map(|site| finding(&site.path, LABEL, 0, site.gone))
+        .chain(functions.iter().map(|function| {
+            finding(
+                &function.site.file,
+                &function.site.text,
+                function.site.line,
+                function.gone,
+            )
+        }))
+        .collect()
+}
+
+/// Today's scope, refused when an `in` selects no test the working tree holds.
+fn today(project: &Project) -> Result<Scope, Error> {
+    let config = &project.config;
+    let values = config.policy(SECTION, KEYS)?;
+    let scope = Scope::read(config, SECTION, &values)?;
+    let tests = Tests {
+        roots: &project.facts().found.test_roots,
+        scope,
+    };
+    if tests.scope.has_in() && !project.tree().files()?.iter().any(|path| tests.holds(path)) {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
+            config.file.display()
+        )));
+    }
+    Ok(tests.scope)
+}
+
+/// The test roots this run found, as the one `derived:` line and its JSON entry.
+fn said(project: &Project, out: &mut Sink) {
+    let roots = &project.facts().found.test_roots;
+    if roots.is_empty() {
+        return;
+    }
+    out.provenance(
+        format!("derived: {TEST_ROOTS} {}, {ROOTS_RULE}", roots.join(", ")),
+        Some(check::derived_entry(
+            SECTION,
+            Some(TEST_ROOTS),
+            roots.clone().into(),
+            ROOTS_RULE,
+        )),
+    );
+}
+
 /// The OK line: how many test sites the base holds, and how many of them the run let go.
 fn standing(held: usize, gone: usize, said: &str) -> String {
     match gone {
@@ -153,22 +233,15 @@ fn standing(held: usize, gone: usize, said: &str) -> String {
     }
 }
 
-/// Every test function the base holds under the entries, with what the working tree says about
-/// it. A match is by site first and then by body hash across files, so a test renamed or moved
-/// with its body unchanged is held and only a test that was edited as it moved reads as gone.
-/// Spec 4.4, 8.2, 16.4.
-fn tests(entries: &[Entry], at: &Context, commit: &str) -> Result<Measured, Error> {
+/// Every test function the base holds, with what the working tree says about it. A match is by
+/// site first and then by body hash across files, so a test renamed or moved with its body
+/// unchanged is held and only a test that was edited as it moved reads as gone. Both trees are
+/// read under the scope the base records, so a narrowing loses no test it held. Spec 4.4, 8.2,
+/// 16.4.
+fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Error> {
     let config = &at.project.config;
-    let owned;
-    let prior = match at.prior {
-        Some(prior) => prior,
-        None => {
-            owned = base::materialize(at.project, commit, None)?;
-            &owned
-        }
-    };
-    let after = walked(entries, at.project.tree())?;
-    let before = walked(entries, prior.tree())?.tests;
+    let after = walked(tests, at.project.tree())?;
+    let before = walked(tests, prior.tree())?.tests;
     let found = still_there(&before, &after.tests);
     let refused: BTreeSet<&str> = after
         .unparsed
@@ -225,70 +298,29 @@ fn claimed(after: &[Test], taken: &mut [bool], matches: impl Fn(&Test) -> bool) 
     }
 }
 
-/// Every test function one tree holds under the entries, by the convention table of 8.2. The
-/// walk is the one the complexity gate does, over the files an entry holds and no others, so
-/// the pattern that limits an entry limits this identity too.
-fn walked(entries: &[Entry], tree: &Tree) -> Result<Walk, Error> {
-    let root = tree.root();
+/// Every test function one tree holds, by the convention table of 8.2, off the tree's one file
+/// list.
+fn walked(tests: &Tests, tree: &Tree) -> Result<Walk, Error> {
     let extensions = syntax::extensions(&[]);
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &extensions,
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
     let mut walk = Walk {
         tests: Vec::new(),
         unparsed: Vec::new(),
     };
-    for path in reachable(entries, tree, &wanted)? {
-        let file = files::relative(&path, root);
-        if !entries.iter().any(|entry| entry.holds(&file)) {
-            continue;
-        }
+    for file in tree.files()?.iter().filter(|file| {
+        tests.holds(file) && extensions.iter().any(|extension| file.ends_with(extension))
+    }) {
+        let path = tree.root().join(file);
         let bytes = std::fs::read(&path).map_err(|why| Error::unreadable(&path, why))?;
         let source = String::from_utf8_lossy(&bytes);
         walk.tests
-            .extend(convention::tests(&file, &source, &mut walk.unparsed));
+            .extend(convention::tests(file, &source, &mut walk.unparsed));
     }
     walk.tests
         .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
     Ok(walk)
 }
 
-/// Every file under the entries this tree holds. An entry that names a directory is walked,
-/// and one that names a single file is that file, so both shapes of `path` reach this identity.
-fn reachable(
-    entries: &[Entry],
-    tree: &Tree,
-    wanted: &files::Wanted,
-) -> Result<Vec<PathBuf>, Error> {
-    let mut directories = Vec::new();
-    let mut singles = Vec::new();
-    for entry in entries {
-        let at = under(tree.root(), &entry.path);
-        match at.is_dir() {
-            true => directories.push(at),
-            false => singles.push(at),
-        }
-    }
-    let mut found = files::under(tree, &directories, wanted)?;
-    found.extend(singles.into_iter().filter(|path| path.is_file()));
-    found.sort();
-    found.dedup();
-    Ok(found)
-}
-
-fn under(root: &Path, path: &str) -> PathBuf {
-    match path {
-        ROOT => root.to_path_buf(),
-        named => root.join(named),
-    }
-}
-
-/// What this gate discovered: every test file the base holds under its entries, which is also
+/// What this gate discovered: every test file the base holds, which is also
 /// the file scope the function identity reads. A deleted test whose subject went with it is
 /// found and not measured, because it is a NOTE and not a site the gate judges. A file no
 /// grammar read is unreadable and not measured, because no function in it was seen. Spec 8.6.
@@ -478,13 +510,10 @@ fn noted(paired: &[Site], out: &mut Sink) {
     });
 }
 
-/// Every test file the base holds under the entries, each with what the working tree says
-/// about it. This is the one measure of `after` that reads `before`. Spec 16.4.
-fn sites(entries: &[Entry], listed: &BTreeSet<String>, root: &Path) -> Vec<Site> {
-    let mut wanted: Vec<&String> = listed
-        .iter()
-        .filter(|path| entries.iter().any(|entry| entry.holds(path)))
-        .collect();
+/// Every test file the base holds, each with what the working tree says about it. This is the
+/// one measure of `after` that reads `before`. Spec 16.4.
+fn sites(tests: &Tests, listed: &BTreeSet<String>, root: &Path) -> Vec<Site> {
+    let mut wanted: Vec<&String> = listed.iter().filter(|path| tests.holds(path)).collect();
     wanted.sort();
     wanted
         .into_iter()
@@ -497,23 +526,6 @@ fn sites(entries: &[Entry], listed: &BTreeSet<String>, root: &Path) -> Vec<Site>
             }
         })
         .collect()
-}
-
-impl Entry {
-    fn holds(&self, path: &str) -> bool {
-        if !under_or_at(path, &self.path) {
-            return false;
-        }
-        let name = path.rsplit_once('/').map_or(path, |(_, name)| name);
-        match &self.pattern {
-            Some(glob) => files::glob_matches(glob.as_bytes(), name.as_bytes()),
-            None => true,
-        }
-    }
-}
-
-fn under_or_at(path: &str, root: &str) -> bool {
-    root == ROOT || path == root || path.starts_with(&format!("{root}/"))
 }
 
 /// The file the base holds at the test's path with the affixes stripped, gone from the working
@@ -603,35 +615,4 @@ fn at_the_base(root: &Path, commit: &str) -> Result<BTreeSet<String>, Error> {
         .filter(|path| !path.is_empty())
         .map(str::to_string)
         .collect())
-}
-
-fn entries(project: &Project) -> Result<Vec<Entry>, Error> {
-    let config = &project.config;
-    let Some(listed) = project.section(SECTION)?.as_array() else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must be a list of {{\"name\", \"path\"}} entries",
-            config.file.display()
-        )));
-    };
-    listed.iter().map(|item| entry(config, item)).collect()
-}
-
-fn entry(config: &Config, item: &Value) -> Result<Entry, Error> {
-    let values = item
-        .as_object()
-        .ok_or_else(|| config.malformed(SECTION, PATH.name, "an object"))?;
-    for key in [NAME, PATH] {
-        if !values.get(key.name).is_some_and(Value::is_string) {
-            return Err(config.missing(SECTION, key.name));
-        }
-    }
-    let pattern = match values.get(PATTERN.name) {
-        None => None,
-        Some(Value::String(glob)) => Some(glob.clone()),
-        Some(_) => return Err(config.malformed(SECTION, PATTERN.name, "a glob on the basename")),
-    };
-    Ok(Entry {
-        path: values[PATH.name].as_str().unwrap_or_default().to_string(),
-        pattern,
-    })
 }

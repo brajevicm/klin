@@ -164,7 +164,6 @@ pub fn show(label: &str, values: &Values) -> String {
 pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(kind, project)?;
-    at.say(kind.section, out);
     let read = findings(kind, &spec.search, project.tree(), project.root())?;
     let sites = ratchet::scoped(&read.findings, at.only);
     let aside = match read.skipped {

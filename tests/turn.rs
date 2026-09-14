@@ -11,7 +11,7 @@ const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 fn tree() -> Tree {
     let tree = Tree::new();
-    tree.write("klin.json", "{\n  \"project\": \"t\"\n}\n");
+    tree.write("klin.json", "{}\n");
     tree.write("src/lib.rs", CLEAN);
     tree.base();
     tree

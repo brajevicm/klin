@@ -83,6 +83,12 @@ A value klin computed because the config did not pin the value. A number
 comes from one commit; a set of paths adds what the tree holds.
 _Avoid_: default, inferred
 
+**Pin**:
+A value a person wrote into `klin.json` in place of the one klin would
+derive: a ceiling, a scope, a build command. A pin is policy, never a fact
+about the tree.
+_Avoid_: snapshot, default
+
 **Session**:
 The host's grouping of turns under one id, which klin records and never
 judges. A host with no id leaves the session empty.

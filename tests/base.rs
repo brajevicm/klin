@@ -9,7 +9,6 @@ use serde_json::Value;
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const CONFIG: &str = r#"{
-  "project": "t",
   "escapes": { "in": "src" }
 }"#;
 
@@ -214,8 +213,8 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
     let tree = Tree::bare();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "doc_citations": false,
-             "doc_size": [{"file": "README.md", "ceiling": 10}],
+        r#"{ "doc_citations": false,
+             "doc_size": {"README.md": 10},
              "escapes": false, "stubs": false, "complexity": false,
              "dead_symbols": false, "reachability": false }"#,
     );

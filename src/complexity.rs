@@ -494,6 +494,27 @@ struct Sample {
     fallback: Option<String>,
 }
 
+/// The two ceilings the derivation commit gives, each with the `derived:` line that says where
+/// it came from, which `init --pin` writes as policy. Nothing when there is no commit to sample,
+/// because a floor alone is no measurement. Spec 5.7.
+pub fn suggested(project: &Project) -> Vec<(&'static str, u64, String)> {
+    let (found, Some(commit)) = derived_sample(project) else {
+        return Vec::new();
+    };
+    [(CC, CC_FLOOR, found.cc), (LINES, LINES_FLOOR, found.lines)]
+        .into_iter()
+        .map(|(key, floor, measured)| {
+            let value = measured.max(floor);
+            let rule = number_rule(value, floor, found.functions, Some(&commit));
+            (
+                key.name,
+                value,
+                format!("derived: {SECTION} {} {value} ({rule})", key.name),
+            )
+        })
+        .collect()
+}
+
 fn derived_sample(project: &Project) -> (Sample, Option<String>) {
     let Some((_, commit, at)) = project.source_derivation() else {
         return (Sample::default(), None);

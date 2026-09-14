@@ -64,131 +64,56 @@ fn init_writes_no_file_but_the_config() {
     assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
 }
 
+/// Plain `init` writes the repository's opt-in marker and nothing it can derive. ADR 0028,
+/// ADR 0040.
 #[test]
-fn init_writes_every_section_it_can_infer() {
+fn init_writes_the_empty_opt_in_marker() {
     let tree = in_debt();
 
     let run = tree.run(&["init"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let config = config(&tree);
-    for section in [
-        "complexity",
-        "escapes",
-        "stubs",
-        "dead_symbols",
-        "reachability",
-    ] {
-        assert_eq!(config.get(section), None, "{section}: {config}");
-    }
-    assert_eq!(config["doc_size"][0]["file"], "README.md", "{config}");
-    assert!(
-        config["doc_size"][0]["ceiling"]
-            .as_u64()
-            .unwrap_or_default()
-            >= 400,
-        "{config}"
-    );
-    assert_eq!(config["doc_citations"][0]["file"], "README.md", "{config}");
-    assert_eq!(
-        config["doc_citations"][0]["roots"],
-        serde_json::json!(["."]),
-        "{config}"
-    );
-}
-
-#[test]
-fn init_writes_the_version_of_the_running_binary() {
-    let tree = in_debt();
-
-    let run = tree.run(&["init"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let config = config(&tree);
-    assert_eq!(config["version"], env!("CARGO_PKG_VERSION"), "{config}");
-}
-
-#[test]
-fn init_writes_one_build_entry_per_manifest() {
-    let tree = in_debt();
-
-    let run = tree.run(&["init"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let build = config(&tree)["build"].clone();
-    assert!(
-        build
-            .as_str()
-            .unwrap_or_default()
-            .starts_with("cargo build"),
-        "{build}"
-    );
-}
-
-#[test]
-fn init_writes_a_build_entry_with_a_root_for_each_project_of_a_monorepo() {
-    let tree = Tree::bare();
-    tree.write("api/Cargo.toml", "[package]\nname = \"api\"\n");
-    tree.write("api/src/lib.rs", "fn f() {}\n");
-    tree.write("web/package.json", "{\"name\": \"web\"}\n");
-    tree.write("web/tsconfig.json", "{}\n");
-    tree.write("web/src/index.ts", "export const a = 1;\n");
-    tree.write("service/go.mod", "module t\n");
-    tree.write("service/main.go", "package main\n");
-    tree.base();
-
-    let run = tree.run(&["init"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let build = config(&tree)["build"].clone();
-    let roots: Vec<&str> = build
-        .as_array()
-        .map(|entries| {
-            entries
-                .iter()
-                .filter_map(|entry| entry["root"].as_str())
-                .collect()
-        })
-        .unwrap_or_default();
-    assert_eq!(roots, ["api", "service", "web"], "{build}");
+    assert_eq!(config(&tree), serde_json::json!({}), "{}", run.out);
+    assert!(run.says("--pin"), "{}", run.out);
 }
 
 #[test]
 fn init_leaves_a_config_that_already_exists_alone() {
     let tree = in_debt();
-    let mine = r#"{ "project": "mine", "doc_size": [{"file": "README.md", "ceiling": 900}] }"#;
+    let mine = r#"{ "doc_size": {"README.md": 900} }"#;
     tree.write("klin.json", mine);
 
     let run = tree.run(&["init"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("already"), "{}", run.out);
-    assert!(run.says("--add"), "{}", run.out);
+    assert!(run.says("--pin"), "{}", run.out);
     let kept = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     assert_eq!(kept, mine, "{}", run.out);
 }
 
 #[test]
-fn add_fills_in_the_sections_the_config_does_not_name() {
+fn pin_fills_in_the_guardrails_the_config_does_not_state() {
     let tree = in_debt();
-    tree.write(
-        "klin.json",
-        r#"{ "project": "mine", "doc_size": [{"file": "README.md", "ceiling": 900}] }"#,
-    );
+    tree.write("klin.json", r#"{ "doc_size": {"README.md": 900} }"#);
 
-    let run = tree.run(&["init", "--add"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
-    assert_eq!(config["project"], "mine", "{config}");
-    assert_eq!(config["doc_size"][0]["ceiling"], 900, "{config}");
-    assert_eq!(config.get("escapes"), None, "{config}");
-    assert_eq!(config.get("complexity"), None, "{config}");
-    assert!(config["doc_citations"].is_array(), "{config}");
+    assert_eq!(config["doc_size"]["README.md"], 900, "{config}");
+    assert!(config["complexity"]["cc"].is_u64(), "{config}");
+    assert!(config["complexity"]["lines"].is_u64(), "{config}");
+    assert!(run.says("derived: complexity cc"), "{}", run.out);
 }
 
 #[test]
-fn add_leaves_a_gate_a_person_excluded_alone() {
+fn pin_leaves_a_gate_a_person_excluded_alone() {
     let tree = in_debt();
-    tree.write("klin.json", r#"{ "project": "mine", "escapes": false }"#);
+    tree.write("klin.json", r#"{ "escapes": false, "complexity": false }"#);
 
-    let run = tree.run(&["init", "--add"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(config(&tree)["escapes"], Value::Bool(false), "{}", run.out);
+    let config = config(&tree);
+    assert_eq!(config["escapes"], Value::Bool(false), "{}", run.out);
+    assert_eq!(config["complexity"], Value::Bool(false), "{}", run.out);
 }
 
 /// A tree whose two documents let one entry be re-pinned while the other keeps a schedule.
@@ -202,60 +127,35 @@ fn two_documents() -> Tree {
     tree
 }
 
-fn entry(config: &Value, section: &str, file: &str) -> Value {
-    let entries = config[section].as_array().cloned().unwrap_or_default();
-    entries
-        .into_iter()
-        .find(|entry| entry["file"] == file)
-        .unwrap_or_else(|| panic!("no {section} entry for {file} in {config}"))
-}
-
-/// `--force` re-pins what the tree says today. It keeps the accepted list, a dated schedule
-/// and a gate a person switched off, because klin derives none of those. #107.
+/// `--pin` adds today's guardrails and keeps every value a person wrote: a pinned ceiling, a
+/// dated schedule, the accepted list, a gate switched off and the journal preference. #180.
 #[test]
-fn force_re_pins_every_derivable_value_and_keeps_what_klin_cannot_derive() {
+fn pin_keeps_every_value_a_person_wrote() {
     let tree = two_documents();
-    let accepted = serde_json::json!([{"gate": "escapes", "file": "src/lib.rs"}]);
-    tree.write(
-        "klin.json",
-        r#"{
-          "project": "old",
-          "accepted": [{"gate": "escapes", "file": "src/lib.rs"}],
-          "doc_size": [
-            {"file": "README.md", "ceiling": 50},
-            {"file": "CONTEXT.md", "ceiling": {"2020-01-01": 900}}
-          ],
-          "escapes": false
-        }"#,
-    );
+    let held = serde_json::json!({
+        "accepted": [{"gate": "escapes", "file": "src/lib.rs", "text": "x", "count": 1}],
+        "doc_size": {"README.md": 50, "CONTEXT.md": {"2020-01-01": 900}},
+        "escapes": false,
+        "journal": {"prompt": false}
+    });
+    tree.write("klin.json", &held.to_string());
 
-    let run = tree.run(&["init", "--force"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
-    assert_ne!(config["project"], "old", "{config}");
-    assert!(
-        entry(&config, "doc_size", "README.md")["ceiling"]
-            .as_u64()
-            .unwrap_or_default()
-            >= 400,
-        "{config}"
-    );
-    assert_eq!(
-        entry(&config, "doc_size", "CONTEXT.md")["ceiling"],
-        serde_json::json!({"2020-01-01": 900}),
-        "{config}"
-    );
-    assert_eq!(config["accepted"], accepted, "{config}");
-    assert_eq!(config["escapes"], Value::Bool(false), "{config}");
+    for key in ["accepted", "doc_size", "escapes", "journal"] {
+        assert_eq!(config[key], held[key], "{key}: {config}");
+    }
+    assert!(config["complexity"]["cc"].is_u64(), "{config}");
 }
 
 #[test]
-fn force_edits_no_gitignore() {
+fn pin_edits_no_gitignore() {
     let tree = two_documents();
     tree.write(".gitignore", "/target\n");
     tree.commit("an ignore file");
 
-    let run = tree.run(&["init", "--force"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
 }
@@ -418,24 +318,41 @@ fn hooks_edits_no_gitignore_and_no_config() {
     assert_eq!(tree.status(), " M .claude/settings.json\n", "{}", run.out);
 }
 
+/// A pin is a guardrail a person owns, and nothing that describes the repository: no build
+/// command, document topology, manifest, test root or source section. ADR 0040.
 #[test]
-fn init_infers_no_section_for_a_gate_it_cannot_survey() {
+fn pin_writes_only_stable_guardrails() {
     let tree = in_debt();
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
-    assert_eq!(config.get("sarif"), None, "{config}");
-    assert_eq!(config.get("manifests"), None, "{config}");
+    let written: Vec<&String> = config
+        .as_object()
+        .map(|held| held.keys().collect())
+        .unwrap_or_default();
+    assert_eq!(written, ["complexity", "doc_size"], "{config}");
+    assert_eq!(
+        config["complexity"].as_object().map(|held| held.len()),
+        Some(2),
+        "{config}"
+    );
+    assert!(
+        config["doc_size"]["README.md"].as_u64().unwrap_or_default() >= 400,
+        "{config}"
+    );
+
+    let gated = tree.run(&["gate", "--strict"]);
+    assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
 /// `init` pins what history says, so a person can see the two numbers, edit them and put them
 /// under review. The lines name them as derived and never as a gate. #92.
 #[test]
-fn init_pins_the_radius_values_history_derives() {
+fn pin_writes_the_radius_values_history_derives() {
     let tree = harness::history(43, 6);
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert_eq!(config["radius"]["lines"], 30, "{config}");
@@ -456,14 +373,14 @@ fn init_pins_the_radius_values_history_derives() {
 }
 
 #[test]
-fn init_writes_no_radius_section_below_fifty_commits() {
+fn pin_writes_no_radius_section_below_fifty_commits() {
     let tree = harness::history(42, 6);
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(config(&tree)["radius"], Value::Null, "{}", run.out);
     assert!(
-        run.says("derived: no \"radius\" section, because 49 non-merge commit(s) reach"),
+        run.says("derived: no \"radius\" pinned, because 49 non-merge commit(s) reach"),
         "{}",
         run.out
     );
@@ -494,7 +411,7 @@ fn hooks_with_no_host_at_the_root_is_refused() {
 
 /// Retired source-topology keys are refused instead of silently surviving a rewrite. #179.
 #[test]
-fn force_refuses_retired_source_topology() {
+fn pin_refuses_retired_source_topology() {
     let tree = two_documents();
     tree.write(
         "klin.json",
@@ -504,7 +421,7 @@ fn force_refuses_retired_source_topology() {
         }"#,
     );
 
-    let run = tree.run(&["init", "--force"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads"), "{}", run.out);
 }
@@ -877,14 +794,26 @@ fn init_omits_automatic_source_sections() {
 }
 
 #[test]
-fn force_refuses_the_retired_stubs_shape() {
+fn pin_refuses_the_retired_stubs_shape() {
     let tree = in_debt();
     tree.write(
         "klin.json",
         r#"{ "stubs": { "roots": ["old"], "languages": ["go"] } }"#,
     );
 
-    let run = tree.run(&["init", "--force"]);
+    let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads"), "{}", run.out);
+}
+
+/// The snapshot flags are gone with the snapshot they wrote. #180.
+#[test]
+fn the_retired_add_and_force_flags_are_usage_errors() {
+    for flag in ["--add", "--force"] {
+        let tree = in_debt();
+
+        let run = tree.run(&["init", flag]);
+        assert_eq!(run.code, 2, "{flag}: {}", run.out);
+        assert!(!tree.path("klin.json").exists(), "{flag}: {}", run.out);
+    }
 }

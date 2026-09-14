@@ -7,14 +7,12 @@ use harness::Tree;
 use serde_json::Value;
 
 const CONFIG: &str = r#"{
-  "project": "t",
   "escapes": { "in": "src", "except": "src/skipped.rs" },
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 const DOCUMENT: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}]
+  "doc_size": {"README.md": 10}
 }"#;
 
 const TANGLED: &str = r##"fn tangled(a: i32) -> i32 {
@@ -209,7 +207,6 @@ fn a_worsened_finding_names_the_base_site_it_matched_and_the_ceiling() {
 fn a_worsened_finding_names_the_accepted_entry_it_matched() {
     let tree = tree(&format!(
         r#"{{
-  "project": "t",
   "accepted": [{{"gate": "escapes", "file": "src/lib.rs", "text": "{}", "count": 1}}],
   "escapes": {{ "in": "src" }}
 }}"#,

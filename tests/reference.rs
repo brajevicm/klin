@@ -13,14 +13,14 @@ fn printed() -> String {
 fn the_reference_names_every_top_level_key_and_every_section() {
     let out = printed();
 
-    for key in [
-        "`project`",
-        "`version`",
-        "`build`",
-        "`accepted`",
-        "`radius`",
-    ] {
+    for key in ["`build`", "`accepted`", "`radius`", "`journal`"] {
         assert!(out.contains(key), "no {key} in: {out}");
+    }
+    for retired in ["`project`", "`version`"] {
+        assert!(
+            !out.contains(&format!("| {retired} |")),
+            "{retired} in: {out}"
+        );
     }
     for section in [
         "### `complexity`",
@@ -57,10 +57,12 @@ fn every_key_says_whether_it_is_required_and_where_its_value_comes_from() {
         "no ceiling derivation rule in: {out}"
     );
     assert!(
-        out.contains(
-            "| `ceiling` | the words the document may not pass | yes | derived with the section"
-        ),
-        "no derived-with-the-section row in: {out}"
+        out.contains("| `<document path>` | the words the document at that path"),
+        "no document ceiling row in: {out}"
+    );
+    assert!(
+        out.contains("### `doc_citations`\n\nNo keys: the section is absent, or `false`"),
+        "no keyless doc_citations section in: {out}"
     );
 }
 

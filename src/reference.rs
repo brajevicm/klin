@@ -9,10 +9,11 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::config::{self, Error};
-use crate::{check, survey};
+use crate::{check, doc_citations};
 
-/// One configuration key, declared beside the code that reads it. `rule` is the rule the survey
-/// derives the key by, and none for a key only a person pins. `default` is the value a run uses
+/// One configuration key, declared beside the code that reads it. `rule` is the rule klin
+/// derives the key by when the configuration leaves it out, and none for a key only a person
+/// pins. `default` is the value a run uses
 /// when the key is absent, empty when there is none. Spec 5.4.
 #[derive(Clone, Copy)]
 pub struct Key {
@@ -89,12 +90,13 @@ fn preamble(out: &mut String) {
          `klin reference` prints this page. `docs/REFERENCE.md` holds the printed copy, and a \
          test fails when the two differ, so the reference cannot drift from the binary. Do not \
          edit the copy by hand.\n\n\
-         `klin.json` is optional. Automatic checks run from facts discovered in the tree. A \
-         section may pin human policy and leave the rest to derivation, and a run \
-         prints one `pinned:` or `derived:` line per value it used. A top-level key klin does \
-         not read is an error naming the key. Compact source sections also reject any field \
-         their table does not name. \
-         A gate is excluded by setting its section to `false`."
+         `klin.json` is a person's policy over facts klin discovers in the tree. `{{}}` is a \
+         complete configuration: every Automatic check runs over what the tree holds and \
+         derives what the file leaves out. A section pins a decision and leaves the rest to \
+         derivation, and a run prints one `pinned:` or `derived:` line per value it used. The \
+         file never describes the repository: roots, languages, documents, manifests, test \
+         roots and build commands are facts. A key or field klin does not read is an error \
+         naming it. A gate is excluded by setting its section to `false`."
     );
 }
 
@@ -104,33 +106,33 @@ fn top_level(out: &mut String) {
 }
 
 fn sections(out: &mut String) {
-    let whole = |section: &str| survey::keys(section).is_some_and(<[&str]>::is_empty);
     let _ = writeln!(
         out,
         "\n## Sections\n\n\
-         One key per gate, named for its section. `complexity`, `escapes`, `stubs`, \
-         `dead_symbols` and `reachability` discover repository topology themselves; their \
-         objects contain only human policy. A section reads only the keys its own table names."
+         One key per gate, named for its section. Every check discovers what it applies to; its \
+         object holds only a person's policy, and a section reads only the keys its own table \
+         names."
     );
     for spec in check::CATALOGUE {
         let _ = writeln!(out, "\n### `{}`\n", spec.section);
-        rows(spec.keys, whole(spec.section), out);
+        match spec.keys.is_empty() {
+            true => {
+                let _ = writeln!(
+                    out,
+                    "No keys: the section is absent, or `false` to exclude the gate."
+                );
+            }
+            false => table(spec.keys, out),
+        }
     }
 }
 
 fn table(keys: &[Key], out: &mut String) {
-    rows(keys, false, out);
-}
-
-/// One table. `whole` is a section the survey supplies entry by entry and not key by key, where
-/// a rule holds only when the section itself is absent, so a pinned entry must state the key.
-fn rows(keys: &[Key], whole: bool, out: &mut String) {
     let _ = writeln!(out, "{HEAD}\n{RULE}");
     for key in keys {
-        let source = match (key.rule, whole) {
-            (None, _) => "pinned only",
-            (Some(_), true) => "derived with the section",
-            (Some(_), false) => "derived when absent",
+        let source = match key.rule {
+            None => "pinned only",
+            Some(_) => "derived when absent",
         };
         let _ = writeln!(
             out,
@@ -210,12 +212,22 @@ fn exclusion(out: &mut String) {
          fixed directory list {}, and drops files git ignores. `in` narrows a check to a \
          repository-relative path (or non-empty list) and `except` takes paths back out. Each \
          path names itself and everything below it; neither key accepts globs.\n\n\
-         `complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability` reject the retired \
-         `roots`, `languages`, `patterns`, `skip_dirs`, `exclude`, `exclude_except` and \
-         `ceilings` topology keys with a migration error. A file measured under the base \
-         scope and omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.\n\n\
-         Other sections retain the selection keys their own tables name.",
-        listed(&crate::files::default_skip_dirs())
+         `complexity`, `escapes`, `stubs`, `dead_symbols`, `reachability`, `inventory` and \
+         `lockfile` reject the retired `roots`, `languages`, `patterns`, `skip_dirs`, \
+         `exclude`, `exclude_except`, `ceilings`, `name`, `path`, `pattern` and `manifests` \
+         topology keys with a migration error. A file measured under the base scope and \
+         omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.\n\n\
+         `doc_size` maps a document path to its ceiling, and every document at the tree root it \
+         does not name keeps a derived ceiling. `doc_citations` reads every Markdown file at the \
+         tree root and resolves a citation against the whole tree; a citation names one of the \
+         built-in extensions {}.",
+        listed(&crate::files::default_skip_dirs()),
+        listed(
+            &doc_citations::EXTENSIONS
+                .iter()
+                .map(|extension| extension.to_string())
+                .collect::<Vec<String>>()
+        )
     );
 }
 

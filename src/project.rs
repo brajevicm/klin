@@ -2,15 +2,14 @@
 //! wrote. A `Tree` is one set of files as it stands: the working tree, or the base laid out
 //! beside it. `Project` holds the one configuration a run loads, the working tree, and the
 //! facts every check would otherwise compute again for itself: the changed set against the
-//! base, and what the survey derives for the sections the config leaves out. Each of those is
-//! computed on the first call that needs it and never again. Checks borrow what they need
-//! through the `Context` and own no lifetime of their own. ADR 0038.
+//! base, and the survey of the derivation commit beside the working tree's. Each of those is
+//! computed on the first call that needs it and never again. A check reads the facts and
+//! resolves its own policy; nothing here manufactures a section. Checks borrow what they need
+//! through the `Context` and own no lifetime of their own. ADR 0038, ADR 0040.
 
 use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
-
-use serde_json::Value;
 
 use crate::changed::{self, Change};
 use crate::config::{Config, Error};
@@ -152,7 +151,7 @@ pub struct Project {
     start: PathBuf,
     tree: Tree,
     changes: OnceCell<(String, Vec<Change>)>,
-    derived: OnceCell<survey::Derived>,
+    facts: OnceCell<survey::Facts>,
 }
 
 impl Project {
@@ -170,7 +169,7 @@ impl Project {
             config,
             start: start.to_path_buf(),
             changes: OnceCell::new(),
-            derived: OnceCell::new(),
+            facts: OnceCell::new(),
         }
     }
 
@@ -189,13 +188,19 @@ impl Project {
         &self.tree
     }
 
+    /// What the derivation commit and the working tree say about the repository, read on the
+    /// first call and held for the run. Spec 4.3.
+    pub fn facts(&self) -> &survey::Facts {
+        self.facts.get_or_init(|| survey::facts(&self.tree))
+    }
+
     /// The derivation commit's factual survey and cache directory, for a check that derives
     /// its own policy from them.
     pub fn source_derivation(&self) -> Option<(&survey::Survey, &str, Option<&Path>)> {
-        let derived = self.derivation();
-        derived
+        let facts = self.facts();
+        facts
             .at_commit()
-            .map(|(facts, commit)| (facts, commit, derived.state()))
+            .map(|(held, commit)| (held, commit, facts.state.as_deref()))
     }
 
     /// The files the working tree changed against the base, computed once for the base the run
@@ -213,111 +218,20 @@ impl Project {
         }
     }
 
-    /// The section a check reads: what the config pins, filled in from the survey for a key it
-    /// leaves out. A section klin cannot derive and the config does not name is an error naming
-    /// the key. Spec 5.1, 5.2.
-    pub fn section(&self, name: &str) -> Result<&Value, Error> {
-        if survey::keys(name).is_none() {
-            return self.config.required(name);
-        }
-        if let Some(pinned) = self.config.pinned(name)
-            && survey::pinned_whole(name, pinned)
-        {
-            return Ok(pinned);
-        }
-        match self.derivation().section(name) {
-            Some(derived) => Ok(derived),
-            None => self.config.required(name),
-        }
-    }
-
-    /// Whether the survey supplies this section for a config that leaves it out. The facts
-    /// answer for every section but `reachability`, whose families the derivation commit alone
-    /// proves, so planning a run derives no ceiling and reads that one cached policy. Spec 5.4.
-    pub fn supplies(&self, section: &str) -> bool {
-        self.derivation().supplies(section)
-    }
-
-    /// Whether any derivable section is left for the survey to fill in. A config that states
-    /// every one of them derives nothing, so nothing walks the tree for it.
-    pub fn derives_anything(&self) -> bool {
-        survey::derivable().any(|name| match self.config.pinned(name) {
-            Some(pinned) => !survey::pinned_whole(name, pinned),
-            None => true,
-        })
-    }
-
-    /// Whether the survey found no source root in this tree. The caller asks only when a check
-    /// that measures code takes its roots from the survey, so a config that names its own roots
-    /// surveys nothing for this. Spec 10, 14.
+    /// Whether the survey found no source root in this tree. Spec 10, 14.
     pub fn found_no_source_root(&self) -> bool {
-        self.derivation().roots.is_empty()
+        self.facts().found.roots.is_empty()
     }
 
     /// Whether the derivation commit's survey held the path this finding sits under. A site the
     /// survey did not hold matches nothing in `before`, whatever `before` holds there, so a
-    /// directory that becomes a root cannot bring inherited debt with it. Spec 7.1.
+    /// directory that becomes a root cannot bring inherited debt with it. The facts are read
+    /// whichever gates run, so the answer does not depend on the selection. Spec 7.1.
     pub fn was_held(&self, file: &str) -> bool {
-        let unheld = match self.derived.get() {
-            Some(derived) => &derived.unheld,
-            None => return true,
-        };
-        !unheld.iter().any(|root| scope::under_or_at(file, root))
-    }
-
-    /// The `derived:` and `pinned:` lines of the run, for the sections named and for every
-    /// section when none is. Empty without running the survey when the config pins every
-    /// derivable section. Spec 4.3, 10.
-    pub fn derived_said(&self, only: Option<&[&str]>) -> Vec<String> {
-        if !self.derives_anything() {
-            return Vec::new();
-        }
-        self.derivation().lines(only)
-    }
-
-    /// The same values as the `{section, key, value, rule}` entries `--json` prints. Spec 11.2.
-    pub fn derived_values(&self, only: Option<&[&str]>) -> Vec<Value> {
-        if !self.derives_anything() {
-            return Vec::new();
-        }
-        self.derivation().values(only)
-    }
-
-    /// The lines about one section, which `--list` prints under the gate that reads it.
-    pub fn said_about(&self, section: &str) -> Vec<String> {
-        self.derived_said(Some(&[section]))
-            .into_iter()
-            .filter(|line| names(line, section))
-            .collect()
-    }
-
-    /// The lines about one section, written out by a check a person ran by hand, and only when
-    /// the run already derived: a check whose section the config pins whole derived nothing and
-    /// says nothing. The gate runner prints its own once for the whole run. Spec 4.3.
-    pub fn say(&self, section: &str, out: &mut String) {
-        let Some(derived) = self.derived.get() else {
-            return;
-        };
-        for line in derived
-            .lines(Some(&[section]))
+        !self
+            .facts()
+            .unheld
             .iter()
-            .filter(|line| names(line, section))
-        {
-            out.push_str(line);
-            out.push('\n');
-        }
+            .any(|root| scope::under_or_at(file, root))
     }
-
-    fn derivation(&self) -> &survey::Derived {
-        self.derived
-            .get_or_init(|| survey::derive(&self.tree, self.config.values()))
-    }
-}
-
-/// Whether a `derived:` or `pinned:` line is about this section, so a check a person ran by
-/// hand prints the values it used and not another gate's.
-fn names(line: &str, section: &str) -> bool {
-    line.split_once(": ")
-        .and_then(|(_, rest)| rest.strip_prefix(section))
-        .is_some_and(|rest| rest.starts_with(' '))
 }

@@ -13,7 +13,7 @@ use crate::check::{
 use crate::config::{self, Error};
 use crate::host::{self, Stop};
 use crate::project::Project;
-use crate::{build, coverage, journal, state, stats, survey, turn};
+use crate::{build, coverage, journal, state, stats, turn};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks are left and whether the turn's gate block is still unspent. In the state
@@ -99,7 +99,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let loaded = Project::load(args.config.as_deref(), start);
     if !args.hook {
-        let judged = loaded.and_then(|project| judge(args, &project, None, out));
+        let judged = loaded.and_then(|project| judge(args, &project, None, &[], out));
         return refused(args, judged, out).map(|tally| code(&tally));
     }
     match loaded {
@@ -244,8 +244,8 @@ fn ran(
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     match outcome {
-        Ok(Some(failure)) => (
-            does_not_build(args, project.root(), &failure, window, log, out),
+        Ok((Some(failure), said)) => (
+            does_not_build(args, project.root(), &failure, &said, window, log, out),
             false,
             None,
             None,
@@ -254,8 +254,8 @@ fn ran(
             let (code, note) = handed(args, project, Err(problem), event, log, out);
             (code, false, None, note)
         }
-        Ok(None) => {
-            let judged = judge(args, project, window, out);
+        Ok((None, said)) => {
+            let judged = judge(args, project, window, &said, out);
             let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
             let reported = judged
                 .as_ref()
@@ -390,6 +390,7 @@ fn does_not_build(
     args: &Args,
     root: &Path,
     failure: &str,
+    said: &[check::Said],
     window: Option<&Window>,
     log: &mut journal::Stop,
     out: &mut String,
@@ -400,7 +401,7 @@ fn does_not_build(
         Some(builds) if builds <= BLOCKS => 2,
         _ => 0,
     };
-    log.report = Some(reported(args, failure, window, stopped, code, out));
+    log.report = Some(reported(args, failure, said, window, stopped, code, out));
     code
 }
 
@@ -441,13 +442,20 @@ fn unbounded(why: &str, log: &mut journal::Stop) -> Option<u64> {
 fn reported(
     args: &Args,
     failure: &str,
+    built: &[check::Said],
     window: Option<&Window>,
     stopped: bool,
     code: u8,
     out: &mut String,
 ) -> Value {
     let said = does_not_build_said();
-    let mut records = Records::default();
+    let mut records = Records {
+        derived: built
+            .iter()
+            .filter_map(|(_, entry)| entry.clone())
+            .collect(),
+        ..Records::default()
+    };
     records
         .findings
         .push(record("error", &format!("{said}:\n{failure}")));
@@ -468,18 +476,24 @@ fn reported(
     object
 }
 
-/// The build the config names, run before any gate judges the tree it produces. The key
-/// belongs to the hook, so a config with no "build" builds nothing and that is not an error.
-fn built(args: &Args, project: &Project, window: Option<&Window>) -> Result<Option<String>, Error> {
-    let entries = build::entries(project)?;
-    if entries.is_empty() {
-        return Ok(None);
+/// The build a person chose or the one the manifests derive, run before any gate judges the
+/// tree it produces, with the provenance of each command the gates' report carries. Only the
+/// hook builds, so no other run derives a build. Spec 5.4, ADR 0012.
+fn built(
+    args: &Args,
+    project: &Project,
+    window: Option<&Window>,
+) -> Result<(Option<String>, Vec<check::Said>), Error> {
+    let plan = build::plan(project)?;
+    if plan.entries.is_empty() {
+        return Ok((None, plan.said));
     }
-    let changes = scoped(args, project, &entries, window)?;
-    Ok(build::failure(
+    let changes = scoped(args, project, &plan.entries, window)?;
+    let failure = build::failure(
         project.root(),
-        &build::wanted(&entries, changes.as_deref()),
-    ))
+        &build::wanted(&plan.entries, changes.as_deref()),
+    );
+    Ok((failure, plan.said))
 }
 
 /// The changed set the build is narrowed to, which is the one the gates read after it. Spec 9.
@@ -500,24 +514,21 @@ fn judge(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
+    built: &[check::Said],
     out: &mut String,
 ) -> Result<Tally, Error> {
-    let note = version(args, project, out);
     let plan = plan(project)?;
     if args.list {
         return listed(project, &plan, out);
     }
     let wanted = select(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window, out)?;
-    let only = selected(args, &wanted);
-    said(args, project, only.as_deref(), out);
+    said(args, built, out);
     let rootless = no_source_root(args, &plan, project, out)?;
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
-    records.notes.extend(note);
     records.notes.extend(rootless);
-    records
-        .derived
-        .extend(project.derived_values(only.as_deref()));
+    let derived = built.iter().filter_map(|(_, entry)| entry.clone());
+    records.derived.splice(0..0, derived);
     tally.record = Some(finish(
         args,
         &plan,
@@ -528,16 +539,6 @@ fn judge(
         out,
     ));
     Ok(tally)
-}
-
-/// The sections whose derived values this run says: every one for a run of every gate, and
-/// only the named gates' own for a run that names them, so naming one gate derives nothing
-/// another would need. Spec 4.3, ADR 0038.
-fn selected(args: &Args, wanted: &[&Gate]) -> Option<Vec<&'static str>> {
-    if args.gates.is_empty() {
-        return None;
-    }
-    Some(wanted.iter().map(|gate| gate.check.section).collect())
 }
 
 /// What this run judges the working tree against: the base commit, laid out, and the files
@@ -619,19 +620,29 @@ fn list(project: &Project, plan: &Plan, out: &mut String) {
     }
 }
 
-/// Where each of a gate's values came from: the run's own `derived:` and `pinned:` lines for
-/// the section it reads, and the `pinned:` lines of a section the config states in full, which
-/// a run derives nothing for and so says nothing about. Only this gate's section is derived
-/// for it. Spec 10.
+/// The `pinned:` line of each value a person wrote into a gate's section. `--list` derives
+/// nothing, so a value the section leaves out is said by the run that derives it. Spec 10.
 fn stated(project: &Project, gate: &Gate) -> Vec<String> {
     let section = gate.check.section;
-    let whole = project
-        .config
-        .pinned(section)
-        .filter(|pinned| survey::pinned_whole(section, pinned));
-    match whole {
-        Some(value) => survey::pinned_lines(section, value),
-        None => project.said_about(section),
+    let Some(Value::Object(fields)) = project.config.pinned(section) else {
+        return Vec::new();
+    };
+    fields
+        .iter()
+        .map(|(key, value)| format!("pinned: {section} {key} {}", shown(value)))
+        .collect()
+}
+
+/// A pinned value as a person reads it: a path or a list of paths as text, anything else as JSON.
+fn shown(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Array(items) if items.iter().all(Value::is_string) => items
+            .iter()
+            .filter_map(Value::as_str)
+            .collect::<Vec<&str>>()
+            .join(", "),
+        other => other.to_string(),
     }
 }
 
@@ -650,14 +661,8 @@ fn no_source_root(
     project: &Project,
     out: &mut String,
 ) -> Result<Option<Value>, Error> {
-    let dropped = plan
-        .gates
-        .iter()
-        .any(|gate| survey::reads_code(gate.check.section))
-        || plan
-            .needs_a_section
-            .iter()
-            .any(|check| survey::reads_code(check.section));
+    let dropped = plan.gates.iter().any(|gate| gate.check.reads_code())
+        || plan.needs_a_section.iter().any(|check| check.reads_code());
     if !dropped || !project.found_no_source_root() {
         return Ok(None);
     }
@@ -711,13 +716,13 @@ fn finish(
     object
 }
 
-/// Every value this run derived and every one the config pinned beside it, printed once for
-/// the whole run. Spec 4.3.
-fn said(args: &Args, project: &Project, only: Option<&[&str]>, out: &mut String) {
+/// Where the build the hook ran came from, printed once above the gates, each of which says
+/// its own values beside its row. Spec 4.3.
+fn said(args: &Args, built: &[check::Said], out: &mut String) {
     if args.json {
         return;
     }
-    for line in project.derived_said(only) {
+    for (line, _) in built {
         let _ = writeln!(out, "  {line}");
     }
 }
@@ -765,22 +770,6 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
         record: Some(object),
         ..Tally::default()
     })
-}
-
-/// The note a config that names another klin version leaves: printed above the gates, and
-/// carried into the JSON records. A version klin does not carry fails nothing. Section 5.2.
-/// The hook drops a report that blocks nothing, so there the note goes straight to stderr.
-fn version(args: &Args, project: &Project, out: &mut String) -> Option<Value> {
-    let text = project.config.version_note()?;
-    if args.hook {
-        eprintln!("klin: {text}");
-    } else if !args.json {
-        let _ = writeln!(out, "  {text}");
-    }
-    let mut record = Map::new();
-    record.insert("outcome".into(), "version".into());
-    record.insert("text".into(), text.into());
-    Some(Value::Object(record))
 }
 
 fn record(outcome: &str, text: &str) -> Value {
@@ -994,12 +983,7 @@ fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result
 /// The gate a section's absence plans: the check itself for an Automatic check whose facts are
 /// available, and otherwise a check that needs a section a person writes.
 fn absent(project: &Project, check: &'static check::Row, plan: &mut Plan) {
-    let available = match check.derives {
-        None if survey::reads_code(check.section) => !project.found_no_source_root(),
-        None => true,
-        Some(_) => project.supplies(check.section),
-    };
-    match check.activation == Activation::Automatic && available {
+    match check.activation == Activation::Automatic && (check.available)(project) {
         true => plan.one(check),
         false => plan.needs_a_section.push(check),
     }

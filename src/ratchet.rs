@@ -6,7 +6,6 @@ use serde_json::{Map, Value};
 
 use crate::check::{Context, Records, Sink};
 use crate::config::{self, Config, Error};
-use crate::project::Project;
 
 /// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
 /// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
@@ -33,26 +32,6 @@ const RETIRED: &[(&str, &str)] = &[
          Rename the key, so nothing measures a different set in silence.",
     ),
 ];
-
-pub struct Section<'a> {
-    pub config: &'a Config,
-    pub values: Values,
-}
-
-pub fn section<'a>(project: &'a Project, name: &'a str) -> Result<Section<'a>, Error> {
-    let config = &project.config;
-    let Some(values) = project.section(name)?.as_object() else {
-        return Err(Error(format!(
-            "{}: \"{name}\" must be an object",
-            config.file.display()
-        )));
-    };
-    no_retired_key(&config.file, name, values)?;
-    Ok(Section {
-        config,
-        values: values.clone(),
-    })
-}
 
 /// A section naming a key klin retired, refused before any gate runs. Section 14.
 pub fn no_retired_key(

@@ -309,7 +309,7 @@ fn false_disables_reachability_and_a_person_authored_family_is_rejected() {
     let retired = tree.run(&["reachability"]);
     assert_eq!(retired.code, 2, "{}", retired.out);
     assert!(
-        retired.says("no longer accepts person-authored families"),
+        retired.says("no longer accepts a list of entries"),
         "{}",
         retired.out
     );
@@ -350,19 +350,19 @@ fn init_does_not_serialize_derived_reachability_topology() {
     let tree = three_reached_commands();
     tree.base();
 
-    let run = tree.run(&["init", "--force"]);
+    let run = tree.run(&["init", "--pin"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!config(&tree)["reachability"].is_array());
 }
 
 #[test]
-fn init_add_keeps_an_explicit_false() {
+fn init_pin_keeps_an_explicit_false() {
     let tree = three_reached_commands();
     tree.base();
     tree.write("klin.json", r#"{"reachability":false}"#);
 
-    let run = tree.run(&["init", "--add"]);
+    let run = tree.run(&["init", "--pin"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(config(&tree)["reachability"], Value::Bool(false));

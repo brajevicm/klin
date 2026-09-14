@@ -3,8 +3,7 @@ mod harness;
 use harness::{Run, Tree, feed};
 
 const A_CONFIG: &str = r#"{
-  "project": "t",
-  "doc_size": [{"file": "README.md", "ceiling": 10}]
+  "doc_size": {"README.md": 10}
 }"#;
 
 const A_GUARDED_EDIT: &str = r#"{

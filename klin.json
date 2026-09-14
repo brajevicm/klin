@@ -2,48 +2,7 @@
   "build": "cargo build --quiet --all-targets",
   "complexity": { "cc": 8, "lines": 60, "in": ["src", "tests"] },
   "escapes": { "in": ["src", "tests"] },
-  "doc_citations": [
-    {
-      "file": "AGENTS.md",
-      "roots": ["."]
-    },
-    {
-      "file": "CLAUDE.md",
-      "roots": ["."]
-    },
-    {
-      "file": "CONTEXT.md",
-      "roots": ["."]
-    },
-    {
-      "file": "README.md",
-      "roots": ["."]
-    }
-  ],
-  "doc_size": [
-    {
-      "ceiling": 1200,
-      "file": "README.md"
-    },
-    {
-      "ceiling": 1200,
-      "file": "CONTEXT.md"
-    },
-    {
-      "ceiling": 1200,
-      "file": "AGENTS.md"
-    }
-  ],
-  "inventory": [
-    {
-      "name": "tests",
-      "path": "tests"
-    }
-  ],
-  "lockfile": {
-    "manifests": ["Cargo.toml"]
-  },
-  "project": "klin",
+  "doc_size": { "README.md": 1200, "CONTEXT.md": 1200, "AGENTS.md": 1200 },
   "radius": {
     "directories": 4,
     "lines": 776

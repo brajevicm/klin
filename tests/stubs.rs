@@ -3,7 +3,6 @@ mod harness;
 use harness::Tree;
 
 const CONFIG: &str = r#"{
-  "project": "t",
   "stubs": { "in": "src" }
 }"#;
 
@@ -191,11 +190,7 @@ fn skip_rust_tests_is_refused_because_a_stub_in_a_test_is_a_stub() {
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("skip_rust_tests"), "{}", run.out);
-    assert!(
-        run.says("narrow the check only with \"in\" / \"except\""),
-        "{}",
-        run.out
-    );
+    assert!(run.says("it reads only: in, except"), "{}", run.out);
 }
 
 /// The body shapes of #114. Every shape is judged by the function walk, so a config that names

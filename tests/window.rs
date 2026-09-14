@@ -13,7 +13,6 @@ const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const CONFIG: &str = r#"{
-  "project": "t",
   "escapes": { "in": "src" }
 }"#;
 
@@ -39,8 +38,7 @@ fn prompt(tree: &Tree) {
 
 fn accepting(file: &str) -> String {
     format!(
-        r#"{{ "project": "t",
-             "accepted": [{{"gate": "escapes", "file": "{file}", "text": {:?}, "count": 1}}],
+        r#"{{ "accepted": [{{"gate": "escapes", "file": "{file}", "text": {:?}, "count": 1}}],
              "escapes": {{ "in": "src" }} }}"#,
         text::ONE_SITE
     )

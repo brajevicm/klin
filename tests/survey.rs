@@ -56,15 +56,11 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
     assert!(!run.says("derived: escapes"), "{}", run.out);
     assert!(!run.says("derived: dead_symbols"), "{}", run.out);
     assert!(
-        run.says("derived: doc_size README.md, every Markdown file at the tree root"),
+        run.says("derived: doc_size README.md 50, the word count at the derivation commit"),
         "{}",
         run.out
     );
-    assert!(
-        run.says("derived: build cargo build --all-targets, one command per manifest"),
-        "{}",
-        run.out
-    );
+    assert!(!run.says("derived: build"), "{}", run.out);
     assert!(
         run.says("derived: test roots tests, the roots that match a language's test convention"),
         "{}",
@@ -123,12 +119,12 @@ fn every_derived_line_has_a_matching_json_entry() {
     assert!(rule.contains("the floor of 5"), "{report}");
 
     let doc_size = find(derived, |e| e["section"] == "doc_size");
-    assert!(doc_size["key"].is_null(), "{report}");
-    assert_eq!(doc_size["value"][0]["file"], "README.md", "{report}");
-
-    let build = find(derived, |e| e["section"] == "build");
-    assert!(build["key"].is_null(), "{report}");
-    assert_eq!(build["value"], "cargo build --all-targets", "{report}");
+    assert_eq!(doc_size["key"], "README.md", "{report}");
+    assert_eq!(doc_size["value"], 50, "{report}");
+    assert!(
+        !derived.iter().any(|entry| entry["section"] == "build"),
+        "{report}"
+    );
 
     let test_roots = find(derived, |e| {
         e["rule"] == "the roots that match a language's test convention"
@@ -201,8 +197,11 @@ fn the_survey_finds_one_root_per_package_of_a_monorepo() {
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("2 file(s) found, 2 measured"), "{}", run.out);
-    assert!(run.says("derived: build tsc --noEmit"), "{}", run.out);
-    assert!(run.says("cargo build --all-targets"), "{}", run.out);
+    assert!(
+        run.says("derived: lockfile manifests packages/a/package.json, packages/b/Cargo.toml"),
+        "{}",
+        run.out
+    );
 }
 
 /// The promise of ADR 0016: a tree already in debt is green against itself with no
@@ -361,22 +360,24 @@ fn a_new_commit_is_a_new_derivation_commit_and_a_new_cache_entry() {
 }
 
 #[test]
-fn init_pins_what_the_run_derives() {
+fn pin_writes_the_ceilings_the_run_derives_and_no_topology() {
     let tree = project();
 
-    let written = tree.run(&["init"]);
+    let written = tree.run(&["init", "--pin"]);
     assert_eq!(written.code, 0, "{}", written.out);
     let held = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     let config: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
-    assert!(config.get("complexity").is_none());
-    assert!(config.get("escapes").is_none());
-    assert_eq!(config["doc_size"][0]["file"], "README.md");
-    assert_eq!(config["doc_citations"][0]["file"], "README.md");
-    assert_eq!(config["build"], "cargo build --all-targets");
+    assert_eq!(config["complexity"]["cc"], 5, "{config}");
+    assert_eq!(config["complexity"]["lines"], 25, "{config}");
+    assert_eq!(config["doc_size"]["README.md"], 50, "{config}");
+    for retired in ["escapes", "doc_citations", "build", "lockfile", "inventory"] {
+        assert!(config.get(retired).is_none(), "{retired}: {config}");
+    }
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("derived: complexity cc"), "{}", run.out);
+    assert!(run.says("pinned: complexity cc 5"), "{}", run.out);
+    assert!(!run.says("derived: complexity"), "{}", run.out);
 }
 
 #[test]
@@ -507,10 +508,7 @@ fn a_document_the_derivation_commit_lacks_is_a_note_and_is_not_judged() {
     );
     assert!(!run.says("CHANGELOG.md is 400 words, over"), "{}", run.out);
 
-    tree.write(
-        "klin.json",
-        r#"{ "doc_size": [{"file": "CHANGELOG.md", "ceiling": 900}] }"#,
-    );
+    tree.write("klin.json", r#"{ "doc_size": {"CHANGELOG.md": 900} }"#);
     let stated = gate(&tree);
     assert_eq!(stated.code, 0, "{}", stated.out);
     assert!(

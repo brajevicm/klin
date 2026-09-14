@@ -1,3 +1,10 @@
+//! `doc-citations` judges the backticked paths a document cites. Every Markdown file at the
+//! tree root is read, and a citation resolves against the whole tree with the built-in
+//! extension list; the section reads no policy. A site is the document and the cited path, and
+//! its `count` rises when a path that resolves nowhere is cited again. A document the base
+//! holds is compared against the base's copy, so a stale citation the base holds is held.
+//! Spec 5.4, 8.2.1, ADR 0040.
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
@@ -5,7 +12,7 @@ use serde_json::Value;
 
 use crate::base;
 use crate::changed::{self, git};
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Coverage};
 use crate::files;
@@ -15,36 +22,13 @@ use crate::reference::Key;
 
 pub const SECTION: &str = "doc_citations";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[FILE, ROOTS, EXTENSIONS];
+/// The section reads no keys: it is absent, or `false`. Spec 5.4, 5.8, ADR 0040.
+pub const KEYS: &[Key] = &[];
 
-pub const FILE: Key = Key {
-    name: "file",
-    holds: "the document this entry reads citations from",
-    required: true,
-    rule: Some("one entry per Markdown file at the tree root"),
-    default: "",
-};
+const RULE: &str = "every Markdown file at the tree root, resolved against it";
 
-pub const ROOTS: Key = Key {
-    name: "roots",
-    holds: "the directories a citation may resolve under",
-    required: false,
-    rule: Some("the tree root"),
-    default: "the tree root",
-};
-
-const EXTENSIONS: Key = Key {
-    name: "extensions",
-    holds: "the file extensions a citation may name",
-    required: false,
-    rule: None,
-    default: "`.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, \
-           `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`",
-};
-/// The extensions a citation may name when its entry names none. `EXTENSIONS` above prints this
-/// list as its default, so the two are edited together.
-const DEFAULT_EXTENSIONS: &[&str] = &[
+/// The extensions a citation may name, which `klin reference` prints.
+pub const EXTENSIONS: &[&str] = &[
     ".py", ".ts", ".tsx", ".js", ".jsx", ".swift", ".rs", ".go", ".kt", ".java", ".rb", ".sh",
     ".md", ".json", ".yml", ".yaml", ".toml",
 ];
@@ -57,10 +41,10 @@ pub struct Args {
     /// The klin.json to run under (default: the nearest one above the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
-    /// Judge this one document instead of the config's list
+    /// Judge this one document instead of every document at the tree root
     #[arg(long)]
     file: Option<PathBuf>,
-    /// Where --file's citations may resolve (repeatable; standalone, needs no config entry)
+    /// Where --file's citations may resolve (repeatable; default: the tree root)
     #[arg(long = "root")]
     roots: Vec<PathBuf>,
     /// Print nothing on success
@@ -74,7 +58,6 @@ pub struct Args {
 struct Document {
     path: PathBuf,
     roots: Vec<PathBuf>,
-    extensions: Vec<String>,
     name: String,
 }
 
@@ -132,9 +115,9 @@ fn evaluate(
     roots: &[PathBuf],
     out: &mut Sink,
 ) -> Result<u8, Error> {
-    let listing = listing(at, named, roots)?;
-    if listing.config.is_some() {
-        at.say(SECTION, out);
+    let listing = listing(at, named, roots);
+    if named.is_none() && !at.quiet {
+        said(&listing, out);
     }
     let commit = base::commit(&listing.root, at, out)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
@@ -152,6 +135,22 @@ fn evaluate(
         &format!("OK: {sites} citation(s) resolve nowhere, all held at the base{said}"),
         out,
     ))
+}
+
+/// The documents a run read, as the one `derived:` line and its JSON entry.
+fn said(listing: &Listing, out: &mut Sink) {
+    if listing.documents.is_empty() {
+        return;
+    }
+    let names: Vec<&str> = listing
+        .documents
+        .iter()
+        .map(|document| document.name.as_str())
+        .collect();
+    out.provenance(
+        format!("derived: {SECTION} {}, {RULE}", names.join(", ")),
+        Some(check::derived_entry(SECTION, None, names.into(), RULE)),
+    );
 }
 
 /// What this gate discovered: one document per entry, and the ones it read. A document the
@@ -256,7 +255,7 @@ fn cached<'a>(
 /// written, so the same string on another line is the same site.
 fn found(document: &Document, text: &str, index: &Index) -> Vec<Finding> {
     let mut seen: BTreeMap<String, Tally> = BTreeMap::new();
-    for (path, line) in citations(text, &document.extensions) {
+    for (path, line) in citations(text) {
         let Some(resolution) = resolves(&path, &document.roots, index) else {
             continue;
         };
@@ -287,14 +286,14 @@ fn found(document: &Document, text: &str, index: &Index) -> Vec<Finding> {
     out
 }
 
-/// Every backticked span on each line that looks like a path with one of `extensions` — no
-/// spaces, no `*`, and a `/` or a `.` — with a trailing `:line` suffix stripped.
-fn citations(text: &str, extensions: &[String]) -> Vec<(String, u64)> {
+/// Every backticked span on each line that looks like a path with one of the built-in
+/// extensions — no spaces, no `*`, and a `/` or a `.` — with a trailing `:line` suffix stripped.
+fn citations(text: &str) -> Vec<(String, u64)> {
     let mut out = Vec::new();
     for (number, line) in text.split('\n').enumerate() {
         let ticks: Vec<usize> = line.match_indices('`').map(|(at, _)| at).collect();
         for pair in ticks.as_chunks::<2>().0 {
-            if let Some(candidate) = candidate(&line[pair[0] + 1..pair[1]], extensions) {
+            if let Some(candidate) = candidate(&line[pair[0] + 1..pair[1]]) {
                 out.push((candidate, number as u64 + 1));
             }
         }
@@ -302,14 +301,14 @@ fn citations(text: &str, extensions: &[String]) -> Vec<(String, u64)> {
     out
 }
 
-fn candidate(span: &str, extensions: &[String]) -> Option<String> {
+fn candidate(span: &str) -> Option<String> {
     let candidate = span.trim().split(':').next().unwrap_or("");
     if candidate.contains(' ') || candidate.contains('*') {
         return None;
     }
-    if !extensions
+    if !EXTENSIONS
         .iter()
-        .any(|extension| candidate.ends_with(extension.as_str()))
+        .any(|extension| candidate.ends_with(extension))
     {
         return None;
     }
@@ -433,94 +432,51 @@ fn not_under(path: &str, index: &Index) -> String {
     }
 }
 
-fn listing<'a>(
-    at: &Context<'a>,
-    named: Option<&Path>,
-    roots: &[PathBuf],
-) -> Result<Listing<'a>, Error> {
+/// The documents a run judges: the one a person named, against the roots they named or the
+/// tree root, or every Markdown file at the tree root. Spec 5.4.
+fn listing<'a>(at: &Context<'a>, named: Option<&Path>, roots: &[PathBuf]) -> Listing<'a> {
     if let Some(named) = named
         && !roots.is_empty()
     {
-        return Ok(Listing {
+        return Listing {
             documents: vec![Document {
                 path: named.to_path_buf(),
                 roots: roots.to_vec(),
-                extensions: default_extensions(),
                 name: named.display().to_string(),
             }],
             root: at.project.start().to_path_buf(),
             config: None,
-        });
+        };
     }
     let config = &at.project.config;
-    let listed = listed_documents(at.project)?;
     let root = config.root().to_path_buf();
-    let Some(named) = named else {
-        return Ok(Listing {
-            documents: listed,
-            root,
-            config: Some(config),
-        });
+    let documents = match named {
+        Some(named) => vec![Document {
+            path: named.to_path_buf(),
+            roots: vec![root.clone()],
+            name: identity(named).strip_prefix(identity(&root)).map_or_else(
+                |_| named.display().to_string(),
+                |at| at.display().to_string(),
+            ),
+        }],
+        None => at
+            .project
+            .facts()
+            .found
+            .documents
+            .iter()
+            .map(|name| Document {
+                path: root.join(name),
+                roots: vec![root.clone()],
+                name: name.clone(),
+            })
+            .collect(),
     };
-    let wanted = identity(named);
-    for document in listed {
-        if identity(&document.path) == wanted {
-            return Ok(Listing {
-                documents: vec![document],
-                root,
-                config: Some(config),
-            });
-        }
+    Listing {
+        documents,
+        root,
+        config: Some(config),
     }
-    Err(Error(format!(
-        "{}: no \"{SECTION}\" entry for {} — pass --root DIR",
-        config.file.display(),
-        named.display()
-    )))
-}
-
-fn listed_documents(project: &Project) -> Result<Vec<Document>, Error> {
-    let config = &project.config;
-    let Some(entries) = project.section(SECTION)?.as_array() else {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must be a list of {{\"file\", \"roots\"}} entries",
-            config.file.display()
-        )));
-    };
-    entries
-        .iter()
-        .map(|entry| document(config, entry))
-        .collect()
-}
-
-fn document(config: &Config, entry: &Value) -> Result<Document, Error> {
-    let values = entry
-        .as_object()
-        .ok_or_else(|| config.malformed(SECTION, FILE.name, "an object"))?;
-    let name = values
-        .get(FILE.name)
-        .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(SECTION, FILE.name))?;
-    let roots = files::roots(config, SECTION, values, ROOTS)?
-        .unwrap_or_else(|| vec![config.root().to_path_buf()]);
-    let extensions = files::strings(config, SECTION, values, EXTENSIONS)?;
-    Ok(Document {
-        path: config.path(name),
-        roots,
-        extensions: if extensions.is_empty() {
-            default_extensions()
-        } else {
-            extensions
-        },
-        name: name.to_string(),
-    })
-}
-
-fn default_extensions() -> Vec<String> {
-    DEFAULT_EXTENSIONS
-        .iter()
-        .map(|extension| extension.to_string())
-        .collect()
 }
 
 fn identity(path: &Path) -> PathBuf {

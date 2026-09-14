@@ -2,7 +2,8 @@
 
 > Superseded by ADR 0016. The config is optional, a missing value is derived
 > from the derivation commit and printed, and `init` pins what the run would
-> derive. The `false` exclusion below stands.
+> derive. The `false` exclusion below stands. ADR 0040 amends 0016 in turn:
+> `init` writes `{}`, and `init --pin` writes guardrails, never derived topology.
 
 Two rules pull against each other. A key a gate needs and does not find is an
 error naming the key, never a default, and

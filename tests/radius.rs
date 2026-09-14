@@ -8,7 +8,6 @@ const A_CODEX_PROMPT: &str = r#"{"hook_event_name":"UserPromptSubmit","session_i
 /// A session start is not turn-scoped, so Codex sends it without `turn_id`.
 const A_CODEX_SESSION: &str = r#"{"hook_event_name":"SessionStart","session_id":"s1","cwd":"/x","model":"m","source":"startup"}"#;
 const CONFIG: &str = r#"{
-  "project": "t",
   "radius": { "lines": 50, "directories": 2 }
 }
 "#;
@@ -113,7 +112,7 @@ fn a_turn_within_both_values_reports_nothing() {
 #[test]
 fn a_config_with_no_radius_section_reports_nothing() {
     let tree = Tree::new();
-    tree.write("klin.json", "{\n  \"project\": \"t\"\n}\n");
+    tree.write("klin.json", "{}\n");
     tree.write("src/a.rs", &lines(10, "// held "));
     tree.base();
     stamped(&tree);
@@ -272,7 +271,7 @@ fn report_measures_without_moving_the_stamp_or_the_counter() {
 #[test]
 fn report_names_a_missing_radius_section() {
     let tree = Tree::new();
-    tree.write("klin.json", "{\n  \"project\": \"t\"\n}\n");
+    tree.write("klin.json", "{}\n");
     tree.base();
     stamped(&tree);
 
@@ -295,7 +294,7 @@ fn outside_a_repository_the_hook_says_nothing() {
 /// so it is not one of the commits the percentile reads.
 fn history(small: usize, big: usize) -> Tree {
     let tree = harness::history(small, big);
-    tree.write("klin.json", "{\n  \"project\": \"t\"\n}\n");
+    tree.write("klin.json", "{}\n");
     tree
 }
 
@@ -422,10 +421,7 @@ fn a_pinned_section_names_no_derived_value() {
 #[test]
 fn a_half_pinned_section_derives_the_other_key() {
     let tree = history(43, 6);
-    tree.write(
-        "klin.json",
-        "{\n  \"project\": \"t\",\n  \"radius\": { \"lines\": 7 }\n}\n",
-    );
+    tree.write("klin.json", "{\n  \"radius\": { \"lines\": 7 }\n}\n");
 
     let run = reported(&tree);
     assert!(
@@ -443,10 +439,7 @@ fn a_half_pinned_section_derives_the_other_key() {
 #[test]
 fn a_radius_section_that_is_not_an_object_is_a_config_error() {
     let tree = history(43, 6);
-    tree.write(
-        "klin.json",
-        "{\n  \"project\": \"t\",\n  \"radius\": 5\n}\n",
-    );
+    tree.write("klin.json", "{\n  \"radius\": 5\n}\n");
 
     stamped(&tree);
     let run = tree.run(&["radius", "--report"]);
@@ -474,7 +467,7 @@ fn cache(tree: &Tree) -> std::path::PathBuf {
 #[test]
 fn the_sample_stops_at_two_hundred_commits() {
     let tree = harness::history_from(6, 200);
-    tree.write("klin.json", "{\n  \"project\": \"t\"\n}\n");
+    tree.write("klin.json", "{}\n");
 
     let run = reported(&tree);
     assert!(

@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::config::{self, Config, Error};
-use crate::project::Tree;
-use crate::{hooks, radius, survey};
+use crate::project::Project;
+use crate::{complexity, doc_size, hooks, radius};
 
 const FILENAME: &str = "klin.json";
 
@@ -14,14 +14,12 @@ pub struct Args {
     /// The klin.json to write (default: one at the working directory)
     #[arg(long)]
     config: Option<PathBuf>,
-    /// Fill in the sections an existing configuration does not name
-    #[arg(long)]
-    add: bool,
-    /// Re-pin every derivable section from today's tree
+    /// Write today's complexity ceilings, document ceilings and change radius into the
+    /// configuration as policy, and keep every value it already holds
     #[arg(long, conflicts_with = "hooks")]
-    force: bool,
+    pin: bool,
     /// Write the hook entries for the hosts this tree uses, and nothing else
-    #[arg(long, conflicts_with = "add")]
+    #[arg(long)]
     hooks: bool,
     /// The host whose hook file --hooks writes, instead of the ones this tree names
     #[arg(long, requires = "hooks")]
@@ -43,15 +41,23 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         );
     }
     let held = read(&file)?;
-    if held.is_some() {
-        if !args.add && !args.force {
-            let _ = writeln!(out, "{}", already(&file));
-            inert(&root, out);
-            return Ok(0);
-        }
-        Config::load(Some(&file), &root)?;
+    match args.pin {
+        true => pin(&file, &root, held, out)?,
+        false => opt_in(&file, held.is_some(), out)?,
     }
-    pins(&file, &root, held.unwrap_or_default(), args.force, out)
+    inert(&root, out);
+    Ok(0)
+}
+
+/// The empty configuration, written where there is none, which opts the repository in.
+fn opt_in(file: &Path, held: bool, out: &mut String) -> Result<(), Error> {
+    if held {
+        let _ = writeln!(out, "{}", already(file));
+        return Ok(());
+    }
+    write(file, &Map::new())?;
+    let _ = writeln!(out, "{}", opted_in(file));
+    Ok(())
 }
 
 /// Where `--hooks` reads a host's marker directory and writes its file: this tree, or the
@@ -71,27 +77,152 @@ fn hooks_root(args: &Args, root: &Path) -> Result<PathBuf, Error> {
 
 fn already(file: &Path) -> String {
     format!(
-        "{} already names this project's gates — klin init --add fills in the sections it does \
-         not name, klin init --force re-pins them from today's tree, and a person edits the rest.",
+        "{} already opts this repository in — klin init --pin adds today's ceilings to it and \
+         keeps every value it holds, and a person edits the rest.",
         file.display()
     )
 }
 
-fn pins(
+fn opted_in(file: &Path) -> String {
+    format!(
+        "{}: wrote {{}}, which opts this repository in. klin derives every check from the tree; \
+         klin init --pin writes today's ceilings into it as policy a person reviews.",
+        file.display()
+    )
+}
+
+/// One suggested value `--pin` writes under a section, and the `derived:` line that says where
+/// it came from.
+struct Pin {
+    key: String,
+    value: u64,
+    line: String,
+}
+
+/// Today's guardrails, written where the configuration states none: the complexity ceilings,
+/// a ceiling per document at the tree root, and the change radius. A value the file holds, a
+/// `false`, a dated schedule, the accepted list and the journal preference are a person's and
+/// stay as they are. Nothing that describes the repository is written. Spec 5.7, ADR 0040.
+fn pin(
     file: &Path,
     root: &Path,
-    held: Map<String, Value>,
-    force: bool,
+    held: Option<Map<String, Value>>,
     out: &mut String,
-) -> Result<u8, Error> {
-    let surveyed = surveyed(root, held, force)?;
-    write(file, &surveyed.config)?;
-    let _ = writeln!(out, "{}", said(file, &surveyed.written));
-    for line in surveyed.derived {
-        let _ = writeln!(out, "{line}");
+) -> Result<(), Error> {
+    let project = Project::of(loaded(file, root, held.is_some())?, root);
+    let mut config = held.unwrap_or_default();
+    let mut written = Vec::new();
+    let mut said = Vec::new();
+    let suggested: [(&str, Suggest); 2] = [
+        (complexity::SECTION, complexity_pins),
+        (doc_size::SECTION, document_pins),
+    ];
+    for (section, pins) in suggested {
+        if !excluded(&config, section) {
+            added(
+                &mut config,
+                section,
+                pins(&project),
+                &mut written,
+                &mut said,
+            );
+        }
     }
-    inert(root, out);
-    Ok(0)
+    match radius_pins(&project) {
+        Ok(pins) => added(&mut config, RADIUS, pins, &mut written, &mut said),
+        Err(why) => said.push(format!("derived: no \"{RADIUS}\" pinned, because {why}")),
+    }
+    write(file, &config)?;
+    let _ = writeln!(out, "{}\n{}", pinned(file, &written), said.join("\n"));
+    Ok(())
+}
+
+/// The configuration `--pin` adds to, validated like any other, or an empty one where the file
+/// does not exist yet.
+fn loaded(file: &Path, root: &Path, held: bool) -> Result<Config, Error> {
+    match held {
+        true => Config::load(Some(file), root),
+        false => Ok(Config::empty(file)),
+    }
+}
+
+fn complexity_pins(project: &Project) -> Vec<Pin> {
+    complexity::suggested(project)
+        .into_iter()
+        .map(|(key, value, line)| Pin {
+            key: key.to_string(),
+            value,
+            line,
+        })
+        .collect()
+}
+
+/// A ceiling for every document at the tree root the derivation commit holds.
+fn document_pins(project: &Project) -> Vec<Pin> {
+    let documents = &project.facts().found.documents;
+    doc_size::derived_ceilings(project)
+        .into_iter()
+        .filter(|(name, _)| documents.contains(name))
+        .map(|(name, value)| Pin {
+            line: format!(
+                "derived: {} {name} {value}, {}",
+                doc_size::SECTION,
+                doc_size::RULE
+            ),
+            key: name,
+            value,
+        })
+        .collect()
+}
+
+fn radius_pins(project: &Project) -> Result<Vec<Pin>, String> {
+    let history = radius::history(project.root(), project.facts().state.as_deref())?;
+    Ok([
+        ("lines", history.lines),
+        ("directories", history.directories),
+    ]
+    .into_iter()
+    .map(|(key, value)| Pin {
+        key: key.to_string(),
+        value,
+        line: radius::derived_line(key, value, history.commits),
+    })
+    .collect())
+}
+
+/// What suggests the pins of one section.
+type Suggest = fn(&Project) -> Vec<Pin>;
+
+const RADIUS: &str = config::RADIUS.name;
+
+fn excluded(config: &Map<String, Value>, section: &str) -> bool {
+    config.get(section) == Some(&Value::Bool(false))
+}
+
+/// Each suggested value the section does not state yet, and the name and line of each one
+/// written. A section that states nothing gains no empty object.
+fn added(
+    config: &mut Map<String, Value>,
+    section: &str,
+    pins: Vec<Pin>,
+    written: &mut Vec<String>,
+    said: &mut Vec<String>,
+) {
+    let mut fields = match config.get(section) {
+        Some(Value::Object(fields)) => fields.clone(),
+        _ => Map::new(),
+    };
+    for pin in pins {
+        if fields.contains_key(&pin.key) {
+            continue;
+        }
+        fields.insert(pin.key.clone(), pin.value.into());
+        written.push(format!("{section} {}", pin.key));
+        said.push(pin.line);
+    }
+    if !fields.is_empty() {
+        config.insert(section.to_string(), Value::Object(fields));
+    }
 }
 
 /// klin writes nothing git can see, so an ignore line an older klin asked for does nothing.
@@ -127,12 +258,12 @@ fn wanted(args: &Args, start: &Path) -> PathBuf {
     }
 }
 
-fn said(file: &Path, written: &[String]) -> String {
+fn pinned(file: &Path, written: &[String]) -> String {
     format!(
-        "{}: wrote {}. Read it before you commit it: klin gates what it names, and nothing else.",
+        "{}: pinned {}. Read it before you commit it: a pinned value is policy a person owns.",
         file.display(),
         match written.is_empty() {
-            true => "nothing this tree could not already say".to_string(),
+            true => "nothing the file did not already state".to_string(),
             false => written.join(", "),
         }
     )
@@ -178,189 +309,4 @@ fn kept_mode(target: &Path, beside: &Path) {
     if let Ok(held) = std::fs::metadata(target) {
         let _ = std::fs::set_permissions(beside, held.permissions());
     }
-}
-
-/// Every section the tree can say for itself, what it wrote, and one `derived:` line per value
-/// history produced. A key the configuration already holds stays as it is, so a gate a person
-/// excluded with `false` is left alone.
-struct Surveyed {
-    config: Map<String, Value>,
-    written: Vec<String>,
-    derived: Vec<String>,
-}
-
-fn surveyed(root: &Path, mut config: Map<String, Value>, force: bool) -> Result<Surveyed, Error> {
-    let found = survey::derive(&Tree::at(root), &pinned(&config, force));
-    let mut written = Vec::new();
-    let mut add = |key: &str, value: Option<Value>, said: String| {
-        added(&mut config, &mut written, force, key, value, said);
-    };
-    add(
-        config::PROJECT.name,
-        project(root),
-        config::PROJECT.name.to_string(),
-    );
-    add(
-        config::VERSION.name,
-        Some(env!("CARGO_PKG_VERSION").into()),
-        format!("version {}", env!("CARGO_PKG_VERSION")),
-    );
-    for name in [
-        config::BUILD.name,
-        "doc_size",
-        "doc_citations",
-        "inventory",
-        "lockfile",
-        "escapes",
-        "stubs",
-        "dead_symbols",
-        "reachability",
-        "complexity",
-    ] {
-        let section = found.section(name).cloned().filter(stated);
-        add(name, section, name.to_string());
-    }
-    let derived = match radius::history(root, None) {
-        Ok(history) => {
-            add(
-                SECTION,
-                Some(radius::section(&history)),
-                format!("{SECTION} over {} commit(s)", history.commits),
-            );
-            vec![
-                radius::derived_line("lines", history.lines, history.commits),
-                radius::derived_line("directories", history.directories, history.commits),
-            ]
-        }
-        Err(why) => vec![format!("derived: no \"{SECTION}\" section, because {why}")],
-    };
-    Ok(Surveyed {
-        config,
-        written,
-        derived: found.lines(None).into_iter().chain(derived).collect(),
-    })
-}
-
-/// One section written into the config, and the name the report gives it. A key the file holds
-/// stays as it is unless `--force` re-pins it, and a re-pin keeps what klin cannot derive, so a
-/// value that comes back unchanged is not reported as written.
-fn added(
-    config: &mut Map<String, Value>,
-    written: &mut Vec<String>,
-    force: bool,
-    key: &str,
-    value: Option<Value>,
-    said: String,
-) {
-    let Some(value) = value else {
-        return;
-    };
-    match config.remove(key) {
-        Some(held) if !force => {
-            config.insert(key.to_string(), held);
-            return;
-        }
-        Some(held) => {
-            let value = kept(&held, value);
-            let same = value == held;
-            config.insert(key.to_string(), value);
-            if same {
-                return;
-            }
-        }
-        None => {
-            config.insert(key.to_string(), value);
-        }
-    };
-    written.push(said);
-}
-
-/// What the survey is told the config already pins. `--force` tells it nothing, because a
-/// pinned value wins over a derived one everywhere else, and re-pinning wants the tree's answer.
-fn pinned(config: &Map<String, Value>, force: bool) -> Value {
-    match force {
-        true => Value::Object(Map::new()),
-        false => Value::Object(config.clone()),
-    }
-}
-
-/// The derived value, with everything klin cannot derive taken from what the file held: a
-/// dated schedule where a number would go, and a `false` that switched a gate off. Spec 5.7.
-fn kept(held: &Value, derived: Value) -> Value {
-    if underivable(held) {
-        return held.clone();
-    }
-    match (held, derived) {
-        (Value::Object(held), Value::Object(derived)) => fields(held, derived),
-        (Value::Array(held), Value::Array(derived)) => entries(held, derived),
-        (_, derived) => derived,
-    }
-}
-
-fn underivable(held: &Value) -> bool {
-    match held {
-        Value::Bool(pinned) => !pinned,
-        Value::Object(fields) => crate::ceiling::is_schedule(fields),
-        _ => false,
-    }
-}
-
-/// Every key either side holds. A key the survey does not derive, such as an exclusion a
-/// person wrote, is that person's and survives the re-pin.
-fn fields(held: &Map<String, Value>, mut derived: Map<String, Value>) -> Value {
-    let mut out = Map::new();
-    for (key, value) in held {
-        let value = match derived.remove(key) {
-            Some(found) => kept(value, found),
-            None => value.clone(),
-        };
-        out.insert(key.clone(), value);
-    }
-    out.extend(derived);
-    Value::Object(out)
-}
-
-/// An entry the file held, paired with the derived entry for the same file, so re-pinning a
-/// list of documents keeps each document's schedule wherever the derived list puts it.
-fn entries(held: &[Value], derived: Vec<Value>) -> Value {
-    Value::Array(
-        derived
-            .into_iter()
-            .enumerate()
-            .map(|(at, value)| match paired(held, at, &value) {
-                Some(held) => kept(held, value),
-                None => value,
-            })
-            .collect(),
-    )
-}
-
-/// The held entry a derived one stands for: the one with the same `file`, else the same
-/// `name`, else the one at the same position, so a named family that moved in the list keeps
-/// its own person-written fields and takes no neighbour's.
-fn paired<'a>(held: &'a [Value], at: usize, derived: &Value) -> Option<&'a Value> {
-    for key in ["file", "name"] {
-        if let Some(id) = derived.get(key) {
-            return held.iter().find(|entry| entry.get(key) == Some(id));
-        }
-    }
-    held.get(at)
-}
-
-/// A section worth writing down. An empty list is what a survey says when it found the
-/// documents but the derivation commit holds none of them, and pinning that would gate nothing
-/// for ever.
-fn stated(section: &Value) -> bool {
-    !section.as_array().is_some_and(|entries| entries.is_empty())
-}
-
-/// The section ADR 0014 pins: how wide this project's usual commit is, so the report on a
-/// prompt has something to read a turn against. It is not a gate and it fails nothing.
-const SECTION: &str = config::RADIUS.name;
-
-fn project(root: &Path) -> Option<Value> {
-    root.canonicalize()
-        .ok()?
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string().into())
 }

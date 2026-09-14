@@ -200,7 +200,7 @@ fn config(ceilings: &str) -> String {
     let ceilings: serde_json::Value = serde_json::from_str(ceilings)
         .unwrap_or_else(|why| panic!("the ceilings are not JSON: {why}"));
     format!(
-        r#"{{ "project": "t", "complexity": {{ "in": "src", "cc": {}, "lines": {} }} }}"#,
+        r#"{{ "complexity": {{ "in": "src", "cc": {}, "lines": {} }} }}"#,
         ceilings["cc"], ceilings["lines"]
     )
 }
@@ -213,7 +213,7 @@ fn tree(ceilings: &str) -> Tree {
 
 fn accepted(entries: &str) -> String {
     format!(
-        r#"{{ "project": "t", "accepted": [{entries}],
+        r#"{{ "accepted": [{entries}],
              "complexity": {{ "in": "src", "cc": 8, "lines": 60 }} }}"#
     )
 }
@@ -470,8 +470,7 @@ fn a_stale_accepted_entry_does_not_make_a_site_the_base_holds_worse() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "project": "t",
-             "accepted": [{"gate": "complexity", "file": "src/lib.rs",
+        r#"{ "accepted": [{"gate": "complexity", "file": "src/lib.rs",
                            "text": "fn f(a: bool) -> i32 {", "cc": 2, "lines": 6}],
              "complexity": { "in": "src", "cc": 0, "lines": 0 } }"#,
     );
@@ -1320,7 +1319,7 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     tree.base();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "complexity": { "in": "src", "except": "src/gone.rs",
+        r#"{ "complexity": { "in": "src", "except": "src/gone.rs",
              "cc": 8, "lines": 60 } }"#,
     );
 
@@ -1342,7 +1341,7 @@ fn a_file_measured_at_the_base_and_not_now_is_exit_two_under_strict() {
     tree.base();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "complexity": { "in": "src", "except": "src/gone.rs",
+        r#"{ "complexity": { "in": "src", "except": "src/gone.rs",
              "cc": 8, "lines": 60 } }"#,
     );
 

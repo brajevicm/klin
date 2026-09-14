@@ -2,7 +2,7 @@ mod harness;
 
 use harness::{Tree, run_from};
 
-const ONE_DOC: &str = r#"{"doc_size": [{"file": "README.md", "ceiling": 10}]}"#;
+const ONE_DOC: &str = r#"{"doc_size": {"README.md": 10}}"#;
 
 #[test]
 fn finds_the_config_by_walking_up() {
@@ -21,13 +21,14 @@ fn finds_the_config_by_walking_up() {
     );
 }
 
+/// With no configuration a check runs over what the tree holds, so a tree with no document
+/// judges none and passes. ADR 0016, ADR 0040.
 #[test]
-fn no_config_above_the_working_directory_is_a_tool_error() {
+fn no_config_and_no_document_judges_nothing() {
     let tree = Tree::new();
     let run = tree.run(&["doc-size"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("klin.json"), "{}", run.out);
-    assert!(run.says(&tree.root().display().to_string()), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 0 document(s) judged"), "{}", run.out);
 }
 
 #[test]
@@ -44,7 +45,7 @@ fn config_flag_overrides_discovery() {
     let tree = Tree::new();
     tree.write("repo/klin.json", ONE_DOC);
     tree.words("repo/README.md", 5);
-    tree.write("elsewhere/klin.json", r#"{"doc_size": []}"#);
+    tree.write("elsewhere/klin.json", r#"{"doc_size": false}"#);
 
     let run = run_from(
         &tree.path("elsewhere"),
@@ -61,10 +62,7 @@ fn config_flag_overrides_discovery() {
 #[test]
 fn paths_resolve_against_the_configs_own_directory() {
     let tree = Tree::new();
-    tree.write(
-        "repo/klin.json",
-        r#"{"doc_size": [{"file": "docs/guide.md", "ceiling": 3}]}"#,
-    );
+    tree.write("repo/klin.json", r#"{"doc_size": {"docs/guide.md": 3}}"#);
     tree.words("repo/docs/guide.md", 5);
     tree.words("docs/guide.md", 1);
 
@@ -86,10 +84,7 @@ fn an_absolute_path_in_the_config_passes_through() {
     let doc = tree.words("outside.md", 5);
     tree.write(
         "repo/klin.json",
-        &format!(
-            r#"{{"doc_size": [{{"file": {:?}, "ceiling": 10}}]}}"#,
-            doc.display().to_string()
-        ),
+        &format!(r#"{{"doc_size": {{{:?}: 10}}}}"#, doc.display().to_string()),
     );
 
     let run = run_from(&tree.path("repo"), &["doc-size"]);
@@ -98,12 +93,13 @@ fn an_absolute_path_in_the_config_passes_through() {
 }
 
 #[test]
-fn a_missing_section_is_an_error_naming_the_section() {
+fn a_retired_project_key_is_an_error_naming_the_file_and_the_key() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"project": "mine"}"#);
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"doc_size\""), "{}", run.out);
+    assert!(run.says("\"project\""), "{}", run.out);
+    assert!(run.says("delete the key"), "{}", run.out);
     assert!(run.says(&tree.at("klin.json")), "{}", run.out);
 }
 
@@ -122,15 +118,20 @@ fn an_empty_compact_source_policy_is_an_error() {
     );
 }
 
+/// The retired entry list names each document twice, as a key and as a `file`, so it is refused
+/// whole with the map that replaces it. ADR 0040.
 #[test]
-fn a_missing_key_is_an_error_naming_the_key_not_a_default() {
+fn a_doc_size_entry_list_is_an_error_naming_the_map_that_replaces_it() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"doc_size": [{"file": "README.md"}]}"#);
+    tree.write(
+        "klin.json",
+        r#"{"doc_size": [{"file": "README.md", "ceiling": 10}]}"#,
+    );
     tree.words("README.md", 5);
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceiling\""), "{}", run.out);
     assert!(run.says("\"doc_size\""), "{}", run.out);
+    assert!(run.says(r#"{"README.md": 1200}"#), "{}", run.out);
 }
 
 #[test]
@@ -150,7 +151,7 @@ fn a_tilde_path_in_the_config_expands_to_the_home_directory() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "~/klin-no-such-document.md", "ceiling": 10}]}"#,
+        r#"{"doc_size": {"~/klin-no-such-document.md": 10}}"#,
     );
     let home = Tree::bare();
     let at = home.root().display().to_string();
@@ -162,21 +163,18 @@ fn a_tilde_path_in_the_config_expands_to_the_home_directory() {
         "{}",
         run.out
     );
-    assert!(!run.says("~"), "{}", run.out);
+    assert!(!run.says("no such file: ~"), "{}", run.out);
 }
 
 #[test]
-fn a_key_of_the_wrong_type_says_it_is_malformed_not_absent() {
+fn a_ceiling_of_the_wrong_type_says_it_is_malformed_not_absent() {
     let tree = Tree::new();
     tree.words("README.md", 5);
-    tree.write(
-        "klin.json",
-        r#"{"doc_size": [{"file": "README.md", "ceiling": "10"}]}"#,
-    );
+    tree.write("klin.json", r#"{"doc_size": {"README.md": "10"}}"#);
 
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceiling\""), "{}", run.out);
+    assert!(run.says("\"README.md\""), "{}", run.out);
     assert!(run.says("whole number"), "{}", run.out);
     assert!(!run.says("has no"), "{}", run.out);
 }
@@ -234,11 +232,11 @@ fn source_gates_reject_retired_repository_description() {
 }
 
 #[test]
-fn a_version_that_is_not_a_string_is_a_tool_error_under_any_command() {
+fn a_version_key_is_a_tool_error_under_any_command() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"version": 1, "doc_size": [{"file": "README.md", "ceiling": 10}]}"#,
+        r#"{"version": "0.1.1", "doc_size": {"README.md": 10}}"#,
     );
     tree.words("README.md", 5);
 
@@ -253,7 +251,7 @@ fn an_unknown_top_level_key_is_a_tool_error_naming_the_file_and_the_key() {
     tree.write(
         "klin.json",
         r#"{"doc_sizes": [{"file": "README.md", "ceiling": 10}],
-            "doc_size": [{"file": "README.md", "ceiling": 10}]}"#,
+            "doc_size": {"README.md": 10}}"#,
     );
     tree.words("README.md", 5);
 
@@ -271,7 +269,7 @@ fn a_schedule_with_no_step_due_today_is_a_tool_error_before_any_gate_runs() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "README.md", "ceiling": {"2999-01-01": 10}}]}"#,
+        r#"{"doc_size": {"README.md": {"2999-01-01": 10}}}"#,
     );
     tree.words("README.md", 5);
 
@@ -280,4 +278,90 @@ fn a_schedule_with_no_step_due_today_is_a_tool_error_before_any_gate_runs() {
     assert!(run.says(&tree.at("klin.json")), "{}", run.out);
     assert!(run.says("no step due"), "{}", run.out);
     assert!(!run.says("gate(s)"), "{}", run.out);
+}
+
+/// Every section that once held generated topology refuses it and names what replaced it, before
+/// any gate runs. ADR 0040.
+#[test]
+fn a_section_that_describes_the_repository_is_refused_with_its_replacement() {
+    for (config, said) in [
+        (
+            r#"{"doc_citations": [{"file": "README.md", "roots": ["."]}]}"#,
+            "no longer accepts a list of entries",
+        ),
+        (
+            r#"{"doc_citations": {"extensions": [".py"]}}"#,
+            "reads no policy",
+        ),
+        (
+            r#"{"inventory": [{"name": "tests", "path": "tests"}]}"#,
+            "no longer accepts a list of entries",
+        ),
+        (
+            r#"{"inventory": {"pattern": "*_test.go"}}"#,
+            "no longer reads \"pattern\"",
+        ),
+        (
+            r#"{"lockfile": {"manifests": ["Cargo.toml"]}}"#,
+            "no longer reads \"manifests\"",
+        ),
+        (
+            r#"{"lockfile": {"exclude": ["Cargo.toml"]}}"#,
+            "no longer reads \"exclude\"",
+        ),
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+
+        let run = tree.run(&["gate", "--list"]);
+        assert_eq!(run.code, 2, "{config}: {}", run.out);
+        assert!(run.says(said), "{config}: {}", run.out);
+    }
+}
+
+/// A misspelt field measures nothing, so it is refused, naming the field a person most likely
+/// meant, at the top level and inside a section alike. #42.
+#[test]
+fn a_misspelt_key_or_field_names_the_one_it_most_likely_meant() {
+    for (config, meant) in [
+        (r#"{"doc_sizes": false}"#, "Did you mean \"doc_size\"?"),
+        (
+            r#"{"inventory": {"exept": "tests"}}"#,
+            "Did you mean \"except\"?",
+        ),
+        (r#"{"radius": {"line": 10}}"#, "Did you mean \"lines\"?"),
+        (
+            r#"{"journal": {"promt": false}}"#,
+            "Did you mean \"prompt\"?",
+        ),
+        (
+            r#"{"build": [{"run": "make", "roto": "api"}]}"#,
+            "Did you mean \"root\"?",
+        ),
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+
+        let run = tree.run(&["gate", "--list"]);
+        assert_eq!(run.code, 2, "{config}: {}", run.out);
+        assert!(run.says(meant), "{config}: {}", run.out);
+    }
+}
+
+/// A `build` of the wrong type is refused when the config loads, so a run outside the hook sees
+/// it too. Spec 5.2.
+#[test]
+fn a_build_of_the_wrong_type_is_a_config_error_before_any_gate_runs() {
+    for config in [
+        r#"{"build": 42}"#,
+        r#"{"build": ["cargo build"]}"#,
+        r#"{"build": true}"#,
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+
+        let run = tree.run(&["gate", "--list"]);
+        assert_eq!(run.code, 2, "{config}: {}", run.out);
+        assert!(run.says("\"build\" is a command"), "{config}: {}", run.out);
+    }
 }

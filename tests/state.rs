@@ -5,16 +5,13 @@ use std::process::Command;
 
 use harness::{Run, Tree};
 
-const GATES: &str = r#""doc_size": [{"file": "README.md", "ceiling": 10}]"#;
+const GATES: &str = r#""doc_size": {"README.md": 10}"#;
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
 fn tree(build: &str) -> Tree {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        &format!("{{\n  \"project\": \"t\",\n  {build}\n  {GATES}\n}}"),
-    );
+    tree.write("klin.json", &format!("{{\n  {build}\n  {GATES}\n}}"));
     tree.words("README.md", 5);
     tree.write("src/lib.rs", CLEAN);
     tree.base();

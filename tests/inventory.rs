@@ -2,11 +2,8 @@ mod harness;
 
 use harness::Tree;
 
-const CONFIG: &str = r#"{"inventory": [{"name": "tests", "path": "tests"}]}"#;
-
 fn tree_with_a_test() -> Tree {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write("src/foo.py", "x = 1\n");
     tree.write("tests/test_foo.py", "def test_foo():\n    assert True\n");
     tree.base();
@@ -42,8 +39,7 @@ fn an_accepted_entry_keyed_by_the_path_holds_it() {
     tree.remove("tests/test_foo.py");
     tree.write(
         "klin.json",
-        r#"{"inventory": [{"name": "tests", "path": "tests"}],
-            "accepted": [{"gate": "inventory", "file": "tests/test_foo.py",
+        r#"{"accepted": [{"gate": "inventory", "file": "tests/test_foo.py",
                           "text": "test file", "missing": 1}]}"#,
     );
     let run = tree.run(&["gate", "--gate", "inventory"]);
@@ -53,10 +49,6 @@ fn an_accepted_entry_keyed_by_the_path_holds_it() {
 #[test]
 fn a_deleted_test_whose_subject_went_too_is_a_note() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"inventory": [{"name": "src", "path": "src", "pattern": "*_test.go"}]}"#,
-    );
     tree.write(
         "src/foo.go",
         "package src
@@ -101,7 +93,6 @@ fn with_no_configuration_the_derived_test_roots_are_judged_under_changed() {
 #[test]
 fn each_vanished_file_is_its_own_finding() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write("tests/test_one.py", "def test_one():\n    pass\n");
     tree.write("tests/test_two.py", "def test_two():\n    pass\n");
     tree.base();
@@ -114,19 +105,71 @@ fn each_vanished_file_is_its_own_finding() {
     assert!(run.says("tests/test_two.py:0"), "{}", run.out);
 }
 
+/// A test beside its source is marked by its affix wherever it sits, so a Go package that keeps
+/// its tests next to the code is judged with no configuration. Spec 8.2, ADR 0040.
 #[test]
-fn a_pattern_limits_the_entry_to_the_basenames_it_matches() {
+fn a_test_file_beside_its_source_is_judged_with_no_configuration() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"inventory": [{"name": "tests", "path": "tests", "pattern": "*_test.go"}]}"#,
-    );
-    tree.write("tests/foo_test.go", "package tests\n");
-    tree.write("tests/helper.go", "package tests\n");
+    tree.write("src/foo.go", "package src\n");
+    tree.write("src/foo_test.go", "package src\n");
     tree.base();
-    tree.remove("tests/helper.go");
+    tree.remove("src/foo_test.go");
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("src/foo_test.go:0  missing 1, was missing 0"),
+        "{}",
+        run.out
+    );
+}
+
+/// `except` takes a path out of the tests judged, and the base's own scope decides, so a
+/// narrowing a person committed lets a deletion under it through. Spec 8.6.
+#[test]
+fn an_except_the_base_records_takes_a_path_out_of_the_tests_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"inventory": {"except": "tests/legacy"}}"#);
+    tree.write("tests/foo_test.go", "package tests\n");
+    tree.write("tests/legacy/old_test.go", "package legacy\n");
+    tree.base();
+    tree.remove("tests/legacy/old_test.go");
+
     let run = tree.run(&["gate", "--gate", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("tests/legacy/old_test.go"), "{}", run.out);
+}
+
+#[test]
+fn an_except_added_only_in_the_working_tree_does_not_let_a_deletion_through() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("tests/foo_test.go", "package tests\n");
+    tree.write("tests/legacy/old_test.go", "package legacy\n");
+    tree.base();
+    tree.write("klin.json", r#"{"inventory": {"except": "tests/legacy"}}"#);
+    tree.remove("tests/legacy/old_test.go");
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("tests/legacy/old_test.go:0"), "{}", run.out);
+}
+
+#[test]
+fn an_in_that_selects_no_test_is_a_tool_error() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"inventory": {"in": "docs"}}"#);
+    tree.write("tests/foo_test.go", "package tests\n");
+    tree.write("docs/guide.md", "A guide.\n");
+    tree.base();
+
+    let run = tree.run(&["gate", "--gate", "inventory"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("\"inventory\" has an \"in\" scope with no applicable file"),
+        "{}",
+        run.out
+    );
 }
 
 /// One test-recognition pattern of spec 8.2, with the two fixtures every pattern carries: a
@@ -204,7 +247,6 @@ const PATTERNS: &[Pattern] = &[
 
 fn tree_with(pattern: &Pattern) -> Tree {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write(pattern.file, pattern.base);
     tree.base();
     tree
@@ -213,12 +255,21 @@ fn tree_with(pattern: &Pattern) -> Tree {
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const QUESTION: &str = "say why in your reply and stop again";
 
+/// A stop in a repository that opted in. The hook reads nothing without `klin.json`, so a tree
+/// that states no policy writes the empty one. ADR 0028.
 fn stop(tree: &Tree) -> harness::Run {
+    opted_in(tree);
     harness::feed(
         tree.root(),
         &["gate", "--hook", "--gate", "inventory"],
         A_STOP,
     )
+}
+
+fn opted_in(tree: &Tree) {
+    if !tree.path("klin.json").exists() {
+        tree.write("klin.json", "{}");
+    }
 }
 
 #[test]
@@ -278,6 +329,7 @@ const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 
 fn second_stop(tree: &Tree) -> harness::Run {
+    opted_in(tree);
     harness::feed(
         tree.root(),
         &["gate", "--hook", "--gate", "inventory"],
@@ -325,7 +377,6 @@ fn a_prompt_between_two_stops_does_not_ask_about_the_same_test_again() {
 #[test]
 fn a_test_deleted_after_the_question_gets_its_own_question() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write("tests/test_one.py", "def test_one():\n    assert True\n");
     tree.write("tests/test_two.py", "def test_two():\n    assert 2\n");
     tree.base();
@@ -366,8 +417,7 @@ fn an_accepted_entry_for_a_deleted_test_holds_it_under_strict_and_matches() {
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     tree.write(
         "klin.json",
-        r#"{"inventory": [{"name": "tests", "path": "tests"}],
-            "accepted": [{"gate": "inventory", "file": "tests/suite.rs",
+        r#"{"accepted": [{"gate": "inventory", "file": "tests/suite.rs",
                           "text": "fn beta() {", "missing": 1}]}"#,
     );
     let run = tree.run(&["gate", "--gate", "inventory", "--strict"]);
@@ -392,8 +442,7 @@ fn an_accepted_entry_keyed_by_the_vanished_function_holds_it() {
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     tree.write(
         "klin.json",
-        r#"{"inventory": [{"name": "tests", "path": "tests"}],
-            "accepted": [{"gate": "inventory", "file": "tests/suite.rs",
+        r#"{"accepted": [{"gate": "inventory", "file": "tests/suite.rs",
                           "text": "fn beta() {", "missing": 1}]}"#,
     );
     let run = tree.run(&["gate", "--gate", "inventory"]);
@@ -403,10 +452,6 @@ fn an_accepted_entry_keyed_by_the_vanished_function_holds_it() {
 #[test]
 fn a_deleted_test_function_whose_file_went_too_is_a_note() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"inventory": [{"name": "src", "path": "src", "pattern": "*_test.go"}]}"#,
-    );
     tree.write("src/foo.go", "package src\n");
     tree.write(
         "src/foo_test.go",
@@ -447,12 +492,9 @@ fn a_test_function_edited_as_it_moved_is_reported_as_gone() {
 }
 
 #[test]
-fn an_entry_that_names_one_file_judges_the_functions_in_it() {
+fn an_in_that_names_one_file_judges_the_functions_in_it() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"inventory": [{"name": "one", "path": "tests/suite.rs"}]}"#,
-    );
+    tree.write("klin.json", r#"{"inventory": {"in": "tests/suite.rs"}}"#);
     tree.write("tests/suite.rs", PATTERNS[0].base);
     tree.base();
     tree.write("tests/suite.rs", PATTERNS[0].stays);
@@ -468,7 +510,6 @@ fn an_entry_that_names_one_file_judges_the_functions_in_it() {
 #[test]
 fn a_function_whose_name_only_holds_a_marker_is_not_a_test_site() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write(
         "tests/test_foo.py",
         "def test_alpha():\n    assert True\n\n\ndef helper(test_arg):\n    return it(test_arg)\n",
@@ -485,7 +526,6 @@ fn a_function_whose_name_only_holds_a_marker_is_not_a_test_site() {
 #[test]
 fn a_swift_accessor_is_not_a_test_site() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write(
         "tests/Charge.swift",
         "var testValue: Int {\n    get { return 1 }\n}\n\nfunc test_charge() {\n    _ = 1\n}\n",
@@ -503,7 +543,6 @@ fn a_swift_accessor_is_not_a_test_site() {
 #[test]
 fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write("tests/suite.rs", PATTERNS[0].base);
     tree.base();
     tree.write("tests/suite.rs", "%%% not rust %%%\n");
@@ -521,7 +560,6 @@ fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
 #[test]
 fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     tree.write(
         "tests/suite.rs",
         "pub fn test_alpha() {\n    let x = 1;\n}\n\npub fn test_beta() {\n    let y = 2;\n}\n",
@@ -546,7 +584,6 @@ fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
 #[test]
 fn a_stop_that_blocks_names_every_deleted_test_it_then_lets_through() {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
     for at in 0..25 {
         tree.write(
             &format!("tests/test_{at:02}.py"),

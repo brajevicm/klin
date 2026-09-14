@@ -104,7 +104,6 @@ fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
-    at.say(SECTION, out);
     let commit = base::commit(project.root(), at, out)?;
     let (before, after) = sweeps(at, &spec, &commit)?;
     let before_states = states(&before.index, &spec.ignore);

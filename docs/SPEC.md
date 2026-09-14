@@ -128,6 +128,14 @@ position (4.8). An accepted entry must give a number for every value the
 gate ratchets, so no value grows unjudged behind it (4.8). ADR 0008 and 0009
 carry notes.
 
+The compact configuration of #180 on 2026-09-14 finished what ADR 0038 began
+(ADR 0040). `klin.json` holds a person's decisions and `{}` is complete. Every
+check resolves its own policy from the facts of 4.3, and no component
+manufactures a section. `doc_size` pins documents in a map, `doc_citations`
+reads no policy, `inventory` and `lockfile` read `in` and `except`, `build`
+is an override, and `project` and `version` are retired (5.2, 5.3). `init`
+writes `{}`, and `init --pin` writes guardrails instead of topology (5.7).
+
 ## 1. Problem Statement
 
 A coding agent optimizes for a green result at the end of its turn. The
@@ -351,9 +359,9 @@ configured or derived instance of a check. A check declares:
 - `name`, the command name and the `--gate` name
 - `section`, the config key it reads
 - `needs`, what the check needs of the base: nothing, the commit the window
-  names, or that commit laid out as a tree beside the working one. Every check
-  with a `derive` MUST need the tree, so that a tree with no config is green
-  (5.1). A check that judges one tree against a number exists only for a
+  names, or that commit laid out as a tree beside the working one. Every
+  Automatic check MUST judge against the base, so that a tree with no config is
+  green (5.1). A check that judges one tree against a number exists only for a
   number a person pinned. A check that needs the commit or the tree is the
   kind `--strict` reaches, because it has a comparison or an accepted list to
   judge. `sarif` needs the commit and not the tree: it reads which lines the
@@ -362,13 +370,16 @@ configured or derived instance of a check. A check declares:
 - `gate_per_entry`, whether the section is a list of entries a person writes,
   each its own gate under its own `name`, rather than one section the whole
   check runs under. Only `sarif` sets it (8.3).
-- `derive`, the keys the survey supplies for the section, or none when the
-  survey never supplies it
+- `available`, whether the tree holds what an Automatic check applies to: a
+  source root, a document at the tree root, a test, a manifest klin reads. It
+  is answered from the facts of 4.3 alone and never from a derived number
 - `activation`, what the section's absence means. An Automatic check runs
-  over what the survey derives. A Policy check, such as `conventions`, runs
-  only once a person writes the policy. An Integration check, such as
-  `sarif`, runs only once a person names the external tool. `derive` says
-  which values are derived and not whether the check runs (ADR 0038).
+  over the tree's facts where it is available and derives its own policy. A
+  Policy check, such as `conventions`, runs only once a person writes the
+  policy. An Integration check, such as `sarif`, runs only once a person names
+  the external tool (ADR 0038). No component derives a section for a check:
+  each check reads the facts, resolves its own policy, and prints the
+  provenance of each value it used (ADR 0040).
 - `cost`, an ordinal that orders the run cheapest first
 
 A Policy or Integration check runs only when its section is present. An
@@ -443,12 +454,11 @@ supported.
 
 ### 5.2 Top-level keys
 
-- `project` (string) OPTIONAL, a name for reports
-- `version` (string) OPTIONAL. A run under another klin version prints a
-  NOTE naming both and continues. The base commit removed the drift problem
-  the pin existed for, so exit 2 is not warranted.
-- `build` (string or list) OPTIONAL, ADR 0012. Derived from manifests when
-  absent.
+- `build` (string, list or `false`) OPTIONAL, ADR 0012. A build a person
+  chose over the derived one: a command, a list of `{run, root}` entries, or
+  `false` to build nothing. Absent, the hook derives one command per standard
+  manifest when it builds (5.4). A derived command is never written into the
+  file.
 - `accepted` (list) OPTIONAL, section 4.8
 - `radius` (object) OPTIONAL, ADR 0014, with `lines` and `directories` as whole
   numbers. Derived from history when absent.
@@ -461,14 +471,23 @@ supported.
   named entries of `sarif` (8.3) and the named conventions (8.4) do. There
   is no top-level list of extra gates (ADR 0038).
 
-A key klin does not know MUST be an error naming the key. A section with a
-`baseline` key MUST be an error saying the key is gone (ADR 0009). The five
-compact source sections MUST reject every field their check does not read,
-including retired topology fields, with an actionable migration error. A
-section MAY pin some keys and leave others to derivation. A pinned key MUST
-print as `pinned` beside the derived ones.
+`klin.json` is a person's policy over facts klin derives, and `{}` is a
+complete configuration. It never describes the repository: roots, languages,
+documents, manifests, test roots, families and build commands are facts.
 
-### 5.3 Compact source policy
+A key klin does not know MUST be an error naming the key. `project` and
+`version` are no longer keys, and a configuration that names either MUST be an
+error saying to delete it: the repository's identity is a fact, and a binary
+version freezes no semantics. A configuration schema epoch, should klin need
+one, is a decision of its own (ADR 0040). A section with a `baseline` key MUST
+be an error saying the key is gone (ADR 0009). Every section, and every
+`radius`, `journal` and `build` entry, MUST reject every field its reader does
+not read, including retired topology fields, with an actionable migration
+error, and SHOULD name the field a person most likely meant. A section MAY pin
+some keys and leave others to derivation. A pinned key MUST print as `pinned`
+beside the derived ones.
+
+### 5.3 Compact policy
 
 `complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability` are
 Automatic. An absent section means use discovered facts and built-in language
@@ -489,6 +508,18 @@ family list, MUST be rejected rather than ignored. Source discovery, supported
 languages, marker patterns and reachability topology are properties of the
 binary and tree, not knobs in `klin.json`.
 
+`doc_size`, `doc_citations`, `inventory` and `lockfile` are Automatic too.
+`doc_size` is a map of document path, from the configuration's directory, to
+a ceiling, a whole number or a dated schedule (5.5). A document the map names
+is judged under that ceiling, and every document at the tree root the map does
+not name keeps its derived ceiling (5.4), so a pin never takes another
+document out of scrutiny. An empty map is exit 2. `doc_citations` reads no
+policy: its section is absent or `false`. `inventory` and `lockfile` read only
+`in` and `except`. The retired `doc_size` entry list of `file` and `ceiling`,
+the `file`, `roots` and `extensions` of `doc_citations`, the `name`, `path` and
+`pattern` of `inventory`, and the `manifests` and `exclude` of `lockfile` MUST
+be rejected with the replacement named (ADR 0040).
+
 ### 5.4 Derivation rules
 
 Each check documents its rule. The rules for the shipped checks:
@@ -508,7 +539,17 @@ Each check documents its rule. The rules for the shipped checks:
   on that run. A
   NOTE names it and its word count, and it gets a ceiling when the stamp
   moves and the derivation commit holds it. Any other rule would read the
-  ceiling from `after`, which 4.3 forbids.
+  ceiling from `after`, which 4.3 forbids. A document the section pins takes
+  its pinned ceiling instead, and is judged wherever it sits.
+- `doc_citations`: every Markdown file at the tree root in the union of 4.3,
+  each read against the whole tree with the built-in extension list of 8.2.1.
+- `inventory`: every file under a test root the survey finds, which is a
+  source root a test directory segment names or one whose every source file
+  carries a test affix, and every source file a test directory segment or a
+  test affix of 8.2 marks wherever it sits, less the default skip set and
+  hidden directories.
+- `lockfile`: every manifest the survey finds that klin has a reader for,
+  `Cargo.toml`, `package.json` and `go.mod`.
 - `complexity.cc` and `complexity.lines`: the 95th percentile of each measure
   over every supported function selected by the compact scope recorded at the
   derivation commit,
@@ -549,9 +590,9 @@ Each check documents its rule. The rules for the shipped checks:
   `except`, or disable the check with `false`; a family list is invalid.
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
-- `build`: one entry per manifest, per ADR 0012. Manifests are a path set.
-  A manifest the derivation commit lacks gets its entry from the fixed table
-  on the turn that adds it.
+- `build`: one entry per manifest, per ADR 0012, derived only by a hook run
+  that builds. Manifests are a path set. A manifest the derivation commit
+  lacks gets its entry from the fixed table on the turn that adds it.
 
 A derived ceiling is not monotone. A percentile falls when simple functions
 arrive and rises when simple functions leave. A tree of 96 simple functions
@@ -588,18 +629,25 @@ on the command line is exit 2.
 
 ### 5.7 What `init` does now
 
-`init` pins only configuration a person can meaningfully edit. It does not
-serialize the automatic source sections or reachability topology.
-It runs the survey and writes other derived sections into `klin.json`, so a
-person can see them, edit them, and put them under review.
-It MUST write only the config. It MUST NOT overwrite an existing config
-without `--force`. `init --add` fills in missing sections and leaves `false`
-alone. `init --force` re-pins every derivable section from today's tree, which
-is how a person re-pins after the tree improved. It keeps what klin cannot
-derive: the `accepted` list and any dated schedule, because a schedule is the
-tightening a person pinned once (7.3). The guard denies `init` in
-every form from an agent, so `--force` is a person's flag. `init` MUST NOT
-edit `.gitignore`, because klin writes nothing that git could see.
+`init` writes `{}` when no configuration exists, which is the repository's
+opt-in marker (5.1, ADR 0028), and says so. It reads no tree and derives
+nothing, because a run derives what the file leaves out. It MUST NOT change an
+existing configuration.
+
+`init --pin` writes today's suggested guardrails as policy a person reviews:
+the complexity `cc` and `lines` the derivation commit gives, a `doc_size`
+ceiling for each document at the tree root that commit holds, and the `radius`
+values history gives. It writes a value only where the configuration states
+none, so a pinned number, a dated schedule, a section set to `false`, the
+`accepted` list and the `journal` preference stay as a person wrote them. It
+creates the file when there is none. It MUST NOT write repository topology: no
+roots, languages, document entries, manifests, test roots, reachability
+families, build commands or package structure (ADR 0040). The snapshot flags
+`--add` and `--force` are gone.
+
+`init` MUST write only the config. The guard denies `init` in every form from
+an agent. `init` MUST NOT edit `.gitignore`, because klin writes nothing that
+git could see.
 
 `init --hooks` writes the hook entries for each host it detects, or for the
 host `--host` names. `init --hooks --global` writes the host's user-level
@@ -618,22 +666,17 @@ exits 0. It reads no configuration and no tree, so it runs anywhere.
 
 Every check declares its keys beside the code that reads them, and the
 reference prints one table per section. Each row states the key, what it
-holds, whether it is required, whether the survey derives it or only a person
-pins it, the derivation rule of 5.4 where there is one, and the default where
-there is one. The reference states the top-level keys of 5.2 the same way, and
+holds, whether klin derives it when absent or only a person pins it, the
+derivation rule of 5.4 where there is one, and the default where there is
+one. A section that reads no key says so. The reference states the top-level keys of 5.2 the same way, and
 the dated ceiling shape of 5.5.
 
-Every key the reference names is read through its declaration and written by
-the survey through the same one, so a key renamed in the declaration is
-renamed at both ends. A key inside one of them, such as the `run` of a `build`
+Every key the reference names is read through its declaration, so a key
+renamed in the declaration is renamed where it is read. A key inside one of them, such as the `run` of a `build`
 entry, is stated in what the key above it holds and is not a row of its own.
 The sections the reference prints, and the built-in language coverage it
 prints beside them, come off the same table of checks a run gates from, so a
 check cannot be gated and left out of the reference.
-
-A row of a section the survey supplies entry by entry says `derived with the
-section`, because the rule holds only when the section itself is absent: an
-entry a person pins must state the key.
 
 The reference MUST also state what the key tables alone do not say:
 
@@ -641,8 +684,10 @@ The reference MUST also state what the key tables alone do not say:
   tables in the binary, and that those tables are capability rather than
   configuration
 - the shared default skip list and git-ignore behavior
-- the `in` / `except` path shape and the retired source-topology keys that
-  compact source sections reject
+- the `in` / `except` path shape and the retired topology keys that compact
+  sections reject
+- the path-to-ceiling shape of `doc_size` and the built-in citation extensions
+  of `doc_citations`
 - that a file which leaves compact scope is reported as lost coverage under
   the base-era scope rule of 8.6
 
@@ -1178,10 +1223,11 @@ in `tests/reachability.rs`.
 backticks pair from the left, and an unpaired trailing backtick opens
 nothing. A span is a citation when, after trimming and dropping everything
 from the first colon on, it holds no space and no `*`, it ends with one of the
-configured extensions, the default list being the source, document and
-manifest extensions the module names, and it holds a `/` or a `.`. So `` `src/a.rs:12` `` cites
+built-in source, document and manifest extensions the reference prints, and it
+holds a `/` or a `.`. So `` `src/a.rs:12` `` cites
 `src/a.rs`, and `` `*.rs` ``, `` `a b.rs` `` and `[a](src/a.rs)` cite
-nothing. Any citation resolves when a root holds a file at that path. A path with
+nothing. A run's root is the tree root, and `--root` by hand names others.
+Any citation resolves when a root holds a file at that path. A path with
 a `/` resolves nowhere else. A bare filename no root holds directly
 resolves when exactly one file under the roots has that basename, is
 ambiguous when several do, and resolves nowhere when none does. Identity is
@@ -1220,10 +1266,10 @@ differently may count it differently, and the fixtures are the record of
 which choice was made.
 
 **`inventory` ratchets the existence of two things.** A test file is the
-repository path of a file the base commit's tree listing holds under an
-entry, and its `missing` is 1 when the working tree holds no file there. A
-test function is a site of ADR 0008 inside a file an entry holds, in both
-trees, found by the walk `complexity` does and kept only where the
+repository path of a file the base commit's tree listing holds that 5.4 calls
+a test, and its `missing` is 1 when the working tree holds no file there. A
+test function is a site of ADR 0008 inside such a file, in both trees, read
+off each tree's file list and kept only where the
 language's test convention marks it: a `fn`, `def` or `func` declaration
 whose name starts with `test_`, a `func Test` declaration, an `it(` or a
 `test(` call at the start of the declaration line, and a `#[test]`
@@ -1236,9 +1282,10 @@ own node, as it does for Java, the declaration line is the first line of
 that node that carries more than an attribute or an annotation, so the site
 names the method and the body hash of 4.4 leaves the name out. Its
 `missing` is 1 when no function in the working tree takes it, by site first
-and then by body hash, one to one on each pass. An entry's `path` may name
-a directory or a single file, and its `pattern` limits both identities the
-same way. A file the working tree's grammar refuses holds no function site,
+and then by body hash, one to one on each pass. `in` and `except` narrow
+both identities the same way, and both trees are read under the scope the
+base commit records, and under today's when the base records none (8.6), so a
+narrowing lets a deletion through only once it is committed. A file the working tree's grammar refuses holds no function site,
 so the functions in it are not judged and the file is the unparsed refusal
 of ADR 0003. Pinned by
 `deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`,
@@ -1249,7 +1296,9 @@ of ADR 0003. Pinned by
 `a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,
-`an_entry_that_names_one_file_judges_the_functions_in_it` and
+`an_in_that_names_one_file_judges_the_functions_in_it`,
+`a_test_file_beside_its_source_is_judged_with_no_configuration`,
+`an_except_added_only_in_the_working_tree_does_not_let_a_deletion_through` and
 `a_test_file_no_grammar_reads_is_named_and_exits_two` in
 `tests/inventory.rs`. Known limit: the convention table is fixed in the
 binary, so a project whose tests carry another mark has no function
@@ -1289,17 +1338,16 @@ are both `worsened` when they go. A manifest with no lockfile in either tree
 is a NOTE and no finding, and a lockfile only the base held makes every
 dependency of that manifest `unlocked`, so deleting a lockfile fails. A
 supported lockfile klin cannot parse is a tool error naming the file. A
-manifest the survey derived that klin cannot parse now, and that did not
-parse at the base or that the base did not hold, is a NOTE naming the
-manifest in every run, hook or not (8.6). It judges none of that manifest's
-dependencies, and every other manifest is still judged, so a fixture that is
-invalid on purpose does not turn the gate red. A derived manifest that parsed
-at the base and does not parse now is a tool error naming the file, because
-the work broke it and the agent can fix it. A derived manifest that did not
-parse at the base and parses now is judged against a base that named no
-dependency. A `manifests` list a person pinned in `klin.json` asserts that
-every path in it parses, so there a manifest klin cannot
-parse in either tree is a tool error naming the file. Only the npm reader can
+manifest klin cannot parse now, and that did not parse at the base or that
+the base did not hold, is a NOTE naming the manifest in every run, hook or not
+(8.6). It judges none of that manifest's dependencies, and every other
+manifest is still judged, so a fixture that is invalid on purpose does not
+turn the gate red. A manifest that parsed at the base and does not parse now
+is a tool error naming the file, because the work broke it and the agent can
+fix it. A manifest that did not parse at the base and parses now is judged
+against a base that named no dependency. Every manifest and lockfile is read
+once per tree, the base's through one git process, and a lockfile several
+manifests share is parsed once. Only the npm reader can
 reject a manifest, because the Cargo and Go readers are line scans. The check
 judges every manifest under `--changed` as well, because a lockfile change
 judges a manifest whose own text did not change and the whole set is a
@@ -1322,7 +1370,8 @@ handful of files. Pinned by
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
-`a_pinned_manifest_klin_cannot_parse_is_a_tool_error_naming_the_file` and
+`a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
+`two_manifests_that_share_one_lockfile_are_each_judged_against_it` and
 `under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged`
 in `tests/lockfile.rs`. Known limit: the Cargo and Go readers are line
 scans, so a manifest that states a dependency in a shape the scan does not
@@ -1651,8 +1700,8 @@ Every check MUST:
   green run over an unexpectedly small scope is visible on its one line.
   Section 11.1 writes the boundary between those five counts down once, and
   every check uses it.
-  A check whose section is a list a person writes entry by entry, such as
-  `doc_size`, says its entries on a line each and the gate's coverage on one
+  A check that judges documents one by one, such as `doc_size`, says each on
+  a line and the gate's coverage on one
   line for the gate.
 - name every file that is present in both trees, was measured in `before`,
   and was not measured in `after`. Such a file left through compact scope, a
@@ -1669,8 +1718,8 @@ Every check MUST:
   record under the gate's notes (11.2).
 - name a file it could not measure. Outside the hook that is exit 2, with or
   without `--strict` (ADR 0021). In the hook it is a NOTE, because the agent
-  has no remedy. One exception narrows ADR 0021: a `lockfile` manifest the
-  survey derived, which klin cannot parse now and could not parse at the base
+  has no remedy. One exception narrows ADR 0021: a `lockfile` manifest klin
+  cannot parse now and could not parse at the base
   or which the base did not hold, is a NOTE in every run (8.2.1). A tooling
   repository keeps such a manifest as a fixture on purpose, so it is not a
   hole the work opened, and no run could ever end green around it.
@@ -1924,8 +1973,10 @@ tolerates what an interrupted writer can leave: a truncated last line.
 - `--hook` with `--strict` is a usage error: the reason goes to stderr with
   exit 1, which no host reads as a block. The two flags name two callers.
 - `--changed` scopes to the window's changed files.
-- `--list` prints applicable gates with `derived` or `pinned` per section,
-  excluded gates, and gates that need a section a person writes.
+- `--list` prints applicable gates with one `pinned:` line per value their
+  section states, excluded gates, and gates that need a section a person
+  writes. It derives nothing, so a value a section leaves out is said by the
+  run that derives it.
 - CI SHOULD run `--strict` and MAY name gates on the command line. Naming
   them is no longer required to catch a deleted section, because a deleted
   section is a derived one.
@@ -1940,8 +1991,9 @@ Stable, tested line shapes. `ok    NAME`, `FAIL  NAME`, `ERR   NAME` for
 rows. `OK:` for a passing gate's one line, printed under its row by the
 runner and on its own by the gate's subcommand, because 8.6 asks for the same
 output from both. `FAIL:` for a failure with its remedy under it. `NOTE:` for
-a note. One `window:` line first. One `derived:` line per derived value,
-after the rows.
+a note. One `window:` line first. One `derived:` or `pinned:` line per value
+a gate used, above that gate's row, and the hook's build lines above every
+row.
 
 Every `OK:` line ends in the gate's coverage, as `(N file(s) found, N
 measured, N not measured, N excluded, N unreadable)` when the check has
@@ -2321,6 +2373,15 @@ of `"in": "rust"`, recorded at the base, so the derived ceilings sample one
 source area. Without it, or with `whole`, the section is absent and the
 sample is the whole repository.
 
+`KLIN_PERF_CONFIG` chooses the configuration of the 2k, 10k and dense rows.
+`build-off`, the default, writes `{"build": []}`. `empty` writes `{}`, so the
+hook derives the build, and puts stand-in `cargo` and `tsc` commands first on
+the path, so the row measures the build's preparation and no compiler.
+`legacy` pins the configuration the running binary's own `init --force`
+writes after the base and commits it, which only a binary before #180 reads,
+so it is taken with `KLIN_BIN`. Comparing it with `build-off` under the
+current binary measures what discovering the facts costs (ADR 0040).
+
 A check that cannot take scope, such as a whole-tree duplication share, MUST
 say so in `gate --list` and MAY be skipped by the hook under a `hook: false`
 key on its section.
@@ -2604,8 +2665,9 @@ Core:
 
 - Config: absent file runs Automatic checks, discovery, override, relative
   paths, unknown key, `baseline` key refused, `false` exclusion, compact source
-  objects accept only human policy, retired topology keys are actionable
-  errors, pinned beats derived, dated ceiling picks the right step, and a
+  objects accept only human policy, retired topology keys, `project` and
+  `version` are actionable errors, a misspelt key or field names the one a
+  person most likely meant, pinned beats derived, dated ceiling picks the right step, and a
   schedule with no due step is an error.
 - Survey and source facts: one project, a monorepo, a tree with no source,
   complexity ceilings on a tree with fewer than 50 functions, lazy cache hit
@@ -2671,9 +2733,9 @@ Core:
   lockfile entry is green, a deleted lockfile fails every dependency, a
   workspace lockfile above the member manifest is found, both npm lockfile
   versions are read, an unreadable format is a NOTE, a malformed supported
-  lockfile is a tool error, a derived manifest klin cannot parse at either
-  commit is a NOTE, a derived manifest the work broke is a tool error, and a
-  pinned one is a tool error.
+  lockfile is a tool error, a manifest klin cannot parse at either commit is a
+  NOTE, a manifest the work broke is a tool error, and two manifests that
+  share a lockfile are each judged against it.
 - `conventions`: an unknown key names the convention and the key, a missing
   remedy, zero or two matchers, a language on a `text` or `files` rule, and an
   absolute, escaping or glob path are config errors, `in` and `except` select
@@ -2735,9 +2797,9 @@ green, because deterministic detection is not correct judgement:
   and a write, a heredoc opened inside a command substitution allowed, glob
   does not match by empty prefix, quoted pipe does not split, under 50
   milliseconds.
-- Init: pins exactly what the run would derive, writes only the config,
-  `--add` leaves `false` alone, `--force` re-pins, never touches
-  `.gitignore`, `--hooks` writes each host's file and leaves an existing
+- Init: plain `init` writes `{}`, `--pin` writes only guardrails and keeps
+  every value a person wrote, `--add` and `--force` are usage errors, never
+  touches `.gitignore`, `--hooks` writes each host's file and leaves an existing
   entry alone, `--hooks --global` writes the user-level file and leaves the
   tree's own untouched, a written line exits 0 when no binary resolves, and a
   host whose plugin is enabled gets no entries at all.

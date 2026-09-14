@@ -5,9 +5,9 @@
 //! keeps no side channel into it and a check keeps no state of its own.
 //!
 //! The `CATALOGUE` is the one table of the checks klin has. The runner takes its gates from it,
-//! `config` takes the section names it accepts from it, `reference` prints it, and `survey`
-//! reads which sections it derives from it. A new check is one row here beside its Clap command,
-//! and a CLI test fails when only one of the two is written. ADR 0036.
+//! `config` takes the section names it accepts from it, and `reference` prints it. A new check
+//! is one row here beside its Clap command, and a CLI test fails when only one of the two is
+//! written. ADR 0036.
 
 use serde_json::Value;
 
@@ -94,7 +94,7 @@ impl Needs {
 /// about a check before writing its section. Spec 4.6, ADR 0038.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Activation {
-    /// Absence means the check runs over facts it or the survey derives from the tree.
+    /// Absence means the check runs over the facts of the tree and derives its own policy.
     Automatic,
     /// Absence means the project has no such policy, so the check does not run.
     Policy,
@@ -134,14 +134,6 @@ impl Context<'_> {
     /// failure.
     pub fn hook(&self) -> bool {
         self.caller == Caller::Hook
-    }
-
-    /// The `derived:` and `pinned:` lines about one section, written out by a check a person ran
-    /// by hand and by nothing else. Spec 4.3.
-    pub fn say(&self, section: &str, out: &mut Sink) {
-        if self.context() {
-            self.project.say(section, out.text);
-        }
     }
 
     /// The configuration the run loaded, which every check reads its section from.
@@ -208,8 +200,17 @@ impl<'a> Sink<'a> {
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
+/// One `derived:` or `pinned:` line and the `{section, key, value, rule}` entry beside a derived
+/// one, built together so the two cannot say different things. Spec 11.2.
+pub type Said = (String, Option<Value>);
+
+/// The `{section, key, value, rule}` entry `--json` prints beside a `derived:` line. Spec 11.2.
+pub fn derived_entry(section: &str, key: Option<&str>, value: Value, rule: &str) -> Value {
+    serde_json::json!({ "section": section, "key": key, "value": value, "rule": rule })
+}
+
 /// One row of the catalogue: one check, as the runner, the configuration, the reference and
-/// the survey all read it.
+/// the plan all read it.
 pub struct Row {
     /// What `--gate` calls this check, which for two checks is not the name of the section
     /// they read.
@@ -223,12 +224,9 @@ pub struct Row {
     /// The built-in language coverage this check reports, and none for a check that reads no
     /// programming language. This is capability, never configurable source topology. Spec 5.8.
     pub languages: Option<Languages>,
-    /// The keys the survey supplies for this section, an empty list for a section it supplies
-    /// whole, and `None` for a section it never derives. An Automatic check with `None` is a
-    /// source gate that derives its own policy from the tree's facts, whose section holds only
-    /// a person's decisions. Which values are derived, and not whether the check runs:
-    /// `activation` says that. Spec 4.3, 5.2, ADR 0038.
-    pub derives: Option<&'static [&'static str]>,
+    /// Whether the tree holds what an Automatic check applies to when its section is absent,
+    /// answered from facts alone and never from a derived number. Spec 4.6, ADR 0040.
+    pub available: fn(&Project) -> bool,
     pub run: Run,
     pub needs: Needs,
     pub takes_scope: bool,
@@ -244,7 +242,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: doc_size::KEYS,
         languages: None,
-        derives: Some(&[]),
+        available: |project| !project.facts().found.documents.is_empty(),
         run: doc_size::gate,
         needs: Needs::Nothing,
         takes_scope: false,
@@ -256,7 +254,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: doc_citations::KEYS,
         languages: None,
-        derives: Some(&[]),
+        available: |project| !project.facts().found.documents.is_empty(),
         run: doc_citations::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -268,7 +266,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: lockfile::KEYS,
         languages: None,
-        derives: Some(lockfile::DERIVED),
+        available: lockfile::applies,
         run: lockfile::gate,
         needs: Needs::TheTree,
         takes_scope: false,
@@ -280,7 +278,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: escapes::KIND.keys,
         languages: Some(escapes::language_extensions),
-        derives: None,
+        available: |project| !project.found_no_source_root(),
         run: escapes::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -292,7 +290,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: stubs::KIND.keys,
         languages: Some(stubs::language_extensions),
-        derives: None,
+        available: |project| !project.found_no_source_root(),
         run: stubs::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -304,7 +302,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: inventory::KEYS,
         languages: None,
-        derives: Some(&[]),
+        available: inventory::applies,
         run: inventory::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -316,7 +314,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: complexity::KEYS,
         languages: Some(syntax::language_extensions),
-        derives: None,
+        available: |project| !project.found_no_source_root(),
         run: complexity::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -328,7 +326,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: dead_symbols::KEYS,
         languages: Some(dead_symbols::language_extensions),
-        derives: None,
+        available: |project| !project.found_no_source_root(),
         run: dead_symbols::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -340,7 +338,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: reachability::KEYS,
         languages: Some(reachability::language_extensions),
-        derives: None,
+        available: |project| !project.found_no_source_root(),
         run: reachability::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -352,7 +350,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Policy,
         keys: conventions::KEYS,
         languages: Some(syntax::pattern::language_extensions),
-        derives: None,
+        available: |_| false,
         run: conventions::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -364,7 +362,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Integration,
         keys: sarif::KEYS,
         languages: None,
-        derives: None,
+        available: |_| false,
         run: sarif::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
@@ -391,12 +389,12 @@ pub fn names() -> impl Iterator<Item = &'static str> {
     CATALOGUE.iter().map(|check| check.name)
 }
 
-/// The keys the survey supplies for a section, and `None` for a section it never derives.
-pub fn derives(section: &str) -> Option<&'static [&'static str]> {
-    CATALOGUE
-        .iter()
-        .find(|check| check.section == section)?
-        .derives
+impl Row {
+    /// Whether this check measures code, which is what a tree with no source root leaves it
+    /// nothing to measure. Spec 10, 14.
+    pub fn reads_code(&self) -> bool {
+        self.activation == Activation::Automatic && self.languages.is_some()
+    }
 }
 
 /// The key every entry of a named section carries, whichever check reads the section.

@@ -43,7 +43,7 @@ fn subcommands() -> Vec<String> {
 /// configuration names no gate over a tree the survey finds nothing in.
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"project":"catalogue"}"#);
+    tree.write("klin.json", "{}");
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {
@@ -94,7 +94,7 @@ fn every_catalogue_check_has_a_command_or_is_named_as_gate_only() {
 fn every_catalogue_section_is_a_key_the_configuration_accepts() {
     let tree = Tree::new();
     tree.words("README.md", 5);
-    let mut config = String::from("{\"doc_size\": [{\"file\": \"README.md\", \"ceiling\": 10}]");
+    let mut config = String::from("{\"doc_size\": {\"README.md\": 10}");
     for section in sections() {
         if section != "doc_size" {
             config += &format!(", \"{section}\": false");

@@ -1,5 +1,8 @@
 # The build is a config key, and klin runs it
 
+> ADR 0040 amends this: absent, the hook derives the build from the standard
+> manifests and prints it, `init` writes no build, and `false` builds nothing.
+
 The Stop hook used to be a shell wrapper. It ran the build, and it called
 `klin gate --hook --changed` only when the build succeeded. Two programs held
 one decision between them, and the wrapper had to parse the hook's JSON in

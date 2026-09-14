@@ -9,29 +9,25 @@ const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
 /// one reads it through the declaration here, and `klin reference` prints them. Spec 5.2, 5.8.
-pub const KEYS: &[Key] = &[PROJECT, VERSION, BUILD, ACCEPTED, RADIUS, JOURNAL];
+pub const KEYS: &[Key] = &[BUILD, ACCEPTED, RADIUS, JOURNAL];
 
-pub const PROJECT: Key = Key {
-    name: "project",
-    holds: "a name for reports",
-    required: false,
-    rule: None,
-    default: "no name",
-};
-
-pub const VERSION: Key = Key {
-    name: "version",
-    holds: "the klin version this configuration was written for. A run under another version prints a NOTE naming both and continues",
-    required: false,
-    rule: None,
-    default: "no version",
-};
+/// The top-level keys klin no longer reads, each with what to do instead. Spec 5.2, ADR 0040.
+const RETIRED: &[(&str, &str)] = &[
+    (
+        "project",
+        "klin reads the repository's identity from the repository — delete the key",
+    ),
+    (
+        "version",
+        "the binary's version changes no gate, and a configuration names none — delete the key",
+    ),
+];
 
 pub const BUILD: Key = Key {
     name: "build",
-    holds: "the commands a run builds with, each an entry of a `run` and an optional `root`",
+    holds: "a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing",
     required: false,
-    rule: Some("one entry per manifest, from the fixed table of ADR 0012"),
+    rule: Some("one command per standard manifest, from the fixed table of ADR 0012"),
     default: "",
 };
 
@@ -85,8 +81,8 @@ pub struct Config {
 }
 
 impl Config {
-    /// The config, or the one klin derives when there is no file. `klin.json` is optional: a
-    /// tree that has none is gated over the sections the survey supplies. ADR 0016, spec 5.1.
+    /// The config, or an empty one when there is no file. `klin.json` is optional: a tree that
+    /// has none is gated by every Automatic check over its facts. ADR 0016, ADR 0040, spec 5.1.
     pub fn load(explicit: Option<&Path>, start: &Path) -> Result<Config, Error> {
         let Some(file) = named(explicit, start) else {
             return Ok(Config::unwritten(start));
@@ -109,20 +105,24 @@ impl Config {
         }
     }
 
+    /// A configuration that states nothing yet, at the file `init --pin` is about to write.
+    pub fn empty(file: &Path) -> Config {
+        Config {
+            file: file.to_path_buf(),
+            root: file.parent().unwrap_or(Path::new("")).to_path_buf(),
+            data: Value::Object(Map::new()),
+        }
+    }
+
     /// Whether a person wrote this configuration, which tells an error that names a missing
     /// section from one that names a tree the survey found nothing in.
     pub fn written(&self) -> bool {
         self.file.is_file()
     }
 
-    /// The section as the config itself states it, with nothing the survey would supply.
+    /// The section as the config itself states it, with nothing klin derives.
     pub fn pinned(&self, name: &str) -> Option<&Value> {
         self.data.get(name)
-    }
-
-    /// Everything the file states, which the survey reads to tell a pinned key from a derived one.
-    pub fn values(&self) -> &Value {
-        &self.data
     }
 
     /// A section the file must state, because nothing derives it: the value, or the error that
@@ -130,21 +130,6 @@ impl Config {
     pub fn required(&self, name: &str) -> Result<&Value, Error> {
         self.pinned(name)
             .ok_or_else(|| Error(format!("{} has no \"{name}\" section", self.file.display())))
-    }
-
-    /// What to say when the config names a klin version other than the one running, and
-    /// nothing when it names this one or none. A mismatch is a note. Section 5.2.
-    pub fn version_note(&self) -> Option<String> {
-        let running = env!("CARGO_PKG_VERSION");
-        let named = self.data.get(VERSION.name)?.as_str()?;
-        if named == running {
-            return None;
-        }
-        Some(format!(
-            "NOTE: {} names version {named} and this binary is {running} \u{2014} the version it \
-             names changes no gate and no exit code.",
-            self.file.display()
-        ))
     }
 
     pub fn root(&self) -> &Path {
@@ -200,19 +185,8 @@ impl Config {
                     .join(", ")
             )));
         }
-        if let Some(unknown) = fields
-            .keys()
-            .find(|name| !keys.iter().any(|key| key.name == *name))
-        {
-            return Err(Error(format!(
-                "{}: \"{section}\" has unknown field \"{unknown}\" — it reads only: {}",
-                self.file.display(),
-                keys.iter()
-                    .map(|key| key.name)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )));
-        }
+        let names: Vec<&str> = keys.iter().map(|key| key.name).collect();
+        known_fields(&self.file, section, fields, &names)?;
         Ok(fields.clone())
     }
 }
@@ -220,43 +194,179 @@ impl Config {
 /// What every command refuses before it reads a section: the config errors of section 14,
 /// named against the file that holds them.
 fn well_formed(file: &Path, data: &Value) -> Result<(), Error> {
-    a_version_is_a_string(file, data)?;
     every_key_is_one_klin_reads(file, data)?;
     no_section_names_a_retired_key(file, data)?;
-    no_source_gate_describes_the_repository(file, data)?;
+    every_automatic_section_is_policy(file, data)?;
+    nested_fields(file, data)?;
     crate::conventions::no_stale_debt(file, data)?;
     crate::ceiling::every_schedule(file, data)
 }
 
-fn no_source_gate_describes_the_repository(file: &Path, data: &Value) -> Result<(), Error> {
-    for check in crate::check::CATALOGUE.iter().filter(|check| {
-        check.activation == crate::check::Activation::Automatic && check.derives.is_none()
-    }) {
-        let Some(value) = data.get(check.section) else {
-            continue;
-        };
-        if value.is_array() {
-            return Err(Error(format!(
-                "{}: \"{}\" no longer accepts person-authored families — remove the list; narrow discovery only with \"in\" / \"except\"",
-                file.display(),
-                check.section
-            )));
+/// The fields a section's entries once described the repository with. A person who still
+/// writes one is told where that knowledge went. ADR 0040.
+const TOPOLOGY: &[&str] = &[
+    "roots",
+    "languages",
+    "patterns",
+    "skip_dirs",
+    "exclude",
+    "exclude_except",
+    "ceilings",
+    "name",
+    "path",
+    "pattern",
+    "file",
+    "manifests",
+    "extensions",
+];
+
+/// Every Automatic section is absent, `false`, or a person's policy: fields for most checks, a
+/// document-to-ceiling map for `doc_size`, and nothing at all for `doc_citations`. A list of
+/// generated entries is refused whole. Spec 5.2, 5.3.
+fn every_automatic_section_is_policy(file: &Path, data: &Value) -> Result<(), Error> {
+    crate::check::CATALOGUE
+        .iter()
+        .filter(|check| check.activation == crate::check::Activation::Automatic)
+        .filter_map(|check| Some((check, data.get(check.section)?)))
+        .try_for_each(|(check, value)| policy(file, check, value))
+}
+
+/// One Automatic section a person wrote, judged against the shape its check reads.
+fn policy(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+    let section = check.section;
+    let refused = |why: &str| {
+        Err(Error(format!(
+            "{}: \"{section}\" {why} — {}",
+            file.display(),
+            policy_shape(section)
+        )))
+    };
+    match value {
+        Value::Bool(false) => Ok(()),
+        Value::Array(_) => refused(
+            "no longer accepts a list of entries, because klin discovers what it applies to",
+        ),
+        Value::Object(fields) if section == crate::doc_size::SECTION => {
+            crate::doc_size::well_formed(file, fields)
         }
-        let Some(fields) = value.as_object() else {
-            continue;
-        };
-        if let Some(key) = fields
-            .keys()
-            .find(|key| !check.keys.iter().any(|known| known.name == *key))
-        {
-            return Err(Error(format!(
-                "{}: \"{}\" no longer reads \"{key}\" — repository topology is discovered; narrow the check only with \"in\" / \"except\"",
-                file.display(),
-                check.section
-            )));
+        Value::Object(_) if section == crate::doc_citations::SECTION => refused("reads no policy"),
+        Value::Object(fields) => {
+            let names: Vec<&str> = check.keys.iter().map(|key| key.name).collect();
+            known_fields(file, section, fields, &names)
+        }
+        _ => refused("must be an object or false"),
+    }
+}
+
+/// What a section may say, in the words of the error that refused what it said.
+fn policy_shape(section: &str) -> &'static str {
+    match section {
+        crate::doc_size::SECTION => {
+            "write a map of document path to ceiling, such as {\"README.md\": 1200}, or false"
+        }
+        crate::doc_citations::SECTION => {
+            "documents and citation roots are discovered; remove the section, or set it to false"
+        }
+        _ => "narrow the check only with \"in\" / \"except\", or set it to false",
+    }
+}
+
+/// A field a section does not read measures nothing and would pass in silence, so it is refused.
+/// A retired topology field says where its knowledge went, and any other names the field a
+/// person most likely meant. Spec 5.2, 14.
+pub fn known_fields(
+    file: &Path,
+    section: &str,
+    fields: &Map<String, Value>,
+    known: &[&str],
+) -> Result<(), Error> {
+    let Some(unknown) = fields.keys().find(|key| !known.contains(&key.as_str())) else {
+        return Ok(());
+    };
+    if TOPOLOGY.contains(&unknown.as_str()) {
+        return Err(Error(format!(
+            "{}: \"{section}\" no longer reads \"{unknown}\" — repository topology is \
+             discovered; {}",
+            file.display(),
+            policy_shape(section)
+        )));
+    }
+    Err(Error(match nearest(unknown, known.iter().copied()) {
+        Some(meant) => format!(
+            "{}: \"{section}\" has unknown field \"{unknown}\"\nDid you mean \"{meant}\"?",
+            file.display()
+        ),
+        None => format!(
+            "{}: \"{section}\" has unknown field \"{unknown}\" — it reads only: {}",
+            file.display(),
+            known.join(", ")
+        ),
+    }))
+}
+
+/// The top-level sections whose fields klin reads by name, each refused a field it does not
+/// read, before any command runs. Spec 5.2.
+fn nested_fields(file: &Path, data: &Value) -> Result<(), Error> {
+    for (section, known) in [
+        (RADIUS.name, &["lines", "directories"][..]),
+        (JOURNAL.name, &["prompt"][..]),
+    ] {
+        if let Some(Value::Object(fields)) = data.get(section) {
+            known_fields(file, section, fields, known)?;
         }
     }
+    build_entries(file, data)
+}
+
+/// A `build` is a command, a list of entries of a `run` and an optional `root`, or `false`.
+fn build_entries(file: &Path, data: &Value) -> Result<(), Error> {
+    let entries = match data.get(BUILD.name) {
+        None | Some(Value::String(_) | Value::Bool(false)) => return Ok(()),
+        Some(Value::Array(entries)) if entries.iter().all(Value::is_object) => entries,
+        Some(_) => {
+            return Err(Error(format!(
+                "{}: \"{}\" is a command, a list of {{\"root\", \"run\"}} entries, or false",
+                file.display(),
+                BUILD.name
+            )));
+        }
+    };
+    for fields in entries.iter().filter_map(Value::as_object) {
+        known_fields(
+            file,
+            BUILD.name,
+            fields,
+            &[crate::build::RUN, crate::build::ROOT],
+        )?;
+    }
     Ok(())
+}
+
+/// The candidate a misspelling most likely meant: the nearest within two edits.
+pub fn nearest<'a>(written: &str, candidates: impl Iterator<Item = &'a str>) -> Option<&'a str> {
+    candidates
+        .map(|candidate| (distance(written, candidate), candidate))
+        .filter(|(apart, _)| *apart <= 2)
+        .min()
+        .map(|(_, candidate)| candidate)
+}
+
+/// The edits that turn one key into another, which is how near a misspelling is.
+fn distance(from: &str, to: &str) -> usize {
+    let to: Vec<char> = to.chars().collect();
+    let mut row: Vec<usize> = (0..=to.len()).collect();
+    for (at, left) in from.chars().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = at + 1;
+        for (column, right) in to.iter().enumerate() {
+            let above = row[column + 1];
+            row[column + 1] = (above + 1)
+                .min(row[column] + 1)
+                .min(diagonal + usize::from(left != *right));
+            diagonal = above;
+        }
+    }
+    row[to.len()]
 }
 
 fn no_section_names_a_retired_key(file: &Path, data: &Value) -> Result<(), Error> {
@@ -269,19 +379,6 @@ fn no_section_names_a_retired_key(file: &Path, data: &Value) -> Result<(), Error
         }
     }
     Ok(())
-}
-
-/// A "version" that is not a string is a malformed key, and every command refuses it. Whether
-/// the version it names is the one running is a note instead. Sections 5.2 and 14.
-fn a_version_is_a_string(file: &Path, data: &Value) -> Result<(), Error> {
-    match data.get(VERSION.name) {
-        None | Some(Value::String(_)) => Ok(()),
-        Some(_) => Err(Error(format!(
-            "{}: \"{}\" must be a klin version as a string",
-            file.display(),
-            VERSION.name
-        ))),
-    }
 }
 
 /// Whether a klin.json is there to read at all, which tells a failure of `load` that names a
@@ -312,14 +409,24 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
             file.display()
         )));
     }
-    Err(Error(format!(
-        "{}: \"{unknown}\" is not a key klin reads — one of: {}",
-        file.display(),
+    if let Some((_, instead)) = RETIRED.iter().find(|(retired, _)| retired == unknown) {
+        return Err(Error(format!(
+            "{}: \"{unknown}\" is not a key klin reads — {instead}",
+            file.display()
+        )));
+    }
+    let every = || {
         KEYS.iter()
             .map(|key| key.name)
             .chain(crate::check::sections())
-            .collect::<Vec<&str>>()
-            .join(", ")
+    };
+    let meant = nearest(unknown, every())
+        .map(|meant| format!("\nDid you mean \"{meant}\"?"))
+        .unwrap_or_default();
+    Err(Error(format!(
+        "{}: \"{unknown}\" is not a key klin reads — one of: {}{meant}",
+        file.display(),
+        every().collect::<Vec<&str>>().join(", ")
     )))
 }
 

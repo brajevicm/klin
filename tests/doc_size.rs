@@ -146,7 +146,7 @@ fn a_config_of_two_documents_names_only_the_one_over_its_ceiling() {
     tree.words("big.md", 7);
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "small.md", "ceiling": 10}, {"file": "big.md", "ceiling": 6}]}"#,
+        r#"{"doc_size": {"small.md": 10, "big.md": 6}}"#,
     );
 
     let run = tree.run(&["doc-size"]);
@@ -168,10 +168,7 @@ fn a_config_of_two_documents_names_only_the_one_over_its_ceiling() {
 fn file_without_ceiling_takes_the_ceiling_from_the_config() {
     let tree = Tree::new();
     let doc = tree.words("small.md", 5);
-    tree.write(
-        "klin.json",
-        r#"{"doc_size": [{"file": "small.md", "ceiling": 10}]}"#,
-    );
+    tree.write("klin.json", r#"{"doc_size": {"small.md": 10}}"#);
 
     let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -179,13 +176,10 @@ fn file_without_ceiling_takes_the_ceiling_from_the_config() {
 }
 
 #[test]
-fn file_the_config_does_not_list_is_a_tool_error_naming_it() {
+fn file_with_neither_a_pin_nor_a_derived_ceiling_is_a_tool_error_naming_it() {
     let tree = Tree::new();
     let doc = tree.words("stray.md", 5);
-    tree.write(
-        "klin.json",
-        r#"{"doc_size": [{"file": "small.md", "ceiling": 10}]}"#,
-    );
+    tree.write("klin.json", r#"{"doc_size": {"small.md": 10}}"#);
 
     let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -196,10 +190,7 @@ fn file_the_config_does_not_list_is_a_tool_error_naming_it() {
 #[test]
 fn a_document_the_config_lists_but_the_tree_lacks_is_a_tool_error() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"doc_size": [{"file": "gone.md", "ceiling": 10}]}"#,
-    );
+    tree.write("klin.json", r#"{"doc_size": {"gone.md": 10}}"#);
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no such file"), "{}", run.out);
@@ -211,7 +202,7 @@ fn a_missing_document_does_not_hide_the_failure_of_one_before_it() {
     tree.words("over.md", 5);
     tree.write(
         "klin.json",
-        r#"{"doc_size": [{"file": "over.md", "ceiling": 3}, {"file": "gone.md", "ceiling": 10}]}"#,
+        r#"{"doc_size": {"over.md": 3, "gone.md": 10}}"#,
     );
 
     let run = tree.run(&["doc-size"]);
@@ -221,11 +212,72 @@ fn a_missing_document_does_not_hide_the_failure_of_one_before_it() {
 }
 
 #[test]
-fn an_empty_list_of_documents_passes() {
+fn an_empty_map_of_documents_is_a_config_error() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"doc_size": []}"#);
+    tree.write("klin.json", r#"{"doc_size": {}}"#);
     let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("must pin at least one document"), "{}", run.out);
+}
+
+/// A pin names one document, and every other document at the tree root keeps the ceiling the
+/// derivation commit gives it rather than leaving scrutiny. ADR 0040.
+#[test]
+fn a_pinned_document_sits_beside_the_derived_ones_it_does_not_name() {
+    let tree = Tree::new();
+    tree.words("README.md", 120);
+    tree.words("CONTEXT.md", 20);
+    tree.base();
+    tree.write("klin.json", r#"{"doc_size": {"README.md": 1200}}"#);
+    tree.words("CONTEXT.md", 60);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("pinned: doc_size README.md 1200"), "{}", run.out);
+    assert!(
+        run.says("derived: doc_size CONTEXT.md 50, the word count at the derivation commit"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("FAIL: CONTEXT.md is 60 words, over its ceiling of 50."),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("OK: README.md is 120 words, ceiling 1200"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn file_alone_takes_the_derived_ceiling_of_a_document_the_derivation_commit_holds() {
+    let tree = Tree::new();
+    let doc = tree.words("README.md", 70);
+    tree.base();
+
+    let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
     assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("README.md is 70 words, ceiling 100"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_section_set_to_false_excludes_the_gate() {
+    let tree = Tree::new();
+    tree.words("README.md", 70);
+    tree.write("src/lib.rs", "pub fn one() -> i32 {\n    1\n}\n");
+    tree.write("klin.json", r#"{"doc_size": false}"#);
+    tree.base();
+    tree.words("README.md", 700);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("doc-size"), "{}", run.out);
 }
 
 #[test]
@@ -236,11 +288,7 @@ fn this_repositorys_own_documents_are_under_their_ceilings() {
     tree.write("AGENTS.md", include_str!("../AGENTS.md"));
     tree.write(
         "klin.json",
-        r#"{"doc_size":[
-          {"file":"README.md","ceiling":1200},
-          {"file":"CONTEXT.md","ceiling":1200},
-          {"file":"AGENTS.md","ceiling":1200}
-        ]}"#,
+        r#"{"doc_size": {"README.md": 1200, "CONTEXT.md": 1200, "AGENTS.md": 1200}}"#,
     );
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
