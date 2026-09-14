@@ -37,10 +37,10 @@ fn temporary(target: &Path) -> PathBuf {
 
 fn place(beside: &Path, bytes: &[u8], keep_mode_from: Option<&Path>) -> io::Result<()> {
     std::fs::write(beside, bytes)?;
-    if let Some(from) = keep_mode_from {
-        if let Ok(held) = std::fs::metadata(from) {
-            let _ = std::fs::set_permissions(beside, held.permissions());
-        }
+    if let Some(from) = keep_mode_from
+        && let Ok(held) = std::fs::metadata(from)
+    {
+        let _ = std::fs::set_permissions(beside, held.permissions());
     }
     Ok(())
 }
