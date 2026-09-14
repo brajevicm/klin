@@ -2022,7 +2022,7 @@ One object on stdout. Fields:
   line 11.1 ends with
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
-- `gates` list of `{name, status, findings, notes, coverage, ms, held}`,
+- `gates` list of `{name, status, findings, notes, coverage, ms, held, facts}`,
   where `status` is the row of 11.1, `findings` and `notes` are how many that
   gate left in the two lists below, `coverage` is the
   `{found, measured, not_measured, excluded, unreadable}` counts of 11.1,
@@ -2033,7 +2033,16 @@ One object on stdout. Fields:
   one quantity and not two: a gate that also drops sites its window never
   reached counts those in its `coverage` and never in `held`. On a passing run
   it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
-  it is null for a gate that never got that far
+  it is null for a gate that never got that far. `facts` is
+  `{extracted, shared, ms}` for a gate that reads structural facts (8.4), and
+  null for any other gate or for one that never got that far: `extracted`
+  counts the files of both trees that the gate read, parsed and extracted
+  itself, `shared` counts the files that an earlier gate of the same run had
+  already extracted from the same tree, and `ms` is the part of the gate's
+  `ms` spent on its own extractions. A run extracts each file of a tree once.
+  Each gate still selects its own files and resolves names over those files
+  alone, so `facts` is the one field of a row that depends on the other gates
+  a run selects
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The
@@ -2346,12 +2355,20 @@ structure. Configured Rust and TypeScript module families exercise
 `complexity`, `dead-symbols` and `reachability` through the real binary.
 
 Each dense row runs warm hook, cold survey and whole-tree strict five times
-and prints the median total and the median `ms` of those three gates. The warm
-hook row reads each gate's `ms` from the journal line of the stop it timed.
-The cold and strict rows read it from `--json`. A gate's `ms` covers its whole
-run: reading and parsing files, building its structural index, and its own
-algorithm. The rows therefore do not separate parse cost from judging cost,
-and they do not show a parse that two gates repeat. The output records source
+and prints the median total, the median `ms` of those three gates, and the
+median `facts.ms` of `dead-symbols` and `reachability` as
+`dead-symbols_facts_ms` and `reachability_facts_ms`. The warm hook row reads
+each gate's values from the journal line of the stop it timed. The cold and
+strict rows read them from `--json`. A gate's `ms` covers its whole run:
+reading, parsing and extracting the files that no earlier gate of the run
+extracted, building its structural index, and its own algorithm. Its
+`facts.ms` is the first part, so `ms` less `facts.ms` is the time of its index
+and its algorithm. A run extracts each structural file of a tree once, so the
+first gate that reads a file pays for the extraction, and a later gate counts
+that file in `facts.shared` (11.2). `complexity` walks a parse of its own,
+which no extracted fact replaces, so its `ms` still covers its parsing. A row
+taken with an earlier binary through `KLIN_BIN` prints no `_facts_ms` value
+when that binary records no `facts`. The output records source
 LoC, declarations, digest, file and language counts, cache state, changed
 files, iteration count, version and host platform, and excludes project build
 time from hook timing. These rows record measurements and add no wall-clock
@@ -2672,6 +2689,12 @@ Core:
 - Survey and source facts: one project, a monorepo, a tree with no source,
   complexity ceilings on a tree with fewer than 50 functions, lazy cache hit
   and miss, and cache keyed by binary version.
+- Structural extraction: `complexity`, `dead-symbols` and `reachability` in
+  one run judge as each does alone under one scope, overlapping scopes and
+  disjoint scopes, with a language only `complexity` reads, a file one gate
+  excepts and another reads, a file the grammar rejects, a `--changed` run,
+  and a file only one tree holds; a file two structural gates read is
+  extracted once per tree, under `--changed` too.
 - Window: each candidate in order, each ADR 0013 branch outside the hook, the
   hook with a deleted `turn` file restores it from the ref with a red
   verdict, the hook with file and ref both deleted judges the branch and the

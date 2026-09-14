@@ -203,6 +203,7 @@ pub const LANGUAGES: &[Language] = &[
 ];
 
 /// One file no grammar read, which every gate that parses names and refuses. ADR 0003.
+#[derive(Clone)]
 pub struct Unparsed {
     pub file: String,
     pub language: &'static str,

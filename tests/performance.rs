@@ -635,11 +635,19 @@ fn git_paths<const N: usize>(root: &Path, args: [&str; N]) -> Vec<Vec<u8>> {
 fn gate_times(report: &Value) -> BTreeMap<String, u64> {
     let gates = report["gates"].as_array();
     assert!(gates.is_some(), "gate timing rows: {report}");
-    gates
-        .into_iter()
-        .flatten()
-        .filter_map(|gate| Some((gate["name"].as_str()?.to_string(), gate["ms"].as_u64()?)))
-        .collect()
+    let mut times = BTreeMap::new();
+    for gate in gates.into_iter().flatten() {
+        let Some(name) = gate["name"].as_str() else {
+            continue;
+        };
+        if let Some(ms) = gate["ms"].as_u64() {
+            times.insert(name.to_string(), ms);
+        }
+        if let Some(ms) = gate["facts"]["ms"].as_u64() {
+            times.insert(format!("{name}_facts"), ms);
+        }
+    }
+    times
 }
 
 fn journal(tree: &Tree) -> Vec<Value> {
@@ -651,11 +659,17 @@ fn journal(tree: &Tree) -> Vec<Value> {
 }
 
 fn gate_medians(samples: &Samples) -> String {
-    ["complexity", "dead-symbols", "reachability"]
-        .iter()
-        .filter_map(|name| Some(format!("{name}_ms={}", median(samples.gates.get(*name)?))))
-        .collect::<Vec<_>>()
-        .join(", ")
+    [
+        "complexity",
+        "dead-symbols",
+        "dead-symbols_facts",
+        "reachability",
+        "reachability_facts",
+    ]
+    .iter()
+    .filter_map(|name| Some(format!("{name}_ms={}", median(samples.gates.get(*name)?))))
+    .collect::<Vec<_>>()
+    .join(", ")
 }
 
 fn rust_path(index: usize) -> String {

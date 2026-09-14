@@ -144,8 +144,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let families = families(project)?;
     said_families(&families, out);
     let commit = base::commit(config.root(), at, out)?;
-    let after = measure(project.tree(), &families, config.root())?;
+    let after = measure(project.tree(), &families)?;
     let (before, before_families) = before(at, &families, &commit)?;
+    out.record(|records| records.facts = Some(before.cost + after.cost));
     let (before_states, _) = states(&before.index, &before_families);
     let (after_states, unjudged) = states(&after.index, &families);
     let held_before: Vec<&State> = before_states
@@ -284,7 +285,7 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 
 /// The whole tree under the root, in the families' languages, because a caller may sit
 /// anywhere in the repository and a member is reached by any of them. Spec 8.4.
-fn measure(tree: &Tree, families: &[Family], repo_root: &Path) -> Result<Measurement, Error> {
+fn measure(tree: &Tree, families: &[Family]) -> Result<Measurement, Error> {
     let mut extensions: Vec<&str> = families
         .iter()
         .flat_map(|family| family.extensions.iter().copied())
@@ -299,8 +300,8 @@ fn measure(tree: &Tree, families: &[Family], repo_root: &Path) -> Result<Measure
         exclude_except: &[],
         skip_hidden: true,
     };
-    let found = files::found(tree, &[repo_root.to_path_buf()], &wanted)?;
-    structural::measure(found, repo_root)
+    let found = files::found(tree, &[tree.root().to_path_buf()], &wanted)?;
+    structural::measure(found, tree)
 }
 
 /// The derived families as one provenance line and its JSON entry, and nothing when none is.
@@ -333,20 +334,9 @@ fn before(
     families: &[Family],
     commit: &str,
 ) -> Result<(Measurement, Vec<Family>), Error> {
-    let owned = (at.prior.is_none() || at.only.is_some())
-        .then(|| base::materialize(at.project, commit, None))
-        .transpose()?;
-    let prior = match owned.as_ref() {
-        Some(prior) => prior,
-        None => at
-            .prior
-            .ok_or_else(|| Error("a runner gives structural checks a base tree".into()))?,
-    };
+    let prior = base::whole(at, commit)?;
     let before_families = base_families(at.config(), prior.root(), families);
-    Ok((
-        measure(prior.tree(), &before_families, prior.root())?,
-        before_families,
-    ))
+    Ok((measure(prior.tree(), &before_families)?, before_families))
 }
 
 /// Each derived family under the compact scope recorded by the base commit. Spec 8.6.

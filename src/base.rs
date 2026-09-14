@@ -186,6 +186,16 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
     Ok(base)
 }
 
+/// The base laid out whole, for a check that resolves names against every file of it: the
+/// runner's own when the runner laid the whole base out, and otherwise the run's one checkout,
+/// which every such check shares. Spec 8.4, ADR 0038.
+pub fn whole<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
+    match (at.prior, at.only) {
+        (Some(prior), None) => Ok(prior),
+        _ => at.project.whole_base(commit),
+    }
+}
+
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
 pub fn own(at: &Context, out: &mut Sink) -> Result<Prior, Error> {
     let base = announced(at.project.root(), at, out)?;

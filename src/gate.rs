@@ -1044,8 +1044,8 @@ fn each(
 }
 
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
-/// it left, the scope it measured, how long its own measure and judge took, and the count its
-/// `OK:` line prints as held at the base. Spec 11.2.
+/// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
+/// line prints as held at the base, and the structural facts it extracted or shared. Spec 11.2.
 fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     let mut out = Map::new();
     out.insert("name".into(), gate.name.clone().into());
@@ -1058,6 +1058,16 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     );
     out.insert("ms".into(), ms.into());
     out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
+    out.insert(
+        "facts".into(),
+        records.facts.map_or(Value::Null, |facts| {
+            serde_json::json!({
+                "extracted": facts.extracted,
+                "shared": facts.shared,
+                "ms": journal::millis(facts.time),
+            })
+        }),
+    );
     Value::Object(out)
 }
 

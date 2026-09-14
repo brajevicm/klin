@@ -2,17 +2,20 @@
 //! wrote. A `Tree` is one set of files as it stands: the working tree, or the base laid out
 //! beside it. `Project` holds the one configuration a run loads, the working tree, and the
 //! facts every check would otherwise compute again for itself: the changed set against the
-//! base, and the survey of the derivation commit beside the working tree's. Each of those is
-//! computed on the first call that needs it and never again. A check reads the facts and
-//! resolves its own policy; nothing here manufactures a section. Checks borrow what they need
-//! through the `Context` and own no lifetime of their own. ADR 0038, ADR 0040.
+//! base, the base laid out whole for the checks that resolve names against it, and the survey
+//! of the derivation commit beside the working tree's. Each of those is computed on the first
+//! call that needs it and never again. A check reads the facts and resolves its own policy;
+//! nothing here manufactures a section. Checks borrow what they need through the `Context` and
+//! own no lifetime of their own. ADR 0038, ADR 0040.
 
 use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
+use crate::base::{self, Prior};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error};
+use crate::syntax::structural::Extracted;
 use crate::{files, scope, survey};
 
 /// One language a file is classified as by its extension, which is a fact of the path and no
@@ -85,10 +88,13 @@ pub fn language_of(path: &str) -> Option<&'static str> {
 /// One tree's files, read once. The list is every file under the root by its relative path,
 /// sorted, less the default skip set, everything git ignores, and symbolic links. Hidden
 /// directories are in it, because two checks read them, and a caller that skips them filters
-/// the list. Nothing here reads a file's contents. Spec 4.1, 4.3.
+/// the list. The list reads no file's contents. A structural check's files are read, parsed and
+/// extracted when a check first asks for them, and held with the tree for the run. Spec 4.1,
+/// 4.3, ADR 0038.
 pub struct Tree {
     root: PathBuf,
     files: OnceCell<Result<Vec<String>, String>>,
+    extracted: Extracted,
 }
 
 impl Tree {
@@ -97,11 +103,17 @@ impl Tree {
         Tree {
             root: root.to_path_buf(),
             files: OnceCell::new(),
+            extracted: Extracted::default(),
         }
     }
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Each file's structural outcome, extracted once for every check that selects the file.
+    pub fn extracted(&self) -> &Extracted {
+        &self.extracted
     }
 
     /// Every file, read on the first call and held for the run. A directory the walk could not
@@ -151,6 +163,7 @@ pub struct Project {
     start: PathBuf,
     tree: Tree,
     changes: OnceCell<(String, Vec<Change>)>,
+    whole_base: OnceCell<(String, Prior)>,
     facts: OnceCell<survey::Facts>,
 }
 
@@ -169,6 +182,7 @@ impl Project {
             config,
             start: start.to_path_buf(),
             changes: OnceCell::new(),
+            whole_base: OnceCell::new(),
             facts: OnceCell::new(),
         }
     }
@@ -216,6 +230,25 @@ impl Project {
                 Ok(Cow::Borrowed(held))
             }
         }
+    }
+
+    /// The base commit laid out whole, once for every check that resolves names against the
+    /// whole base, and removed when the run ends. A run judges one base, so a second commit is
+    /// refused rather than laid out beside the first. ADR 0038.
+    pub fn whole_base(&self, commit: &str) -> Result<&Prior, Error> {
+        if let Some((held, prior)) = self.whole_base.get() {
+            return match held == commit {
+                true => Ok(prior),
+                false => Err(Error(format!(
+                    "a run judges one base, and {commit} is a second one beside {held}"
+                ))),
+            };
+        }
+        let prior = base::materialize(self, commit, None)?;
+        Ok(&self
+            .whole_base
+            .get_or_init(|| (commit.to_string(), prior))
+            .1)
     }
 
     /// Whether the survey found no source root in this tree. Spec 10, 14.

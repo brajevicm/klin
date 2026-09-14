@@ -106,6 +106,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let spec = spec(project)?;
     let commit = base::commit(project.root(), at, out)?;
     let (before, after) = sweeps(at, &spec, &commit)?;
+    out.record(|records| records.facts = Some(before.cost + after.cost));
     let before_states = states(&before.index, &spec.ignore);
     let after_states = states(&after.index, &spec.ignore);
     let held_before = held(&before_states, project);
@@ -138,20 +139,13 @@ fn sweeps(
     spec: &Spec,
     commit: &str,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
-    let project = at.project;
-    let after = measure(project.tree(), &spec.selection, project.root())?;
+    let after = measure(at.project.tree(), &spec.selection)?;
     let before = before(at, spec, commit)?;
     Ok((before, after))
 }
 
 fn before(at: &Context, spec: &Spec, commit: &str) -> Result<structural::Measurement, Error> {
-    let owned = base_tree(at, commit)?;
-    let prior = match owned.as_ref() {
-        Some(prior) => prior,
-        None => at
-            .prior
-            .ok_or_else(|| Error("a runner gives structural checks a base tree".into()))?,
-    };
+    let prior = base::whole(at, commit)?;
     let selection = Selection {
         scope: Scope::at_base(
             &at.project.config,
@@ -161,14 +155,7 @@ fn before(at: &Context, spec: &Spec, commit: &str) -> Result<structural::Measure
         ),
         ..spec.selection.clone()
     };
-    measure(prior.tree(), &selection, prior.root())
-}
-
-fn base_tree(at: &Context, commit: &str) -> Result<Option<base::Prior>, Error> {
-    let owned = (at.prior.is_none() || at.only.is_some())
-        .then(|| base::materialize(at.project, commit, None))
-        .transpose()?;
-    Ok(owned)
+    measure(prior.tree(), &selection)
 }
 
 fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
@@ -248,11 +235,8 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
-fn measure(
-    tree: &Tree,
-    selection: &Selection,
-    repo_root: &Path,
-) -> Result<structural::Measurement, Error> {
+fn measure(tree: &Tree, selection: &Selection) -> Result<structural::Measurement, Error> {
+    let repo_root = tree.root();
     let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
         extensions: &selection.extensions,
@@ -271,7 +255,7 @@ fn measure(
         keep
     });
     found.excluded.extend(excluded);
-    structural::measure(found, repo_root)
+    structural::measure(found, tree)
 }
 
 fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {

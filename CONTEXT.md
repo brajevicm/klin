@@ -65,7 +65,9 @@ _Avoid_: scope, range, diff
 
 **Tree**:
 One set of files at one point: the working tree, or the base laid out beside
-it. A run reads a tree's file list once, and every gate selects from it.
+it. A run reads a tree's file list once, and every gate selects from it. A run
+extracts a source file's structural facts once, and each gate still selects
+its own files.
 _Avoid_: snapshot, index, catalogue
 
 **Project**:

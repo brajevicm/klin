@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Structural gates share one extraction per tree
+
+A run extracts each structural file of a tree once, and gate rows record it
+under `facts`. Measurements: `docs/structural-extraction-2026-09-14.md`.
+
 ### Source checks take compact scope policy
 
 `complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability` now read

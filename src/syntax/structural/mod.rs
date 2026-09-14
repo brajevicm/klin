@@ -3,15 +3,20 @@
 //! imports, module declarations and references, and a file it did not measure says so. Rust
 //! and TypeScript are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::ops::Add;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
 use crate::config::{Config, Error};
 use crate::coverage::Files;
 use crate::files::{self, Found};
+use crate::project::Tree;
 use crate::syntax::convention;
 use crate::syntax::{
     LANGUAGES, Language, LanguageId, Parsed, ParsedFile, Unparsed, line_at, parse, walk,
@@ -92,8 +97,9 @@ pub struct FileFacts {
 /// measurement, and each says so in its own name, so no consumer can read an empty set of
 /// facts as a file it measured. The fourth, a file the mode rule could not read, is an error
 /// where every other check raises one. ADR 0003, ADR 0035, spec 8.6.
+#[derive(Clone)]
 pub enum Outcome {
-    Facts(FileFacts),
+    Facts(Rc<FileFacts>),
     /// A grammar read the file and no structural adapter reads its language.
     Unsupported(&'static str),
     /// The grammar rejected the text.
@@ -114,6 +120,60 @@ pub struct Measurement {
     pub unparsed: Vec<Unparsed>,
     pub unsupported: Vec<Unsupported>,
     pub files: Files,
+    pub cost: ExtractionCost,
+}
+
+/// Every outcome one tree's files came to, each file read, parsed and extracted on the first
+/// request and held for the life of the tree, which is one run. Every structural check a run
+/// selects reads the one extraction of a file, and still selects its own files and builds its
+/// own index from them, so a file one check leaves out never resolves a name for it because
+/// another check read that file. ADR 0038.
+#[derive(Default)]
+pub struct Extracted(RefCell<HashMap<String, Outcome>>);
+
+impl Extracted {
+    fn outcome(
+        &self,
+        path: &Path,
+        file: &str,
+        cost: &mut ExtractionCost,
+    ) -> Result<Outcome, Error> {
+        if let Some(held) = self.0.borrow().get(file) {
+            cost.shared += 1;
+            return Ok(held.clone());
+        }
+        let started = Instant::now();
+        let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
+        let outcome = of(file, &String::from_utf8_lossy(&bytes))?;
+        cost.extracted += 1;
+        cost.time += started.elapsed();
+        self.0
+            .borrow_mut()
+            .insert(file.to_string(), outcome.clone());
+        Ok(outcome)
+    }
+}
+
+/// What one measurement's files cost: how many it read, parsed and extracted itself, how many
+/// an earlier measurement of the same tree had already extracted, and the time the first kind
+/// took. A gate records the sum over its two trees. Spec 11.2, 13.
+#[derive(Default, Clone, Copy)]
+pub struct ExtractionCost {
+    pub extracted: usize,
+    pub shared: usize,
+    pub time: Duration,
+}
+
+impl Add for ExtractionCost {
+    type Output = ExtractionCost;
+
+    fn add(self, other: ExtractionCost) -> ExtractionCost {
+        ExtractionCost {
+            extracted: self.extracted + other.extracted,
+            shared: self.shared + other.shared,
+            time: self.time + other.time,
+        }
+    }
 }
 
 /// What structural analysis makes of one path.
@@ -125,16 +185,17 @@ pub fn of(path: &str, source: &str) -> Result<Outcome, Error> {
     }
 }
 
-pub fn measure(found: Found, repo_root: &Path) -> Result<Measurement, Error> {
+/// The found files of one tree measured, each through the tree's one extraction of it.
+pub fn measure(found: Found, tree: &Tree) -> Result<Measurement, Error> {
+    let repo_root = tree.root();
     let mut facts = Vec::new();
     let mut unparsed = Vec::new();
     let mut unsupported = Vec::new();
     let mut measured = Vec::new();
+    let mut cost = ExtractionCost::default();
     for path in found.kept {
         let file = files::relative(&path, repo_root);
-        let bytes = std::fs::read(&path).map_err(|why| Error::unreadable(&path, why))?;
-        let source = String::from_utf8_lossy(&bytes);
-        match of(&file, &source)? {
+        match tree.extracted().outcome(&path, &file, &mut cost)? {
             Outcome::Facts(found) => {
                 measured.push(found.file.clone());
                 facts.push(found);
@@ -161,12 +222,13 @@ pub fn measure(found: Found, repo_root: &Path) -> Result<Measurement, Error> {
             excluded,
             unreadable,
         },
+        cost,
     })
 }
 
 fn measured(file: &ParsedFile) -> Result<Outcome, Error> {
     Ok(match facts(file)? {
-        Some(found) => Outcome::Facts(found),
+        Some(found) => Outcome::Facts(Rc::new(found)),
         None => Outcome::Unsupported(file.language.name),
     })
 }
@@ -526,15 +588,17 @@ pub struct Declared<'a> {
 
 /// Every file's facts under the measured roots, indexed by logical language and name. Resolution
 /// within one language is name-only: no type inference and no import-aware lookup, so a
-/// reference resolves to every declaration that spells it. ADR 0035, spec 8.4.
+/// reference resolves to every declaration that spells it. The facts are the tree's one
+/// extraction; the index over them belongs to the measurement that selected them. ADR 0035,
+/// spec 8.4.
 pub struct SourceIndex {
-    files: Vec<FileFacts>,
+    files: Vec<Rc<FileFacts>>,
     declarations_by_name: BTreeMap<(LanguageId, String), Vec<(usize, usize)>>,
     references_by_name: BTreeMap<(LanguageId, String), Vec<(usize, u64)>>,
 }
 
 impl SourceIndex {
-    pub fn of(mut files: Vec<FileFacts>) -> SourceIndex {
+    pub fn of(mut files: Vec<Rc<FileFacts>>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
         let mut declarations_by_name: BTreeMap<(LanguageId, String), Vec<(usize, usize)>> =
             BTreeMap::new();
@@ -565,7 +629,7 @@ impl SourceIndex {
         }
     }
 
-    pub fn files(&self) -> &[FileFacts] {
+    pub fn files(&self) -> &[Rc<FileFacts>] {
         &self.files
     }
 
@@ -702,7 +766,7 @@ export function charge(at: number): number {
 }
 "#;
 
-    fn measured_facts(path: &str, source: &str) -> FileFacts {
+    fn measured_facts(path: &str, source: &str) -> Rc<FileFacts> {
         match of(path, source) {
             Ok(Outcome::Facts(found)) => found,
             _ => panic!("{path} was not measured"),
@@ -1058,11 +1122,11 @@ export function charge(at: number): number {
             } else {
                 vec![&own]
             };
-            files.push(synthetic(
+            files.push(Rc::new(synthetic(
                 &format!("src/f{at:04}.{suffix}"),
                 language,
                 &names,
-            ));
+            )));
         }
         SourceIndex::of(files)
     }

@@ -127,3 +127,45 @@ complexity ceilings remain lazy, check-owned derivations. The runner plans
 these Automatic checks from the presence of source facts without computing
 either one, and no central source-policy registry replaces the removed
 survey sections.
+
+## Follow-up: one extraction per tree (#176)
+
+`dead-symbols` and `reachability` each read, parsed and extracted every
+structural file of both trees, so one run extracted each file four times.
+Under `--changed`, each of the two checks also laid the whole base out again.
+On the 1M-line fixture of spec 13 those extractions were most of both gates'
+time.
+
+A `Tree` now holds `structural::Extracted`: the outcome each file came to,
+extracted when a check first asks for that file, and held until the tree
+drops at the end of the run. `structural::measure` takes the tree and not a
+root, so the extraction a measurement reads is always the extraction of the
+tree it names. `Project::whole_base` lays the base out whole once, for the
+checks that resolve names against the whole base while the runner lays out a
+scoped one, and `base::whole` chooses between that checkout and the runner's
+own tree.
+
+The per-file outcome is shared, and nothing above it. Each check still selects
+its own files under its own scope and builds its own `SourceIndex` from them,
+so a file one check excepts never resolves a name for that check because
+another check read the file. The facts sit behind an `Rc`, which the tree and
+every index built over them hold. The store is a `RefCell` map and not a
+`OnceCell`, because it fills one file at a time as checks ask for files, where
+a tree's file list fills once. Nothing outlives the run, and no provider,
+registry or service came with this: the tree already owned what a run knows
+about one set of files.
+
+A gate's row records what it extracted and what it shared under `facts`, with
+the time of its own extractions, so a benchmark row separates extraction from
+indexing and judging (spec 11.2, 13).
+
+### The parse is not shared
+
+`complexity`, `stubs`, `escapes` and a `conventions` code rule each walk a
+Tree-sitter tree under a policy of their own, and no extracted fact replaces
+that walk. Sharing their parse means keeping trees alive from one gate to the
+next. On the 1M-line fixture, the peak resident memory of a strict run of
+`complexity` alone was 63 MB when it dropped each tree and 1,842 MB when it
+kept every tree of both trees, and the whole strict run peaked at 1,113 MB
+before this change. So a parse is dropped once its facts are extracted, and
+those checks keep their own parse.

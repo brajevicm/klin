@@ -53,6 +53,9 @@ pub struct Records {
     /// The count the check's own `OK:` line prints as held at the base, which the runner puts
     /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
+    /// The structural facts the gate read over both trees: extracted by it, or shared from an
+    /// earlier gate of the run. `None` for a gate that reads none. Spec 11.2.
+    pub facts: Option<syntax::structural::ExtractionCost>,
 }
 
 /// Who ran this check. A person running one by hand gets the run's own context lines and no
