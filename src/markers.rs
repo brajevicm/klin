@@ -6,7 +6,8 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::base;
-use crate::check::{Context, Sink};
+use crate::changed::Change;
+use crate::check::{ContentCost, Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Files};
 use crate::files;
@@ -126,6 +127,7 @@ struct Read {
     findings: Vec<Finding>,
     skipped: u64,
     files: Files,
+    work: ContentCost,
 }
 
 struct Tally {
@@ -164,7 +166,13 @@ pub fn show(label: &str, values: &Values) -> String {
 pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(kind, project)?;
-    let read = findings(kind, &spec.search, project.tree(), project.root())?;
+    let read = findings(
+        kind,
+        &spec.search,
+        project.tree(),
+        project.root(),
+        at.changes.filter(|_| !at.strict),
+    )?;
     let sites = ratchet::scoped(&read.findings, at.only);
     let aside = match read.skipped {
         0 => String::new(),
@@ -172,7 +180,8 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     };
     let unit = kind.evaluator.unit;
     let said = read.files.coverage(at.only).said(out);
-    let (prior, before) = at_the_base(kind, &spec, at, out)?;
+    let (prior, before, before_work) = at_the_base(kind, &spec, at, out)?;
+    out.record(|records| records.work = Some(read.work + before_work));
     let lost = read.files.lost(&before, project, at.only);
     let code = kind.evaluator.evaluate(
         read.findings,
@@ -190,7 +199,7 @@ fn at_the_base(
     spec: &Spec,
     at: &Context,
     out: &mut Sink,
-) -> Result<(Vec<Finding>, Files), Error> {
+) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
     let owned;
     let prior = match at.prior {
         Some(prior) => prior,
@@ -209,10 +218,10 @@ fn at_the_base(
         ),
         ..spec.search.clone()
     };
-    let before = findings(kind, &search, prior.tree(), prior.root())?;
+    let before = findings(kind, &search, prior.tree(), prior.root(), None)?;
     let mut held = before.findings;
     held.retain(|finding| project.was_held(&finding.file));
-    Ok((held, before.files))
+    Ok((held, before.files, before.work))
 }
 
 fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<'a> {
@@ -319,13 +328,22 @@ fn skips_tests(kind: &Kind, config: &Config, section: &Values) -> Result<bool, E
     }
 }
 
-fn findings(kind: &Kind, search: &Search, tree: &Tree, repo_root: &Path) -> Result<Read, Error> {
+fn findings(
+    kind: &Kind,
+    search: &Search,
+    tree: &Tree,
+    repo_root: &Path,
+    changes: Option<&[Change]>,
+) -> Result<Read, Error> {
     let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
     let mut cache: BTreeMap<String, Skipped> = BTreeMap::new();
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
     let mut shaped: BTreeSet<String> = BTreeSet::new();
     let mut skipped = 0;
+    let mut work = ContentCost::default();
+    let changed: Option<BTreeSet<&str>> =
+        changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search
         .sets
         .iter()
@@ -345,8 +363,19 @@ fn findings(kind: &Kind, search: &Search, tree: &Tree, repo_root: &Path) -> Resu
             excluded.insert(rel);
             continue;
         }
+        measured.insert(rel.clone());
+        if changed
+            .as_ref()
+            .is_some_and(|changed| !changed.contains(rel.as_str()))
+        {
+            continue;
+        }
         let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
+        work.reads += 1;
         let text = String::from_utf8_lossy(&bytes).to_string();
+        if kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
+            work.parses += 1;
+        }
         let past = cached(kind, search, &rel, &text, &mut cache);
         for set in search
             .sets
@@ -355,10 +384,10 @@ fn findings(kind: &Kind, search: &Search, tree: &Tree, repo_root: &Path) -> Resu
         {
             skipped += tally(set, &rel, &text, &past, &mut seen);
             if set.shapes && shaped.insert(rel.clone()) {
+                work.parses += 1;
                 shapes(&rel, &text, &mut seen);
             }
         }
-        measured.insert(rel);
     }
     Ok(Read {
         findings: collected(kind, seen),
@@ -369,6 +398,7 @@ fn findings(kind: &Kind, search: &Search, tree: &Tree, repo_root: &Path) -> Resu
             excluded: excluded.into_iter().collect(),
             unreadable: Vec::new(),
         },
+        work,
     })
 }
 

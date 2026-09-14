@@ -2038,7 +2038,8 @@ One object on stdout. Fields:
   line 11.1 ends with
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
-- `gates` list of `{name, status, findings, notes, coverage, ms, held, facts}`,
+- `gates` list of `{name, status, findings, notes, coverage, ms, held, facts,
+  work}`,
   where `status` is the row of 11.1, `findings` and `notes` are how many that
   gate left in the two lists below, `coverage` is the
   `{found, measured, not_measured, excluded, unreadable}` counts of 11.1,
@@ -2060,7 +2061,10 @@ One object on stdout. Fields:
   once.
   Each gate still selects its own files and resolves names over those files
   alone, so `facts` is the one field of a row that depends on the other gates
-  a run selects
+  a run selects. `work` is `{reads, parses}` for the file-local gates
+  `complexity`, `escapes` and `stubs`, counting source contents read and parsed
+  over the current and base trees; it is null for other gates or for a gate
+  that never got that far.
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The
@@ -2375,8 +2379,9 @@ structure. Configured Rust and TypeScript module families exercise
 
 Each dense row runs warm hook, cold survey and whole-tree strict five times
 and prints the median total and every gate's median `ms`. Where available it
-also prints deterministic content-read/parse and structural-fact counters:
-`reads`, `parses`, `extracted` and `shared`. The warm hook row reads each
+also prints deterministic content-work and structural-fact counters:
+`work_reads`, `work_parses`, `facts_reads`, `facts_parses`, `extracted` and
+`shared`. The warm hook row reads each
 gate's values from the journal line of the stop it timed. The cold and strict
 rows read them from `--json`. A gate's `ms` covers its whole run:
 reading, parsing and extracting the files that no earlier gate of the run

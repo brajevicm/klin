@@ -689,6 +689,11 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
                 times.insert(format!("{name}_facts_{field}"), value);
             }
         }
+        for field in ["reads", "parses"] {
+            if let Some(value) = gate["work"][field].as_u64() {
+                times.insert(format!("{name}_work_{field}"), value);
+            }
+        }
     }
     times
 }

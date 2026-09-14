@@ -37,6 +37,26 @@ pub const NOT_MEASURED: &str = "not-measured";
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
 pub const DERIVATION: &str = "derivation";
 
+/// The source-content work a file-local gate performed over its current and base trees. The
+/// runner exposes this beside structural `facts` so performance rows can prove a changed run
+/// did not read unchanged source.
+#[derive(Default, Clone, Copy)]
+pub struct ContentCost {
+    pub reads: usize,
+    pub parses: usize,
+}
+
+impl std::ops::Add for ContentCost {
+    type Output = ContentCost;
+
+    fn add(self, other: ContentCost) -> ContentCost {
+        ContentCost {
+            reads: self.reads + other.reads,
+            parses: self.parses + other.parses,
+        }
+    }
+}
+
 /// Everything a run records about what it judged, which the runner prints as the one object of
 /// spec 11.2 and the journal writes as the stop's line. There is one of these per gate, gathered
 /// into one for the run. A check a person runs by hand has none, and records nothing.
@@ -57,6 +77,9 @@ pub struct Records {
     /// The structural facts the gate read over both trees: extracted by it, or shared from an
     /// earlier gate of the run. `None` for a gate that reads none. Spec 11.2.
     pub facts: Option<syntax::structural::ExtractionCost>,
+    /// The source contents a file-local gate read and parsed over both trees. `None` for a gate
+    /// that records no content work.
+    pub work: Option<ContentCost>,
 }
 
 /// Who ran this check. A person running one by hand gets the run's own context lines and no

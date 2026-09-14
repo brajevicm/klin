@@ -1097,6 +1097,15 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
             })
         }),
     );
+    out.insert(
+        "work".into(),
+        records.work.map_or(Value::Null, |work| {
+            serde_json::json!({
+                "reads": work.reads,
+                "parses": work.parses,
+            })
+        }),
+    );
     Value::Object(out)
 }
 

@@ -1,4 +1,5 @@
 use std::cell::OnceCell;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
@@ -6,7 +7,8 @@ use tree_sitter::Node;
 
 use crate::base;
 use crate::ceiling::{self, Ceiling};
-use crate::check::{self, Context, Sink};
+use crate::changed::Change;
+use crate::check::{self, ContentCost, Context, Sink};
 use crate::config::Error;
 use crate::coverage::{self, Files};
 use crate::files;
@@ -291,6 +293,7 @@ struct Sweep {
     functions: Vec<Function>,
     unparsed: Vec<Unparsed>,
     files: Files,
+    work: ContentCost,
 }
 
 #[derive(Clone)]
@@ -324,12 +327,18 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out.provenance(line.clone(), value.clone());
     }
     ratchet::noted_as(check::DERIVATION, &spec.notes, out);
-    let sweep = measure(project.tree(), &spec.selection, project.root())?;
+    let sweep = measure(
+        project.tree(),
+        &spec.selection,
+        project.root(),
+        at.changes.filter(|_| !at.strict),
+    )?;
     let now = over(&sweep.functions, &spec);
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = sweep.files.coverage(at.only).said(out);
-    let (prior, before) = at_the_base(&spec, at, out)?;
+    let (prior, before, before_work) = at_the_base(&spec, at, out)?;
+    out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
     let code = evaluator(&spec).evaluate(
         now,
@@ -346,7 +355,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(syntax::unread(&sweep.unparsed, at, code, out))
 }
 
-fn at_the_base(spec: &Spec, at: &Context, out: &mut Sink) -> Result<(Vec<Finding>, Files), Error> {
+fn at_the_base(
+    spec: &Spec,
+    at: &Context,
+    out: &mut Sink,
+) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
     let owned;
     let prior = match at.prior {
         Some(prior) => prior,
@@ -365,10 +378,10 @@ fn at_the_base(spec: &Spec, at: &Context, out: &mut Sink) -> Result<(Vec<Finding
         ),
         ..spec.selection.clone()
     };
-    let before = measure(prior.tree(), &selection, prior.root())?;
+    let before = measure(prior.tree(), &selection, prior.root(), None)?;
     let mut found = over(&before.functions, spec);
     found.retain(|finding| project.was_held(&finding.file));
-    Ok((found, before.files))
+    Ok((found, before.files, before.work))
 }
 
 fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
@@ -717,7 +730,12 @@ fn grouped(count: usize) -> String {
     out
 }
 
-fn measure(tree: &Tree, selection: &Selection, repo_root: &Path) -> Result<Sweep, Error> {
+fn measure(
+    tree: &Tree,
+    selection: &Selection,
+    repo_root: &Path,
+    changes: Option<&[Change]>,
+) -> Result<Sweep, Error> {
     let extensions: Vec<&str> = selection
         .languages
         .iter()
@@ -745,9 +763,23 @@ fn measure(tree: &Tree, selection: &Selection, repo_root: &Path) -> Result<Sweep
         }
     });
     found.excluded.extend(scoped_out);
-    let mut read: Vec<String> = Vec::new();
+    let mut measured: Vec<String> = found
+        .kept
+        .iter()
+        .map(|file| files::relative(file, repo_root))
+        .collect();
+    let changed: Option<BTreeSet<&str>> =
+        changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
+    let mut work = ContentCost::default();
     for file in found.kept {
         let name = file.to_string_lossy().to_string();
+        let relative = files::relative(&file, repo_root);
+        if changed
+            .as_ref()
+            .is_some_and(|changed| !changed.contains(relative.as_str()))
+        {
+            continue;
+        }
         let Some(language) = selection.languages.iter().find(|language| {
             language
                 .extensions
@@ -756,13 +788,14 @@ fn measure(tree: &Tree, selection: &Selection, repo_root: &Path) -> Result<Sweep
         }) else {
             continue;
         };
+        work.reads += 1;
+        work.parses += 1;
         out.extend(functions(&file, repo_root, language, &mut unparsed)?);
-        read.push(files::relative(&file, repo_root));
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    read.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
+    measured.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
     let files = Files {
-        measured: read,
+        measured,
         not_measured: Vec::new(),
         excluded: found
             .excluded
@@ -775,6 +808,7 @@ fn measure(tree: &Tree, selection: &Selection, repo_root: &Path) -> Result<Sweep
         functions: out,
         unparsed,
         files,
+        work,
     })
 }
 
