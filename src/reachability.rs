@@ -301,7 +301,7 @@ fn measure(tree: &Tree, families: &[Family]) -> Result<Measurement, Error> {
         skip_hidden: true,
     };
     let found = files::found(tree, &[tree.root().to_path_buf()], &wanted)?;
-    structural::measure(found, tree)
+    structural::measure(found, tree, None)
 }
 
 /// The derived families as one provenance line and its JSON entry, and nothing when none is.

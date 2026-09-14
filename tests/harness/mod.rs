@@ -273,8 +273,23 @@ pub fn binary() -> String {
     std::env::var("KLIN_BIN").unwrap_or_else(|_| env!("CARGO_BIN_EXE_klin").to_string())
 }
 
+/// A run of another klin binary, so a differential test can hold two builds to one output.
+pub fn feed_as(klin: &str, cwd: &Path, args: &[&str], stdin: &str) -> Run {
+    spawn_binary(klin, cwd, args, stdin, &[])
+}
+
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
-    let mut command = Command::new(binary());
+    spawn_binary(&binary(), cwd, args, stdin, environment)
+}
+
+fn spawn_binary(
+    klin: &str,
+    cwd: &Path,
+    args: &[&str],
+    stdin: &str,
+    environment: &[(&str, &str)],
+) -> Run {
+    let mut command = Command::new(klin);
     command
         .args(args)
         .env("HOME", empty_home())

@@ -169,3 +169,36 @@ next. On the 1M-line fixture, the peak resident memory of a strict run of
 kept every tree of both trees, and the whole strict run peaked at 1,113 MB
 before this change. So a parse is dropped once its facts are extracted, and
 those checks keep their own parse.
+
+## Follow-up: one base extraction for both trees (#190)
+
+After #176 and #183, `dead-symbols` still extracted every structural file of
+the working tree and every structural file of the base, although a warm
+Stop changes a few files. `structural::Unchanged` holds the whole base tree,
+its file list and the changed run's `Change` set. A working-tree file that
+set does not name, and that the base lists under the same name, holds the
+base's bytes at the same path, by git's word. The working tree's measurement
+takes that file's outcome from the base tree's `Extracted` and not from its
+own. Any other file is extracted from the working tree. `dead-symbols`
+measures both trees this way, so an unchanged file is extracted once for the
+comparison.
+
+Only a changed run that is not strict does this, which includes the hook. It
+reads the change set from `Context.changes`, the seam #188 made for it, and
+never from `Context.only`. A strict run, a whole run and the check by hand
+extract both trees as before, because git's word is only as good as its view
+of the index: an `assume-unchanged` or `skip-worktree` file, or bytes a clean
+filter hides, reads as unchanged. A changed run already takes git's word for
+its scope, so it takes it for the facts too. Strict and whole verification
+keep reading every byte. The base list, and not a stat of the base copy,
+decides whether the base holds the file, so on a case-insensitive disk a file
+renamed by case alone, which git reports under its old name, is read from
+the working tree.
+
+The base keeps each renamed file at its current path, so an
+extension-changing rename reads the old bytes under the new path's grammar,
+as before. The file set of each tree is still that tree's listing under that
+tree's scope, each measurement still builds its own `SourceIndex`, and the
+facts stay behind an `Rc` and die with the run. `reachability` still
+measures the working tree from its own extraction, so a run of both gates
+extracts as much as before, until #191 moves it onto the same view.

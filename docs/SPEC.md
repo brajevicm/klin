@@ -1189,6 +1189,35 @@ complete current dead-symbol list. Pinned by
 `tests/dead_symbols.rs`; the report cap is covered by
 `report_lists_every_current_dead_symbol_without_the_note_cap`.
 
+In a changed run that is not strict, which includes the hook, the two trees
+`dead-symbols` compares share one base extraction. The run's change set (4.5)
+is the authority: a working-tree file it does not name, and that the base
+lists under the same name, holds the base's bytes at the same path. The
+working tree takes the base extraction's outcome for that file and does not
+extract it again. An added, modified or renamed file, and a file the base
+does not list under the same name, such as one renamed by case alone where
+git does not see the rename, is extracted from the working tree. The base is
+laid out whole with each renamed file at its current path, so its old bytes
+are read under the grammar of that path, and an extension-changing rename
+such as `.ts` to `.tsx` reads them as TSX. Each tree still selects its own
+files under its own scope and builds its own index from the facts it
+selected, and no parse tree outlives its extraction. A strict run, a run
+that is not changed, and the check by hand extract both trees. Known limit:
+a change git does not report, such as an edit to a file marked
+`assume-unchanged` or `skip-worktree` or bytes a clean filter hides, reads as
+the base's bytes in a changed run. That run's scope already leaves the file's
+own findings out, and the names the file declares and references are the
+base's.
+
+The findings, notes, coverage and exit codes of a changed run are the ones
+two independent extractions give. `tests/structural_views.rs` pins the
+gate, changed and hook callers for edits, additions, deletions, both rename
+classes, scope movement, name ambiguity, a lost reference, an unsupported
+language, unparsed files and a case-only rename git does not see. With
+`KLIN_DIFF_BIN` naming an earlier build, each of those tests also requires
+that build to print the same normalized output for the gate, strict,
+changed, hand `--report` and hook callers over the same trees.
+
 **`reachability` judges files of a derived family.** The derivation commit
 proves each family from a directory, concrete extension and basename pattern;
 the report exposes its name, roots and pattern, while configuration may only
@@ -2055,10 +2084,12 @@ One object on stdout. Fields:
   facts (8.4), and null for any other gate or for one that never got that far:
   `reads` and `parses` count the files of both trees whose content this gate
   read and parsed, `extracted` counts the files whose structural outcome it
-  extracted itself, `shared` counts the files that an earlier gate of the same
-  run had already extracted from the same tree, and `ms` is the part of the
-  gate's `ms` spent on its own extractions. A run extracts each file of a tree
-  once.
+  extracted itself, `shared` counts the files whose outcome it took from an
+  extraction the run already held, which is an earlier gate's extraction of
+  the same tree or, for `dead-symbols` in a changed run that is not strict,
+  the base's extraction of an unchanged working-tree file (8.4), and `ms` is
+  the part of the gate's `ms` spent on its own extractions. A run extracts
+  each file of a tree once.
   Each gate still selects its own files and resolves names over those files
   alone, so `facts` is the one field of a row that depends on the other gates
   a run selects. `work` is `{reads, parses}` for the file-local gates
@@ -2389,14 +2420,21 @@ extracted, building its structural index, and its own algorithm. Its
 `facts.ms` is the first part, so `ms` less `facts.ms` is the time of its index
 and its algorithm. A run extracts each structural file of a tree once, so the
 first gate that reads a file pays for the extraction, and a later gate counts
-that file in `facts.shared` (11.2). `complexity` walks a parse of its own,
+that file in `facts.shared` (11.2). In the warm hook, `dead-symbols` takes
+the base's facts for every unchanged working-tree file (8.4), so its
+`extracted` is the base's structural files plus the changed ones, and its
+`shared` is the unchanged ones. `reachability` reads the working tree through
+that tree's own extraction, so in the warm hook it extracts the unchanged
+working-tree files itself. `complexity` walks a parse of its own,
 which no extracted fact replaces, so its `ms` still covers its parsing. A row
 taken with an earlier binary through `KLIN_BIN` prints no fact counters when
 that binary records no `facts`. The output records source LoC, declarations,
 digest, file and language counts, cache state, changed files, iteration count,
 version and host platform, and excludes project build time from hook timing.
-On a platform with `/usr/bin/time`, it also prints the controlled strict-run
-peak RSS; missing resource reporting is not a test failure. These rows record
+On a platform with `/usr/bin/time`, it also prints the controlled peak RSS of
+one warm hook, one `gate --changed --json --gate dead-symbols` and one
+strict run;
+missing resource reporting is not a test failure. These rows record
 measurements and add no wall-clock or RSS budget.
 
 `KLIN_PERF_ROW=source_areas` selects the root-count rows: the same 2,000
@@ -2724,7 +2762,12 @@ Core:
   disjoint scopes, with a language only `complexity` reads, a file one gate
   excepts and another reads, a file the grammar rejects, a `--changed` run,
   and a file only one tree holds; a file two structural gates read is
-  extracted once per tree, under `--changed` too.
+  extracted once per tree, under `--changed` too; in a changed run that is
+  not strict, `dead-symbols` extracts a file the working tree did not change
+  once for both trees, and its edits, additions, deletions, both rename
+  classes, scope movement, name ambiguity, lost references, unsupported
+  languages, unparsed files and a case-only rename git does not see judge as
+  two independent extractions do.
 - Window: each candidate in order, each ADR 0013 branch outside the hook, the
   hook with a deleted `turn` file restores it from the ref with a red
   verdict, the hook with file and ref both deleted judges the branch and the

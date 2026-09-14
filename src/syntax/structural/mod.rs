@@ -4,15 +4,16 @@
 //! and TypeScript are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Add;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
+use crate::changed::Change;
 use crate::config::{Config, Error};
 use crate::coverage::Files;
 use crate::files::{self, Found};
@@ -156,9 +157,36 @@ impl Extracted {
     }
 }
 
+/// The whole base tree beside the working tree, with the paths a changed run's `Change` set
+/// names. Git says a working-tree file outside that set holds the base's bytes at the same path,
+/// so its outcome is the base extraction's, and the two trees share one set of facts for it. A
+/// path the base does not list under the same name is extracted from the working tree. Spec 8.4.
+pub struct Unchanged<'a> {
+    base: &'a Tree,
+    listed: &'a [String],
+    changed: HashSet<&'a str>,
+}
+
+impl<'a> Unchanged<'a> {
+    pub fn new(base: &'a Tree, changes: &'a [Change]) -> Result<Unchanged<'a>, Error> {
+        Ok(Unchanged {
+            base,
+            listed: base.files()?,
+            changed: changes.iter().map(|change| change.path.as_str()).collect(),
+        })
+    }
+
+    /// The base tree and its copy of this working-tree file, when the file is unchanged.
+    fn copy(&self, file: &str) -> Option<(&'a Tree, PathBuf)> {
+        let listed = self.listed.binary_search_by(|held| held.as_str().cmp(file));
+        (listed.is_ok() && !self.changed.contains(file))
+            .then(|| (self.base, self.base.root().join(file)))
+    }
+}
+
 /// What one measurement's files cost: how many it read, parsed and extracted itself, how many
-/// an earlier measurement of the same tree had already extracted, and the time the first kind
-/// took. A gate records the sum over its two trees. Spec 11.2, 13.
+/// an earlier measurement had already extracted, and the time the first kind took. A gate
+/// records the sum over its two trees. Spec 11.2, 13.
 #[derive(Default, Clone, Copy)]
 pub struct ExtractionCost {
     pub reads: usize,
@@ -191,8 +219,13 @@ pub fn of(path: &str, source: &str) -> Result<Outcome, Error> {
     }
 }
 
-/// The found files of one tree measured, each through the tree's one extraction of it.
-pub fn measure(found: Found, tree: &Tree) -> Result<Measurement, Error> {
+/// The found files of one tree measured, each through the tree's one extraction of it, or the
+/// base's extraction where the file is unchanged against that base.
+pub fn measure(
+    found: Found,
+    tree: &Tree,
+    unchanged: Option<&Unchanged>,
+) -> Result<Measurement, Error> {
     let repo_root = tree.root();
     let mut facts = Vec::new();
     let mut unparsed = Vec::new();
@@ -201,7 +234,10 @@ pub fn measure(found: Found, tree: &Tree) -> Result<Measurement, Error> {
     let mut cost = ExtractionCost::default();
     for path in found.kept {
         let file = files::relative(&path, repo_root);
-        match tree.extracted().outcome(&path, &file, &mut cost)? {
+        let (source, path) = unchanged
+            .and_then(|held| held.copy(&file))
+            .unwrap_or((tree, path));
+        match source.extracted().outcome(&path, &file, &mut cost)? {
             Outcome::Facts(found) => {
                 measured.push(found.file.clone());
                 facts.push(found);

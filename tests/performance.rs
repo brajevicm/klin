@@ -559,10 +559,14 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         median(&rows.strict.total),
         gate_medians(&rows.strict)
     );
+    let rss = |args: &[&str]| {
+        peak_rss(fixture, args).map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
+    };
     println!(
-        "resource: strict_peak_rss_kb={}",
-        peak_rss(fixture.tree.root())
-            .map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
+        "resource: warm_hook_peak_rss_kb={}, dead_symbols_changed_peak_rss_kb={}, strict_peak_rss_kb={}",
+        rss(&["gate", "--hook", "--changed"]),
+        rss(&["gate", "--changed", "--json", "--gate", "dead-symbols"]),
+        rss(&["gate", "--strict", "--json"])
     );
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
@@ -575,7 +579,7 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
 
 /// Peak RSS is controlled-machine evidence, not a contributor-test threshold. `/usr/bin/time`
 /// is intentionally optional so the fixture remains runnable where the platform has no report.
-fn peak_rss(root: &Path) -> Option<u64> {
+fn peak_rss(fixture: &Fixture, args: &[&str]) -> Option<u64> {
     let (time_args, marker, divisor) = if cfg!(target_os = "macos") {
         (&["-l"][..], "maximum resident set size", 1024)
     } else {
@@ -587,18 +591,23 @@ fn peak_rss(root: &Path) -> Option<u64> {
     for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
         command.env_remove(name);
     }
+    if let (true, Some((_, path))) = (args.contains(&"--hook"), &fixture.toolchain) {
+        command.env("PATH", path);
+    }
     let done = command
         .arg(binary())
-        .args(["gate", "--strict", "--json"])
+        .args(args)
         .env("HOME", empty_home())
-        .current_dir(root)
+        .current_dir(fixture.tree.root())
         .output()
         .ok()?;
     let output = String::from_utf8_lossy(&done.stderr);
     output.lines().find_map(|line| {
         line.contains(marker)
             .then(|| {
-                let value = line.split_whitespace().last()?.parse::<u64>().ok()?;
+                let value = line
+                    .split_whitespace()
+                    .find_map(|word| word.parse::<u64>().ok())?;
                 Some(value / divisor)
             })
             .flatten()

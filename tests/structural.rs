@@ -281,6 +281,20 @@ fn a_file_two_structural_gates_read_is_extracted_once_per_tree() {
 }
 
 #[test]
+fn a_strict_changed_run_extracts_both_trees_for_dead_symbols() {
+    let tree = commands("{}");
+    tree.base();
+    tree.write(
+        "src/commands/alpha_command.rs",
+        "pub fn run_alpha() {}\npub fn also() {}\n",
+    );
+
+    let report = judged(&tree, &["--changed", "--strict"], &["dead-symbols"]);
+
+    assert_eq!(extracted(&report, "dead-symbols"), (8, 0), "{report}");
+}
+
+#[test]
 fn a_changed_run_shares_one_whole_base_between_structural_gates() {
     let tree = commands("{}");
     tree.base();
@@ -291,6 +305,6 @@ fn a_changed_run_shares_one_whole_base_between_structural_gates() {
 
     let report = judged(&tree, &["--changed"], &["dead-symbols", "reachability"]);
 
-    assert_eq!(extracted(&report, "dead-symbols"), (8, 0), "{report}");
-    assert_eq!(extracted(&report, "reachability"), (0, 8), "{report}");
+    assert_eq!(extracted(&report, "dead-symbols"), (5, 3), "{report}");
+    assert_eq!(extracted(&report, "reachability"), (3, 5), "{report}");
 }

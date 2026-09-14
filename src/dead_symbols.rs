@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::base;
+use crate::base::{self, Prior};
 use crate::check::{Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage;
@@ -134,18 +134,26 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
+/// The two trees measured. A changed run that is not strict measures them over one base
+/// extraction: the working tree takes the base's facts for every file its `Change` set leaves
+/// out, and extracts only the files it changed. Strict and whole runs extract both trees.
 fn sweeps(
     at: &Context,
     spec: &Spec,
     commit: &str,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
-    let after = measure(at.project.tree(), &spec.selection)?;
-    let before = before(at, spec, commit)?;
+    let prior = base::whole(at, commit)?;
+    let unchanged = at
+        .changes
+        .filter(|_| !at.strict)
+        .map(|changes| structural::Unchanged::new(prior.tree(), changes))
+        .transpose()?;
+    let after = measure(at.project.tree(), &spec.selection, unchanged.as_ref())?;
+    let before = before(at, spec, prior)?;
     Ok((before, after))
 }
 
-fn before(at: &Context, spec: &Spec, commit: &str) -> Result<structural::Measurement, Error> {
-    let prior = base::whole(at, commit)?;
+fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<structural::Measurement, Error> {
     let selection = Selection {
         scope: Scope::at_base(
             &at.project.config,
@@ -155,7 +163,7 @@ fn before(at: &Context, spec: &Spec, commit: &str) -> Result<structural::Measure
         ),
         ..spec.selection.clone()
     };
-    measure(prior.tree(), &selection)
+    measure(prior.tree(), &selection, None)
 }
 
 fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
@@ -235,7 +243,11 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
-fn measure(tree: &Tree, selection: &Selection) -> Result<structural::Measurement, Error> {
+fn measure(
+    tree: &Tree,
+    selection: &Selection,
+    unchanged: Option<&structural::Unchanged>,
+) -> Result<structural::Measurement, Error> {
     let repo_root = tree.root();
     let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
@@ -255,7 +267,7 @@ fn measure(tree: &Tree, selection: &Selection) -> Result<structural::Measurement
         keep
     });
     found.excluded.extend(excluded);
-    structural::measure(found, tree)
+    structural::measure(found, tree, unchanged)
 }
 
 fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
