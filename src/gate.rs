@@ -567,26 +567,30 @@ fn judge(
 /// What this run judges the working tree against: the base commit, laid out, and the files
 /// a scoped run looks at.
 #[derive(Default)]
-struct Against {
+struct Against<'a> {
     base: Option<Window>,
+    changes: Option<Cow<'a, [Change]>>,
     scope: Option<Vec<String>>,
     prior: Option<Prior>,
 }
 
-fn against(
+fn against<'a>(
     args: &Args,
     wanted: &[&Gate],
-    project: &Project,
+    project: &'a Project,
     window: Option<&Window>,
     out: &mut String,
-) -> Result<Against, Error> {
+) -> Result<Against<'a>, Error> {
     let base = base(args, wanted, project, window, out)?;
     let changes = changes(args, project, base.as_ref(), out)?;
+    let scope = changes
+        .as_ref()
+        .map(|changed| changed.iter().map(|change| change.path.clone()).collect());
+    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted)?;
     Ok(Against {
-        scope: changes
-            .as_ref()
-            .map(|changed| changed.iter().map(|change| change.path.clone()).collect()),
-        prior: prior(project, base.as_ref(), changes.as_deref(), wanted)?,
+        scope,
+        changes,
+        prior,
         base,
     })
 }
@@ -1085,6 +1089,8 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
         "facts".into(),
         records.facts.map_or(Value::Null, |facts| {
             serde_json::json!({
+                "reads": facts.reads,
+                "parses": facts.parses,
                 "extracted": facts.extracted,
                 "shared": facts.shared,
                 "ms": journal::millis(facts.time),
@@ -1171,6 +1177,7 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, S
         prior: against.prior.as_ref(),
         base: against.base.as_ref().map(|base| base.before.as_str()),
         only: against.scope.as_deref().filter(|_| gate.check.takes_scope),
+        changes: against.changes.as_deref(),
         caller: match args.hook {
             true => Caller::Hook,
             false => Caller::Gate,

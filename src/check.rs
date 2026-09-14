@@ -12,6 +12,7 @@
 use serde_json::Value;
 
 use crate::base::Prior;
+use crate::changed::Change;
 use crate::config::{Config, Error};
 use crate::project::Project;
 use crate::reference::{Key, Languages};
@@ -119,6 +120,9 @@ pub struct Context<'a> {
     pub base: Option<&'a str>,
     /// The files a scoped run judges, and `None` for a run that judges everything.
     pub only: Option<&'a [String]>,
+    /// The authoritative before-to-after changes of a changed run, separate from its judgement
+    /// scope. Direct checks and unscoped runs have no changed-run context.
+    pub changes: Option<&'a [Change]>,
     pub caller: Caller,
     pub strict: bool,
     /// Print nothing on success: no `OK:` line, and nothing under it.
@@ -130,7 +134,7 @@ impl Context<'_> {
     /// `derived:` lines. The runner prints those once for the whole run, so only a check a
     /// person ran by hand says them here. Spec 4.3, 11.1.
     pub fn context(&self) -> bool {
-        self.caller == Caller::Hand && !self.quiet
+        self.caller == Caller::Hand && !self.quiet && self.changes.is_none()
     }
 
     /// Whether the Stop hook runs this gate, so a hole the agent cannot fix is a note, not a
@@ -155,6 +159,7 @@ impl<'a> Context<'a> {
             prior: None,
             base: None,
             only: None,
+            changes: None,
             caller: Caller::Hand,
             strict: false,
             quiet: false,

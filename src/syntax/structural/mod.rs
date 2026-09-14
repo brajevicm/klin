@@ -144,6 +144,8 @@ impl Extracted {
         }
         let started = Instant::now();
         let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
+        cost.reads += 1;
+        cost.parses += 1;
         let outcome = of(file, &String::from_utf8_lossy(&bytes))?;
         cost.extracted += 1;
         cost.time += started.elapsed();
@@ -159,6 +161,8 @@ impl Extracted {
 /// took. A gate records the sum over its two trees. Spec 11.2, 13.
 #[derive(Default, Clone, Copy)]
 pub struct ExtractionCost {
+    pub reads: usize,
+    pub parses: usize,
     pub extracted: usize,
     pub shared: usize,
     pub time: Duration,
@@ -169,6 +173,8 @@ impl Add for ExtractionCost {
 
     fn add(self, other: ExtractionCost) -> ExtractionCost {
         ExtractionCost {
+            reads: self.reads + other.reads,
+            parses: self.parses + other.parses,
             extracted: self.extracted + other.extracted,
             shared: self.shared + other.shared,
             time: self.time + other.time,

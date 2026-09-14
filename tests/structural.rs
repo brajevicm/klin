@@ -254,7 +254,27 @@ fn a_file_two_structural_gates_read_is_extracted_once_per_tree() {
     let report = judged(&tree, &[], &GATES);
 
     assert_eq!(extracted(&report, "dead-symbols"), (8, 0), "{report}");
+    assert_eq!(
+        row(&report, "dead-symbols")["facts"]["reads"],
+        8,
+        "{report}"
+    );
+    assert_eq!(
+        row(&report, "dead-symbols")["facts"]["parses"],
+        8,
+        "{report}"
+    );
     assert_eq!(extracted(&report, "reachability"), (0, 8), "{report}");
+    assert_eq!(
+        row(&report, "reachability")["facts"]["reads"],
+        0,
+        "{report}"
+    );
+    assert_eq!(
+        row(&report, "reachability")["facts"]["parses"],
+        0,
+        "{report}"
+    );
     assert!(row(&report, "complexity")["facts"].is_null(), "{report}");
     let alone = judged(&tree, &[], &["reachability"]);
     assert_eq!(extracted(&alone, "reachability"), (8, 0), "{alone}");

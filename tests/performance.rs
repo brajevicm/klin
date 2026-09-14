@@ -1,6 +1,6 @@
 mod harness;
 
-use harness::{Tree, feed};
+use harness::{Tree, binary, empty_home, feed};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -265,7 +265,7 @@ impl Fixture {
         }
         for name in ["complexity", "dead-symbols", "reachability"] {
             assert!(
-                samples.gates.contains_key(name),
+                samples.gates.contains_key(&format!("{name}_ms")),
                 "{name} gate timing is missing: {:?}",
                 samples.gates.keys().collect::<Vec<_>>()
             );
@@ -523,9 +523,10 @@ fn toolchain() -> (Tree, String) {
 
 fn print_rows(fixture: &Fixture, rows: &Measurements) {
     let counts = count_paths(git_paths(fixture.tree.root(), ["ls-files", "-z"]));
+    let changed = changed_counts(fixture.tree.root());
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {} ({}, complexity_scope={}, config={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
+        "fixture {} ({}, complexity_scope={}, config={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
         size,
         fixture.profile.name,
         fixture.scope,
@@ -535,7 +536,10 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         fixture.generated.digest,
         counts.rust,
         counts.typescript,
-        counts.tsx
+        counts.tsx,
+        changed.rust + changed.typescript,
+        changed.rust,
+        changed.typescript
     );
     println!(
         "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
@@ -555,6 +559,11 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         median(&rows.strict.total),
         gate_medians(&rows.strict)
     );
+    println!(
+        "resource: strict_peak_rss_kb={}",
+        peak_rss(fixture.tree.root())
+            .map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
+    );
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
     println!(
@@ -562,6 +571,38 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         std::env::consts::OS,
         std::env::consts::ARCH
     );
+}
+
+/// Peak RSS is controlled-machine evidence, not a contributor-test threshold. `/usr/bin/time`
+/// is intentionally optional so the fixture remains runnable where the platform has no report.
+fn peak_rss(root: &Path) -> Option<u64> {
+    let (time_args, marker, divisor) = if cfg!(target_os = "macos") {
+        (&["-l"][..], "maximum resident set size", 1024)
+    } else {
+        (&["-v"][..], "Maximum resident set size (kbytes):", 1)
+    };
+    let mut command = Command::new("/usr/bin/time");
+    command.args(time_args);
+    command.env("LC_ALL", "C");
+    for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
+        command.env_remove(name);
+    }
+    let done = command
+        .arg(binary())
+        .args(["gate", "--strict", "--json"])
+        .env("HOME", empty_home())
+        .current_dir(root)
+        .output()
+        .ok()?;
+    let output = String::from_utf8_lossy(&done.stderr);
+    output.lines().find_map(|line| {
+        line.contains(marker)
+            .then(|| {
+                let value = line.split_whitespace().last()?.parse::<u64>().ok()?;
+                Some(value / divisor)
+            })
+            .flatten()
+    })
 }
 
 fn repeat(mut run: impl FnMut() -> Sample) -> Samples {
@@ -641,10 +682,12 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
             continue;
         };
         if let Some(ms) = gate["ms"].as_u64() {
-            times.insert(name.to_string(), ms);
+            times.insert(format!("{name}_ms"), ms);
         }
-        if let Some(ms) = gate["facts"]["ms"].as_u64() {
-            times.insert(format!("{name}_facts"), ms);
+        for field in ["reads", "parses", "extracted", "shared", "ms"] {
+            if let Some(value) = gate["facts"][field].as_u64() {
+                times.insert(format!("{name}_facts_{field}"), value);
+            }
         }
     }
     times
@@ -659,17 +702,12 @@ fn journal(tree: &Tree) -> Vec<Value> {
 }
 
 fn gate_medians(samples: &Samples) -> String {
-    [
-        "complexity",
-        "dead-symbols",
-        "dead-symbols_facts",
-        "reachability",
-        "reachability_facts",
-    ]
-    .iter()
-    .filter_map(|name| Some(format!("{name}_ms={}", median(samples.gates.get(*name)?))))
-    .collect::<Vec<_>>()
-    .join(", ")
+    samples
+        .gates
+        .iter()
+        .map(|(name, values)| format!("{name}={}", median(values)))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn rust_path(index: usize) -> String {

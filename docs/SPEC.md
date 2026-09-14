@@ -893,6 +893,13 @@ count it judged. Under the turn window the changed files are the files the
 window changed, and an empty set is an honest "nothing changed", not a hole,
 because a commit does not empty it.
 
+The runner also makes the full `Change` set available to each gate in a
+changed run, separately from the list of files the gate judges. A `Change`
+keeps its current path and, where applicable, its base path, so additions,
+deletions, modifications and renames remain distinguishable. `Context.only`
+continues to mean judgement and report scope; it is not a change or
+invalidation model.
+
 ### 7.3 Tightening
 
 The invariant that makes tightening safe:
@@ -2043,12 +2050,14 @@ One object on stdout. Fields:
   reached counts those in its `coverage` and never in `held`. On a passing run
   it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
   it is null for a gate that never got that far. `facts` is
-  `{extracted, shared, ms}` for a gate that reads structural facts (8.4), and
-  null for any other gate or for one that never got that far: `extracted`
-  counts the files of both trees that the gate read, parsed and extracted
-  itself, `shared` counts the files that an earlier gate of the same run had
-  already extracted from the same tree, and `ms` is the part of the gate's
-  `ms` spent on its own extractions. A run extracts each file of a tree once.
+  `{reads, parses, extracted, shared, ms}` for a gate that reads structural
+  facts (8.4), and null for any other gate or for one that never got that far:
+  `reads` and `parses` count the files of both trees whose content this gate
+  read and parsed, `extracted` counts the files whose structural outcome it
+  extracted itself, `shared` counts the files that an earlier gate of the same
+  run had already extracted from the same tree, and `ms` is the part of the
+  gate's `ms` spent on its own extractions. A run extracts each file of a tree
+  once.
   Each gate still selects its own files and resolves names over those files
   alone, so `facts` is the one field of a row that depends on the other gates
   a run selects
@@ -2365,11 +2374,11 @@ structure. Configured Rust and TypeScript module families exercise
 `complexity`, `dead-symbols` and `reachability` through the real binary.
 
 Each dense row runs warm hook, cold survey and whole-tree strict five times
-and prints the median total, the median `ms` of those three gates, and the
-median `facts.ms` of `dead-symbols` and `reachability` as
-`dead-symbols_facts_ms` and `reachability_facts_ms`. The warm hook row reads
-each gate's values from the journal line of the stop it timed. The cold and
-strict rows read them from `--json`. A gate's `ms` covers its whole run:
+and prints the median total and every gate's median `ms`. Where available it
+also prints deterministic content-read/parse and structural-fact counters:
+`reads`, `parses`, `extracted` and `shared`. The warm hook row reads each
+gate's values from the journal line of the stop it timed. The cold and strict
+rows read them from `--json`. A gate's `ms` covers its whole run:
 reading, parsing and extracting the files that no earlier gate of the run
 extracted, building its structural index, and its own algorithm. Its
 `facts.ms` is the first part, so `ms` less `facts.ms` is the time of its index
@@ -2377,12 +2386,13 @@ and its algorithm. A run extracts each structural file of a tree once, so the
 first gate that reads a file pays for the extraction, and a later gate counts
 that file in `facts.shared` (11.2). `complexity` walks a parse of its own,
 which no extracted fact replaces, so its `ms` still covers its parsing. A row
-taken with an earlier binary through `KLIN_BIN` prints no `_facts_ms` value
-when that binary records no `facts`. The output records source
-LoC, declarations, digest, file and language counts, cache state, changed
-files, iteration count, version and host platform, and excludes project build
-time from hook timing. These rows record measurements and add no wall-clock
-budget.
+taken with an earlier binary through `KLIN_BIN` prints no fact counters when
+that binary records no `facts`. The output records source LoC, declarations,
+digest, file and language counts, cache state, changed files, iteration count,
+version and host platform, and excludes project build time from hook timing.
+On a platform with `/usr/bin/time`, it also prints the controlled strict-run
+peak RSS; missing resource reporting is not a test failure. These rows record
+measurements and add no wall-clock or RSS budget.
 
 `KLIN_PERF_ROW=source_areas` selects the root-count rows: the same 2,000
 source files, 1,000 Rust and 1,000 TypeScript, split over 2, 100 and 500

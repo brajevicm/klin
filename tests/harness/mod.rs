@@ -258,7 +258,7 @@ pub fn feed_with(cwd: &Path, environment: &[(&str, &str)], args: &[&str], stdin:
 
 /// One empty home directory for the whole test binary, so a run reads the machine's own
 /// host settings from nowhere and a test that wants a home names its own.
-fn empty_home() -> &'static Path {
+pub fn empty_home() -> &'static Path {
     static HOME: std::sync::OnceLock<tempfile::TempDir> = std::sync::OnceLock::new();
     HOME.get_or_init(|| match tempfile::tempdir() {
         Ok(home) => home,
@@ -269,7 +269,7 @@ fn empty_home() -> &'static Path {
 
 /// The binary under test: the one this build made, or the one `KLIN_BIN` names, so the
 /// performance rows can be taken under an earlier release for a comparison.
-fn binary() -> String {
+pub fn binary() -> String {
     std::env::var("KLIN_BIN").unwrap_or_else(|_| env!("CARGO_BIN_EXE_klin").to_string())
 }
 

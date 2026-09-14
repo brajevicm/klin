@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::changed::{Change, blob};
+use crate::changed::{Change, blobs};
 use crate::check::{Context, Sink};
 use crate::config::Error;
 use crate::git::Repo;
@@ -76,6 +76,14 @@ fn short(commit: &str) -> &str {
     &commit[..7.min(commit.len())]
 }
 
+fn missing(before: &str, was: &str) -> Error {
+    Error(format!(
+        "the base commit {} holds no {was}, which git says it changed — the base and the working \
+         tree disagree, so klin cannot judge this run",
+        short(before)
+    ))
+}
+
 fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
     let root = project.root();
     let inside = under_the_repository(root)?;
@@ -145,25 +153,52 @@ fn written(
 ) -> Result<Prior, Error> {
     let root = project.root();
     let prior = Prior::new(dir.path().to_path_buf(), dir, None);
-    for change in changes {
-        let Some(was) = &change.was else {
-            continue;
+    let requested: Vec<(&str, &Change)> = changes
+        .iter()
+        .filter_map(|change| change.was.as_deref().map(|was| (was, change)))
+        .collect();
+    if requested.is_empty() {
+        return Ok(prior);
+    }
+    let mut failure = None;
+    let paths: Vec<&str> = requested.iter().map(|(was, _)| *was).collect();
+    let mut delivered = 0;
+    let completed = blobs(root, before, &paths, |was, bytes| {
+        let change = requested.get(delivered).map(|(_, change)| *change);
+        delivered += 1;
+        if failure.is_some() {
+            return;
+        }
+        let Some(bytes) = bytes else {
+            failure = Some(missing(before, was));
+            return;
         };
-        let bytes = blob(root, before, was).ok_or_else(|| {
-            Error(format!(
-                "the base commit {} holds no {was}, which git says it changed — the base and the \
-                 working tree disagree, so klin cannot judge this run",
-                short(before)
-            ))
-        })?;
+        let Some(change) = change else {
+            failure = Some(missing(before, was));
+            return;
+        };
         let path = prior.root().join(&change.path);
         let unwritable = |why: &dyn std::fmt::Display| {
             Error(format!("{} could not be written: {why}", path.display()))
         };
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|why| unwritable(&why))?;
+        let result = (|| {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|why| unwritable(&why))?;
+            }
+            std::fs::write(&path, bytes).map_err(|why| unwritable(&why))
+        })();
+        if let Err(problem) = result {
+            failure = Some(problem);
         }
-        std::fs::write(&path, bytes).map_err(|why| unwritable(&why))?;
+    });
+    if let Some(failure) = failure {
+        return Err(failure);
+    }
+    if completed.is_none() {
+        let was = requested
+            .get(delivered)
+            .map_or(requested[0].0, |(was, _)| *was);
+        return Err(missing(before, was));
     }
     Ok(prior)
 }
