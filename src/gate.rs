@@ -207,20 +207,24 @@ fn tell(
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_spent || turn::intervened(root);
     if code == 0 && !args.json && log.host.is_some() && intervened {
-        if log.gate_spent && log.verdict == "red" && no_prompt_event(root, log.session.as_deref()) {
-            log.flags.push("no-prompt-event");
-            parts.push((
-                "note",
-                "klin: no prompt event reached this session; klin will not block again until \
-                 `klin radius` runs on session start and on prompt submitted."
-                    .to_string(),
-            ));
-        }
+        add_prompt_note(root, log, &mut parts);
         parts.extend(stats::turn_end(root, journal::line(log)));
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
     (!said.is_empty()).then(|| said.join("\n"))
+}
+
+fn add_prompt_note(root: &Path, log: &mut journal::Stop, parts: &mut Vec<(&'static str, String)>) {
+    if log.gate_spent && log.verdict == "red" && no_prompt_event(root, log.session.as_deref()) {
+        log.flags.push("no-prompt-event");
+        parts.push((
+            "note",
+            "klin: no prompt event reached this session; klin will not block again until \
+             `klin radius` runs on session start and on prompt submitted."
+                .to_string(),
+        ));
+    }
 }
 
 fn no_prompt_event(root: &Path, session: Option<&str>) -> bool {
