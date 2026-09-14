@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### Source checks take compact scope policy
+
+`complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability` now read
+only a person's decisions: `in` and `except`, the complexity `cc` and `lines`
+ceilings, `skip_rust_tests` for escapes, and `ignore` for dead symbols. klin
+rejects every other key that described the repository (`roots`, `languages`,
+`skip_dirs`, `exclude`, `exclude_except`, project `patterns`, nested
+`ceilings`, and reachability family lists), and the error names the compact
+replacement. `reachability` runs with no section. klin derives its families
+from the tree and never writes them to `klin.json`.
+
+A derived complexity ceiling samples the functions that the scope recorded in
+the derivation commit's `klin.json` selects. An edit to `in` or `except`
+changes what is judged on the next run, and changes the ceiling only when the
+derivation commit moves. When today's scope differs from the recorded one, or
+klin cannot read the recorded policy, the run prints a NOTE. The Stop hook
+passes that NOTE to the person even when nothing blocks.
+
+Measured 2026-09-14 on the 0.1.1 baseline machine, release build, median of
+five iterations, before and after the change in the same session. Whole-tree
+rows use no `complexity` section:
+
+| Row  | Warm hook before | Warm hook after | Cold survey before | Cold survey after | Strict before | Strict after |
+| ---- | ---------------: | --------------: | -----------------: | ----------------: | ------------: | -----------: |
+| 2k   |         1,153 ms |        1,528 ms |           1,828 ms |          1,871 ms |      1,156 ms |     1,231 ms |
+| 10k  |         4,087 ms |        6,177 ms |          13,646 ms |         14,368 ms |      5,036 ms |     5,712 ms |
+| 300k |         9,937 ms |       17,552 ms |          24,932 ms |         31,341 ms |     12,955 ms |    19,190 ms |
+
+The warm hook moved by more than a third at 10k and 300k, mostly because
+`reachability` now runs on the fixture without a section: it took 2,002 ms of
+the 10k warm hook and 6,512 ms of the 300k one. With the whole repository in
+scope, the complexity gate takes the same time as before. A `complexity`
+section of `"in": "rust"` roughly halves it. ADR 0039 has the per-gate rows.
+
 ### Cold survey reads the derivation commit through one git process
 
 The complexity sample used to read each sampled file with its own `git show`.

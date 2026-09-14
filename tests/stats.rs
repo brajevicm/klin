@@ -575,7 +575,7 @@ fn a_journal_holding_two_full_weeks_compares_them_and_one_holding_one_does_not()
 
 const HOOKED: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"] }
+  "escapes": { "in": "src" }
 }"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
                          "session_id": "s-1"}"#;

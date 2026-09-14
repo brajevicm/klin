@@ -4,8 +4,8 @@ use std::fmt::Write;
 
 use harness::Tree;
 
-const RUST: &str = r#"{"dead_symbols":{"roots":["src"],"languages":["rust"]}}"#;
-const TYPESCRIPT: &str = r#"{"dead_symbols":{"roots":["src"],"languages":["typescript"]}}"#;
+const RUST: &str = r#"{"dead_symbols":{"in":"src"}}"#;
+const TYPESCRIPT: &str = RUST;
 
 #[test]
 fn a_new_private_unreferenced_rust_function_fails_as_new() {
@@ -31,6 +31,19 @@ fn a_private_function_referenced_from_another_file_passes() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_reference_in_another_language_does_not_keep_a_rust_declaration_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "fn helper() {}\n");
+    tree.write("web/caller.ts", "export function caller() { helper(); }\n");
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:1"), "{}", run.out);
 }
 
 #[test]
@@ -100,7 +113,7 @@ fn configured_name_globs_are_ignored() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"dead_symbols":{"roots":["src"],"languages":["rust"],"ignore":["generated_*"]}}"#,
+        r#"{"dead_symbols":{"in":"src","ignore":["generated_*"]}}"#,
     );
     tree.write("src/lib.rs", "fn generated_helper() {}\n");
 
@@ -183,18 +196,15 @@ fn one_typescript_reference_keeps_duplicate_names_alive() {
 }
 
 #[test]
-fn tsx_is_selected_through_typescript_not_as_a_structural_language() {
+fn a_retired_language_selector_is_rejected() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"dead_symbols":{"roots":["src"],"languages":["tsx"]}}"#,
-    );
+    tree.write("klin.json", r#"{"dead_symbols":{"languages":["tsx"]}}"#);
     tree.write("src/App.tsx", "function Component() { return null; }\n");
 
     let run = tree.run(&["dead-symbols"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("no language called \"tsx\""), "{}", run.out);
+    assert!(run.says("no longer reads \"languages\""), "{}", run.out);
 }
 
 #[test]
@@ -212,43 +222,36 @@ fn exported_typescript_and_tsx_declarations_use_the_shared_logical_language() {
 }
 
 #[test]
-fn an_unsupported_parser_language_is_reported_as_not_measured() {
+fn an_explicit_scope_with_only_unsupported_files_is_a_configuration_error() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"dead_symbols":{"roots":["src"],"languages":["python"]}}"#,
-    );
+    tree.write("klin.json", r#"{"dead_symbols":{"in":"src"}}"#);
     tree.write("src/module.py", "def unused():\n    return 1\n");
 
     let run = tree.run(&["dead-symbols"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
-        run.says("unsupported structural languages were not measured"),
+        run.says("has an \"in\" scope with no applicable file"),
         "{}",
         run.out
     );
-    assert!(run.says("1 not measured"), "{}", run.out);
 }
 
 #[test]
-fn unsupported_structural_files_are_counted_in_gate_json_coverage() {
+fn unsupported_structural_files_are_outside_dead_symbol_coverage() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{"dead_symbols":{"roots":["src"],"languages":["python"]}}"#,
-    );
+    tree.write("klin.json", r#"{}"#);
     tree.write("src/module.py", "def unused():\n    return 1\n");
 
     let run = tree.run(&["gate", "--json"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     let gate = report["gates"]
         .as_array()
         .and_then(|gates| gates.iter().find(|gate| gate["name"] == "dead-symbols"))
         .unwrap_or_else(|| panic!("dead-symbols gate: {report}"));
-    assert_eq!(gate["coverage"]["not_measured"].as_u64(), Some(1));
+    assert_eq!(gate["coverage"]["not_measured"].as_u64(), Some(0));
 }
 
 #[test]
@@ -285,7 +288,7 @@ fn an_accepted_dead_symbol_is_held() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{"dead_symbols":{"roots":["src"],"languages":["rust"]},"accepted":[{"gate":"dead-symbols","file":"src/lib.rs","text":"fn unused() {}","dead":1}]}"#,
+        r#"{"dead_symbols":{"in":"src"},"accepted":[{"gate":"dead-symbols","file":"src/lib.rs","text":"fn unused() {}","dead":1}]}"#,
     );
     tree.write("src/lib.rs", "fn unused() {}\n");
 

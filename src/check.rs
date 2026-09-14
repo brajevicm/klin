@@ -17,7 +17,7 @@ use crate::project::Project;
 use crate::reference::{Key, Languages};
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile,
-    markers, reachability, sarif, stubs, syntax,
+    reachability, sarif, stubs, syntax,
 };
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -32,6 +32,10 @@ pub const DELETED: &str = "deleted";
 /// a structural gate, not a green measurement. Spec 8.4, 8.6.
 pub const NOT_MEASURED: &str = "not-measured";
 
+/// The outcome of a derived ceiling whose recorded scope fell back to the whole repository or
+/// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
+pub const DERIVATION: &str = "derivation";
+
 /// Everything a run records about what it judged, which the runner prints as the one object of
 /// spec 11.2 and the journal writes as the stop's line. There is one of these per gate, gathered
 /// into one for the run. A check a person runs by hand has none, and records nothing.
@@ -45,6 +49,7 @@ pub struct Records {
     pub coverage: Option<Value>,
     /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
     pub derived: Vec<Value>,
+    pub derived_lines: Vec<String>,
     /// The count the check's own `OK:` line prints as held at the base, which the runner puts
     /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
@@ -89,7 +94,7 @@ impl Needs {
 /// about a check before writing its section. Spec 4.6, ADR 0038.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Activation {
-    /// Absence means the check runs over what the survey derives from the tree.
+    /// Absence means the check runs over facts it or the survey derives from the tree.
     Automatic,
     /// Absence means the project has no such policy, so the check does not run.
     Policy,
@@ -184,6 +189,21 @@ impl<'a> Sink<'a> {
             add(records);
         }
     }
+
+    /// One value a check derived itself. Direct commands print it here; the runner keeps the
+    /// line beside the record so it can place provenance before that gate's status row.
+    pub fn provenance(&mut self, line: String, derived: Option<Value>) {
+        match self.records.as_deref_mut() {
+            Some(records) => {
+                records.derived_lines.push(line);
+                records.derived.extend(derived);
+            }
+            None => {
+                self.text.push_str(&line);
+                self.text.push('\n');
+            }
+        }
+    }
 }
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
@@ -200,12 +220,14 @@ pub struct Row {
     /// The configuration keys the section reads, declared in the check's own module and printed
     /// by `klin reference`. Spec 5.8.
     pub keys: &'static [Key],
-    /// The language names this section selects a file set by, and none for a check that selects
-    /// no language. Spec 5.8.
+    /// The built-in language coverage this check reports, and none for a check that reads no
+    /// programming language. This is capability, never configurable source topology. Spec 5.8.
     pub languages: Option<Languages>,
     /// The keys the survey supplies for this section, an empty list for a section it supplies
-    /// whole, and `None` for a section it never derives. Which values are derived, and not
-    /// whether the check runs: `activation` says that. Spec 4.3, 5.2.
+    /// whole, and `None` for a section it never derives. An Automatic check with `None` is a
+    /// source gate that derives its own policy from the tree's facts, whose section holds only
+    /// a person's decisions. Which values are derived, and not whether the check runs:
+    /// `activation` says that. Spec 4.3, 5.2, ADR 0038.
     pub derives: Option<&'static [&'static str]>,
     pub run: Run,
     pub needs: Needs,
@@ -258,7 +280,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: escapes::KIND.keys,
         languages: Some(escapes::language_extensions),
-        derives: Some(markers::DERIVED),
+        derives: None,
         run: escapes::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -270,7 +292,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: stubs::KIND.keys,
         languages: Some(stubs::language_extensions),
-        derives: Some(markers::DERIVED),
+        derives: None,
         run: stubs::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -294,7 +316,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: complexity::KEYS,
         languages: Some(syntax::language_extensions),
-        derives: Some(complexity::DERIVED),
+        derives: None,
         run: complexity::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -306,7 +328,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: dead_symbols::KEYS,
         languages: Some(dead_symbols::language_extensions),
-        derives: Some(dead_symbols::DERIVED),
+        derives: None,
         run: dead_symbols::gate,
         needs: Needs::TheTree,
         takes_scope: true,
@@ -318,7 +340,7 @@ pub const CATALOGUE: &[Row] = &[
         activation: Activation::Automatic,
         keys: reachability::KEYS,
         languages: Some(reachability::language_extensions),
-        derives: Some(&[]),
+        derives: None,
         run: reachability::gate,
         needs: Needs::TheTree,
         takes_scope: true,

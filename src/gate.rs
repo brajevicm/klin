@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::{
-    self, Activation, Caller, Context, DELETED, NOT_MEASURED, Records, Sink, UNPARSED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNPARSED,
 };
 use crate::config::{self, Error};
 use crate::host::{self, Stop};
@@ -515,7 +515,9 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     records.notes.extend(note);
     records.notes.extend(rootless);
-    records.derived = project.derived_values(only.as_deref());
+    records
+        .derived
+        .extend(project.derived_values(only.as_deref()));
     tally.record = Some(finish(
         args,
         &plan,
@@ -649,9 +651,13 @@ fn no_source_root(
     out: &mut String,
 ) -> Result<Option<Value>, Error> {
     let dropped = plan
-        .needs_a_section
+        .gates
         .iter()
-        .any(|check| survey::reads_code(check.section));
+        .any(|gate| survey::reads_code(gate.check.section))
+        || plan
+            .needs_a_section
+            .iter()
+            .any(|check| survey::reads_code(check.section));
     if !dropped || !project.found_no_source_root() {
         return Ok(None);
     }
@@ -965,17 +971,12 @@ fn plan(project: &Project) -> Result<Plan, Error> {
 }
 
 /// A check's gates, from what the config states for its section and, where it states nothing,
-/// from what the section's absence means for this check: an Automatic check runs over what
-/// the survey supplies, and a Policy or Integration check runs nothing until a person writes
-/// the section. Whether the survey supplies a section is read off the tree's facts alone, so
-/// planning derives no number. Spec 4.6, 5.2, ADR 0038.
+/// from what the section's absence means for this check: an Automatic check runs when its facts
+/// are available, and a Policy or Integration check runs nothing until a person writes the
+/// section. Planning derives no expensive number or topology. Spec 4.6, 5.2, ADR 0038.
 fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result<(), Error> {
     let Some(stated) = project.config.pinned(check.section) else {
-        let derived = check.activation == Activation::Automatic && project.supplies(check.section);
-        match derived {
-            true => plan.one(check),
-            false => plan.needs_a_section.push(check),
-        }
+        absent(project, check, plan);
         return Ok(());
     };
     match stated {
@@ -988,6 +989,20 @@ fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result
         _ => plan.one(check),
     }
     Ok(())
+}
+
+/// The gate a section's absence plans: the check itself for an Automatic check whose facts are
+/// available, and otherwise a check that needs a section a person writes.
+fn absent(project: &Project, check: &'static check::Row, plan: &mut Plan) {
+    let available = match check.derives {
+        None if survey::reads_code(check.section) => !project.found_no_source_root(),
+        None => true,
+        Some(_) => project.supplies(check.section),
+    };
+    match check.activation == Activation::Automatic && available {
+        true => plan.one(check),
+        false => plan.needs_a_section.push(check),
+    }
 }
 
 fn distinct(project: &Project, plan: &Plan) -> Result<(), Error> {
@@ -1024,6 +1039,9 @@ fn each(
             0 => (),
             1 => tally.failed += 1,
             _ => tally.errored += 1,
+        }
+        for line in &records.derived_lines {
+            let _ = writeln!(out, "  {line}");
         }
         let _ = writeln!(out, "  {}  {}", status(code), gate.name);
         for line in text.lines() {
@@ -1063,7 +1081,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
 /// read or stopped measuring, and a deleted test the run let through. Spec 8.2, 8.6, 14.
 fn told(note: &Value) -> bool {
     let outcome = note.get("outcome").and_then(Value::as_str);
-    matches!(outcome, Some(UNPARSED | DELETED | NOT_MEASURED)) || coverage::is_lost(note)
+    matches!(
+        outcome,
+        Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION)
+    ) || coverage::is_lost(note)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str) {
@@ -1074,6 +1095,7 @@ fn gather(totals: &mut Records, mut records: Records, name: &str) {
     }
     totals.findings.append(&mut records.findings);
     totals.notes.append(&mut records.notes);
+    totals.derived.append(&mut records.derived);
 }
 
 fn code(tally: &Tally) -> u8 {

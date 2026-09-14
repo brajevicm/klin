@@ -8,8 +8,8 @@ use serde_json::Value;
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"], "exclude": ["skipped.rs"] },
-  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "escapes": { "in": "src", "except": "src/skipped.rs" },
+  "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 const DOCUMENT: &str = r#"{
@@ -127,7 +127,7 @@ fn the_runner_says_the_window_and_the_derived_values_once() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out.matches("window: branch").count(), 1, "{}", run.out);
     assert_eq!(
-        run.out.matches("derived: escapes roots").count(),
+        run.out.matches("derived: complexity cc").count(),
         1,
         "{}",
         run.out
@@ -211,7 +211,7 @@ fn a_worsened_finding_names_the_accepted_entry_it_matched() {
         r#"{{
   "project": "t",
   "accepted": [{{"gate": "escapes", "file": "src/lib.rs", "text": "{}", "count": 1}}],
-  "escapes": {{ "roots": ["src"], "languages": ["rust"] }}
+  "escapes": {{ "in": "src" }}
 }}"#,
         text::ONE_SITE
     ));

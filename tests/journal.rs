@@ -9,8 +9,8 @@ const EVERY_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
-  "escapes": { "roots": ["src"], "languages": ["rust"] },
-  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "escapes": { "in": "src" },
+  "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,

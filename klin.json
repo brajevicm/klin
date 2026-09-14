@@ -1,12 +1,7 @@
 {
   "build": "cargo build --quiet --all-targets",
-  "complexity": {
-    "ceilings": {
-      "cc": 8,
-      "lines": 60
-    },
-    "roots": ["src", "tests"]
-  },
+  "complexity": { "cc": 8, "lines": 60, "in": ["src", "tests"] },
+  "escapes": { "in": ["src", "tests"] },
   "doc_citations": [
     {
       "file": "AGENTS.md",
@@ -39,10 +34,6 @@
       "file": "AGENTS.md"
     }
   ],
-  "escapes": {
-    "languages": ["rust"],
-    "roots": ["src", "tests"]
-  },
   "inventory": [
     {
       "name": "tests",

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::{self, Error};
+use crate::config::{self, Config, Error};
 use crate::project::Tree;
 use crate::{hooks, radius, survey};
 
@@ -43,10 +43,13 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         );
     }
     let held = read(&file)?;
-    if held.is_some() && !args.add && !args.force {
-        let _ = writeln!(out, "{}", already(&file));
-        inert(&root, out);
-        return Ok(0);
+    if held.is_some() {
+        if !args.add && !args.force {
+            let _ = writeln!(out, "{}", already(&file));
+            inert(&root, out);
+            return Ok(0);
+        }
+        Config::load(Some(&file), &root)?;
     }
     pins(&file, &root, held.unwrap_or_default(), args.force, out)
 }

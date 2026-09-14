@@ -1,61 +1,48 @@
+use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 use tree_sitter::Node;
 
 use crate::base;
 use crate::ceiling::{self, Ceiling};
-use crate::check::{Context, Sink};
-use crate::config::{Config, Error};
+use crate::check::{self, Context, Sink};
+use crate::config::Error;
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
-use crate::reference::{self, Key};
+use crate::reference::Key;
+use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
+use crate::{cache, changed, survey};
 
 pub const SECTION: &str = "complexity";
+const CC_FLOOR: u64 = 5;
+const LINES_FLOOR: u64 = 25;
+const SAMPLE_SIZE: usize = 50;
+const PERCENTILE: usize = 95;
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[
-    reference::ROOTS.required(),
-    reference::LANGUAGES
-        .pinned()
-        .defaulting("every language the table below names"),
-    CC,
-    LINES,
-    reference::EXCLUDE,
-    reference::SKIP_DIRS,
-    reference::EXCLUDE_EXCEPT,
-];
-
-/// The keys of this section the survey supplies, named off the declarations above so the two
-/// cannot spell one key differently. These are the keys above that carry a rule, restated
-/// because the survey merges a section key by key and the reference only prints it. Spec 5.4.
-pub const DERIVED: &[&str] = &[reference::ROOTS.name, CC.name, LINES.name];
-
-/// The object both ceilings live in, which each key below names its path through.
-pub const CEILINGS: &str = "ceilings";
+pub const KEYS: &[Key] = &[CC, LINES, scope::IN, scope::EXCEPT];
 
 pub const CC: Key = Key {
-    name: "ceilings.cc",
+    name: "cc",
     holds: "the cyclomatic complexity a function may not pass",
-    required: true,
+    required: false,
     rule: Some(
-        "the 95th percentile of `cc` over every function under the derivation commit's roots, \
-                rounded up to the next whole number, with a floor of 5, and the floor itself below 50 \
-                functions",
+        "the 95th percentile of `cc` over every supported function selected by the compact \
+         scope recorded at the derivation commit, rounded up to the next whole number, with a \
+         floor of 5, and the floor itself below 50 functions",
     ),
     default: "",
 };
 
 pub const LINES: Key = Key {
-    name: "ceilings.lines",
+    name: "lines",
     holds: "the body length a function may not pass",
-    required: true,
-    rule: Some(
-        "the 95th percentile of `lines`, by the same rule as `ceilings.cc`, with a floor of 25",
-    ),
+    required: false,
+    rule: Some("the 95th percentile of `lines`, by the same rule as `cc`, with a floor of 25"),
     default: "",
 };
 
@@ -309,19 +296,21 @@ struct Sweep {
 #[derive(Clone)]
 struct Selection {
     languages: Vec<&'static Language>,
-    skip_dirs: Vec<String>,
-    exclude: Vec<String>,
-    exclude_except: Vec<PathBuf>,
+    scope: Scope,
 }
 
 struct Spec {
-    roots: Vec<PathBuf>,
     selection: Selection,
     ceilings: Ceilings,
     gate_text: String,
     /// The two ceilings as one line, which every failure names beside its values. Spec 8.6.
     ceiling_text: String,
+    provenance: Provenance,
+    notes: Notes,
 }
+
+type Provenance = Vec<(String, Option<Value>)>;
+type Notes = Vec<(String, String)>;
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let project = Project::load(args.config.as_deref(), start)?;
@@ -331,8 +320,11 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
-    at.say(SECTION, out);
-    let sweep = measure(project.tree(), &spec.roots, &spec.selection, project.root())?;
+    for (line, value) in &spec.provenance {
+        out.provenance(line.clone(), value.clone());
+    }
+    ratchet::noted_as(check::DERIVATION, &spec.notes, out);
+    let sweep = measure(project.tree(), &spec.selection, project.root())?;
     let now = over(&sweep.functions, &spec);
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
@@ -365,20 +357,15 @@ fn at_the_base(spec: &Spec, at: &Context, out: &mut Sink) -> Result<(Vec<Finding
     };
     let project = at.project;
     let selection = Selection {
-        exclude: files::base_exclusions(
+        scope: Scope::at_base(
             &project.config,
             SECTION,
             prior.root(),
-            &spec.selection.exclude,
+            &spec.selection.scope,
         ),
         ..spec.selection.clone()
     };
-    let before = measure(
-        prior.tree(),
-        &base::roots(&spec.roots, project, prior.root())?,
-        &selection,
-        prior.root(),
-    )?;
+    let before = measure(prior.tree(), &selection, prior.root())?;
     let mut found = over(&before.functions, spec);
     found.retain(|finding| project.was_held(&finding.file));
     Ok((found, before.files))
@@ -421,103 +408,295 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
 }
 
 fn spec(project: &Project) -> Result<Spec, Error> {
-    let section = ratchet::section(project, SECTION)?;
-    let values = &section.values;
-    let ceilings = ceilings(section.config, values)?;
+    let config = &project.config;
+    let values = config.policy(SECTION, KEYS)?;
+    let selection = Selection {
+        languages: syntax::LANGUAGES.iter().collect(),
+        scope: Scope::read(config, SECTION, &values)?,
+    };
+    if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
+            config.file.display()
+        )));
+    }
+    let resolved = ceilings(project, &values, &selection.scope)?;
     Ok(Spec {
-        roots: files::roots(section.config, section.name, values, reference::ROOTS)?
-            .ok_or_else(|| section.config.missing(section.name, reference::ROOTS.name))?,
-        selection: selection(section.config, values)?,
+        selection,
         gate_text: format!(
             "over the complexity gate (cyclomatic > {}{} or body > {} lines{})",
-            ceilings.cc.value,
-            ceilings.cc.note(),
-            ceilings.lines.value,
-            ceilings.lines.note()
+            resolved.ceilings.cc.value,
+            resolved.ceilings.cc.note(),
+            resolved.ceilings.lines.value,
+            resolved.ceilings.lines.note()
         ),
-        ceiling_text: format!("cc {}, lines {}", ceilings.cc, ceilings.lines),
-        ceilings,
+        ceiling_text: format!(
+            "cc {}, lines {}",
+            resolved.ceilings.cc, resolved.ceilings.lines
+        ),
+        ceilings: resolved.ceilings,
+        provenance: resolved.provenance,
+        notes: resolved.notes,
     })
 }
 
-fn selection(config: &Config, section: &Values) -> Result<Selection, Error> {
-    let named = files::strings(config, SECTION, section, reference::LANGUAGES)?;
-    Ok(Selection {
-        languages: languages(config, &named)?,
-        skip_dirs: files::skip_dirs(config, SECTION, section)?,
-        exclude: files::strings(config, SECTION, section, reference::EXCLUDE)?,
-        exclude_except: files::roots(config, SECTION, section, reference::EXCLUDE_EXCEPT)?
-            .unwrap_or_default(),
-    })
+struct Resolved {
+    ceilings: Ceilings,
+    provenance: Provenance,
+    notes: Notes,
 }
 
-fn languages(config: &Config, named: &[String]) -> Result<Vec<&'static Language>, Error> {
-    if named.is_empty() {
-        return Ok(syntax::LANGUAGES.iter().collect());
-    }
-    let mut out: Vec<&'static Language> = Vec::new();
-    for name in named {
-        let matching = syntax::LANGUAGES
-            .iter()
-            .filter(|language| language.names.contains(&name.as_str()));
-        let mut found = false;
-        for language in matching {
-            found = true;
-            if !out.iter().any(|held| std::ptr::eq(*held, language)) {
-                out.push(language);
-            }
+fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolved, Error> {
+    let sample = OnceCell::new();
+    let resolve = |key: Key, floor: u64, measure: fn(&Sample) -> u64| -> Result<_, Error> {
+        if let Some(value) = section.get(key.name) {
+            let ceiling =
+                ceiling::read(&project.config, SECTION, key.name, value, "a whole number")?;
+            let line = format!("pinned: {SECTION} {} {ceiling}", key.name);
+            return Ok((ceiling, (line, None)));
         }
-        if !found {
-            return Err(unknown_language(config, name));
-        }
-    }
-    Ok(out)
-}
-
-fn unknown_language(config: &Config, name: &str) -> Error {
-    let mut known: Vec<&str> = syntax::LANGUAGES
-        .iter()
-        .flat_map(|language| language.names.iter().copied())
-        .collect();
-    known.sort_unstable();
-    known.dedup();
-    Error(format!(
-        "{}: \"{SECTION}\" measures no language called \"{name}\" — one of: {}",
-        config.file.display(),
-        known.join(", ")
-    ))
-}
-
-fn ceilings(config: &Config, section: &Values) -> Result<Ceilings, Error> {
-    let listed = section
-        .get(CEILINGS)
-        .ok_or_else(|| config.missing(SECTION, CEILINGS))?
-        .as_object()
-        .ok_or_else(|| {
-            config.malformed(
-                SECTION,
-                CEILINGS,
-                &format!("an object of \"{}\" and \"{}\"", CC.inner(), LINES.inner()),
-            )
-        })?;
-    let ceiling = |key: Key| {
-        let value = listed
-            .get(key.inner())
-            .ok_or_else(|| config.missing(SECTION, key.name))?;
-        ceiling::read(config, SECTION, key.name, value, "a whole number")
+        let (found, commit) = sample.get_or_init(|| derived_sample(project));
+        let value = measure(found).max(floor);
+        let rule = number_rule(value, floor, found.functions, commit.as_deref());
+        let recorded = commit
+            .as_ref()
+            .map(|_| format!("; recorded scope: {}", found.scope.description()))
+            .unwrap_or_default();
+        let record = derived_value(key.name, value, &format!("{rule}{recorded}"));
+        Ok((
+            Ceiling { value, step: None },
+            (
+                format!("derived: {SECTION} {} {value} ({rule}){recorded}", key.name),
+                Some(record),
+            ),
+        ))
     };
-    Ok(Ceilings {
-        cc: ceiling(CC)?,
-        lines: ceiling(LINES)?,
+    let (cc, cc_said) = resolve(CC, CC_FLOOR, |found| found.cc)?;
+    let (lines, lines_said) = resolve(LINES, LINES_FLOOR, |found| found.lines)?;
+    let file = config_name(&project.config.file);
+    let notes = sample
+        .get()
+        .map(|(found, commit)| sample_notes(found, commit.as_deref(), scope, file))
+        .unwrap_or_default();
+    Ok(Resolved {
+        ceilings: Ceilings { cc, lines },
+        provenance: vec![cc_said, lines_said],
+        notes,
     })
 }
 
-fn measure(
-    tree: &Tree,
-    roots: &[PathBuf],
-    selection: &Selection,
-    repo_root: &Path,
-) -> Result<Sweep, Error> {
+#[derive(Clone, Default)]
+struct Sample {
+    cc: u64,
+    lines: u64,
+    functions: usize,
+    scope: Scope,
+    fallback: Option<String>,
+}
+
+fn derived_sample(project: &Project) -> (Sample, Option<String>) {
+    let Some((_, commit, at)) = project.source_derivation() else {
+        return (Sample::default(), None);
+    };
+    let cached = at
+        .and_then(|at| cache::read(at, commit, SECTION))
+        .and_then(|value| read_sample(&value));
+    let found = cached.unwrap_or_else(|| {
+        let found = sample(project.root(), commit, &project.config.file);
+        if let Some(at) = at {
+            cache::write(at, commit, SECTION, kept_sample(&found));
+        }
+        found
+    });
+    (found, Some(commit.to_string()))
+}
+
+fn sample(root: &Path, commit: &str, config: &Path) -> Sample {
+    let (scope, fallback) = recorded_scope(root, commit, config);
+    let listed = survey::listed(root, commit).unwrap_or_default();
+    let paths: Vec<&str> = listed
+        .iter()
+        .map(String::as_str)
+        .filter(|path| scope.selects(path))
+        .filter(|path| {
+            syntax::LANGUAGES
+                .iter()
+                .any(|language| language.extensions.iter().any(|end| path.ends_with(end)))
+        })
+        .collect();
+    let mut cc = Vec::new();
+    let mut lines = Vec::new();
+    let read = changed::blobs(root, commit, &paths, |path, bytes| {
+        let Some(bytes) = bytes else { return };
+        for function in measured(path, &String::from_utf8_lossy(bytes)) {
+            cc.push(function.cc);
+            lines.push(function.lines);
+        }
+    });
+    if read.is_none() {
+        cc.clear();
+        lines.clear();
+    }
+    Sample {
+        functions: cc.len(),
+        cc: percentile(cc, CC_FLOOR),
+        lines: percentile(lines, LINES_FLOOR),
+        scope,
+        fallback,
+    }
+}
+
+fn config_name(config: &Path) -> &str {
+    config
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("klin.json")
+}
+
+fn recorded_scope(root: &Path, commit: &str, config: &Path) -> (Scope, Option<String>) {
+    match recorded(root, commit, config_name(config)) {
+        Ok(scope) => (scope, None),
+        Err(why) => (
+            Scope::default(),
+            Some(format!(
+                "the recorded complexity policy could not be read as compact scope because \
+                 {why}; the derived ceiling used the whole repository"
+            )),
+        ),
+    }
+}
+
+/// The compact scope one commit's configuration records: the whole repository where the file,
+/// the section, `in` and `except` are absent, and why it cannot be read where one is present.
+fn recorded(root: &Path, commit: &str, name: &str) -> Result<Scope, &'static str> {
+    let mut blob = None;
+    let read = changed::blobs(root, commit, &[name], |_, bytes| {
+        blob = Some(bytes.map(<[u8]>::to_vec));
+    });
+    let Some(bytes) = read
+        .and(blob)
+        .ok_or("git could not read its configuration blob")?
+    else {
+        return Ok(Scope::default());
+    };
+    let data: Value =
+        serde_json::from_slice(&bytes).map_err(|_| "its configuration is not valid JSON")?;
+    let config = data
+        .as_object()
+        .ok_or("its configuration is not an object")?;
+    let Some(section) = config.get(SECTION) else {
+        return Ok(Scope::default());
+    };
+    let fields = section
+        .as_object()
+        .ok_or("its complexity section is not a compact policy object")?;
+    Scope::from_fields(fields).map_err(|_| "its complexity scope is malformed")
+}
+
+fn sample_notes(sample: &Sample, commit: Option<&str>, today: &Scope, file: &str) -> Notes {
+    let mut notes = sample
+        .fallback
+        .iter()
+        .map(|why| (file.to_string(), why.clone()))
+        .collect::<Vec<_>>();
+    if let Some(commit) = commit
+        && sample.scope != *today
+    {
+        notes.push((
+            file.to_string(),
+            format!(
+                "today's complexity scope ({}) differs from the scope recorded at {} ({}); the \
+                 recorded scope derived the ceiling",
+                today.description(),
+                short(commit),
+                sample.scope.description()
+            ),
+        ));
+    }
+    notes
+}
+
+fn percentile(mut values: Vec<u64>, floor: u64) -> u64 {
+    if values.len() < SAMPLE_SIZE {
+        return floor;
+    }
+    values.sort_unstable();
+    floor.max(values[(values.len() * PERCENTILE).div_ceil(100) - 1])
+}
+
+fn number_rule(value: u64, floor: u64, functions: usize, commit: Option<&str>) -> String {
+    let Some(commit) = commit else {
+        return "the floor, with no commit to measure".into();
+    };
+    if value == floor {
+        format!(
+            "the floor of {floor}, over {} function(s) at {}",
+            grouped(functions),
+            short(commit)
+        )
+    } else {
+        format!(
+            "95th percentile of {} functions at {}, floor {floor}",
+            grouped(functions),
+            short(commit)
+        )
+    }
+}
+
+fn read_sample(value: &Value) -> Option<Sample> {
+    let number = |key| value.get(key).and_then(Value::as_u64);
+    let scope = Scope::from_fields(value.get("scope")?.as_object()?).ok()?;
+    Some(Sample {
+        cc: number("cc")?,
+        lines: number("lines")?,
+        functions: usize::try_from(number("functions")?).ok()?,
+        scope,
+        fallback: value
+            .get("fallback")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    })
+}
+
+fn kept_sample(sample: &Sample) -> Value {
+    let mut kept = Map::from_iter([
+        ("cc".into(), sample.cc.into()),
+        ("lines".into(), sample.lines.into()),
+        ("functions".into(), sample.functions.into()),
+        ("scope".into(), sample.scope.value()),
+    ]);
+    if let Some(fallback) = &sample.fallback {
+        kept.insert("fallback".into(), fallback.clone().into());
+    }
+    Value::Object(kept)
+}
+
+fn derived_value(key: &str, value: u64, rule: &str) -> Value {
+    Value::Object(Map::from_iter([
+        ("section".into(), SECTION.into()),
+        ("key".into(), key.into()),
+        ("value".into(), value.into()),
+        ("rule".into(), rule.into()),
+    ]))
+}
+
+fn short(commit: &str) -> &str {
+    commit.get(..7).unwrap_or(commit)
+}
+
+fn grouped(count: usize) -> String {
+    let digits = count.to_string();
+    let mut out = String::new();
+    for (at, digit) in digits.char_indices() {
+        if at > 0 && (digits.len() - at).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(digit);
+    }
+    out
+}
+
+fn measure(tree: &Tree, selection: &Selection, repo_root: &Path) -> Result<Sweep, Error> {
     let extensions: Vec<&str> = selection
         .languages
         .iter()
@@ -528,12 +707,23 @@ fn measure(
     let mut unparsed = Vec::new();
     let wanted = files::Wanted {
         extensions: &extensions,
-        skip_dirs: &selection.skip_dirs,
-        exclude: &selection.exclude,
-        exclude_except: &selection.exclude_except,
+        skip_dirs: &files::default_skip_dirs(),
+        exclude: &[],
+        exclude_except: &[],
         skip_hidden: true,
     };
-    let found = files::found(tree, roots, &wanted)?;
+    let mut found = files::found(tree, &[repo_root.to_path_buf()], &wanted)?;
+    let mut scoped_out = Vec::new();
+    found.kept.retain(|file| {
+        let relative = files::relative(file, repo_root);
+        if selection.scope.selects(&relative) {
+            true
+        } else {
+            scoped_out.push(file.clone());
+            false
+        }
+    });
+    found.excluded.extend(scoped_out);
     let mut read: Vec<String> = Vec::new();
     for file in found.kept {
         let name = file.to_string_lossy().to_string();
@@ -565,6 +755,16 @@ fn measure(
         unparsed,
         files,
     })
+}
+
+fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
+    Ok(tree.files()?.iter().any(|file| {
+        selection.scope.inside(file)
+            && selection
+                .languages
+                .iter()
+                .any(|language| language.extensions.iter().any(|end| file.ends_with(end)))
+    }))
 }
 
 fn functions(

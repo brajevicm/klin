@@ -100,11 +100,26 @@ fn an_absolute_path_in_the_config_passes_through() {
 #[test]
 fn a_missing_section_is_an_error_naming_the_section() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"complexity": {}}"#);
+    tree.write("klin.json", r#"{"project": "mine"}"#);
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"doc_size\""), "{}", run.out);
     assert!(run.says(&tree.at("klin.json")), "{}", run.out);
+}
+
+#[test]
+fn an_empty_compact_source_policy_is_an_error() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"stubs": {}}"#);
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("must state at least one of: in, except"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -196,6 +211,26 @@ fn a_section_naming_sources_says_the_key_is_now_roots() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"sources\""), "{}", run.out);
     assert!(run.says("\"roots\""), "{}", run.out);
+}
+
+#[test]
+fn source_gates_reject_retired_repository_description() {
+    for (section, field) in [
+        ("complexity", "ceilings"),
+        ("escapes", "patterns"),
+        ("stubs", "languages"),
+        ("dead_symbols", "roots"),
+        ("reachability", "skip_dirs"),
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", &format!(r#"{{"{section}":{{"{field}":[]}}}}"#));
+
+        let run = tree.run(&["gate", "--list"]);
+
+        assert_eq!(run.code, 2, "{section}.{field}: {}", run.out);
+        assert!(run.says(&format!("\"{field}\"")), "{}", run.out);
+        assert!(run.says("in\" / \"except"), "{}", run.out);
+    }
 }
 
 #[test]

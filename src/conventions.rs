@@ -64,21 +64,8 @@ const REMEDY: Key = Key {
     default: "",
 };
 
-const IN: Key = Key {
-    name: "in",
-    holds: "a repository-relative path, or a list of them, the convention applies to, with everything below each",
-    required: false,
-    rule: None,
-    default: "the whole repository",
-};
-
-const EXCEPT: Key = Key {
-    name: "except",
-    holds: "a repository-relative path, or a list of them, taken out of `in`, with everything below each",
-    required: false,
-    rule: None,
-    default: "nothing is taken out",
-};
+const IN: Key = scope::IN;
+const EXCEPT: Key = scope::EXCEPT;
 
 const LANGUAGE: Key = Key {
     name: "language",

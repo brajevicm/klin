@@ -14,7 +14,7 @@ const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"] }
+  "escapes": { "in": "src" }
 }"#;
 
 /// A repository whose base holds clean sources, with one prompt's turn stamp already taken.
@@ -41,7 +41,7 @@ fn accepting(file: &str) -> String {
     format!(
         r#"{{ "project": "t",
              "accepted": [{{"gate": "escapes", "file": "{file}", "text": {:?}, "count": 1}}],
-             "escapes": {{ "roots": ["src"], "languages": ["rust"] }} }}"#,
+             "escapes": {{ "in": "src" }} }}"#,
         text::ONE_SITE
     )
 }

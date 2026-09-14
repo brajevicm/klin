@@ -9,17 +9,17 @@ const EVERY_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
-  "escapes": { "roots": ["src"], "languages": ["rust"] },
-  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "escapes": { "in": "src" },
+  "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
-/// A config whose escapes gate names a language klin has no patterns for, so that gate errors.
+/// A config whose escapes scope holds no applicable file, so that gate errors.
 const A_BROKEN_GATE: &str = r#"{
   "project": "t",
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": false,
-  "escapes": { "roots": ["src"], "languages": ["cobol"] },
-  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "escapes": { "in": "missing" },
+  "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 /// A config holding one accepted escape that no site in the tree matches.
@@ -29,8 +29,8 @@ const AN_UNMATCHED_ACCEPTED: &str = r#"{
                 "count": 1}],
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
-  "escapes": { "roots": ["src"], "languages": ["rust"] },
-  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "escapes": { "in": "src" },
+  "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 fn tree(config: &str) -> Tree {
@@ -96,8 +96,8 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    stubs"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("derived: escapes roots src"), "{}", run.out);
-    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
+    assert!(!run.says("derived: escapes"), "{}", run.out);
+    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn a_status_row_per_gate_and_a_summary_line() {
     assert!(run.says("ok    doc-citations"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
         "{}",
         run.out
     );
-    assert!(run.says("6 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("7 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("6 gate(s), 2 failed."), "{}", run.out);
+    assert!(run.says("7 gate(s), 2 failed."), "{}", run.out);
 }
 
 #[test]
@@ -183,7 +183,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("5 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("6 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -197,7 +197,7 @@ fn a_tool_error_alone_exits_two() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("5 gate(s), 1 excluded, 1 tool error."),
+        run.says("6 gate(s), 1 excluded, 1 tool error."),
         "{}",
         run.out
     );
@@ -223,9 +223,9 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
-         complexity — runs\ndead-symbols — runs\nlockfile — needs a section a person writes\n\
+         complexity — runs\ndead-symbols — runs\nreachability — runs\n\
+         lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
-         reachability — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -235,21 +235,20 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
 }
 
 #[test]
-fn list_says_pinned_or_derived_for_every_key_of_every_gate() {
+fn list_does_not_derive_source_policy() {
     let tree = tree(
         r#"{ "project": "t",
               "doc_size": [{"file": "README.md", "ceiling": 10}],
-              "complexity": { "roots": ["src"], "ceilings": {"cc": 8} } }"#,
+              "complexity": { "in": "src", "cc": 8 } }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("pinned: doc_size README.md"), "{}", run.out);
-    assert!(run.says("pinned: complexity roots src"), "{}", run.out);
-    assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
-    assert!(run.says("derived: complexity lines"), "{}", run.out);
-    assert!(run.says("derived: escapes roots src"), "{}", run.out);
-    assert!(run.says("derived: escapes languages rust"), "{}", run.out);
+    assert!(run.says("complexity — runs"), "{}", run.out);
+    assert!(run.says("escapes — runs"), "{}", run.out);
+    assert!(!run.says("derived: complexity"), "{}", run.out);
+    assert!(!run.says("derived: escapes"), "{}", run.out);
 }
 
 #[test]
@@ -576,7 +575,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("5 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("6 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -824,7 +823,11 @@ fn a_gate_that_could_not_run_is_a_json_finding_too() {
     let finding = &list(&report, "findings")[0];
     assert_eq!(field(finding, "gate"), "escapes", "{}", run.out);
     assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
-    assert!(field(finding, "text").contains("cobol"), "{}", run.out);
+    assert!(
+        field(finding, "text").contains("no applicable file"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -842,41 +845,14 @@ fn a_passing_json_run_holds_no_findings() {
 }
 
 #[test]
-fn a_json_run_prints_one_derived_entry_per_derived_line() {
+fn a_json_run_with_pinned_source_policy_invents_no_derived_entries() {
     let tree = tree(EVERY_GATE);
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     let derived = list(&report, "derived");
-    assert_eq!(derived.len(), 4, "{}", run.out);
-    let roots = derived
-        .iter()
-        .find(|entry| field(entry, "key") == "roots" && field(entry, "section") == "stubs")
-        .unwrap_or_else(|| panic!("no roots entry in {report}"));
-    assert_eq!(field(roots, "section"), "stubs", "{}", run.out);
-    assert_eq!(
-        roots.get("value"),
-        Some(&Value::from(vec!["src"])),
-        "{}",
-        run.out
-    );
-    assert!(
-        field(roots, "rule").contains("shallowest directories"),
-        "{}",
-        run.out
-    );
-    let languages = derived
-        .iter()
-        .find(|entry| field(entry, "key") == "languages" && field(entry, "section") == "stubs")
-        .unwrap_or_else(|| panic!("no languages entry in {report}"));
-    assert_eq!(field(languages, "section"), "stubs", "{}", run.out);
-    assert_eq!(
-        languages.get("value"),
-        Some(&Value::from(vec!["rust"])),
-        "{}",
-        run.out
-    );
+    assert!(derived.is_empty(), "{}", run.out);
 }
 
 #[test]
@@ -942,15 +918,11 @@ fn deleting_a_section_leaves_the_gate_running_over_a_derived_section() {
         "klin.json",
         r#"{ "project": "t",
              "doc_size": [{"file": "README.md", "ceiling": 10}],
-             "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} } }"#,
+             "complexity": { "in": "src", "cc": 8, "lines": 60 } }"#,
     );
     let deleted = tree.run(&ci_arguments());
     assert_eq!(deleted.code, 0, "{}", deleted.out);
-    assert!(
-        deleted.says("derived: escapes roots src"),
-        "{}",
-        deleted.out
-    );
+    assert!(!deleted.says("derived: escapes"), "{}", deleted.out);
 }
 
 const AN_EXCLUDED_GATE: &str = r#"{
@@ -958,7 +930,7 @@ const AN_EXCLUDED_GATE: &str = r#"{
   "doc_size": [{"file": "README.md", "ceiling": 10}],
   "doc_citations": [{"file": "README.md", "roots": ["."]}],
   "escapes": false,
-  "complexity": { "roots": ["src"], "ceilings": {"cc": 8, "lines": 60} }
+  "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 
 const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
@@ -1016,7 +988,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
-        run.says("5 gate(s), 1 excluded, all passed."),
+        run.says("6 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1031,10 +1003,9 @@ fn list_names_the_excluded_gates() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nstubs — runs\ncomplexity — runs\n\
-         dead-symbols — runs\n\
+         dead-symbols — runs\nreachability — runs\n\
          escapes — excluded\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
-         reachability — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -1131,7 +1102,8 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
               "complexity": false,
               "escapes": false,
               "stubs": false,
-              "dead_symbols": false }"#,
+              "dead_symbols": false,
+              "reachability": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
@@ -1140,17 +1112,17 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
 }
 
 #[test]
-fn list_says_derived_for_a_key_a_section_leaves_out() {
+fn list_says_a_compact_source_policy_runs() {
     let tree = tree(
         r#"{ "project": "t",
               "doc_size": [{"file": "README.md", "ceiling": 10}],
-              "escapes": {"roots": ["src"]} }"#,
+              "escapes": {"in": "src"} }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("pinned: escapes roots src"), "{}", run.out);
-    assert!(run.says("derived: escapes languages rust"), "{}", run.out);
+    assert!(run.says("escapes — runs"), "{}", run.out);
+    assert!(!run.says("derived: escapes"), "{}", run.out);
 }
 
 /// A run that names its gates derives the values those gates read and no other's. The
@@ -1173,7 +1145,7 @@ fn a_named_gate_derives_nothing_another_gate_would_need() {
 
     let one = tree.run(&["gate", "--gate", "escapes"]);
     assert_eq!(one.code, 0, "{}", one.out);
-    assert!(one.says("derived: escapes roots"), "{}", one.out);
+    assert!(!one.says("derived: escapes"), "{}", one.out);
     assert!(!one.says("doc_size"), "{}", one.out);
     assert!(!one.says("derived: complexity"), "{}", one.out);
 }
@@ -1217,13 +1189,14 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
               "complexity": false,
               "escapes": false,
               "stubs": false,
-              "dead_symbols": false }"#,
+              "dead_symbols": false,
+              "reachability": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 gate(s), 5 excluded, all passed."),
+        run.says("1 gate(s), 6 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1233,7 +1206,8 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
 fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let tree = tree(
         r#"{ "project": "t", "doc_size": false, "doc_citations": false, "escapes": false,
-              "stubs": false, "complexity": false, "dead_symbols": false }"#,
+              "stubs": false, "complexity": false, "dead_symbols": false,
+              "reachability": false }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
@@ -1242,10 +1216,9 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
         rows(&run),
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
          stubs — excluded\ncomplexity — excluded\n\
-         dead-symbols — excluded\n\
+         dead-symbols — excluded\nreachability — excluded\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
-         reachability — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -1333,7 +1306,7 @@ fn a_version_the_binary_does_not_carry_is_a_note_and_nothing_else() {
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("0.0.1"), "{}", run.out);
     assert!(run.says(env!("CARGO_PKG_VERSION")), "{}", run.out);
-    assert!(run.says("6 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -1454,7 +1427,7 @@ fn hook_reports_a_section_naming_a_retired_key_and_does_not_block_the_stop() {
 }
 
 const A_LOST_FILE: &str = r#"{ "project": "t",
-  "complexity": { "roots": ["src"], "exclude": ["gone.rs"], "ceilings": {"cc": 8, "lines": 60} } }"#;
+  "complexity": { "in": "src", "except": "src/gone.rs", "cc": 8, "lines": 60 } }"#;
 
 fn lost_file() -> Tree {
     let tree = tree(EVERY_GATE);

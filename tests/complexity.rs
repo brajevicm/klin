@@ -197,7 +197,12 @@ fun simple(a: Int): Int = a
 "#;
 
 fn config(ceilings: &str) -> String {
-    format!(r#"{{ "project": "t", "complexity": {{ "roots": ["src"], "ceilings": {ceilings} }} }}"#)
+    let ceilings: serde_json::Value = serde_json::from_str(ceilings)
+        .unwrap_or_else(|why| panic!("the ceilings are not JSON: {why}"));
+    format!(
+        r#"{{ "project": "t", "complexity": {{ "in": "src", "cc": {}, "lines": {} }} }}"#,
+        ceilings["cc"], ceilings["lines"]
+    )
 }
 
 fn tree(ceilings: &str) -> Tree {
@@ -209,8 +214,27 @@ fn tree(ceilings: &str) -> Tree {
 fn accepted(entries: &str) -> String {
     format!(
         r#"{{ "project": "t", "accepted": [{entries}],
-             "complexity": {{ "roots": ["src"], "ceilings": {{"cc": 8, "lines": 60}} }} }}"#
+             "complexity": {{ "in": "src", "cc": 8, "lines": 60 }} }}"#
     )
+}
+
+#[test]
+fn compact_policy_selects_source_and_excludes_a_subtree() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"complexity":{"cc":0,"lines":60,"in":"src","except":"src/generated"}}"#,
+    );
+    tree.write("src/read.rs", "fn read() {}\n");
+    tree.write("src/generated/write.rs", "fn write() {}\n");
+    tree.write("tools/run.rs", "fn run() {}\n");
+
+    let run = tree.run(&["complexity"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/read.rs:1"), "{}", run.out);
+    assert!(!run.says("src/generated/write.rs:1"), "{}", run.out);
+    assert!(!run.says("tools/run.rs:1"), "{}", run.out);
 }
 
 #[test]
@@ -449,7 +473,7 @@ fn a_stale_accepted_entry_does_not_make_a_site_the_base_holds_worse() {
         r#"{ "project": "t",
              "accepted": [{"gate": "complexity", "file": "src/lib.rs",
                            "text": "fn f(a: bool) -> i32 {", "cc": 2, "lines": 6}],
-             "complexity": { "roots": ["src"], "ceilings": {"cc": 0, "lines": 0} } }"#,
+             "complexity": { "in": "src", "cc": 0, "lines": 0 } }"#,
     );
     let body = |test: &str| {
         format!(
@@ -507,26 +531,17 @@ fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_strict_failure() {
 #[test]
 fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "complexity": { "ceilings": {"cc": 8, "lines": 60} } }"#,
-    );
+    tree.write("klin.json", r#"{ "complexity": { "cc": 8, "lines": 60 } }"#);
     tree.write("src/knot.rs", RUST);
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("derived: complexity roots src"), "{}", run.out);
     assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
     assert!(run.says("pinned: complexity lines 60"), "{}", run.out);
 
-    tree.write("klin.json", r#"{ "complexity": { "roots": ["src"] } }"#);
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
     let derived_ceilings = tree.run(&["complexity"]);
     assert_eq!(derived_ceilings.code, 1, "{}", derived_ceilings.out);
-    assert!(
-        derived_ceilings.says("pinned: complexity roots src"),
-        "{}",
-        derived_ceilings.out
-    );
     assert!(
         derived_ceilings.says("derived: complexity cc 5 (the floor of 5"),
         "{}",
@@ -535,12 +550,38 @@ fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
 }
 
 #[test]
-fn a_source_the_reader_cannot_open_is_a_tool_error_not_a_gate_failure() {
+fn an_uncommitted_scope_uses_the_whole_repository_sample_its_commit_recorded() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let many = (0..50)
+        .map(|at| format!("fn outside_{at}() {{ if true {{}} }}\n"))
+        .collect::<String>();
+    tree.write("src/outside.rs", &many);
+    tree.write("src/small/inside.rs", "fn inside() {}\n");
+    tree.base();
+
+    let whole = tree.run(&["complexity"]);
+    assert_eq!(whole.code, 0, "{}", whole.out);
+    assert!(whole.says("over 51 function(s)"), "{}", whole.out);
+
+    tree.write("klin.json", r#"{"complexity":{"in":"src/small"}}"#);
+    let scoped = tree.run(&["complexity"]);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
+    assert!(scoped.says("over 51 function(s)"), "{}", scoped.out);
+    assert!(scoped.says("today's complexity scope"), "{}", scoped.out);
+}
+
+#[test]
+fn an_explicit_scope_with_no_applicable_file_is_a_configuration_error() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("could not be read"), "{}", run.out);
+    assert!(
+        run.says("has an \"in\" scope with no applicable file"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -596,7 +637,7 @@ fn overlapping_roots_measure_each_file_once() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src", "src/deep"], "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "in": "src", "cc": 0, "lines": 0 } }"#,
     );
     tree.write("src/deep/c.rs", "fn f() {}\n");
 
@@ -629,17 +670,17 @@ fn only_reports_a_judged_count_for_the_files_it_judged() {
 }
 
 #[test]
-fn a_ceilings_key_of_the_wrong_shape_is_named_as_malformed_not_missing() {
+fn a_ceiling_of_the_wrong_shape_is_named_as_malformed_not_missing() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src"], "ceilings": 8 } }"#,
+        r#"{ "complexity": { "in": "src", "cc": "eight", "lines": 60 } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceilings\" must be"), "{}", run.out);
+    assert!(run.says("\"cc\" must be a whole number"), "{}", run.out);
 }
 
 #[test]
@@ -967,10 +1008,7 @@ fn each_accessor_in_a_file_carries_its_own_site() {
 #[test]
 fn a_vendored_directory_under_a_root_is_not_measured() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "complexity": { "roots": ["."], "ceilings": {"cc": 0, "lines": 0} } }"#,
-    );
+    tree.write("klin.json", r#"{ "complexity": { "cc": 0, "lines": 0 } }"#);
     tree.write(
         "node_modules/dep/index.ts",
         "function vendored() { return 1; }\n",
@@ -985,11 +1023,11 @@ fn a_vendored_directory_under_a_root_is_not_measured() {
 }
 
 #[test]
-fn a_vendored_directory_named_as_a_root_is_measured() {
+fn an_explicit_scope_inside_a_skipped_directory_names_the_coverage_problem() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["node_modules/dep"], "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "in": "node_modules/dep", "cc": 0, "lines": 0 } }"#,
     );
     tree.write(
         "node_modules/dep/index.ts",
@@ -997,34 +1035,35 @@ fn a_vendored_directory_named_as_a_root_is_measured() {
     );
 
     let run = tree.run(&["complexity"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("node_modules/dep/index.ts:1"), "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("has an \"in\" scope with no applicable file"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
-fn skip_dirs_adds_to_the_default_list() {
+fn a_retired_skip_dirs_key_is_rejected_actionably() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["."], "skip_dirs": ["legacy"],
-             "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "skip_dirs": ["legacy"], "cc": 0, "lines": 0 } }"#,
     );
     tree.write("legacy/old.rs", "fn old() {}\n");
     tree.write("src/new.rs", "fn new() {}\n");
 
     let run = tree.run(&["complexity"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/new.rs:1"), "{}", run.out);
-    assert!(!run.says("legacy"), "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads \"skip_dirs\""), "{}", run.out);
 }
 
 #[test]
-fn only_the_named_languages_are_measured() {
+fn mixed_languages_are_measured_in_one_policy() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src"], "languages": ["rust"],
-             "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "in": "src", "cc": 0, "lines": 0 } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
     tree.write("src/b.ts", "function b() { return 1; }\n");
@@ -1032,7 +1071,7 @@ fn only_the_named_languages_are_measured() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.rs:1"), "{}", run.out);
-    assert!(!run.says("src/b.ts"), "{}", run.out);
+    assert!(run.says("src/b.ts:1"), "{}", run.out);
 }
 
 #[test]
@@ -1040,8 +1079,7 @@ fn a_language_name_covers_every_grammar_the_escapes_gate_gives_it() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src"], "languages": ["typescript"],
-             "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "in": "src", "cc": 0, "lines": 0 } }"#,
     );
     tree.write("src/a.ts", "function a() { return 1; }\n");
     tree.write("src/b.tsx", "function b() { return 1; }\n");
@@ -1051,43 +1089,39 @@ fn a_language_name_covers_every_grammar_the_escapes_gate_gives_it() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.ts:1"), "{}", run.out);
     assert!(run.says("src/b.tsx:1"), "{}", run.out);
-    assert!(!run.says("src/c.js"), "{}", run.out);
+    assert!(run.says("src/c.js:1"), "{}", run.out);
 }
 
 #[test]
-fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
+fn a_retired_language_selector_is_rejected_actionably() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src"], "languages": ["cobol"],
-             "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "languages": ["cobol"], "cc": 0, "lines": 0 } }"#,
     );
     tree.write("src/a.rs", "fn a() {}\n");
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("cobol"), "{}", run.out);
-    assert!(run.says("rust"), "{}", run.out);
+    assert!(run.says("no longer reads \"languages\""), "{}", run.out);
 }
 
 #[test]
-fn an_exclude_glob_drops_a_file_and_exclude_except_keeps_a_named_path_back() {
+fn except_drops_a_subtree() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src"], "exclude": ["*test*"],
-             "exclude_except": ["src/test-runner.ts"],
-             "ceilings": {"cc": 0, "lines": 0} } }"#,
+        r#"{ "complexity": { "in": "src", "except": "src/tests", "cc": 0, "lines": 0 } }"#,
     );
     tree.write("src/app.ts", "function app() { return 1; }\n");
-    tree.write("src/app.test.ts", "function spec() { return 1; }\n");
+    tree.write("src/tests/app.ts", "function spec() { return 1; }\n");
     tree.write("src/test-runner.ts", "function runner() { return 1; }\n");
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/app.ts:1"), "{}", run.out);
     assert!(run.says("src/test-runner.ts:1"), "{}", run.out);
-    assert!(!run.says("app.test.ts"), "{}", run.out);
+    assert!(!run.says("src/tests/app.ts"), "{}", run.out);
     assert!(run.says("2 new function(s)"), "{}", run.out);
 }
 
@@ -1286,8 +1320,8 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     tree.base();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "complexity": { "roots": ["src"], "exclude": ["gone.rs"],
-             "ceilings": {"cc": 8, "lines": 60} } }"#,
+        r#"{ "project": "t", "complexity": { "in": "src", "except": "src/gone.rs",
+             "cc": 8, "lines": 60 } }"#,
     );
 
     let run = tree.run(&["complexity"]);
@@ -1308,8 +1342,8 @@ fn a_file_measured_at_the_base_and_not_now_is_exit_two_under_strict() {
     tree.base();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "complexity": { "roots": ["src"], "exclude": ["gone.rs"],
-             "ceilings": {"cc": 8, "lines": 60} } }"#,
+        r#"{ "project": "t", "complexity": { "in": "src", "except": "src/gone.rs",
+             "cc": 8, "lines": 60 } }"#,
     );
 
     let run = tree.run(&["complexity", "--strict"]);
@@ -1350,19 +1384,15 @@ fn a_file_the_grammar_refuses_now_is_unreadable_and_a_coverage_loss_too() {
     assert!(run.says("the grammar refused it"), "{}", run.out);
 }
 
-/// A root is selected out of the tree's one file list, so a spelling the old walk read off the
-/// disk must select the same files: a leading `./`, a trailing slash, and a directory reached
-/// through a symbolic link, which the list does not follow. ADR 0038.
 #[test]
-fn a_root_spelled_with_dot_slash_a_trailing_slash_or_a_symlink_measures_its_files() {
+fn a_scope_spelled_with_dot_slash_or_a_trailing_slash_measures_its_files() {
     let tree = Tree::new();
     tree.write("real/knot.rs", RUST);
-    assert!(std::os::unix::fs::symlink(tree.path("real"), tree.path("linked")).is_ok());
     tree.base();
-    for root in ["./real", "real/", "linked"] {
+    for root in ["./real", "real/"] {
         tree.write(
             "klin.json",
-            &format!(r#"{{ "complexity": {{ "roots": ["{root}"], "ceilings": {{"cc": 1, "lines": 60}} }} }}"#),
+            &format!(r#"{{ "complexity": {{ "in": "{root}", "cc": 1, "lines": 60 }} }}"#),
         );
         let run = tree.run(&["complexity"]);
         assert_eq!(run.code, 0, "{root}: {}", run.out);

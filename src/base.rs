@@ -22,6 +22,7 @@ pub struct Prior {
 
 impl Prior {
     fn new(root: PathBuf, dir: tempfile::TempDir, from_worktree: Option<PathBuf>) -> Prior {
+        let _ = std::fs::create_dir_all(&root);
         Prior {
             tree: Tree::at(&root),
             dir,
@@ -192,28 +193,6 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
 pub fn own(at: &Context, out: &mut Sink) -> Result<Prior, Error> {
     let base = announced(at.project.root(), at, out)?;
     materialize(at.project, &base.before, None)
-}
-
-/// Where a gate's roots are in the base tree. A root the base does not hold measures nothing.
-pub fn roots(roots: &[PathBuf], project: &Project, prior: &Path) -> Result<Vec<PathBuf>, Error> {
-    let config = &project.config;
-    roots
-        .iter()
-        .map(|root| {
-            let inside = root.strip_prefix(config.root()).map_err(|_| {
-                Error(format!(
-                    "{}: the root {} is outside the tree klin compares, so no base of it exists \
-                     — name a root under {}",
-                    config.file.display(),
-                    root.display(),
-                    config.root().display()
-                ))
-            })?;
-            let at = prior.join(inside);
-            let _ = std::fs::create_dir_all(&at);
-            Ok(at)
-        })
-        .collect()
 }
 
 /// The pair of trees a run compares: which of the three kinds of 4.2 it is, the base commit

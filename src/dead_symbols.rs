@@ -1,9 +1,9 @@
 //! The `dead-symbols` check: private Rust and TypeScript declarations with no reference outside
 //! their own declaration. Identity is file plus declaration line/text, and the `dead` metric
-//! ratchets from 0 (referenced) to 1 (unreferenced). Roots and structural languages derive from
-//! the survey; `exclude`, `skip_dirs` and `ignore` are pinned policy. The structural index
-//! owns parsing, declaration kinds and references; this module only chooses eligibility and
-//! ratchets the result. ADR 0035, spec 8.4.
+//! ratchets from 0 (referenced) to 1 (unreferenced). The check discovers every structural
+//! language and accepts only `in`, `except` and name `ignore` as policy. The structural index
+//! owns parsing, declaration kinds and references; this module chooses eligibility and ratchets
+//! the result. ADR 0035, spec 8.4.
 
 use std::collections::BTreeSet;
 use std::fmt::Write;
@@ -18,7 +18,8 @@ use crate::coverage;
 use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
-use crate::reference::{self, Key};
+use crate::reference::Key;
+use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
 
 pub const SECTION: &str = "dead_symbols";
@@ -37,15 +38,7 @@ pub const IGNORE: Key = Key {
     default: "Rust `main`, test functions and declarations marked externally visible",
 };
 
-pub const KEYS: &[Key] = &[
-    reference::ROOTS.required(),
-    reference::LANGUAGES.defaulting("the structural languages this check supports"),
-    reference::EXCLUDE,
-    reference::SKIP_DIRS,
-    IGNORE,
-];
-
-pub const DERIVED: &[&str] = &[reference::ROOTS.name, reference::LANGUAGES.name];
+pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, IGNORE];
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -69,12 +62,10 @@ pub struct Args {
 #[derive(Clone)]
 struct Selection {
     extensions: Vec<&'static str>,
-    skip_dirs: Vec<String>,
-    exclude: Vec<String>,
+    scope: Scope,
 }
 
 struct Spec {
-    roots: Vec<PathBuf>,
     selection: Selection,
     ignore: Vec<String>,
 }
@@ -149,7 +140,7 @@ fn sweeps(
     commit: &str,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
     let project = at.project;
-    let after = measure(project.tree(), &spec.roots, &spec.selection, project.root())?;
+    let after = measure(project.tree(), &spec.selection, project.root())?;
     let before = before(at, spec, commit)?;
     Ok((before, after))
 }
@@ -162,18 +153,16 @@ fn before(at: &Context, spec: &Spec, commit: &str) -> Result<structural::Measure
             .prior
             .ok_or_else(|| Error("a runner gives structural checks a base tree".into()))?,
     };
-    let project = at.project;
-    let before_roots = base::roots(&spec.roots, project, prior.root())?;
-    let before_selection = Selection {
-        exclude: files::base_exclusions(
-            &project.config,
+    let selection = Selection {
+        scope: Scope::at_base(
+            &at.project.config,
             SECTION,
             prior.root(),
-            &spec.selection.exclude,
+            &spec.selection.scope,
         ),
         ..spec.selection.clone()
     };
-    measure(prior.tree(), &before_roots, &before_selection, prior.root())
+    measure(prior.tree(), &selection, prior.root())
 }
 
 fn base_tree(at: &Context, commit: &str) -> Result<Option<base::Prior>, Error> {
@@ -235,28 +224,24 @@ fn reports(
 
 fn spec(project: &Project) -> Result<Spec, Error> {
     let config = &project.config;
-    let section = ratchet::section(project, SECTION)?;
+    let values = config.policy(SECTION, KEYS)?;
+    let selection = selection(config, &values)?;
+    if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
+            config.file.display()
+        )));
+    }
     Ok(Spec {
-        roots: files::roots(
-            section.config,
-            section.name,
-            &section.values,
-            reference::ROOTS,
-        )?
-        .ok_or_else(|| section.config.missing(section.name, reference::ROOTS.name))?,
-        selection: selection(section.config, &section.values)?,
-        ignore: files::strings(config, SECTION, &section.values, IGNORE)?,
+        selection,
+        ignore: files::strings(config, SECTION, &values, IGNORE)?,
     })
 }
 
 fn selection(config: &Config, values: &Values) -> Result<Selection, Error> {
-    let named = files::strings(config, SECTION, values, reference::LANGUAGES)?;
-    let extensions = structural::selected_extensions(&named)
-        .ok_or_else(|| structural::unknown_language(config, SECTION, &named))?;
     Ok(Selection {
-        extensions,
-        skip_dirs: files::skip_dirs(config, SECTION, values)?,
-        exclude: files::strings(config, SECTION, values, reference::EXCLUDE)?,
+        extensions: structural::selected_extensions(&[]).unwrap_or_default(),
+        scope: Scope::read(config, SECTION, values)?,
     })
 }
 
@@ -266,19 +251,34 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 
 fn measure(
     tree: &Tree,
-    roots: &[PathBuf],
     selection: &Selection,
     repo_root: &Path,
 ) -> Result<structural::Measurement, Error> {
+    let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
         extensions: &selection.extensions,
-        skip_dirs: &selection.skip_dirs,
-        exclude: &selection.exclude,
+        skip_dirs: &skip_dirs,
+        exclude: &[],
         exclude_except: &[],
         skip_hidden: true,
     };
-    let found = files::found(tree, roots, &wanted)?;
+    let mut found = files::found(tree, &[repo_root.to_path_buf()], &wanted)?;
+    let mut excluded = Vec::new();
+    found.kept.retain(|file| {
+        let keep = selection.scope.selects(&files::relative(file, repo_root));
+        if !keep {
+            excluded.push(file.clone());
+        }
+        keep
+    });
+    found.excluded.extend(excluded);
     structural::measure(found, repo_root)
+}
+
+fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
+    Ok(tree.files()?.iter().any(|file| {
+        selection.scope.inside(file) && selection.extensions.iter().any(|end| file.ends_with(end))
+    }))
 }
 
 fn states(index: &structural::SourceIndex, ignore: &[String]) -> Vec<State> {
@@ -308,11 +308,13 @@ fn state(
     file: &structural::FileFacts,
     declaration: &structural::Declaration,
 ) -> State {
-    let dead = !index.references(&declaration.name).any(|reference| {
-        reference.file != file.file
-            || reference.line < declaration.line
-            || reference.line > declaration.end
-    });
+    let dead = !index
+        .references(file.language, &declaration.name)
+        .any(|reference| {
+            reference.file != file.file
+                || reference.line < declaration.line
+                || reference.line > declaration.end
+        });
     State {
         file: file.file.clone(),
         name: declaration.name.clone(),
@@ -348,25 +350,35 @@ fn finding_with_lost_reference(
     finding
 }
 
+fn same_site(held: &State, state: &State) -> bool {
+    held.file == state.file
+        && held.line == state.line
+        && held.name == state.name
+        && held.text == state.text
+}
+
 fn lost_reference(
     state: &State,
     before: &structural::Measurement,
     after: &structural::Measurement,
     before_states: &[&State],
 ) -> Option<String> {
-    let held = before_states.iter().find(|candidate| {
-        candidate.file == state.file
-            && candidate.line == state.line
-            && candidate.name == state.name
-            && candidate.text == state.text
-    })?;
+    let held = before_states
+        .iter()
+        .find(|candidate| same_site(candidate, state))?;
     if held.dead {
         return None;
     }
-    let old = before.index.references(&state.name);
+    let language = before
+        .index
+        .files()
+        .iter()
+        .find(|file| file.file == state.file)?
+        .language;
+    let old = before.index.references(language, &state.name);
     let now: BTreeSet<(&str, u64)> = after
         .index
-        .references(&state.name)
+        .references(language, &state.name)
         .map(|reference| (reference.file, reference.line))
         .collect();
     old.filter(|reference| {

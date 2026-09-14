@@ -114,3 +114,16 @@ here caches across runs, and no tree is parsed because a `Tree` exists.
   taken when that gate reads its section and not before any gate is timed;
   the run's total fell.
 - `git` process consolidation beyond this is #161's.
+
+## Follow-up: compact source policy (#179)
+
+The compatibility layer no longer derives configuration-shaped source
+sections. `complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability`
+discover their supported files from `Project` facts and own the meaning and
+provenance of their policy. Their optional objects contain only human
+decisions: `in` / `except`, the two complexity ceilings,
+`skip_rust_tests`, or `ignore`, as applicable. Reachability families and
+complexity ceilings remain lazy, check-owned derivations. The runner plans
+these Automatic checks from the presence of source facts without computing
+either one, and no central source-policy registry replaces the removed
+survey sections.

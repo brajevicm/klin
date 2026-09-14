@@ -7,11 +7,14 @@ const WIDE: &str = "fn wide() -> i32 {\n    let a = 1;\n    let b = 2;\n    let 
 const SMALL: &str = "fn small() -> i32 {\n    1\n}\n";
 
 fn tree(ceilings: &str) -> Tree {
+    let ceilings: serde_json::Value = serde_json::from_str(ceilings)
+        .unwrap_or_else(|why| panic!("the ceilings are not JSON: {why}"));
     let tree = Tree::new();
     tree.write(
         "klin.json",
         &format!(
-            r#"{{ "project": "t", "complexity": {{ "roots": ["src"], "ceilings": {ceilings} }} }}"#
+            r#"{{ "project": "t", "complexity": {{ "in": "src", "cc": {}, "lines": {} }} }}"#,
+            ceilings["cc"], ceilings["lines"]
         ),
     );
     tree
@@ -93,7 +96,7 @@ fn a_schedule_with_no_step_due_is_a_config_error_naming_the_key() {
 
     let run = on(&tree, "2026-06-01", &["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceilings.lines\""), "{}", run.out);
+    assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
     assert!(run.says("2026-06-01"), "{}", run.out);
 }
 
@@ -104,7 +107,7 @@ fn an_empty_schedule_is_a_config_error_naming_the_key() {
 
     let run = on(&tree, "2026-06-01", &["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceilings.lines\""), "{}", run.out);
+    assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
 }
 
 #[test]
@@ -114,7 +117,7 @@ fn a_malformed_date_is_a_config_error_naming_the_key_and_the_value() {
 
     let run = on(&tree, "2026-06-01", &["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceilings.lines\""), "{}", run.out);
+    assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
     assert!(run.says("2026-9-8"), "{}", run.out);
     assert!(run.says("YYYY-MM-DD"), "{}", run.out);
 }
@@ -126,7 +129,7 @@ fn a_step_that_is_not_a_number_is_a_config_error_naming_the_key() {
 
     let run = on(&tree, "2026-06-01", &["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"ceilings.lines\""), "{}", run.out);
+    assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
     assert!(run.says("whole number"), "{}", run.out);
 }
 

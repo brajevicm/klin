@@ -36,7 +36,6 @@ const RETIRED: &[(&str, &str)] = &[
 
 pub struct Section<'a> {
     pub config: &'a Config,
-    pub name: &'a str,
     pub values: Values,
 }
 
@@ -51,7 +50,6 @@ pub fn section<'a>(project: &'a Project, name: &'a str) -> Result<Section<'a>, E
     no_retired_key(&config.file, name, values)?;
     Ok(Section {
         config,
-        name,
         values: values.clone(),
     })
 }
@@ -173,13 +171,17 @@ fn names_every_value(
 /// The NOTE lines a gate leaves about what it did not judge, printed for a person and kept for
 /// `--json`. A note carries no ceiling, so none of these fails anything. Spec 8.6, 11.
 pub fn noted(notes: &[(String, String)], out: &mut Sink) {
+    noted_as("note", notes, out);
+}
+
+pub fn noted_as(outcome: &str, notes: &[(String, String)], out: &mut Sink) {
     for (_, why) in notes {
         let _ = writeln!(out.text, "NOTE: {why}");
     }
     out.record(|records| {
         for (at, why) in notes {
             let mut record = Map::new();
-            record.insert("outcome".into(), "note".into());
+            record.insert("outcome".into(), outcome.into());
             record.insert("file".into(), at.clone().into());
             record.insert("text".into(), why.clone().into());
             records.notes.push(Value::Object(record));

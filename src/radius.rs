@@ -316,7 +316,7 @@ fn percentile(mut values: Vec<u64>) -> u64 {
 /// One pair per commit in the sample, from one walk of the last non-merge commits: the lines it
 /// changed against its first parent, and how many immediate parent directories they sat under.
 fn sampled(root: &Path, commit: &str) -> Option<Vec<(u64, u64)>> {
-    let most = format!("--max-count={SAMPLE}");
+    let most = String::from("--max-count=") + &SAMPLE.to_string();
     let mut args = SETTINGS.to_vec();
     args.extend(["log", "--no-merges", "--format=%H", "--no-renames"]);
     args.extend_from_slice(COUNTED);

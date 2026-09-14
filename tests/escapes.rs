@@ -7,7 +7,7 @@ use harness::Tree;
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"] }
+  "escapes": { "in": "src" }
 }"#;
 
 fn tree() -> Tree {
@@ -19,7 +19,7 @@ fn tree() -> Tree {
 fn accepted(entries: &str) -> String {
     format!(
         r#"{{ "project": "t", "accepted": [{entries}],
-             "escapes": {{ "roots": ["src"], "languages": ["rust"] }} }}"#
+             "escapes": {{ "in": "src" }} }}"#
     )
 }
 
@@ -182,12 +182,9 @@ fn a_file_git_ignores_is_not_judged_because_the_base_holds_no_copy_of_it() {
 }
 
 #[test]
-fn one_language_named_twice_is_read_once_and_counted_once() {
+fn one_file_is_read_once_and_counted_once() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript", "typescript"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/c.ts", "const c: any = 3;\n");
 
     let run = tree.run(&["escapes"]);
@@ -250,10 +247,7 @@ fn spread() -> Tree {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "project": "t",
-             "escapes": { "roots": ["src"],
-                          "languages": ["python", "typescript", "swift", "rust", "go",
-                                        "kotlin", "java", "ruby", "shell"] } }"#,
+        r#"{ "project": "t", "escapes": { "in": "src" } }"#,
     );
     tree.write(
         "src/thing.py",
@@ -392,43 +386,38 @@ fn the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets() {
 }
 
 #[test]
-fn a_project_pattern_is_read_alongside_the_built_in_sets() {
+fn a_retired_project_pattern_is_rejected() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"],
-             "patterns": {"todo bang": "TODO!"} } }"#,
+        r#"{ "escapes": { "patterns": {"todo bang": "TODO!"} } }"#,
     );
     tree.write("src/lib.rs", "a.unwrap();\n// TODO! later\n");
 
     let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/lib.rs:1  unwrap"), "{}", run.out);
-    assert!(run.says("src/lib.rs:2  todo bang"), "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
 
 #[test]
-fn a_project_pattern_alone_reads_every_file_under_the_roots() {
+fn an_explicit_scope_with_only_unsupported_files_is_a_configuration_error() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "patterns": {"todo bang": "TODO!"} } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/notes.txt", "TODO! later\n");
 
     let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/notes.txt:1  todo bang"), "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("has an \"in\" scope with no applicable file"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
-fn a_default_skipped_directory_is_not_read_and_skip_dirs_adds_to_the_list() {
+fn a_default_skipped_directory_is_not_read() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["."], "languages": ["typescript"],
-             "skip_dirs": ["legacy"] } }"#,
-    );
+    tree.write("klin.json", r#"{}"#);
     tree.write("node_modules/dep/index.ts", "const z: any = 1;\n");
     tree.write("legacy/old.ts", "const y: any = 1;\n");
     tree.write("web/new.ts", "const x: any = 1;\n");
@@ -437,17 +426,16 @@ fn a_default_skipped_directory_is_not_read_and_skip_dirs_adds_to_the_list() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("web/new.ts:1  any"), "{}", run.out);
     assert!(!run.says("node_modules"), "{}", run.out);
-    assert!(!run.says("legacy"), "{}", run.out);
-    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("legacy/old.ts:1"), "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
 }
 
 #[test]
-fn a_file_matching_an_exclude_glob_is_not_read() {
+fn except_drops_a_subtree() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
-             "exclude": ["*.test.ts", "*/generated/*"] } }"#,
+        r#"{ "escapes": { "in": "src", "except": "src/generated" } }"#,
     );
     tree.write("src/thing.ts", "const a: any = 1;\n");
     tree.write("src/thing.test.ts", "const b: any = 1;\n");
@@ -455,9 +443,9 @@ fn a_file_matching_an_exclude_glob_is_not_read() {
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/thing.ts:1"), "{}", run.out);
-    assert!(!run.says("thing.test.ts"), "{}", run.out);
+    assert!(run.says("thing.test.ts"), "{}", run.out);
     assert!(!run.says("generated"), "{}", run.out);
 }
 
@@ -510,7 +498,7 @@ fn skip_rust_tests_turned_off_judges_the_test_module_too() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"], "skip_rust_tests": false } }"#,
+        r#"{ "escapes": { "in": "src", "skip_rust_tests": false } }"#,
     );
     tree.write("src/lib.rs", CFG_TEST);
 
@@ -522,55 +510,45 @@ fn skip_rust_tests_turned_off_judges_the_test_module_too() {
 }
 
 #[test]
-fn an_unknown_language_is_refused_naming_the_ones_that_exist() {
+fn a_retired_language_selector_is_rejected() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["cobol"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "languages": ["cobol"] } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("cobol"), "{}", run.out);
-    assert!(run.says("python"), "{}", run.out);
+    assert!(run.says("no longer reads \"languages\""), "{}", run.out);
 }
 
 #[test]
-fn a_section_naming_nothing_to_look_for_is_refused() {
+fn an_empty_retired_language_selector_is_rejected() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": [] } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "languages": [] } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("nothing to look for"), "{}", run.out);
+    assert!(run.says("no longer reads \"languages\""), "{}", run.out);
 }
 
 #[test]
-fn a_project_pattern_that_is_not_a_regex_is_refused_naming_it() {
+fn a_retired_malformed_project_pattern_is_rejected_before_compilation() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "patterns": {"broken": "([unclosed"} } }"#,
+        r#"{ "escapes": { "patterns": {"broken": "([unclosed"} } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("broken"), "{}", run.out);
+    assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
 
 #[test]
 fn javascript_is_read_by_the_typescript_set() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["javascript"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/thing.js", "it.only('x', () => {});\n");
 
     let run = tree.run(&["escapes"]);
@@ -605,13 +583,9 @@ fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
 }
 
 #[test]
-fn a_hidden_directory_is_read_unless_the_default_list_or_skip_dirs_names_it() {
+fn hidden_directories_are_read_except_for_the_default_skip_list() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["."], "languages": ["shell"],
-             "skip_dirs": ["scripts"] } }"#,
-    );
+    tree.write("klin.json", r#"{}"#);
     tree.write(".github/workflows/ci.sh", "make test || true\n");
     tree.write(".git/hooks/pre-commit.sh", "lint || true\n");
     tree.write(".config/scripts/setup.sh", "install || true\n");
@@ -620,17 +594,16 @@ fn a_hidden_directory_is_read_unless_the_default_list_or_skip_dirs_names_it() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says(".github/workflows/ci.sh:1"), "{}", run.out);
     assert!(!run.says(".git/hooks"), "{}", run.out);
-    assert!(!run.says("setup.sh"), "{}", run.out);
-    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("setup.sh"), "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
 }
 
 #[test]
-fn an_exclude_glob_honours_a_character_class() {
+fn a_retired_exclude_glob_is_rejected() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"],
-             "exclude": ["*.spec.[jt]s", "[!a]?.gen.ts"] } }"#,
+        r#"{ "escapes": { "exclude": ["*.spec.[jt]s", "[!a]?.gen.ts"] } }"#,
     );
     tree.write("src/a.spec.ts", "const a: any = 1;\n");
     tree.write("src/b.spec.js", "const b: any = 1;\n");
@@ -640,14 +613,8 @@ fn an_exclude_glob_honours_a_character_class() {
     tree.write("src/plain.ts", "const p: any = 1;\n");
 
     let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/plain.ts:1"), "{}", run.out);
-    assert!(run.says("src/aa.gen.ts:1"), "{}", run.out);
-    assert!(run.says("src/c.spec.tsx:1"), "{}", run.out);
-    assert!(!run.says("a.spec.ts"), "{}", run.out);
-    assert!(!run.says("b.spec.js"), "{}", run.out);
-    assert!(!run.says("zz.gen.ts"), "{}", run.out);
-    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads \"exclude\""), "{}", run.out);
 }
 
 #[test]
@@ -691,10 +658,7 @@ fn every_alternative_inside_a_pattern_matches_too() {
 #[test]
 fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/a.mts", "const a: any = 1;\n");
     tree.write("src/b.cts", "const b: any = 1;\n");
 
@@ -707,10 +671,7 @@ fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
 #[test]
 fn a_focused_or_expected_failure_test_is_a_new_escape_and_holds_at_the_base() {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["typescript", "python"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write(
         "src/spec.ts",
         "fit('x', () => {});\n  fdescribe('y', () => {});\nconst y = fit(points);\n",
@@ -764,8 +725,7 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     tree.base();
     tree.write(
         "klin.json",
-        r#"{ "project": "t", "escapes": { "roots": ["src"], "languages": ["rust"],
-             "exclude": ["gone.rs"] } }"#,
+        r#"{ "project": "t", "escapes": { "in": "src", "except": "src/gone.rs" } }"#,
     );
 
     let run = tree.run(&["escapes"]);

@@ -6,6 +6,7 @@ mod text;
 use harness::{Run, Tree};
 use serde_json::Value;
 
+const SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const TANGLED: &str = "pub fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
 const MIDDLING: &str = "pub fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    0\n}\n";
@@ -41,7 +42,7 @@ fn a_tree_with_no_configuration_runs_every_derivable_gate() {
     assert!(run.says("ok    complexity"), "{}", run.out);
     assert!(run.says("ok    dead-symbols"), "{}", run.out);
     assert!(run.says("ok    lockfile"), "{}", run.out);
-    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("9 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -50,26 +51,10 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says(
-            "derived: complexity roots src, tests, the shallowest directories that hold nothing \
-             but source"
-        ),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("derived: escapes languages rust, the languages of the files under those roots"),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says(
-            "derived: dead_symbols languages rust, the languages of the files under those roots"
-        ),
-        "{}",
-        run.out
-    );
+    assert!(run.says("derived: complexity cc 5"), "{}", run.out);
+    assert!(run.says("derived: complexity lines 25"), "{}", run.out);
+    assert!(!run.says("derived: escapes"), "{}", run.out);
+    assert!(!run.says("derived: dead_symbols"), "{}", run.out);
     assert!(
         run.says("derived: doc_size README.md, every Markdown file at the tree root"),
         "{}",
@@ -131,17 +116,6 @@ fn every_derived_line_has_a_matching_json_entry() {
         .as_array()
         .unwrap_or_else(|| panic!("no derived array in {report}"));
 
-    let roots = find(derived, |e| {
-        e["section"] == "complexity" && e["key"] == "roots"
-    });
-    assert_eq!(
-        roots["value"],
-        serde_json::json!(["src", "tests"]),
-        "{report}"
-    );
-    let rule = roots["rule"].as_str().unwrap_or_default();
-    assert!(rule.contains("shallowest directories"), "{report}");
-
     let cc = find(derived, |e| {
         e["section"] == "complexity" && e["key"] == "cc"
     });
@@ -173,18 +147,14 @@ fn a_key_the_config_pins_prints_as_pinned_beside_the_derived_ones() {
     let tree = project();
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "ceilings": {"cc": 12, "lines": 90} } }"#,
+        r#"{ "complexity": { "cc": 12, "lines": 90 } }"#,
     );
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("pinned: complexity cc 12"), "{}", run.out);
     assert!(run.says("pinned: complexity lines 90"), "{}", run.out);
-    assert!(
-        run.says("derived: complexity roots src, tests"),
-        "{}",
-        run.out
-    );
+    assert!(!run.says("derived: complexity"), "{}", run.out);
 }
 
 #[test]
@@ -196,7 +166,7 @@ fn a_section_set_to_false_excludes_its_gate_with_nothing_else_configured() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
     assert!(
-        run.says("7 gate(s), 1 excluded, all passed."),
+        run.says("8 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
@@ -214,11 +184,7 @@ fn the_survey_skips_the_default_set_and_every_path_gitignore_excludes() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("node_modules"), "{}", run.out);
     assert!(!run.says("generated"), "{}", run.out);
-    assert!(
-        run.says("derived: complexity roots src, tests"),
-        "{}",
-        run.out
-    );
+    assert!(!run.says("derived: complexity roots"), "{}", run.out);
 }
 
 #[test]
@@ -234,16 +200,7 @@ fn the_survey_finds_one_root_per_package_of_a_monorepo() {
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("derived: complexity roots packages/a/src, packages/b/src"),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("derived: escapes languages rust, typescript"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("2 file(s) found, 2 measured"), "{}", run.out);
     assert!(run.says("derived: build tsc --noEmit"), "{}", run.out);
     assert!(run.says("cargo build --all-targets"), "{}", run.out);
 }
@@ -297,11 +254,7 @@ fn a_root_that_first_appears_in_the_working_tree_is_measured_and_its_sites_are_n
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("extra/risky.rs"), "{}", run.out);
-    assert!(
-        run.says("derived: escapes roots extra, src, tests"),
-        "{}",
-        run.out
-    );
+    assert!(!run.says("derived: escapes"), "{}", run.out);
 }
 
 /// The launder the rule closes: park code where the derivation commit's survey holds no root,
@@ -333,11 +286,7 @@ fn a_language_that_first_appears_in_the_working_tree_is_measured_on_that_run() {
 
     let run = gate(&tree);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(
-        run.says("derived: escapes languages python, rust"),
-        "{}",
-        run.out
-    );
+    assert!(!run.says("derived: escapes"), "{}", run.out);
     assert!(run.says("src/app.py"), "{}", run.out);
 }
 
@@ -354,7 +303,6 @@ fn the_survey_is_cached_under_the_derivation_commit_and_read_back() {
 
     let held = std::fs::read_to_string(&file).unwrap_or_default();
     assert!(held.contains("\"survey\""), "{held}");
-    assert!(held.contains("\"complexity\""), "{held}");
     assert!(held.contains("\"doc_size\""), "{held}");
     assert!(held.contains(env!("CARGO_PKG_VERSION")), "{held}");
 
@@ -369,11 +317,7 @@ fn the_survey_is_cached_under_the_derivation_commit_and_read_back() {
     );
     let again = gate(&tree);
     assert_eq!(again.code, 0, "{}", again.out);
-    assert!(
-        again.says("derived: escapes languages python, rust"),
-        "{}",
-        again.out
-    );
+    assert!(!again.says("derived: escapes"), "{}", again.out);
 }
 
 fn written(file: &std::path::Path, text: &str) {
@@ -397,11 +341,7 @@ fn a_cache_another_version_wrote_and_one_that_is_unreadable_are_surveyed_again()
         written(&file, text);
         let run = gate(&tree);
         assert_eq!(run.code, 0, "{}", run.out);
-        assert!(
-            run.says("derived: complexity roots src, tests"),
-            "{}",
-            run.out
-        );
+        assert!(run.says("derived: complexity cc 5"), "{}", run.out);
     }
 }
 
@@ -428,16 +368,15 @@ fn init_pins_what_the_run_derives() {
     assert_eq!(written.code, 0, "{}", written.out);
     let held = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     let config: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
-    assert_eq!(config["complexity"]["roots"][0], "src");
-    assert_eq!(config["complexity"]["roots"][1], "tests");
-    assert_eq!(config["escapes"]["languages"][0], "rust");
+    assert!(config.get("complexity").is_none());
+    assert!(config.get("escapes").is_none());
     assert_eq!(config["doc_size"][0]["file"], "README.md");
     assert_eq!(config["doc_citations"][0]["file"], "README.md");
     assert_eq!(config["build"], "cargo build --all-targets");
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!run.says("derived: complexity roots"), "{}", run.out);
+    assert!(run.says("derived: complexity cc"), "{}", run.out);
 }
 
 #[test]
@@ -596,10 +535,7 @@ fn a_document_the_derivation_commit_lacks_is_a_note_and_is_not_judged() {
 #[test]
 fn a_ceiling_pinned_beside_a_derived_one_is_used_as_written() {
     let tree = project();
-    tree.write(
-        "klin.json",
-        r#"{ "complexity": { "ceilings": {"cc": 12} } }"#,
-    );
+    tree.write("klin.json", r#"{ "complexity": { "cc": 12 } }"#);
     tree.write("src/knot.rs", TANGLED);
 
     let run = gate(&tree);
@@ -613,7 +549,7 @@ fn a_ceiling_pinned_beside_a_derived_one_is_used_as_written() {
 
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "roots": ["src"], "ceilings": {"cc": 12} } }"#,
+        r#"{ "complexity": { "in": "src", "cc": 12 } }"#,
     );
     let beside_a_pinned_root = gate(&tree);
     assert_eq!(beside_a_pinned_root.code, 0, "{}", beside_a_pinned_root.out);
@@ -664,7 +600,7 @@ fn a_file_the_section_excludes_is_out_of_the_percentile_too() {
     tree.write("src/big.rs", &many(TANGLED, 50));
     tree.write(
         "klin.json",
-        r#"{ "complexity": { "exclude": ["big.rs"] } }"#,
+        r#"{ "complexity": { "except": "src/big.rs" } }"#,
     );
     tree.base();
 
@@ -675,4 +611,285 @@ fn a_file_the_section_excludes_is_out_of_the_percentile_too() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn an_uncommitted_scope_edit_changes_judgment_but_not_the_ceiling() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("src/big.rs", &many(TANGLED, 50));
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "except": "src/big.rs" } }"#,
+    );
+    tree.base();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
+
+    let run = gate(&tree);
+    assert_ne!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("today's complexity scope") && run.says("scope recorded at"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("recorded scope: except src/big.rs"), "{}", run.out);
+
+    let json = tree.run(&["gate", "--json"]);
+    let report = json.json();
+    let derived = report["derived"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no derived values in {report}"));
+    let cc = find(derived, |entry| {
+        entry["section"] == "complexity" && entry["key"] == "cc"
+    });
+    assert!(
+        cc["rule"]
+            .as_str()
+            .is_some_and(|rule| rule.contains("recorded scope: except src/big.rs")),
+        "{report}"
+    );
+    assert!(
+        report["notes"]
+            .as_array()
+            .is_some_and(|notes| notes.iter().any(|note| note["text"]
+                .as_str()
+                .is_some_and(|text| text.contains("today's complexity scope")))),
+        "{report}"
+    );
+}
+
+#[test]
+fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("src/big.rs", &many(TANGLED, 50));
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "except": "src/big.rs" } }"#,
+    );
+    tree.base();
+    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
+    tree.commit("widen the recorded scope later");
+
+    let held = gate(&tree);
+    assert_ne!(held.code, 2, "{}", held.out);
+    assert!(
+        held.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        "{}",
+        held.out
+    );
+
+    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
+    let moved = gate(&tree);
+    assert_ne!(moved.code, 2, "{}", moved.out);
+    assert!(moved.says("derived: complexity cc 12 ("), "{}", moved.out);
+}
+
+#[test]
+fn an_unreadable_recorded_config_falls_back_to_the_whole_repository_loudly() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("src/big.rs", &many(TANGLED, 50));
+    tree.write("klin.json", "not json");
+    tree.base();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src/clean.rs" } }"#);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: complexity cc 12 ("), "{}", run.out);
+    assert!(
+        run.says("recorded complexity policy could not be read as compact scope")
+            && run.says("whole repository"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_pre_compact_recorded_scope_falls_back_to_the_whole_repository() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("src/big.rs", &many(TANGLED, 50));
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "roots": ["src/clean.rs"] } }"#,
+    );
+    tree.base();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src/clean.rs" } }"#);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: complexity cc 12 ("), "{}", run.out);
+    assert!(run.says("recorded scope: whole repository"), "{}", run.out);
+}
+
+#[test]
+fn a_complexity_sample_is_read_back_from_the_cache_whatever_its_scope() {
+    for config in [
+        "{}",
+        r#"{ "complexity": { "in": "src/clean.rs" } }"#,
+        r#"{ "complexity": { "except": "src/other.rs" } }"#,
+    ] {
+        let tree = Tree::new();
+        tree.write("src/clean.rs", &many(CLEAN, 50));
+        tree.write("klin.json", config);
+        tree.base();
+
+        let first = gate(&tree);
+        assert_eq!(first.code, 0, "{config}: {}", first.out);
+        assert!(first.says("derived: complexity cc 5 ("), "{}", first.out);
+        let file = cache(&tree);
+        let mut held: Value =
+            serde_json::from_str(&std::fs::read_to_string(&file).unwrap_or_default())
+                .unwrap_or_default();
+        held["complexity"]["cc"] = 77.into();
+        written(&file, &held.to_string());
+
+        let second = gate(&tree);
+        assert_eq!(second.code, 0, "{config}: {}", second.out);
+        assert!(
+            second.says("derived: complexity cc 77 ("),
+            "{config}: {}",
+            second.out
+        );
+    }
+}
+
+#[test]
+fn an_in_of_the_repository_root_is_the_whole_repository() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("klin.json", r#"{ "complexity": { "in": "." } }"#);
+    tree.base();
+    tree.write("klin.json", "{}");
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("recorded scope: whole repository"), "{}", run.out);
+    assert!(!run.says("today's complexity scope"), "{}", run.out);
+}
+
+#[test]
+fn narrowing_today_keeps_the_recorded_ceiling_and_strict_lost_coverage() {
+    let tree = Tree::new();
+    tree.write("src/a.rs", &many(CLEAN, 25));
+    tree.write("src/b.rs", &many(CLEAN, 25));
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
+    tree.base();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": "src", "except": "src/a.rs" } }"#,
+    );
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("derived: complexity cc 5"), "{}", run.out);
+    assert!(run.says("today's complexity scope"), "{}", run.out);
+    assert!(run.says("src/a.rs was measured at the base"), "{}", run.out);
+}
+
+#[test]
+fn a_recorded_scope_written_another_way_is_the_same_scope() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": ["src", "tests"], "except": ["src/b.rs", "src/a.rs"] } }"#,
+    );
+    tree.base();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": ["tests", "src/x", "src"], "except": ["src/a.rs", "docs", "src/b.rs", "src/a.rs"] } }"#,
+    );
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("recorded scope: in src, tests; except src/a.rs, src/b.rs"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("today's complexity scope"), "{}", run.out);
+}
+
+#[test]
+fn a_recorded_scope_that_selects_no_function_derives_the_floors() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("docs/guide.md", "A guide.\n");
+    tree.write("klin.json", r#"{ "complexity": { "in": "docs" } }"#);
+    tree.base();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: complexity cc 5 (the floor of 5, over 0 function(s) at"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("recorded scope: in docs"), "{}", run.out);
+    assert!(
+        !run.says("could not be read as compact scope"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_recorded_complexity_set_to_false_falls_back_to_the_whole_repository_loudly() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write("src/big.rs", &many(TANGLED, 50));
+    tree.write("klin.json", r#"{ "complexity": false }"#);
+    tree.base();
+    tree.write("klin.json", "{}");
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: complexity cc 12 ("), "{}", run.out);
+    assert!(run.says("recorded scope: whole repository"), "{}", run.out);
+    assert!(
+        run.says("complexity section is not a compact policy object"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_stop_nothing_blocks_tells_the_person_the_recorded_scope_lags() {
+    let tree = Tree::new();
+    tree.write("src/clean.rs", &many(CLEAN, 50));
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "except": "src/big.rs" } }"#,
+    );
+    tree.base();
+    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "except": ["src/big.rs", "src/gone.rs"] } }"#,
+    );
+
+    let run = harness::feed(
+        tree.root(),
+        &["gate", "--hook"],
+        r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    let told = run
+        .printed
+        .lines()
+        .find_map(|line| {
+            let held: Value = serde_json::from_str(line).ok()?;
+            held.get("systemMessage")?.as_str().map(str::to_string)
+        })
+        .unwrap_or_default();
+    assert!(told.contains("today's complexity scope"), "{}", run.out);
 }

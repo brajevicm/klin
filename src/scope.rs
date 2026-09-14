@@ -5,14 +5,121 @@
 //! Spec 8.4, ADR 0038.
 
 use serde_json::{Map, Value};
+use std::path::Path;
 
+use crate::config::{Config, Error};
+use crate::ratchet::Values;
 use crate::reference::Key;
+
+pub const IN: Key = Key {
+    name: "in",
+    holds: "a repository-relative path, or a list of them, the section applies to, with everything below each",
+    required: false,
+    rule: None,
+    default: "the whole repository",
+};
+
+pub const EXCEPT: Key = Key {
+    name: "except",
+    holds: "a repository-relative path, or a list of them, taken out of `in`, with everything below each",
+    required: false,
+    rule: None,
+    default: "nothing is taken out",
+};
+
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct Scope {
+    within: Vec<Selector>,
+    except: Vec<Selector>,
+}
+
+impl Scope {
+    pub fn read(config: &Config, section: &str, fields: &Values) -> Result<Scope, Error> {
+        Scope::from_fields(fields)
+            .map_err(|why| Error(format!("{}: \"{section}\" {why}", config.file.display())))
+    }
+
+    /// The scope a section states, in one form for every way of writing the same selection:
+    /// sorted, with no path another path of its list holds, no `in` of the repository root, and
+    /// no `except` outside every `in`.
+    pub fn from_fields(fields: &Values) -> Result<Scope, String> {
+        let mut within = outermost(selectors(fields, IN)?);
+        within.retain(|selector| selector.as_str() != ROOT);
+        let except = outermost(selectors(fields, EXCEPT)?)
+            .into_iter()
+            .filter(|out| {
+                within.is_empty()
+                    || within
+                        .iter()
+                        .any(|kept| kept.holds(out.as_str()) || out.holds(kept.as_str()))
+            })
+            .collect();
+        Ok(Scope { within, except })
+    }
+
+    /// The scope as a section states it, which `from_fields` reads back as the same scope.
+    pub fn value(&self) -> Value {
+        let mut fields = Map::new();
+        for (key, selectors) in [(IN, &self.within), (EXCEPT, &self.except)] {
+            if !selectors.is_empty() {
+                fields.insert(
+                    key.name.into(),
+                    selectors.iter().map(Selector::as_str).collect(),
+                );
+            }
+        }
+        Value::Object(fields)
+    }
+
+    pub fn description(&self) -> String {
+        let names = |selectors: &[Selector]| {
+            selectors
+                .iter()
+                .map(Selector::as_str)
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        match (self.within.is_empty(), self.except.is_empty()) {
+            (true, true) => "whole repository".into(),
+            (false, true) => format!("in {}", names(&self.within)),
+            (true, false) => format!("except {}", names(&self.except)),
+            (false, false) => format!("in {}; except {}", names(&self.within), names(&self.except)),
+        }
+    }
+
+    pub fn selects(&self, path: &str) -> bool {
+        (self.within.is_empty() || any_holds(&self.within, path)) && !any_holds(&self.except, path)
+    }
+
+    pub fn has_in(&self) -> bool {
+        !self.within.is_empty()
+    }
+
+    pub fn inside(&self, path: &str) -> bool {
+        self.within.is_empty() || any_holds(&self.within, path)
+    }
+
+    /// The scope recorded by the base commit, or today's scope when that commit has no readable
+    /// compact policy. Checks decide when this historical scope matters to their comparison.
+    pub fn at_base(config: &Config, section: &str, prior: &Path, today: &Scope) -> Scope {
+        config
+            .file
+            .file_name()
+            .and_then(|name| std::fs::read_to_string(prior.join(name)).ok())
+            .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+            .and_then(|data| match data.get(section) {
+                None => Some(Scope::default()),
+                Some(value) => Scope::read(config, section, value.as_object()?).ok(),
+            })
+            .unwrap_or_else(|| today.clone())
+    }
+}
 
 /// The repository root, which every path is relative to and which holds every path.
 pub const ROOT: &str = ".";
 
 /// One `in` or `except` path, normalized: no leading `./` and no trailing slash.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Selector(String);
 
 impl Selector {
@@ -68,6 +175,17 @@ pub fn selectors(fields: &Map<String, Value>, key: Key) -> Result<Vec<Selector>,
         .into_iter()
         .map(|item| Selector::parse(key, item.as_str().ok_or_else(malformed)?))
         .collect()
+}
+
+fn outermost(mut selectors: Vec<Selector>) -> Vec<Selector> {
+    selectors.sort_unstable();
+    let mut kept: Vec<Selector> = Vec::new();
+    for selector in selectors {
+        if !any_holds(&kept, selector.as_str()) {
+            kept.push(selector);
+        }
+    }
+    kept
 }
 
 /// Whether any of the selectors holds the path.

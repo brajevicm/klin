@@ -198,15 +198,11 @@ Nine components, in one binary.
 
 1. **Config** loads `klin.json` when it exists, resolves paths against its
    directory, and rejects a key klin does not know.
-2. **Survey** derives every value the config does not pin: source roots,
-   languages, documents, manifests, test roots, and ceilings. Every number
-   comes from the derivation commit of 6.6, over the paths that commit's own
-   survey holds, so an agent cannot move a ceiling by editing the `after`
-   tree. Roots, languages, documents and manifests are the union of that
-   survey and a walk over the `after` tree, so a new directory or a first
-   file in a new language is measured on the turn that adds it. Discovering
-   more never loosens a gate, because a site under a path the derivation
-   commit's survey did not hold is `new` (7.1).
+2. **Survey** derives repository facts needed before a check is selected:
+   documents, manifests and test roots. An Automatic source check discovers
+   its supported files itself when it runs. `complexity` derives ceilings
+   from the derivation commit, and `reachability` derives proven families
+   there; neither expensive derivation runs unless that check is selected.
 3. **Window Chooser** picks the two trees a run compares and says which.
    Section 6.
 4. **Checks** measure one tree each and return Findings with a Site identity
@@ -262,16 +258,15 @@ A derived number, such as a ceiling, a radius percentile or a build command,
 MUST be a pure function of one commit, the derivation commit of 6.6, and the
 binary version, so it is cached by commit id. It is computed over the paths
 that commit's own survey holds, never over a path found only in `after`.
+Where its sample needs policy, it reads the policy recorded by that commit,
+never the working-tree copy.
 
-A derived path set, such as `roots`, `languages`, the documents of
-`doc_size` or the manifests of `build`, is the union of the derivation
-commit's survey and a discovery walk over the `after` tree. The walk reads
-names and extensions only, prunes the default skip set and every path
-`.gitignore` excludes, and is not cached. Between the two trees a path set
-MAY only grow. For a path the derivation commit's survey did not hold, the
-check's own rule applies (5.4): complexity holds it to the floor, and
-`doc_size` does not judge it and prints a NOTE. A site under such a path
-that is judged matches nothing in `before` and is `new` (7.1).
+A derived path set such as the documents of `doc_size` or the manifests of
+`build` is the union of the derivation commit's survey and a discovery walk
+over `after`. Source roots and language lists are facts, not configuration
+values: each source check selects every supported file from the run's one
+repository walk, then applies its compact `in` / `except` policy. A site
+present only in `after` matches nothing in `before` and is `new` (7.1).
 
 ### 4.4 Site
 
@@ -424,7 +419,8 @@ the working directory. `--config PATH` overrides. Paths resolve against the
 file's own directory. The file is under the guard and SHOULD be under
 CODEOWNERS.
 
-With no file, every check with a `derive` runs over derived sections. When
+With no file, every Automatic check for which the tree holds applicable facts
+runs. When
 the two trees are the same, this MUST produce a green run, because nothing in
 a tree is worse than itself. That is the first stop of the hook, whose first
 stamp is the working tree as it stands. When the trees differ, as under `klin
@@ -440,9 +436,10 @@ no state, before it surveys the tree. A `--config PATH` that names no file
 reads the same way. `klin gate` without `--hook` keeps the exit 2 that names
 the file and the sections that would fill it. ADR 0028.
 
-One configuration per repository, at the root. Sections carry roots, so a
-monorepo is many roots in one file. Discovery walks up only to find that file
-from a subdirectory. A configuration per package is not supported.
+One configuration per repository, at the root. Source checks discover every
+supported package in a monorepo from that one root. Discovery walks up only to
+find the file from a subdirectory. A configuration per package is not
+supported.
 
 ### 5.2 Top-level keys
 
@@ -465,32 +462,44 @@ from a subdirectory. A configuration per package is not supported.
   is no top-level list of extra gates (ADR 0038).
 
 A key klin does not know MUST be an error naming the key. A section with a
-`baseline` key MUST be an error saying the key is gone (ADR 0009). A section
-MAY pin some keys and leave others to derivation. A pinned key MUST print as
-`pinned` beside the derived ones.
+`baseline` key MUST be an error saying the key is gone (ADR 0009). The five
+compact source sections MUST reject every field their check does not read,
+including retired topology fields, with an actionable migration error. A
+section MAY pin some keys and leave others to derivation. A pinned key MUST
+print as `pinned` beside the derived ones.
 
-### 5.3 One key vocabulary
+### 5.3 Compact source policy
 
-Every section uses the same names for the same things: `roots`, `languages`,
-`exclude`, `skip_dirs`, `ceilings`. `sources` in the complexity section is
-renamed to `roots`. A run that meets the old name MUST say what the new name
-is. The differential test that required the old vocabulary is retired.
+`complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability` are
+Automatic. An absent section means use discovered facts and built-in language
+support; `false` disables the check; an object holds only a decision a person
+made. Every one reads `in` and `except`: a repository-relative path or
+non-empty list, selecting that path and everything below it. They are paths,
+not globs. An explicit `in` with no applicable file is exit 2.
+
+`complexity` additionally reads `cc` and `lines`; either is a whole number or
+a dated ceiling schedule and either may be omitted for derivation. `escapes`
+additionally reads `skip_rust_tests`, default `true`. `dead_symbols`
+additionally reads name globs in `ignore`. `stubs` and `reachability` read no
+other policy.
+
+The retired `roots`, `languages`, `patterns`, `skip_dirs`, `exclude`,
+`exclude_except` and `ceilings` fields, and a person-authored reachability
+family list, MUST be rejected rather than ignored. Source discovery, supported
+languages, marker patterns and reachability topology are properties of the
+binary and tree, not knobs in `klin.json`.
 
 ### 5.4 Derivation rules
 
 Each check documents its rule. The rules for the shipped checks:
 
-- `roots`: directories under the tree root that hold source files of a known
-  language, excluding the default skip set, merged up to the shallowest
-  directory that holds nothing but source. The set is the union of the
-  derivation commit's survey and the `after` walk (4.3). Test roots are the
-  subset whose name or files match the language's test convention.
-- `languages`: the languages of the files under `roots`, in the derivation
-  commit and in `after`.
-- `stubs`: the same `roots` and `languages` as `escapes`, less every language
-  the stubs table holds no rows for, so a language only the escapes table
-  names does not refuse the run. A tree with no language left gets no
-  `stubs` section, and the gate needs a section a person writes.
+- Source files: every supported, non-ignored file in the repository's one
+  tree listing, less the built-in skip set and the section's `in` / `except`
+  scope. Each check owns its supported language table. The before tree uses
+  the compact scope its own commit records, and today's scope when it records
+  none, so narrowing scope cannot silently erase coverage. A derived sample
+  instead uses the compact scope recorded by the derivation commit, so both
+  the files and the policy that select them come from that one commit.
 - `doc_size`: every Markdown file at the tree root, in the derivation commit
   and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
@@ -500,16 +509,27 @@ Each check documents its rule. The rules for the shipped checks:
   NOTE names it and its word count, and it gets a ceiling when the stamp
   moves and the derivation commit holds it. Any other rule would read the
   ceiling from `after`, which 4.3 forbids.
-- `complexity.ceilings`: the 95th percentile of `cc` and of `lines` over
-  every function under the derivation commit's own roots at that commit,
+- `complexity.cc` and `complexity.lines`: the 95th percentile of each measure
+  over every supported function selected by the compact scope recorded at the
+  derivation commit,
   rounded up to the next whole number, with a floor of `cc 5` and `lines 25`
   so a small clean tree is not held to a ceiling of 1. Below 50 functions the
-  floor is the ceiling. A root or a language the derivation commit lacks has
-  the floor as its ceiling, and a function found only in `after` never
-  enters the percentile.
-- `dead_symbols`: the same `roots` and structural `languages` in both trees.
-  Its optional `ignore` list is a set of name globs. The survey derives only
-  the roots and languages its structural index can measure.
+  floor is the ceiling. A function found only in `after` never enters the
+  percentile. No recorded section, or a recorded object with neither `in` nor
+  `except`, selects the whole repository. A recorded scope that selects no
+  supported function derives the floors and names its zero-function sample.
+  A recorded configuration or complexity section that exists but cannot be
+  read as compact scope falls back to the whole repository and emits a NOTE.
+  A pre-compact section containing only retired fields has no compact scope
+  and therefore selects the whole repository. Today's compact scope selects
+  what is judged but never enters this sample; when it differs from the
+  recorded scope, a NOTE names both. Two scopes are compared after each is
+  sorted and loses every path another path of its list holds and every
+  `except` path outside every `in`, so one selection written two ways is one
+  scope. The fallback and the difference are `derivation` notes, which a stop
+  nothing blocks still tells the person.
+- `dead_symbols`: every Rust and TypeScript/TSX file selected by the compact
+  scope. Its optional `ignore` list is a set of name globs.
 - `reachability`: one family per directory of the derivation commit whose
   files share a basename prefix or suffix at a token boundary and one
   concrete extension, such as `src/commands/*_command.rs`, named for its
@@ -524,9 +544,9 @@ Each check documents its rule. The rules for the shipped checks:
   is proven, and a narrower one survives a broader one that is not. The
   policy is read from the derivation commit alone, never from the union with
   `after`, so the tree being judged cannot widen or weaken it, and it is
-  cached under that commit. When nothing is proven no section is derived,
-  and the gate needs a section a person writes. A pinned list or `false`
-  states the whole section.
+  cached under that commit. When nothing is proven the gate has no families
+  to judge. A person may narrow the derived families only with `in` and
+  `except`, or disable the check with `false`; a family list is invalid.
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
 - `build`: one entry per manifest, per ADR 0012. Manifests are a path set.
@@ -548,7 +568,7 @@ what tightens.
 A pinned ceiling is either a number or an object of dated steps:
 
 ```json
-"ceilings": {
+"complexity": {
   "cc": 12,
   "lines": { "2026-09-08": 90, "2027-01-01": 70, "2027-07-01": 60 }
 }
@@ -568,8 +588,10 @@ on the command line is exit 2.
 
 ### 5.7 What `init` does now
 
-`init` pins. It runs the survey and writes the derived sections into
-`klin.json`, so a person can see them, edit them, and put them under review.
+`init` pins only configuration a person can meaningfully edit. It does not
+serialize the automatic source sections or reachability topology.
+It runs the survey and writes other derived sections into `klin.json`, so a
+person can see them, edit them, and put them under review.
 It MUST write only the config. It MUST NOT overwrite an existing config
 without `--force`. `init --add` fills in missing sections and leaves `false`
 alone. `init --force` re-pins every derivable section from today's tree, which
@@ -605,9 +627,9 @@ Every key the reference names is read through its declaration and written by
 the survey through the same one, so a key renamed in the declaration is
 renamed at both ends. A key inside one of them, such as the `run` of a `build`
 entry, is stated in what the key above it holds and is not a row of its own.
-The sections the reference prints, and the language names it prints beside
-them, come off the same table of checks a run gates from, so a check cannot be
-gated and left out of the reference.
+The sections the reference prints, and the built-in language coverage it
+prints beside them, come off the same table of checks a run gates from, so a
+check cannot be gated and left out of the reference.
 
 A row of a section the survey supplies entry by entry says `derived with the
 section`, because the rule holds only when the section itself is absent: an
@@ -615,19 +637,14 @@ entry a person pins must state the key.
 
 The reference MUST also state what the key tables alone do not say:
 
-- the language names of each check that selects by language, with the
-  extensions each name selects, printed from the tables in the binary. The
-  checks share language names and not file sets: for `complexity`,
-  `typescript` selects `.ts`, `.mts`, `.cts` and `.tsx`, and `.js` needs
-  `javascript`, while for `escapes` and `stubs` either name selects both sets.
-- that `skip_dirs` adds to a shared default list, which it prints, and that
-  `exclude_except` answers `exclude` globs only. It cannot bring back a file
-  under a skipped directory, and only `complexity` reads it.
-- what else a walk drops and the key tables do not say: the files git ignores,
-  the dot directories that `complexity` and `inventory` skip and the other
-  checks read, and the shape an `exclude` glob takes. A glob is matched
-  against the basename and against the absolute path, so a glob written from
-  the tree root matches nothing.
+- the built-in source extensions each check discovers, printed from the
+  tables in the binary, and that those tables are capability rather than
+  configuration
+- the shared default skip list and git-ignore behavior
+- the `in` / `except` path shape and the retired source-topology keys that
+  compact source sections reject
+- that a file which leaves compact scope is reported as lost coverage under
+  the base-era scope rule of 8.6
 
 `docs/REFERENCE.md` holds the printed reference, and a CLI test fails when the
 committed copy differs from what the binary prints, so CI fails on a reference
@@ -798,6 +815,8 @@ turn is judged against one set of derived values from start to end, whatever
 the agent commits along the way. The derivation commit changes only when the
 stamp moves, which is after a green stop, and a person sees the new ceiling on
 the `derived:` line of the next run.
+A compact-scope edit changes what is judged immediately, but changes a derived
+complexity ceiling only when the derivation commit advances.
 
 ## 7. Ratchet Semantics
 
@@ -1023,8 +1042,7 @@ The table above names what each shipped check measures. This section states
 how, so a second implementation reproduces klin's own numbers and so a rule
 that looks wrong is disputed as a rule, not rediscovered in source. Every
 rule here is pinned by a CLI test under `tests/`, named beside it. Section 5.8
-owns the configuration keys that choose roots, languages and exclusions, and
-links here.
+owns the compact policy keys and built-in language coverage, and links here.
 
 **`doc-size` counts words.** A word is a maximal run of characters that are
 not Unicode whitespace, as `White_Space` defines it. A no-break space and an
@@ -1047,8 +1065,8 @@ match of every pattern in the language's table, on every line whose trimmed
 text is equal, lands on that one site. Its `count` is the number of those
 matches. Its label and remedy are the ones of the first pattern, in table
 order, that matched a line with that text, and its line is the first line
-that pattern matched. The language tables come first, in the order the
-config names them, and the project's own `patterns` after them. A line that carries two kinds is one site labelled by
+that pattern matched. The built-in language table comes first. A line that
+carries two kinds is one site labelled by
 the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
 the text as written, so a pattern inside a string literal is a match, and it
@@ -1062,10 +1080,9 @@ line, judges a test module like any other code, and refuses the key. Pinned by
 line. A finding that says `unwrap x4` may hold two `expect` calls.
 
 **`stubs` judges three body shapes.** The function walk of `complexity`
-reads them, over the grammars of the languages the section names, and
+reads them, over every grammar the built-in stubs table supports, and
 `stubs` records each one at the declaration line of the function that holds
-it, as one more match on that site. A set the project's own `patterns` make
-is not a language and carries no shapes. A shape is read off a body that
+it, as one more match on that site. A shape is read off a body that
 holds a run of statements, so a concise arrow body such as `() => value` is
 one expression and does the work of one. A function whose body holds one
 `pass` statement is a `pass body`. A function whose body holds no statement,
@@ -1120,9 +1137,10 @@ complete current dead-symbol list. Pinned by
 `tests/dead_symbols.rs`; the report cap is covered by
 `report_lists_every_current_dead_symbol_without_the_note_cap`.
 
-**`reachability` judges files of a named family.** A section is a list of
-families, each a `name`, `roots` and a basename `pattern`, with optional
-`languages`, `exclude` and `skip_dirs`. A member is reached when another
+**`reachability` judges files of a derived family.** The derivation commit
+proves each family from a directory, concrete extension and basename pattern;
+the report exposes its name, roots and pattern, while configuration may only
+narrow all derived families with `in` and `except`. A member is reached when another
 file holds a reference with the name of one of its eligible declarations:
 functions, types, constants and module-level variables that are not entry
 points. Methods are not eligible, because a name such as `run` or `get`
@@ -1132,7 +1150,7 @@ that declares one. Exported declarations are eligible, unlike in
 repository. A reference from the file itself reaches nothing. Resolution is
 the structural index's name-only rule, so a name several files declare
 reaches every one of them: ambiguity makes a file look reached and never
-unreached. The index covers the whole tree in the families' languages, so a
+unreached. The index covers the whole tree in each family's language partition, so a
 scoped run still resolves against unchanged callers. Identity is the
 repository-relative path, so a file two families match is judged once,
 under the first family in the list, and an accepted entry names the path. A
@@ -1146,8 +1164,8 @@ unreached or reached only through a shared name. The check does not resolve
 imports, `mod foo;`, side-effect imports, re-exports, string registries,
 dependency injection, framework discovery by name or attribute, macro or
 build-generated callers, or callers outside the tree, which belong to #50 or
-to no V1 check; a family wired that way is narrowed, excluded or accepted by
-a person. Two files that reference only each other read as reached. Pinned
+to no V1 check; a family wired that way is narrowed by path or accepted by a
+person. Two files that reference only each other read as reached. Pinned
 by `a_new_command_file_nothing_references_fails_as_new`,
 `losing_the_last_external_reference_is_worsened`,
 `one_ambiguous_reference_reaches_every_file_that_declares_the_name`,
@@ -1637,19 +1655,16 @@ Every check MUST:
   `doc_size`, says its entries on a line each and the gate's coverage on one
   line for the gate.
 - name every file that is present in both trees, was measured in `before`,
-  and was not measured in `after`. The union of roots in 5.4 means a check
-  can only discover more, so such a file left through an exclusion, a file
-  the grammar stopped reading, or a discovery rule the tree no longer meets.
+  and was not measured in `after`. Such a file left through compact scope, a
+  file the grammar stopped reading, or a discovery rule the tree no longer meets.
   In the hook it is a NOTE. Under `--strict` it is exit 2, per section 10.
   The rule binds a check whose scope is a set of source files. A check whose
   scope is a list a person writes, a report, or the very set it ratchets,
   such as `inventory`, has nothing to lose this way that it does not already
-  judge. `before` is measured under the `exclude` list the base commit's own
-  configuration names for the check, and under today's where the base holds
-  none: today's list applied to both trees could never show a file that an
-  exclusion this run added took away. Every other rule is today's on both
-  trees, so the reason a check gives is what it sees in `after`, and it does
-  not reconstruct why `before` measured the file. A scoped run reports the
+  judge. A compact source check measures `before` under the `in` / `except`
+  scope the base commit records, and under today's when the base records none:
+  today's scope applied to both trees could never show a file that a narrowing
+  this run took away. Every other rule is today's on both trees. A scoped run reports the
   loss among the files in its scope. The JSON carries the loss as a `lost`
   record under the gate's notes (11.2).
 - name a file it could not measure. Outside the hook that is exit 2, with or
@@ -1988,7 +2003,9 @@ One object on stdout. Fields:
   is: `unmatched` for an accepted entry that matched nothing, `unparsed` for
   a file a grammar refused in the hook, `lost` for a file `before` measured
   and `after` did not (8.6), `not-measured` for a known-language file with
-  no structural adapter, and `note` for what a check left out of its count.
+  no structural adapter, `derivation` for a derived ceiling whose recorded
+  scope fell back or differs from today's (5.4), and `note` for what a check
+  left out of its count.
   `text` carries the reason, as the `NOTE:` line printed it.
 - `exit` integer, the code the run returns. It is not read off
   `status`: a build failure that has spent its blocks is an `ERROR` run that
@@ -2224,9 +2241,9 @@ no score, no color, no glyph, no praise and no estimate of time saved.
   verdict depends on is still a pure function of the trees.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
-- A derived number is a pure function of the derivation commit and the binary
-  version. A derived path set is the union of that commit's survey and the
-  `after` tree (4.3).
+- A derived number or reachability family is a pure function of the derivation
+  commit and the binary version. Other derived path sets are the union of that
+  commit's survey and `after`; source checks discover their own facts (4.3).
 
 ## 13. Performance Budget
 
@@ -2291,13 +2308,18 @@ budget.
 `KLIN_PERF_ROW=source_areas` selects the root-count rows: the same 2,000
 source files, 1,000 Rust and 1,000 TypeScript, split over 2, 100 and 500
 directories that hold nothing but source under a manifest directory that holds
-more, so each is a root the survey derives and no configuration pins one. Each
+more, so each is a source area the tree listing discovers. Each
 row is the whole-tree strict run, five times, median. A run reads a tree's
 file list once and asks git once what it ignores, whatever the root count, so
 the three rows MUST read alike; a row that grows with the root count is a walk
 or a process per root coming back (ADR 0038). `KLIN_BIN` names another klin
 binary for the harness to run, so a row can be taken under an earlier release
-beside the current one.
+beside the current one. Such a run does not assert that every dense gate
+reported a time, because an earlier release may lack one.
+`KLIN_PERF_SCOPE=rust` gives the 2k, 10k and dense rows a `complexity` section
+of `"in": "rust"`, recorded at the base, so the derived ceilings sample one
+source area. Without it, or with `whole`, the section is absent and the
+sample is the whole repository.
 
 A check that cannot take scope, such as a whole-tree duplication share, MUST
 say so in `gate --list` and MAY be skipped by the hook under a `hook: false`
@@ -2580,13 +2602,14 @@ One seam, the binary, on a throwaway tree with a base (AGENTS.md).
 
 Core:
 
-- Config: absent file runs green, discovery, override, relative paths,
-  unknown key, `baseline` key refused, `false` exclusion, pinned beats
-  derived, dated ceiling picks the right step, schedule with no due step is
-  an error, old key `sources` names the new one.
-- Survey: roots on a single project, on a monorepo, on a tree with no source,
-  derived ceilings on a tree with fewer than 50 functions, cache hit and miss,
-  cache keyed by binary version.
+- Config: absent file runs Automatic checks, discovery, override, relative
+  paths, unknown key, `baseline` key refused, `false` exclusion, compact source
+  objects accept only human policy, retired topology keys are actionable
+  errors, pinned beats derived, dated ceiling picks the right step, and a
+  schedule with no due step is an error.
+- Survey and source facts: one project, a monorepo, a tree with no source,
+  complexity ceilings on a tree with fewer than 50 functions, lazy cache hit
+  and miss, and cache keyed by binary version.
 - Window: each candidate in order, each ADR 0013 branch outside the hook, the
   hook with a deleted `turn` file restores it from the ref with a red
   verdict, the hook with file and ref both deleted judges the branch and the

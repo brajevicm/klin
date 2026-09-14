@@ -10,7 +10,7 @@ const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "escapes": { "roots": ["src"], "languages": ["rust"] }
+  "escapes": { "in": "src" }
 }"#;
 
 fn tree() -> Tree {
@@ -215,7 +215,9 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
     tree.write(
         "klin.json",
         r#"{ "project": "t", "doc_citations": false,
-             "doc_size": [{"file": "README.md", "ceiling": 10}] }"#,
+             "doc_size": [{"file": "README.md", "ceiling": 10}],
+             "escapes": false, "stubs": false, "complexity": false,
+             "dead_symbols": false, "reachability": false }"#,
     );
     tree.words("README.md", 5);
 
@@ -263,18 +265,18 @@ fn a_config_below_the_repository_root_scopes_a_changed_run_the_same_way() {
 }
 
 #[test]
-fn a_root_outside_the_tree_klin_compares_is_a_tool_error() {
+fn a_scope_outside_the_tree_klin_compares_is_a_tool_error() {
     let tree = Tree::new();
     let elsewhere = Tree::bare();
     elsewhere.write("far/lib.rs", CLEAN);
     let outside = elsewhere.at("far");
     tree.write(
         "klin.json",
-        &format!(r#"{{ "escapes": {{ "roots": [{outside:?}], "languages": ["rust"] }} }}"#),
+        &format!(r#"{{ "escapes": {{ "in": {outside:?} }} }}"#),
     );
     tree.write("src/lib.rs", CLEAN);
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("outside the tree klin compares"), "{}", run.out);
+    assert!(run.says("is absolute"), "{}", run.out);
 }

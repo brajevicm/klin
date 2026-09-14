@@ -1,4 +1,4 @@
-//! The `reachability` check: a file of a named family that nothing else in the repository
+//! The `reachability` check: a file of a derived family that nothing else in the repository
 //! references. A family is a root and a basename glob, such as `src/commands/*_command.rs`, and
 //! a member is reached when another file references one of its eligible declarations by name.
 //! Identity is the repository-relative path, and the `unreached` metric ratchets from 0 to 1.
@@ -20,7 +20,7 @@ use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
-use crate::scope::under_or_at;
+use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
 use crate::syntax::structural::{self, Declaration, DeclarationKind, Measurement, SourceIndex};
 use crate::syntax::{self, LanguageId};
@@ -55,18 +55,7 @@ pub const PATTERN: Key = Key {
     default: "",
 };
 
-pub const KEYS: &[Key] = &[
-    NAME,
-    reference::ROOTS
-        .required()
-        .derived("the directory the family's files share"),
-    PATTERN,
-    reference::LANGUAGES
-        .derived("the one structural language of the family")
-        .defaulting("the structural languages this check supports"),
-    reference::EXCLUDE,
-    reference::SKIP_DIRS,
-];
+pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -84,7 +73,7 @@ pub struct Args {
     only: Option<Vec<String>>,
 }
 
-/// One family a person or the survey named: where its files are and what they are called.
+/// One family the derivation commit proves: where its files are and what they are called.
 #[derive(Clone)]
 struct Family {
     name: String,
@@ -93,6 +82,7 @@ struct Family {
     extensions: Vec<&'static str>,
     exclude: Vec<String>,
     skip_dirs: Vec<String>,
+    scope: Scope,
 }
 
 impl Family {
@@ -106,6 +96,7 @@ impl Family {
     /// Whether this path is a member: selected, and dropped by no exclusion.
     fn holds(&self, path: &str) -> bool {
         self.selects(path)
+            && self.scope.selects(path)
             && !path
                 .split('/')
                 .any(|segment| self.skip_dirs.iter().any(|dir| dir == segment))
@@ -113,6 +104,17 @@ impl Family {
                 files::glob_matches(glob.as_bytes(), basename(path).as_bytes())
                     || files::glob_matches(glob.as_bytes(), path.as_bytes())
             })
+    }
+
+    fn record(&self) -> Value {
+        Value::Object(Map::from_iter([
+            (NAME.name.into(), self.name.clone().into()),
+            (
+                reference::ROOTS.name.into(),
+                Value::Array(self.roots.iter().cloned().map(Value::from).collect()),
+            ),
+            (PATTERN.name.into(), self.pattern.clone().into()),
+        ]))
     }
 }
 
@@ -140,7 +142,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let config = &project.config;
     let families = families(project)?;
-    at.say(SECTION, out);
+    said_families(&families, out);
     let commit = base::commit(config.root(), at, out)?;
     let after = measure(project.tree(), &families, config.root())?;
     let (before, before_families) = before(at, &families, &commit)?;
@@ -191,17 +193,31 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 
 fn families(project: &Project) -> Result<Vec<Family>, Error> {
     let config = &project.config;
-    let held = project.section(SECTION)?;
+    let values = config.policy(SECTION, KEYS)?;
+    let scope = Scope::read(config, SECTION, &values)?;
+    if scope.has_in() && !applicable(project.tree(), &scope)? {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
+            config.file.display()
+        )));
+    }
+    let held = project
+        .source_derivation()
+        .and_then(|(facts, commit, at)| derived(project.root(), at, commit, facts))
+        .unwrap_or_else(|| Value::Array(Vec::new()));
     let listed = held.as_array().ok_or_else(|| {
         Error(format!(
             "{}: \"{SECTION}\" is a list of families, each a \"name\", \"roots\" and \"pattern\"",
             config.file.display()
         ))
     })?;
-    listed.iter().map(|entry| family(config, entry)).collect()
+    listed
+        .iter()
+        .map(|entry| family(config, entry, &scope))
+        .collect()
 }
 
-fn family(config: &Config, entry: &Value) -> Result<Family, Error> {
+fn family(config: &Config, entry: &Value, scope: &Scope) -> Result<Family, Error> {
     let values = entry
         .as_object()
         .ok_or_else(|| config.malformed(SECTION, "entry", "an object"))?;
@@ -220,7 +236,14 @@ fn family(config: &Config, entry: &Value) -> Result<Family, Error> {
         .iter()
         .map(|root| files::relative(root, config.root()))
         .collect();
-    selected_by(config, values, name.to_string(), roots, pattern.to_string())
+    selected_by(
+        config,
+        values,
+        name.to_string(),
+        roots,
+        pattern.to_string(),
+        scope,
+    )
 }
 
 /// The family with its file selection read: the languages that choose its extensions, and the
@@ -231,6 +254,7 @@ fn selected_by(
     name: String,
     roots: Vec<String>,
     pattern: String,
+    scope: &Scope,
 ) -> Result<Family, Error> {
     let named = files::strings(config, SECTION, values, reference::LANGUAGES)?;
     let extensions = structural::selected_extensions(&named)
@@ -242,7 +266,16 @@ fn selected_by(
         extensions,
         exclude: files::strings(config, SECTION, values, reference::EXCLUDE)?,
         skip_dirs: files::skip_dirs(config, SECTION, values)?,
+        scope: scope.clone(),
     })
+}
+
+fn applicable(tree: &Tree, scope: &Scope) -> Result<bool, Error> {
+    let extensions = structural::selected_extensions(&[]).unwrap_or_default();
+    Ok(tree
+        .files()?
+        .iter()
+        .any(|file| scope.inside(file) && extensions.iter().any(|end| file.ends_with(end))))
 }
 
 pub fn language_extensions() -> Vec<(&'static str, String)> {
@@ -270,8 +303,31 @@ fn measure(tree: &Tree, families: &[Family], repo_root: &Path) -> Result<Measure
     structural::measure(found, repo_root)
 }
 
-/// The base tree measured, with the families as the base's own configuration excluded them,
-/// so a file an exclusion this run added shows as lost rather than vanishing. Spec 8.6.
+/// The derived families as one provenance line and its JSON entry, and nothing when none is.
+fn said_families(families: &[Family], out: &mut Sink) {
+    if families.is_empty() {
+        return;
+    }
+    let names = families
+        .iter()
+        .map(|family| family.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let value = Value::Array(families.iter().map(Family::record).collect());
+    let rule = "the file families the derivation commit proves reached";
+    out.provenance(
+        format!("derived: {SECTION} {names}, {rule}"),
+        Some(Value::Object(Map::from_iter([
+            ("section".into(), SECTION.into()),
+            ("key".into(), Value::Null),
+            ("value".into(), value),
+            ("rule".into(), rule.into()),
+        ]))),
+    );
+}
+
+/// The base tree measured, with the families under the scope the base commit recorded, so a
+/// file this run's scope takes out shows as lost rather than vanishing. Spec 8.6.
 fn before(
     at: &Context,
     families: &[Family],
@@ -286,40 +342,25 @@ fn before(
             .prior
             .ok_or_else(|| Error("a runner gives structural checks a base tree".into()))?,
     };
+    let before_families = base_families(at.config(), prior.root(), families);
     Ok((
-        measure(prior.tree(), families, prior.root())?,
-        base_families(at.config(), prior.root(), families),
+        measure(prior.tree(), &before_families, prior.root())?,
+        before_families,
     ))
 }
 
-/// Each family with the `exclude` list the base commit's configuration gave the family of the
-/// same name, and today's list where the base names no such family. Spec 8.6.
+/// Each derived family under the compact scope recorded by the base commit. Spec 8.6.
 fn base_families(config: &Config, prior: &Path, families: &[Family]) -> Vec<Family> {
-    let held = config
-        .file
-        .file_name()
-        .and_then(|name| std::fs::read_to_string(prior.join(name)).ok())
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .and_then(|data| data.get(SECTION)?.as_array().cloned())
+    let today = families
+        .first()
+        .map(|family| family.scope.clone())
         .unwrap_or_default();
+    let scope = Scope::at_base(config, SECTION, prior, &today);
     families
         .iter()
-        .map(|family| {
-            let exclude = held
-                .iter()
-                .find(|entry| entry.get(NAME.name).and_then(Value::as_str) == Some(&family.name))
-                .and_then(|entry| entry.get(reference::EXCLUDE.name)?.as_array().cloned())
-                .map(|listed| {
-                    listed
-                        .iter()
-                        .filter_map(Value::as_str)
-                        .map(str::to_string)
-                        .collect()
-                });
-            Family {
-                exclude: exclude.unwrap_or_else(|| family.exclude.clone()),
-                ..family.clone()
-            }
+        .map(|family| Family {
+            scope: scope.clone(),
+            ..family.clone()
         })
         .collect()
 }
@@ -341,7 +382,7 @@ fn reached(index: &SourceIndex) -> BTreeSet<&str> {
     let mut out = BTreeSet::new();
     for file in index.files() {
         for reference in &file.references {
-            for held in index.declarations(&reference.name) {
+            for held in index.declarations(file.language, &reference.name) {
                 if held.file != file.file && eligible(held.declaration) {
                     out.insert(held.file);
                 }
@@ -358,9 +399,9 @@ fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
         .iter()
         .filter(|declaration| eligible(declaration))
         .any(|declaration| {
-            index.declarations(&declaration.name).count() == 1
+            index.declarations(file.language, &declaration.name).count() == 1
                 && index
-                    .references(&declaration.name)
+                    .references(file.language, &declaration.name)
                     .any(|site| site.file != file.file)
         })
 }

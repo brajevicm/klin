@@ -189,6 +189,15 @@ impl Project {
         &self.tree
     }
 
+    /// The derivation commit's factual survey and cache directory, for a check that derives
+    /// its own policy from them.
+    pub fn source_derivation(&self) -> Option<(&survey::Survey, &str, Option<&Path>)> {
+        let derived = self.derivation();
+        derived
+            .at_commit()
+            .map(|(facts, commit)| (facts, commit, derived.state()))
+    }
+
     /// The files the working tree changed against the base, computed once for the base the run
     /// judges against and borrowed by everything that asks after. A run has one base, so a
     /// second one is read and not kept.

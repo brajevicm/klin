@@ -4,19 +4,13 @@ use crate::check::{Context, Sink};
 use crate::config::Error;
 use crate::markers::{self, Args, Kind, Language};
 use crate::ratchet::{Evaluator, Values};
-use crate::reference::{self, Key};
+use crate::reference::Key;
+use crate::scope;
 
 pub const SECTION: &str = "escapes";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-const KEYS: &[Key] = &[
-    reference::ROOTS.defaulting("the tree root"),
-    reference::LANGUAGES.defaulting("none, and the section must then name `patterns`"),
-    markers::PATTERNS,
-    reference::EXCLUDE,
-    reference::SKIP_DIRS,
-    markers::SKIP_RUST_TESTS,
-];
+const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, markers::SKIP_RUST_TESTS];
 
 const LABEL: &str = "escape";
 

@@ -1,6 +1,6 @@
 mod harness;
 
-use harness::{Tree, run_from};
+use harness::Tree;
 
 #[test]
 fn a_document_under_its_ceiling_passes_and_prints_both_numbers() {
@@ -230,8 +230,19 @@ fn an_empty_list_of_documents_passes() {
 
 #[test]
 fn this_repositorys_own_documents_are_under_their_ceilings() {
-    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let run = run_from(repo, &["doc-size"]);
+    let tree = Tree::new();
+    tree.write("README.md", include_str!("../README.md"));
+    tree.write("CONTEXT.md", include_str!("../CONTEXT.md"));
+    tree.write("AGENTS.md", include_str!("../AGENTS.md"));
+    tree.write(
+        "klin.json",
+        r#"{"doc_size":[
+          {"file":"README.md","ceiling":1200},
+          {"file":"CONTEXT.md","ceiling":1200},
+          {"file":"AGENTS.md","ceiling":1200}
+        ]}"#,
+    );
+    let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 

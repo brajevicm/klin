@@ -43,7 +43,7 @@ fn subcommands() -> Vec<String> {
 /// configuration names no gate over a tree the survey finds nothing in.
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
-    tree.write("klin.json", "{}");
+    tree.write("klin.json", r#"{"project":"catalogue"}"#);
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {
@@ -112,7 +112,7 @@ fn every_catalogue_section_is_a_key_the_configuration_accepts() {
 
 /// Every section `klin reference` prints under one of its headings, which it prints off the
 /// same catalogue. The page names a section twice, once under `## Sections` with its keys and
-/// once under `## Language names` with its file sets, so each heading is read on its own.
+/// once under built-in language coverage with its file sets, so each heading is read on its own.
 fn printed_under(heading: &str) -> Vec<String> {
     let tree = Tree::bare();
     let run = tree.run(&["reference"]);
@@ -185,7 +185,7 @@ fn every_catalogue_check_has_a_section_the_reference_prints() {
 #[test]
 fn every_language_table_belongs_to_a_section_the_reference_names() {
     let sections = sections();
-    let named = printed_under("\n## Language names\n");
+    let named = printed_under("\n## Built-in language coverage\n");
 
     assert!(!named.is_empty(), "no language table in: {sections:?}");
     for section in &named {

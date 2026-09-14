@@ -4,7 +4,7 @@ use harness::Tree;
 
 const CONFIG: &str = r#"{
   "project": "t",
-  "stubs": { "roots": ["src"], "languages": ["rust"] }
+  "stubs": { "in": "src" }
 }"#;
 
 fn tree() -> Tree {
@@ -71,38 +71,32 @@ fn a_marker_inside_an_inline_test_module_is_a_stub() {
 }
 
 #[test]
-fn a_project_pattern_is_matched_with_its_own_remedy() {
+fn a_retired_project_pattern_is_rejected() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "stubs": { "roots": ["src"], "languages": ["rust"],
-             "patterns": { "placeholder":
+        r#"{ "stubs": { "patterns": { "placeholder":
                { "match": "PLACEHOLDER", "remedy": "write the code it stands for" } } } }"#,
     );
     tree.write("src/lib.rs", "fn f() {\n    PLACEHOLDER\n}\n");
 
     let run = tree.run(&["stubs"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(
-        run.says("src/lib.rs:2  placeholder — write the code it stands for"),
-        "{}",
-        run.out
-    );
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
 
 #[test]
-fn a_project_pattern_that_is_not_a_regex_is_refused_naming_it() {
+fn a_retired_malformed_project_pattern_is_rejected_before_compilation() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "stubs": { "roots": ["src"], "patterns": {"broken": "([unclosed"} } }"#,
+        r#"{ "stubs": { "patterns": {"broken": "([unclosed"} } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("broken"), "{}", run.out);
-    assert!(run.says("not a regular expression"), "{}", run.out);
+    assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
 
 #[test]
@@ -110,8 +104,7 @@ fn a_not_implemented_macro_is_a_stub_and_no_longer_an_escape() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "roots": ["src"], "languages": ["rust"] },
-             "stubs": { "roots": ["src"], "languages": ["rust"] } }"#,
+        r#"{ "escapes": { "in": "src" }, "stubs": { "in": "src" } }"#,
     );
     tree.write(
         "src/lib.rs",
@@ -132,11 +125,7 @@ fn a_not_implemented_macro_is_a_stub_and_no_longer_an_escape() {
 /// Two lines per row: the one that fails, then one the row must leave alone.
 fn rows() -> Tree {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "stubs": { "roots": ["src"],
-             "languages": ["rust", "python", "go", "typescript"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "stubs": { "in": "src" } }"#);
     tree.write(
         "src/a.rs",
         "fn f() {\n    todo!()\n}\n// TODO: fix this\nlet todos = f();\n// a todo list\n",
@@ -195,25 +184,25 @@ fn skip_rust_tests_is_refused_because_a_stub_in_a_test_is_a_stub() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "stubs": { "roots": ["src"], "languages": ["rust"], "skip_rust_tests": true } }"#,
+        r#"{ "stubs": { "in": "src", "skip_rust_tests": true } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("skip_rust_tests"), "{}", run.out);
-    assert!(run.says("Delete the key."), "{}", run.out);
+    assert!(
+        run.says("narrow the check only with \"in\" / \"except\""),
+        "{}",
+        run.out
+    );
 }
 
 /// The body shapes of #114. Every shape is judged by the function walk, so a config that names
 /// the language it is written in reads it.
 fn shaped() -> Tree {
     let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{ "stubs": { "roots": ["src"],
-             "languages": ["rust", "python", "typescript"] } }"#,
-    );
+    tree.write("klin.json", r#"{ "stubs": { "in": "src" } }"#);
     tree
 }
 
@@ -373,19 +362,18 @@ fn a_decorator_or_a_base_whose_text_only_spells_a_marker_does_not_hide_a_pass_bo
 }
 
 #[test]
-fn a_project_pattern_alone_judges_no_body_shape() {
+fn retired_custom_patterns_cannot_replace_the_built_in_detector() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "stubs": { "roots": ["src"], "languages": [],
-                        "patterns": { "banned": "NOCOMMIT" } } }"#,
+        r#"{ "stubs": { "patterns": { "banned": "NOCOMMIT" } } }"#,
     );
     tree.write("src/a.py", "def save(key):\n    pass\n");
     tree.write("src/a.rs", "fn f() {\n    // ...\n}\n");
 
     let run = tree.run(&["stubs"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("OK: 0 stub site(s)"), "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
 
 #[test]
@@ -397,46 +385,40 @@ fn a_tree_with_no_stubs_section_gates_its_markers_over_what_the_survey_found() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  stubs"), "{}", run.out);
     assert!(run.says("src/lib.rs:2  not implemented"), "{}", run.out);
-    assert!(run.says("derived: stubs roots ."), "{}", run.out);
-    assert!(run.says("derived: stubs languages rust"), "{}", run.out);
+    assert!(!run.says("derived: stubs"), "{}", run.out);
 }
 
 #[test]
-fn a_language_the_stubs_table_does_not_name_is_left_out_of_the_derived_section() {
+fn unsupported_languages_are_ignored_by_the_built_in_detector() {
     let tree = Tree::new();
     tree.write("src/lib.rs", "fn f() {}\n");
     tree.write("src/app.swift", "func f() {}\n");
 
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("derived: stubs languages rust,"), "{}", run.out);
-    assert!(!run.says("stubs languages rust, swift"), "{}", run.out);
+    assert!(run.says("1 file(s) found, 1 measured"), "{}", run.out);
+    assert!(!run.says("src/app.swift"), "{}", run.out);
 }
 
 #[test]
-fn a_tree_with_no_language_the_stubs_table_names_needs_a_person_for_the_section() {
+fn stubs_runs_automatically_when_the_tree_has_no_supported_file() {
     let tree = Tree::new();
     tree.write("src/app.swift", "func f() {}\n");
 
     let run = tree.run(&["gate", "--list"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("escapes — runs"), "{}", run.out);
-    assert!(
-        run.says("stubs — needs a section a person writes"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("stubs — runs"), "{}", run.out);
 }
 
 #[test]
-fn a_pinned_stubs_key_is_kept_and_the_survey_supplies_the_other() {
+fn a_compact_scope_limits_the_built_in_detector() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{ "stubs": { "roots": ["src"] } }"#);
+    tree.write("klin.json", r#"{ "stubs": { "in": "src" } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
     tree.write("lib/todo.rs", "fn f() {\n    todo!()\n}\n");
 
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("pinned: stubs roots src"), "{}", run.out);
-    assert!(run.says("derived: stubs languages rust"), "{}", run.out);
+    assert!(!run.says("lib/todo.rs"), "{}", run.out);
 }

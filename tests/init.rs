@@ -71,21 +71,15 @@ fn init_writes_every_section_it_can_infer() {
     let run = tree.run(&["init"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
-    assert_eq!(
-        config["complexity"]["roots"],
-        serde_json::json!(["src", "tests"]),
-        "{config}"
-    );
-    assert_eq!(
-        config["escapes"]["roots"],
-        serde_json::json!(["src", "tests"]),
-        "{config}"
-    );
-    assert_eq!(
-        config["escapes"]["languages"],
-        serde_json::json!(["rust"]),
-        "{config}"
-    );
+    for section in [
+        "complexity",
+        "escapes",
+        "stubs",
+        "dead_symbols",
+        "reachability",
+    ] {
+        assert_eq!(config.get(section), None, "{section}: {config}");
+    }
     assert_eq!(config["doc_size"][0]["file"], "README.md", "{config}");
     assert!(
         config["doc_size"][0]["ceiling"]
@@ -182,8 +176,8 @@ fn add_fills_in_the_sections_the_config_does_not_name() {
     let config = config(&tree);
     assert_eq!(config["project"], "mine", "{config}");
     assert_eq!(config["doc_size"][0]["ceiling"], 900, "{config}");
-    assert!(config["escapes"].is_object(), "{config}");
-    assert!(config["complexity"].is_object(), "{config}");
+    assert_eq!(config.get("escapes"), None, "{config}");
+    assert_eq!(config.get("complexity"), None, "{config}");
     assert!(config["doc_citations"].is_array(), "{config}");
 }
 
@@ -498,9 +492,9 @@ fn hooks_with_no_host_at_the_root_is_refused() {
     assert!(run.says("--host"), "{}", run.out);
 }
 
-/// A key the survey does not derive is a person's, and `--force` re-pins around it. #107.
+/// Retired source-topology keys are refused instead of silently surviving a rewrite. #179.
 #[test]
-fn force_keeps_an_exclusion_the_survey_does_not_derive() {
+fn force_refuses_retired_source_topology() {
     let tree = two_documents();
     tree.write(
         "klin.json",
@@ -511,19 +505,8 @@ fn force_keeps_an_exclusion_the_survey_does_not_derive() {
     );
 
     let run = tree.run(&["init", "--force"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let config = config(&tree);
-    assert_eq!(
-        config["complexity"]["exclude"],
-        serde_json::json!(["src/generated/**"]),
-        "{config}"
-    );
-    assert_eq!(
-        config["escapes"]["exclude"],
-        serde_json::json!(["vendor/**"]),
-        "{config}"
-    );
-    assert!(config["complexity"]["ceilings"].is_object(), "{config}");
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads"), "{}", run.out);
 }
 
 /// A hook that only mentions klin belongs to another tool, and reading it as klin's would
@@ -884,21 +867,17 @@ fn hooks_follows_a_settings_file_that_is_a_link() {
 }
 
 #[test]
-fn init_writes_the_derived_stubs_section() {
+fn init_omits_automatic_source_sections() {
     let tree = in_debt();
 
     let run = tree.run(&["init"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
-    assert_eq!(
-        config["stubs"],
-        serde_json::json!({"roots": ["src", "tests"], "languages": ["rust"]}),
-        "{config}"
-    );
+    assert_eq!(config.get("stubs"), None, "{config}");
 }
 
 #[test]
-fn force_re_pins_the_stubs_section() {
+fn force_refuses_the_retired_stubs_shape() {
     let tree = in_debt();
     tree.write(
         "klin.json",
@@ -906,11 +885,6 @@ fn force_re_pins_the_stubs_section() {
     );
 
     let run = tree.run(&["init", "--force"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let config = config(&tree);
-    assert_eq!(
-        config["stubs"],
-        serde_json::json!({"roots": ["src", "tests"], "languages": ["rust"]}),
-        "{config}"
-    );
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no longer reads"), "{}", run.out);
 }

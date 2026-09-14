@@ -43,15 +43,14 @@ fn every_key_says_whether_it_is_required_and_where_its_value_comes_from() {
 
     assert!(out.contains("| Key | Holds | Required | Source | Derivation rule | Default |"));
     assert!(
-        out.contains("| `roots` | the directories the check reads | yes | derived when absent"),
-        "no derived roots row in: {out}"
+        out.contains(
+            "| `cc` | the cyclomatic complexity a function may not pass | no | derived when absent"
+        ),
+        "no derived complexity row in: {out}"
     );
     assert!(
-        out.contains(
-            "| `exclude_except` | the files an `exclude` glob must not drop | no | \
-                      pinned only"
-        ),
-        "no pinned-only exclude_except row in: {out}"
+        out.contains("| `in` | a repository-relative path") && out.contains("| no | pinned only"),
+        "no pinned-only compact scope row in: {out}"
     );
     assert!(
         out.contains("95th percentile"),
@@ -66,7 +65,7 @@ fn every_key_says_whether_it_is_required_and_where_its_value_comes_from() {
 }
 
 #[test]
-fn the_reference_states_the_language_names_and_the_exclusion_facts() {
+fn the_reference_states_built_in_languages_and_compact_scope() {
     let out = printed();
 
     assert!(
@@ -78,16 +77,16 @@ fn the_reference_states_the_language_names_and_the_exclusion_facts() {
         "no complexity javascript row in: {out}"
     );
     assert!(
-        out.contains("`skip_dirs` adds to that list"),
-        "no skip_dirs fact in: {out}"
+        out.contains("capabilities of the binary, not selectors accepted in `klin.json`"),
+        "no built-in language fact in: {out}"
     );
     assert!(
-        out.contains("It cannot bring back a file under a skipped directory"),
-        "no exclude_except fact in: {out}"
+        out.contains("`in` narrows a check to a repository-relative path"),
+        "no compact scope fact in: {out}"
     );
     assert!(
-        out.contains("Only `complexity` reads `exclude_except`"),
-        "no exclude_except scope fact in: {out}"
+        out.contains("reject the retired `roots`, `languages`, `patterns`, `skip_dirs`"),
+        "no retired topology migration fact in: {out}"
     );
 }
 

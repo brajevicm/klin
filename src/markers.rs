@@ -13,6 +13,7 @@ use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::{self, Key};
+use crate::scope::Scope;
 use crate::syntax;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
@@ -46,20 +47,6 @@ pub struct Kind {
     pub evaluator: Evaluator<'static>,
 }
 
-/// The keys both marker sections have the survey supply, named off the declarations so the
-/// survey and the reference cannot spell one key differently. These are the keys that carry a
-/// rule, restated because the survey merges a section key by key. Spec 5.4.
-pub const DERIVED: &[&str] = &[reference::ROOTS.name, reference::LANGUAGES.name];
-
-/// The one key a marker section has that no other section has.
-pub const PATTERNS: Key = Key {
-    name: "patterns",
-    holds: "the project's own patterns, each a regex or a {\"match\", \"remedy\"} pair",
-    required: false,
-    rule: None,
-    default: "no pattern of the project's own",
-};
-
 /// The key only a kind that may skip them reads. A kind whose check judges an inline test module
 /// either way refuses it, so nothing turns it on and measures the same set in silence.
 pub const SKIP_RUST_TESTS: Key = Key {
@@ -78,8 +65,6 @@ pub fn language_extensions(kind: &Kind) -> Vec<(&'static str, String)> {
             .map(|language| (language.names, language.suffixes)),
     )
 }
-
-const EVERY_FILE: &str = "";
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -118,14 +103,12 @@ struct Set {
 
 struct Spec {
     search: Search,
-    roots: Vec<PathBuf>,
 }
 
 #[derive(Clone)]
 struct Search {
     sets: Vec<Set>,
-    skip_dirs: Vec<String>,
-    exclude: Vec<String>,
+    scope: Scope,
     skip_rust_tests: bool,
 }
 
@@ -178,25 +161,11 @@ pub fn show(label: &str, values: &Values) -> String {
     }
 }
 
-/// Whether this kind's table holds rows for a language the survey classified a tree into, so a
-/// derived section names no language the check would refuse. Spec 5.4.
-pub fn holds_rows_for(kind: &Kind, language: &str) -> bool {
-    kind.languages
-        .iter()
-        .any(|held| held.names.contains(&language))
-}
-
 pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(kind, project)?;
     at.say(kind.section, out);
-    let read = findings(
-        kind,
-        &spec.search,
-        project.tree(),
-        &spec.roots,
-        project.root(),
-    )?;
+    let read = findings(kind, &spec.search, project.tree(), project.root())?;
     let sites = ratchet::scoped(&read.findings, at.only);
     let aside = match read.skipped {
         0 => String::new(),
@@ -233,21 +202,15 @@ fn at_the_base(
     };
     let project = at.project;
     let search = Search {
-        exclude: files::base_exclusions(
+        scope: Scope::at_base(
             &project.config,
             kind.section,
             prior.root(),
-            &spec.search.exclude,
+            &spec.search.scope,
         ),
         ..spec.search.clone()
     };
-    let before = findings(
-        kind,
-        &search,
-        prior.tree(),
-        &base::roots(&spec.roots, project, prior.root())?,
-        prior.root(),
-    )?;
+    let before = findings(kind, &search, prior.tree(), prior.root())?;
     let mut held = before.findings;
     held.retain(|finding| project.was_held(&finding.file));
     Ok((held, before.files))
@@ -263,13 +226,16 @@ fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<
 }
 
 fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
-    let section = ratchet::section(project, kind.section)?;
-    let values = &section.values;
-    Ok(Spec {
-        search: search(kind, section.config, values)?,
-        roots: files::roots(section.config, section.name, values, reference::ROOTS)?
-            .unwrap_or_else(|| vec![section.config.root().to_path_buf()]),
-    })
+    let values = project.config.policy(kind.section, kind.keys)?;
+    let search = search(kind, &project.config, &values)?;
+    if search.scope.has_in() && !applicable(kind, project.tree(), &search.scope)? {
+        return Err(Error(format!(
+            "{}: \"{}\" has an \"in\" scope with no applicable file",
+            project.config.file.display(),
+            kind.section
+        )));
+    }
+    Ok(Spec { search })
 }
 
 fn list_languages(kind: &Kind, out: &mut String) {
@@ -287,44 +253,15 @@ fn list_languages(kind: &Kind, out: &mut String) {
 
 fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Error> {
     Ok(Search {
-        sets: sets(kind, config, section)?,
-        skip_dirs: files::skip_dirs(config, kind.section, section)?,
-        exclude: files::strings(config, kind.section, section, reference::EXCLUDE)?,
+        sets: language_sets(kind, config)?,
+        scope: Scope::read(config, kind.section, section)?,
         skip_rust_tests: skips_tests(kind, config, section)?,
     })
 }
 
-fn sets(kind: &Kind, config: &Config, section: &Values) -> Result<Vec<Set>, Error> {
-    let named = files::strings(config, kind.section, section, reference::LANGUAGES)?;
-    let mut sets = language_sets(kind, config, &named)?;
-    let project = project_patterns(kind, config, section)?;
-    if named.is_empty() && project.is_empty() {
-        return Err(Error(format!(
-            "{}: \"{}\" names no \"{}\" and no \"{}\" — nothing to look for",
-            config.file.display(),
-            kind.section,
-            reference::LANGUAGES.name,
-            PATTERNS.name
-        )));
-    }
-    if !project.is_empty() {
-        sets.push(project_set(kind, config, &sets, project)?);
-    }
-    Ok(sets)
-}
-
-/// One set per language, however many names the config gives it. Two names for one set, such as
-/// javascript and typescript, would otherwise read every file twice and double every count.
-fn language_sets(kind: &Kind, config: &Config, named: &[String]) -> Result<Vec<Set>, Error> {
-    let mut wanted: Vec<&'static Language> = Vec::new();
-    for name in named {
-        let set = language(kind, name).ok_or_else(|| unknown_language(kind, config, name))?;
-        if !wanted.iter().any(|held| std::ptr::eq(*held, set)) {
-            wanted.push(set);
-        }
-    }
-    wanted
-        .into_iter()
+fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
+    kind.languages
+        .iter()
         .map(|set| {
             Ok(Set {
                 shapes: kind.reads_shapes,
@@ -339,45 +276,6 @@ fn language_sets(kind: &Kind, config: &Config, named: &[String]) -> Result<Vec<S
             })
         })
         .collect()
-}
-
-fn language(kind: &Kind, name: &str) -> Option<&'static Language> {
-    kind.languages
-        .iter()
-        .find(|language| language.names.contains(&name))
-}
-
-fn project_set(
-    kind: &Kind,
-    config: &Config,
-    sets: &[Set],
-    project: Vec<(String, String, String)>,
-) -> Result<Set, Error> {
-    let mut suffixes: Vec<String> = sets.iter().flat_map(|set| set.suffixes.clone()).collect();
-    suffixes.sort();
-    suffixes.dedup();
-    if suffixes.is_empty() {
-        suffixes.push(EVERY_FILE.to_string());
-    }
-    Ok(Set {
-        shapes: false,
-        suffixes,
-        patterns: compiled(kind, config, project.into_iter())?,
-    })
-}
-
-fn unknown_language(kind: &Kind, config: &Config, name: &str) -> Error {
-    let known: Vec<&str> = kind
-        .languages
-        .iter()
-        .flat_map(|language| language.names.iter().copied())
-        .collect();
-    Error(format!(
-        "{}: \"{}\" names no built-in patterns for \"{name}\" — one of: {}",
-        config.file.display(),
-        kind.section,
-        known.join(", ")
-    ))
 }
 
 fn compiled(
@@ -422,83 +320,46 @@ fn skips_tests(kind: &Kind, config: &Config, section: &Values) -> Result<bool, E
     }
 }
 
-fn project_patterns(
-    kind: &Kind,
-    config: &Config,
-    section: &Values,
-) -> Result<Vec<(String, String, String)>, Error> {
-    let Some(listed) = section.get(PATTERNS.name) else {
-        return Ok(Vec::new());
-    };
-    let malformed = || {
-        config.malformed(
-            kind.section,
-            PATTERNS.name,
-            "an object of name to regex, or to a {\"match\", \"remedy\"} pair",
-        )
-    };
-    listed
-        .as_object()
-        .ok_or_else(malformed)?
-        .iter()
-        .map(|(name, stated)| match stated {
-            Value::String(regex) => Ok((name.clone(), regex.clone(), String::new())),
-            Value::Object(pair) => Ok((
-                name.clone(),
-                pair.get("match")
-                    .and_then(Value::as_str)
-                    .ok_or_else(malformed)?
-                    .to_string(),
-                pair.get("remedy")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-            )),
-            _ => Err(malformed()),
-        })
-        .collect()
-}
-
-fn findings(
-    kind: &Kind,
-    search: &Search,
-    tree: &Tree,
-    roots: &[PathBuf],
-    repo_root: &Path,
-) -> Result<Read, Error> {
+fn findings(kind: &Kind, search: &Search, tree: &Tree, repo_root: &Path) -> Result<Read, Error> {
     let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
     let mut cache: BTreeMap<String, Skipped> = BTreeMap::new();
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
     let mut shaped: BTreeSet<String> = BTreeSet::new();
     let mut skipped = 0;
-    for set in &search.sets {
-        let suffixes: Vec<&str> = set.suffixes.iter().map(String::as_str).collect();
-        let wanted = files::Wanted {
-            extensions: &suffixes,
-            skip_dirs: &search.skip_dirs,
-            exclude: &search.exclude,
-            exclude_except: &[],
-            skip_hidden: false,
-        };
-        let found = files::found(tree, roots, &wanted)?;
-        excluded.extend(
-            found
-                .excluded
-                .iter()
-                .map(|file| files::relative(file, repo_root)),
-        );
-        for file in found.kept {
-            let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
-            let text = String::from_utf8_lossy(&bytes).to_string();
-            let rel = files::relative(&file, repo_root);
-            let past = cached(kind, search, &rel, &text, &mut cache);
+    let suffixes: Vec<&str> = search
+        .sets
+        .iter()
+        .flat_map(|set| set.suffixes.iter().map(String::as_str))
+        .collect();
+    let skip_dirs = files::default_skip_dirs();
+    let wanted = files::Wanted {
+        extensions: &suffixes,
+        skip_dirs: &skip_dirs,
+        exclude: &[],
+        exclude_except: &[],
+        skip_hidden: false,
+    };
+    for file in files::found(tree, &[repo_root.to_path_buf()], &wanted)?.kept {
+        let rel = files::relative(&file, repo_root);
+        if !search.scope.selects(&rel) {
+            excluded.insert(rel);
+            continue;
+        }
+        let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
+        let text = String::from_utf8_lossy(&bytes).to_string();
+        let past = cached(kind, search, &rel, &text, &mut cache);
+        for set in search
+            .sets
+            .iter()
+            .filter(|set| set.suffixes.iter().any(|end| rel.ends_with(end)))
+        {
             skipped += tally(set, &rel, &text, &past, &mut seen);
             if set.shapes && shaped.insert(rel.clone()) {
                 shapes(&rel, &text, &mut seen);
             }
-            measured.insert(rel);
         }
+        measured.insert(rel);
     }
     Ok(Read {
         findings: collected(kind, seen),
@@ -510,6 +371,16 @@ fn findings(
             unreadable: Vec::new(),
         },
     })
+}
+
+fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {
+    Ok(tree.files()?.iter().any(|file| {
+        scope.inside(file)
+            && kind
+                .languages
+                .iter()
+                .any(|language| language.suffixes.iter().any(|end| file.ends_with(end)))
+    }))
 }
 
 /// The body shapes of one file's functions, which only a parser sees, recorded as sites. #114.

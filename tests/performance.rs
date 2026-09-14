@@ -64,6 +64,7 @@ struct Fixture {
     tsx: usize,
     generated: Generated,
     profile: Profile,
+    scope: &'static str,
 }
 
 #[derive(Default)]
@@ -207,7 +208,12 @@ impl Fixture {
         let tree = Tree::bare();
         tree.repository();
         let tsx = files_per_language / 100;
-        write_project_files(&tree, profile);
+        let scope = match std::env::var("KLIN_PERF_SCOPE").as_deref() {
+            Err(_) | Ok("whole") => "whole",
+            Ok("rust") => "rust",
+            Ok(other) => panic!("KLIN_PERF_SCOPE={other}: expected whole or rust"),
+        };
+        write_project_files(&tree, scope);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
             assert_eq!(generated, expected, "{} generated sources", profile.name);
@@ -234,11 +240,12 @@ impl Fixture {
             tsx,
             generated,
             profile,
+            scope,
         }
     }
 
     fn dense_gate_shape_is_present(&self, samples: &Samples) {
-        if self.profile.units.is_none() {
+        if self.profile.units.is_none() || std::env::var_os("KLIN_BIN").is_some() {
             return;
         }
         for name in ["complexity", "dead-symbols", "reachability"] {
@@ -319,15 +326,13 @@ impl Fixture {
     }
 }
 
-fn write_project_files(tree: &Tree, profile: Profile) {
-    let structural = match profile.units {
-        Some(_) => {
-            r#","dead_symbols":{"roots":["rust/src","web/src"],"languages":["rust","typescript"]},"reachability":[{"name":"rust-modules","roots":["rust/src"],"pattern":"module_*.rs","languages":["rust"]},{"name":"typescript-modules","roots":["web/src"],"pattern":"module_*.ts","languages":["typescript"]}]"#
-        }
-        None => "",
+fn write_project_files(tree: &Tree, scope: &str) {
+    let complexity = match scope {
+        "rust" => r#", "complexity":{"in":"rust"}"#,
+        _ => "",
     };
     let config = format!(
-        r#"{{"project":"performance","version":"{}","build":[],"complexity":{{"languages":["rust","typescript"]}}{structural}}}"#,
+        r#"{{"project":"performance","version":"{}","build":[]{complexity}}}"#,
         env!("CARGO_PKG_VERSION"),
     );
     assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
@@ -465,9 +470,10 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
     let counts = count_paths(git_paths(fixture.tree.root(), ["ls-files", "-z"]));
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {} ({}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
+        "fixture {} ({}, complexity_scope={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files=20 (10 rust, 10 typescript)",
         size,
         fixture.profile.name,
+        fixture.scope,
         fixture.generated.loc,
         fixture.generated.declarations,
         fixture.generated.digest,

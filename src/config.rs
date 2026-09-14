@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::reference::Key;
 
@@ -173,6 +173,48 @@ impl Config {
             self.file.display()
         ))
     }
+
+    /// One Automatic check's human policy, empty when absent and refused when it names a field
+    /// that check does not read. Check-specific meaning stays in the check.
+    pub fn policy(
+        &self,
+        section: &str,
+        keys: &[crate::reference::Key],
+    ) -> Result<Map<String, Value>, Error> {
+        let Some(value) = self.pinned(section) else {
+            return Ok(Map::new());
+        };
+        let fields = value.as_object().ok_or_else(|| {
+            Error(format!(
+                "{}: \"{section}\" must be an object or false",
+                self.file.display()
+            ))
+        })?;
+        if fields.is_empty() {
+            return Err(Error(format!(
+                "{}: \"{section}\" must state at least one of: {}",
+                self.file.display(),
+                keys.iter()
+                    .map(|key| key.name)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+        if let Some(unknown) = fields
+            .keys()
+            .find(|name| !keys.iter().any(|key| key.name == *name))
+        {
+            return Err(Error(format!(
+                "{}: \"{section}\" has unknown field \"{unknown}\" — it reads only: {}",
+                self.file.display(),
+                keys.iter()
+                    .map(|key| key.name)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+        Ok(fields.clone())
+    }
 }
 
 /// What every command refuses before it reads a section: the config errors of section 14,
@@ -181,8 +223,40 @@ fn well_formed(file: &Path, data: &Value) -> Result<(), Error> {
     a_version_is_a_string(file, data)?;
     every_key_is_one_klin_reads(file, data)?;
     no_section_names_a_retired_key(file, data)?;
+    no_source_gate_describes_the_repository(file, data)?;
     crate::conventions::no_stale_debt(file, data)?;
     crate::ceiling::every_schedule(file, data)
+}
+
+fn no_source_gate_describes_the_repository(file: &Path, data: &Value) -> Result<(), Error> {
+    for check in crate::check::CATALOGUE.iter().filter(|check| {
+        check.activation == crate::check::Activation::Automatic && check.derives.is_none()
+    }) {
+        let Some(value) = data.get(check.section) else {
+            continue;
+        };
+        if value.is_array() {
+            return Err(Error(format!(
+                "{}: \"{}\" no longer accepts person-authored families — remove the list; narrow discovery only with \"in\" / \"except\"",
+                file.display(),
+                check.section
+            )));
+        }
+        let Some(fields) = value.as_object() else {
+            continue;
+        };
+        if let Some(key) = fields
+            .keys()
+            .find(|key| !check.keys.iter().any(|known| known.name == *key))
+        {
+            return Err(Error(format!(
+                "{}: \"{}\" no longer reads \"{key}\" — repository topology is discovered; narrow the check only with \"in\" / \"except\"",
+                file.display(),
+                check.section
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn no_section_names_a_retired_key(file: &Path, data: &Value) -> Result<(), Error> {

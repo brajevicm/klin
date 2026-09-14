@@ -8,8 +8,8 @@ use crate::changed::git;
 use crate::project::{self, Tree};
 use crate::scope::{ROOT, under_or_at};
 use crate::{
-    build, cache, check, complexity, config, dead_symbols, doc_citations, doc_size, escapes, files,
-    inventory, lockfile, markers, reachability, reference, state, stubs, syntax, turn,
+    build, cache, check, config, doc_citations, doc_size, files, inventory, lockfile, reference,
+    state, turn,
 };
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -31,19 +31,12 @@ pub const TEST_PREFIXES: &[&str] = &["test_", "spec_"];
 pub const TEST_SUFFIXES: &[&str] = &["_test", "_spec", ".test", ".spec", "Test", "Tests"];
 
 /// The keys the two derived numbers are cached under, beside the survey of the same commit.
-const COMPLEXITY: &str = "complexity";
 const DOC_SIZE: &str = "doc_size";
 
 /// What the `derived:` line and the `{section, key, value, rule}` entry both call the test-root
 /// set. It is a derived value of 4.3 and not a key any config states, so the two say it once.
 const TEST_ROOTS: &str = "test roots";
 
-/// The floor a derived complexity ceiling never falls below, and the sample a percentile needs
-/// before it is taken at all. Spec 5.4.
-const CC_FLOOR: u64 = 5;
-const LINES_FLOOR: u64 = 25;
-const SAMPLE: usize = 50;
-const PERCENTILE: usize = 95;
 const CEILING_STEP: u64 = 50;
 
 /// What one tree says about itself: where its source is, what languages it is in, the documents
@@ -74,10 +67,7 @@ pub struct Derived {
     /// Every derivable section, in the order the lines print, and one cell per section.
     names: Vec<&'static str>,
     sections: Vec<OnceCell<Option<Value>>>,
-    /// The complexity sample of the derivation commit, and `None` where no run needs it.
-    sample: OnceCell<Option<(Sample, String)>>,
     documents: OnceCell<BTreeMap<String, u64>>,
-    families: OnceCell<Option<Value>>,
     /// The derived roots the derivation commit's survey did not hold. A site under one matches
     /// nothing in `before`, so a directory that becomes a root brings no inherited debt with
     /// it. Empty when there is no commit to survey. Spec 7.1.
@@ -100,7 +90,10 @@ pub fn keys(section: &str) -> Option<&'static [&'static str]> {
 /// Whether a section measures code, which is exactly the set the survey supplies roots for. A
 /// section that reads documents has nothing to lose when the tree has no source root. Spec 10.
 pub fn reads_code(section: &str) -> bool {
-    keys(section).is_some_and(|keys| keys.contains(&reference::ROOTS.name))
+    matches!(
+        section,
+        "complexity" | "escapes" | "stubs" | "dead_symbols" | "reachability"
+    ) || keys(section).is_some_and(|keys| keys.contains(&reference::ROOTS.name))
 }
 
 /// A section the config states in full, so the survey does not have to run for it. A section
@@ -176,16 +169,18 @@ pub fn derive(tree: &Tree, pinned: &Value) -> Derived {
         pinned: pinned.clone(),
         sections: names.iter().map(|_| OnceCell::new()).collect(),
         names,
-        sample: OnceCell::new(),
         documents: OnceCell::new(),
-        families: OnceCell::new(),
         unheld,
     }
 }
 
 impl Derived {
-    fn at_commit(&self) -> Option<(&Survey, &str)> {
+    pub fn at_commit(&self) -> Option<(&Survey, &str)> {
         self.held.as_ref().zip(self.commit.as_deref())
+    }
+
+    pub fn state(&self) -> Option<&Path> {
+        self.at.as_deref()
     }
 
     /// The section the survey supplies under this name, merged under what the config pins, and
@@ -206,36 +201,9 @@ impl Derived {
     /// would otherwise be computed only to answer yes. Planning a run asks this. Spec 10.
     pub fn supplies(&self, name: &str) -> bool {
         match name {
-            COMPLEXITY => !self.found.roots.is_empty(),
             DOC_SIZE => !self.found.documents.is_empty(),
             _ => self.section(name).is_some(),
         }
-    }
-
-    /// The two complexity ceilings the derivation commit sets, and the line each is explained
-    /// by. Parsed once per commit and cached under it, the first time a run needs them.
-    fn ceilings(&self) -> (Number, Number) {
-        let taken = self.sample.get_or_init(|| {
-            self.at_commit()
-                .filter(|_| needs_ceilings(&self.found, &self.pinned))
-                .map(|(held, commit)| {
-                    let sampled = Sampled::of(&self.pinned, held);
-                    (
-                        sample(&self.root, self.at.as_deref(), commit, &sampled),
-                        commit.to_string(),
-                    )
-                })
-        });
-        let counted = taken
-            .as_ref()
-            .map(|(sample, commit)| (sample.functions, commit.as_str()));
-        let (cc, lines) = taken
-            .as_ref()
-            .map_or((CC_FLOOR, LINES_FLOOR), |(at, _)| (at.cc, at.lines));
-        (
-            number(cc, CC_FLOOR, counted),
-            number(lines, LINES_FLOOR, counted),
-        )
     }
 
     /// One word ceiling per document the derivation commit holds, read once per commit and
@@ -251,18 +219,6 @@ impl Derived {
                 }
                 None => BTreeMap::new(),
             }
-        })
-    }
-
-    /// The reachability families the commit proves, and `None` where it proves none or the
-    /// config states the section. Policy read from the commit alone, never from the tree.
-    fn families(&self) -> &Option<Value> {
-        self.families.get_or_init(|| {
-            self.at_commit()
-                .filter(|_| !states(&self.pinned, reachability::SECTION))
-                .and_then(|(held, commit)| {
-                    reachability::derived(&self.root, self.at.as_deref(), commit, held)
-                })
         })
     }
 
@@ -288,15 +244,6 @@ impl Derived {
 type Derive = fn(&Derived) -> Option<Value>;
 
 const SECTIONS: &[(&str, Derive)] = &[
-    (escapes::SECTION, |derived| escapes_section(&derived.found)),
-    (stubs::SECTION, |derived| stubs_section(&derived.found)),
-    (dead_symbols::SECTION, |derived| {
-        dead_symbols_section(&derived.found)
-    }),
-    (reachability::SECTION, |derived| derived.families().clone()),
-    (COMPLEXITY, |derived| {
-        complexity_section(&derived.found, &derived.ceilings())
-    }),
     (DOC_SIZE, |derived| {
         doc_size_section(&derived.found, derived.document_ceilings())
     }),
@@ -311,12 +258,6 @@ const SECTIONS: &[(&str, Derive)] = &[
     }),
     (config::BUILD.name, |derived| build_section(&derived.found)),
 ];
-
-/// A number one commit sets, and what the line that prints it says about where it came from.
-struct Number {
-    value: u64,
-    rule: String,
-}
 
 /// Every document the working tree holds that the derivation commit does not, and the words it
 /// holds now. A config that states the section judges every document it names, so there is
@@ -341,15 +282,6 @@ fn unjudged(
         .collect()
 }
 
-/// Whether this run needs the ceilings the derivation commit sets. It does not when the config
-/// states the section itself, when it pins both ceilings, or when the working tree has no root
-/// to measure, and then no commit is parsed at all.
-fn needs_ceilings(found: &Survey, pinned: &Value) -> bool {
-    !found.roots.is_empty()
-        && !states(pinned, COMPLEXITY)
-        && !["cc", "lines"].iter().all(|key| pins_ceiling(pinned, key))
-}
-
 /// The same question for the word ceilings, which only a tree with a document at its top and a
 /// config that leaves the section to the survey needs.
 fn wants_documents(found: &Survey, pinned: &Value) -> bool {
@@ -361,175 +293,6 @@ fn states(pinned: &Value, section: &str) -> bool {
     pinned
         .get(section)
         .is_some_and(|held| pinned_whole(section, held))
-}
-
-/// One derived ceiling and the line that explains it: the percentile when the derivation commit
-/// held enough functions for one, and the floor otherwise. Spec 5.4.
-fn number(value: u64, floor: u64, counted: Option<(usize, &str)>) -> Number {
-    let rule = match counted {
-        None => "the floor, with no commit to measure".to_string(),
-        Some((functions, commit)) if value == floor => format!(
-            "the floor of {floor}, over {} function(s) at {}",
-            grouped(functions),
-            short(commit)
-        ),
-        Some((functions, commit)) => format!(
-            "95th percentile of {} functions at {}, floor {floor}",
-            grouped(functions),
-            short(commit)
-        ),
-    };
-    Number { value, rule }
-}
-
-/// What the derivation commit's functions come to, and how many of them there were, which is
-/// what the `derived:` line names. Spec 5.4.
-#[derive(Clone, Copy)]
-struct Sample {
-    cc: u64,
-    lines: u64,
-    functions: usize,
-}
-
-/// The files the complexity gate would measure, out of what one commit holds: the roots,
-/// languages and exclusions that gate names. A file the gate never judges must not set the
-/// ceiling the judged files are held to, or excluding generated code would loosen the gate.
-/// Spec 5.4.
-struct Sampled {
-    roots: Vec<String>,
-    extensions: Vec<&'static str>,
-    exclude: Vec<String>,
-    skip_dirs: Vec<String>,
-}
-
-impl Sampled {
-    fn of(pinned: &Value, held: &Survey) -> Sampled {
-        let named = |key: &str| named(pinned.get(COMPLEXITY), key);
-        let roots = named("roots");
-        Sampled {
-            roots: match roots.is_empty() {
-                true => held.roots.clone(),
-                false => roots,
-            },
-            extensions: crate::syntax::extensions(&named("languages")),
-            exclude: named("exclude"),
-            skip_dirs: named("skip_dirs"),
-        }
-    }
-
-    fn keeps(&self, path: &str) -> bool {
-        self.roots.iter().any(|root| under_or_at(path, root))
-            && self.extensions.iter().any(|end| path.ends_with(end))
-            && !self.under_a_skipped_directory(path)
-            && !self.excluded(path)
-    }
-
-    fn under_a_skipped_directory(&self, path: &str) -> bool {
-        path.split('/')
-            .any(|segment| self.skip_dirs.iter().any(|dir| dir == segment))
-    }
-
-    fn excluded(&self, path: &str) -> bool {
-        self.exclude.iter().any(|glob| {
-            files::glob_matches(glob.as_bytes(), basename(path).as_bytes())
-                || files::glob_matches(glob.as_bytes(), path.as_bytes())
-        })
-    }
-}
-
-/// One list of strings a section names, and nothing for a key it leaves out or states as
-/// something else. The gate itself refuses a malformed key, so the sample does not.
-fn named(section: Option<&Value>, key: &str) -> Vec<String> {
-    section
-        .and_then(|held| held.get(key))
-        .and_then(Value::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-/// The sample from the cache when this binary wrote it, and from one parse of the commit
-/// otherwise. The first stop after a commit pays that parse and every stop after it reads the
-/// cache. Spec 6.6.
-fn sample(root: &Path, at: Option<&Path>, commit: &str, sampled: &Sampled) -> Sample {
-    if let Some(cached) = at
-        .and_then(|at| cache::read(at, commit, COMPLEXITY))
-        .and_then(|cached| read_sample(&cached))
-    {
-        return cached;
-    }
-    let found = counts(root, commit, sampled);
-    if let Some(at) = at {
-        cache::write(at, commit, COMPLEXITY, kept_sample(found));
-    }
-    found
-}
-
-/// Every function at the derivation commit, under the roots that commit's own survey holds. A
-/// function that exists only in the working tree is not read here, so a directory that becomes
-/// a root cannot move the ceiling it is judged against. One git process reads every file, which
-/// the whole-tree parse of 6.6 pays for once per derivation commit. A read git did not finish
-/// is no sample at all, as a commit git could not list is, so a torn read never lowers a
-/// ceiling. Spec 4.3, 5.4.
-fn counts(root: &Path, commit: &str, sampled: &Sampled) -> Sample {
-    let mut cc = Vec::new();
-    let mut lines = Vec::new();
-    let listed = listed(root, commit).unwrap_or_default();
-    let kept: Vec<&str> = listed
-        .iter()
-        .map(String::as_str)
-        .filter(|path| sampled.keeps(path))
-        .collect();
-    let read = crate::changed::blobs(root, commit, &kept, |path, text| {
-        let Some(text) = text else {
-            return;
-        };
-        for function in crate::complexity::measured(path, &String::from_utf8_lossy(text)) {
-            cc.push(function.cc);
-            lines.push(function.lines);
-        }
-    });
-    if read.is_none() {
-        cc.clear();
-        lines.clear();
-    }
-    Sample {
-        functions: cc.len(),
-        cc: percentile(cc, CC_FLOOR),
-        lines: percentile(lines, LINES_FLOOR),
-    }
-}
-
-/// The nearest-rank 95th percentile: sort ascending and take the value at `ceil(0.95 * n)`,
-/// never below the floor. Below the sample a percentile needs, the floor is the ceiling.
-fn percentile(mut values: Vec<u64>, floor: u64) -> u64 {
-    if values.len() < SAMPLE {
-        return floor;
-    }
-    values.sort_unstable();
-    floor.max(values[(values.len() * PERCENTILE).div_ceil(100) - 1])
-}
-
-fn read_sample(cached: &Value) -> Option<Sample> {
-    let number = |key: &str| cached.get(key).and_then(Value::as_u64);
-    Some(Sample {
-        cc: number("cc")?,
-        lines: number("lines")?,
-        functions: usize::try_from(number("functions")?).ok()?,
-    })
-}
-
-fn kept_sample(found: Sample) -> Value {
-    let mut fields = Map::new();
-    fields.insert("cc".into(), found.cc.into());
-    fields.insert("lines".into(), found.lines.into());
-    fields.insert("functions".into(), found.functions.into());
-    Value::Object(fields)
 }
 
 /// One word ceiling per document the derivation commit holds: its word count there, rounded up
@@ -575,23 +338,6 @@ fn kept_ceilings(found: &BTreeMap<String, u64>) -> Value {
             .map(|(name, ceiling)| (name.clone(), (*ceiling).into()))
             .collect(),
     )
-}
-
-fn short(commit: &str) -> &str {
-    commit.get(..7).unwrap_or(commit)
-}
-
-/// A count as a person reads it, in groups of three digits.
-fn grouped(count: usize) -> String {
-    let digits = count.to_string();
-    let mut out = String::new();
-    for (at, digit) in digits.char_indices() {
-        if at > 0 && (digits.len() - at).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(digit);
-    }
-    out
 }
 
 /// The roots the union added to what the derivation commit's survey held. Without a commit to
@@ -870,70 +616,6 @@ fn key_by_key(pins: &Map<String, Value>, mut fields: Map<String, Value>) -> Valu
     Value::Object(fields)
 }
 
-/// The escapes table names its rows by the languages the tree is classified into, and a
-/// language it holds no rows for would refuse every run, so the survey leaves such a language
-/// out. Spec 5.4.
-fn escapes_section(found: &Survey) -> Option<Value> {
-    let languages: Vec<String> = found
-        .languages
-        .iter()
-        .filter(|language| markers::holds_rows_for(&escapes::KIND, language))
-        .cloned()
-        .collect();
-    markers_section(&found.roots, &languages)
-}
-
-/// The stubs table names fewer languages than the escapes table, and a section naming one it
-/// lacks would refuse every run, so the survey leaves such a language out. Spec 5.4.
-fn stubs_section(found: &Survey) -> Option<Value> {
-    let languages: Vec<String> = found
-        .languages
-        .iter()
-        .filter(|language| markers::holds_rows_for(&stubs::KIND, language))
-        .cloned()
-        .collect();
-    markers_section(&found.roots, &languages)
-}
-
-/// The structural table names only the languages its adapters can measure, so an unrelated
-/// parser-backed language does not make a default derived gate claim it measured nothing.
-fn dead_symbols_section(found: &Survey) -> Option<Value> {
-    let supported: Vec<&str> = syntax::structural::languages()
-        .into_iter()
-        .map(|(name, _)| name)
-        .collect();
-    let languages: Vec<String> = found
-        .languages
-        .iter()
-        .filter(|language| supported.contains(&language.as_str()))
-        .cloned()
-        .collect();
-    markers_section(&found.roots, &languages)
-}
-
-fn markers_section(roots: &[String], languages: &[String]) -> Option<Value> {
-    if roots.is_empty() || languages.is_empty() {
-        return None;
-    }
-    let mut section = Map::new();
-    section.insert(reference::ROOTS.name.into(), list(roots));
-    section.insert(reference::LANGUAGES.name.into(), list(languages));
-    Some(Value::Object(section))
-}
-
-fn complexity_section(found: &Survey, (cc, lines): &(Number, Number)) -> Option<Value> {
-    if found.roots.is_empty() {
-        return None;
-    }
-    let mut ceilings = Map::new();
-    ceilings.insert(complexity::CC.inner().into(), cc.value.into());
-    ceilings.insert(complexity::LINES.inner().into(), lines.value.into());
-    let mut section = Map::new();
-    section.insert(reference::ROOTS.name.into(), list(&found.roots));
-    section.insert(complexity::CEILINGS.into(), Value::Object(ceilings));
-    Some(Value::Object(section))
-}
-
 /// One entry per document the derivation commit holds and the working tree still has. A
 /// document only the working tree holds has no ceiling this run and is not judged, because
 /// the only number it could be given is one read out of the working tree, which 4.3 forbids.
@@ -1144,49 +826,13 @@ impl Derived {
         }]
     }
 
-    /// One line per key of a section the survey filled in, with the two complexity ceilings as
-    /// lines of their own so each says what set it.
+    /// One line per key of a section the survey filled in.
     fn keys_of(&self, name: &str, fields: &Map<String, Value>) -> Vec<Said> {
         fields
             .iter()
-            .flat_map(|(key, held)| match (name, key.as_str()) {
-                (COMPLEXITY, "ceilings") => ceiling_lines(held, &self.ceilings(), &self.pinned),
-                _ => vec![said(
-                    name,
-                    Some(key),
-                    held,
-                    pins(&self.pinned, name, Some(key)),
-                )],
-            })
+            .map(|(key, held)| said(name, Some(key), held, pins(&self.pinned, name, Some(key))))
             .collect()
     }
-}
-
-/// The two complexity ceilings, each on its own line, so a run says what set each number and
-/// whether a person pinned it. Pinning one and leaving the other to the survey is allowed, and
-/// then one line says `pinned` and the other `derived`. Spec 4.3, 5.4.
-fn ceiling_lines(held: &Value, (cc, lines): &(Number, Number), pinned: &Value) -> Vec<Said> {
-    [("cc", cc), ("lines", lines)]
-        .iter()
-        .filter_map(|(key, number)| {
-            let raw = held.get(key)?;
-            let value = shown(raw);
-            Some(match pins_ceiling(pinned, key) {
-                true => Said {
-                    line: format!("pinned: {COMPLEXITY} {key} {value}"),
-                    entry: None,
-                },
-                false => Said {
-                    line: format!("derived: {COMPLEXITY} {key} {value} ({})", number.rule),
-                    entry: Some(derived_value(COMPLEXITY, Some(key), raw, &number.rule)),
-                },
-            })
-        })
-        .collect()
-}
-
-fn pins_ceiling(pinned: &Value, key: &str) -> bool {
-    pins(pinned, COMPLEXITY, Some(&format!("ceilings.{key}")))
 }
 
 /// One NOTE per document the derivation commit does not hold, naming its word count, because a

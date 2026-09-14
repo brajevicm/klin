@@ -24,43 +24,6 @@ pub struct Key {
     pub default: &'static str,
 }
 
-impl Key {
-    /// The same key, required of a section that states itself.
-    pub const fn required(self) -> Key {
-        Key {
-            required: true,
-            ..self
-        }
-    }
-
-    /// The same key with the value a run uses when a section leaves it out.
-    pub const fn defaulting(self, default: &'static str) -> Key {
-        Key { default, ..self }
-    }
-
-    /// The same key under a rule of this section's own, where the shared one does not hold.
-    pub const fn derived(self, rule: &'static str) -> Key {
-        Key {
-            rule: Some(rule),
-            ..self
-        }
-    }
-
-    /// The same key where this section derives nothing and only a person pins it.
-    pub const fn pinned(self) -> Key {
-        Key { rule: None, ..self }
-    }
-
-    /// The key the value that holds this one names it by, which for a key written `a.b` is `b`
-    /// and for every other key is the key itself.
-    pub fn inner(self) -> &'static str {
-        match self.name.split_once('.') {
-            Some((_, inner)) => inner,
-            None => self.name,
-        }
-    }
-}
-
 /// Every language name a section selects a file set by, with the extensions each name selects.
 pub type Languages = fn() -> Vec<(&'static str, String)>;
 
@@ -105,14 +68,6 @@ pub const SKIP_DIRS: Key = Key {
     default: "the shared list only",
 };
 
-pub const EXCLUDE_EXCEPT: Key = Key {
-    name: "exclude_except",
-    holds: "the files an `exclude` glob must not drop",
-    required: false,
-    rule: None,
-    default: "nothing is kept back",
-};
-
 const HEAD: &str = "| Key | Holds | Required | Source | Derivation rule | Default |";
 const RULE: &str = "| --- | --- | --- | --- | --- | --- |";
 const NONE: &str = "—";
@@ -134,11 +89,11 @@ fn preamble(out: &mut String) {
          `klin reference` prints this page. `docs/REFERENCE.md` holds the printed copy, and a \
          test fails when the two differ, so the reference cannot drift from the binary. Do not \
          edit the copy by hand.\n\n\
-         `klin.json` is optional. A tree that has none is gated over the sections the survey \
-         supplies. A section may pin some keys and leave the rest to derivation, and a run \
+         `klin.json` is optional. Automatic checks run from facts discovered in the tree. A \
+         section may pin human policy and leave the rest to derivation, and a run \
          prints one `pinned:` or `derived:` line per value it used. A top-level key klin does \
-         not read is an error naming the key, and a key inside a section that klin does not \
-         read is not refused, so a misspelled key inside a section measures nothing in silence. \
+         not read is an error naming the key. Compact source sections also reject any field \
+         their table does not name. \
          A gate is excluded by setting its section to `false`."
     );
 }
@@ -153,9 +108,9 @@ fn sections(out: &mut String) {
     let _ = writeln!(
         out,
         "\n## Sections\n\n\
-         One key per gate, named for its section. The sections share key names: `roots`, \
-         `languages`, `exclude`, `skip_dirs` and `ceilings` mean the same thing everywhere. A \
-         section reads only the keys its own table names."
+         One key per gate, named for its section. `complexity`, `escapes`, `stubs`, \
+         `dead_symbols` and `reachability` discover repository topology themselves; their \
+         objects contain only human policy. A section reads only the keys its own table names."
     );
     for spec in check::CATALOGUE {
         let _ = writeln!(out, "\n### `{}`\n", spec.section);
@@ -207,11 +162,9 @@ fn cell(text: &str) -> String {
 fn languages(out: &mut String) {
     let _ = writeln!(
         out,
-        "\n## Language names\n\n\
-         The checks share language names and not file sets. A name selects the extensions of \
-         its own check's table, and the tables differ. A section that names no language \
-         measures every language `complexity` knows, and one that names none for `escapes` or \
-         `stubs` must name `patterns` instead."
+        "\n## Built-in language coverage\n\n\
+         These tables report the source extensions each check discovers automatically. They \
+         are capabilities of the binary, not selectors accepted in `klin.json`."
     );
     let named = check::CATALOGUE
         .iter()
@@ -252,23 +205,16 @@ pub fn extensions_by_name(
 fn exclusion(out: &mut String) {
     let _ = writeln!(
         out,
-        "\n## Exclusion\n\n\
-         Every gate skips a fixed list of directories: {}. `skip_dirs` adds to that list and \
-         replaces nothing in it.\n\n\
-         Every gate also drops what git ignores.\n\n\
-         `complexity` and `inventory` skip every directory whose name starts with a dot. \
-         `escapes`, `stubs` and `doc_citations` read one, so a source file under a dot \
-         directory is judged by those checks and not by these.\n\n\
-         An `exclude` glob is matched against the basename of a file, and against the whole \
-         path as the walk holds it, which is the absolute path. A glob written from the tree \
-         root, such as `src/generated/*`, therefore matches nothing, and `*/generated/*` is the \
-         form that works.\n\n\
-         `exclude_except` names the files an `exclude` glob would otherwise drop, and it \
-         answers `exclude` globs only. It cannot bring back a file under a skipped directory, \
-         and it cannot bring back a file of an extension the check does not measure. Only \
-         `complexity` reads `exclude_except`.\n\n\
-         A file that `before` measured and `after` does not is a NOTE in the hook and exit 2 \
-         under `--strict`, so an exclusion added this window is visible.",
+        "\n## Scope and discovery\n\n\
+         Every source check discovers supported files from one repository walk, skips the \
+         fixed directory list {}, and drops files git ignores. `in` narrows a check to a \
+         repository-relative path (or non-empty list) and `except` takes paths back out. Each \
+         path names itself and everything below it; neither key accepts globs.\n\n\
+         `complexity`, `escapes`, `stubs`, `dead_symbols` and `reachability` reject the retired \
+         `roots`, `languages`, `patterns`, `skip_dirs`, `exclude`, `exclude_except` and \
+         `ceilings` topology keys with a migration error. A file measured under the base \
+         scope and omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.\n\n\
+         Other sections retain the selection keys their own tables name.",
         listed(&crate::files::default_skip_dirs())
     );
 }
@@ -287,7 +233,7 @@ fn ceilings(out: &mut String) {
         "\n## Ceilings\n\n\
          A pinned ceiling is either a whole number or an object of dated steps:\n\n\
          ```json\n\
-         \"ceilings\": {{\n  \
+         \"complexity\": {{\n  \
          \"cc\": 12,\n  \
          \"lines\": {{ \"2026-09-08\": 90, \"2027-01-01\": 70, \"2027-07-01\": 60 }}\n\
          }}\n\
