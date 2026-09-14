@@ -742,8 +742,6 @@ fn measure(
         .flat_map(|language| language.extensions)
         .copied()
         .collect();
-    let mut out = Vec::new();
-    let mut unparsed = Vec::new();
     let wanted = files::Wanted {
         extensions: &extensions,
         skip_dirs: &files::default_skip_dirs(),
@@ -768,10 +766,38 @@ fn measure(
         .iter()
         .map(|file| files::relative(file, repo_root))
         .collect();
+    let (out, unparsed, work) = read_current(found.kept, selection, repo_root, changes)?;
+    measured.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
+    let files = Files {
+        measured,
+        not_measured: Vec::new(),
+        excluded: found
+            .excluded
+            .iter()
+            .map(|file| files::relative(file, repo_root))
+            .collect(),
+        unreadable: unparsed.iter().map(|file| file.file.clone()).collect(),
+    };
+    Ok(Sweep {
+        functions: out,
+        unparsed,
+        files,
+        work,
+    })
+}
+
+fn read_current(
+    kept: Vec<PathBuf>,
+    selection: &Selection,
+    repo_root: &Path,
+    changes: Option<&[Change]>,
+) -> Result<(Vec<Function>, Vec<Unparsed>, ContentCost), Error> {
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
+    let mut out = Vec::new();
+    let mut unparsed = Vec::new();
     let mut work = ContentCost::default();
-    for file in found.kept {
+    for file in kept {
         let name = file.to_string_lossy().to_string();
         let relative = files::relative(&file, repo_root);
         if changed
@@ -793,23 +819,7 @@ fn measure(
         out.extend(functions(&file, repo_root, language, &mut unparsed)?);
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    measured.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
-    let files = Files {
-        measured,
-        not_measured: Vec::new(),
-        excluded: found
-            .excluded
-            .iter()
-            .map(|file| files::relative(file, repo_root))
-            .collect(),
-        unreadable: unparsed.iter().map(|file| file.file.clone()).collect(),
-    };
-    Ok(Sweep {
-        functions: out,
-        unparsed,
-        files,
-        work,
-    })
+    Ok((out, unparsed, work))
 }
 
 fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {

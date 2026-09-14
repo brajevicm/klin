@@ -349,10 +349,9 @@ fn findings(
         .iter()
         .flat_map(|set| set.suffixes.iter().map(String::as_str))
         .collect();
-    let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
         extensions: &suffixes,
-        skip_dirs: &skip_dirs,
+        skip_dirs: &files::default_skip_dirs(),
         exclude: &[],
         exclude_except: &[],
         skip_hidden: false,
@@ -370,36 +369,67 @@ fn findings(
         {
             continue;
         }
-        let bytes = std::fs::read(&file).map_err(|why| Error::unreadable(&file, why))?;
-        work.reads += 1;
-        let text = String::from_utf8_lossy(&bytes).to_string();
-        if kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
-            work.parses += 1;
-        }
-        let past = cached(kind, search, &rel, &text, &mut cache);
-        for set in search
-            .sets
-            .iter()
-            .filter(|set| set.suffixes.iter().any(|end| rel.ends_with(end)))
-        {
-            skipped += tally(set, &rel, &text, &past, &mut seen);
-            if set.shapes && shaped.insert(rel.clone()) {
-                work.parses += 1;
-                shapes(&rel, &text, &mut seen);
-            }
-        }
+        let (file_skipped, file_work) = read_file(
+            kind,
+            search,
+            &file,
+            &rel,
+            &mut cache,
+            &mut seen,
+            &mut shaped,
+        )?;
+        skipped += file_skipped;
+        work = work + file_work;
     }
     Ok(Read {
         findings: collected(kind, seen),
         skipped,
-        files: Files {
-            measured: measured.into_iter().collect(),
-            not_measured: Vec::new(),
-            excluded: excluded.into_iter().collect(),
-            unreadable: Vec::new(),
-        },
+        files: covered(measured, excluded),
         work,
     })
+}
+
+fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>) -> Files {
+    Files {
+        measured: measured.into_iter().collect(),
+        not_measured: Vec::new(),
+        excluded: excluded.into_iter().collect(),
+        unreadable: Vec::new(),
+    }
+}
+
+fn read_file(
+    kind: &Kind,
+    search: &Search,
+    file: &std::path::Path,
+    rel: &str,
+    cache: &mut BTreeMap<String, Skipped>,
+    seen: &mut BTreeMap<(String, String), Tally>,
+    shaped: &mut BTreeSet<String>,
+) -> Result<(u64, ContentCost), Error> {
+    let bytes = std::fs::read(file).map_err(|why| Error::unreadable(file, why))?;
+    let mut work = ContentCost {
+        reads: 1,
+        parses: 0,
+    };
+    let mut skipped = 0;
+    let text = String::from_utf8_lossy(&bytes).to_string();
+    if kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
+        work.parses += 1;
+    }
+    let past = cached(kind, search, rel, &text, cache);
+    for set in search
+        .sets
+        .iter()
+        .filter(|set| set.suffixes.iter().any(|end| rel.ends_with(end)))
+    {
+        skipped += tally(set, rel, &text, &past, seen);
+        if set.shapes && shaped.insert(rel.to_string()) {
+            work.parses += 1;
+            shapes(rel, &text, seen);
+        }
+    }
+    Ok((skipped, work))
 }
 
 fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {

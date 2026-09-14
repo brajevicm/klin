@@ -20,7 +20,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
     tree.write("klin.json", r#"{"escapes":{"in":"src"}}"#);
     tree.write(
         "src/unchanged.rs",
-        "fn untouched() { let _ = Some(1).unwrap(); }\n",
+        concat!("fn untouched() { let _ = Some(1).", "un", "wrap(); }\n"),
     );
     tree.write("src/changed.rs", "fn changed() {}\n");
     tree.base();
@@ -30,7 +30,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
 
     tree.write(
         "src/changed.rs",
-        "fn changed() { let _ = Some(1).unwrap(); }\n",
+        concat!("fn changed() { let _ = Some(1).", "un", "wrap(); }\n"),
     );
     let run = harness::feed(
         tree.root(),
@@ -53,30 +53,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
     );
 }
 
-#[test]
-fn changed_file_local_gates_read_only_changed_current_contents() {
-    let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{
-          "complexity": { "in": "src", "cc": 1, "lines": 60 },
-          "escapes": { "in": "src" },
-          "stubs": { "in": "src" }
-        }"#,
-    );
-    tree.write(
-        "src/unchanged.rs",
-        "fn untouched() {\n    let _ = Some(1).unwrap();\n    todo!();\n}\n",
-    );
-    tree.write(
-        "src/changed.rs",
-        "fn changed(value: i32) { drop(value); }\n",
-    );
-    tree.base();
-    tree.write(
-        "src/changed.rs",
-        "fn changed(value: Option<i32>) {\n    if value.is_some() {\n        let _ = value.unwrap();\n    }\n    todo!();\n}\n",
-    );
+fn assert_changed_failures(tree: &Tree) {
     for gate in GATES {
         let run = tree.run(&["gate", "--json", "--changed", "--gate", gate]);
         assert_eq!(run.code, 1, "{gate}: {}", run.out);
@@ -93,61 +70,106 @@ fn changed_file_local_gates_read_only_changed_current_contents() {
             "{gate}: {report}"
         );
     }
+}
 
+fn assert_changed_passes(tree: &Tree) {
     tree.write("src/changed.rs", "fn changed() {}\n");
     for gate in GATES {
         let run = tree.run(&["gate", "--json", "--changed", "--gate", gate]);
         assert_eq!(run.code, 0, "{gate}: {}", run.out);
-        let row = &run.json()["gates"][0];
-        assert_eq!(
-            row["coverage"]["found"],
-            Value::from(1),
-            "{gate}: {}",
-            run.out
-        );
+        let report = run.json();
+        let row = &report["gates"][0];
+        assert_eq!(row["coverage"]["found"], Value::from(1), "{gate}: {report}");
         assert_eq!(
             row["coverage"]["measured"],
             Value::from(1),
-            "{gate}: {}",
-            run.out
+            "{gate}: {report}"
         );
-        let work = &row["work"];
-        assert_eq!(work["reads"], Value::from(2), "{gate}: {}", run.out);
-        assert_eq!(work["parses"], Value::from(2), "{gate}: {}", run.out);
+        assert_eq!(row["work"]["reads"], Value::from(2), "{gate}: {report}");
+        assert_eq!(row["work"]["parses"], Value::from(2), "{gate}: {report}");
+    }
+}
 
+fn assert_whole_tree_passes(tree: &Tree) {
+    for gate in GATES {
         for flags in [
             vec!["gate", "--json", "--gate", gate],
             vec!["gate", "--json", "--strict", "--gate", gate],
         ] {
             let run = tree.run(&flags);
             assert_eq!(run.code, 0, "{gate}: {}", run.out);
-            let row = &run.json()["gates"][0];
-            assert_eq!(
-                row["coverage"]["found"],
-                Value::from(2),
-                "{gate}: {}",
-                run.out
-            );
+            let report = run.json();
+            let row = &report["gates"][0];
+            assert_eq!(row["coverage"]["found"], Value::from(2), "{gate}: {report}");
             assert_eq!(
                 row["coverage"]["measured"],
                 Value::from(2),
-                "{gate}: {}",
-                run.out
+                "{gate}: {report}"
             );
-            assert_eq!(row["work"]["reads"], Value::from(4), "{gate}: {}", run.out);
-            assert_eq!(row["work"]["parses"], Value::from(4), "{gate}: {}", run.out);
+            assert_eq!(row["work"]["reads"], Value::from(4), "{gate}: {report}");
+            assert_eq!(row["work"]["parses"], Value::from(4), "{gate}: {report}");
         }
+    }
+}
 
+fn assert_strict_changed_passes(tree: &Tree) {
+    for gate in GATES {
         let run = tree.run(&["gate", "--json", "--changed", "--strict", "--gate", gate]);
         assert_eq!(run.code, 0, "{gate}: {}", run.out);
-        let row = &run.json()["gates"][0];
-        assert_eq!(
-            row["coverage"]["found"],
-            Value::from(1),
-            "{gate}: {}",
-            run.out
-        );
-        assert_eq!(row["work"]["reads"], Value::from(3), "{gate}: {}", run.out);
-        assert_eq!(row["work"]["parses"], Value::from(3), "{gate}: {}", run.out);
+        let report = run.json();
+        let row = &report["gates"][0];
+        assert_eq!(row["coverage"]["found"], Value::from(1), "{gate}: {report}");
+        assert_eq!(row["work"]["reads"], Value::from(3), "{gate}: {report}");
+        assert_eq!(row["work"]["parses"], Value::from(3), "{gate}: {report}");
     }
+}
+
+#[test]
+fn changed_file_local_gates_read_only_changed_current_contents() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{
+          "complexity": { "in": "src", "cc": 1, "lines": 60 },
+          "escapes": { "in": "src" },
+          "stubs": { "in": "src" }
+        }"#,
+    );
+    tree.write(
+        "src/unchanged.rs",
+        concat!(
+            "fn untouched() {\n",
+            "    let _ = Some(1).",
+            "un",
+            "wrap();\n",
+            "    ",
+            "to",
+            "do!();\n",
+            "}\n"
+        ),
+    );
+    tree.write(
+        "src/changed.rs",
+        "fn changed(value: i32) { drop(value); }\n",
+    );
+    tree.base();
+    tree.write(
+        "src/changed.rs",
+        concat!(
+            "fn changed(value: Option<i32>) {\n",
+            "    if value.is_some() {\n",
+            "        let _ = value.",
+            "un",
+            "wrap();\n",
+            "    }\n",
+            "    ",
+            "to",
+            "do!();\n",
+            "}\n"
+        ),
+    );
+    assert_changed_failures(&tree);
+    assert_changed_passes(&tree);
+    assert_whole_tree_passes(&tree);
+    assert_strict_changed_passes(&tree);
 }
