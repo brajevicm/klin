@@ -1,21 +1,22 @@
+use std::ffi::OsStr;
 use std::fmt::Write;
 use std::path::Path;
-use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Window};
 use crate::config::{Config, Error};
+use crate::git::Repo;
 use crate::host;
 use crate::journal;
 use crate::radius;
 use crate::state;
+use crate::write::{AtomicWrite, atomic_write};
 
 /// The stamp file in the state directory, and the name it is written under before the rename,
 /// so a hook that dies mid-write leaves the previous stamp rather than a torn one. Spec 6.5.
 const FILE: &str = "turn";
-const WRITING: &str = "turn.writing";
 /// The index the stamp is built in, apart from the one a person's `git add` writes.
 const INDEX: &str = "index";
 /// Git shares `refs/` across the worktrees of one repository, and `refs/worktree/` is one of
@@ -503,55 +504,45 @@ pub fn tree(root: &Path, at: &Path) -> Option<String> {
 }
 
 fn resolve(root: &Path, reference: &str) -> Option<String> {
-    let found = git(
-        root,
-        None,
-        &[
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            &format!("{reference}^{{commit}}"),
-        ],
-    )?;
-    (!found.is_empty()).then_some(found)
+    let refspec = format!("{reference}^{{commit}}");
+    Repo::at(root).rev_parse(&["--verify", "--quiet", &refspec])
 }
 
 /// Every git call the stamp makes, with klin as the author of its own commit and an index of
 /// its own, so nothing here touches what a person staged.
 pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
-    let mut command = Command::new("git");
-    command
-        .arg("-C")
-        .arg(root)
-        .args([
-            "-c",
-            "user.name=klin",
-            "-c",
-            "user.email=klin@invalid",
-            "-c",
-            "commit.gpgsign=false",
-        ])
-        .args(args);
-    if let Some(index) = index {
-        command.env("GIT_INDEX_FILE", index);
-    }
-    let done = command.output().ok()?;
-    done.status
-        .success()
-        .then(|| String::from_utf8_lossy(&done.stdout).trim().to_string())
+    let mut command = vec![
+        "-c",
+        "user.name=klin",
+        "-c",
+        "user.email=klin@invalid",
+        "-c",
+        "commit.gpgsign=false",
+    ];
+    command.extend_from_slice(args);
+    let text = match index {
+        Some(index) => {
+            let env = [(OsStr::new("GIT_INDEX_FILE"), index.as_os_str())];
+            Repo::at(root).text_with_env(&command, &env)
+        }
+        None => Repo::at(root).text(&command),
+    }?;
+    Some(text.trim().to_string())
 }
 
 fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
     let text = recorded(stamp).to_string() + "\n";
-    let writing = at.join(WRITING);
-    if std::fs::write(&writing, text).is_ok() && std::fs::rename(&writing, at.join(FILE)).is_ok() {
+    let target = at.join(FILE);
+    if atomic_write(AtomicWrite {
+        target: &target,
+        bytes: text.as_bytes(),
+        keep_mode_from: None,
+    })
+    .is_ok()
+    {
         return true;
     }
-    let _ = std::fs::remove_file(&writing);
-    note(
-        out,
-        &format!("{} could not be written", at.join(FILE).display()),
-    );
+    note(out, &format!("{} could not be written", target.display()));
     false
 }
 

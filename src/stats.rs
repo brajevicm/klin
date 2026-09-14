@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 
 use crate::config::Error;
-use crate::{journal, turn};
+use crate::{git::Repo, journal, turn};
 
 /// What klin caught, in the person's words. The report reads the journal of 11.4 and nothing
 /// else, turns its lines into episodes with no clock of its own, and prints them. No word of
@@ -1046,15 +1046,7 @@ fn title(scope: Scope) -> String {
 /// "this repository" where the repository has one worktree, and "this worktree" where a person
 /// keeps more than one, because then the numbers are this tree's alone.
 fn place(start: &Path) -> &'static str {
-    let done = Command::new("git")
-        .arg("-C")
-        .arg(start)
-        .args(["worktree", "list", "--porcelain"])
-        .output();
-    let listed = match &done {
-        Ok(done) => String::from_utf8_lossy(&done.stdout),
-        Err(_) => return "this repository",
-    };
+    let listed = Repo::at(start).worktrees().unwrap_or_default();
     match listed
         .lines()
         .filter(|line| line.starts_with("worktree "))

@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
-use crate::changed::git;
 use crate::config::{Config, Error};
+use crate::git::Repo;
 use crate::project::Tree;
 use crate::ratchet::Values;
 use crate::reference::{Key, SKIP_DIRS};
@@ -202,21 +202,11 @@ pub fn listing(root: &Path) -> Result<Vec<String>, Error> {
 /// What git ignores under a root. A gate judges the tree git describes, so a generated file
 /// beside it is not measured: the base commit holds no copy of it to ratchet against.
 fn ignored(root: &Path) -> HashSet<PathBuf> {
-    let listed = git(
-        root,
-        &[
-            "ls-files",
-            "--others",
-            "--ignored",
-            "--exclude-standard",
-            "--directory",
-        ],
-    );
-    listed
+    Repo::at(root)
+        .ignored_paths()
         .unwrap_or_default()
-        .lines()
-        .filter(|name| !name.is_empty())
-        .map(|name| root.join(name.trim_end_matches('/')))
+        .into_iter()
+        .map(|name| root.join(name))
         .collect()
 }
 

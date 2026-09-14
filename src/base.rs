@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::changed::{Change, blob, git};
+use crate::changed::{Change, blob};
 use crate::check::{Context, Sink};
 use crate::config::Error;
+use crate::git::Repo;
 use crate::project::{Project, Tree};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
@@ -46,16 +47,13 @@ impl Drop for Prior {
         let Some(repository) = &self.from_worktree else {
             return;
         };
-        git(
-            repository,
-            &[
-                "worktree",
-                "remove",
-                "--force",
-                &self.dir.path().to_string_lossy(),
-            ],
-        );
-        git(repository, &["worktree", "prune"]);
+        Repo::at(repository).text(&[
+            "worktree",
+            "remove",
+            "--force",
+            &self.dir.path().to_string_lossy(),
+        ]);
+        Repo::at(repository).text(&["worktree", "prune"]);
     }
 }
 
@@ -81,24 +79,22 @@ fn short(commit: &str) -> &str {
 fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
     let root = project.root();
     let inside = under_the_repository(root)?;
-    git(
-        root,
-        &[
+    Repo::at(root)
+        .text(&[
             "worktree",
             "add",
             "--detach",
             "--quiet",
             &dir.path().to_string_lossy(),
             before,
-        ],
-    )
-    .ok_or_else(|| {
-        Error(format!(
-            "the base commit {} could not be checked out to measure it — fetch history, or \
+        ])
+        .ok_or_else(|| {
+            Error(format!(
+                "the base commit {} could not be checked out to measure it — fetch history, or \
              give CI the full clone",
-            short(before)
-        ))
-    })?;
+                short(before)
+            ))
+        })?;
     let prior = Prior::new(dir.path().join(inside), dir, Some(root.to_path_buf()));
     for change in project.changes(before)?.iter() {
         let Some(was) = change.was.as_deref().filter(|was| *was != change.path) else {
@@ -111,7 +107,8 @@ fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Resul
 
 /// Where the configuration sits inside the repository, since a worktree holds the whole tree.
 fn under_the_repository(root: &Path) -> Result<PathBuf, Error> {
-    let named = git(root, &["rev-parse", "--show-toplevel"])
+    let named = Repo::at(root)
+        .text(&["rev-parse", "--show-toplevel"])
         .map(|found| PathBuf::from(found.trim()))
         .ok_or_else(|| {
             Error(format!(
@@ -300,16 +297,13 @@ fn equal_to_head(root: &Path, strict: bool, source: Source, base: Window) -> Res
     let Some((name, tip)) = remote_tip(root) else {
         return cannot_tell(strict, base, "no remote default branch resolves");
     };
-    let Some(unpushed) = git(
-        root,
-        &[
-            "log",
-            "--oneline",
-            "-n",
-            &SHOWN.to_string(),
-            &format!("{tip}..HEAD"),
-        ],
-    ) else {
+    let Some(unpushed) = Repo::at(root).text(&[
+        "log",
+        "--oneline",
+        "-n",
+        &SHOWN.to_string(),
+        &format!("{tip}..HEAD"),
+    ]) else {
         return cannot_tell(
             strict,
             base,
@@ -371,7 +365,9 @@ fn remote_reference(branch: &str) -> Option<String> {
 }
 
 fn dirty(root: &Path) -> bool {
-    git(root, &["status", "--porcelain"]).is_some_and(|listed| !listed.trim().is_empty())
+    Repo::at(root)
+        .text(&["status", "--porcelain"])
+        .is_some_and(|listed| !listed.trim().is_empty())
 }
 
 fn candidates(root: &Path) -> Vec<(String, String, Kind, Source)> {
@@ -425,12 +421,10 @@ fn environment(name: &str) -> Option<String> {
 }
 
 fn default_branches(root: &Path) -> Vec<String> {
-    let named = git(
-        root,
-        &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
-    )
-    .map(|found| found.trim().to_string())
-    .filter(|found| !found.is_empty());
+    let named = Repo::at(root)
+        .text(&["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+        .map(|found| found.trim().to_string())
+        .filter(|found| !found.is_empty());
     named
         .into_iter()
         .chain(["origin/main", "origin/master", "main", "master"].map(String::from))
@@ -439,16 +433,13 @@ fn default_branches(root: &Path) -> Vec<String> {
 
 fn resolve(root: &Path, reference: &str) -> Option<String> {
     let found = match reference.split_once("...") {
-        Some((branch, head)) => git(root, &["merge-base", branch, head])?,
-        None => git(
-            root,
-            &[
-                "rev-parse",
-                "--verify",
-                "--quiet",
-                &format!("{reference}^{{commit}}"),
-            ],
-        )?,
+        Some((branch, head)) => Repo::at(root).text(&["merge-base", branch, head])?,
+        None => Repo::at(root).text(&[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("{reference}^{{commit}}"),
+        ])?,
     };
     let found = found.trim().to_string();
     (!found.is_empty()).then_some(found)

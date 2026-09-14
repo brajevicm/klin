@@ -11,11 +11,12 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::base;
-use crate::changed::{self, git};
+use crate::changed;
 use crate::check::{self, Context, Sink};
 use crate::config::{Config, Error};
 use crate::coverage::{self, Coverage};
 use crate::files;
+use crate::git::Repo;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
@@ -349,7 +350,8 @@ fn at_the_base(roots: &[PathBuf], commit: &str) -> Result<Index, Error> {
         basenames: BTreeMap::new(),
     };
     for root in roots {
-        let listed = git(root, &["ls-tree", "-r", "--name-only", commit, "--", "."])
+        let listed = Repo::at(root)
+            .text(&["ls-tree", "-r", "--name-only", commit, "--", "."])
             .ok_or_else(|| unlistable(root, commit))?;
         for path in listed.lines() {
             if path.is_empty()

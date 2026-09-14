@@ -1,8 +1,7 @@
-use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
 
 use crate::config::Error;
+use crate::git::Repo;
 
 /// A file the working tree changed since the base, with the path it had at the base. A
 /// deletion is a change: `inventory` judges the path the working tree no longer holds, so a
@@ -14,18 +13,19 @@ pub struct Change {
 }
 
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
-    let listed = git(
-        root,
-        &["diff", "--name-status", "-M", "--relative", base, "--"],
-    )
-    .ok_or_else(|| {
-        Error(format!(
-            "--changed needs a git repository, and git could not read {}",
-            root.display()
-        ))
-    })?;
+    let repo = Repo::at(root);
+    let listed = repo
+        .text(&["diff", "--name-status", "-M", "--relative", base, "--"])
+        .ok_or_else(|| {
+            Error(format!(
+                "--changed needs a git repository, and git could not read {}",
+                root.display()
+            ))
+        })?;
     let mut changes: Vec<Change> = listed.lines().filter_map(change).collect();
-    let untracked = git(root, &["ls-files", "--others", "--exclude-standard"]).unwrap_or_default();
+    let untracked = repo
+        .text(&["ls-files", "--others", "--exclude-standard"])
+        .unwrap_or_default();
     changes.extend(
         untracked
             .lines()
@@ -59,13 +59,7 @@ fn change(line: &str) -> Option<Change> {
 /// The bytes a file held at a commit, or None when the commit does not hold it. The path is
 /// relative to `root`, which is what the changed set reports, so it is named that way to git.
 pub fn blob(root: &Path, commit: &str, path: &str) -> Option<Vec<u8>> {
-    let done = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["show", &format!("{commit}:./{path}")])
-        .output()
-        .ok()?;
-    done.status.success().then_some(done.stdout)
+    Repo::at(root).blob(commit, path)
 }
 
 /// The bytes many files held at one commit, read through one git process and handed over one
@@ -78,80 +72,15 @@ pub fn blobs(
     root: &Path,
     commit: &str,
     paths: &[&str],
-    mut each: impl FnMut(&str, Option<&[u8]>),
+    each: impl FnMut(&str, Option<&[u8]>),
 ) -> Option<()> {
-    if paths.is_empty() {
-        return Some(());
-    }
-    let mut git = Reaped(
-        Command::new("git")
-            .arg("-C")
-            .arg(root)
-            .args(["cat-file", "--batch"])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .ok()?,
-    );
-    let mut requests = git.0.stdin.take()?;
-    let mut answers = BufReader::new(git.0.stdout.take()?);
-    let mut held = Vec::new();
-    for path in paths {
-        writeln!(requests, "{commit}:./{path}").ok()?;
-        let is_blob = answer(&mut answers, &mut held)?;
-        each(path, is_blob.then_some(held.as_slice()));
-    }
-    Some(())
-}
-
-/// One answer from `cat-file --batch`: `Some(true)` for a blob whose bytes now fill `held`,
-/// `Some(false)` for a path the commit does not hold as a blob, and `None` when git stopped
-/// answering.
-fn answer(answers: &mut impl BufRead, held: &mut Vec<u8>) -> Option<bool> {
-    let mut header = String::new();
-    if answers.read_line(&mut header).ok()? == 0 {
-        return None;
-    }
-    let mut fields = header.split_whitespace().rev();
-    let size = fields.next().and_then(|size| size.parse::<usize>().ok());
-    let (Some(size), Some(kind)) = (size, fields.next()) else {
-        return Some(false);
-    };
-    held.clear();
-    held.resize(size, 0);
-    answers.read_exact(held).ok()?;
-    answers.read_exact(&mut [0u8; 1]).ok()?;
-    Some(kind == "blob")
-}
-
-/// A git process that is killed and reaped when the read ends, on success or failure, so no
-/// zombie and no open pipe outlives the call.
-struct Reaped(Child);
-
-impl Drop for Reaped {
-    fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
-    }
-}
-
-pub fn git(root: &Path, args: &[&str]) -> Option<String> {
-    let done = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .arg("-c")
-        .arg("core.quotePath=false")
-        .args(args)
-        .output()
-        .ok()?;
-    done.status
-        .success()
-        .then(|| String::from_utf8_lossy(&done.stdout).into_owned())
+    Repo::at(root).blobs(commit, paths, each)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::process::Command;
+
     use super::*;
 
     fn git_in(root: &Path, args: &[&str]) {

@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, Instant};
+
+use crate::git::Repo;
 
 /// klin's own state: the build stamp, and later the turn stamp and the survey cache. It lives
 /// under the git directory, which git never tracks, never lists and never cleans, so klin
@@ -14,8 +15,15 @@ pub const CACHE: &str = "cache";
 
 pub fn dir(root: &Path) -> Option<PathBuf> {
     match std::env::var_os(OVERRIDE) {
-        Some(at) => Some(PathBuf::from(at).join(key(&git(root, "--git-common-dir")?, root))),
-        None => Some(git(root, "--absolute-git-dir")?.join(DIR)),
+        Some(at) => Some(PathBuf::from(at).join(key(
+            &Repo::at(root).rev_parse_path("--git-common-dir")?,
+            root,
+        ))),
+        None => Some(
+            Repo::at(root)
+                .rev_parse_path("--absolute-git-dir")?
+                .join(DIR),
+        ),
     }
 }
 
@@ -52,21 +60,9 @@ fn key(common: &Path, root: &Path) -> String {
 }
 
 fn worktree(root: &Path) -> PathBuf {
-    git(root, "--show-toplevel").unwrap_or_else(|| root.to_path_buf())
-}
-
-fn git(root: &Path, flag: &str) -> Option<PathBuf> {
-    let done = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["rev-parse", "--path-format=absolute", flag])
-        .output()
-        .ok()?;
-    if !done.status.success() {
-        return None;
-    }
-    let text = String::from_utf8_lossy(&done.stdout).trim().to_string();
-    (!text.is_empty()).then(|| PathBuf::from(text))
+    Repo::at(root)
+        .rev_parse_path("--show-toplevel")
+        .unwrap_or_else(|| root.to_path_buf())
 }
 
 pub fn hash(bytes: &[u8]) -> u64 {

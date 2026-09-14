@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::changed::git;
 use crate::config::Error;
+use crate::git::Repo;
 
 /// How much of an untracked file klin reads to call it binary, which is what git reads.
 const SNIFF: usize = 8000;
@@ -41,7 +41,7 @@ impl Hunks {
         ];
         args.extend(after);
         args.push("--");
-        let printed = git(root, &args).ok_or_else(|| {
+        let printed = Repo::at(root).text(&args).ok_or_else(|| {
             Error(format!(
                 "the changed lines need a git repository, and git could not diff {} against {}",
                 root.display(),
@@ -135,7 +135,9 @@ fn added(header: &str) -> Option<Range> {
 }
 
 fn untracked(root: &Path) -> BTreeMap<String, Vec<Range>> {
-    let listed = git(root, &["ls-files", "--others", "--exclude-standard"]).unwrap_or_default();
+    let listed = Repo::at(root)
+        .text(&["ls-files", "--others", "--exclude-standard"])
+        .unwrap_or_default();
     listed
         .lines()
         .filter(|name| !name.is_empty())

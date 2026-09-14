@@ -9,10 +9,9 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::changed::git;
 use crate::project::{self, Tree};
 use crate::scope::{ROOT, under_or_at};
-use crate::{cache, files, state, turn};
+use crate::{cache, files, git, state, turn};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
 /// commit. Spec 6.6.
@@ -106,15 +105,8 @@ fn at_commit(root: &Path, at: Option<&Path>, commit: Option<&str>) -> Option<Sur
 /// git could not read the commit, which is not the same as a commit that holds nothing: an
 /// empty survey would discard the whole base and read every site as new. Spec 14.
 pub(crate) fn listed(root: &Path, commit: &str) -> Option<Vec<String>> {
-    let listed = git(root, &["ls-tree", "-r", "-z", "--name-only", commit])?;
-    Some(
-        listed
-            .split('\0')
-            .filter(|path| !path.is_empty())
-            .map(str::to_string)
-            .filter(|path| surveyed(path))
-            .collect(),
-    )
+    let listed = git::Repo::at(root).ls_tree_paths(commit)?;
+    Some(listed.into_iter().filter(|path| surveyed(path)).collect())
 }
 
 /// Every path the working tree holds that a survey reads, off the tree's one file list.

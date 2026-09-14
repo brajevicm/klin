@@ -13,10 +13,10 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base::{self, Prior};
-use crate::changed::git;
 use crate::check::{self, Context, DELETED, Sink};
 use crate::config::Error;
 use crate::coverage::{self, Coverage};
+use crate::git::Repo;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
@@ -601,8 +601,9 @@ fn without_an_affix(name: &str) -> Vec<String> {
 /// The base tree's file list, read out of git so the file level needs no base worktree. A
 /// listing git refuses is an error: an empty base holds no test file and reports green.
 fn at_the_base(root: &Path, commit: &str) -> Result<BTreeSet<String>, Error> {
-    let listed =
-        git(root, &["ls-tree", "-r", "--name-only", commit, "--", "."]).ok_or_else(|| {
+    let listed = Repo::at(root)
+        .text(&["ls-tree", "-r", "--name-only", commit, "--", "."])
+        .ok_or_else(|| {
             Error(format!(
                 "the base commit {} could not be listed under {} — fetch history, or give CI \
                  the full clone",

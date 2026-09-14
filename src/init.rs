@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 
 use crate::config::{self, Config, Error};
 use crate::project::Project;
-use crate::{complexity, doc_size, hooks, radius};
+use crate::{complexity, doc_size, hooks, radius, write};
 
 const FILENAME: &str = "klin.json";
 
@@ -294,19 +294,10 @@ pub fn write(file: &Path, config: &Map<String, Value>) -> Result<(), Error> {
         .map_err(|why| unwritable(&why))?;
     let held = std::fs::canonicalize(file);
     let target = held.as_deref().unwrap_or(file);
-    let beside = target.with_extension(format!("klin-{}", std::process::id()));
-    std::fs::write(&beside, text + "\n").map_err(|why| unwritable(&why))?;
-    kept_mode(target, &beside);
-    std::fs::rename(&beside, target).map_err(|why| {
-        let _ = std::fs::remove_file(&beside);
-        unwritable(&why)
+    write::atomic_write(write::AtomicWrite {
+        target,
+        bytes: (text + "\n").as_bytes(),
+        keep_mode_from: Some(target),
     })
-}
-
-/// The file klin replaces keeps the permissions it had. A person who narrowed a host's
-/// settings file did so on purpose, and a fresh neighbour would widen it back.
-fn kept_mode(target: &Path, beside: &Path) {
-    if let Ok(held) = std::fs::metadata(target) {
-        let _ = std::fs::set_permissions(beside, held.permissions());
-    }
+    .map_err(|why| unwritable(&why))
 }

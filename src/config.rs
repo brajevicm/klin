@@ -442,7 +442,7 @@ fn named(explicit: Option<&Path>, start: &Path) -> Option<PathBuf> {
 /// The top of the repository, which is where a configuration would sit and what paths resolve
 /// against when there is none.
 pub fn repository(start: &Path) -> Option<PathBuf> {
-    let found = crate::changed::git(start, &["rev-parse", "--show-toplevel"])?;
+    let found = crate::git::Repo::at(start).text(&["rev-parse", "--show-toplevel"])?;
     let named = PathBuf::from(found.trim());
     named.is_dir().then_some(named)
 }

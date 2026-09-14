@@ -13,15 +13,12 @@ use crate::check::{
 use crate::config::{self, Error};
 use crate::host::{self, Stop};
 use crate::project::Project;
-use crate::{build, coverage, journal, state, stats, turn};
+use crate::{build, coverage, journal, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks are left and whether the turn's gate block is still unspent. In the state
 /// directory, which an agent does not empty. ADR 0019, ADR 0022.
 const BUILD_BLOCKED: &str = "build-blocked";
-/// The name the build stamp is written under before the rename, so a stop that dies mid-write
-/// leaves the previous record rather than a torn one.
-const BUILD_WRITING: &str = "build-blocked.writing";
 /// How many stops one prompt's build failures may block. klin bounds this itself, because the
 /// host documents no cap of its own. ADR 0022, spec 9.3.
 const BLOCKS: u64 = 8;
@@ -376,13 +373,16 @@ fn counted(at: &Path, count: &Count) -> bool {
     })
     .to_string()
         + "\n";
-    let writing = at.join(BUILD_WRITING);
-    if std::fs::write(&writing, text).is_ok()
-        && std::fs::rename(&writing, at.join(BUILD_BLOCKED)).is_ok()
+    let target = at.join(BUILD_BLOCKED);
+    if write::atomic_write(write::AtomicWrite {
+        target: &target,
+        bytes: text.as_bytes(),
+        keep_mode_from: None,
+    })
+    .is_ok()
     {
         return true;
     }
-    let _ = std::fs::remove_file(&writing);
     false
 }
 

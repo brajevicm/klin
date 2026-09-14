@@ -14,6 +14,7 @@ mod doc_size;
 mod escapes;
 mod files;
 mod gate;
+mod git;
 mod guard;
 mod hooks;
 mod host;
@@ -37,6 +38,7 @@ mod survey;
 mod syntax;
 mod turn;
 mod update;
+mod write;
 
 use std::path::Path;
 use std::process::ExitCode;
