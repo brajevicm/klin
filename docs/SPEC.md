@@ -1182,13 +1182,21 @@ framework entry points or external callers. A declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
-complete current dead-symbol list. Pinned by
+complete current dead-symbol list. A changed run that is not strict builds
+declaration state only for the files it judges, over both trees and under the
+base's own path and rename semantics (6.5). Its evidence stays whole: both
+trees keep the complete index of 8.4, so a judged declaration is alive on a
+reference from any measured file, changed or not, and a lost reference in an
+unchanged file still explains a worsened finding. A whole run, a strict run
+and the check by hand build state for every eligible declaration. Pinned by
 `a_new_private_unreferenced_rust_function_fails_as_new`,
 `a_private_typescript_main_is_judged`,
 `losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
 `one_typescript_reference_keeps_duplicate_names_alive` in
 `tests/dead_symbols.rs`; the report cap is covered by
-`report_lists_every_current_dead_symbol_without_the_note_cap`.
+`report_lists_every_current_dead_symbol_without_the_note_cap`, and the
+judgement scope by
+`a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge`.
 
 In a changed run that is not strict, which includes the hook, the two trees
 `dead-symbols` and `reachability` compare share one base extraction. The run's
@@ -2221,7 +2229,8 @@ One object on stdout. Fields:
   it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
   it is null for a gate that never got that far. `facts` is
   `{reads, parses, extracted, shared, cached, ms, cache_read_ms,
-  cache_write_ms}` for a gate that reads structural
+  cache_write_ms}`, with `states` beside them for `dead-symbols`, for a gate
+  that reads structural
   facts (8.4), and null for any other gate or for one that never got that far:
   `reads` and `parses` count the files of both trees whose content this gate
   read and parsed, `extracted` counts the files whose structural outcome it
@@ -2234,7 +2243,9 @@ One object on stdout. Fields:
   takes it and under `shared` after that, `ms` is
   the part of the gate's `ms` spent on its own extractions, and
   `cache_read_ms` and `cache_write_ms` are the parts spent reading and
-  writing the structural cache. A run extracts each file of a tree once.
+  writing the structural cache. `states` counts the declaration states
+  `dead-symbols` built over both trees (8.4), and no other gate's `facts`
+  carries the key. A run extracts each file of a tree once.
   Each gate still selects its own files and resolves names over those files
   alone, so `facts` is the one field of a row that depends on the other gates
   a run selects. `work` is `{reads, parses}` for the file-local gates

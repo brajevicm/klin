@@ -84,6 +84,9 @@ pub struct Records {
     /// The source contents a file-local gate read and parsed over both trees. `None` for a gate
     /// that records no content work.
     pub work: Option<ContentCost>,
+    /// The declaration states `dead-symbols` built over both trees. `None` for a gate that
+    /// builds none. Spec 11.2.
+    pub states: Option<u64>,
     /// The module graphs the gate built over both trees. `None` for a gate that builds none.
     pub graph: Option<modules::GraphCost>,
 }

@@ -330,3 +330,53 @@ fn an_accepted_dead_symbol_is_held() {
         run.out
     );
 }
+
+/// A changed run's judgement state, and the whole run's, for a base of `unchanged` files that
+/// each declare `declarations` referenced functions, with one more file the working tree edits.
+fn states(unchanged: usize, declarations: usize) -> (u64, u64) {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    for file in 0..unchanged {
+        let mut source = String::new();
+        for at in 0..declarations {
+            assert!(writeln!(&mut source, "fn held_{file}_{at}() {{}}").is_ok());
+            assert!(
+                writeln!(
+                    &mut source,
+                    "fn call_{file}_{at}() {{ held_{file}_{at}(); }}"
+                )
+                .is_ok()
+            );
+        }
+        tree.write(&format!("src/held_{file}.rs"), &source);
+    }
+    tree.write(
+        "src/edited.rs",
+        "fn edited() {}\nfn call_edited() { edited(); }\n",
+    );
+    tree.base();
+    tree.write(
+        "src/edited.rs",
+        "fn edited() {}\nfn call_edited() { edited(); }\nfn also() { edited(); }\n",
+    );
+
+    let built = |flags: &[&str]| {
+        let mut args = vec!["gate", "--json", "--gate", "dead-symbols"];
+        args.extend_from_slice(flags);
+        let report = tree.run(&args).json();
+        report["gates"][0]["facts"]["states"]
+            .as_u64()
+            .unwrap_or_else(|| panic!("no dead-symbols states in {report}"))
+    };
+    (built(&["--changed"]), built(&[]))
+}
+
+#[test]
+fn a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge() {
+    let (few, few_whole) = states(4, 1);
+    let (many, many_whole) = states(4, 5);
+
+    assert_eq!(few, many, "a changed run built state outside its scope");
+    assert_eq!(few, 5, "the changed file's own declarations are judged");
+    assert!(many_whole > few_whole, "{many_whole} then {few_whole}");
+}

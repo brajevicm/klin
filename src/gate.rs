@@ -1071,6 +1071,28 @@ fn each(
     (tally, totals)
 }
 
+/// What one gate's structural work came to, with the declaration states of the gate that builds
+/// them. A gate that reads no structural facts records none. Spec 11.2.
+fn facts(records: &Records) -> Value {
+    let Some(facts) = records.facts else {
+        return Value::Null;
+    };
+    let mut out = serde_json::json!({
+        "reads": facts.reads,
+        "parses": facts.parses,
+        "extracted": facts.extracted,
+        "shared": facts.shared,
+        "cached": facts.cached,
+        "ms": journal::millis(facts.time),
+        "cache_read_ms": journal::millis(facts.cache_read),
+        "cache_write_ms": journal::millis(facts.cache_write),
+    });
+    if let (Some(fields), Some(states)) = (out.as_object_mut(), records.states) {
+        fields.insert("states".into(), states.into());
+    }
+    out
+}
+
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
 /// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
 /// line prints as held at the base, and the structural facts it extracted or shared. Spec 11.2.
@@ -1086,21 +1108,7 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     );
     out.insert("ms".into(), ms.into());
     out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
-    out.insert(
-        "facts".into(),
-        records.facts.map_or(Value::Null, |facts| {
-            serde_json::json!({
-                "reads": facts.reads,
-                "parses": facts.parses,
-                "extracted": facts.extracted,
-                "shared": facts.shared,
-                "cached": facts.cached,
-                "ms": journal::millis(facts.time),
-                "cache_read_ms": journal::millis(facts.cache_read),
-                "cache_write_ms": journal::millis(facts.cache_write),
-            })
-        }),
-    );
+    out.insert("facts".into(), facts(records));
     out.insert(
         "work".into(),
         records.work.map_or(Value::Null, |work| {

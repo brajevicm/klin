@@ -106,9 +106,14 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let spec = spec(project)?;
     let commit = base::commit(project.root(), at, out)?;
     let (before, after) = sweeps(at, &spec, &commit)?;
-    out.record(|records| records.facts = Some(before.cost + after.cost));
-    let before_states = states(before.index(), &spec.ignore);
-    let after_states = states(after.index(), &spec.ignore);
+    let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
+    let before_states = states(before.index(), &spec.ignore, judged_scope);
+    let after_states = states(after.index(), &spec.ignore, judged_scope);
+    let built = (before_states.len() + after_states.len()) as u64;
+    out.record(|records| {
+        records.facts = Some(before.cost + after.cost);
+        records.states = Some(built);
+    });
     let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = dead_findings(&after_states, &before, &after, &held_before);
@@ -277,9 +282,19 @@ fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
     }))
 }
 
-fn states(index: &structural::SourceIndex, ignore: &[String]) -> Vec<State> {
+/// The declaration state of one tree, built only for the files the run judges. The index stays
+/// complete over both trees, so a declaration in scope is judged against every reference the
+/// repository holds, and only the states nothing can report are left unbuilt. Spec 8.4.
+fn states(
+    index: &structural::SourceIndex,
+    ignore: &[String],
+    only: Option<&[String]>,
+) -> Vec<State> {
     let mut out = Vec::new();
     for file in index.files() {
+        if !coverage::in_scope(&file.file, only) {
+            continue;
+        }
         for declaration in &file.declarations {
             if !eligible(declaration, ignore) {
                 continue;
