@@ -64,3 +64,10 @@ project build command. The guard row is 1,000 separate events.
 The small warm-hook increase is measurable but not a timing cliff: it stays
 below 8% on the 2k and 10k fixtures, while the larger cold and strict rows
 improve. No timing-specific optimization is justified by these medians.
+
+## Final self-enforcement
+
+`conventions/single-git-boundary` scopes production source to `src` and
+excepts `src/git.rs` and `src/changed.rs`, whose direct Git use is test-only;
+integration tests are outside that scope. A new `Command::new("git")`
+elsewhere gets the shared-boundary remedy.

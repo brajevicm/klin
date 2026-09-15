@@ -267,3 +267,11 @@ The structural cache still stores only per-file outcomes, with the same
 identity, contents and epoch. The extraction, coverage, findings and reports
 therefore keep the existing semantics, while future consumers such as #46 can
 take structural facts without depending on `SourceIndex` as their container.
+
+## Final self-enforcement
+
+The self-hosted `layering` section assigns the runner, checks, syntax, project
+facts, catalogue and edge modules to explicit layers. It permits the existing
+inward edges while refusing inner-to-runner dependencies and check or syntax
+dependencies on host, journal and stats presentation. Its enabled cycle rule
+ratchets only the resolved V1 graph; unsupported forms remain unguessed.

@@ -124,3 +124,10 @@ the edges the base already had.
 - A gate row carries `graph`: modules, dependencies and milliseconds (11.2).
 - Known limits: a path inside a macro's tokens, a bare Rust path, a dynamic
   `import()` and `require()` are not dependencies in V1.
+
+## Final self-enforcement
+
+Klin's `layering` policy now enables `acyclic` over the module graph and pins
+the runner, checks, syntax, project, catalogue, core and edge boundaries. A
+resolved forbidden or cyclic edge is ratcheted; external and unsupported V1
+forms are not guessed, and no accepted entry is used to make the policy green.

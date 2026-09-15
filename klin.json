@@ -11,5 +11,114 @@
   "radius": {
     "directories": 4,
     "lines": 776
+  },
+
+  "conventions": {
+    "single-git-boundary": {
+      "code": "Command::new(\"git\")",
+      "in": "src",
+      "except": ["src/git.rs", "src/changed.rs"],
+      "remedy": "Use the shared Git boundary."
+    },
+    "no-old-flags": {
+      "text": "config::Flags",
+      "in": "src",
+      "remedy": "Use the explicit execution context."
+    },
+    "no-records-side-channel": {
+      "code": "RefCell<Records>",
+      "in": "src",
+      "remedy": "Write through the explicit check Sink."
+    },
+    "exhaustive-cli-dispatch": {
+      "code": "_ => Ok(0)",
+      "in": "src/main.rs",
+      "remedy": "Handle every CLI command explicitly."
+    },
+    "single-parser-owner": {
+      "code": "Parser::new()",
+      "in": "src",
+      "except": "src/syntax",
+      "remedy": "Use the shared syntax parser."
+    }
+  },
+  "layering": {
+    "acyclic": true,
+    "layers": {
+      "runner": {
+        "in": [
+          "src/main.rs",
+          "src/gate.rs",
+          "src/guard.rs",
+          "src/hooks.rs",
+          "src/init.rs",
+          "src/update.rs"
+        ],
+        "can_use": null
+      },
+      "checks": {
+        "in": [
+          "src/complexity.rs",
+          "src/conventions.rs",
+          "src/dead_symbols.rs",
+          "src/doc_citations.rs",
+          "src/doc_size.rs",
+          "src/escapes.rs",
+          "src/inventory.rs",
+          "src/layering.rs",
+          "src/lockfile.rs",
+          "src/public_api.rs",
+          "src/reachability.rs",
+          "src/sarif.rs",
+          "src/stubs.rs",
+          "src/surface"
+        ],
+        "can_use": ["catalogue", "project", "syntax", "core", "window"]
+      },
+      "syntax": {
+        "in": "src/syntax",
+        "can_use": ["catalogue", "project", "core"]
+      },
+      "project": {
+        "in": ["src/files.rs", "src/project.rs", "src/survey.rs"],
+        "can_use": ["catalogue", "syntax", "core", "window"]
+      },
+      "catalogue": {
+        "in": ["src/check.rs", "src/config.rs", "src/reference.rs"],
+        "can_use": ["checks", "project", "syntax", "core"]
+      },
+      "host": { "in": "src/host", "can_use": ["core"] },
+      "journal": {
+        "in": "src/journal.rs",
+        "can_use": ["catalogue", "host", "core"]
+      },
+      "stats": {
+        "in": "src/stats.rs",
+        "can_use": ["catalogue", "journal", "window", "core"]
+      },
+      "window": {
+        "in": ["src/radius.rs", "src/turn.rs"],
+        "can_use": ["catalogue", "host", "journal", "core"]
+      },
+      "core": {
+        "in": [
+          "src/base.rs",
+          "src/build.rs",
+          "src/cache.rs",
+          "src/ceiling.rs",
+          "src/changed.rs",
+          "src/coverage.rs",
+          "src/git.rs",
+          "src/hunks.rs",
+          "src/markers.rs",
+          "src/modules",
+          "src/ratchet.rs",
+          "src/scope.rs",
+          "src/state.rs",
+          "src/write.rs"
+        ],
+        "can_use": ["catalogue", "project", "syntax", "core"]
+      }
+    }
   }
 }

@@ -125,3 +125,12 @@ can be revisited; a trait with one implementation would state nothing today.
 This is a structural change. No gate was added, no finding identity, ratchet
 rule, journal schema, `gate --json` object or human report line changed, and
 the #157 fixture was measured before and after on one machine.
+
+## Final self-enforcement
+
+Klin's own `klin.json` now pins these boundaries with
+`conventions/no-old-flags`, `conventions/no-records-side-channel` and
+`conventions/exhaustive-cli-dispatch`. They keep the retired execution bag,
+direct `Records` mutation and wildcard-success dispatch from returning; the
+layering section keeps the catalogue out of the runner. No accepted debt is
+needed.
