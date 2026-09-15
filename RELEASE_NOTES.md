@@ -16,8 +16,8 @@ Measurements are in `docs/structural-views-2026-09-15.md`.
 
 ### Bounded structural reuse and dense scaling evidence
 
-Structural reuse keeps the four newest base snapshots. Missing, damaged,
-incompatible and evicted snapshots fall back to the same cold extraction, so
+Structural reuse keeps the four newest base-commit cache files. Missing,
+damaged, incompatible and evicted files fall back to the same cold extraction, so
 eviction changes cost only. The CLI tests also exercise a cached view carrying
 imports, module declarations and coverage outcomes while the changed path set
 stays separate.
@@ -29,7 +29,7 @@ controlled measurements and disk/RSS evidence are in
 docs/structural-views-2026-09-15.md.
 The release run measured 2,220 ms warm and 2,559 ms at 100 changed files on
 the 300k row, and 2,860 ms warm and 3,220 ms at 100 changed files on the 1M
-row. The corresponding snapshots were 8,416,407 and 25,863,432 bytes.
+row. The corresponding cache files were 8,416,407 and 25,863,432 bytes.
 
 ### Structural gates share one extraction per tree
 

@@ -230,8 +230,8 @@ row.
 
 ### #193 completion
 
-The persistent policy is four newest base-commit snapshots. The cache writes
-the current snapshot atomically, then evicts older snapshots by modification
+The persistent policy is four newest base-commit cache files. The cache writes
+the current file atomically, then evicts older files by modification
 time with a path tie-breaker. Six-base CLI coverage proves that an evicted
 base falls back to a cold run with the same verdict; missing, damaged,
 foreign, incompatible and checkout-stale files have the same fallback
@@ -240,6 +240,8 @@ after a prompt and branch switch.
 
 Measured 2026-09-15 on the same baseline machine, release build of 0.1.1
 from implementation commit 9909b9f, with five iterations per row:
+Machine: MacBook Pro 18,3, Apple M1 Pro, macOS 26.6.2 / Darwin 25.6.0,
+macOS aarch64.
 
 | Source row | Warm, 20 changed | Warm, 100 changed | Warm, no cache | Cold | Strict | Cache bytes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -254,14 +256,32 @@ the important fixed-repository scaling result:
 | 300k | 20 | 40 / 9,980 / 9,980 | 100 | 200 / 9,900 / 9,900 |
 | 1M | 20 | 40 / 9,980 / 9,980 | 100 | 200 / 9,900 / 9,900 |
 
+Structural gate medians, in milliseconds:
+
+| Source row | Gate | Warm, 20 | Warm, 100 | Warm, no cache | Cold | Strict |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 300k | complexity | 16 | 41 | 16 | 8,452 | 2,983 |
+| 300k | dead-symbols | 1,188 | 1,272 | 2,969 | 3,889 | 3,875 |
+| 300k | reachability | 97 | 103 | 97 | 5,916 | 99 |
+| 1M | complexity | 28 | 98 | 28 | 16,598 | 8,180 |
+| 1M | dead-symbols | 1,657 | 1,820 | 6,862 | 10,941 | 10,822 |
+| 1M | reachability | 222 | 225 | 220 | 9,358 | 206 |
+
+The work counters for the changed-file-local gates scale with the same delta:
+
+| Changed files | complexity reads / parses | dead facts reads / parses / extracted | escapes reads / parses | stubs reads / parses |
+| ---: | ---: | ---: | ---: | ---: |
+| 20 | 40 / 40 | 40 / 40 / 40 | 40 / 20 | 40 / 40 |
+| 100 | 200 / 200 | 200 / 200 / 200 | 200 / 100 | 200 / 200 |
+
 The current sandbox did not expose peak RSS to the fixture, so its resource
 rows say unavailable rather than inventing a number. The controlled reference
 rows above still report 806,304 kB warm-cache and 833,648 kB without the cache
 at 1M, against the post-#183 roughly 955 MB comparison point; strict
 whole-tree work is the separate 1,019,936 kB path.
 
-The 1M snapshot is 25,863,432 bytes and the 300k snapshot is 8,416,407 bytes.
-Four equally sized retained snapshots therefore occupy at most 103,453,728
+The 1M cache file is 25,863,432 bytes and the 300k file is 8,416,407 bytes.
+Four equally sized retained files therefore occupy at most 103,453,728
 bytes and 33,665,628 bytes respectively for these workloads. This is a
 measured retention envelope, not a byte-LRU policy. The 1M warm 20-file row is
 2.86 seconds, below the roughly 5 second milestone of #187.

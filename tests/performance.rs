@@ -79,7 +79,7 @@ struct Measurements {
     uncached: Samples,
     cold: Samples,
     strict: Samples,
-    warm_deltas: Vec<(usize, Samples)>,
+    warm_delta: Option<(usize, Samples)>,
     resources: Resources,
 }
 
@@ -274,8 +274,12 @@ impl Fixture {
         }
     }
 
+    fn current_dense(&self) -> bool {
+        self.profile.units.is_some() && std::env::var_os("KLIN_BIN").is_none()
+    }
+
     fn dense_gate_shape_is_present(&self, samples: &Samples) {
-        if self.profile.units.is_none() || std::env::var_os("KLIN_BIN").is_some() {
+        if !self.current_dense() {
             return;
         }
         for name in ["complexity", "dead-symbols", "reachability"] {
@@ -288,15 +292,24 @@ impl Fixture {
     }
 
     fn dense_cache_shape_is_present(&self, samples: &Samples, changed: usize) {
-        if self.profile.units.is_none() || std::env::var_os("KLIN_BIN").is_some() {
+        if !self.current_dense() {
             return;
         }
         let median_counter = |name: &str| median(&samples.gates[name]);
         let unchanged = (self.files_per_language * 2 - changed) as u64;
-        assert_eq!(
-            median_counter("dead-symbols_facts_extracted"),
-            (changed * 2) as u64
-        );
+        for name in [
+            "complexity_work_reads",
+            "complexity_work_parses",
+            "dead-symbols_facts_reads",
+            "dead-symbols_facts_parses",
+            "dead-symbols_facts_extracted",
+            "stubs_work_reads",
+            "stubs_work_parses",
+        ] {
+            assert_eq!(median_counter(name), (changed * 2) as u64, "{name}");
+        }
+        assert_eq!(median_counter("escapes_work_reads"), (changed * 2) as u64);
+        assert_eq!(median_counter("escapes_work_parses"), changed as u64);
         assert_eq!(median_counter("dead-symbols_facts_cached"), unchanged);
         assert_eq!(median_counter("dead-symbols_facts_shared"), unchanged);
     }
@@ -343,13 +356,13 @@ impl Fixture {
         self.dense_gate_shape_is_present(&cold);
         self.dense_gate_shape_is_present(&strict);
         let resources = resources(self);
-        let warm_deltas = if self.profile.units.is_some() {
+        let warm_delta = if self.profile.units.is_some() {
             let delta = self.change_delta();
             self.dense_gate_shape_is_present(&delta);
             self.dense_cache_shape_is_present(&delta, 100);
-            vec![(100, delta)]
+            Some((100, delta))
         } else {
-            Vec::new()
+            None
         };
         Measurements {
             changed,
@@ -357,7 +370,7 @@ impl Fixture {
             uncached,
             cold,
             strict,
-            warm_deltas,
+            warm_delta,
             resources,
         }
     }
@@ -659,7 +672,7 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         median(&rows.strict.total),
         gate_medians(&rows.strict)
     );
-    for (changed, samples) in &rows.warm_deltas {
+    if let Some((changed, samples)) = &rows.warm_delta {
         println!(
             "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
             size,

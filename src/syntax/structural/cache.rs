@@ -77,7 +77,7 @@ impl Cache {
         }
     }
 
-    /// Keep the four newest snapshots; the resulting cross-base storage is measured by #193.
+    /// Keep the four newest base-commit cache files; #193 measures their storage.
     fn evict(&self) {
         let Some(Ok(entries)) = self.file.parent().map(std::fs::read_dir) else {
             return;
