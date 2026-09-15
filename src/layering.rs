@@ -209,10 +209,9 @@ fn side(
             .cloned()
             .unwrap_or_else(|| file.to_string())
     };
-    let layout = Topology::new(tree.root(), tree.files()?, measured.index.files(), renamed);
-    let mut files: Vec<String> = measured
-        .index
-        .files()
+    let facts = measured.facts();
+    let layout = Topology::new(tree.root(), tree.files()?, facts, renamed);
+    let mut files: Vec<String> = facts
         .iter()
         .map(|facts| topology(&facts.file))
         .chain(measured.unparsed.iter().map(|file| topology(&file.file)))

@@ -107,8 +107,8 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let commit = base::commit(project.root(), at, out)?;
     let (before, after) = sweeps(at, &spec, &commit)?;
     out.record(|records| records.facts = Some(before.cost + after.cost));
-    let before_states = states(&before.index, &spec.ignore);
-    let after_states = states(&after.index, &spec.ignore);
+    let before_states = states(before.index(), &spec.ignore);
+    let after_states = states(after.index(), &spec.ignore);
     let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = dead_findings(&after_states, &before, &after, &held_before);
@@ -371,10 +371,10 @@ fn lost_reference(
     if held.dead {
         return None;
     }
-    let language = before.index.file(&state.file)?.language;
-    let old = before.index.references(language, &state.name);
+    let language = before.index().file(&state.file)?.language;
+    let old = before.index().references(language, &state.name);
     let now: BTreeSet<(&str, u64)> = after
-        .index
+        .index()
         .references(language, &state.name)
         .map(|reference| (reference.file, reference.line))
         .collect();

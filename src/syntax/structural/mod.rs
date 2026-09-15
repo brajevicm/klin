@@ -1,7 +1,7 @@
-//! The semantic facts a structural check reads, and the one index it resolves names through.
-//! A consumer here never sees a Tree-sitter node or a node kind: it sees declarations,
-//! imports, module declarations and references, and a file it did not measure says so. Rust
-//! and TypeScript are the structural languages of V1, and TSX is TypeScript. ADR 0035.
+//! The semantic facts a structural check reads, and the optional index that resolves names.
+//! A consumer here never sees a Tree-sitter node or a node kind: it sees declarations, imports,
+//! module declarations and references, and a file it did not measure says so. Rust and TypeScript
+//! are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -137,22 +137,38 @@ pub struct Unsupported {
     pub language: &'static str,
 }
 
-/// One structural measurement over a discovered file set. Consumers receive the semantic index
-/// and explicit coverage outcomes; none of them parses files or reconstructs capability gaps.
+/// One structural measurement over a discovered file set. Consumers receive the semantic facts
+/// and explicit coverage outcomes; a name-resolving consumer asks for the index lazily, and none
+/// parses files or reconstructs capability gaps.
 pub struct Measurement {
-    pub index: SourceIndex,
+    facts: Vec<Rc<FileFacts>>,
+    index: OnceCell<SourceIndex>,
     pub unparsed: Vec<Unparsed>,
     pub unsupported: Vec<Unsupported>,
     pub files: Files,
     pub cost: ExtractionCost,
 }
 
+impl Measurement {
+    /// The selected files' shared facts, without building the name-resolution index.
+    pub fn facts(&self) -> &[Rc<FileFacts>] {
+        &self.facts
+    }
+
+    /// The name-resolution index, built once only when a consumer asks for it.
+    pub fn index(&self) -> &SourceIndex {
+        self.index
+            .get_or_init(|| SourceIndex::of(self.facts.clone()))
+    }
+}
+
 /// Every outcome one tree's files came to, each file read, parsed and extracted on the first
 /// request and held for the life of the tree, which is one run. Every structural check a run
-/// selects reads the one extraction of a file, and still selects its own files and builds its
-/// own index from them, so a file one check leaves out never resolves a name for it because
-/// another check read that file. A base tree may also hold outcomes its structural cache kept
-/// from an earlier run, each taken the first time a check asks for its file. ADR 0038.
+/// selects reads the one extraction of a file, and still selects its own files and keeps their
+/// facts, so a file one check leaves out never resolves a name for it because another check read
+/// that file. A name-resolving measurement builds its own index lazily. A base tree may also hold
+/// outcomes its structural cache kept from an earlier run, each taken the first time a check asks
+/// for its file. ADR 0038.
 #[derive(Default)]
 pub struct Extracted {
     held: RefCell<HashMap<String, Outcome>>,
@@ -381,7 +397,8 @@ pub fn measure(
     let unreadable = unparsed.iter().map(|file| file.file.clone()).collect();
     let not_measured = unsupported.iter().map(|file| file.file.clone()).collect();
     Ok(Measurement {
-        index: SourceIndex::of(facts),
+        facts,
+        index: OnceCell::new(),
         unparsed,
         unsupported,
         files: Files {

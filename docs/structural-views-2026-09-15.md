@@ -337,3 +337,28 @@ cold budget of spec 13 was missed on this uncontrolled run by 1,236 ms, and
 `layering` accounts for 112 ms of that row. Peak RSS was 295,120 kB for the
 warm hook and 372,304 kB for strict, and one structural cache file held
 8,601,047 bytes.
+
+## Facts without a name index (#195)
+
+The paired dense-repository runs below compare clean parent `c460481` with the
+final working tree. Both use release builds, five iterations per row, the same
+macOS/aarch64 machine, and the fixture's direct invocation with layering
+enabled. Times are median milliseconds; each `before / after` pair reports the
+hook total, the layering gate, and the module-graph construction respectively.
+
+| Fixture | Run | Hook total | Layering | Module graph |
+| --- | --- | ---: | ---: | ---: |
+| 300k | warm, 20 changed | 2,282 / 2,256 | 96 / 54 | 22 / 22 |
+| 300k | warm, no structural cache | 4,115 / 4,039 | 96 / 51 | 22 / 21 |
+| 300k | cold | 23,946 / 23,294 | 96 / 50 | 22 / 22 |
+| 300k | strict | 14,263 / 12,764 | 110 / 51 | 25 / 23 |
+| 300k | warm, 100 changed | 2,814 / 2,472 | 107 / 56 | 24 / 24 |
+| 1M | warm, 20 changed | 4,617 / 3,002 | 274 / 56 | 45 / 24 |
+| 1M | warm, no structural cache | 8,326 / 8,691 | 197 / 56 | 21 / 23 |
+| 1M | cold | 52,613 / 52,236 | 202 / 53 | 23 / 23 |
+| 1M | strict | 35,230 / 31,992 | 205 / 52 | 23 / 22 |
+| 1M | warm, 100 changed | 3,439 / 3,541 | 208 / 55 | 24 / 23 |
+
+Layering reported `0/0/0/0` facts reads/parses/extractions/cache hits in every
+row, while consuming the shared 20,000 facts; graph contents stayed at 10,010
+modules and 9,906 dependencies. Peak RSS was unavailable in this environment.

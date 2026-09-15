@@ -154,8 +154,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
             structural::Unchanged::publish,
         );
     out.record(|records| records.facts = Some(before.cost + after.cost));
-    let (before_states, _) = states(&before.index, &before_families);
-    let (after_states, unjudged) = states(&after.index, &families);
+    let (before_states, _) = states(before.index(), &before_families);
+    let (after_states, unjudged) = states(after.index(), &families);
     let held_before: Vec<&State> = before_states
         .iter()
         .filter(|state| project.was_held(&state.file))

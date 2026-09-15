@@ -4,16 +4,16 @@
 structural file of both trees, and under `--changed` each of them checked out
 the whole base again. A run now extracts each file of a tree once. The first
 structural gate that reads a file pays for the extraction, and a later gate
-reuses the facts. Each gate still selects its own files under its own scope
-and builds its own index, so its findings and coverage match a run of that
-gate alone. Under `--changed` the two gates share one checkout of the whole
-base. ADR 0038 records the ownership.
+reuses the facts. Each gate still selects its own files under its own scope;
+name-resolving gates build their own index lazily, so their findings and
+coverage match a run of that gate alone. Under `--changed` the two gates share
+one checkout of the whole base. ADR 0038 records the ownership.
 
 Each gate row in `--json` and in the journal has a new `facts` field,
 `{extracted, shared, ms}`, for the gates that read structural facts (spec
 11.2). The dense performance rows print the extraction time as
 `dead-symbols_facts_ms` and `reachability_facts_ms`, and the rest of a gate's
-`ms` is its index and its own algorithm (spec 13).
+`ms` is its name index where needed and its own algorithm (spec 13).
 
 ## Measurements
 

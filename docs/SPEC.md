@@ -1201,8 +1201,9 @@ where git does not see the rename, is extracted from the working tree. The
 base is laid out whole with each renamed file at its current path, so its old
 bytes are read under the grammar of that path, and an extension-changing
 rename such as `.ts` to `.tsx` reads them as TSX. Each tree still selects its
-own files under its own scope and builds its own index from the facts it
-selected, and no parse tree outlives its extraction. A strict run, a run that
+own files under its own scope and keeps the facts it selected; a
+name-resolving check builds its own index lazily from those facts, and no parse
+tree outlives its extraction. A strict run, a run that
 is not changed, and the check by hand extract both trees. Known limit: a
 change git does not report, such as an edit to a file marked `assume-unchanged`
 or `skip-worktree` or bytes a clean filter hides, reads as the base's bytes in
@@ -1246,6 +1247,11 @@ The shared structural view keeps imports and module declarations alongside
 declarations and references, and keeps unparsed and unsupported outcomes as
 coverage data. The project's Change data remains separate from the structural
 scope, so a consumer can reuse facts without losing which paths changed.
+`layering` consumes those facts directly through the module-resolution layer;
+it does not build a `SourceIndex`, because it resolves modules rather than
+declaration and reference names. `dead-symbols` and `reachability` request
+their own name index only when they judge names, so each measurement builds at
+most one index and the structural cache remains a cache of facts only.
 `tests/structural_views.rs` requires a cached base of imports, module
 declarations and an unparsed file to be read and parsed only for the changed
 file, and the cache round-trip unit test pins the import and module fields.
@@ -2609,9 +2615,10 @@ read each
 gate's values from the journal line of the stop it timed. The cold and strict
 rows read them from `--json`. A gate's `ms` covers its whole run:
 reading, parsing and extracting the files that no earlier gate of the run
-extracted, building its structural index, and its own algorithm. Its
-`facts.ms` is the first part, so `ms` less `facts.ms` is the time of its index
-and its algorithm. A run extracts each structural file of a tree once, so the
+extracted, building a structural index where name resolution needs one, and
+its own algorithm. Its `facts.ms` is the first part, so `ms` less `facts.ms`
+is the time of its index and its algorithm. A run extracts each structural
+file of a tree once, so the
 first gate that reads a file pays for the extraction, and a later gate counts
 that file in `facts.shared` (11.2). In the warm hook, `dead-symbols` and
 `reachability` take the base's facts for every unchanged working-tree file

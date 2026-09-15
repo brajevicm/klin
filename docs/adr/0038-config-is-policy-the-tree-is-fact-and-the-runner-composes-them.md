@@ -146,10 +146,11 @@ scoped one, and `base::whole` chooses between that checkout and the runner's
 own tree.
 
 The per-file outcome is shared, and nothing above it. Each check still selects
-its own files under its own scope and builds its own `SourceIndex` from them,
-so a file one check excepts never resolves a name for that check because
-another check read the file. The facts sit behind an `Rc`, which the tree and
-every index built over them hold. The store is a `RefCell` map and not a
+its own files under its own scope and keeps the facts it selected, so a file
+one check excepts never resolves a name for that check because another check
+read the file. A name-resolving check builds its own `SourceIndex` lazily from
+those facts. The facts sit behind an `Rc`, which the tree and every index built
+over them hold. The store is a `RefCell` map and not a
 `OnceCell`, because it fills one file at a time as checks ask for files, where
 a tree's file list fills once. Nothing outlives the run, and no provider,
 registry or service came with this: the tree already owned what a run knows
@@ -198,8 +199,9 @@ the working tree.
 The base keeps each renamed file at its current path, so an
 extension-changing rename reads the old bytes under the new path's grammar,
 as before. The file set of each tree is still that tree's listing under that
-tree's scope, each measurement still builds its own `SourceIndex`, and the
-facts stay behind an `Rc` and die with the run.
+tree's scope, each measurement keeps its selected facts and lazily builds its
+own `SourceIndex` only for name resolution, and the facts stay behind an `Rc`
+and die with the run.
 
 ## Follow-up: reachability over one base extraction (#191)
 
@@ -208,8 +210,8 @@ run that is not strict, it takes the base extraction for every working-tree
 file the change set leaves out and the base lists under the same name. A run
 of both structural gates therefore extracts each unchanged file once for the
 comparison. Strict runs, whole runs and the check by hand keep extracting
-both trees, and each check still builds its own index from the files it
-selected.
+both trees, and each name-resolving check still builds its own index from the
+facts it selected.
 
 ## Follow-up: the base's outcomes kept between runs (#192)
 
@@ -251,3 +253,17 @@ file is the cost. Each turn's stamp is a new commit, so each write keeps the
 four newest cache files and removes the rest. Eviction is performance-only:
 an evicted base falls back to the same cold extraction, and #193 records the
 resulting cross-base disk cost.
+
+## Follow-up: structural consumers use facts without a name index (#195)
+
+`Measurement` now retains the selected `FileFacts` and exposes a lazy
+name-resolution `SourceIndex`. `dead-symbols` and `reachability` request that
+index when they judge declaration and reference names; `layering` passes the
+facts directly to `modules::Topology`, which keeps #49 as the extraction and
+facts owner and #50 as the module-resolution owner. One measurement can build
+its index only once, and a layering measurement does not build one at all.
+
+The structural cache still stores only per-file outcomes, with the same
+identity, contents and epoch. The extraction, coverage, findings and reports
+therefore keep the existing semantics, while future consumers such as #46 can
+take structural facts without depending on `SourceIndex` as their container.
