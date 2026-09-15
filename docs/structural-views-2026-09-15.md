@@ -239,14 +239,14 @@ property. The red-turn lifecycle test also revisits the exact stamped base
 after a prompt and branch switch.
 
 Measured 2026-09-15 on the same baseline machine, release build of 0.1.1
-from implementation commit 9909b9f, with five iterations per row:
+from benchmark commit aa2ca0a, with five iterations per row:
 Machine: MacBook Pro 18,3, Apple M1 Pro, macOS 26.6.2 / Darwin 25.6.0,
 macOS aarch64.
 
 | Source row | Warm, 20 changed | Warm, 100 changed | Warm, no cache | Cold | Strict | Cache bytes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 300k | 2,220 ms | 2,559 ms | 3,979 ms | 23,854 ms | 12,592 ms | 8,416,407 |
-| 1M | 2,860 ms | 3,220 ms | 8,090 ms | 48,177 ms | 30,724 ms | 25,863,432 |
+| 300k | 2,388 ms | 2,348 ms | 4,123 ms | 22,834 ms | 12,168 ms | 8,416,405 |
+| 1M | 2,733 ms | 3,115 ms | 7,796 ms | 47,507 ms | 30,724 ms | 25,863,431 |
 
 The full output records every gate for every row. The structural counters are
 the important fixed-repository scaling result:
@@ -260,12 +260,12 @@ Structural gate medians, in milliseconds:
 
 | Source row | Gate | Warm, 20 | Warm, 100 | Warm, no cache | Cold | Strict |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 300k | complexity | 16 | 41 | 16 | 8,452 | 2,983 |
-| 300k | dead-symbols | 1,188 | 1,272 | 2,969 | 3,889 | 3,875 |
-| 300k | reachability | 97 | 103 | 97 | 5,916 | 99 |
-| 1M | complexity | 28 | 98 | 28 | 16,598 | 8,180 |
-| 1M | dead-symbols | 1,657 | 1,820 | 6,862 | 10,941 | 10,822 |
-| 1M | reachability | 222 | 225 | 220 | 9,358 | 206 |
+| 300k | complexity | 16 | 39 | 16 | 7,967 | 2,885 |
+| 300k | dead-symbols | 1,267 | 1,237 | 3,060 | 3,756 | 3,738 |
+| 300k | reachability | 95 | 98 | 93 | 5,612 | 94 |
+| 1M | complexity | 26 | 92 | 26 | 15,909 | 8,141 |
+| 1M | dead-symbols | 1,585 | 1,752 | 6,641 | 10,241 | 10,885 |
+| 1M | reachability | 211 | 214 | 207 | 9,334 | 206 |
 
 The work counters for the changed-file-local gates scale with the same delta:
 
@@ -274,19 +274,22 @@ The work counters for the changed-file-local gates scale with the same delta:
 | 20 | 40 / 40 | 40 / 40 / 40 | 40 / 20 | 40 / 40 |
 | 100 | 200 / 200 | 200 / 200 / 200 | 200 / 100 | 200 / 200 |
 
-This run did not measure peak RSS: the sandbox did not expose it to the
-fixture, so its resource rows say unavailable. No RSS exists for the 9909b9f
-build or for the 100-file row. The only peak RSS in this document is the #192
-table above, measured on the earlier implementation: 806,304 kB warm-cache,
-833,648 kB without the cache and 1,019,936 kB strict at 1M. Those rows sit below
-the post-#183 roughly 955 MB warm comparison point, but they are not a #193
-measurement, and the comparison for this build stays open.
+Peak resident memory from the controlled release run, in kB as `/usr/bin/time
+-l` reports it:
 
-The 1M cache file is 25,863,432 bytes and the 300k file is 8,416,407 bytes.
-Four equally sized retained files therefore occupy at most 103,453,728
-bytes and 33,665,628 bytes respectively for these workloads. This is a
+| Source row | Warm hook | Warm hook without cache | Dead-symbols changed | Strict |
+| --- | ---: | ---: | ---: | ---: |
+| 300k | 282,336 | 286,944 | 281,312 | 356,704 |
+| 1M | 806,080 | 831,456 | 825,696 | 1,011,728 |
+
+The 1M warm row is below the post-#183 roughly 955 MB warm comparison point;
+the strict row is reported separately because it measures the whole tree.
+
+The 1M cache file is 25,863,431 bytes and the 300k file is 8,416,405 bytes.
+Four equally sized retained files therefore occupy at most 103,453,724
+bytes and 33,665,620 bytes respectively for these workloads. This is a
 measured retention envelope, not a byte-LRU policy. The 1M warm 20-file row is
-2.86 seconds, below the roughly 5 second milestone of #187.
+2.733 seconds, below the roughly 5 second milestone of #187.
 
 The boundary test in tests/structural_views.rs puts a Rust import, a module
 declaration and an unparsed file in the base. On the second changed run it
