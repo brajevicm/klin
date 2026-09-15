@@ -239,7 +239,8 @@ property. The red-turn lifecycle test also revisits the exact stamped base
 after a prompt and branch switch.
 
 Measured 2026-09-15 on the same baseline machine, release build of 0.1.1
-from benchmark commit aa2ca0a, with five iterations per row:
+from benchmark commit aa2ca0a3bc92a5ee4b234e15bc87e8a5fa4f0856, with five
+iterations per row:
 Machine: MacBook Pro 18,3, Apple M1 Pro, macOS 26.6.2 / Darwin 25.6.0,
 macOS aarch64.
 
@@ -305,5 +306,6 @@ adding module resolution, layering or cycle analysis.
 The dense fixture now reports the original 20-file warm row and a second
 100-file warm row for each source volume. Its assertions require changed-file
 fact extraction to scale with that delta while unchanged base outcomes stay
-cached and shared. The rows provide evidence for #182; they do not establish
-a final product performance or memory budget.
+cached and shared. These final #193 rows provide the controlled evidence for
+#182's product time budgets in SPEC 13; the RSS and cache values remain release
+diagnostics rather than additional machine-specific limits.

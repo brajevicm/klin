@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Large-repository performance contract (#182)
+
+SPEC 13 now makes the dense structural rows product requirements. The chosen
+limits are 5 seconds for a warm Stop hook on both rows, 30 seconds for the
+300k cold survey, 60 seconds for the 1M cold survey, 20 seconds for the 300k
+whole-tree strict run and 45 seconds for the 1M strict run. They leave
+headroom over the measured medians and do not weaken the existing 2k limits.
+
+The decision uses the final controlled release run from #193, not the
+intermediate optimization rows. It was measured on 2026-09-15 with release
+build `0.1.1` at benchmark commit
+`aa2ca0a3bc92a5ee4b234e15bc87e8a5fa4f0856`, five iterations per row, on a
+MacBook Pro 18,3 with an Apple M1 Pro, macOS 26.6.2 / Darwin 25.6.0 arm64;
+project builds were excluded from hook timing and the warm row used the
+structural cache:
+
+| Source row | Files / LoC | Warm, 20 changed | Warm, 100 changed | Cold | Strict |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 300k | 10,000 / 325,077 | 2,388 ms | 2,348 ms | 22,834 ms | 12,168 ms |
+| 1M | 10,000 / 1,033,827 | 2,733 ms | 3,115 ms | 47,507 ms | 30,724 ms |
+
+The changed-file counters were 40 complexity reads/parses, 40 structural
+fact reads/parses/extractions, 40 escapes reads with 20 parses, and 40 stubs
+reads/parses for 20 changed files. The 100-file row was 200 complexity
+reads/parses, 200 structural fact reads/parses/extractions, 200 escapes reads
+with 100 parses, and 200 stubs reads/parses. Peak RSS for warm / warm without cache / changed
+`dead-symbols` / strict was 282,336 / 286,944 / 281,312 / 356,704 kB at 300k
+and 806,080 / 831,456 / 825,696 / 1,011,728 kB at 1M. One structural cache
+snapshot was 8,416,405 and 25,863,431 bytes; the four-snapshot measured
+retention envelopes were 33,665,620 and 103,453,724 bytes. Per-gate timings,
+work attribution and the fixture contract are in
+`docs/structural-views-2026-09-15.md`.
+
+The release checklist now requires an explanation before release when a dense
+median misses its budget or rises by more than one third against the preceding
+controlled row. Contributor CI still checks deterministic shape and semantics,
+not machine-specific timing or RSS.
+
 ### A changed run keeps the base's structural facts between runs
 
 In a changed run that is not strict, `dead-symbols` and `reachability` keep
@@ -138,11 +176,8 @@ What the rows show:
   structural gate parses its own files. The rows therefore cannot separate
   parse cost from resolution cost, or show a parse two gates repeat.
 
-Budget: SPEC 13's budgets are for a 2,000-file tree, and the 2k row meets all
-three. The 300k row exceeds the 5-second hook budget, and the 1M row exceeds
-all three. A separate large-repository budget is warranted. It needs its own
-decision, and that decision should wait until gate timings separate parsing
-from judging, because two gates hold most of the cost.
+These are historical pre-#182 rows. The final controlled measurements and the
+large-repository product decision are recorded at the top of these notes.
 
 ## 0.1.1
 

@@ -2419,6 +2419,35 @@ the release notes when they move by more than a third.
 
 The guard MUST finish within 50 milliseconds.
 
+The dense structural rows have a separate large-repository product budget. The
+`structural_300k` row holds exactly 325,077 source lines in 10,000 source
+files, and `structural_1m` holds exactly 1,033,827 source lines in the same
+10,000-file split. Excluding the project's own build, the 20-file warm Stop
+row, the first-stop cold survey and the whole-tree strict run SHOULD finish
+within these limits:
+
+| Workload | `structural_300k` | `structural_1m` |
+| --- | ---: | ---: |
+| Warm Stop hook, 20 changed files and a warm structural cache | 5 seconds | 5 seconds |
+| Cold survey | 30 seconds | 60 seconds |
+| Whole-tree `--strict` run | 20 seconds | 45 seconds |
+
+These are product requirements, not the current implementation's medians.
+They are rounded limits with operating headroom, chosen from the final
+controlled measurements in #193: 2,388 ms and 2,733 ms for the warm rows,
+22,834 ms and 47,507 ms for the cold rows, and 12,168 ms and 30,724 ms for
+the strict rows. The 100-file warm row remains a fixed-repository scaling
+check, not a second product budget. The existing 2,000-file budgets above are
+unchanged.
+
+Before a release, the dense rows MUST be rerun on the controlled reference
+machine and compared with the preceding controlled release. A median that
+misses one of the limits above, or rises by more than one third against its
+preceding controlled row, MUST be explained in the release notes before the
+release proceeds. This is a release checklist rule: ordinary contributor
+tests continue to verify fixture shape and semantics, and do not use
+machine-specific wall-clock or RSS values as an oracle.
+
 The normative measurement fixture is the ignored `performance_fixture` CLI
 test, selected by `cargo test -- --ignored perf`. It generates a deterministic
 temporary repository with `rust/` and `web/` projects: the 2k row holds 1,000
@@ -3057,7 +3086,9 @@ Recommended:
 
 Before calling it 1.0:
 
-- [ ] Performance numbers from section 13 recorded on a fixture
+- [x] Performance numbers from section 13 recorded on a fixture
+- [x] Large-repository budgets and the controlled-release regression rule in
+      section 13 (#182)
 - [ ] A task comparison with and without klin on a small set of agent tasks,
       recording regressions caught, legitimate changes blocked, extra repair
       turns and hook latency. This is a benchmark, not a test, and it is what
