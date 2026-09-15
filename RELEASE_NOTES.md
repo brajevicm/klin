@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Layering and dependency cycles (#50)
+
+A new Policy gate, `layering`, fails when a dependency crosses a layer the
+section does not let it use, and, with `acyclic: true`, when a dependency
+closes a module cycle the base did not hold. A layer is a name, an `in` path
+and a `can_use` list. The section also takes the shared `in` and `except`.
+With no section the gate does not run.
+
+The gate reads one module graph per tree. Rust targets come from Cargo
+manifests through `cargo_toml`, over the file list the run already holds, and
+from the conventional library, main and bin roots under a src directory where
+no manifest is usable.
+Rust `mod` declarations, literal `#[path]` attributes and `crate`, `self` and
+`super` paths resolve to modules, and TypeScript relative imports resolve to
+files. A form the resolver cannot prove is a NOTE in the hook and exit 2
+elsewhere, and a bare path or package import is counted, never guessed.
+`petgraph` finds the cycles. ADR 0043 records the boundary, and
+`tests/layering.rs` pins the behaviour.
+
+The structural cache format changed to carry the inline modules that hold
+imports, module declarations and qualified paths, so the first changed run
+after an upgrade extracts the base again. A gate row in `--json` now carries
+`graph`, and the dense performance rows enable `layering` and print its
+graph counters.
+
 ### Large-repository performance contract (#182)
 
 SPEC 13 now makes the dense structural rows product requirements. The chosen

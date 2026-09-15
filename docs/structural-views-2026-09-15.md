@@ -309,3 +309,31 @@ fact extraction to scale with that delta while unchanged base outcomes stay
 cached and shared. These final #193 rows provide the controlled evidence for
 #182's product time budgets in SPEC 13; the RSS and cache values remain release
 diagnostics rather than additional machine-specific limits.
+
+## Layering over the module graph (#50)
+
+The dense rows now write a `layering` section with one layer per language and
+`acyclic` set. Each gate row prints `graph_modules`, `graph_dependencies` and
+`graph_ms`, and the warm hook asserts that `layering` reads and parses no
+source.
+
+Measured 2026-09-15 with a release build of this change, five iterations of
+the `structural_300k` row. This run is not controlled. The Claude Code Stop
+hook of this session built and ran klin on the klin repository while the row
+ran, so the totals carry that load. Compare the totals with #193 only after a
+controlled rerun.
+
+| Row | Warm, 20 changed | Warm, no cache | Warm, 100 changed | Cold | Strict |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 300k total | 2,153 ms | 4,001 ms | 2,297 ms | 31,236 ms | 12,498 ms |
+| `layering` gate | 105 ms | 102 ms | 102 ms | 112 ms | 100 ms |
+| `layering` graph and cycles | 24 ms | 23 ms | 24 ms | 26 ms | 23 ms |
+
+In every row, `layering` read 0 files, parsed 0 and extracted 0. It shared
+20,000 structural outcomes that `dead-symbols` had already taken, and its two
+graphs held 10,010 modules and 9,906 dependencies. The gate's time outside
+the graph is measurement selection, coverage and the ratchet. The 30 second
+cold budget of spec 13 was missed on this uncontrolled run by 1,236 ms, and
+`layering` accounts for 112 ms of that row. Peak RSS was 295,120 kB for the
+warm hook and 372,304 kB for strict, and one structural cache file held
+8,601,047 bytes.

@@ -225,9 +225,11 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
 
 /// The base laid out whole, for a check that resolves names against every file of it: the
 /// runner's own when the runner laid the whole base out, and otherwise the run's one checkout,
-/// which every such check shares. Spec 8.4, ADR 0038.
+/// which every such check shares. A changed run lays out only its changed files, whether or not
+/// the check takes that run's scope, so the change set and not the judgement scope decides.
+/// Spec 8.4, ADR 0038.
 pub fn whole<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
-    match (at.prior, at.only) {
+    match (at.prior, at.changes) {
         (Some(prior), None) => Ok(prior),
         _ => at.project.whole_base(commit),
     }

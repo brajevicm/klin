@@ -1,0 +1,474 @@
+//! Rust modules. A target root comes from a Cargo manifest, read through `cargo_toml` over the
+//! tree's own file list, and from a conventional root only where no manifest above the file is
+//! usable. From each root the resolver follows `mod` declarations to files, `#[path]` included,
+//! and makes every file it reaches a module of that target, so a file two targets reach is a
+//! module of each. A dependency is a path a `use` tree or a qualified path writes from `crate`,
+//! `self` or `super`, resolved to the deepest module it names. A path from any other name may be
+//! another crate or a local item, so it is counted and never resolved.
+
+use std::collections::{BTreeMap, HashSet};
+use std::io;
+use std::iter::Peekable;
+use std::path::{Path, PathBuf};
+
+use cargo_toml::{AbstractFilesystem, Manifest, Value};
+
+use super::{Attachment, Builder, Topology, directory, joined};
+use crate::survey;
+use crate::syntax::structural::ModuleDecl;
+
+const MANIFEST: &str = "Cargo.toml";
+
+struct Target {
+    root: String,
+    attachment: Attachment,
+}
+
+/// One module of one target: where it sits in the graph, the module that holds it, the modules
+/// it declares by name, the names it declares and no file answers, and the directory its child
+/// module files sit in.
+struct Node {
+    index: usize,
+    parent: Option<usize>,
+    children: BTreeMap<String, usize>,
+    unresolved: HashSet<String>,
+    directory: String,
+    file: String,
+    nesting: Vec<String>,
+}
+
+enum Reached {
+    Module(usize),
+    External,
+    Above,
+    Reported,
+}
+
+pub(super) fn resolve(builder: &mut Builder) {
+    for target in targets(builder) {
+        let mut krate = Crate {
+            target: &target,
+            nodes: Vec::new(),
+            nestings: BTreeMap::new(),
+        };
+        let root = krate.add(
+            builder,
+            &target.root,
+            Vec::new(),
+            directory(&target.root),
+            None,
+        );
+        let mut pending = vec![root];
+        while let Some(file) = pending.pop() {
+            pending.extend(krate.declared(builder, file));
+        }
+        krate.depend(builder);
+    }
+}
+
+/// Every target root: the lib and bin targets each usable manifest names, then a conventional
+/// root for every file no usable manifest above it speaks for.
+fn targets(builder: &mut Builder) -> Vec<Target> {
+    let topology = builder.topology;
+    let mut read: Vec<(&str, bool)> = Vec::new();
+    let mut out = Vec::new();
+    let manifests = topology
+        .files
+        .iter()
+        .filter(|file| basename(file) == MANIFEST && survey::surveyed(file));
+    for manifest in manifests {
+        let products = products(topology, manifest);
+        read.push((directory(manifest), products.is_some()));
+        for (kind, path) in products.into_iter().flatten() {
+            match joined(directory(manifest), &path).filter(|root| topology.holds(root)) {
+                Some(root) => out.push(Target {
+                    root,
+                    attachment: Attachment::Manifest,
+                }),
+                None => builder.hole(
+                    manifest,
+                    0,
+                    &path,
+                    format!("names the {kind} target root {path}, which the tree does not hold"),
+                ),
+            }
+        }
+    }
+    out.extend(conventional(topology, &read));
+    out
+}
+
+/// The lib and bin targets of one manifest, and `None` where the manifest is not usable.
+fn products(topology: &Topology, manifest: &str) -> Option<Vec<(String, String)>> {
+    let mut parsed = Manifest::from_slice(&topology.read(manifest)?).ok()?;
+    let listing = Listing {
+        topology,
+        directory: directory(manifest),
+    };
+    parsed
+        .complete_from_abstract_filesystem::<Value, _>(listing, None)
+        .ok()?;
+    let mut out: Vec<(String, String)> = parsed
+        .lib
+        .and_then(|lib| lib.path)
+        .map(|path| ("lib".to_string(), path))
+        .into_iter()
+        .collect();
+    for bin in parsed.bin {
+        if let Some(path) = bin.path {
+            out.push((
+                format!("bin {}", bin.name.as_deref().unwrap_or(&path)),
+                path,
+            ));
+        }
+    }
+    Some(out)
+}
+
+/// The conventional roots — `src/lib.rs`, `src/main.rs` and a file directly in `src/bin` — of
+/// every file whose nearest manifest is absent or not usable.
+fn conventional(topology: &Topology, read: &[(&str, bool)]) -> Vec<Target> {
+    topology
+        .files
+        .iter()
+        .filter(|file| file.ends_with(".rs") && conventional_root(file))
+        .filter(|file| {
+            read.iter()
+                .filter(|(at, _)| at.is_empty() || file.starts_with(&format!("{at}/")))
+                .max_by_key(|(at, _)| at.len())
+                .is_none_or(|(_, usable)| !usable)
+        })
+        .map(|file| Target {
+            root: file.clone(),
+            attachment: Attachment::Convention,
+        })
+        .collect()
+}
+
+fn conventional_root(file: &str) -> bool {
+    let at = directory(file);
+    let root = basename(at) == "src" && matches!(basename(file), "lib.rs" | "main.rs");
+    root || at == "src/bin" || at.ends_with("/src/bin")
+}
+
+fn basename(path: &str) -> &str {
+    path.rsplit_once('/').map_or(path, |(_, name)| name)
+}
+
+/// The tree's file list as the directory listing `cargo_toml` infers targets from, so a
+/// manifest's implicit targets come from the files a run already listed and no disk walk.
+struct Listing<'a> {
+    topology: &'a Topology<'a>,
+    directory: &'a str,
+}
+
+impl AbstractFilesystem for Listing<'_> {
+    fn file_names_in(&self, rel_path: &str) -> io::Result<HashSet<Box<str>>> {
+        let missing = || io::Error::from(io::ErrorKind::NotFound);
+        let at = joined(self.directory, rel_path).ok_or_else(missing)?;
+        let skip = if at.is_empty() { 0 } else { at.len() + 1 };
+        let names: HashSet<Box<str>> = self
+            .topology
+            .under(&at)
+            .filter_map(|file| file[skip..].split('/').next())
+            .map(Box::from)
+            .collect();
+        if names.is_empty() {
+            return Err(missing());
+        }
+        Ok(names)
+    }
+
+    fn parse_root_workspace(
+        &self,
+        hint: Option<&Path>,
+    ) -> Result<(Manifest<Value>, PathBuf), cargo_toml::Error> {
+        let candidates: Vec<String> = match hint {
+            Some(hint) => joined(self.directory, &hint.to_string_lossy())
+                .into_iter()
+                .collect(),
+            None => above(self.directory),
+        };
+        for at in candidates {
+            let Some(bytes) = joined(&at, MANIFEST).and_then(|file| self.topology.read(&file))
+            else {
+                continue;
+            };
+            let parsed = Manifest::from_slice(&bytes)?;
+            if parsed.workspace.is_some() {
+                return Ok((parsed, PathBuf::from(at)));
+            }
+        }
+        Err(cargo_toml::Error::Other(
+            "no workspace manifest above the package",
+        ))
+    }
+}
+
+/// Every directory above this one, nearest first, ending at the tree root.
+fn above(at: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut here = at;
+    while !here.is_empty() {
+        here = directory(here);
+        out.push(here.to_string());
+    }
+    out
+}
+
+/// One target's module tree as the resolver builds it.
+struct Crate<'t> {
+    target: &'t Target,
+    nodes: Vec<Node>,
+    /// For each file module, the module each inline nesting in that file names.
+    nestings: BTreeMap<usize, BTreeMap<Vec<String>, usize>>,
+}
+
+impl Crate<'_> {
+    fn add(
+        &mut self,
+        builder: &mut Builder,
+        file: &str,
+        nesting: Vec<String>,
+        children: &str,
+        parent: Option<(usize, &str)>,
+    ) -> usize {
+        let name = match nesting.is_empty() {
+            true => file.to_string(),
+            false => format!("{file}::{}", nesting.join("::")),
+        };
+        let index = builder.module(name, file, self.target.attachment);
+        let id = self.nodes.len();
+        self.nodes.push(Node {
+            index,
+            parent: parent.map(|(at, _)| at),
+            children: BTreeMap::new(),
+            unresolved: HashSet::new(),
+            directory: children.to_string(),
+            file: file.to_string(),
+            nesting,
+        });
+        if let Some((at, named)) = parent {
+            self.nodes[at].children.insert(named.to_string(), id);
+        }
+        id
+    }
+
+    /// The modules one file module declares: each inline module in it, and each file its
+    /// external declarations load, which the caller follows in turn.
+    fn declared(&mut self, builder: &mut Builder, at: usize) -> Vec<usize> {
+        let topology = builder.topology;
+        let file = self.nodes[at].file.clone();
+        let mut nestings = BTreeMap::from([(Vec::new(), at)]);
+        let mut loaded = Vec::new();
+        let Some(facts) = topology.facts(&file) else {
+            self.nestings.insert(at, nestings);
+            return loaded;
+        };
+        let mut declarations: Vec<&ModuleDecl> = facts.module_declarations.iter().collect();
+        declarations.sort_by_key(|declaration| declaration.nesting.len());
+        for declaration in declarations {
+            let Some(&parent) = nestings.get(&declaration.nesting) else {
+                continue;
+            };
+            let name = declaration.name.trim_start_matches("r#");
+            if declaration.inline {
+                let mut nesting = declaration.nesting.clone();
+                nesting.push(name.to_string());
+                let children = joined(&self.nodes[parent].directory, name).unwrap_or_default();
+                let id = self.add(
+                    builder,
+                    &file,
+                    nesting.clone(),
+                    &children,
+                    Some((parent, name)),
+                );
+                nestings.insert(nesting, id);
+            } else {
+                loaded.extend(self.external(builder, parent, declaration));
+            }
+        }
+        self.nestings.insert(at, nestings);
+        loaded
+    }
+
+    /// The file module one external declaration loads, where exactly one file answers it.
+    fn external(
+        &mut self,
+        builder: &mut Builder,
+        parent: usize,
+        declaration: &ModuleDecl,
+    ) -> Option<usize> {
+        let topology = builder.topology;
+        let name = declaration.name.trim_start_matches("r#");
+        let candidates = self.candidates(parent, declaration, name);
+        let held: Vec<&(String, String)> = candidates
+            .iter()
+            .filter(|(file, _)| topology.holds(file))
+            .collect();
+        let why = match held.as_slice() {
+            [(file, children)] if !self.holds_above(parent, file) => {
+                return Some(self.add(builder, file, Vec::new(), children, Some((parent, name))));
+            }
+            [_] => "declares a module whose file already holds it".to_string(),
+            [] if candidates.iter().any(|(file, _)| topology.ignored(file)) => {
+                builder.graph.external += 1;
+                String::new()
+            }
+            [] => format!("names no file the tree holds: {}", listed(&candidates)),
+            _ => format!("names more than one file: {}", listed(&candidates)),
+        };
+        self.nodes[parent].unresolved.insert(name.to_string());
+        if !why.is_empty() {
+            builder.hole(
+                &self.nodes[parent].file.clone(),
+                declaration.line,
+                &declaration.text,
+                why,
+            );
+        }
+        None
+    }
+
+    /// The files an external declaration may load, each with the directory its own child module
+    /// files sit in. A `#[path]` at the top of a file is read from that file's directory, and
+    /// one inside an inline module from that module's directory. A file a `#[path]` loads holds
+    /// its children ignored it, as a `mod.rs` does.
+    fn candidates(
+        &self,
+        parent: usize,
+        declaration: &ModuleDecl,
+        name: &str,
+    ) -> Vec<(String, String)> {
+        let holder = &self.nodes[parent];
+        if let Some(path) = &declaration.path {
+            let from = match declaration.nesting.is_empty() {
+                true => directory(&holder.file),
+                false => holder.directory.as_str(),
+            };
+            return joined(from, path)
+                .map(|file| {
+                    let children = directory(&file).to_string();
+                    (file, children)
+                })
+                .into_iter()
+                .collect();
+        }
+        let children = joined(&holder.directory, name).unwrap_or_default();
+        [format!("{name}.rs"), format!("{name}/mod.rs")]
+            .iter()
+            .filter_map(|file| joined(&holder.directory, file))
+            .map(|file| (file, children.clone()))
+            .collect()
+    }
+
+    /// Whether a file module this one sits inside is already this file.
+    fn holds_above(&self, mut at: usize, file: &str) -> bool {
+        loop {
+            let node = &self.nodes[at];
+            if node.nesting.is_empty() && node.file == file {
+                return true;
+            }
+            match node.parent {
+                Some(parent) => at = parent,
+                None => return false,
+            }
+        }
+    }
+
+    /// Every dependency each file module's imports and qualified paths write.
+    fn depend(&self, builder: &mut Builder) {
+        let topology = builder.topology;
+        for (at, nestings) in &self.nestings {
+            let file = &self.nodes[*at].file;
+            let Some(facts) = topology.facts(file) else {
+                continue;
+            };
+            for import in &facts.imports {
+                for path in nestings
+                    .get(&import.nesting)
+                    .into_iter()
+                    .flat_map(|from| import.paths.iter().map(move |path| (*from, path)))
+                {
+                    self.dependency(builder, path, import.line, &import.text);
+                }
+            }
+            for path in &facts.paths {
+                if let Some(from) = nestings.get(&path.nesting) {
+                    self.dependency(builder, (*from, &path.path), path.line, &path.path);
+                }
+            }
+        }
+    }
+
+    fn dependency(
+        &self,
+        builder: &mut Builder,
+        (from, path): (usize, &String),
+        line: u64,
+        text: &str,
+    ) {
+        match self.target_of(from, path) {
+            Reached::Module(to) if to != from => {
+                builder.depend(self.nodes[from].index, self.nodes[to].index, line);
+            }
+            Reached::External => builder.graph.external += 1,
+            Reached::Above => builder.hole(
+                &self.nodes[from].file,
+                line,
+                text,
+                format!("{path} goes above the crate root"),
+            ),
+            Reached::Module(_) | Reached::Reported => {}
+        }
+    }
+
+    /// The deepest module a path names from this module: `crate` starts at the target root,
+    /// `self` and `super` at this module and the ones above it, and each name after them at the
+    /// child module of that name, until a name is no module.
+    fn target_of(&self, from: usize, path: &str) -> Reached {
+        let mut segments = path.split("::").peekable();
+        let start = match segments.peek() {
+            Some(&"crate") => segments.next().map(|_| 0),
+            Some(&"self" | &"super") => Some(from),
+            _ => return Reached::External,
+        };
+        match start.and_then(|at| self.ascended(at, &mut segments)) {
+            Some(at) => self.descended(at, segments),
+            None => Reached::Above,
+        }
+    }
+
+    fn ascended<'p>(
+        &self,
+        mut at: usize,
+        segments: &mut Peekable<impl Iterator<Item = &'p str>>,
+    ) -> Option<usize> {
+        while let Some(segment) = segments.next_if(|segment| matches!(*segment, "self" | "super")) {
+            if segment == "super" {
+                at = self.nodes[at].parent?;
+            }
+        }
+        Some(at)
+    }
+
+    fn descended<'p>(&self, mut at: usize, segments: impl Iterator<Item = &'p str>) -> Reached {
+        for segment in segments.map(|segment| segment.trim_start_matches("r#")) {
+            let node = &self.nodes[at];
+            match node.children.get(segment) {
+                Some(child) => at = *child,
+                None if node.unresolved.contains(segment) => return Reached::Reported,
+                None => break,
+            }
+        }
+        Reached::Module(at)
+    }
+}
+
+fn listed(candidates: &[(String, String)]) -> String {
+    candidates
+        .iter()
+        .map(|(file, _)| file.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}

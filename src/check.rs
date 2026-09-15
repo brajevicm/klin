@@ -17,8 +17,8 @@ use crate::config::{Config, Error};
 use crate::project::Project;
 use crate::reference::{Key, Languages};
 use crate::{
-    complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, lockfile,
-    reachability, sarif, stubs, syntax,
+    complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering,
+    lockfile, modules, reachability, sarif, stubs, syntax,
 };
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -36,6 +36,10 @@ pub const NOT_MEASURED: &str = "not-measured";
 /// The outcome of a derived ceiling whose recorded scope fell back to the whole repository or
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
 pub const DERIVATION: &str = "derivation";
+
+/// The outcome of a dependency form a module resolver supports and could not resolve. A green
+/// layering run must not imply a resolution klin did not make. Spec 8.2.1, 8.6.
+pub const UNRESOLVED: &str = "unresolved";
 
 /// The source-content work a file-local gate performed over its current and base trees. The
 /// runner exposes this beside structural `facts` so performance rows can prove a changed run
@@ -80,6 +84,8 @@ pub struct Records {
     /// The source contents a file-local gate read and parsed over both trees. `None` for a gate
     /// that records no content work.
     pub work: Option<ContentCost>,
+    /// The module graphs the gate built over both trees. `None` for a gate that builds none.
+    pub graph: Option<modules::GraphCost>,
 }
 
 /// Who ran this check. A person running one by hand gets the run's own context lines and no
@@ -373,6 +379,18 @@ pub const CATALOGUE: &[Row] = &[
         run: reachability::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        gate_per_entry: false,
+    },
+    Row {
+        name: "layering",
+        section: layering::SECTION,
+        activation: Activation::Policy,
+        keys: layering::KEYS,
+        languages: Some(layering::language_extensions),
+        available: |_| false,
+        run: layering::gate,
+        needs: Needs::TheCommit,
+        takes_scope: false,
         gate_per_entry: false,
     },
     Row {

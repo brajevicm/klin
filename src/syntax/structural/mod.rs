@@ -57,23 +57,42 @@ pub struct Declaration {
     pub entry_point: bool,
 }
 
-/// One import, holding the specifier as it was written. Resolving it to a file is #50's work.
+/// One import, holding the specifier as it was written. The module graph resolves it to a file.
 pub struct Import {
     pub line: u64,
     pub text: String,
+    /// The inline modules that hold the import, outermost first, and none at the top of a file.
+    pub nesting: Vec<String>,
     pub module: Option<String>,
     pub names: Vec<String>,
+    /// Every path a Rust use tree names, one per leaf, its segments joined by `::`, with `self`
+    /// in a list read as the path above it and a glob kept as `*`. A language whose import names
+    /// a module specifier keeps none.
+    pub paths: Vec<String>,
 }
 
-/// One external module declaration, such as Rust's `mod foo;`. A language without that syntax
-/// declares none.
+/// One module declaration, such as Rust's `mod foo;` or `mod foo { }`. A language without that
+/// syntax declares none.
 pub struct ModuleDecl {
     pub line: u64,
     pub text: String,
     pub name: String,
+    /// The inline modules that hold the declaration, outermost first.
+    pub nesting: Vec<String>,
+    /// True where the declaration holds its module's body, so no file is named for it.
+    pub inline: bool,
     /// The file the declaration names instead of its own name, where the language can say so.
-    /// Rust writes it `#[path = "other.rs"]`. Resolving either to a file is #50's work.
+    /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
     pub path: Option<String>,
+}
+
+/// A path written outside every import that starts at the crate or at the module that holds it,
+/// such as Rust's `crate::a::b` or `super::c`. A path that starts at any other name is not kept,
+/// because a name alone may be an external crate or a local item.
+pub struct QualifiedPath {
+    pub line: u64,
+    pub nesting: Vec<String>,
+    pub path: String,
 }
 
 pub struct Reference {
@@ -95,6 +114,7 @@ pub struct FileFacts {
     pub imports: Vec<Import>,
     pub module_declarations: Vec<ModuleDecl>,
     pub references: Vec<Reference>,
+    pub paths: Vec<QualifiedPath>,
 }
 
 /// What one file came to under structural analysis. Three of the four outcomes are not a
@@ -512,13 +532,19 @@ pub(crate) struct Adapter {
     pub imported: fn(Node, &[u8]) -> Imported,
     /// The file a module declaration was remapped to, for a language that writes such a thing.
     pub remapped: fn(Node, &[u8]) -> Option<String>,
+    /// The inline modules that hold a node, outermost first.
+    pub nesting: fn(Node, &[u8]) -> Vec<String>,
+    /// The path a node writes from the crate or from its own module, and `None` for any other
+    /// node, including a path inside a longer one.
+    pub qualified: fn(Node, &[u8]) -> Option<String>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept
-/// as it was written, because resolving it to a file is #50's work.
+/// as it was written, and the module graph resolves it.
 pub(crate) struct Imported {
     pub module: Option<String>,
     pub names: Vec<String>,
+    pub paths: Vec<String>,
 }
 
 const METHOD: &str = "method";
@@ -617,21 +643,32 @@ impl<'a> Reading<'a> {
         self.imports.push(Import {
             line: self.row(node),
             text: self.text(node),
+            nesting: (self.adapter.nesting)(node, self.source),
             module: found.module,
             names: found.names,
+            paths: found.paths,
         });
     }
 
+    /// One module declaration. An external one is claimed whole, as it always was, and an inline
+    /// one claims nothing, so the uses its body holds stay references.
     fn module(&mut self, node: Node) {
         let Some(name) = node.child_by_field_name("name") else {
             return;
         };
-        self.claimed.push((node.start_byte(), node.end_byte()));
+        let inline = node.child_by_field_name("body").is_some();
+        if !inline {
+            self.claimed.push((node.start_byte(), node.end_byte()));
+        }
         self.modules.push(ModuleDecl {
             line: self.row(node),
             text: self.text(node),
             name: text_of(name, self.source),
-            path: (self.adapter.remapped)(node, self.source),
+            nesting: (self.adapter.nesting)(node, self.source),
+            inline,
+            path: (!inline)
+                .then(|| (self.adapter.remapped)(node, self.source))
+                .flatten(),
         });
     }
 
@@ -677,29 +714,40 @@ impl<'a> Reading<'a> {
         line_at(&self.lines, node.start_position().row)
     }
 
-    /// Every use of a name the declarations and the imports did not already claim. An import
-    /// binding is not a reference to what it binds, so the whole import is stepped over. A name
-    /// a binding site writes — a parameter, a `let`, a field — is kept, because no adapter
-    /// states its language's binding sites in V1 and keeping it errs toward "referenced".
-    fn references(&self, root: Node) -> Vec<Reference> {
-        let mut out = Vec::new();
-        let claimed = |node: Node| {
-            self.claimed
-                .iter()
-                .any(|(from, to)| node.start_byte() >= *from && node.end_byte() <= *to)
-        };
+    /// Every use of a name the declarations and the imports did not already claim, and every
+    /// qualified path outside them, from one walk. An import binding is not a reference to what
+    /// it binds, so the whole import is stepped over. A name a binding site writes — a parameter,
+    /// a `let`, a field — is kept, because no adapter states its language's binding sites in V1
+    /// and keeping it errs toward "referenced".
+    fn uses(&self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
+        let mut references = Vec::new();
+        let mut paths = Vec::new();
         walk(root, &mut |node| {
             if self.adapter.identifiers.contains(&node.kind())
                 && !self.declared.contains(&node.start_byte())
-                && !claimed(node)
+                && !self.claimed(node)
             {
-                out.push(Reference {
+                references.push(Reference {
                     name: text_of(node, self.source),
                     line: self.row(node),
                 });
+            } else if let Some(path) =
+                (self.adapter.qualified)(node, self.source).filter(|_| !self.claimed(node))
+            {
+                paths.push(QualifiedPath {
+                    line: self.row(node),
+                    nesting: (self.adapter.nesting)(node, self.source),
+                    path,
+                });
             }
         });
-        out
+        (references, paths)
+    }
+
+    fn claimed(&self, node: Node) -> bool {
+        self.claimed
+            .iter()
+            .any(|(from, to)| node.start_byte() >= *from && node.end_byte() <= *to)
     }
 
     fn finish(mut self, file: &ParsedFile) -> FileFacts {
@@ -709,7 +757,8 @@ impl<'a> Reading<'a> {
                 .iter()
                 .any(|test| test.line == declaration.line && test.text == declaration.text);
         }
-        let mut references = self.references(file.root());
+        let (mut references, mut paths) = self.uses(file.root());
+        paths.sort_by(|a, b| (a.line, &a.path).cmp(&(b.line, &b.path)));
         self.declarations
             .sort_by(|a, b| (a.line, &a.name, a.kind).cmp(&(b.line, &b.name, b.kind)));
         self.imports.sort_by_key(|import| import.line);
@@ -723,6 +772,7 @@ impl<'a> Reading<'a> {
             imports: self.imports,
             module_declarations: self.modules,
             references,
+            paths,
         }
     }
 }
@@ -1080,14 +1130,118 @@ export function charge(at: number): number {
     }
 
     #[test]
-    fn rust_keeps_an_external_module_declaration_and_leaves_an_inline_one() {
+    fn rust_tells_an_external_module_declaration_from_an_inline_one() {
         let facts = measured_facts("src/pay.rs", RUST);
-        let named: Vec<(&str, &str)> = facts
+        let named: Vec<(&str, &str, bool)> = facts
             .module_declarations
             .iter()
-            .map(|held| (held.name.as_str(), held.text.as_str()))
+            .map(|held| (held.name.as_str(), held.text.as_str(), held.inline))
             .collect();
-        assert_eq!(named, vec![("ledger", "mod ledger;")]);
+        assert_eq!(
+            named,
+            vec![
+                ("ledger", "mod ledger;", false),
+                ("held", "mod held {", true)
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rust_module_declaration_names_the_inline_modules_that_hold_it() {
+        let source = "mod plain;\nmod held {\n    #[path = \"x.rs\"]\n    mod moved;\n    mod nested {}\n}\n";
+        let facts = measured_facts("src/pay.rs", source);
+        let held: Vec<(&str, bool, Vec<&str>, Option<&str>)> = facts
+            .module_declarations
+            .iter()
+            .map(|found| {
+                (
+                    found.name.as_str(),
+                    found.inline,
+                    found.nesting.iter().map(String::as_str).collect(),
+                    found.path.as_deref(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            held,
+            vec![
+                ("plain", false, vec![], None),
+                ("held", true, vec![], None),
+                ("moved", false, vec!["held"], Some("x.rs")),
+                ("nested", true, vec!["held"], None),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rust_import_keeps_its_nesting_and_every_path_its_use_tree_names() {
+        let source = "use crate::a::{self, b::{C, d as e}, f::*};\nuse std::fmt;\nmod outer {\n    mod inner {\n        use super::super::g;\n    }\n}\n";
+        let facts = measured_facts("src/pay.rs", source);
+        let held: Vec<(Vec<&str>, Vec<&str>)> = facts
+            .imports
+            .iter()
+            .map(|found| {
+                (
+                    found.nesting.iter().map(String::as_str).collect(),
+                    found.paths.iter().map(String::as_str).collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            held,
+            vec![
+                (
+                    vec![],
+                    vec![
+                        "crate::a",
+                        "crate::a::b::C",
+                        "crate::a::b::d",
+                        "crate::a::f::*"
+                    ]
+                ),
+                (vec![], vec!["std::fmt"]),
+                (vec!["outer", "inner"], vec!["super::super::g"]),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rust_path_from_the_crate_or_a_module_is_kept_outside_imports_and_visibility() {
+        let source = "pub(crate) fn a() -> crate::b::Kind {\n    crate::b::make::<u8>();\n    super::c::run();\n    Self::new();\n    std::process::exit(0);\n}\npub(in crate::d) struct E;\nmod inner {\n    fn f() { self::g(); }\n}\nuse crate::h::i;\n";
+        let facts = measured_facts("src/pay.rs", source);
+        let held: Vec<(u64, Vec<&str>, &str)> = facts
+            .paths
+            .iter()
+            .map(|found| {
+                (
+                    found.line,
+                    found.nesting.iter().map(String::as_str).collect(),
+                    found.path.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            held,
+            vec![
+                (1, vec![], "crate::b::Kind"),
+                (2, vec![], "crate::b::make"),
+                (3, vec![], "super::c::run"),
+                (9, vec!["inner"], "self::g"),
+            ]
+        );
+        assert!(used(&facts, "g", 9), "a use inside an inline module");
+    }
+
+    #[test]
+    fn a_typescript_file_keeps_no_nesting_no_use_tree_paths_and_no_qualified_paths() {
+        let facts = measured_facts("src/pay.ts", TYPESCRIPT);
+        assert!(
+            facts
+                .imports
+                .iter()
+                .all(|found| found.nesting.is_empty() && found.paths.is_empty())
+        );
+        assert!(facts.paths.is_empty());
     }
 
     #[test]
@@ -1269,6 +1423,7 @@ export function charge(at: number): number {
                 .collect(),
             imports: Vec::new(),
             module_declarations: Vec::new(),
+            paths: Vec::new(),
             references: names
                 .iter()
                 .enumerate()

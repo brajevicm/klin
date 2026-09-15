@@ -22,8 +22,10 @@ mod hunks;
 mod init;
 mod inventory;
 mod journal;
+mod layering;
 mod lockfile;
 mod markers;
+mod modules;
 mod project;
 mod radius;
 mod ratchet;
@@ -98,6 +100,8 @@ enum Structural {
     DeadSymbols(dead_symbols::Args),
     /// Fail when a file of a named family is referenced by no other file in the repository
     Reachability(reachability::Args),
+    /// Fail when a dependency crosses a layer the policy forbids, or closes a new cycle
+    Layering(layering::Args),
 }
 
 /// The runner, the survey that writes a configuration, the guard over that file, and the cache
@@ -158,6 +162,7 @@ fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8
         Structural::Complexity(args) => complexity::run(args, start, out),
         Structural::DeadSymbols(args) => dead_symbols::run(args, start, out),
         Structural::Reachability(args) => reachability::run(args, start, out),
+        Structural::Layering(args) => layering::run(args, start, out),
     }
 }
 

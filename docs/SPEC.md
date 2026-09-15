@@ -1285,8 +1285,8 @@ reached sibling of the family in path order, and none when every sibling is
 unreached or reached only through a shared name. The check does not resolve
 imports, `mod foo;`, side-effect imports, re-exports, string registries,
 dependency injection, framework discovery by name or attribute, macro or
-build-generated callers, or callers outside the tree, which belong to #50 or
-to no V1 check; a family wired that way is narrowed by path or accepted by a
+build-generated callers, or callers outside the tree, which belong to the
+module graph of `layering` or to no V1 check; a family wired that way is narrowed by path or accepted by a
 person. Two files that reference only each other read as reached. Pinned
 by `a_new_command_file_nothing_references_fails_as_new`,
 `losing_the_last_external_reference_is_worsened`,
@@ -1454,6 +1454,95 @@ in `tests/lockfile.rs`. Known limit: the Cargo and Go readers are line
 scans, so a manifest that states a dependency in a shape the scan does not
 know contributes no site rather than a wrong one.
 
+**`layering` judges resolved dependencies against a person's layers.** It is a
+Policy check: with no section it does not run. The section holds `layers`, a
+map of layer name to a layer's `in` and `can_use`, and the optional shared
+`in`, `except` and `acyclic`. A layer's `in` is a path or a list of paths of
+5.3, never a glob. `can_use` lists the layers a layer may depend on, `null`
+lets it depend on every layer, and an absent `can_use` lets it depend only on
+itself. A layer may always depend on itself. A `can_use` that names no layer,
+a layer or shared `in` that holds no Rust or TypeScript file, and a file two
+layers hold are config errors. `roots`, `languages`, `skip_dirs`, `name`,
+globs, `allow_same` and package topology are refused.
+
+The check builds the module graph of ADR 0043 for both trees from the
+structural facts of 8.4 and each tree's own file list. A Rust target root
+comes from a Cargo manifest's `lib` and `bin` targets, implicit ones included,
+and, where no usable manifest sits above a file, from `src/lib.rs`,
+`src/main.rs` or a file directly in `src/bin`. From each root the check follows
+`mod` declarations to `name.rs` or `name/mod.rs`, and a literal `#[path]` from
+the directory of the file or of the inline module that holds it. A file two
+targets reach is a module of each. A dependency is a path a `use` tree or a
+path outside an import writes from `crate`, `self` or `super`, resolved to the
+deepest module it names. A Rust path that resolves to its own module names
+that module's items and is no edge, so `use self::Kind::*` closes no cycle.
+A path from another name may be another crate or a local item, so it is
+counted as external and not resolved. Every TypeScript file is a module. A
+relative specifier resolves when exactly one of these files exists: the
+specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a `.js`
+specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after it. A
+bare specifier, an alias and a relative specifier that names a file of another
+kind are counted as external. A `mod` declaration is containment and never a
+dependency.
+
+For every dependency between two files the shared scope selects, where both
+files sit in layers and the source layer may not use the target layer, the
+edge is forbidden. With `acyclic` true, a dependency whose two modules share a
+strongly connected component is cyclic, and a module that imports itself is
+cyclic. A forbidden edge is keyed by the file that writes it, the two layers
+and the module it reaches, named by its file and the inline modules after it,
+and a cyclic edge by the file and the module. Both carry `edge` at 1, so a base
+edge with the same key is held, and a line that starts to reach another module,
+an inline module of the same file included, is new. The check needs the commit
+and not the runner's tree: it reads the whole base through the run's one
+shared checkout, so a changed run lays out no partial tree for it. A new cyclic edge prints one shortest cycle through it,
+which explains the finding and is no part of its key. Today's policy judges
+both trees. The base places a file the window renamed under the path it had at
+the base, and its finding names the current path, so a move into another layer
+is new debt and a move inside a layer is held.
+
+A module that two files answer, a module no file answers, a path above the
+crate root, and a TypeScript specifier with no candidate or with two are
+unresolved. Where the scope selects the file that writes it, or where a manifest
+writes it, each is a NOTE in the hook and exit 2 elsewhere. A
+file on disk that the file list leaves out, such as generated source git
+ignores, is counted as external. The `OK:` line counts the edges judged, the
+files attached by a manifest and by a conventional root, the Rust files no
+target reaches and the external dependencies. In a changed run that is not
+strict, the working tree takes the base's facts for every unchanged file, as
+`dead-symbols` does. Pinned by
+`a_new_forbidden_dependency_fails_as_new`,
+`a_forbidden_dependency_the_base_holds_is_held`,
+`an_allowed_and_a_same_layer_dependency_pass`,
+`can_use_null_lets_a_layer_use_every_layer`,
+`a_file_in_two_layers_is_a_configuration_error_naming_both`,
+`retired_topology_and_unknown_keys_are_refused`,
+`a_super_path_inside_an_inline_module_resolves_from_that_module`,
+`a_path_attribute_that_retargets_an_unchanged_file_is_new_debt_in_a_changed_run`,
+`a_manifest_that_moves_the_library_root_changes_what_an_unchanged_file_reaches`,
+`a_workspace_member_that_inherits_its_edition_is_attached_by_its_manifest`,
+`a_file_two_targets_reach_is_judged_as_a_module_of_each`,
+`a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook`,
+`typescript_relative_imports_resolve_and_package_imports_are_counted_not_guessed`,
+`two_typescript_files_one_specifier_names_are_unresolved`,
+`a_new_cycle_fails_and_a_cycle_the_base_holds_is_held`,
+`a_module_that_imports_itself_is_a_cycle`,
+`a_rust_path_to_its_own_module_is_no_cycle`,
+`a_retarget_to_an_inline_module_of_the_same_file_is_new`,
+`a_typescript_re_export_is_a_dependency`,
+`a_package_renamed_with_its_manifest_keeps_its_base_debt`,
+`a_missing_target_root_a_manifest_names_is_unresolved_whatever_the_scope`,
+`a_module_declaration_is_containment_and_not_a_dependency`,
+`a_file_renamed_inside_its_layer_keeps_its_base_debt`,
+`a_file_renamed_into_another_layer_is_placed_in_its_base_layer_at_the_base`,
+`a_changed_run_beside_a_gate_that_lays_out_changed_files_judges_the_whole_base`,
+`a_cached_changed_run_reads_and_parses_only_the_changed_file`,
+`an_accepted_forbidden_edge_is_held` and
+`without_a_section_the_gate_needs_one_a_person_writes` in
+`tests/layering.rs`. Known limit: a path inside a macro's tokens, a bare Rust
+path, a TypeScript `import()` or `require()`, `tsconfig` paths and package
+exports are not dependencies in V1.
+
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a
 change to the spec and to a test in the same commit.
@@ -1551,7 +1640,8 @@ and reads no project dependencies, such as ruff.
 ### 8.4 Tier 2: build when tier 1 is green
 
 `conventions` (#42, ADR 0037), `public-api` (#46),
-`reachability` over one reference extractor (#49, #51), `changed-coverage`
+`reachability` over one reference extractor (#49, #51), `layering` over one
+module graph (#50, ADR 0043), `changed-coverage`
 and `crap` over one coverage reader with a postflight run (#53, #54, #55,
 #70), `hotspots` as a report (#60), SARIF output (#65).
 
@@ -1572,9 +1662,11 @@ shipped over this extractor; a third structural language is an adapter in
 Rust and TypeScript are the first structural languages, and TSX is TypeScript
 rather than a language of its own. A file in a language no structural adapter
 reads is counted as not measured on the coverage line of 8.6, so a green run
-over such a tree is visibly a run over nothing. Resolving an import or a Rust
-`mod foo;` to a file belongs to #50, and the specifier is kept as written for
-it.
+over such a tree is visibly a run over nothing. The module graph of ADR 0043
+resolves an import or a Rust `mod foo;` to a file. The extractor keeps each
+specifier as written for it, with the inline modules that hold an import, a
+module declaration or a qualified path, every leaf path of a Rust use tree, and
+every path outside an import that starts at `crate`, `self` or `super`.
 
 A `test-hygiene` check, a count of habits across the test roots against a
 dated ceiling, was considered and is not a check. A habit that rose is an
@@ -1751,8 +1843,7 @@ convention, and it parses each file once for every `code` convention. ADR
 
 ### 8.5 Tier 3: defer with a reason
 
-`layering` (#50): defer until the reference extractor exists and a user needs
-constraints beyond the compiler's module graph. `guard-suites` (#43) and
+`guard-suites` (#43) and
 `manifests` (#44): one stack each.
 `db-migration-safety` (#57): deterministic for raw SQL only. `asset-path`
 (#59): the ticket expects false positives, which fails criterion 1 in
@@ -2109,7 +2200,7 @@ One object on stdout. Fields:
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
 - `gates` list of `{name, status, findings, notes, coverage, ms, held, facts,
-  work}`,
+  work, graph}`,
   where `status` is the row of 11.1, `findings` and `notes` are how many that
   gate left in the two lists below, `coverage` is the
   `{found, measured, not_measured, excluded, unreadable}` counts of 11.1,
@@ -2141,7 +2232,11 @@ One object on stdout. Fields:
   a run selects. `work` is `{reads, parses}` for the file-local gates
   `complexity`, `escapes` and `stubs`, counting source contents read and parsed
   over the current and base trees; it is null for other gates or for a gate
-  that never got that far.
+  that never got that far. `graph` is `{modules, dependencies, ms}` for
+  `layering`: the modules and resolved dependencies of both trees' module
+  graphs, and the part of the gate's `ms` spent resolving them and finding
+  their cycles. It is null for other gates or for a gate that never got that
+  far.
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The
@@ -2164,8 +2259,10 @@ One object on stdout. Fields:
   a file a grammar refused in the hook, `lost` for a file `before` measured
   and `after` did not (8.6), `not-measured` for a known-language file with
   no structural adapter, `derivation` for a derived ceiling whose recorded
-  scope fell back or differs from today's (5.4), and `note` for what a check
-  left out of its count.
+  scope fell back or differs from today's (5.4), `unresolved` for a
+  dependency form `layering` supports and could not resolve in the hook
+  (8.2.1), and `note` for what a check left out of its count. Outside the hook
+  an `unresolved` record is in `findings`, beside `error` and `unparsed`.
   `text` carries the reason, as the `NOTE:` line printed it.
 - `exit` integer, the code the run returns. It is not read off
   `status`: a build failure that has spent its blocks is an `ERROR` run that
@@ -2489,7 +2586,14 @@ and keep the same shape, so fixture generation asserts that both hold 270 to
 counts, the language split, the TSX count, exact LoC, the exact declaration
 count, an FNV-1a digest of every generated path and byte, and representative
 structure. Configured Rust and TypeScript module families exercise
-`complexity`, `dead-symbols` and `reachability` through the real binary.
+`complexity`, `dead-symbols` and `reachability` through the real binary. Run
+with the current binary, the dense rows also write a `layering` section with
+one layer per language and `acyclic` set, so every row builds both module
+graphs and finds their cycles, and each gate row prints `graph_modules`,
+`graph_dependencies` and `graph_ms`. The warm hook asserts that `layering`
+reads and parses no source of its own, because it takes every structural
+outcome an earlier gate of the stop already held. A binary named by
+`KLIN_BIN` reads no `layering` section, so its rows leave the section out.
 
 Each dense row runs warm hook, cold survey and whole-tree strict five times
 and prints the median total and every gate's median `ms`. Where available it
@@ -2928,6 +3032,15 @@ Core:
   lockfile is a tool error, a manifest klin cannot parse at either commit is a
   NOTE, a manifest the work broke is a tool error, and two manifests that
   share a lockfile are each judged against it.
+- `layering`: a new forbidden edge fails and a base one is held, same-layer
+  and `can_use: null` dependencies pass, overlapping layers and retired keys
+  are config errors, nested Rust module context, a literal `#[path]`, a
+  manifest-only target change and a file two targets reach resolve, an
+  ambiguous Rust or TypeScript module is exit 2 and a NOTE in the hook, a new
+  cycle fails and a historical one is held, containment is no dependency, a
+  rename inside a layer is held and one into another layer is new, a changed
+  run beside a gate that lays out changed files judges the whole base, and a
+  cached changed run parses only the changed file.
 - `conventions`: an unknown key names the convention and the key, a missing
   remedy, zero or two matchers, a language on a `text` or `files` rule, and an
   absolute, escaping or glob path are config errors, `in` and `except` select

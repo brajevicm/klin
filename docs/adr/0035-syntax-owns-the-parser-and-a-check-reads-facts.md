@@ -125,3 +125,12 @@ these facts rather than parsing again.
 tree's sources and name its languages. That table covers shell, which no
 grammar here reads, so moving it would shrink what a survey discovers. It
 stays where it is.
+
+## Follow-up: the module graph resolves what syntax keeps (#50)
+
+ADR 0043 now owns resolution. To give it enough to resolve without a second
+parse, the Rust adapter keeps every leaf path of a use tree, the inline modules
+that hold an import, a module declaration or a qualified path, inline module
+declarations, and every path outside an import that starts at `crate`, `self`
+or `super`. Cutting a path out of a use tree is therefore syntax, and deciding
+which module that path names is the module graph's work.

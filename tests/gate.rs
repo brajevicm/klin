@@ -220,6 +220,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
          complexity — runs\ndead-symbols — runs\nreachability — runs\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -259,6 +260,7 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          inventory — needs a section a person writes\n\
          dead-symbols — needs a section a person writes\n\
          reachability — needs a section a person writes\n\
+         layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -993,6 +995,7 @@ fn list_names_the_excluded_gates() {
          dead-symbols — runs\nreachability — runs\n\
          escapes — excluded\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -1202,6 +1205,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
          dead-symbols — excluded\nreachability — excluded\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
+         layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",

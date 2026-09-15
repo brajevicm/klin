@@ -10,13 +10,14 @@ use std::rc::Rc;
 use std::time::SystemTime;
 
 use super::{
-    Declaration, DeclarationKind, FileFacts, Import, ModuleDecl, Outcome, Reference, Unparsed,
+    Declaration, DeclarationKind, FileFacts, Import, ModuleDecl, Outcome, QualifiedPath, Reference,
+    Unparsed,
 };
 use crate::syntax::{LANGUAGES, Language};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
-const EPOCH: u64 = 1;
+const EPOCH: u64 = 2;
 
 const MAGIC: &[u8] = b"klin structural cache\n";
 const KEPT: usize = 4;
@@ -169,6 +170,13 @@ impl Writer {
         self.0.extend_from_slice(text.as_bytes());
     }
 
+    fn texts(&mut self, texts: &[String]) {
+        self.number(texts.len() as u64);
+        for text in texts {
+            self.text(text);
+        }
+    }
+
     fn optional(&mut self, text: Option<&str>) {
         match text {
             Some(text) => {
@@ -215,23 +223,30 @@ impl Writer {
         for import in &facts.imports {
             self.number(import.line);
             self.text(&import.text);
+            self.texts(&import.nesting);
             self.optional(import.module.as_deref());
-            self.number(import.names.len() as u64);
-            for name in &import.names {
-                self.text(name);
-            }
+            self.texts(&import.names);
+            self.texts(&import.paths);
         }
         self.number(facts.module_declarations.len() as u64);
         for module in &facts.module_declarations {
             self.number(module.line);
             self.text(&module.text);
             self.text(&module.name);
+            self.texts(&module.nesting);
+            self.number(u64::from(module.inline));
             self.optional(module.path.as_deref());
         }
         self.number(facts.references.len() as u64);
         for reference in &facts.references {
             self.text(&reference.name);
             self.number(reference.line);
+        }
+        self.number(facts.paths.len() as u64);
+        for path in &facts.paths {
+            self.number(path.line);
+            self.texts(&path.nesting);
+            self.text(&path.path);
         }
     }
 }
@@ -314,6 +329,7 @@ impl Reader<'_> {
             imports: self.list(Reader::import)?,
             module_declarations: self.list(Reader::module)?,
             references: self.list(Reader::reference)?,
+            paths: self.list(Reader::qualified)?,
         })
     }
 
@@ -338,8 +354,10 @@ impl Reader<'_> {
         Some(Import {
             line: self.number()?,
             text: self.text()?,
+            nesting: self.list(Reader::text)?,
             module: self.optional()?,
             names: self.list(Reader::text)?,
+            paths: self.list(Reader::text)?,
         })
     }
 
@@ -348,7 +366,17 @@ impl Reader<'_> {
             line: self.number()?,
             text: self.text()?,
             name: self.text()?,
+            nesting: self.list(Reader::text)?,
+            inline: self.number().filter(|flag| *flag <= 1)? == 1,
             path: self.optional()?,
+        })
+    }
+
+    fn qualified(&mut self) -> Option<QualifiedPath> {
+        Some(QualifiedPath {
+            line: self.number()?,
+            nesting: self.list(Reader::text)?,
+            path: self.text()?,
         })
     }
 
@@ -389,7 +417,7 @@ mod tests {
     const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
     fn outcomes() -> Vec<(String, Outcome)> {
-        let rust = "use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\n";
+        let rust = "use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\n";
         let typescript =
             "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\n";
         [
@@ -430,6 +458,49 @@ mod tests {
         };
         assert_eq!(read.len(), 5);
         assert_eq!(bytes_of(&identity, &read), written);
+        let pay = read.iter().find_map(|(file, outcome)| match outcome {
+            Outcome::Facts(facts) if file == "src/pay.rs" => Some(facts.clone()),
+            _ => None,
+        });
+        let Some(pay) = pay else {
+            panic!("src/pay.rs read back with no facts");
+        };
+        let modules: Vec<(&str, bool, Option<&str>)> = pay
+            .module_declarations
+            .iter()
+            .map(|held| (held.name.as_str(), held.inline, held.path.as_deref()))
+            .collect();
+        assert_eq!(
+            modules,
+            vec![("moved", false, Some("other.rs")), ("tests", true, None)]
+        );
+        let imports: Vec<(Vec<String>, Vec<String>)> = pay
+            .imports
+            .iter()
+            .map(|held| (held.nesting.clone(), held.paths.clone()))
+            .collect();
+        assert_eq!(
+            imports,
+            vec![
+                (
+                    Vec::new(),
+                    vec![
+                        "crate::pay::Refund".to_string(),
+                        "crate::pay::refund".to_string()
+                    ]
+                ),
+                (vec!["tests".to_string()], vec!["super::*".to_string()]),
+            ]
+        );
+        let paths: Vec<(u64, &[String], &str)> = pay
+            .paths
+            .iter()
+            .map(|held| (held.line, held.nesting.as_slice(), held.path.as_str()))
+            .collect();
+        assert_eq!(
+            paths,
+            vec![(10, &["tests".to_string()][..], "crate::pay::charge")]
+        );
     }
 
     #[test]

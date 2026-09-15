@@ -20,6 +20,8 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     visible,
     imported,
     remapped,
+    nesting,
+    qualified,
 };
 
 const PATTERNS: &str = r#"
@@ -54,11 +56,22 @@ fn imported(node: Node, source: &[u8]) -> Imported {
             .child_by_field_name("source")
             .map(|from| specifier(from, source)),
         names: bindings(node, source),
+        paths: Vec::new(),
     }
 }
 
 /// TypeScript writes no module declaration, so none of them is remapped.
 fn remapped(_: Node, _: &[u8]) -> Option<String> {
+    None
+}
+
+/// A TypeScript file is one module, so nothing inside it is held by another.
+fn nesting(_: Node, _: &[u8]) -> Vec<String> {
+    Vec::new()
+}
+
+/// A TypeScript file reaches another module only through an import specifier.
+fn qualified(_: Node, _: &[u8]) -> Option<String> {
     None
 }
 

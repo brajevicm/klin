@@ -9,6 +9,7 @@ use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::{
     self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNPARSED,
+    UNRESOLVED,
 };
 use crate::config::{self, Error};
 use crate::host::{self, Stop};
@@ -1109,6 +1110,16 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
             })
         }),
     );
+    out.insert(
+        "graph".into(),
+        records.graph.map_or(Value::Null, |graph| {
+            serde_json::json!({
+                "modules": graph.modules,
+                "dependencies": graph.dependencies,
+                "ms": journal::millis(graph.time),
+            })
+        }),
+    );
     Value::Object(out)
 }
 
@@ -1118,7 +1129,7 @@ fn told(note: &Value) -> bool {
     let outcome = note.get("outcome").and_then(Value::as_str);
     matches!(
         outcome,
-        Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION)
+        Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION | UNRESOLVED)
     ) || coverage::is_lost(note)
 }
 

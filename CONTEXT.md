@@ -80,6 +80,11 @@ The `in` and `except` paths a section applies to, each a selector naming
 itself and everything below it, never a glob.
 _Avoid_: filter, include, exclude, glob
 
+**Layer**:
+A named set of paths whose modules may depend only on themselves and the
+layers the policy lets them use.
+_Avoid_: tier, package
+
 **Derived**:
 A value klin computed because the config did not pin the value. A number
 comes from one commit; a set of paths adds what the tree holds.

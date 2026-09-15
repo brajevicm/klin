@@ -229,7 +229,8 @@ impl Fixture {
         let tsx = files_per_language / 100;
         let scope = chosen("KLIN_PERF_SCOPE", &["whole", "rust"]);
         let config = chosen("KLIN_PERF_CONFIG", &["build-off", "empty", "legacy"]);
-        write_project_files(&tree, scope, config);
+        let layering = profile.units.is_some() && std::env::var_os("KLIN_BIN").is_none();
+        write_project_files(&tree, scope, config, layering);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
             assert_eq!(generated, expected, "{} generated sources", profile.name);
@@ -282,7 +283,7 @@ impl Fixture {
         if !self.current_dense() {
             return;
         }
-        for name in ["complexity", "dead-symbols", "reachability"] {
+        for name in ["complexity", "dead-symbols", "reachability", "layering"] {
             assert!(
                 samples.gates.contains_key(&format!("{name}_ms")),
                 "{name} gate timing is missing: {:?}",
@@ -312,6 +313,10 @@ impl Fixture {
         assert_eq!(median_counter("escapes_work_parses"), changed as u64);
         assert_eq!(median_counter("dead-symbols_facts_cached"), unchanged);
         assert_eq!(median_counter("dead-symbols_facts_shared"), unchanged);
+        for name in ["layering_facts_reads", "layering_facts_parses"] {
+            assert_eq!(median_counter(name), 0, "{name}");
+        }
+        assert!(median_counter("layering_graph_modules") > 0);
     }
 
     fn measure(&self) -> Measurements {
@@ -462,7 +467,26 @@ fn chosen(variable: &str, allowed: &[&'static str]) -> &'static str {
         .unwrap_or_else(|| panic!("{variable}={named}: expected one of {allowed:?}"))
 }
 
-fn write_project_files(tree: &Tree, scope: &str, config: &str) {
+/// The layering policy of the dense rows: one layer per language, every cycle judged, and the
+/// files whose generated imports name no module left out of scope.
+fn layering_policy() -> Value {
+    json!({
+        "in": ["rust/src", "web/src"],
+        "except": [
+            "web/src/components",
+            "web/src/held_escape.ts",
+            "web/src/held_stub.ts",
+            "web/src/fixture.test.ts"
+        ],
+        "acyclic": true,
+        "layers": {
+            "rust": {"in": "rust/src", "can_use": []},
+            "web": {"in": "web/src", "can_use": []}
+        }
+    })
+}
+
+fn write_project_files(tree: &Tree, scope: &str, config: &str, layering: bool) {
     let complexity = match scope {
         "rust" => r#""complexity":{"in":"rust"}"#,
         _ => "",
@@ -472,8 +496,12 @@ fn write_project_files(tree: &Tree, scope: &str, config: &str) {
         ("build-off", false) => format!(r#"{{"build":[],{complexity}}}"#),
         _ => format!("{{{complexity}}}"),
     };
-    assert!(serde_json::from_str::<Value>(&config).is_ok(), "{config}");
-    tree.write("klin.json", &config);
+    let mut config: Value = serde_json::from_str(&config).unwrap_or_default();
+    assert!(config.is_object(), "{config}");
+    if layering {
+        config["layering"] = layering_policy();
+    }
+    tree.write("klin.json", &config.to_string());
     tree.write(
         "README.md",
         "The Rust tree is `rust/src/module_0004.rs`; the TypeScript tree is `web/src/index.ts`; the manifests are `rust/Cargo.toml` and `web/package.json`.\n",
@@ -849,27 +877,42 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
         if let Some(ms) = gate["ms"].as_u64() {
             times.insert(format!("{name}_ms"), ms);
         }
-        for field in [
-            "reads",
-            "parses",
-            "extracted",
-            "shared",
-            "cached",
-            "ms",
-            "cache_read_ms",
-            "cache_write_ms",
+        for (group, fields) in [
+            (
+                "facts",
+                &[
+                    "reads",
+                    "parses",
+                    "extracted",
+                    "shared",
+                    "cached",
+                    "ms",
+                    "cache_read_ms",
+                    "cache_write_ms",
+                ][..],
+            ),
+            ("work", &["reads", "parses"][..]),
+            ("graph", &["modules", "dependencies", "ms"][..]),
         ] {
-            if let Some(value) = gate["facts"][field].as_u64() {
-                times.insert(format!("{name}_facts_{field}"), value);
-            }
-        }
-        for field in ["reads", "parses"] {
-            if let Some(value) = gate["work"][field].as_u64() {
-                times.insert(format!("{name}_work_{field}"), value);
-            }
+            counters(&mut times, name, &gate[group], group, fields);
         }
     }
     times
+}
+
+/// One gate's counters of one group, each under the gate, the group and its own name.
+fn counters(
+    times: &mut BTreeMap<String, u64>,
+    name: &str,
+    held: &Value,
+    group: &str,
+    fields: &[&str],
+) {
+    for field in fields {
+        if let Some(value) = held[*field].as_u64() {
+            times.insert(format!("{name}_{group}_{field}"), value);
+        }
+    }
 }
 
 fn journal(tree: &Tree) -> Vec<Value> {
