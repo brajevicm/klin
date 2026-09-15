@@ -48,6 +48,7 @@ fn part(report: &Value, gate: &str) -> Value {
     if let Some(fields) = row.as_object_mut() {
         fields.remove("ms");
         fields.remove("facts");
+        fields.remove("names");
     }
     json!({
         "row": row,
@@ -318,4 +319,39 @@ fn a_changed_run_shares_one_whole_base_between_structural_gates() {
 
     assert_eq!(extracted(&report, "dead-symbols"), (5, 3), "{report}");
     assert_eq!(extracted(&report, "reachability"), (0, 8), "{report}");
+}
+
+#[test]
+fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took() {
+    let tree = commands("{}");
+    tree.base();
+    tree.write(
+        "src/commands/alpha_command.rs",
+        "pub fn run_alpha() {}\nfn unused() {}\n",
+    );
+
+    let report = judged(&tree, &["--changed"], &GATES);
+
+    for gate in ["dead-symbols", "reachability"] {
+        let names = &row(&report, gate)["names"];
+        assert_eq!(indexed(&names["before"]), [4, 4, 3, 4], "{gate}: {report}");
+        assert_eq!(indexed(&names["after"]), [4, 5, 3, 5], "{gate}: {report}");
+        assert!(names["base_ms"].is_u64(), "{gate}: {report}");
+    }
+    assert!(row(&report, "dead-symbols")["names"]["lost_ms"].is_u64());
+    assert!(row(&report, "reachability")["names"]["lost_ms"].is_null());
+    assert!(row(&report, "complexity")["names"].is_null(), "{report}");
+}
+
+/// One tree's index as `[files, declarations, references, distinct_names]`, with its timings
+/// required beside them.
+fn indexed(tree: &Value) -> [u64; 4] {
+    for timing in ["measure_ms", "index_ms", "query_ms"] {
+        assert!(tree[timing].is_u64(), "no {timing} in {tree}");
+    }
+    ["files", "declarations", "references", "distinct_names"].map(|field| {
+        tree[field]
+            .as_u64()
+            .unwrap_or_else(|| panic!("{field}: {tree}"))
+    })
 }

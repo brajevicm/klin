@@ -87,6 +87,9 @@ pub struct Records {
     /// The declaration states `dead-symbols` built over both trees. `None` for a gate that
     /// builds none. Spec 11.2.
     pub states: Option<u64>,
+    /// The name evidence `dead-symbols` and `reachability` built over both trees. `None` for a
+    /// gate that resolves no names. Spec 11.2.
+    pub names: Option<syntax::structural::NameCost>,
     /// The module graphs the gate built over both trees. `None` for a gate that builds none.
     pub graph: Option<modules::GraphCost>,
     /// The public surfaces the gate derived over both trees. `None` for a gate that derives

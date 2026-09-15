@@ -219,6 +219,45 @@ impl Measurement {
         self.index
             .get_or_init(|| SourceIndex::of(self.facts.clone()))
     }
+
+    pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
+        let index = timed(&mut cost.index, || self.index());
+        let sites = || index.names.values().flat_map(HashMap::values);
+        cost.files = index.files.len();
+        cost.declarations = sites().map(|held| held.declarations.len()).sum();
+        cost.references = sites().map(|held| held.references.len()).sum();
+        cost.distinct_names = index.names.values().map(HashMap::len).sum();
+        index
+    }
+}
+
+/// What a name-resolving gate's evidence cost: the base it laid out, each tree's part, and the
+/// lost references `dead-symbols` explained. Spec 11.2.
+#[derive(Default, Clone, Copy)]
+pub struct NameCost {
+    pub base: Duration,
+    pub before: TreeNameCost,
+    pub after: TreeNameCost,
+    pub lost: Option<Duration>,
+}
+
+/// One tree's measurement, index and name queries, with what its index holds. Spec 11.2.
+#[derive(Default, Clone, Copy)]
+pub struct TreeNameCost {
+    pub measure: Duration,
+    pub index: Duration,
+    pub query: Duration,
+    pub files: usize,
+    pub declarations: usize,
+    pub references: usize,
+    pub distinct_names: usize,
+}
+
+pub fn timed<T>(spent: &mut Duration, work: impl FnOnce() -> T) -> T {
+    let started = Instant::now();
+    let out = work();
+    *spent += started.elapsed();
+    out
 }
 
 /// Every outcome one tree's files came to, each file read, parsed and extracted on the first

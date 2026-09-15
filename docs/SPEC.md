@@ -2300,7 +2300,7 @@ One object on stdout. Fields:
 - `window` `{kind, before, after, how}`
 - `derived` list of `{section, key, value, rule}`
 - `gates` list of `{name, status, findings, notes, coverage, ms, held, facts,
-  work, graph}`,
+  names, work, graph, surface}`,
   where `status` is the row of 11.1, `findings` and `notes` are how many that
   gate left in the two lists below, `coverage` is the
   `{found, measured, not_measured, excluded, unreadable}` counts of 11.1,
@@ -2331,8 +2331,25 @@ One object on stdout. Fields:
   `dead-symbols` built over both trees (8.4), and no other gate's `facts`
   carries the key. A run extracts each file of a tree once.
   Each gate still selects its own files and resolves names over those files
-  alone, so `facts` is the one field of a row that depends on the other gates
-  a run selects. `work` is `{reads, parses}` for the file-local gates
+  alone, so `facts` and `names.base_ms` are the fields of a row that depend on
+  the other gates a run selects. `names` is `{base_ms, before, after}` for
+  `dead-symbols` and `reachability`, with `lost_ms` beside them for
+  `dead-symbols`, and null for any other gate or for one that never got that
+  far. `base_ms` is the part of the gate's `ms` spent laying the base tree out
+  and naming and reading the structural cache of 8.4, so it holds
+  `facts.cache_read_ms`, and only the first gate of a run that needs the base
+  pays it. `before` and `after` are each `{measure_ms, index_ms, query_ms,
+  files, declarations, references, distinct_names}` for one tree.
+  `measure_ms` is the part spent selecting and measuring the tree's files,
+  which holds that tree's share of `facts.ms`. `index_ms` is the part spent
+  building the tree's name index, and `query_ms` is the part spent judging the
+  tree's declarations or family members through that index. `files`,
+  `declarations`, `references` and `distinct_names` count what the index
+  holds: its files, their declarations, each name's reference sites once per
+  file and line, and the names of each language partition. `lost_ms` is the
+  part spent building the working tree's findings and the lost references
+  that explain them. The counts depend only on the trees and the selection.
+  `work` is `{reads, parses}` for the file-local gates
   `complexity`, `escapes` and `stubs`, counting source contents read and parsed
   over the current and base trees; it is null for other gates or for a gate
   that never got that far. `graph` is `{modules, dependencies, ms}` for
@@ -2715,7 +2732,12 @@ Each dense row runs warm hook, cold survey and whole-tree strict five times
 and prints the median total and every gate's median `ms`. Where available it
 also prints deterministic content-work and structural-fact counters:
 `work_reads`, `work_parses`, `facts_reads`, `facts_parses`, `extracted`,
-`shared`, `cached`, `cache_read_ms` and `cache_write_ms`. A second warm hook
+`shared`, `cached`, `cache_read_ms` and `cache_write_ms`. The `dead-symbols`
+and `reachability` rows also print the `names` group of 11.2 as
+`names_base_ms`, `names_lost_ms`, and each tree's values under
+`names_before_` and `names_after_`, so a warm row separates the base layout,
+each tree's measurement, index build and name queries, and the lost
+references from the rest of the gate's time. A second warm hook
 row removes the structural cache of 8.4 before each stop, so it measures a
 stop that extracts the base and writes the cache, beside the first row's
 stop that reads it. After the rows, one untimed stop writes the structural

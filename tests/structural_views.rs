@@ -110,6 +110,7 @@ fn normalized(run: &Run) -> Value {
         if let Some(fields) = row.as_object_mut() {
             fields.remove("ms");
             fields.remove("facts");
+            fields.remove("names");
         }
     }
     json!({"code": run.code, "report": report})

@@ -144,18 +144,14 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let families = families(project)?;
     said_families(&families, out);
     let commit = base::commit(config.root(), at, out)?;
-    let prior = base::whole(at, &commit)?;
-    let unchanged = base::unchanged(at, prior, &commit)?;
-    let mut after = measure(project.tree(), &families, unchanged.as_ref())?;
-    let (before, before_families) = before(at, &families, prior)?;
-    after.cost = after.cost
-        + unchanged.map_or_else(
-            structural::ExtractionCost::default,
-            structural::Unchanged::publish,
-        );
-    out.record(|records| records.facts = Some(before.cost + after.cost));
-    let (before_states, _) = states(before.index(), &before_families);
-    let (after_states, unjudged) = states(after.index(), &families);
+    let mut names = structural::NameCost::default();
+    let (before, before_families, after) = sweeps(at, &families, &commit, &mut names)?;
+    let (before_states, _) = judgement(&before, &mut names.before, &before_families);
+    let (after_states, unjudged) = judgement(&after, &mut names.after, &families);
+    out.record(|records| {
+        records.facts = Some(before.cost + after.cost);
+        records.names = Some(names);
+    });
     let held_before: Vec<&State> = before_states
         .iter()
         .filter(|state| project.was_held(&state.file))
@@ -197,6 +193,38 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     );
     base_note(&held_before, at.only, out);
     Ok(code)
+}
+
+/// The two trees measured, over one base extraction in a changed run that is not strict, and the
+/// families under the base's scope. Spec 8.4.
+fn sweeps(
+    at: &Context,
+    families: &[Family],
+    commit: &str,
+    names: &mut structural::NameCost,
+) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
+    let prior = structural::timed(&mut names.base, || base::whole(at, commit))?;
+    let unchanged = structural::timed(&mut names.base, || base::unchanged(at, prior, commit))?;
+    let mut after = structural::timed(&mut names.after.measure, || {
+        measure(at.project.tree(), families, unchanged.as_ref())
+    })?;
+    let (before, before_families) =
+        structural::timed(&mut names.before.measure, || before(at, families, prior))?;
+    after.cost = after.cost
+        + unchanged.map_or_else(
+            structural::ExtractionCost::default,
+            structural::Unchanged::publish,
+        );
+    Ok((before, before_families, after))
+}
+
+fn judgement(
+    measured: &Measurement,
+    cost: &mut structural::TreeNameCost,
+    families: &[Family],
+) -> (Vec<State>, usize) {
+    let index = measured.indexed(cost);
+    structural::timed(&mut cost.query, || states(index, families))
 }
 
 fn families(project: &Project) -> Result<Vec<Family>, Error> {

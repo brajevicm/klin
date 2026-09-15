@@ -810,15 +810,15 @@ fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
             gate_medians(&rows.strict)
         );
     }
-    if case != PerfCase::Warm20 {
-        if let Some((changed, samples)) = &rows.warm_delta {
-            println!(
-                "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
-                size,
-                median(&samples.total),
-                gate_medians(samples)
-            );
-        }
+    if case != PerfCase::Warm20
+        && let Some((changed, samples)) = &rows.warm_delta
+    {
+        println!(
+            "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            size,
+            median(&samples.total),
+            gate_medians(samples)
+        );
     }
 }
 
@@ -1000,9 +1000,35 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
         ] {
             counters(&mut times, name, &gate[group], group, fields);
         }
+        counters(
+            &mut times,
+            name,
+            &gate["names"],
+            "names",
+            &["base_ms", "lost_ms"],
+        );
+        for tree in ["before", "after"] {
+            counters(
+                &mut times,
+                name,
+                &gate["names"][tree],
+                &format!("names_{tree}"),
+                &TREE_NAMES,
+            );
+        }
     }
     times
 }
+
+const TREE_NAMES: [&str; 7] = [
+    "measure_ms",
+    "index_ms",
+    "query_ms",
+    "files",
+    "declarations",
+    "references",
+    "distinct_names",
+];
 
 /// One gate's counters of one group, each under the gate, the group and its own name.
 fn counters(

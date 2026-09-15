@@ -105,18 +105,22 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
     let commit = base::commit(project.root(), at, out)?;
-    let (before, after) = sweeps(at, &spec, &commit)?;
+    let mut names = structural::NameCost::default();
+    let (before, after) = sweeps(at, &spec, &commit, &mut names)?;
     let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
-    let before_states = states(before.index(), &spec.ignore, judged_scope);
-    let after_states = states(after.index(), &spec.ignore, judged_scope);
+    let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
+    let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
     let built = (before_states.len() + after_states.len()) as u64;
+    let held_before = held(&before_states, project);
+    let prior = held_before.iter().map(|state| finding(state)).collect();
+    let now = structural::timed(names.lost.get_or_insert_default(), || {
+        dead_findings(&after_states, &before, &after, &held_before)
+    });
     out.record(|records| {
         records.facts = Some(before.cost + after.cost);
         records.states = Some(built);
+        records.names = Some(names);
     });
-    let held_before = held(&before_states, project);
-    let prior = held_before.iter().map(|state| finding(state)).collect();
-    let now = dead_findings(&after_states, &before, &after, &held_before);
     let judged = after_states
         .iter()
         .filter(|state| coverage::in_scope(&state.file, at.only))
@@ -146,17 +150,30 @@ fn sweeps(
     at: &Context,
     spec: &Spec,
     commit: &str,
+    names: &mut structural::NameCost,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
-    let prior = base::whole(at, commit)?;
-    let unchanged = base::unchanged(at, prior, commit)?;
-    let mut after = measure(at.project.tree(), &spec.selection, unchanged.as_ref())?;
-    let before = before(at, spec, prior)?;
+    let prior = structural::timed(&mut names.base, || base::whole(at, commit))?;
+    let unchanged = structural::timed(&mut names.base, || base::unchanged(at, prior, commit))?;
+    let mut after = structural::timed(&mut names.after.measure, || {
+        measure(at.project.tree(), &spec.selection, unchanged.as_ref())
+    })?;
+    let before = structural::timed(&mut names.before.measure, || before(at, spec, prior))?;
     after.cost = after.cost
         + unchanged.map_or_else(
             structural::ExtractionCost::default,
             structural::Unchanged::publish,
         );
     Ok((before, after))
+}
+
+fn judgement(
+    measured: &structural::Measurement,
+    cost: &mut structural::TreeNameCost,
+    ignore: &[String],
+    only: Option<&[String]>,
+) -> Vec<State> {
+    let index = measured.indexed(cost);
+    structural::timed(&mut cost.query, || states(index, ignore, only))
 }
 
 fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<structural::Measurement, Error> {

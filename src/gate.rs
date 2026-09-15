@@ -1093,6 +1093,28 @@ fn facts(records: &Records) -> Value {
     out
 }
 
+/// What one name-resolving gate's evidence cost, each tree apart. Spec 11.2.
+fn name_evidence(cost: &crate::syntax::structural::NameCost) -> Value {
+    let mut out = Map::new();
+    out.insert("base_ms".into(), journal::millis(cost.base).into());
+    if let Some(lost) = cost.lost {
+        out.insert("lost_ms".into(), journal::millis(lost).into());
+    }
+    for (tree, part) in [("before", &cost.before), ("after", &cost.after)] {
+        let part = serde_json::json!({
+            "measure_ms": journal::millis(part.measure),
+            "index_ms": journal::millis(part.index),
+            "query_ms": journal::millis(part.query),
+            "files": part.files,
+            "declarations": part.declarations,
+            "references": part.references,
+            "distinct_names": part.distinct_names,
+        });
+        out.insert(tree.into(), part);
+    }
+    Value::Object(out)
+}
+
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
 /// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
 /// line prints as held at the base, and the structural facts it extracted or shared. Spec 11.2.
@@ -1109,6 +1131,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     out.insert("ms".into(), ms.into());
     out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
     out.insert("facts".into(), facts(records));
+    out.insert(
+        "names".into(),
+        records.names.as_ref().map_or(Value::Null, name_evidence),
+    );
     out.insert(
         "work".into(),
         records.work.map_or(Value::Null, |work| {
