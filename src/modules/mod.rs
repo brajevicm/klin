@@ -7,6 +7,7 @@
 //! dependencies, holes and cycles, and never a graph library's types. ADR 0043, spec 8.4.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::iter::Peekable;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -330,26 +331,49 @@ impl ModuleGraph {
             .split("::")
             .map(|segment| segment.trim_start_matches("r#"))
             .peekable();
-        let mut at = match segments.peek().copied() {
-            Some("crate") => {
-                segments.next();
-                match self.modules[from].target {
-                    Some(target) => self.targets[target].module,
-                    None => return Resolved::External,
-                }
-            }
-            Some("self" | "super") => from,
-            Some(first) if self.modules[from].children.contains_key(first) => from,
-            _ => return Resolved::External,
+        let Some(start) = self.start(from, &mut segments) else {
+            return Resolved::External;
         };
+        match self.ascended(start, &mut segments) {
+            Some(at) => self.descended(at, segments),
+            None => Resolved::Unresolved,
+        }
+    }
+
+    /// The module a path's first segment starts from, and `None` for a name that is no module
+    /// here.
+    fn start<'p>(
+        &self,
+        from: usize,
+        segments: &mut Peekable<impl Iterator<Item = &'p str>>,
+    ) -> Option<usize> {
+        match segments.peek().copied()? {
+            "crate" => {
+                segments.next();
+                Some(self.targets[self.modules[from].target?].module)
+            }
+            "self" | "super" => Some(from),
+            first if self.modules[from].children.contains_key(first) => Some(from),
+            _ => None,
+        }
+    }
+
+    /// The module the leading `self` and `super` segments climb to, and `None` above the root.
+    fn ascended<'p>(
+        &self,
+        mut at: usize,
+        segments: &mut Peekable<impl Iterator<Item = &'p str>>,
+    ) -> Option<usize> {
         while let Some(segment) = segments.next_if(|segment| matches!(*segment, "self" | "super")) {
             if segment == "super" {
-                match self.modules[at].parent {
-                    Some(parent) => at = parent,
-                    None => return Resolved::Unresolved,
-                }
+                at = self.modules[at].parent?;
             }
         }
+        Some(at)
+    }
+
+    /// The deepest child module the remaining segments name, with the segments after it.
+    fn descended<'p>(&self, mut at: usize, segments: impl Iterator<Item = &'p str>) -> Resolved {
         let mut rest = Vec::new();
         for segment in segments {
             let module = &self.modules[at];

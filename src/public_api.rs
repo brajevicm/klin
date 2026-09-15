@@ -317,29 +317,7 @@ fn show(values: &Values) -> String {
 /// NOTE in the hook, and exit 2 elsewhere, because a green run must not imply a surface was
 /// completely measured. ADR 0021, spec 8.6.
 fn holes_said(now: &Side, at: &Context, code: u8, out: &mut Sink) -> u8 {
-    let mut named: Vec<(String, u64, String, String)> = Vec::new();
-    for surface in &now.derived.surfaces {
-        for hole in &surface.holes {
-            named.push((
-                hole.file.clone(),
-                hole.line,
-                hole.text.clone(),
-                format!("{} — {}", surface.id, hole.why),
-            ));
-        }
-        for hole in &now.graph.holes {
-            if surface.files.binary_search(&hole.file).is_ok() {
-                named.push((
-                    hole.file.clone(),
-                    hole.line,
-                    hole.text.clone(),
-                    format!("{} — {}", surface.id, hole.why),
-                ));
-            }
-        }
-    }
-    named.sort();
-    named.dedup();
+    let named = holes_of(now);
     if named.is_empty() {
         return code;
     }
@@ -371,6 +349,35 @@ fn holes_said(now: &Side, at: &Context, code: u8, out: &mut Sink) -> u8 {
         }
     });
     if at.hook() { code } else { 2 }
+}
+
+/// Every hole inside a surface, as file, line, text and reason, each once, in one order: the
+/// surface's own holes and the module graph's holes in the files the surface reaches.
+fn holes_of(now: &Side) -> Vec<(String, u64, String, String)> {
+    let mut named: Vec<(String, u64, String, String)> = Vec::new();
+    for surface in &now.derived.surfaces {
+        let inside = now
+            .graph
+            .holes
+            .iter()
+            .filter(|hole| surface.files.binary_search(&hole.file).is_ok())
+            .map(|hole| (&hole.file, hole.line, &hole.text, &hole.why));
+        let own = surface
+            .holes
+            .iter()
+            .map(|hole| (&hole.file, hole.line, &hole.text, &hole.why));
+        for (file, line, text, why) in own.chain(inside) {
+            named.push((
+                file.clone(),
+                line,
+                text.clone(),
+                format!("{} — {}", surface.id, why),
+            ));
+        }
+    }
+    named.sort();
+    named.dedup();
+    named
 }
 
 /// The packages and targets klin found and derived no surface from, said once, because a run
@@ -418,50 +425,56 @@ fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         derived.inapplicable.len()
     );
     for surface in &derived.surfaces {
-        let _ = writeln!(
-            out.text,
-            "surface {}  {} — {}",
-            surface.id, surface.language, surface.source
-        );
-        for item in &surface.items {
-            let origin = item
-                .origin
-                .as_ref()
-                .map_or(String::new(), |(file, line)| format!("  {file}:{line}"));
-            match &item.contract {
-                Contract::Measured(signature) => {
-                    let _ = writeln!(
-                        out.text,
-                        "  {}  {}  measured{origin}\n      {signature}",
-                        identity(surface, item),
-                        item.kind
-                    );
-                }
-                Contract::Opaque(clause) => {
-                    let clause = clause
-                        .as_ref()
-                        .map_or(String::new(), |clause| format!(" ({clause})"));
-                    let _ = writeln!(
-                        out.text,
-                        "  {}  {}  opaque{clause}{origin}",
-                        identity(surface, item),
-                        item.kind
-                    );
-                }
-            }
-        }
-        for hole in &surface.holes {
-            let _ = writeln!(
-                out.text,
-                "  hole {}:{}  {}  — {}",
-                hole.file, hole.line, hole.text, hole.why
-            );
-        }
+        report_surface(surface, out.text);
     }
     for held in &derived.inapplicable {
         let _ = writeln!(out.text, "not applicable: {}: {}", held.what, held.why);
     }
     Ok(0)
+}
+
+fn report_surface(surface: &Surface, out: &mut String) {
+    let _ = writeln!(
+        out,
+        "surface {}  {} — {}",
+        surface.id, surface.language, surface.source
+    );
+    for item in &surface.items {
+        let _ = writeln!(out, "  {}", report_item(surface, item));
+    }
+    for hole in &surface.holes {
+        let _ = writeln!(
+            out,
+            "  hole {}:{}  {}  — {}",
+            hole.file, hole.line, hole.text, hole.why
+        );
+    }
+}
+
+/// One item's report line: its identity, kind, measured or opaque status, origin, and its
+/// signature on the line below where it is measured.
+fn report_item(surface: &Surface, item: &Item) -> String {
+    let origin = item
+        .origin
+        .as_ref()
+        .map_or(String::new(), |(file, line)| format!("  {file}:{line}"));
+    match &item.contract {
+        Contract::Measured(signature) => format!(
+            "{}  {}  measured{origin}\n      {signature}",
+            identity(surface, item),
+            item.kind
+        ),
+        Contract::Opaque(clause) => {
+            let clause = clause
+                .as_ref()
+                .map_or(String::new(), |clause| format!(" ({clause})"));
+            format!(
+                "{}  {}  opaque{clause}{origin}",
+                identity(surface, item),
+                item.kind
+            )
+        }
+    }
 }
 
 /// What a consumer writes for one item: the crate path for Rust, the package, subpath and name

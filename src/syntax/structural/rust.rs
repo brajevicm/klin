@@ -166,44 +166,50 @@ fn contract(node: Node, source: &[u8]) -> Option<String> {
 /// modifiers and binding names leave, a private field leaves, a private tuple position becomes
 /// `_`, and everything else is kept as written.
 fn spelling(node: Node, source: &[u8]) -> Spelling {
-    let parent = node.parent();
-    let parent_kind = parent.map_or("", |held| held.kind());
-    if NOISE.contains(&node.kind()) {
+    let parent_kind = node.parent().map_or("", |held| held.kind());
+    if NOISE.contains(&node.kind()) || initializer(node, parent_kind) {
         return Spelling::Skip;
     }
-    if node.kind() == "block" && parent_kind == "function_item" {
-        return Spelling::Replace(";".to_string());
+    match node.kind() {
+        "block" if parent_kind == "function_item" => Spelling::Replace(";".to_string()),
+        "parameter" => parameter(node, source),
+        "string_literal" => Spelling::Replace(text_of(node, source)),
+        _ => field(node, parent_kind, source),
     }
-    if matches!(parent_kind, "const_item" | "static_item")
+}
+
+/// Whether this node is the `=` or the value of a `const` or `static`.
+fn initializer(node: Node, parent_kind: &str) -> bool {
+    matches!(parent_kind, "const_item" | "static_item")
         && (node.kind() == "=" || is_field(node, "value"))
-    {
-        return Spelling::Skip;
+}
+
+/// A parameter as its type alone, with `self` kept where it is the receiver.
+fn parameter(node: Node, source: &[u8]) -> Spelling {
+    let receiver = node
+        .child_by_field_name("pattern")
+        .is_some_and(|pattern| pattern.kind() == "self");
+    match node.child_by_field_name("type") {
+        Some(of) => Spelling::Replace(format!(
+            "{}: {}",
+            if receiver { "self" } else { "_" },
+            spelled(of, source, &|held| spelling(held, source))
+        )),
+        None => Spelling::Keep,
     }
-    if node.kind() == "parameter" {
-        let receiver = node
-            .child_by_field_name("pattern")
-            .is_some_and(|pattern| pattern.kind() == "self");
-        return match node.child_by_field_name("type") {
-            Some(of) => Spelling::Replace(format!(
-                "{}: {}",
-                if receiver { "self" } else { "_" },
-                spelled(of, source, &|held| spelling(held, source))
-            )),
-            None => Spelling::Keep,
-        };
+}
+
+/// A private named field leaves, a private tuple position becomes `_`, and every field of an
+/// enum variant stays.
+fn field(node: Node, parent_kind: &str, source: &[u8]) -> Spelling {
+    if above(node, &["enum_variant"]).is_some() {
+        return Spelling::Keep;
     }
-    if node.kind() == "string_literal" {
-        return Spelling::Replace(text_of(node, source));
-    }
-    if node.kind() == "field_declaration"
-        && above(node, &["enum_variant"]).is_none()
-        && visibility(node, source) != Visibility::Public
-    {
+    if node.kind() == "field_declaration" && visibility(node, source) != Visibility::Public {
         return Spelling::Skip;
     }
     if parent_kind == "ordered_field_declaration_list"
         && node.is_named()
-        && above(node, &["enum_variant"]).is_none()
         && !pub_before(node, source)
     {
         return Spelling::Replace("_".to_string());

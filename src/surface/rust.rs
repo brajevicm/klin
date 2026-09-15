@@ -179,12 +179,8 @@ impl<'a> Derivation<'a> {
         }
         let module = self.module(at);
         self.surface.files.push(module.file.clone());
-        for declaration in self.declarations(at) {
-            if declaration.visibility == Visibility::Public
-                && declaration.kind != DeclarationKind::Method
-            {
-                self.expose(at, declaration, join(prefix, &declaration.name));
-            }
+        for declaration in self.public_declarations(at) {
+            self.expose(at, declaration, join(prefix, &declaration.name));
         }
         for (name, child) in self.public_children(at) {
             let path = join(prefix, &name);
@@ -193,14 +189,31 @@ impl<'a> Derivation<'a> {
         let own = self.own_names(at);
         for export in self.exports(at) {
             for leaf in &export.leaves {
-                match &leaf.name {
-                    Some(name) => {
-                        let path = join(prefix, name);
-                        self.named(at, export, leaf, path);
-                    }
-                    None => self.glob(at, export, leaf, prefix, &own),
-                }
+                self.leaf(at, export, leaf, prefix, &own);
             }
+        }
+    }
+
+    /// The declarations one module exposes as items of its own: public, and not a method.
+    fn public_declarations(&self, at: usize) -> Vec<&'a Declaration> {
+        self.declarations(at)
+            .filter(|held| held.visibility == Visibility::Public)
+            .filter(|held| held.kind != DeclarationKind::Method)
+            .collect()
+    }
+
+    /// One leaf of a `pub use`: under its own name, or every name of the module it globs.
+    fn leaf(
+        &mut self,
+        at: usize,
+        export: &'a Export,
+        leaf: &'a ExportLeaf,
+        prefix: &str,
+        own: &HashSet<String>,
+    ) {
+        match &leaf.name {
+            Some(name) => self.named(at, export, leaf, join(prefix, name)),
+            None => self.glob(at, export, leaf, prefix, own),
         }
     }
 
@@ -264,26 +277,7 @@ impl<'a> Derivation<'a> {
         match self.graph.resolve(from, &leaf.path) {
             Resolved::Module { module, rest } if rest.is_empty() => self.module_item(module, &path),
             Resolved::Module { module, rest } if rest.len() == 1 => {
-                let declarations: Vec<&Declaration> = self
-                    .declarations(module)
-                    .filter(|held| {
-                        held.name == rest[0]
-                            && held.visibility == Visibility::Public
-                            && held.kind != DeclarationKind::Method
-                    })
-                    .collect();
-                if !declarations.is_empty() {
-                    for declaration in declarations {
-                        self.expose(module, declaration, path.clone());
-                    }
-                    return;
-                }
-                let re_exported: Vec<(&Export, &ExportLeaf)> = self
-                    .exports(module)
-                    .flat_map(|held| held.leaves.iter().map(move |leaf| (held, leaf)))
-                    .filter(|(_, held)| held.name.as_deref() == Some(rest[0].as_str()))
-                    .collect();
-                if re_exported.is_empty() {
+                if !self.named_in(module, &rest[0], path.clone()) {
                     self.surface.items.push(opaque(
                         path,
                         ITEM,
@@ -291,10 +285,6 @@ impl<'a> Derivation<'a> {
                         export.line,
                         leaf.path.clone(),
                     ));
-                    return;
-                }
-                for (held, inner) in re_exported {
-                    self.named(module, held, inner, path.clone());
                 }
             }
             Resolved::Module { .. } | Resolved::External => {
@@ -306,12 +296,31 @@ impl<'a> Derivation<'a> {
                 file,
                 line: export.line,
                 text: export.text.clone(),
-                why: format!(
-                    "{} names a module no file answers or goes above the crate root",
-                    leaf.path
-                ),
+                why: unresolved(&leaf.path),
             }),
         }
+    }
+
+    /// One name looked up in the module a path reached: its public declarations of that name,
+    /// or the re-exports it makes under that name. False where the module has neither.
+    fn named_in(&mut self, module: usize, name: &str, path: String) -> bool {
+        let declarations: Vec<&Declaration> = self
+            .public_declarations(module)
+            .into_iter()
+            .filter(|held| held.name == name)
+            .collect();
+        for declaration in &declarations {
+            self.expose(module, declaration, path.clone());
+        }
+        let re_exported: Vec<(&Export, &ExportLeaf)> = self
+            .exports(module)
+            .flat_map(|held| held.leaves.iter().map(move |leaf| (held, leaf)))
+            .filter(|(_, held)| held.name.as_deref() == Some(name))
+            .collect();
+        for (held, inner) in &re_exported {
+            self.named(module, held, inner, path.clone());
+        }
+        !declarations.is_empty() || !re_exported.is_empty()
     }
 
     /// One glob of a `pub use`: every name the module it reaches exposes, under `prefix`, less
@@ -325,88 +334,110 @@ impl<'a> Derivation<'a> {
         prefix: &str,
         shadow: &HashSet<String>,
     ) {
-        let file = self.module(from).file.clone();
         let key = (from, leaf.path.clone(), prefix.to_string());
         if !self.globbed.insert(key) {
             return;
         }
-        let target = leaf.path.trim_end_matches("::*");
-        let hole = |why: String| Hole {
-            file: file.clone(),
-            line: export.line,
-            text: export.text.clone(),
-            why,
+        let Some(reached) = self.globbed_module(from, export, leaf) else {
+            return;
         };
-        let reached = match self.graph.resolve(from, target) {
-            Resolved::Module { module, rest } if rest.is_empty() => module,
-            Resolved::Module { .. } => {
-                self.surface.holes.push(hole(format!(
-                    "{} globs an item, not a module, so klin cannot list what it exposes",
-                    leaf.path
-                )));
-                return;
-            }
-            Resolved::External => {
-                self.surface.holes.push(hole(format!(
-                    "{} globs another crate, whose names klin cannot list",
-                    leaf.path
-                )));
-                return;
-            }
-            Resolved::Unresolved => {
-                self.surface.holes.push(hole(format!(
-                    "{} names a module no file answers or goes above the crate root",
-                    leaf.path
-                )));
-                return;
-            }
-        };
-        let mut provided: Vec<(String, Exposure<'a>)> = Vec::new();
-        for declaration in self.declarations(reached) {
-            if declaration.visibility == Visibility::Public
-                && declaration.kind != DeclarationKind::Method
-            {
-                provided.push((declaration.name.clone(), Exposure::Declaration(declaration)));
-            }
-        }
-        for (name, child) in self.public_children(reached) {
-            provided.push((name, Exposure::Module(child)));
-        }
         let mut inner_shadow = shadow.clone();
         inner_shadow.extend(self.own_names(reached));
         for held in self.exports(reached) {
-            for inner in &held.leaves {
-                match &inner.name {
-                    Some(name) => provided.push((name.clone(), Exposure::Leaf(held, inner))),
-                    None => self.glob(reached, held, inner, prefix, &inner_shadow),
-                }
+            for inner in held.leaves.iter().filter(|inner| inner.name.is_none()) {
+                self.glob(reached, held, inner, prefix, &inner_shadow);
             }
         }
-        for (name, exposure) in provided {
-            if shadow.contains(&name) {
-                continue;
-            }
-            let path = join(prefix, &name);
-            match self.glob_names.get(&path) {
-                Some((other_file, other_line))
-                    if (other_file, *other_line) != (&file, export.line) =>
-                {
-                    self.surface.holes.push(hole(format!(
-                        "{name} is provided by this glob and by the glob at {other_file}:{other_line}"
-                    )));
-                    continue;
-                }
-                _ => {}
-            }
-            self.glob_names
-                .insert(path.clone(), (file.clone(), export.line));
-            match exposure {
-                Exposure::Declaration(declaration) => self.expose(reached, declaration, path),
-                Exposure::Module(child) => self.module_item(child, &path),
-                Exposure::Leaf(held, inner) => self.named(reached, held, inner, path),
+        let site = (self.module(from).file.clone(), export.line);
+        for (name, exposure) in self.provided(reached) {
+            if !shadow.contains(&name) {
+                self.provide(reached, export, &site, join(prefix, &name), exposure);
             }
         }
     }
+
+    /// One name a glob provides under `path`: a hole where another glob already provides it,
+    /// and the exposure itself otherwise.
+    fn provide(
+        &mut self,
+        reached: usize,
+        export: &'a Export,
+        site: &(String, u64),
+        path: String,
+        exposure: Exposure<'a>,
+    ) {
+        if let Some(other) = self.glob_names.get(&path).filter(|other| *other != site) {
+            self.surface.holes.push(Hole {
+                file: site.0.clone(),
+                line: export.line,
+                text: export.text.clone(),
+                why: format!(
+                    "{} is provided by this glob and by the glob at {}:{}",
+                    path.rsplit("::").next().unwrap_or(&path),
+                    other.0,
+                    other.1
+                ),
+            });
+            return;
+        }
+        self.glob_names.insert(path.clone(), site.clone());
+        match exposure {
+            Exposure::Declaration(declaration) => self.expose(reached, declaration, path),
+            Exposure::Module(child) => self.module_item(child, &path),
+            Exposure::Leaf(held, inner) => self.named(reached, held, inner, path),
+        }
+    }
+
+    /// The module a glob reaches, or the hole that says why klin cannot list its names.
+    fn globbed_module(&mut self, from: usize, export: &Export, leaf: &ExportLeaf) -> Option<usize> {
+        let target = leaf.path.trim_end_matches("::*");
+        let why = match self.graph.resolve(from, target) {
+            Resolved::Module { module, rest } if rest.is_empty() => return Some(module),
+            Resolved::Module { .. } => format!(
+                "{} globs an item, not a module, so klin cannot list what it exposes",
+                leaf.path
+            ),
+            Resolved::External => format!(
+                "{} globs another crate, whose names klin cannot list",
+                leaf.path
+            ),
+            Resolved::Unresolved => unresolved(&leaf.path),
+        };
+        self.surface.holes.push(Hole {
+            file: self.module(from).file.clone(),
+            line: export.line,
+            text: export.text.clone(),
+            why,
+        });
+        None
+    }
+
+    /// Every name a module hands to a glob of it: its public declarations, its public child
+    /// modules and its own named re-exports.
+    fn provided(&self, reached: usize) -> Vec<(String, Exposure<'a>)> {
+        let mut out: Vec<(String, Exposure<'a>)> = self
+            .public_declarations(reached)
+            .into_iter()
+            .map(|declaration| (declaration.name.clone(), Exposure::Declaration(declaration)))
+            .collect();
+        out.extend(
+            self.public_children(reached)
+                .into_iter()
+                .map(|(name, child)| (name, Exposure::Module(child))),
+        );
+        for held in self.exports(reached) {
+            for inner in &held.leaves {
+                if let Some(name) = &inner.name {
+                    out.push((name.clone(), Exposure::Leaf(held, inner)));
+                }
+            }
+        }
+        out
+    }
+}
+
+fn unresolved(path: &str) -> String {
+    format!("{path} names a module no file answers or goes above the crate root")
 }
 
 /// One way a module exposes a name a glob picks up.

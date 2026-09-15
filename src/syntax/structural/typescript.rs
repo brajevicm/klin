@@ -347,39 +347,54 @@ fn exported(node: Node, source: &[u8]) -> Option<Exported> {
         return None;
     }
     if let Some(declaration) = node.child_by_field_name("declaration") {
-        return match declared(declaration) {
-            true => None,
-            false => Some(unsupported()),
-        };
+        return (!declared(declaration)).then(unsupported);
     }
-    let source_named = node
-        .child_by_field_name("source")
-        .map(|from| specifier(from, source));
-    let type_only = has_token(node, "type");
-    let mut cursor = node.walk();
-    let clause = node
-        .named_children(&mut cursor)
-        .find(|child| matches!(child.kind(), "export_clause" | "namespace_export"));
     if has_token(node, "default") {
-        let value = node.child_by_field_name("value");
-        let path = value
-            .filter(|held| held.kind() == "identifier")
-            .map(|held| text_of(held, source))
-            .unwrap_or_default();
-        return Some(Exported {
-            source: None,
-            type_only: false,
-            supported: true,
-            leaves: vec![ExportLeaf {
-                path,
-                name: Some("default".to_string()),
-            }],
-        });
+        return Some(default_export(node, source));
     }
     if has_token(node, "=") {
         return Some(unsupported());
     }
-    let leaves = match clause {
+    let Some(leaves) = clause_leaves(node, source) else {
+        return Some(unsupported());
+    };
+    Some(Exported {
+        source: node
+            .child_by_field_name("source")
+            .map(|from| specifier(from, source)),
+        type_only: has_token(node, "type"),
+        supported: true,
+        leaves,
+    })
+}
+
+/// `export default x`: the local name where one is written, and an empty path for an
+/// anonymous value.
+fn default_export(node: Node, source: &[u8]) -> Exported {
+    let path = node
+        .child_by_field_name("value")
+        .filter(|held| held.kind() == "identifier")
+        .map(|held| text_of(held, source))
+        .unwrap_or_default();
+    Exported {
+        source: None,
+        type_only: false,
+        supported: true,
+        leaves: vec![ExportLeaf {
+            path,
+            name: Some("default".to_string()),
+        }],
+    }
+}
+
+/// The leaves of an export clause, a namespace star or a bare star, and `None` for any other
+/// form.
+fn clause_leaves(node: Node, source: &[u8]) -> Option<Vec<ExportLeaf>> {
+    let mut cursor = node.walk();
+    let clause = node
+        .named_children(&mut cursor)
+        .find(|child| matches!(child.kind(), "export_clause" | "namespace_export"));
+    Some(match clause {
         Some(held) if held.kind() == "namespace_export" => vec![ExportLeaf {
             path: "*".to_string(),
             name: held.named_child(0).map(|name| text_of(name, source)),
@@ -389,13 +404,7 @@ fn exported(node: Node, source: &[u8]) -> Option<Exported> {
             path: "*".to_string(),
             name: None,
         }],
-        None => return Some(unsupported()),
-    };
-    Some(Exported {
-        source: source_named,
-        type_only,
-        supported: true,
-        leaves,
+        None => return None,
     })
 }
 

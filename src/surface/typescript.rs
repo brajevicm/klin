@@ -70,37 +70,17 @@ struct Derivation<'a> {
 
 impl<'a> Derivation<'a> {
     fn package(&mut self, manifest: &str, out: &mut Derived) {
-        let directory = directory(manifest);
-        let Some(package) = self.read(manifest, directory) else {
+        let Some(package) = self.read(manifest, directory(manifest)) else {
             out.inapplicable.push(Inapplicable {
                 what: format!("TypeScript package ({manifest})"),
                 why: "is not a JSON object klin can read".to_string(),
             });
             return;
         };
-        let supported: Vec<&Entry> = package
-            .entries
-            .iter()
-            .filter(|entry| entry.target.is_ok())
-            .collect();
-        if supported.is_empty() {
-            let why = match package.entries.first() {
-                None => "names no TypeScript source entry point in exports, types, typings, main or module".to_string(),
-                Some(entry) => format!(
-                    "its {} names no TypeScript source klin supports: {}",
-                    entry.field,
-                    package
-                        .entries
-                        .iter()
-                        .filter_map(|entry| entry.target.as_ref().err())
-                        .cloned()
-                        .collect::<Vec<_>>()
-                        .join("; ")
-                ),
-            };
+        if package.entries.iter().all(|entry| entry.target.is_err()) {
             out.inapplicable.push(Inapplicable {
                 what: format!("TypeScript package {} ({manifest})", package.name),
-                why,
+                why: not_applicable(&package),
             });
             return;
         }
@@ -116,39 +96,52 @@ impl<'a> Derivation<'a> {
                 })
             })
             .collect();
-        for entry in supported {
-            let Ok(file) = &entry.target else {
-                continue;
-            };
-            let mut surface = Surface {
-                id: format!("{} {:?}", package.name, entry.subpath),
-                language: LANGUAGE,
-                source: format!("{} {} {:?} -> {file}", manifest, entry.field, entry.subpath),
-                items: Vec::new(),
-                files: Vec::new(),
-                holes: std::mem::take(&mut package_holes),
-            };
-            match self.modules.get(file.as_str()).copied() {
-                Some(module) => {
-                    surface.items = self.items_of(module).to_vec();
-                    let mut reached = Vec::new();
-                    self.reached(module, &mut reached);
-                    for at in reached {
-                        surface.files.push(self.graph.modules[at].file.clone());
-                        surface
-                            .holes
-                            .extend(self.holes.get(&at).into_iter().flatten().cloned());
-                    }
-                }
-                None => surface.holes.push(Hole {
-                    file: file.clone(),
-                    line: 0,
-                    text: entry.subpath.clone(),
-                    why: "the entry point is not a module the tree measured".to_string(),
-                }),
+        for entry in &package.entries {
+            if let Ok(file) = &entry.target {
+                let holes = std::mem::take(&mut package_holes);
+                out.surfaces
+                    .push(self.surface(manifest, &package.name, entry, file, holes));
             }
-            out.surfaces.push(surface);
         }
+    }
+
+    /// One entry as a surface: the items of its entry module, the files that module reaches,
+    /// and the holes found on the way.
+    fn surface(
+        &mut self,
+        manifest: &str,
+        package: &str,
+        entry: &Entry,
+        file: &str,
+        holes: Vec<Hole>,
+    ) -> Surface {
+        let mut surface = Surface {
+            id: format!("{package} {:?}", entry.subpath),
+            language: LANGUAGE,
+            source: format!("{manifest} {} {:?} -> {file}", entry.field, entry.subpath),
+            items: Vec::new(),
+            files: Vec::new(),
+            holes,
+        };
+        let Some(module) = self.modules.get(file).copied() else {
+            surface.holes.push(Hole {
+                file: file.to_string(),
+                line: 0,
+                text: entry.subpath.clone(),
+                why: "the entry point is not a module the tree measured".to_string(),
+            });
+            return surface;
+        };
+        surface.items = self.items_of(module).to_vec();
+        let mut reached = Vec::new();
+        self.reached(module, &mut reached);
+        for at in reached {
+            surface.files.push(self.graph.modules[at].file.clone());
+            surface
+                .holes
+                .extend(self.holes.get(&at).into_iter().flatten().cloned());
+        }
+        surface
     }
 
     /// Every module a star or a named re-export of this one reaches, this one included.
@@ -247,8 +240,7 @@ impl<'a> Derivation<'a> {
         if leaves.is_empty() {
             return Err("names no target".to_string());
         }
-        let mut found: Vec<String> = Vec::new();
-        let mut refused: Vec<String> = Vec::new();
+        let (mut found, mut refused): (Vec<String>, Vec<String>) = (Vec::new(), Vec::new());
         for leaf in &leaves {
             match self.source(directory, leaf) {
                 Ok(file) if !found.contains(&file) => found.push(file),
@@ -256,14 +248,7 @@ impl<'a> Derivation<'a> {
                 Err(why) => refused.push(why),
             }
         }
-        match found.as_slice() {
-            [one] => Ok(one.clone()),
-            [] => Err(refused.join("; ")),
-            many => Err(format!(
-                "leads to more than one TypeScript source file: {}",
-                many.join(", ")
-            )),
-        }
+        one_of(found, refused)
     }
 
     /// The TypeScript source file a target names, and why not: a path outside the package, a
@@ -302,65 +287,37 @@ impl<'a> Derivation<'a> {
     fn derive_module(&mut self, at: usize) -> (Vec<Item>, Vec<Hole>) {
         let file = self.graph.modules[at].file.clone();
         let Some(facts) = self.facts(at) else {
-            return (
-                Vec::new(),
-                vec![Hole {
-                    file,
-                    line: 0,
-                    text: String::new(),
-                    why: "the module was not measured, so what it exports is unknown".to_string(),
-                }],
-            );
+            let hole = Hole {
+                file,
+                line: 0,
+                text: String::new(),
+                why: "the module was not measured, so what it exports is unknown".to_string(),
+            };
+            return (Vec::new(), vec![hole]);
         };
-        let mut items = Vec::new();
-        let mut holes = Vec::new();
-        for declaration in &facts.declarations {
-            if declaration.visibility == Visibility::Public
-                && declaration.kind != DeclarationKind::Method
-            {
-                let name = declaration
-                    .exported_as
-                    .clone()
-                    .unwrap_or_else(|| declaration.name.clone());
-                items.push(declared(name, &file, declaration));
-            }
-        }
-        let own: HashSet<String> = items.iter().map(|item| item.path.clone()).collect();
-        let mut stars: BTreeMap<String, (u64, Item)> = BTreeMap::new();
-        let mut ambiguous: HashSet<String> = HashSet::new();
+        let mut exposing = Exposing {
+            file,
+            items: own_declarations(facts),
+            own: HashSet::new(),
+            stars: BTreeMap::new(),
+            ambiguous: HashSet::new(),
+            holes: Vec::new(),
+        };
+        exposing.own = exposing
+            .items
+            .iter()
+            .map(|item| item.path.clone())
+            .collect();
         for export in &facts.exports {
-            if !export.supported {
-                holes.push(Hole {
-                    file: file.clone(),
-                    line: export.line,
-                    text: export.text.clone(),
-                    why: "an export form klin does not list: `export =`, a namespace, or an ambient module".to_string(),
-                });
-                continue;
-            }
-            match &export.source {
-                None => self.local(facts, &file, export, &mut items),
-                Some(specifier) => {
-                    self.re_export(
-                        at,
-                        facts,
-                        export,
-                        specifier,
-                        &own,
-                        &mut items,
-                        &mut stars,
-                        &mut ambiguous,
-                        &mut holes,
-                    );
+            match (&export.supported, &export.source) {
+                (false, _) => exposing.unsupported(export),
+                (true, None) => {
+                    self.local(facts, &exposing.file.clone(), export, &mut exposing.items)
                 }
+                (true, Some(specifier)) => self.re_export(at, export, specifier, &mut exposing),
             }
         }
-        for (name, (_, item)) in stars {
-            if !ambiguous.contains(&name) {
-                items.push(item);
-            }
-        }
-        (items, holes)
+        exposing.finish()
     }
 
     /// A clause with no source: `export { a as b }` over a local declaration, and
@@ -396,90 +353,38 @@ impl<'a> Derivation<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn re_export(
-        &mut self,
-        at: usize,
-        facts: &FileFacts,
-        export: &Export,
-        specifier: &str,
-        own: &HashSet<String>,
-        items: &mut Vec<Item>,
-        stars: &mut BTreeMap<String, (u64, Item)>,
-        ambiguous: &mut HashSet<String>,
-        holes: &mut Vec<Hole>,
-    ) {
-        let file = facts.file.clone();
-        let targets = self.graph.reached_at(at, export.line);
-        let Some(target) = targets.first().copied() else {
+    /// A clause with a source: through the module graph's edge for its line, or as an external
+    /// package where the graph has none and the specifier is not relative.
+    fn re_export(&mut self, at: usize, export: &Export, specifier: &str, into: &mut Exposing) {
+        let Some(target) = self.graph.reached_at(at, export.line).first().copied() else {
             match relative(specifier) {
-                true => holes.push(Hole {
-                    file,
+                true => into.holes.push(Hole {
+                    file: into.file.clone(),
                     line: export.line,
                     text: export.text.clone(),
-                    why: format!("{specifier} resolves to no TypeScript module the tree holds, or to more than one"),
+                    why: format!(
+                        "{specifier} resolves to no TypeScript module the tree holds, or to more than one"
+                    ),
                 }),
-                false => self.external(&file, export, specifier, items, holes),
+                false => {
+                    let file = into.file.clone();
+                    self.external(&file, export, specifier, &mut into.items, &mut into.holes);
+                }
             }
             return;
         };
         let reached: Vec<Item> = self.items_of(target).to_vec();
         for leaf in &export.leaves {
-            let kind = type_only(export);
             match (&leaf.name, leaf.path.as_str()) {
-                (None, _) => {
-                    for item in reached.iter().filter(|item| item.path != "default") {
-                        if own.contains(&item.path) {
-                            continue;
-                        }
-                        match stars.get(&item.path) {
-                            Some((line, _)) if *line != export.line => {
-                                ambiguous.insert(item.path.clone());
-                                holes.push(Hole {
-                                    file: file.clone(),
-                                    line: export.line,
-                                    text: export.text.clone(),
-                                    why: format!(
-                                        "{} is provided by this star export and by the one at line {line}",
-                                        item.path
-                                    ),
-                                });
-                            }
-                            _ => {
-                                stars.insert(item.path.clone(), (export.line, item.clone()));
-                            }
-                        }
-                    }
-                }
-                (Some(name), "*") => items.push(opaque(
+                (None, _) => into.star(export, &reached),
+                (Some(name), "*") => into.items.push(opaque(
                     name.clone(),
                     NAMESPACE,
-                    &file,
+                    &into.file,
                     export.line,
                     format!("* as {name} from {specifier}"),
                 )),
-                (Some(name), path) => {
-                    let found: Vec<&Item> =
-                        reached.iter().filter(|item| item.path == path).collect();
-                    if found.is_empty() {
-                        items.push(opaque(
-                            name.clone(),
-                            kind.unwrap_or(ITEM),
-                            &file,
-                            export.line,
-                            clause(path, name, Some(specifier)),
-                        ));
-                        continue;
-                    }
-                    for item in found {
-                        let mut item = item.clone();
-                        item.path = name.clone();
-                        if let Some(kind) = kind {
-                            item.kind = kind;
-                        }
-                        items.push(item);
-                    }
-                }
+                (Some(name), path) => into.named(export, specifier, &reached, path, name),
             }
         }
     }
@@ -518,6 +423,146 @@ impl<'a> Derivation<'a> {
                 )),
             }
         }
+    }
+}
+
+/// One module's items as they are gathered: the names it declares itself, what its stars
+/// provide and which of those two stars fight over, and the holes on the way.
+struct Exposing {
+    file: String,
+    items: Vec<Item>,
+    own: HashSet<String>,
+    stars: BTreeMap<String, (u64, Item)>,
+    ambiguous: HashSet<String>,
+    holes: Vec<Hole>,
+}
+
+impl Exposing {
+    fn unsupported(&mut self, export: &Export) {
+        self.holes.push(Hole {
+            file: self.file.clone(),
+            line: export.line,
+            text: export.text.clone(),
+            why: "an export form klin does not list: `export =`, a namespace, or an ambient module"
+                .to_string(),
+        });
+    }
+
+    /// Every item a star export provides, less the names this module declares itself. A name
+    /// two stars provide is ambiguous, and a hole.
+    fn star(&mut self, export: &Export, reached: &[Item]) {
+        for item in reached.iter().filter(|item| item.path != "default") {
+            if self.own.contains(&item.path) {
+                continue;
+            }
+            match self.stars.get(&item.path) {
+                Some((line, _)) if *line != export.line => {
+                    self.ambiguous.insert(item.path.clone());
+                    self.holes.push(Hole {
+                        file: self.file.clone(),
+                        line: export.line,
+                        text: export.text.clone(),
+                        why: format!(
+                            "{} is provided by this star export and by the one at line {line}",
+                            item.path
+                        ),
+                    });
+                }
+                _ => {
+                    self.stars
+                        .insert(item.path.clone(), (export.line, item.clone()));
+                }
+            }
+        }
+    }
+
+    /// One named clause of a re-export: the reached module's items of that name under the
+    /// external name, or an opaque item where the module has none.
+    fn named(
+        &mut self,
+        export: &Export,
+        specifier: &str,
+        reached: &[Item],
+        path: &str,
+        name: &str,
+    ) {
+        let kind = type_only(export);
+        let found: Vec<&Item> = reached.iter().filter(|item| item.path == path).collect();
+        if found.is_empty() {
+            self.items.push(opaque(
+                name.to_string(),
+                kind.unwrap_or(ITEM),
+                &self.file,
+                export.line,
+                clause(path, name, Some(specifier)),
+            ));
+            return;
+        }
+        for item in found {
+            let mut item = item.clone();
+            item.path = name.to_string();
+            if let Some(kind) = kind {
+                item.kind = kind;
+            }
+            self.items.push(item);
+        }
+    }
+
+    fn finish(mut self) -> (Vec<Item>, Vec<Hole>) {
+        for (name, (_, item)) in self.stars {
+            if !self.ambiguous.contains(&name) {
+                self.items.push(item);
+            }
+        }
+        (self.items, self.holes)
+    }
+}
+
+/// The items a module declares and exports itself, under their external names.
+fn own_declarations(facts: &FileFacts) -> Vec<Item> {
+    facts
+        .declarations
+        .iter()
+        .filter(|held| held.visibility == Visibility::Public)
+        .filter(|held| held.kind != DeclarationKind::Method)
+        .map(|held| {
+            let name = held
+                .exported_as
+                .clone()
+                .unwrap_or_else(|| held.name.clone());
+            declared(name, &facts.file, held)
+        })
+        .collect()
+}
+
+/// Why a package has no supported surface.
+fn not_applicable(package: &Package) -> String {
+    match package.entries.first() {
+        None => "names no TypeScript source entry point in exports, types, typings, main or module"
+            .to_string(),
+        Some(entry) => format!(
+            "its {} names no TypeScript source klin supports: {}",
+            entry.field,
+            package
+                .entries
+                .iter()
+                .filter_map(|entry| entry.target.as_ref().err())
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("; ")
+        ),
+    }
+}
+
+/// The one source file a target's leaves lead to, or why there is not exactly one.
+fn one_of(found: Vec<String>, refused: Vec<String>) -> Result<String, String> {
+    match found.as_slice() {
+        [one] => Ok(one.clone()),
+        [] => Err(refused.join("; ")),
+        many => Err(format!(
+            "leads to more than one TypeScript source file: {}",
+            many.join(", ")
+        )),
     }
 }
 

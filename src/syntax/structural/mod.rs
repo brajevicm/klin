@@ -702,10 +702,6 @@ fn collect_tokens(
 /// and between a name and the bracket that opens its arguments. A separator left dangling
 /// before a closing bracket, where a skipped token stood after it, is dropped.
 fn tidy(tokens: &[String]) -> String {
-    const NO_SPACE_BEFORE: &[&str] = &[",", ";", ")", "]", ">", ":", "?", ".", "::", "!"];
-    const NO_SPACE_AFTER: &[&str] = &["(", "[", "<", "&", "::", ".", "#", "*", "..."];
-    const OPENS: &[&str] = &["(", "[", "<"];
-    const CLOSES: &[&str] = &[")", "]", "}", ">"];
     let tokens: Vec<&str> = tokens
         .iter()
         .map(String::as_str)
@@ -714,25 +710,36 @@ fn tidy(tokens: &[String]) -> String {
     let mut out = String::new();
     let mut last: Option<&str> = None;
     for (at, token) in tokens.iter().enumerate() {
-        let dangling = *token == ","
-            && tokens
-                .get(at + 1)
-                .is_none_or(|next| CLOSES.contains(next) || *next == ",");
-        if dangling {
+        if dangling(&tokens, at) {
             continue;
         }
-        let glued = last.is_none_or(|last| {
-            NO_SPACE_AFTER.contains(&last)
-                || NO_SPACE_BEFORE.contains(token)
-                || (OPENS.contains(token) && ends_a_name(last))
-        });
-        if !glued {
+        if !last.is_none_or(|last| glued(last, token)) {
             out.push(' ');
         }
         out.push_str(token);
         last = Some(token);
     }
     out
+}
+
+/// Whether the token at `at` is a separator nothing follows but a closing bracket or another
+/// separator.
+fn dangling(tokens: &[&str], at: usize) -> bool {
+    const CLOSES: &[&str] = &[")", "]", "}", ">"];
+    tokens[at] == ","
+        && tokens
+            .get(at + 1)
+            .is_none_or(|next| CLOSES.contains(next) || *next == ",")
+}
+
+/// Whether no space stands between these two tokens.
+fn glued(last: &str, token: &str) -> bool {
+    const NO_SPACE_BEFORE: &[&str] = &[",", ";", ")", "]", ">", ":", "?", ".", "::", "!"];
+    const NO_SPACE_AFTER: &[&str] = &["(", "[", "<", "&", "::", ".", "#", "*", "..."];
+    const OPENS: &[&str] = &["(", "[", "<"];
+    NO_SPACE_AFTER.contains(&last)
+        || NO_SPACE_BEFORE.contains(&token)
+        || (OPENS.contains(&token) && ends_a_name(last))
 }
 
 /// Whether a token is one an argument bracket attaches to directly: a name, a closing bracket
@@ -1825,7 +1832,7 @@ pub const K: u8 = 1;
 pub static mut ST: &str = "x";
 pub type Al<T> = Vec<T>;
 pub unsafe extern "C" fn ff<T>(x: T, (a, b): (u8, u8), mut y: &mut u8) -> u8 where T: Copy { 1 }
-impl<T> S<T> { pub fn new(self: Box<Self>, n: u8) -> Self { todo!() } pub(crate) fn p() {} fn q() {} }
+impl<T> S<T> { pub fn new(self: Box<Self>, n: u8) -> Self { *self } pub(crate) fn p() {} fn q() {} }
 impl Tr for S<u8> { fn f(&self) -> u8 { 1 } }
 "#;
 

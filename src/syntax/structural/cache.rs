@@ -210,19 +210,7 @@ impl Writer {
         self.text(language.map_or("", |row| row.name));
         self.number(facts.declarations.len() as u64);
         for declaration in &facts.declarations {
-            self.text(&declaration.name);
-            self.number(kind_number(declaration.kind));
-            self.number(declaration.line);
-            self.number(declaration.end);
-            self.text(&declaration.text);
-            self.number(
-                u64::from(declaration.externally_visible) | u64::from(declaration.entry_point) << 1,
-            );
-            self.texts(&declaration.nesting);
-            self.number(visibility_number(declaration.visibility));
-            self.optional(declaration.exported_as.as_deref());
-            self.optional(declaration.owner.as_deref());
-            self.optional(declaration.signature.as_deref());
+            self.declaration(declaration);
         }
         self.number(facts.imports.len() as u64);
         for import in &facts.imports {
@@ -256,16 +244,36 @@ impl Writer {
         }
         self.number(facts.exports.len() as u64);
         for export in &facts.exports {
-            self.number(export.line);
-            self.text(&export.text);
-            self.texts(&export.nesting);
-            self.optional(export.source.as_deref());
-            self.number(u64::from(export.type_only) | u64::from(export.supported) << 1);
-            self.number(export.leaves.len() as u64);
-            for leaf in &export.leaves {
-                self.text(&leaf.path);
-                self.optional(leaf.name.as_deref());
-            }
+            self.export(export);
+        }
+    }
+
+    fn declaration(&mut self, declaration: &Declaration) {
+        self.text(&declaration.name);
+        self.number(kind_number(declaration.kind));
+        self.number(declaration.line);
+        self.number(declaration.end);
+        self.text(&declaration.text);
+        self.number(
+            u64::from(declaration.externally_visible) | u64::from(declaration.entry_point) << 1,
+        );
+        self.texts(&declaration.nesting);
+        self.number(visibility_number(declaration.visibility));
+        self.optional(declaration.exported_as.as_deref());
+        self.optional(declaration.owner.as_deref());
+        self.optional(declaration.signature.as_deref());
+    }
+
+    fn export(&mut self, export: &Export) {
+        self.number(export.line);
+        self.text(&export.text);
+        self.texts(&export.nesting);
+        self.optional(export.source.as_deref());
+        self.number(u64::from(export.type_only) | u64::from(export.supported) << 1);
+        self.number(export.leaves.len() as u64);
+        for leaf in &export.leaves {
+            self.text(&leaf.path);
+            self.optional(leaf.name.as_deref());
         }
     }
 }
@@ -354,12 +362,9 @@ impl Reader<'_> {
     }
 
     fn declaration(&mut self) -> Option<Declaration> {
-        let name = self.text()?;
-        let kind = kind_of(self.number()?)?;
-        let (line, end) = (self.number()?, self.number()?);
-        let text = self.text()?;
+        let (name, kind, line, end, text) = self.site()?;
         let flags = self.number().filter(|flags| *flags <= 3)?;
-        Some(Declaration {
+        self.contract(Declaration {
             name,
             kind,
             line,
@@ -367,12 +372,30 @@ impl Reader<'_> {
             text,
             externally_visible: flags & 1 == 1,
             entry_point: flags & 2 == 2,
-            nesting: self.list(Reader::text)?,
-            visibility: visibility_of(self.number()?)?,
-            exported_as: self.optional()?,
-            owner: self.optional()?,
-            signature: self.optional()?,
+            nesting: Vec::new(),
+            visibility: Visibility::Private,
+            exported_as: None,
+            owner: None,
+            signature: None,
         })
+    }
+
+    /// The exposure and contract fields a declaration ends with, read into it.
+    fn contract(&mut self, mut declaration: Declaration) -> Option<Declaration> {
+        declaration.nesting = self.list(Reader::text)?;
+        declaration.visibility = visibility_of(self.number()?)?;
+        declaration.exported_as = self.optional()?;
+        declaration.owner = self.optional()?;
+        declaration.signature = self.optional()?;
+        Some(declaration)
+    }
+
+    /// The name, kind, lines and text a declaration starts with.
+    fn site(&mut self) -> Option<(String, DeclarationKind, u64, u64, String)> {
+        let name = self.text()?;
+        let kind = kind_of(self.number()?)?;
+        let (line, end) = (self.number()?, self.number()?);
+        Some((name, kind, line, end, self.text()?))
     }
 
     fn export(&mut self) -> Option<Export> {
@@ -411,12 +434,26 @@ impl Reader<'_> {
     }
 
     fn module(&mut self) -> Option<ModuleDecl> {
+        let (line, text, name) = (self.number()?, self.text()?, self.text()?);
+        let nesting = self.list(Reader::text)?;
+        let inline = self.number().filter(|flag| *flag <= 1)? == 1;
+        self.module_tail(line, text, name, nesting, inline)
+    }
+
+    fn module_tail(
+        &mut self,
+        line: u64,
+        text: String,
+        name: String,
+        nesting: Vec<String>,
+        inline: bool,
+    ) -> Option<ModuleDecl> {
         Some(ModuleDecl {
-            line: self.number()?,
-            text: self.text()?,
-            name: self.text()?,
-            nesting: self.list(Reader::text)?,
-            inline: self.number().filter(|flag| *flag <= 1)? == 1,
+            line,
+            text,
+            name,
+            nesting,
+            inline,
             path: self.optional()?,
             visibility: visibility_of(self.number()?)?,
         })
@@ -517,23 +554,33 @@ mod tests {
         encoded(identity, &sorted)
     }
 
-    #[test]
-    fn every_outcome_reads_back_as_it_was_written() {
+    /// The whole cache decoded, and the facts of one file in it.
+    fn read_back() -> (Vec<u8>, Vec<(String, Outcome)>) {
         let identity = ours();
         let written = bytes_of(&identity, &outcomes());
-        let read: Vec<(String, Outcome)> = match decoded(&written, &identity) {
-            Some(read) => read.into_iter().collect(),
+        match decoded(&written, &identity) {
+            Some(read) => (written, read.into_iter().collect()),
             None => panic!("a whole cache read as nothing"),
-        };
-        assert_eq!(read.len(), 5);
-        assert_eq!(bytes_of(&identity, &read), written);
-        let pay = read.iter().find_map(|(file, outcome)| match outcome {
-            Outcome::Facts(facts) if file == "src/pay.rs" => Some(facts.clone()),
+        }
+    }
+
+    fn facts_of(read: &[(String, Outcome)], file: &str) -> Rc<FileFacts> {
+        let found = read.iter().find_map(|(held, outcome)| match outcome {
+            Outcome::Facts(facts) if held == file => Some(facts.clone()),
             _ => None,
         });
-        let Some(pay) = pay else {
-            panic!("src/pay.rs read back with no facts");
-        };
+        match found {
+            Some(facts) => facts,
+            None => panic!("{file} read back with no facts"),
+        }
+    }
+
+    #[test]
+    fn every_outcome_reads_back_as_it_was_written() {
+        let (written, read) = read_back();
+        assert_eq!(read.len(), 5);
+        assert_eq!(bytes_of(&ours(), &read), written);
+        let pay = facts_of(&read, "src/pay.rs");
         let modules: Vec<(&str, bool, Option<&str>)> = pay
             .module_declarations
             .iter()
@@ -570,6 +617,12 @@ mod tests {
             paths,
             vec![(10, &["tests".to_string()][..], "crate::pay::charge")]
         );
+    }
+
+    #[test]
+    fn visibility_signature_nesting_and_exports_read_back_as_written() {
+        let (_, read) = read_back();
+        let pay = facts_of(&read, "src/pay.rs");
         let charge = pay
             .declarations
             .iter()
@@ -592,13 +645,7 @@ mod tests {
             ]
         );
         assert_eq!(pay.module_declarations[0].visibility, Visibility::Private);
-        let view = read.iter().find_map(|(file, outcome)| match outcome {
-            Outcome::Facts(facts) if file == "web/view.tsx" => Some(facts.clone()),
-            _ => None,
-        });
-        let Some(view) = view else {
-            panic!("web/view.tsx read back with no facts");
-        };
+        let view = facts_of(&read, "web/view.tsx");
         assert_eq!(view.declarations[0].exported_as, None);
         assert_eq!(
             view.declarations[0].signature.as_deref(),
