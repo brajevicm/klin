@@ -1251,7 +1251,9 @@ scope, so a consumer can reuse facts without losing which paths changed.
 it does not build a `SourceIndex`, because it resolves modules rather than
 declaration and reference names. `dead-symbols` and `reachability` request
 their own name index only when they judge names, so each measurement builds at
-most one index and the structural cache remains a cache of facts only.
+most one index and the structural cache remains a cache of facts only. A
+measurement holds its facts sorted by path, the one order its index also reads
+them in, so the two views of a measurement never disagree on order.
 `tests/structural_views.rs` requires a cached base of imports, module
 declarations and an unparsed file to be read and parsed only for the changed
 file, and the cache round-trip unit test pins the import and module fields.

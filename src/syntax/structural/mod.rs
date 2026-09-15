@@ -150,7 +150,8 @@ pub struct Measurement {
 }
 
 impl Measurement {
-    /// The selected files' shared facts, without building the name-resolution index.
+    /// The selected files' shared facts, sorted by path, without building the name-resolution
+    /// index. `index().files()` holds the same files in the same order.
     pub fn facts(&self) -> &[Rc<FileFacts>] {
         &self.facts
     }
@@ -395,6 +396,7 @@ pub fn measure(
         .map(|file| files::relative(file, repo_root))
         .collect();
     let unreadable = unparsed.iter().map(|file| file.file.clone()).collect();
+    facts.sort_by(|a, b| a.file.cmp(&b.file));
     let not_measured = unsupported.iter().map(|file| file.file.clone()).collect();
     Ok(Measurement {
         facts,
@@ -1419,6 +1421,36 @@ export function charge(at: number): number {
         assert_eq!(found, vec![("src/one.rs", 1), ("src/one.rs", 2)]);
         assert_eq!(index.references(LanguageId::Rust, "other").count(), 1);
         assert_eq!(index.references(LanguageId::Rust, "nothing").count(), 0);
+    }
+
+    fn measurement_of(files: Vec<Rc<FileFacts>>) -> Measurement {
+        Measurement {
+            facts: files,
+            index: OnceCell::new(),
+            unparsed: Vec::new(),
+            unsupported: Vec::new(),
+            files: Files::default(),
+            cost: ExtractionCost::default(),
+        }
+    }
+
+    #[test]
+    fn reading_facts_builds_no_name_index_and_holds_the_order_the_index_uses() {
+        let measured = measurement_of(vec![
+            Rc::new(synthetic("src/one.rs", LanguageId::Rust, &["a"])),
+            Rc::new(synthetic("src/two.rs", LanguageId::Rust, &["b"])),
+        ]);
+        let read: Vec<&str> = measured.facts().iter().map(|f| f.file.as_str()).collect();
+        assert_eq!(read, vec!["src/one.rs", "src/two.rs"]);
+        assert!(measured.index.get().is_none(), "facts() built an index");
+        let indexed: Vec<&str> = measured
+            .index()
+            .files()
+            .iter()
+            .map(|f| f.file.as_str())
+            .collect();
+        assert_eq!(indexed, read);
+        assert!(measured.index.get().is_some());
     }
 
     fn synthetic(file: &str, language: LanguageId, names: &[&str]) -> FileFacts {
