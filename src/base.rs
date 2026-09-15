@@ -8,6 +8,8 @@ use crate::check::{Context, Sink};
 use crate::config::Error;
 use crate::git::Repo;
 use crate::project::{Project, Tree};
+use crate::state;
+use crate::syntax::structural::{Cache, Unchanged};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -229,6 +231,59 @@ pub fn whole<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
         (Some(prior), None) => Ok(prior),
         _ => at.project.whole_base(commit),
     }
+}
+
+/// The base's view of the working tree's unchanged files, for a changed run that is not strict,
+/// with the structural cache of the base commit where klin keeps state. Any other run shares
+/// nothing and reads no cache. Spec 8.4.
+pub fn unchanged<'a>(
+    at: &Context<'a>,
+    prior: &'a Prior,
+    commit: &str,
+) -> Result<Option<Unchanged<'a>>, Error> {
+    let Some(changes) = at.changes.filter(|_| !at.strict) else {
+        return Ok(None);
+    };
+    let dir = at.project.facts().state.as_deref();
+    let cache = || {
+        let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
+        Cache::at(&under, commit, &checkout(at.project.root()))
+    };
+    Unchanged::new(prior.tree(), changes, cache).map(Some)
+}
+
+/// What the bytes of a base checkout depend on besides the commit: where the configuration sits,
+/// git's configuration, and the attribute files git reads outside the tree. A change to any of
+/// them names another structural cache. Spec 8.4.
+fn checkout(root: &Path) -> Vec<u8> {
+    let repo = Repo::at(root);
+    let attributes = [
+        repo.rev_parse_path("--git-common-dir")
+            .map(|common| common.join("info/attributes")),
+        repo.text(&["config", "--path", "--get", "core.attributesFile"])
+            .map(|named| PathBuf::from(named.trim()))
+            .or_else(global_attributes),
+    ];
+    let mut out = root.to_string_lossy().into_owned().into_bytes();
+    out.push(0);
+    out.extend(
+        repo.text(&["config", "--list", "-z"])
+            .unwrap_or_default()
+            .bytes(),
+    );
+    for file in attributes.into_iter().flatten() {
+        out.push(0);
+        out.extend(std::fs::read(file).unwrap_or_default());
+    }
+    out
+}
+
+/// The attributes file git reads when `core.attributesFile` names none.
+fn global_attributes() -> Option<PathBuf> {
+    let config = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
+    Some(config.join("git/attributes"))
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.

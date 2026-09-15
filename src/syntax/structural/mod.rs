@@ -3,7 +3,7 @@
 //! imports, module declarations and references, and a file it did not measure says so. Rust
 //! and TypeScript are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
-use std::cell::RefCell;
+use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Add;
 use std::path::{Path, PathBuf};
@@ -23,8 +23,11 @@ use crate::syntax::{
     LANGUAGES, Language, LanguageId, Parsed, ParsedFile, Unparsed, line_at, parse, walk,
 };
 
+mod cache;
 mod rust;
 mod typescript;
+
+pub use cache::Cache;
 
 /// What a declaration is, as far as V1 tells them apart. A language's own word for one is not
 /// here: a Rust `struct` and a TypeScript `interface` are both a type.
@@ -128,9 +131,23 @@ pub struct Measurement {
 /// request and held for the life of the tree, which is one run. Every structural check a run
 /// selects reads the one extraction of a file, and still selects its own files and builds its
 /// own index from them, so a file one check leaves out never resolves a name for it because
-/// another check read that file. ADR 0038.
+/// another check read that file. A base tree may also hold outcomes its structural cache kept
+/// from an earlier run, each taken the first time a check asks for its file. ADR 0038.
 #[derive(Default)]
-pub struct Extracted(RefCell<HashMap<String, Outcome>>);
+pub struct Extracted {
+    held: RefCell<HashMap<String, Outcome>>,
+    cached: RefCell<HashMap<String, Outcome>>,
+    kept: OnceCell<Kept>,
+}
+
+/// The cache a base tree's outcomes are kept in, the paths whose base bytes the change set may
+/// have moved and which the cache therefore never holds, and whether the cache is stale because
+/// this run extracted an outcome it lacks.
+struct Kept {
+    cache: Cache,
+    changed: HashSet<String>,
+    stale: Cell<bool>,
+}
 
 impl Extracted {
     fn outcome(
@@ -139,9 +156,17 @@ impl Extracted {
         file: &str,
         cost: &mut ExtractionCost,
     ) -> Result<Outcome, Error> {
-        if let Some(held) = self.0.borrow().get(file) {
+        if let Some(held) = self.held.borrow().get(file) {
             cost.shared += 1;
             return Ok(held.clone());
+        }
+        let cached = self.cached.borrow_mut().remove(file);
+        if let Some(outcome) = cached {
+            cost.cached += 1;
+            self.held
+                .borrow_mut()
+                .insert(file.to_string(), outcome.clone());
+            return Ok(outcome);
         }
         let started = Instant::now();
         let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
@@ -150,30 +175,104 @@ impl Extracted {
         let outcome = of(file, &String::from_utf8_lossy(&bytes))?;
         cost.extracted += 1;
         cost.time += started.elapsed();
-        self.0
+        if let Some(kept) = self.kept.get().filter(|kept| !kept.changed.contains(file)) {
+            kept.stale.set(true);
+        }
+        self.held
             .borrow_mut()
             .insert(file.to_string(), outcome.clone());
         Ok(outcome)
+    }
+
+    /// This tree's outcomes read from its cache, once for the run, less every path the change
+    /// set names. The cache is named only when the tree holds none yet, and the time naming and
+    /// reading it took is the cost.
+    fn keep(&self, cache: impl FnOnce() -> Option<Cache>, changes: &[Change]) -> ExtractionCost {
+        if self.kept.get().is_some() {
+            return ExtractionCost::default();
+        }
+        let started = Instant::now();
+        let Some(cache) = cache() else {
+            return ExtractionCost::default();
+        };
+        let changed: HashSet<String> = changes
+            .iter()
+            .flat_map(|change| std::iter::once(&change.path).chain(&change.was))
+            .cloned()
+            .collect();
+        if let Some(outcomes) = cache.read() {
+            let held = self.held.borrow();
+            self.cached.borrow_mut().extend(
+                outcomes
+                    .into_iter()
+                    .filter(|(file, _)| !changed.contains(file) && !held.contains_key(file)),
+            );
+        }
+        let _ = self.kept.set(Kept {
+            cache,
+            changed,
+            stale: Cell::new(false),
+        });
+        ExtractionCost {
+            cache_read: started.elapsed(),
+            ..ExtractionCost::default()
+        }
+    }
+
+    /// Every outcome this tree holds for a path the change set does not name, written to its
+    /// cache when this run extracted one the cache lacked. The time the write took is the cost.
+    fn publish(&self) -> ExtractionCost {
+        let Some(kept) = self.kept.get().filter(|kept| kept.stale.replace(false)) else {
+            return ExtractionCost::default();
+        };
+        let started = Instant::now();
+        let (held, cached) = (self.held.borrow(), self.cached.borrow());
+        let mut outcomes: Vec<(&str, &Outcome)> = held
+            .iter()
+            .chain(cached.iter())
+            .filter(|(file, _)| !kept.changed.contains(*file))
+            .map(|(file, outcome)| (file.as_str(), outcome))
+            .collect();
+        outcomes.sort_unstable_by_key(|(file, _)| *file);
+        kept.cache.write(&outcomes);
+        ExtractionCost {
+            cache_write: started.elapsed(),
+            ..ExtractionCost::default()
+        }
     }
 }
 
 /// The whole base tree beside the working tree, with the paths a changed run's `Change` set
 /// names. Git says a working-tree file outside that set holds the base's bytes at the same path,
 /// so its outcome is the base extraction's, and the two trees share one set of facts for it. A
-/// path the base does not list under the same name is extracted from the working tree. Spec 8.4.
+/// path the base does not list under the same name is extracted from the working tree. The base's
+/// outcomes come from its structural cache where an earlier run kept them. Spec 8.4.
 pub struct Unchanged<'a> {
     base: &'a Tree,
     listed: &'a [String],
     changed: HashSet<&'a str>,
+    cost: ExtractionCost,
 }
 
 impl<'a> Unchanged<'a> {
-    pub fn new(base: &'a Tree, changes: &'a [Change]) -> Result<Unchanged<'a>, Error> {
+    pub fn new(
+        base: &'a Tree,
+        changes: &'a [Change],
+        cache: impl FnOnce() -> Option<Cache>,
+    ) -> Result<Unchanged<'a>, Error> {
+        let cost = base.extracted().keep(cache, changes);
         Ok(Unchanged {
             base,
             listed: base.files()?,
             changed: changes.iter().map(|change| change.path.as_str()).collect(),
+            cost,
         })
+    }
+
+    /// The base's outcomes written to its cache once both trees are measured, and what reading
+    /// and writing the cache cost this view.
+    pub fn publish(self) -> ExtractionCost {
+        self.cost + self.base.extracted().publish()
     }
 
     /// The base tree and its copy of this working-tree file, when the file is unchanged.
@@ -185,7 +284,8 @@ impl<'a> Unchanged<'a> {
 }
 
 /// What one measurement's files cost: how many it read, parsed and extracted itself, how many
-/// an earlier measurement had already extracted, and the time the first kind took. A gate
+/// an earlier measurement had already extracted, how many it took from the structural cache,
+/// the time the first kind took, and the time reading and writing the cache took. A gate
 /// records the sum over its two trees. Spec 11.2, 13.
 #[derive(Default, Clone, Copy)]
 pub struct ExtractionCost {
@@ -193,7 +293,10 @@ pub struct ExtractionCost {
     pub parses: usize,
     pub extracted: usize,
     pub shared: usize,
+    pub cached: usize,
     pub time: Duration,
+    pub cache_read: Duration,
+    pub cache_write: Duration,
 }
 
 impl Add for ExtractionCost {
@@ -205,7 +308,10 @@ impl Add for ExtractionCost {
             parses: self.parses + other.parses,
             extracted: self.extracted + other.extracted,
             shared: self.shared + other.shared,
+            cached: self.cached + other.cached,
             time: self.time + other.time,
+            cache_read: self.cache_read + other.cache_read,
+            cache_write: self.cache_write + other.cache_write,
         }
     }
 }

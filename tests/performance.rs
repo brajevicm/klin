@@ -9,6 +9,7 @@ use std::time::Instant;
 
 const ITERATIONS: usize = 5;
 const EVENTS: usize = 1_000;
+const STRUCTURAL_CACHE: &str = "cache/structural";
 
 const DECLARATIONS_PER_KLOC: std::ops::RangeInclusive<usize> = 270..=290;
 
@@ -74,6 +75,7 @@ struct Fixture {
 #[derive(Default)]
 struct Measurements {
     warm: Samples,
+    uncached: Samples,
     cold: Samples,
     strict: Samples,
 }
@@ -285,19 +287,10 @@ impl Fixture {
         assert_eq!(changed.typescript, 10, "changed TypeScript file count");
         assert_eq!(changed.rust + changed.typescript, 20, "changed file count");
 
-        let warm = repeat(|| {
-            let stops = journal(&self.tree).len();
-            let started = Instant::now();
-            let run = self.hook();
-            let total = started.elapsed().as_millis();
-            assert_eq!(run.code, 0, "warm hook: {}", run.out);
-            assert!(run.out.is_empty(), "warm hook: {}", run.out);
-            let lines = journal(&self.tree);
-            assert!(lines.len() > stops, "warm hook wrote no journal line");
-            Sample {
-                total,
-                gates: gate_times(&lines[lines.len() - 1]),
-            }
+        let warm = repeat(|| self.timed_hook());
+        let uncached = repeat(|| {
+            self.remove_structural_cache();
+            self.timed_hook()
         });
         let cold = repeat(|| {
             let cleaned = self.tree.run(&["cache", "clean"]);
@@ -318,9 +311,47 @@ impl Fixture {
             }
         });
         self.dense_gate_shape_is_present(&warm);
+        self.dense_gate_shape_is_present(&uncached);
         self.dense_gate_shape_is_present(&cold);
         self.dense_gate_shape_is_present(&strict);
-        Measurements { warm, cold, strict }
+        Measurements {
+            warm,
+            uncached,
+            cold,
+            strict,
+        }
+    }
+
+    /// One Stop, timed, with its gate values read from the journal line it wrote.
+    fn timed_hook(&self) -> Sample {
+        let stops = journal(&self.tree).len();
+        let started = Instant::now();
+        let run = self.hook();
+        let total = started.elapsed().as_millis();
+        assert_eq!(run.code, 0, "warm hook: {}", run.out);
+        assert!(run.out.is_empty(), "warm hook: {}", run.out);
+        let lines = journal(&self.tree);
+        assert!(lines.len() > stops, "warm hook wrote no journal line");
+        Sample {
+            total,
+            gates: gate_times(&lines[lines.len() - 1]),
+        }
+    }
+
+    fn remove_structural_cache(&self) {
+        let _ = std::fs::remove_dir_all(self.tree.state(STRUCTURAL_CACHE));
+    }
+
+    /// The files of the structural cache and the bytes they hold on disk.
+    fn structural_cache(&self) -> (usize, u64) {
+        std::fs::read_dir(self.tree.state(STRUCTURAL_CACHE))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|entry| entry.metadata().ok())
+            .fold((0, 0), |(files, bytes), held| {
+                (files + 1, bytes + held.len())
+            })
     }
 
     fn change(&self) {
@@ -548,6 +579,12 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         gate_medians(&rows.warm)
     );
     println!(
+        "{} warm hook without the structural cache: cache=warm, structural_cache=removed, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+        size,
+        median(&rows.uncached.total),
+        gate_medians(&rows.uncached)
+    );
+    println!(
         "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}, {}",
         size,
         median(&rows.cold.total),
@@ -559,21 +596,33 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         median(&rows.strict.total),
         gate_medians(&rows.strict)
     );
-    let rss = |args: &[&str]| {
-        peak_rss(fixture, args).map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
-    };
-    println!(
-        "resource: warm_hook_peak_rss_kb={}, dead_symbols_changed_peak_rss_kb={}, strict_peak_rss_kb={}",
-        rss(&["gate", "--hook", "--changed"]),
-        rss(&["gate", "--changed", "--json", "--gate", "dead-symbols"]),
-        rss(&["gate", "--strict", "--json"])
-    );
+    print_resources(fixture);
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
     println!(
         "machine: {}/{}",
         std::env::consts::OS,
         std::env::consts::ARCH
+    );
+}
+
+/// The structural cache the cold rows' `cache clean` removed is written again by one Stop first,
+/// so its size and the warm peak describe a Stop that reads it.
+fn print_resources(fixture: &Fixture) {
+    let primed = fixture.hook();
+    assert_eq!(primed.code, 0, "structural cache prime: {}", primed.out);
+    let (files, bytes) = fixture.structural_cache();
+    println!("structural cache: files={files}, bytes={bytes}");
+    let rss = |args: &[&str]| {
+        peak_rss(fixture, args).map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
+    };
+    let warm = rss(&["gate", "--hook", "--changed"]);
+    let dead_symbols = rss(&["gate", "--changed", "--json", "--gate", "dead-symbols"]);
+    let strict = rss(&["gate", "--strict", "--json"]);
+    fixture.remove_structural_cache();
+    let uncached = rss(&["gate", "--hook", "--changed"]);
+    println!(
+        "resource: warm_hook_peak_rss_kb={warm}, warm_hook_without_structural_cache_peak_rss_kb={uncached}, dead_symbols_changed_peak_rss_kb={dead_symbols}, strict_peak_rss_kb={strict}"
     );
 }
 
@@ -693,7 +742,16 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
         if let Some(ms) = gate["ms"].as_u64() {
             times.insert(format!("{name}_ms"), ms);
         }
-        for field in ["reads", "parses", "extracted", "shared", "ms"] {
+        for field in [
+            "reads",
+            "parses",
+            "extracted",
+            "shared",
+            "cached",
+            "ms",
+            "cache_read_ms",
+            "cache_write_ms",
+        ] {
             if let Some(value) = gate["facts"][field].as_u64() {
                 times.insert(format!("{name}_facts_{field}"), value);
             }

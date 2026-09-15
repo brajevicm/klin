@@ -110,7 +110,7 @@ enum Runner {
     Init(init::Args),
     /// Refuse an agent's tool call that would edit the configuration
     Guard(guard::Args),
-    /// Remove the survey cache klin keeps for this tree, or every orphaned one
+    /// Remove the cache klin keeps for this tree, or every orphaned one
     Cache(cache::Args),
 }
 

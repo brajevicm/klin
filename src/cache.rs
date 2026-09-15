@@ -14,7 +14,7 @@ pub struct Args {
 
 #[derive(clap::Subcommand)]
 enum Command {
-    /// Remove the survey cache for this tree, or with --all the cache of every tree that is gone
+    /// Remove the cache for this tree, or with --all the cache of every tree that is gone
     Clean {
         /// Remove the cache under every KLIN_STATE_DIR entry whose repository no longer exists
         #[arg(long)]

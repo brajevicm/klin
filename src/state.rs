@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use crate::git::Repo;
 
-/// klin's own state: the build stamp, and later the turn stamp and the survey cache. It lives
+/// klin's own state: the build stamp, the turn stamp, the journal and the cache. It lives
 /// under the git directory, which git never tracks, never lists and never cleans, so klin
 /// writes nothing the working tree can see. The guard reads this name too. ADR 0019, ADR 0032.
 pub const DIR: &str = "klin";
@@ -12,6 +12,8 @@ pub const OVERRIDE: &str = "KLIN_STATE_DIR";
 /// can tell which entries outlived their repository.
 pub const REPOSITORY: &str = "repository";
 pub const CACHE: &str = "cache";
+/// Where under the cache the base commits' structural outcomes are kept. Spec 8.4.
+pub const STRUCTURAL: &str = "structural";
 
 pub fn dir(root: &Path) -> Option<PathBuf> {
     match std::env::var_os(OVERRIDE) {

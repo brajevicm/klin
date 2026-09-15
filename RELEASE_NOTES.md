@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### A changed run keeps the base's structural facts between runs
+
+In a changed run that is not strict, `dead-symbols` and `reachability` keep
+the base commit's structural outcomes in the state directory under
+`cache/structural/`. The next Stop over the same base reads them and does not
+parse the base again. A cache file that is missing, damaged, or written for
+another commit, root or build costs one full extraction and never changes a
+verdict. `klin cache clean` removes the cache. Gate rows record `cached`,
+`cache_read_ms` and `cache_write_ms` under `facts`. On the 1M-line fixture
+with 20 changed files, the warm hook median fell from 7,939 ms to 2,711 ms.
+Measurements are in `docs/structural-views-2026-09-15.md`.
+
 ### Structural gates share one extraction per tree
 
 A run extracts each structural file of a tree once, and gate rows record it

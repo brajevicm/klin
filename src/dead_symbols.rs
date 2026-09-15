@@ -143,13 +143,14 @@ fn sweeps(
     commit: &str,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
     let prior = base::whole(at, commit)?;
-    let unchanged = at
-        .changes
-        .filter(|_| !at.strict)
-        .map(|changes| structural::Unchanged::new(prior.tree(), changes))
-        .transpose()?;
-    let after = measure(at.project.tree(), &spec.selection, unchanged.as_ref())?;
+    let unchanged = base::unchanged(at, prior, commit)?;
+    let mut after = measure(at.project.tree(), &spec.selection, unchanged.as_ref())?;
     let before = before(at, spec, prior)?;
+    after.cost = after.cost
+        + unchanged.map_or_else(
+            structural::ExtractionCost::default,
+            structural::Unchanged::publish,
+        );
     Ok((before, after))
 }
 

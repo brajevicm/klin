@@ -50,18 +50,51 @@ fn observed(
     tree.write("klin.json", config);
     scenario(&tree);
     let run = |args: &[&str]| harness::feed_as(klin, tree.root(), args, A_STOP);
-    let gate = |flags: &[&str]| {
+    let judged = |flags: &[&str]| {
         let mut args = vec!["gate", "--json", "--gate", gate_name];
         args.extend_from_slice(flags);
-        normalized(&run(&args))
+        run(&args)
     };
+    let gate = |flags: &[&str]| normalized(&judged(flags));
     let whole = gate(&[]);
     let strict = gate(&["--strict"]);
-    let changed = gate(&["--changed"]);
+    let first = judged(&["--changed"]);
+    let changed = normalized(&first);
     let base = tree.revision("main");
     let report = run(report).out.replace(&base[..7], "BASE");
     let hook = gate(&["--hook", "--changed"]);
+    let again = judged(&["--changed"]);
+    assert_eq!(
+        normalized(&again),
+        changed,
+        "a changed run over the structural cache judged differently"
+    );
+    read_from_the_cache(&first, &again);
     json!({"whole": whole, "strict": strict, "changed": changed, "report": report, "hook": hook})
+}
+
+/// A repeated changed run takes from the structural cache every base outcome the first run
+/// extracted beyond the changed files. A build that records no `cached` is not asked.
+fn read_from_the_cache(first: &Run, again: &Run) {
+    let facts = |run: &Run| {
+        let report: Value = run
+            .out
+            .lines()
+            .find_map(|line| serde_json::from_str(line).ok())
+            .unwrap_or_default();
+        report["gates"][0]["facts"].clone()
+    };
+    let (first, again) = (facts(first), facts(again));
+    let Some(cached) = again["cached"].as_u64() else {
+        return;
+    };
+    assert_eq!(
+        first["extracted"].as_u64(),
+        again["extracted"]
+            .as_u64()
+            .map(|extracted| extracted + cached),
+        "{first} then {again}"
+    );
 }
 
 fn normalized(run: &Run) -> Value {

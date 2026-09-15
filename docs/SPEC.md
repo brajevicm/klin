@@ -930,7 +930,8 @@ Nothing into the working tree. `init` writes `klin.json` and hook files, and
 only when a person runs it.
 
 klin's own state is four things: the turn stamp with the prompt mark of
-6.2.1, the build stamp, the survey cache, and the journal of 9.6. All are per
+6.2.1, the build stamp, the cache, which holds the survey of 6.6 and the
+structural cache of 8.4, and the journal of 9.6. All are per
 working tree. The cache is safe to delete. All four are guarded, because the
 guard guards the directory they share (9.4). Deleting the turn stamp buys
 nothing, because a stop without one judges the whole branch (6.2). They live
@@ -945,8 +946,8 @@ in the state directory:
   value.
 
 An implementation MUST print the state directory under `klin gate --list`.
-`klin cache clean` MUST remove the survey cache for the current tree, and with
-`--all` the survey cache under every entry of `KLIN_STATE_DIR` whose repository
+`klin cache clean` MUST remove the cache for the current tree, and with
+`--all` the cache under every entry of `KLIN_STATE_DIR` whose repository
 no longer exists. It MUST NOT remove a stamp, and it MUST leave the journal
 alone: the journal is history, not a cache. A repository path that does not
 resolve on the machine running the command, such as a worktree a container
@@ -1207,6 +1208,39 @@ change git does not report, such as an edit to a file marked `assume-unchanged`
 or `skip-worktree` or bytes a clean filter hides, reads as the base's bytes in
 a changed run. That run's scope already leaves the file's own findings out,
 and the names the file declares and references are the base's.
+
+The same runs keep the base's structural outcomes between runs in the
+structural cache, one file per base commit under `cache/structural/<commit>`
+in the state directory (7.4). The file name is the full object id of the
+commit the run compares against, so a branch name never keys it, and a red
+turn reads the cache of its own stamp. For each path of the base tree that
+the run's change set does not name, the file holds the outcome the base
+extraction came to: facts without a parse tree, unsupported, unparsed or
+foreign. A later run over the same commit takes those outcomes in place of
+reading, parsing and extracting the base's copy of each file. It still
+extracts every path its own change set names, at the path and under the
+grammar the base tree gives it. A run that extracted an outcome the file did
+not hold writes the whole file again through the atomic replacement of ADR
+0041, and that write keeps the four newest files of the structural cache and
+removes older ones, so an evicted commit costs a later run one extraction.
+Each file carries an identity: an explicit schema epoch, the binary version,
+a checksum of the extraction sources and `Cargo.lock` the binary was built
+from, the commit, and a checksum of the configuration's root, git's
+configuration and the attribute files git reads outside the tree, which decide
+the bytes a checkout of the commit writes. A file that is missing,
+carries another identity, fails its body checksum or does not decode to the
+end reads as no file, and the run extracts the base as it would without one.
+The cache changes what a run costs and never what it reports: the findings,
+notes, coverage and exit codes are the ones a run without it gives. Strict
+runs, whole runs and the check by hand neither read nor write it, and `klin
+cache clean` removes it. Known limit: the identity does not name the
+system-wide attributes file or the behavior of a filter program, so a change
+to either between two runs over one commit, with git's configuration
+unchanged, reads the outcomes the earlier checkout gave.
+`tests/structural_cache.rs` pins the repeated run, a damaged file, a file
+copied from another commit, a smudge filter added between two runs, the
+four-file bound, and repeated red stops through a prompt and a branch switch. `tests/structural_views.rs` repeats each changed
+caller over the cache and requires the same output.
 
 The findings, notes, coverage and exit codes of a changed run are the ones
 two independent extractions give. `tests/structural_views.rs` pins the
@@ -2079,7 +2113,8 @@ One object on stdout. Fields:
   reached counts those in its `coverage` and never in `held`. On a passing run
   it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
   it is null for a gate that never got that far. `facts` is
-  `{reads, parses, extracted, shared, ms}` for a gate that reads structural
+  `{reads, parses, extracted, shared, cached, ms, cache_read_ms,
+  cache_write_ms}` for a gate that reads structural
   facts (8.4), and null for any other gate or for one that never got that far:
   `reads` and `parses` count the files of both trees whose content this gate
   read and parsed, `extracted` counts the files whose structural outcome it
@@ -2087,9 +2122,12 @@ One object on stdout. Fields:
   extraction the run already held, which is an earlier gate's extraction of
   the same tree or, for `dead-symbols` and `reachability` in a changed run
   that is not strict, the base's extraction of an unchanged working-tree file
-  (8.4), and `ms` is
-  the part of the gate's `ms` spent on its own extractions. A run extracts
-  each file of a tree once.
+  (8.4), `cached` counts the files whose outcome it took from the structural
+  cache of 8.4, which a file counts under the first time a gate of the run
+  takes it and under `shared` after that, `ms` is
+  the part of the gate's `ms` spent on its own extractions, and
+  `cache_read_ms` and `cache_write_ms` are the parts spent reading and
+  writing the structural cache. A run extracts each file of a tree once.
   Each gate still selects its own files and resolves names over those files
   alone, so `facts` is the one field of a row that depends on the other gates
   a run selects. `work` is `{reads, parses}` for the file-local gates
@@ -2346,7 +2384,8 @@ no score, no color, no glyph, no praise and no estimate of time saved.
 - Findings MUST be sorted by file then line before matching and before
   printing.
 - Grammars are compiled into the binary. A grammar version change is a klin
-  version change, and the survey cache key includes the version.
+  version change, and the survey cache and the structural cache both key on
+  the version.
 - No check MAY read the network.
 - The only clock a judgment reads is a pinned dated ceiling (5.5), read in
   UTC, and `KLIN_TODAY` overrides it. The report age check of 8.3 compares
@@ -2411,8 +2450,14 @@ structure. Configured Rust and TypeScript module families exercise
 Each dense row runs warm hook, cold survey and whole-tree strict five times
 and prints the median total and every gate's median `ms`. Where available it
 also prints deterministic content-work and structural-fact counters:
-`work_reads`, `work_parses`, `facts_reads`, `facts_parses`, `extracted` and
-`shared`. The warm hook row reads each
+`work_reads`, `work_parses`, `facts_reads`, `facts_parses`, `extracted`,
+`shared`, `cached`, `cache_read_ms` and `cache_write_ms`. A second warm hook
+row removes the structural cache of 8.4 before each stop, so it measures a
+stop that extracts the base and writes the cache, beside the first row's
+stop that reads it. After the rows, one untimed stop writes the structural
+cache again, because the cold rows' `cache clean` removed it, and the output
+prints the file count and the bytes on disk of that cache. The warm hook rows
+read each
 gate's values from the journal line of the stop it timed. The cold and strict
 rows read them from `--json`. A gate's `ms` covers its whole run:
 reading, parsing and extracting the files that no earlier gate of the run
@@ -2423,7 +2468,9 @@ first gate that reads a file pays for the extraction, and a later gate counts
 that file in `facts.shared` (11.2). In the warm hook, `dead-symbols` and
 `reachability` take the base's facts for every unchanged working-tree file
 (8.4), so their `extracted` is the base's structural files plus the changed
-ones, and their `shared` is the unchanged ones. `complexity` walks a parse of
+ones, and their `shared` is the unchanged ones. Where the structural cache of
+the turn's base holds the base's outcomes, `extracted` is the changed files of
+both trees and `cached` is the unchanged ones. `complexity` walks a parse of
 its own,
 which no extracted fact replaces, so its `ms` still covers its parsing. A row
 taken with an earlier binary through `KLIN_BIN` prints no fact counters when
@@ -2431,8 +2478,8 @@ that binary records no `facts`. The output records source LoC, declarations,
 digest, file and language counts, cache state, changed files, iteration count,
 version and host platform, and excludes project build time from hook timing.
 On a platform with `/usr/bin/time`, it also prints the controlled peak RSS of
-one warm hook, one `gate --changed --json --gate dead-symbols` and one
-strict run;
+one warm hook, one warm hook without the structural cache, one
+`gate --changed --json --gate dead-symbols` and one strict run;
 missing resource reporting is not a test failure. These rows record
 measurements and add no wall-clock or RSS budget.
 
@@ -2766,7 +2813,13 @@ Core:
   tree did not change once for both trees, and their edits, additions,
   deletions, both rename classes, scope movement, name ambiguity, lost
   references, unsupported languages, unparsed files and a case-only rename
-  git does not see judge as two independent extractions do.
+  git does not see judge as two independent extractions do. A repeated
+  changed run reads the base's outcomes from the structural cache and judges
+  the same. A missing, truncated, extended or changed cache file, and one
+  copied from another commit, reads as no cache and judges the same. A smudge
+  filter added between two runs judges as a run without the cache, a write
+  keeps the four newest cache files, and repeated red stops keep their turn
+  base through a prompt and a branch switch.
 - Window: each candidate in order, each ADR 0013 branch outside the hook, the
   hook with a deleted `turn` file restores it from the ref with a red
   verdict, the hook with file and ref both deleted judges the branch and the

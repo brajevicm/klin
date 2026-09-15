@@ -131,3 +131,99 @@ The two numbers after each facts value are `extracted / shared`. The warm
 reachability run now extracts no files of its own; it shares the structural
 facts already extracted by `dead-symbols`. Peak RSS was unavailable in this
 run.
+
+## The base's facts kept between runs (#192)
+
+A changed run that is not strict now keeps the base commit's structural
+outcomes in the structural cache, one file per commit under
+`cache/structural/` in the state directory. The next run over the same commit
+reads that file in place of parsing the base again. SPEC 8.4 and the #192
+follow-up of ADR 0038 record the rule.
+
+### Same output
+
+`tests/structural_cache.rs` runs the real binary for six cases:
+
+- A second changed run reads the base's outcomes from the cache and prints
+  the same verdict, findings, notes and coverage as the first run and as a
+  run after the cache is removed. Its `dead-symbols` row reads and parses 2
+  files where the first run reads and parses 6.
+- An empty, truncated, extended, bit-flipped or foreign cache file reads as
+  no cache. The run judges the same, and it writes the same bytes again.
+- A cache file of another commit, copied under this commit's name, is not
+  read. Trusting it would pass a new dead declaration, and the run fails on
+  that declaration.
+- A smudge filter added between two runs changes the base's bytes, and the
+  run over the old cache judges the same as a run without it.
+- After six bases, the cache holds the files of the four newest.
+- Repeated red Stops keep the same turn base and the same failure through a
+  prompt and a branch switch, and the Stops after the first read the cache.
+
+Every scenario in `tests/structural_views.rs` now runs `gate --changed` a
+second time over the cache and requires the same normalized output. Where the
+build records `cached`, the second run's `extracted` plus `cached` must equal
+the first run's `extracted`, so every base outcome that the change set does
+not name came from the cache. All 16 scenarios passed. Unit tests in `src/syntax/structural/cache.rs` cut the file
+at every byte, change every byte, forge a body with a matching checksum, and
+change the epoch, version, commit and root, and each reads as no cache.
+
+### Measurements
+
+Measured 2026-09-15 on the 0.1.1 baseline machine (MacBook Pro 18,3, Apple M1
+Pro, macOS 26.6.2), release build of this change on `8dfda03`, median of five
+iterations of spec 13's dense rows, each row changing 10 Rust and 10
+TypeScript files. The "no cache" column removes the structural cache before
+each Stop, so that Stop extracts the base and writes the cache. The Stop hook
+of this session ran klin on the klin repository several times while the rows
+ran, so single rows may carry that load.
+
+| Row | Warm hook, cache read | Warm hook, no cache | #191 warm hook | Cold survey | Strict |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 300k | 1,941 ms | 3,736 ms | 4,480 ms | 22,558 ms | 11,996 ms |
+| 1M | 2,711 ms | 7,939 ms | 8,225 ms | 47,925 ms | 30,782 ms |
+
+The `dead-symbols` row of the warm hook, cache read → no cache:
+
+| Row | Gate | Extracted / cached / shared | Extraction | Cache read | Cache write | Cache file |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 300k | 1,061 → 2,821 ms | 40 / 9,980 / 9,980 → 10,020 / 0 / 9,980 | 11 → 1,752 ms | 27 → 0 ms | 0 → 8 ms | 8,346,561 bytes |
+| 1M | 1,567 → 6,788 ms | 40 / 9,980 / 9,980 → 10,020 / 0 / 9,980 | 26 → 5,298 ms | 78 → 0 ms | 0 → 25 ms | 25,793,587 bytes |
+
+`reachability` extracts nothing and reads no cache in either warm row. It
+shares the 20,000 outcomes `dead-symbols` took, in 247 ms at 1M.
+
+Peak resident memory, from one run of each after the timed rows, in kB as
+`/usr/bin/time -l` reports it:
+
+| Run | 300k | 1M |
+| --- | ---: | ---: |
+| Warm hook, cache read | 281,168 | 806,304 |
+| Warm hook, no cache | 287,136 | 833,648 |
+| `gate --changed --gate dead-symbols` | 282,608 | 826,768 |
+| Strict | 353,824 | 1,019,936 |
+
+The first 1M row printed its cache size and peak memory after `cache clean`
+had removed the cache, so the fixture now writes the cache again with one
+untimed Stop before it prints them. The 1M cache size and peak memory above
+come from a second 1M row taken with that correction. Its warm hook medians
+were 2,625 ms with the cache and 7,783 ms without it, within 3% of the first
+row.
+
+### What the rows show
+
+- At 1M, a Stop that reads the cache takes 2,711 ms against 7,939 ms for a
+  Stop that extracts the base, 66% less, and below the roughly 5 s milestone
+  of #187. At 300k it takes 48% less.
+- `dead-symbols` reads and parses the 40 changed file versions and nothing
+  else. Its extraction time falls from 5.3 s to 26 ms at 1M.
+- Reading the whole cache costs 78 ms at 1M, 3% of the warm hook, so no lazy
+  per-file or per-symbol format is added.
+- Writing the 25.8 MB cache costs 25 ms at 1M. Only a Stop that extracted an
+  outcome the cache lacked writes it.
+- Peak memory of a Stop that reads the cache is 2% below a Stop without it at
+  300k and 3% below at 1M. The facts a Stop holds are the same either way.
+- The cold survey and strict rows are 2% to 4% below the #191 rows, which
+  another build took in another session. Strict and whole runs neither read
+  nor write the cache. The no-cache warm hook is 4% below #191 at 1M and 17%
+  below at 300k, although that Stop also writes the cache. These rows do not
+  show the cause of the 300k difference.

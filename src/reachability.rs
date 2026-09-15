@@ -145,13 +145,14 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     said_families(&families, out);
     let commit = base::commit(config.root(), at, out)?;
     let prior = base::whole(at, &commit)?;
-    let unchanged = at
-        .changes
-        .filter(|_| !at.strict)
-        .map(|changes| structural::Unchanged::new(prior.tree(), changes))
-        .transpose()?;
-    let after = measure(project.tree(), &families, unchanged.as_ref())?;
+    let unchanged = base::unchanged(at, prior, &commit)?;
+    let mut after = measure(project.tree(), &families, unchanged.as_ref())?;
     let (before, before_families) = before(at, &families, prior)?;
+    after.cost = after.cost
+        + unchanged.map_or_else(
+            structural::ExtractionCost::default,
+            structural::Unchanged::publish,
+        );
     out.record(|records| records.facts = Some(before.cost + after.cost));
     let (before_states, _) = states(&before.index, &before_families);
     let (after_states, unjudged) = states(&after.index, &families);

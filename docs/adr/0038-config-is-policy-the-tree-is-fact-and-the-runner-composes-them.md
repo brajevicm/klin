@@ -210,3 +210,43 @@ of both structural gates therefore extracts each unchanged file once for the
 comparison. Strict runs, whole runs and the check by hand keep extracting
 both trees, and each check still builds its own index from the files it
 selected.
+
+## Follow-up: the base's outcomes kept between runs (#192)
+
+After #191 a warm Stop still extracted every structural file of the base once
+per Stop, although the turn's base is one immutable commit for the whole
+turn. `structural::Cache` keeps the outcomes of that commit's base tree in the
+state directory, one file per commit, and the base tree's `Extracted` takes an
+outcome from it the first time a check asks for the file. The cache is the
+one thing here that outlives a run, and it holds only what `Extracted` already
+held: per-file outcomes without parse trees. No `SourceIndex`, family state
+or other derived view is kept, because each is cheap to build again from the
+facts.
+
+The key is the full commit id, and the file carries an explicit epoch, the
+binary version, a checksum of the extraction sources built into the binary,
+the commit, and a checksum of the configuration's root, `git config --list`
+and the attribute files git reads outside the tree. Those settings decide
+the bytes `git worktree add` writes for the base, so a filter or line-ending
+change names another cache. Only the checksum is stored, never a
+configuration value. A development build whose extraction
+code differs therefore reads another build's cache as nothing, without
+anyone raising the epoch. The body has its own checksum and must decode to
+its last byte. Any doubt reads as no cache, and the run extracts the base as
+before, so a torn write or a copied file costs time and never a verdict.
+
+The cache is read and written only where `Unchanged` is used: a changed run
+that is not strict. A path the change set names, as `path` or as `was`, is
+never taken from the cache and never written to it, because the base tree
+may hold renamed bytes there. The file is replaced whole through
+`write::atomic_write`, and only when the run extracted an outcome that the
+cache did not hold. It lives under `cache/`, so `klin cache clean` removes it
+with the survey. The format is a small length-prefixed binary written by
+hand, because the crate carries no serialization framework beyond
+`serde_json`, and a `serde_json::Value` would allocate a map for every
+declaration and reference beside the facts built from it. The whole file is
+read at once. A lazy per-file
+or per-symbol format waits until a measurement shows that reading the whole
+file is the cost. Each turn's stamp is a new commit, so each write keeps the
+four newest cache files and removes the rest. A storage budget across bases
+is #193's.

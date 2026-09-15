@@ -1093,7 +1093,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
                 "parses": facts.parses,
                 "extracted": facts.extracted,
                 "shared": facts.shared,
+                "cached": facts.cached,
                 "ms": journal::millis(facts.time),
+                "cache_read_ms": journal::millis(facts.cache_read),
+                "cache_write_ms": journal::millis(facts.cache_write),
             })
         }),
     );
