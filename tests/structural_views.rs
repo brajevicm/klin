@@ -4,7 +4,7 @@ use harness::{Run, Tree};
 use serde_json::{Value, json};
 
 const CONFIG: &str = r#"{"dead_symbols":{"in":["src","web"]}}"#;
-const REACHABILITY_CONFIG: &str = r#"{}"#;
+const REACHABILITY_CONFIG: &str = r#"{"reachability":{"in":"src"}}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
 /// Every caller's view of one before and after pair. With `KLIN_DIFF_BIN` naming an earlier
@@ -216,6 +216,34 @@ fn reachability_keeps_deletions_and_renames_on_the_same_view() {
 }
 
 #[test]
+fn reachability_moving_into_and_out_of_scope_judges_each_tree_under_its_own_scope() {
+    let seen = reachability_views(|tree| {
+        reached_commands(tree);
+        tree.write("lib/tool.rs", "pub fn run_tool() {}\n");
+        tree.base();
+        tree.git(&["mv", "lib/tool.rs", "src/commands/tool_command.rs"]);
+        tree.write("src/commands/tool_command.rs", "pub fn run_new_tool() {}\n");
+        assert!(std::fs::create_dir_all(tree.path("tools")).is_ok());
+        tree.git(&[
+            "mv",
+            "src/commands/alpha_command.rs",
+            "tools/alpha_command.rs",
+        ]);
+    });
+    let expected = [
+        r#""FAIL" 1"#,
+        r#"new src/commands/tool_command.rs:0 file {"sibling":"src/commands/beta_command.rs","unreached":1}"#,
+    ];
+    assert_eq!(lines(&seen["whole"]), expected);
+    assert_eq!(lines(&seen["changed"]), expected, "{seen}");
+    assert_eq!(
+        lines(&seen["hook"])[1..],
+        lines(&seen["changed"])[1..],
+        "{seen}"
+    );
+}
+
+#[test]
 fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
     let seen = reachability_views(|tree| {
         reached_commands(tree);
@@ -250,6 +278,15 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
         lines(&seen["hook"])
             .iter()
             .any(|line| line.contains("delta_command.rs") && line.contains("grammar")),
+        "{seen}"
+    );
+    assert_eq!(
+        ["whole", "strict", "changed", "hook"].map(|view| {
+            seen[view]["report"]["gates"][0]["coverage"]["not_measured"]
+                .as_u64()
+                .unwrap_or(u64::MAX)
+        }),
+        [0, 0, 0, 0],
         "{seen}"
     );
 }

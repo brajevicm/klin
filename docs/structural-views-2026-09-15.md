@@ -98,3 +98,36 @@ also prints the warm hook and the changed `dead-symbols` run beside strict.
 
 Budget: SPEC 13's budgets are unchanged, and the large-repository budget stays
 with #182.
+
+## Reachability over the shared base extraction (#191)
+
+### Same output
+
+The 16 structural-view scenarios passed on 2026-09-15 with `KLIN_DIFF_BIN`
+set to a release build of `df546d3`, the commit before `7760bf7`. There were
+no normalized output differences. The new scope-movement scenario and the
+changed-caller scenario both produced the same literal findings under both
+builds.
+
+### Measurements
+
+Measured 2026-09-15 with the release binary of `7760bf7` through `KLIN_BIN`,
+five iterations per row. The first timing in each cell is the #190 after
+column above; the second is this run.
+
+| Row | Warm hook | Cold survey | Strict |
+| --- | ---: | ---: | ---: |
+| 300k | 5,546 → 4,480 ms | 22,420 → 23,116 ms | 11,901 → 12,290 ms |
+| 1M | 12,763 → 8,225 ms | 48,114 → 49,796 ms | 30,825 → 32,012 ms |
+
+The warm structural counters, #190 after → #191:
+
+| Row | Dead symbols | Reachability |
+| --- | ---: | ---: |
+| 300k | 2,807 ms, facts 1,743, 10,020 / 9,980 → 3,364 ms, facts 2,020, 10,020 / 9,980 | 1,886 ms, facts 1,786, 9,980 / 10,020 → 99 ms, facts 0, 0 / 20,000 |
+| 1M | 6,511 ms, facts 5,096, 10,020 / 9,980 → 7,044 ms, facts 5,403, 10,020 / 9,980 | 5,344 ms, facts 5,120, 9,980 / 10,020 → 219 ms, facts 0, 0 / 20,000 |
+
+The two numbers after each facts value are `extracted / shared`. The warm
+reachability run now extracts no files of its own; it shares the structural
+facts already extracted by `dead-symbols`. Peak RSS was unavailable in this
+run.
