@@ -33,6 +33,13 @@ exposes each module's tree and one path resolver. A gate row in `--json` now
 carries `surface`, and the dense performance rows derive one surface per
 language and print its counters.
 
+The controlled 2026-09-15 dense before/after run stayed within the large-
+repository budgets: the 20-file warm hook moved from 2,055 to 2,184 ms at
+300k and from 2,566 to 2,704 ms at 1M. Public-api itself took 33/35 ms, read
+and parsed zero structural facts, and derived four surfaces with 26/56 items;
+no row regressed by more than one third. Full 100-file, cold, strict, cache
+and RSS evidence is in `docs/structural-views-2026-09-15.md`.
+
 ### Layering and dependency cycles (#50)
 
 A new Policy gate, `layering`, fails when a dependency crosses a layer the

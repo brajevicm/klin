@@ -1,3 +1,57 @@
+# Derived public API compatibility (#46)
+
+`public-api` derives Rust and TypeScript consumer-facing surfaces from the
+shared structural facts and module graph. The controlled rows below compare
+the clean baseline `c0660d6` with the implementation `eacfdf6`; both use the
+same deterministic dense fixtures and release build.
+
+## Same output
+
+The 31 CLI scenarios in `tests/public_api.rs` passed, including configuration,
+Rust and TypeScript surface discovery, re-exports, opaque contracts, holes,
+source moves, accepted breaks and cached changed runs. The full non-ignored
+`cargo test` suite passed as well.
+
+## Measurements
+
+Measured 2026-09-15 on the same macOS/aarch64 baseline machine, with a median
+of five iterations per row. Hook timings exclude the project's build. The
+before → after whole-run medians are:
+
+| Source row | Warm, 20 changed | Warm, no structural cache | Cold survey | Strict | Warm, 100 changed |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 300k | 2,055 → 2,184 ms | 3,832 → 4,450 ms | 22,823 → 24,704 ms | 12,547 → 13,335 ms | 2,232 → 2,326 ms |
+| 1M | 2,566 → 2,704 ms | 7,894 → 10,004 ms | 52,269 → 54,205 ms | 30,894 → 34,571 ms | 2,784 → 2,907 ms |
+
+The public-api rows in the after run were:
+
+| Source row | Gate | Facts reads / parses / shared | Graph modules / dependencies | Surfaces | Items measured / opaque | Holes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 300k | 33 ms | 0 / 0 / 20,000 | 10,010 / 9,906 | 4 | 18 / 8 | 0 |
+| 1M | 35 ms | 0 / 0 / 20,000 | 10,010 / 9,906 | 4 | 48 / 8 | 0 |
+
+Peak resident memory from the same rows, in kB:
+
+| Source row | Warm hook | Warm hook without cache | `dead-symbols` changed | Strict |
+| --- | ---: | ---: | ---: | ---: |
+| 300k | 145,776 → 158,688 | 142,544 → 161,088 | 126,576 → 155,280 | 370,320 → 406,864 |
+| 1M | 312,512 → 371,536 | 333,440 → 408,864 | 326,144 → 401,696 | 1,025,296 → 1,133,872 |
+
+The structural cache grew from 8,601,048 to 11,827,372 bytes at 300k and
+from 26,048,075 to 36,866,497 bytes at 1M as it carried the new facts.
+
+## What the rows show
+
+- The warm Stop-hook medians remain below the 5-second product budget: 2.184 s
+  at 300k and 2.704 s at 1M. The cold and strict rows also remain below their
+  30/60-second and 20/45-second limits.
+- The public-api gate adds 129 ms at 300k and 138 ms at 1M to the 20-file warm
+  rows, or 6.3% and 5.4%. No controlled row regressed by more than one third.
+- Public-api reads and parses no structural source of its own. It shares the
+  20,000 facts already held by the run and derives four surfaces with no holes.
+- RSS and cache growth are recorded as release diagnostics; ADR 0042 assigns
+  no machine-specific memory budget.
+
 # Dead symbols over one base extraction (#190)
 
 This is the first architecture checkpoint of #187. `dead-symbols` measured
