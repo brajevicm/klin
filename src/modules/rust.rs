@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 use cargo_toml::{AbstractFilesystem, Manifest, Value};
 
-use super::{Attachment, Builder, Topology, directory, joined};
+use super::{Attachment, Builder, TargetKind, Topology, directory, joined};
 use crate::survey;
 use crate::syntax::structural::ModuleDecl;
 
@@ -22,6 +22,18 @@ const MANIFEST: &str = "Cargo.toml";
 struct Target {
     root: String,
     attachment: Attachment,
+    package: String,
+    name: String,
+    kind: TargetKind,
+    manifest: Option<String>,
+}
+
+/// One lib or bin product a manifest names: what kind it is, the name a consumer addresses it
+/// by, and the root file relative to the manifest.
+struct Product {
+    kind: TargetKind,
+    name: String,
+    path: String,
 }
 
 /// One module of one target: where it sits in the graph, the module that holds it, the modules
@@ -63,6 +75,7 @@ pub(super) fn resolve(builder: &mut Builder) {
             pending.extend(krate.declared(builder, file));
         }
         krate.depend(builder);
+        krate.publish(builder, root);
     }
 }
 
@@ -79,17 +92,28 @@ fn targets(builder: &mut Builder) -> Vec<Target> {
     for manifest in manifests {
         let products = products(topology, manifest);
         read.push((directory(manifest), products.is_some()));
-        for (kind, path) in products.into_iter().flatten() {
-            match joined(directory(manifest), &path).filter(|root| topology.holds(root)) {
+        let Some((package, products)) = products else {
+            continue;
+        };
+        for product in products {
+            match joined(directory(manifest), &product.path).filter(|root| topology.holds(root)) {
                 Some(root) => out.push(Target {
                     root,
                     attachment: Attachment::Manifest,
+                    package: package.clone(),
+                    name: product.name,
+                    kind: product.kind,
+                    manifest: Some(manifest.clone()),
                 }),
                 None => builder.hole(
                     manifest,
                     0,
-                    &path,
-                    format!("names the {kind} target root {path}, which the tree does not hold"),
+                    &product.path,
+                    format!(
+                        "names the {} target root {}, which the tree does not hold",
+                        word(product.kind, &product.name),
+                        product.path
+                    ),
                 ),
             }
         }
@@ -98,8 +122,16 @@ fn targets(builder: &mut Builder) -> Vec<Target> {
     out
 }
 
-/// The lib and bin targets of one manifest, and `None` where the manifest is not usable.
-fn products(topology: &Topology, manifest: &str) -> Option<Vec<(String, String)>> {
+fn word(kind: TargetKind, name: &str) -> String {
+    match kind {
+        TargetKind::Library => "lib".to_string(),
+        TargetKind::Binary => format!("bin {name}"),
+    }
+}
+
+/// The package name and the lib and bin targets of one manifest, and `None` where the manifest
+/// is not usable.
+fn products(topology: &Topology, manifest: &str) -> Option<(String, Vec<Product>)> {
     let mut parsed = Manifest::from_slice(&topology.read(manifest)?).ok()?;
     let listing = Listing {
         topology,
@@ -108,21 +140,43 @@ fn products(topology: &Topology, manifest: &str) -> Option<Vec<(String, String)>
     parsed
         .complete_from_abstract_filesystem::<Value, _>(listing, None)
         .ok()?;
-    let mut out: Vec<(String, String)> = parsed
+    let package = parsed
+        .package
+        .as_ref()
+        .map(|package| package.name.clone())
+        .unwrap_or_default();
+    let mut out: Vec<Product> = parsed
         .lib
-        .and_then(|lib| lib.path)
-        .map(|path| ("lib".to_string(), path))
+        .and_then(|lib| {
+            Some(Product {
+                kind: TargetKind::Library,
+                name: lib.name.unwrap_or_else(|| crate_name(&package)),
+                path: lib.path?,
+            })
+        })
         .into_iter()
         .collect();
     for bin in parsed.bin {
         if let Some(path) = bin.path {
-            out.push((
-                format!("bin {}", bin.name.as_deref().unwrap_or(&path)),
+            out.push(Product {
+                kind: TargetKind::Binary,
+                name: bin.name.unwrap_or_else(|| stem(&path).to_string()),
                 path,
-            ));
+            });
         }
     }
-    Some(out)
+    Some((package, out))
+}
+
+/// The name a consumer writes for a package's library: the package name with each `-` as `_`.
+fn crate_name(package: &str) -> String {
+    package.replace('-', "_")
+}
+
+fn stem(path: &str) -> &str {
+    basename(path)
+        .rsplit_once('.')
+        .map_or(basename(path), |(stem, _)| stem)
 }
 
 /// The conventional roots — `src/lib.rs`, `src/main.rs` and a file directly in `src/bin` — of
@@ -138,9 +192,24 @@ fn conventional(topology: &Topology, read: &[(&str, bool)]) -> Vec<Target> {
                 .max_by_key(|(at, _)| at.len())
                 .is_none_or(|(_, usable)| !usable)
         })
-        .map(|file| Target {
-            root: file.clone(),
-            attachment: Attachment::Convention,
+        .map(|file| {
+            let package = match basename(directory(directory(file))) {
+                "" => "crate".to_string(),
+                above => above.to_string(),
+            };
+            let (kind, name) = match basename(file) {
+                "lib.rs" => (TargetKind::Library, crate_name(&package)),
+                "main.rs" => (TargetKind::Binary, crate_name(&package)),
+                _ => (TargetKind::Binary, stem(file).to_string()),
+            };
+            Target {
+                root: file.clone(),
+                attachment: Attachment::Convention,
+                package,
+                name,
+                kind,
+                manifest: None,
+            }
         })
         .collect()
 }
@@ -373,6 +442,32 @@ impl Crate<'_> {
                 Some(parent) => at = parent,
                 None => return false,
             }
+        }
+    }
+
+    /// The target and its module tree written into the graph, so a consumer reads a module's
+    /// parent, children and target without the resolver's own nodes.
+    fn publish(&self, builder: &mut Builder, root: usize) {
+        let target = builder.graph.targets.len();
+        builder.graph.targets.push(super::Target {
+            package: self.target.package.clone(),
+            name: self.target.name.clone(),
+            kind: self.target.kind,
+            root: self.target.root.clone(),
+            manifest: self.target.manifest.clone(),
+            module: self.nodes[root].index,
+        });
+        for node in &self.nodes {
+            let module = &mut builder.graph.modules[node.index];
+            module.nesting = node.nesting.clone();
+            module.target = Some(target);
+            module.parent = node.parent.map(|parent| self.nodes[parent].index);
+            module.children = node
+                .children
+                .iter()
+                .map(|(name, child)| (name.clone(), self.nodes[*child].index))
+                .collect();
+            module.unresolved = node.unresolved.iter().cloned().collect();
         }
     }
 

@@ -1255,9 +1255,9 @@ The shared structural view keeps imports and module declarations alongside
 declarations and references, and keeps unparsed and unsupported outcomes as
 coverage data. The project's Change data remains separate from the structural
 scope, so a consumer can reuse facts without losing which paths changed.
-`layering` consumes those facts directly through the module-resolution layer;
-it does not build a `SourceIndex`, because it resolves modules rather than
-declaration and reference names. `dead-symbols` and `reachability` request
+`layering` and `public-api` consume those facts directly through the
+module-resolution layer; neither builds a `SourceIndex`, because they resolve
+modules and exported paths rather than declaration and reference names. `dead-symbols` and `reachability` request
 their own name index only when they judge names, so each measurement builds at
 most one index and the structural cache remains a cache of facts only. A
 measurement holds its facts sorted by path, the one order its index also reads
@@ -1559,6 +1559,89 @@ strict, the working tree takes the base's facts for every unchanged file, as
 path, a TypeScript `import()` or `require()`, `tsconfig` paths and package
 exports are not dependencies in V1.
 
+**`public-api` judges the consumer-facing contract a library or package
+exposes.** Klin derives public API from standard Rust library and TypeScript
+package entry points. You normally configure nothing: the section is absent,
+or `false` to exclude the gate, and any object under it is a config error,
+because surfaces, roots, languages and entry points are facts of the tree. It
+is an Automatic check that needs the commit and takes no scope: a changed run
+judges every file of both trees, because a manifest, an entry point or a
+re-export can change what an unchanged file means to a consumer. It reads the
+structural facts of 8.4 and the module graph of ADR 0043 for each tree under
+that tree's own topology, and it builds no name index, no second resolver and
+no parser of its own.
+
+A *surface* is what a consumer addresses. For Rust it is a Cargo library
+target, named by its crate name; a binary target and a Rust directory no
+manifest names are not surfaces. Implicit and custom library roots and every
+library package of a workspace are found the way ADR 0043 finds targets. For
+TypeScript a surface begins only at explicit package metadata that names a
+checked-in TypeScript, TSX or declaration source file: an `exports` string,
+each `exports` subpath whose target reduces to exactly one such file across
+its conditions, and, without `exports`, the first of `types`, `typings`,
+`main` and `module` that names one. Generated JavaScript is never mapped back
+to source, `src/index.ts` is never guessed, and a package none of whose
+entries names a supported source is not applicable and is said so on a
+`NOTE:` line, not a hole.
+
+An *item* is what a consumer names under a surface, and its identity is the
+surface, the exported path or name and the item's kind, never the file that
+declares it. From a Rust root the check follows every plain `pub` declaration,
+every `pub mod`, and every `pub use` leaf: an alias renames the item, a glob
+exposes every public item of the module it reaches less the names the
+globbing module exposes itself, a re-export of a module exposes everything
+under it, and a plain `pub` item inside a private module is external only
+where a `pub use` exposes it. `pub(crate)`, `pub(super)`, `pub(self)` and
+`pub(in ...)` are never external. A public inherent method is an item under
+its type. From a TypeScript entry file the check follows exported
+declarations, default exports, local export clauses, and named, aliased,
+type-only and star re-exports through the module graph's own edges. An
+exported file no entry reaches is not package API. TSX is TypeScript.
+
+An item is *measured* where its declared contract is canonical, and *opaque*
+where klin proves it exists and no more. The canonical contract is written by
+the language's structural adapter and never by the check: it drops bodies,
+initializers, comments, attributes and decorators, one space stands between
+tokens, a private field or member leaves, a private tuple position becomes
+`_`, and a binding name that is not contract becomes `_`. Rust covers
+functions with qualifiers, generics, receiver and parameter types, return
+type and `where` clause; structs, unions, enums with their variants, fields
+and explicit discriminants; traits with their supertraits and associated-item
+signatures without default bodies; type aliases; and `const` and `static`
+with their type alone. TypeScript covers functions and overload sets, classes
+with their heritage and public and protected members, interfaces, type
+aliases, enums and variables. A type the compiler would infer is written as
+`?`, so an inferred contract is visibly partial and never fabricated from a
+body. A re-export of another crate or package, an enum variant re-exported by
+path, a `* as ns` export and an anonymous default export are opaque, and the
+normalized clause that exposes them is the contract klin compares.
+
+Base and working tree are derived independently. A base surface the working
+tree lacks fails once, at the surface. For every item of a surface both hold,
+an item gone fails, a measured contract that changed or is no longer declared
+fails, an opaque clause that changed fails, and everything else passes: a new
+surface, a new item, a widened visibility, an opaque item that became
+measured. Each break carries `break` at 1 with the surface as its file and
+`NAME (KIND)` as its text, so an intentional break is an accepted entry under
+that identity, and the base holds no break by construction. A glob over
+another crate, a star export of another package, a name two globs or two
+stars provide, an export form klin recognizes and cannot list, a path through
+a module no file answers, and an unresolved module or specifier inside a
+surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while other
+findings still print, because a green run must not imply a surface it claims
+to support was completely measured. The `OK:` line counts the items and
+surfaces judged, how many are measured and opaque, the library targets and
+entry points found, and the packages or targets with no supported surface.
+`klin public-api --report` prints the working tree's derived contract without
+judging it: each surface with its discovery source, each item with its
+identity, kind, origin, measured or opaque status and canonical signature,
+each hole, and each package or target not applicable. Pinned by every test in
+`tests/public_api.rs`. Known limits: a module bound by `use` and then
+re-exported by its bare name, a macro, a trait implementation's semantics,
+`cfg` evaluation, `typesVersions`, conditional exports that do not reduce to
+one source file, `tsconfig` paths and a package alias are outside V1, and a
+generic parameter renamed is a changed contract.
+
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a
 change to the spec and to a test in the same commit.
@@ -1655,7 +1738,8 @@ and reads no project dependencies, such as ruff.
 
 ### 8.4 Tier 2: build when tier 1 is green
 
-`conventions` (#42, ADR 0037), `public-api` (#46),
+`conventions` (#42, ADR 0037), `public-api` over the module graph and a
+derived public surface (#46, ADR 0044),
 `reachability` over one reference extractor (#49, #51), `layering` over one
 module graph (#50, ADR 0043), `changed-coverage`
 and `crap` over one coverage reader with a postflight run (#53, #54, #55,
@@ -2252,10 +2336,14 @@ One object on stdout. Fields:
   `complexity`, `escapes` and `stubs`, counting source contents read and parsed
   over the current and base trees; it is null for other gates or for a gate
   that never got that far. `graph` is `{modules, dependencies, ms}` for
-  `layering`: the modules and resolved dependencies of both trees' module
-  graphs, and the part of the gate's `ms` spent resolving them and finding
-  their cycles. It is null for other gates or for a gate that never got that
-  far.
+  `layering` and `public-api`: the modules and resolved dependencies of both
+  trees' module graphs, and the part of the gate's `ms` spent resolving them
+  and, for `layering`, finding their cycles. It is null for other gates or for
+  a gate that never got that far. `surface` is `{surfaces, items, measured,
+  opaque, holes, ms}` for `public-api`: the surfaces and items derived over
+  both trees, how many items are measured and opaque, the holes inside the
+  surfaces, and the part of the gate's `ms` spent deriving them. It is null
+  for other gates or for a gate that never got that far.
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The
@@ -2279,7 +2367,8 @@ One object on stdout. Fields:
   and `after` did not (8.6), `not-measured` for a known-language file with
   no structural adapter, `derivation` for a derived ceiling whose recorded
   scope fell back or differs from today's (5.4), `unresolved` for a
-  dependency form `layering` supports and could not resolve in the hook
+  dependency form `layering` supports and could not resolve, or a form inside
+  a public surface `public-api` recognizes and could not resolve, in the hook
   (8.2.1), and `note` for what a check left out of its count. Outside the hook
   an `unresolved` record is in `findings`, beside `error` and `unparsed`.
   `text` carries the reason, as the `NOTE:` line printed it.
@@ -2613,6 +2702,14 @@ graphs and finds their cycles, and each gate row prints `graph_modules`,
 reads and parses no source of its own, because it takes every structural
 outcome an earlier gate of the stop already held. A binary named by
 `KLIN_BIN` reads no `layering` section, so its rows leave the section out.
+The fixture's `web/package.json` names `./src/index.ts` under `exports`, and
+its `rust/src/lib.rs` is the implicit library root, so every row derives one
+Rust and one TypeScript public surface, and the `public-api` gate row prints
+`surface_surfaces`, `surface_items`, `surface_measured`, `surface_opaque`,
+`surface_holes` and `surface_ms` beside its `graph` counters. The warm hook
+asserts that `public-api` reads and parses no source of its own, for the same
+reason as `layering`. A binary before #46 has no `public-api` row, and its
+rows leave the counters out.
 
 Each dense row runs warm hook, cold survey and whole-tree strict five times
 and prints the median total and every gate's median `ms`. Where available it
@@ -3061,6 +3158,28 @@ Core:
   rename inside a layer is held and one into another layer is new, a changed
   run beside a gate that lays out changed files judges the whole base, and a
   cached changed run parses only the changed file.
+- `public-api`: an unchanged library passes and the `OK:` line counts what was
+  judged, root `pub`, a `pub mod` chain and a `pub use` are external while a
+  private module's `pub` child and restricted visibility are not, a
+  binary-only package is not applicable, a custom library root and each
+  workspace library are surfaces of their own, an alias renames, a glob lists
+  its module, a re-export of another crate is opaque and judged on presence, a
+  body, comment, format or binding-name change passes, a changed signature
+  and a removed item fail and an addition passes, a removed library fails once
+  at the surface, a source move behind an unchanged identity passes by hand
+  and in a changed run, an accepted break is held, a glob of another crate
+  and a module no file answers are holes by hand and a NOTE in the hook, the
+  section is absent or `false` and any object is refused, `init` writes no
+  section; root and subpath exports are surfaces and generated JavaScript is
+  not reverse-mapped, `types`, `typings` and a direct TypeScript `main` or
+  `module` are entries, a package with no supported entry is not applicable,
+  a file outside the traversal is not API, named, default, alias and star
+  re-exports are items, an ambiguous star and a star over another package are
+  holes, an external re-export is opaque, TSX is TypeScript, an inferred
+  contract is partial and a body change behind it passes, a TypeScript
+  signature change fails, a subpath removal fails once, a changed manifest
+  changes an unchanged file's meaning in a changed run, and a cached changed
+  run parses only the changed file.
 - `conventions`: an unknown key names the convention and the key, a missing
   remedy, zero or two matchers, a language on a `text` or `files` rule, and an
   absolute, escaping or glob path are config errors, `in` and `except` select

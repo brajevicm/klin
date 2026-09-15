@@ -27,6 +27,7 @@ mod lockfile;
 mod markers;
 mod modules;
 mod project;
+mod public_api;
 mod radius;
 mod ratchet;
 mod reachability;
@@ -36,6 +37,7 @@ mod scope;
 mod state;
 mod stats;
 mod stubs;
+mod surface;
 mod survey;
 mod syntax;
 mod turn;
@@ -102,6 +104,8 @@ enum Structural {
     Reachability(reachability::Args),
     /// Fail when a dependency crosses a layer the policy forbids, or closes a new cycle
     Layering(layering::Args),
+    /// Fail when a consumer-facing Rust or TypeScript contract the base exposed is gone or changed
+    PublicApi(public_api::Args),
 }
 
 /// The runner, the survey that writes a configuration, the guard over that file, and the cache
@@ -163,6 +167,7 @@ fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8
         Structural::DeadSymbols(args) => dead_symbols::run(args, start, out),
         Structural::Reachability(args) => reachability::run(args, start, out),
         Structural::Layering(args) => layering::run(args, start, out),
+        Structural::PublicApi(args) => public_api::run(args, start, out),
     }
 }
 

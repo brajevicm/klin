@@ -190,7 +190,7 @@ fn source_areas(files_per_language: usize, areas: usize) -> Tree {
     tree.write("rust/Cargo.lock", "version = 3\n");
     tree.write(
         "web/package.json",
-        "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\",\"exports\":\"./src/index.ts\"}\n",
     );
     tree.write(
         "web/tsconfig.json",
@@ -283,7 +283,13 @@ impl Fixture {
         if !self.current_dense() {
             return;
         }
-        for name in ["complexity", "dead-symbols", "reachability", "layering"] {
+        for name in [
+            "complexity",
+            "dead-symbols",
+            "reachability",
+            "layering",
+            "public-api",
+        ] {
             assert!(
                 samples.gates.contains_key(&format!("{name}_ms")),
                 "{name} gate timing is missing: {:?}",
@@ -313,10 +319,18 @@ impl Fixture {
         assert_eq!(median_counter("escapes_work_parses"), changed as u64);
         assert_eq!(median_counter("dead-symbols_facts_cached"), unchanged);
         assert_eq!(median_counter("dead-symbols_facts_shared"), unchanged);
-        for name in ["layering_facts_reads", "layering_facts_parses"] {
+        for name in [
+            "layering_facts_reads",
+            "layering_facts_parses",
+            "public-api_facts_reads",
+            "public-api_facts_parses",
+        ] {
             assert_eq!(median_counter(name), 0, "{name}");
         }
         assert!(median_counter("layering_graph_modules") > 0);
+        assert_eq!(median_counter("public-api_surface_surfaces"), 4);
+        assert!(median_counter("public-api_surface_items") > 0);
+        assert_eq!(median_counter("public-api_surface_holes"), 0);
     }
 
     fn measure(&self) -> Measurements {
@@ -513,7 +527,7 @@ fn write_project_files(tree: &Tree, scope: &str, config: &str, layering: bool) {
     tree.write("rust/Cargo.lock", "version = 3\n");
     tree.write(
         "web/package.json",
-        "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"fixture-web\",\"private\":true,\"version\":\"0.1.0\",\"exports\":\"./src/index.ts\"}\n",
     );
     tree.write(
         "web/package-lock.json",
@@ -893,6 +907,10 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
             ),
             ("work", &["reads", "parses"][..]),
             ("graph", &["modules", "dependencies", "ms"][..]),
+            (
+                "surface",
+                &["surfaces", "items", "measured", "opaque", "holes", "ms"][..],
+            ),
         ] {
             counters(&mut times, name, &gate[group], group, fields);
         }

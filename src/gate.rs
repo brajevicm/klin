@@ -1128,6 +1128,19 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
             })
         }),
     );
+    out.insert(
+        "surface".into(),
+        records.surface.map_or(Value::Null, |surface| {
+            serde_json::json!({
+                "surfaces": surface.surfaces,
+                "items": surface.items,
+                "measured": surface.measured,
+                "opaque": surface.opaque,
+                "holes": surface.holes,
+                "ms": journal::millis(surface.time),
+            })
+        }),
+    );
     Value::Object(out)
 }
 

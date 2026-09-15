@@ -16,7 +16,7 @@ use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::changed::Change;
+use crate::changed;
 use crate::check::{self, Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::modules::{self, Attachment, Cycles, GraphCost, Hole, ModuleGraph, Topology};
@@ -25,7 +25,7 @@ use crate::ratchet::{self, Evaluator, Finding, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
-use crate::{base, coverage, files};
+use crate::{base, coverage};
 
 pub const SECTION: &str = "layering";
 
@@ -172,30 +172,19 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
     let project = at.project;
     let prior = base::whole(at, commit)?;
     let unchanged = base::unchanged(at, prior, commit)?;
-    let mut after = measure(project.tree(), unchanged.as_ref())?;
-    let before = measure(prior.tree(), None)?;
+    let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
+    let before = structural::measure_all(prior.tree(), None)?;
     after.cost = after.cost
         + unchanged.map_or_else(
             structural::ExtractionCost::default,
             structural::Unchanged::publish,
         );
     out.record(|records| records.facts = Some(before.cost + after.cost));
-    let renamed = renamed(&project.changes(commit)?);
+    let renamed = changed::renamed(&project.changes(commit)?);
     Ok((
         side(prior.tree(), &before, &renamed)?,
         side(project.tree(), &after, &HashMap::new())?,
     ))
-}
-
-/// Every file the change set renamed, by its current path, with the path it had at the base.
-fn renamed(changes: &[Change]) -> HashMap<String, String> {
-    changes
-        .iter()
-        .filter_map(|change| {
-            let was = change.was.as_ref().filter(|was| **was != change.path)?;
-            Some((change.path.clone(), was.clone()))
-        })
-        .collect()
 }
 
 fn side(
@@ -233,25 +222,6 @@ fn side(
             .map(|(now, was)| (was.clone(), now.clone()))
             .collect(),
     })
-}
-
-/// Every structural file of a tree, measured through the tree's one extraction, because a module
-/// anywhere in the tree may be the one a dependency reaches.
-fn measure(
-    tree: &Tree,
-    unchanged: Option<&structural::Unchanged>,
-) -> Result<structural::Measurement, Error> {
-    let extensions = structural::selected_extensions(&[]).unwrap_or_default();
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &extensions,
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let found = files::found(tree, &[tree.root().to_path_buf()], &wanted)?;
-    structural::measure(found, tree, unchanged)
 }
 
 pub fn language_extensions() -> Vec<(&'static str, String)> {

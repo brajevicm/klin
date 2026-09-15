@@ -10,14 +10,14 @@ use std::rc::Rc;
 use std::time::SystemTime;
 
 use super::{
-    Declaration, DeclarationKind, FileFacts, Import, ModuleDecl, Outcome, QualifiedPath, Reference,
-    Unparsed,
+    Declaration, DeclarationKind, Export, ExportLeaf, FileFacts, Import, ModuleDecl, Outcome,
+    QualifiedPath, Reference, Unparsed, Visibility,
 };
 use crate::syntax::{LANGUAGES, Language};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
-const EPOCH: u64 = 2;
+const EPOCH: u64 = 3;
 
 const MAGIC: &[u8] = b"klin structural cache\n";
 const KEPT: usize = 4;
@@ -218,6 +218,11 @@ impl Writer {
             self.number(
                 u64::from(declaration.externally_visible) | u64::from(declaration.entry_point) << 1,
             );
+            self.texts(&declaration.nesting);
+            self.number(visibility_number(declaration.visibility));
+            self.optional(declaration.exported_as.as_deref());
+            self.optional(declaration.owner.as_deref());
+            self.optional(declaration.signature.as_deref());
         }
         self.number(facts.imports.len() as u64);
         for import in &facts.imports {
@@ -236,6 +241,7 @@ impl Writer {
             self.texts(&module.nesting);
             self.number(u64::from(module.inline));
             self.optional(module.path.as_deref());
+            self.number(visibility_number(module.visibility));
         }
         self.number(facts.references.len() as u64);
         for reference in &facts.references {
@@ -247,6 +253,19 @@ impl Writer {
             self.number(path.line);
             self.texts(&path.nesting);
             self.text(&path.path);
+        }
+        self.number(facts.exports.len() as u64);
+        for export in &facts.exports {
+            self.number(export.line);
+            self.text(&export.text);
+            self.texts(&export.nesting);
+            self.optional(export.source.as_deref());
+            self.number(u64::from(export.type_only) | u64::from(export.supported) << 1);
+            self.number(export.leaves.len() as u64);
+            for leaf in &export.leaves {
+                self.text(&leaf.path);
+                self.optional(leaf.name.as_deref());
+            }
         }
     }
 }
@@ -330,6 +349,7 @@ impl Reader<'_> {
             module_declarations: self.list(Reader::module)?,
             references: self.list(Reader::reference)?,
             paths: self.list(Reader::qualified)?,
+            exports: self.list(Reader::export)?,
         })
     }
 
@@ -347,6 +367,35 @@ impl Reader<'_> {
             text,
             externally_visible: flags & 1 == 1,
             entry_point: flags & 2 == 2,
+            nesting: self.list(Reader::text)?,
+            visibility: visibility_of(self.number()?)?,
+            exported_as: self.optional()?,
+            owner: self.optional()?,
+            signature: self.optional()?,
+        })
+    }
+
+    fn export(&mut self) -> Option<Export> {
+        let line = self.number()?;
+        let text = self.text()?;
+        let nesting = self.list(Reader::text)?;
+        let source = self.optional()?;
+        let flags = self.number().filter(|flags| *flags <= 3)?;
+        Some(Export {
+            line,
+            text,
+            nesting,
+            source,
+            type_only: flags & 1 == 1,
+            supported: flags & 2 == 2,
+            leaves: self.list(Reader::leaf)?,
+        })
+    }
+
+    fn leaf(&mut self) -> Option<ExportLeaf> {
+        Some(ExportLeaf {
+            path: self.text()?,
+            name: self.optional()?,
         })
     }
 
@@ -369,6 +418,7 @@ impl Reader<'_> {
             nesting: self.list(Reader::text)?,
             inline: self.number().filter(|flag| *flag <= 1)? == 1,
             path: self.optional()?,
+            visibility: visibility_of(self.number()?)?,
         })
     }
 
@@ -410,6 +460,26 @@ fn kind_of(number: u64) -> Option<DeclarationKind> {
     KINDS.into_iter().find(|kind| kind_number(*kind) == number)
 }
 
+const VISIBILITIES: [Visibility; 3] = [
+    Visibility::Private,
+    Visibility::Restricted,
+    Visibility::Public,
+];
+
+fn visibility_number(visibility: Visibility) -> u64 {
+    match visibility {
+        Visibility::Private => 0,
+        Visibility::Restricted => 1,
+        Visibility::Public => 2,
+    }
+}
+
+fn visibility_of(number: u64) -> Option<Visibility> {
+    VISIBILITIES
+        .into_iter()
+        .find(|held| visibility_number(*held) == number)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,9 +487,8 @@ mod tests {
     const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
     fn outcomes() -> Vec<(String, Outcome)> {
-        let rust = "use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\n";
-        let typescript =
-            "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\n";
+        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\n";
+        let typescript = "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\nexport default view;\n";
         [
             ("src/pay.rs", rust),
             ("web/view.tsx", typescript),
@@ -501,6 +570,43 @@ mod tests {
             paths,
             vec![(10, &["tests".to_string()][..], "crate::pay::charge")]
         );
+        let charge = pay
+            .declarations
+            .iter()
+            .find(|held| held.name == "Charge")
+            .unwrap_or_else(|| panic!("Charge read back with no declaration"));
+        assert_eq!(charge.visibility, Visibility::Public);
+        assert_eq!(charge.signature.as_deref(), Some("struct Charge;"));
+        assert_eq!(charge.nesting, Vec::<String>::new());
+        let exports: Vec<(&str, Option<&str>)> = pay
+            .exports
+            .iter()
+            .flat_map(|held| &held.leaves)
+            .map(|leaf| (leaf.path.as_str(), leaf.name.as_deref()))
+            .collect();
+        assert_eq!(
+            exports,
+            vec![
+                ("crate::pay::Refund", Some("Refund")),
+                ("crate::pay::refund", Some("refund"))
+            ]
+        );
+        assert_eq!(pay.module_declarations[0].visibility, Visibility::Private);
+        let view = read.iter().find_map(|(file, outcome)| match outcome {
+            Outcome::Facts(facts) if file == "web/view.tsx" => Some(facts.clone()),
+            _ => None,
+        });
+        let Some(view) = view else {
+            panic!("web/view.tsx read back with no facts");
+        };
+        assert_eq!(view.declarations[0].exported_as, None);
+        assert_eq!(
+            view.declarations[0].signature.as_deref(),
+            Some("const view: ?")
+        );
+        assert_eq!(view.exports.len(), 1);
+        assert!(view.exports[0].supported && view.exports[0].source.is_none());
+        assert_eq!(view.exports[0].leaves[0].name.as_deref(), Some("default"));
     }
 
     #[test]

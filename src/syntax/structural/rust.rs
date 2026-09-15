@@ -4,7 +4,9 @@
 
 use tree_sitter::Node;
 
-use crate::syntax::structural::{Adapter, Imported, above, text_of};
+use crate::syntax::structural::{
+    Adapter, ExportLeaf, Exported, Imported, Spelling, Visibility, above, spelled, text_of,
+};
 
 pub(crate) const ADAPTER: Adapter = Adapter {
     patterns: PATTERNS,
@@ -16,6 +18,11 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    visibility,
+    exported_as,
+    owner,
+    contract,
+    exported,
 };
 
 const PATTERNS: &str = r"
@@ -30,7 +37,30 @@ const PATTERNS: &str = r"
 (static_item) @constant
 (mod_item) @module
 (use_declaration) @import
+(use_declaration) @export
 ";
+
+/// The declarations whose contract V1 canonicalizes.
+const CONTRACTED: &[&str] = &[
+    "function_item",
+    "function_signature_item",
+    "struct_item",
+    "enum_item",
+    "union_item",
+    "trait_item",
+    "type_item",
+    "const_item",
+    "static_item",
+];
+
+/// What never reaches a canonical contract: comments, attributes and the item's own modifier.
+const NOISE: &[&str] = &[
+    "line_comment",
+    "block_comment",
+    "attribute_item",
+    "inner_attribute_item",
+    "visibility_modifier",
+];
 
 /// The node kinds a path of several segments is written as.
 const SCOPED: &[&str] = &["scoped_identifier", "scoped_type_identifier"];
@@ -66,13 +96,148 @@ fn imported(node: Node, source: &[u8]) -> Imported {
     };
     let mut names = Vec::new();
     bound(argument, source, &mut names);
-    let mut paths = Vec::new();
-    expanded(argument, source, &[], &mut paths);
     Imported {
         module: Some(text_of(argument, source)),
         names,
-        paths,
+        paths: leaves(argument, source)
+            .into_iter()
+            .map(|leaf| leaf.path)
+            .collect(),
     }
+}
+
+/// Every leaf one use tree names, with the name each binds.
+fn leaves(argument: Node, source: &[u8]) -> Vec<ExportLeaf> {
+    let mut out = Vec::new();
+    expanded(argument, source, &[], &mut out);
+    out
+}
+
+/// What a declaration's own modifier says. `pub` alone is public, and any `pub(...)` is
+/// restricted to some part of the crate.
+fn visibility(node: Node, source: &[u8]) -> Visibility {
+    let mut cursor = node.walk();
+    let modifier = node
+        .children(&mut cursor)
+        .find(|child| child.kind() == "visibility_modifier");
+    match modifier.map(|found| text_of(found, source)) {
+        None => Visibility::Private,
+        Some(text) if text == "pub" => Visibility::Public,
+        Some(_) => Visibility::Restricted,
+    }
+}
+
+/// Rust addresses every item by its own name, so nothing is exported under another one here;
+/// a `pub use ... as` alias is an export leaf.
+fn exported_as(_: Node, _: &[u8]) -> Option<String> {
+    None
+}
+
+/// The type an inherent `impl` adds this method to, by its bare name, and `None` for a method
+/// of a trait or of a trait implementation, whose contract belongs to the trait.
+fn owner(node: Node, source: &[u8]) -> Option<String> {
+    let list = node
+        .parent()
+        .filter(|held| held.kind() == "declaration_list")?;
+    let holder = list
+        .parent()
+        .filter(|held| held.kind() == "impl_item" && held.child_by_field_name("trait").is_none())?;
+    type_name(holder.child_by_field_name("type")?, source)
+}
+
+/// The bare name of a type, without its generic arguments or the path before it.
+fn type_name(node: Node, source: &[u8]) -> Option<String> {
+    match node.kind() {
+        "type_identifier" => Some(text_of(node, source)),
+        "generic_type" => type_name(node.child_by_field_name("type")?, source),
+        "scoped_type_identifier" => Some(text_of(node.child_by_field_name("name")?, source)),
+        _ => None,
+    }
+}
+
+/// The declared contract of one item, canonical, and `None` for a form V1 does not cover.
+fn contract(node: Node, source: &[u8]) -> Option<String> {
+    CONTRACTED
+        .contains(&node.kind())
+        .then(|| spelled(node, source, &|held| spelling(held, source)))
+}
+
+/// How one node is spelled in a canonical contract: bodies, initializers, comments, attributes,
+/// modifiers and binding names leave, a private field leaves, a private tuple position becomes
+/// `_`, and everything else is kept as written.
+fn spelling(node: Node, source: &[u8]) -> Spelling {
+    let parent = node.parent();
+    let parent_kind = parent.map_or("", |held| held.kind());
+    if NOISE.contains(&node.kind()) {
+        return Spelling::Skip;
+    }
+    if node.kind() == "block" && parent_kind == "function_item" {
+        return Spelling::Replace(";".to_string());
+    }
+    if matches!(parent_kind, "const_item" | "static_item")
+        && (node.kind() == "=" || is_field(node, "value"))
+    {
+        return Spelling::Skip;
+    }
+    if node.kind() == "parameter" {
+        let receiver = node
+            .child_by_field_name("pattern")
+            .is_some_and(|pattern| pattern.kind() == "self");
+        return match node.child_by_field_name("type") {
+            Some(of) => Spelling::Replace(format!(
+                "{}: {}",
+                if receiver { "self" } else { "_" },
+                spelled(of, source, &|held| spelling(held, source))
+            )),
+            None => Spelling::Keep,
+        };
+    }
+    if node.kind() == "string_literal" {
+        return Spelling::Replace(text_of(node, source));
+    }
+    if node.kind() == "field_declaration"
+        && above(node, &["enum_variant"]).is_none()
+        && visibility(node, source) != Visibility::Public
+    {
+        return Spelling::Skip;
+    }
+    if parent_kind == "ordered_field_declaration_list"
+        && node.is_named()
+        && above(node, &["enum_variant"]).is_none()
+        && !pub_before(node, source)
+    {
+        return Spelling::Replace("_".to_string());
+    }
+    Spelling::Keep
+}
+
+/// Whether this node is the child its parent holds under this field name.
+fn is_field(node: Node, field: &str) -> bool {
+    node.parent()
+        .and_then(|held| held.child_by_field_name(field))
+        .is_some_and(|found| found.id() == node.id())
+}
+
+/// Whether a plain `pub` sits directly before this tuple field's type.
+fn pub_before(node: Node, source: &[u8]) -> bool {
+    node.prev_sibling()
+        .filter(|held| held.kind() == "visibility_modifier")
+        .is_some_and(|held| text_of(held, source) == "pub")
+}
+
+/// What a plain `pub use` exposes: every leaf of its tree under the name it binds. A restricted
+/// or private `use` exposes nothing past the module.
+fn exported(node: Node, source: &[u8]) -> Option<Exported> {
+    if visibility(node, source) != Visibility::Public {
+        return None;
+    }
+    let argument = node.child_by_field_name("argument")?;
+    Some(Exported {
+        source: None,
+        type_only: false,
+        supported: true,
+        leaves: leaves(argument, source),
+    })
 }
 
 /// Every name one use tree binds, which is the last segment of a path, the alias where one is
@@ -88,48 +253,67 @@ fn bound(node: Node, source: &[u8], out: &mut Vec<String>) {
     }
 }
 
-/// Every path one use tree names under a prefix: the path an alias renames, each entry of a list
-/// under the list's own path, the path above a `self` in a list, and a glob as `*`.
-fn expanded(node: Node, source: &[u8], prefix: &[String], out: &mut Vec<String>) {
+/// Every path one use tree names under a prefix, with the name it binds: the path an alias
+/// renames under the alias, each entry of a list under the list's own path, the path above a
+/// `self` in a list under its last segment, and a glob as `*` under no name.
+fn expanded(node: Node, source: &[u8], prefix: &[String], out: &mut Vec<ExportLeaf>) {
     match node.kind() {
         "use_as_clause" => {
+            let alias = node
+                .child_by_field_name("alias")
+                .map(|alias| text_of(alias, source));
             if let Some(path) = node.child_by_field_name("path") {
+                let from = out.len();
                 expanded(path, source, prefix, out);
+                for held in &mut out[from..] {
+                    held.name = alias.clone().or(held.name.take());
+                }
             }
         }
         "scoped_use_list" => scoped_list(node, source, prefix, out),
         "use_list" => each_path(node, source, prefix, out),
         "use_wildcard" => leaf(prefix, node.named_child(0), Some("*"), source, out),
-        "self" if !prefix.is_empty() => out.push(prefix.join("::")),
+        "self" if !prefix.is_empty() => out.push(ExportLeaf {
+            path: prefix.join("::"),
+            name: prefix.last().cloned(),
+        }),
         _ => leaf(prefix, Some(node), None, source, out),
     }
 }
 
-fn scoped_list(node: Node, source: &[u8], prefix: &[String], out: &mut Vec<String>) {
+fn scoped_list(node: Node, source: &[u8], prefix: &[String], out: &mut Vec<ExportLeaf>) {
     let at = extended(prefix, node.child_by_field_name("path"), source);
     if let (Some(at), Some(list)) = (at, node.child_by_field_name("list")) {
         expanded(list, source, &at, out);
     }
 }
 
-fn each_path(node: Node, source: &[u8], prefix: &[String], out: &mut Vec<String>) {
+fn each_path(node: Node, source: &[u8], prefix: &[String], out: &mut Vec<ExportLeaf>) {
     let mut cursor = node.walk();
     for child in node.named_children(&mut cursor) {
         expanded(child, source, prefix, out);
     }
 }
 
-/// One path a use tree ends at, with a last segment such as a glob's `*` where one is written.
+/// One path a use tree ends at, with a last segment such as a glob's `*` where one is written,
+/// bound under its last segment, and under no name for a glob.
 fn leaf(
     prefix: &[String],
     path: Option<Node>,
     last: Option<&str>,
     source: &[u8],
-    out: &mut Vec<String>,
+    out: &mut Vec<ExportLeaf>,
 ) {
     if let Some(mut at) = extended(prefix, path, source) {
+        let name = match last {
+            Some(_) => None,
+            None => at.last().cloned(),
+        };
         at.extend(last.map(str::to_string));
-        out.push(at.join("::"));
+        out.push(ExportLeaf {
+            path: at.join("::"),
+            name,
+        });
     }
 }
 

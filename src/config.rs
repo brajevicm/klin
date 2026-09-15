@@ -250,6 +250,7 @@ fn policy(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), E
             crate::doc_size::well_formed(file, fields)
         }
         Value::Object(_) if section == crate::doc_citations::SECTION => refused("reads no policy"),
+        Value::Object(_) if section == crate::public_api::SECTION => refused("reads no policy"),
         Value::Object(fields) => {
             let names: Vec<&str> = check.keys.iter().map(|key| key.name).collect();
             known_fields(file, section, fields, &names)
@@ -266,6 +267,10 @@ fn policy_shape(section: &str) -> &'static str {
         }
         crate::doc_citations::SECTION => {
             "documents and citation roots are discovered; remove the section, or set it to false"
+        }
+        crate::public_api::SECTION => {
+            "public surfaces are derived from Cargo library targets and package entry points; \
+             remove the section, or set it to false"
         }
         _ => "narrow the check only with \"in\" / \"except\", or set it to false",
     }

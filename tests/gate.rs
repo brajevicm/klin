@@ -92,7 +92,7 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     assert!(run.says("ok    stubs"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
     assert!(!run.says("derived: escapes"), "{}", run.out);
-    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn a_status_row_per_gate_and_a_summary_line() {
     assert!(run.says("ok    doc-citations"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("7 gate(s), all passed."), "{}", run.out);
+    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -149,7 +149,7 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
         "{}",
         run.out
     );
-    assert!(run.says("7 gate(s), 1 failed."), "{}", run.out);
+    assert!(run.says("8 gate(s), 1 failed."), "{}", run.out);
 }
 
 #[test]
@@ -157,14 +157,14 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
     let source = format!("pub fn f() {{\n    x.{};\n}}\n", "unwrap()");
-    tree.write("src/lib.rs", &source);
+    tree.write("src/work.rs", &source);
 
     let run = tree.run(&["gate"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("7 gate(s), 2 failed."), "{}", run.out);
+    assert!(run.says("8 gate(s), 2 failed."), "{}", run.out);
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("6 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("7 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -191,7 +191,7 @@ fn a_tool_error_alone_exits_two() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("6 gate(s), 1 excluded, 1 tool error."),
+        run.says("7 gate(s), 1 excluded, 1 tool error."),
         "{}",
         run.out
     );
@@ -218,6 +218,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
          complexity — runs\ndead-symbols — runs\nreachability — runs\n\
+         public-api — runs\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          layering — needs a section a person writes\n\
@@ -261,6 +262,7 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          dead-symbols — needs a section a person writes\n\
          reachability — needs a section a person writes\n\
          layering — needs a section a person writes\n\
+         public-api — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
@@ -569,7 +571,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("6 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("7 gate(s), 1 excluded, 1 failed, 1 tool error."),
         "{}",
         run.out
     );
@@ -714,7 +716,7 @@ fn outcomes(records: &[Value]) -> Vec<(&str, &str)> {
 fn json_prints_one_object_holding_every_failing_finding() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
-    tree.write("src/lib.rs", AN_ESCAPE);
+    tree.write("src/work.rs", AN_ESCAPE);
 
     let run = tree.run(&["gate", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -977,7 +979,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
-        run.says("6 gate(s), 1 excluded, all passed."),
+        run.says("7 gate(s), 1 excluded, all passed."),
         "{}",
         run.out
     );
@@ -992,7 +994,7 @@ fn list_names_the_excluded_gates() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nstubs — runs\ncomplexity — runs\n\
-         dead-symbols — runs\nreachability — runs\n\
+         dead-symbols — runs\nreachability — runs\npublic-api — runs\n\
          escapes — excluded\nlockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          layering — needs a section a person writes\n\
@@ -1091,7 +1093,8 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
               "escapes": false,
               "stubs": false,
               "dead_symbols": false,
-              "reachability": false }"#,
+              "reachability": false,
+              "public_api": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
@@ -1176,13 +1179,14 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
               "escapes": false,
               "stubs": false,
               "dead_symbols": false,
-              "reachability": false }"#,
+              "reachability": false,
+              "public_api": false }"#,
     );
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 gate(s), 6 excluded, all passed."),
+        run.says("1 gate(s), 7 excluded, all passed."),
         "{}",
         run.out
     );
@@ -1193,7 +1197,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
     let tree = tree(
         r#"{ "doc_size": false, "doc_citations": false, "escapes": false,
               "stubs": false, "complexity": false, "dead_symbols": false,
-              "reachability": false }"#,
+              "reachability": false, "public_api": false }"#,
     );
 
     let run = tree.run(&["gate", "--list"]);
@@ -1203,6 +1207,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
         "doc-size — excluded\ndoc-citations — excluded\nescapes — excluded\n\
          stubs — excluded\ncomplexity — excluded\n\
          dead-symbols — excluded\nreachability — excluded\n\
+         public-api — excluded\n\
          lockfile — needs a section a person writes\n\
          inventory — needs a section a person writes\n\
          layering — needs a section a person writes\n\

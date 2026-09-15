@@ -40,6 +40,16 @@ pub enum DeclarationKind {
     Variable,
 }
 
+/// What a declaration's own syntax says about who may reach it. Rust writes `pub`, a restricted
+/// `pub(crate)`, `pub(super)`, `pub(self)` or `pub(in ...)`, or nothing. TypeScript writes
+/// `export` at the top of a file or nothing. Only `Public` can be part of a consumer's contract.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Visibility {
+    Private,
+    Restricted,
+    Public,
+}
+
 pub struct Declaration {
     pub name: String,
     pub kind: DeclarationKind,
@@ -55,6 +65,51 @@ pub struct Declaration {
     /// True where syntax or the shared test convention proves that the runtime or a framework
     /// calls this declaration without a source reference.
     pub entry_point: bool,
+    /// The inline modules that hold the declaration, outermost first, and none at the top of a
+    /// file.
+    pub nesting: Vec<String>,
+    /// What the declaration's own modifier says, with no doubt read either way.
+    pub visibility: Visibility,
+    /// The name a consumer of the module addresses the declaration by where it differs from
+    /// `name`: TypeScript's `export default class Client` is addressed as `default`.
+    pub exported_as: Option<String>,
+    /// The type an inherent implementation adds this method to, for a language that writes
+    /// methods outside the type's own body, as Rust's `impl Client { pub fn new() }` does. A
+    /// trait's method, a trait implementation's method and a member of a class carry none.
+    pub owner: Option<String>,
+    /// The declared contract, canonical: no body, no comment, no attribute, one space between
+    /// tokens, and a parameter binding that is not contract written as `_`. `None` where the
+    /// syntax is a form V1 does not canonicalize. A type the language would infer is written
+    /// as `?`, so an inferred contract is visibly partial and never fabricated.
+    pub signature: Option<String>,
+}
+
+/// One statement that exposes names past the module: Rust's `pub use`, and every TypeScript
+/// `export` that is not a declaration of its own. A leaf names what is exposed and under which
+/// name. The module graph resolves a path or a specifier; nothing here does.
+pub struct Export {
+    pub line: u64,
+    pub text: String,
+    /// The inline modules that hold the statement, outermost first.
+    pub nesting: Vec<String>,
+    /// The module specifier a TypeScript re-export names, and none for a local export or a Rust
+    /// use tree, whose leaves carry their own paths.
+    pub source: Option<String>,
+    /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
+    pub type_only: bool,
+    /// False for a form V1 recognizes as an export and cannot list the names of, such as
+    /// TypeScript's `export = x` or `export namespace N`. A consumer reports it as a hole.
+    pub supported: bool,
+    pub leaves: Vec<ExportLeaf>,
+}
+
+/// One name an export exposes. `path` is what is exposed as the source wrote it: a Rust leaf
+/// path with `*` for a glob, a TypeScript local or source name, `*` for a star export, and
+/// empty for an anonymous default export. `name` is the external name, and `None` for a glob
+/// that exposes every name of its target.
+pub struct ExportLeaf {
+    pub path: String,
+    pub name: Option<String>,
 }
 
 /// One import, holding the specifier as it was written. The module graph resolves it to a file.
@@ -84,6 +139,8 @@ pub struct ModuleDecl {
     /// The file the declaration names instead of its own name, where the language can say so.
     /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
     pub path: Option<String>,
+    /// What the declaration's own modifier says: `pub mod` is `Public`, `mod` is `Private`.
+    pub visibility: Visibility,
 }
 
 /// A path written outside every import that starts at the crate or at the module that holds it,
@@ -115,6 +172,7 @@ pub struct FileFacts {
     pub module_declarations: Vec<ModuleDecl>,
     pub references: Vec<Reference>,
     pub paths: Vec<QualifiedPath>,
+    pub exports: Vec<Export>,
 }
 
 /// What one file came to under structural analysis. Three of the four outcomes are not a
@@ -362,6 +420,23 @@ pub fn of(path: &str, source: &str) -> Result<Outcome, Error> {
     }
 }
 
+/// Every structural file of a tree, measured, because a gate that reads a module graph or a
+/// public surface needs every module a path may reach. The selection is every structural
+/// language under the default skip set, and no scope narrows it.
+pub fn measure_all(tree: &Tree, unchanged: Option<&Unchanged>) -> Result<Measurement, Error> {
+    let extensions = selected_extensions(&[]).unwrap_or_default();
+    let skip_dirs = files::default_skip_dirs();
+    let wanted = files::Wanted {
+        extensions: &extensions,
+        skip_dirs: &skip_dirs,
+        exclude: &[],
+        exclude_except: &[],
+        skip_hidden: true,
+    };
+    let found = files::found(tree, &[tree.root().to_path_buf()], &wanted)?;
+    measure(found, tree, unchanged)
+}
+
 /// The found files of one tree measured, each through the tree's one extraction of it, or the
 /// base's extraction where the file is unchanged against that base.
 pub fn measure(
@@ -556,6 +631,18 @@ pub(crate) struct Adapter {
     /// The path a node writes from the crate or from its own module, and `None` for any other
     /// node, including a path inside a longer one.
     pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// What a declaration's or a module declaration's own modifier says.
+    pub visibility: fn(Node, &[u8]) -> Visibility,
+    /// The external name a declaration is exported under where it differs from its own name.
+    pub exported_as: fn(Node, &[u8]) -> Option<String>,
+    /// The type an inherent implementation adds a method to.
+    pub owner: fn(Node, &[u8]) -> Option<String>,
+    /// The canonical declared contract of a declaration, and `None` for a form V1 does not
+    /// canonicalize.
+    pub contract: fn(Node, &[u8]) -> Option<String>,
+    /// What an `@export` capture exposes, and `None` where the node exports nothing a
+    /// declaration does not already say for itself.
+    pub exported: fn(Node, &[u8]) -> Option<Exported>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept
@@ -566,12 +653,105 @@ pub(crate) struct Imported {
     pub paths: Vec<String>,
 }
 
+/// What one export statement states, before the shared reader puts it at a line.
+pub(crate) struct Exported {
+    pub source: Option<String>,
+    pub type_only: bool,
+    pub supported: bool,
+    pub leaves: Vec<ExportLeaf>,
+}
+
+/// How the canonical spelling treats one node: leave the subtree out, write this text for it
+/// and go no deeper, or spell it token by token.
+pub(crate) enum Spelling {
+    Skip,
+    Replace(String),
+    Keep,
+}
+
+/// The canonical text of one node: every token the rule keeps, one space apart, with the
+/// spacing a reader expects around punctuation. Comments never reach it, because a rule skips
+/// them, and the rule decides what a body, an attribute or a binding name becomes.
+pub(crate) fn spelled(node: Node, source: &[u8], rule: &dyn Fn(Node) -> Spelling) -> String {
+    let mut tokens = Vec::new();
+    collect_tokens(node, source, rule, &mut tokens);
+    tidy(&tokens)
+}
+
+fn collect_tokens(
+    node: Node,
+    source: &[u8],
+    rule: &dyn Fn(Node) -> Spelling,
+    out: &mut Vec<String>,
+) {
+    match rule(node) {
+        Spelling::Skip => {}
+        Spelling::Replace(text) => out.push(text),
+        Spelling::Keep if node.child_count() == 0 => out.push(text_of(node, source)),
+        Spelling::Keep => {
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                collect_tokens(child, source, rule, out);
+            }
+        }
+    }
+}
+
+/// Tokens joined by one space, less the space a reader would not write: before a closing
+/// bracket or a separator, after an opening bracket, around a path separator or a member dot,
+/// and between a name and the bracket that opens its arguments. A separator left dangling
+/// before a closing bracket, where a skipped token stood after it, is dropped.
+fn tidy(tokens: &[String]) -> String {
+    const NO_SPACE_BEFORE: &[&str] = &[",", ";", ")", "]", ">", ":", "?", ".", "::", "!"];
+    const NO_SPACE_AFTER: &[&str] = &["(", "[", "<", "&", "::", ".", "#", "*", "..."];
+    const OPENS: &[&str] = &["(", "[", "<"];
+    const CLOSES: &[&str] = &[")", "]", "}", ">"];
+    let tokens: Vec<&str> = tokens
+        .iter()
+        .map(String::as_str)
+        .filter(|token| !token.is_empty())
+        .collect();
+    let mut out = String::new();
+    let mut last: Option<&str> = None;
+    for (at, token) in tokens.iter().enumerate() {
+        let dangling = *token == ","
+            && tokens
+                .get(at + 1)
+                .is_none_or(|next| CLOSES.contains(next) || *next == ",");
+        if dangling {
+            continue;
+        }
+        let glued = last.is_none_or(|last| {
+            NO_SPACE_AFTER.contains(&last)
+                || NO_SPACE_BEFORE.contains(token)
+                || (OPENS.contains(token) && ends_a_name(last))
+        });
+        if !glued {
+            out.push(' ');
+        }
+        out.push_str(token);
+        last = Some(token);
+    }
+    out
+}
+
+/// Whether a token is one an argument bracket attaches to directly: a name, a closing bracket
+/// or a closing angle.
+fn ends_a_name(token: &str) -> bool {
+    token == ">"
+        || token
+            .chars()
+            .last()
+            .is_some_and(|last| last.is_alphanumeric() || matches!(last, '_' | ')' | ']'))
+}
+
 const METHOD: &str = "method";
 const TYPE: &str = "type";
 const CONSTANT: &str = "constant";
 const VARIABLE: &str = "variable";
 const IMPORT: &str = "import";
 const MODULE: &str = "module";
+const EXPORT: &str = "export";
 
 type Held = OnceLock<Result<Query, String>>;
 
@@ -629,6 +809,7 @@ struct Reading<'a> {
     declarations: Vec<Declaration>,
     imports: Vec<Import>,
     modules: Vec<ModuleDecl>,
+    exports: Vec<Export>,
     declared: BTreeSet<usize>,
     claimed: Vec<(usize, usize)>,
 }
@@ -643,6 +824,7 @@ impl<'a> Reading<'a> {
             declarations: Vec::new(),
             imports: Vec::new(),
             modules: Vec::new(),
+            exports: Vec::new(),
             declared: BTreeSet::new(),
             claimed: Vec::new(),
         }
@@ -652,8 +834,25 @@ impl<'a> Reading<'a> {
         match capture {
             IMPORT => self.import(node),
             MODULE => self.module(node),
+            EXPORT => self.export(node),
             _ => self.declaration(capture, node),
         }
+    }
+
+    /// One statement that exposes names, where the adapter says the node does so on its own.
+    fn export(&mut self, node: Node) {
+        let Some(found) = (self.adapter.exported)(node, self.source) else {
+            return;
+        };
+        self.exports.push(Export {
+            line: self.row(node),
+            text: self.text(node),
+            nesting: (self.adapter.nesting)(node, self.source),
+            source: found.source,
+            type_only: found.type_only,
+            supported: found.supported,
+            leaves: found.leaves,
+        });
     }
 
     fn import(&mut self, node: Node) {
@@ -688,6 +887,7 @@ impl<'a> Reading<'a> {
             path: (!inline)
                 .then(|| (self.adapter.remapped)(node, self.source))
                 .flatten(),
+            visibility: (self.adapter.visibility)(node, self.source),
         });
     }
 
@@ -709,6 +909,11 @@ impl<'a> Reading<'a> {
             text: self.text(node),
             externally_visible: (self.adapter.visible)(node),
             entry_point,
+            nesting: (self.adapter.nesting)(node, self.source),
+            visibility: (self.adapter.visibility)(node, self.source),
+            exported_as: (self.adapter.exported_as)(node, self.source),
+            owner: (self.adapter.owner)(node, self.source),
+            signature: (self.adapter.contract)(node, self.source),
         });
     }
 
@@ -783,6 +988,7 @@ impl<'a> Reading<'a> {
         self.imports.sort_by_key(|import| import.line);
         self.modules
             .sort_by(|a, b| (a.line, &a.name).cmp(&(b.line, &b.name)));
+        self.exports.sort_by_key(|export| export.line);
         references.sort_by(|a, b| (a.line, &a.name).cmp(&(b.line, &b.name)));
         FileFacts {
             file: file.path.to_string(),
@@ -792,6 +998,7 @@ impl<'a> Reading<'a> {
             module_declarations: self.modules,
             references,
             paths,
+            exports: self.exports,
         }
     }
 }
@@ -1468,11 +1675,17 @@ export function charge(at: number): number {
                     text: format!("fn {name}"),
                     externally_visible: false,
                     entry_point: false,
+                    nesting: Vec::new(),
+                    visibility: Visibility::Private,
+                    exported_as: None,
+                    owner: None,
+                    signature: None,
                 })
                 .collect(),
             imports: Vec::new(),
             module_declarations: Vec::new(),
             paths: Vec::new(),
+            exports: Vec::new(),
             references: names
                 .iter()
                 .enumerate()
@@ -1562,5 +1775,263 @@ export function charge(at: number): number {
                 .collect();
             assert_eq!(again, vec![1, 3, 1, 3, 1, 3, 1, 3]);
         }
+    }
+}
+
+#[cfg(test)]
+mod contract_tests {
+    use super::*;
+
+    fn measured_facts(path: &str, source: &str) -> Rc<FileFacts> {
+        match of(path, source) {
+            Ok(Outcome::Facts(found)) => found,
+            _ => panic!("{path} was not measured"),
+        }
+    }
+
+    fn signature(facts: &FileFacts, name: &str) -> String {
+        let found = facts
+            .declarations
+            .iter()
+            .find(|held| held.name == name)
+            .unwrap_or_else(|| panic!("{name} was not declared in {}", facts.file));
+        found
+            .signature
+            .clone()
+            .unwrap_or_else(|| panic!("{name} has no signature"))
+    }
+
+    fn declaration<'a>(facts: &'a FileFacts, name: &str) -> &'a Declaration {
+        match facts.declarations.iter().find(|held| held.name == name) {
+            Some(found) => found,
+            None => panic!("{name} was not declared in {}", facts.file),
+        }
+    }
+
+    const RUST: &str = r#"
+pub use crate::client::{Client as C, model::*, self};
+pub(crate) use inner::x;
+use std::fmt;
+pub mod m { pub fn f() {} }
+mod hidden;
+pub(crate) mod restricted;
+/// doc
+#[derive(Debug)]
+pub struct S<T: Clone> where T: Copy { pub a: T, b: u8 }
+pub struct U(pub u8, u16);
+pub enum E { A, B(u8) = 3, C { x: u8 } }
+pub trait Tr: Send { fn f(&self) -> u8; fn g(&self) { } type A: Copy; const N: u8; }
+pub const K: u8 = 1;
+pub static mut ST: &str = "x";
+pub type Al<T> = Vec<T>;
+pub unsafe extern "C" fn ff<T>(x: T, (a, b): (u8, u8), mut y: &mut u8) -> u8 where T: Copy { 1 }
+impl<T> S<T> { pub fn new(self: Box<Self>, n: u8) -> Self { todo!() } pub(crate) fn p() {} fn q() {} }
+impl Tr for S<u8> { fn f(&self) -> u8 { 1 } }
+"#;
+
+    #[test]
+    fn rust_tells_public_from_restricted_and_private() {
+        let facts = measured_facts("src/lib.rs", RUST);
+        assert_eq!(declaration(&facts, "S").visibility, Visibility::Public);
+        assert_eq!(declaration(&facts, "new").visibility, Visibility::Public);
+        assert_eq!(declaration(&facts, "p").visibility, Visibility::Restricted);
+        assert_eq!(declaration(&facts, "q").visibility, Visibility::Private);
+        let modules: Vec<(&str, Visibility)> = facts
+            .module_declarations
+            .iter()
+            .map(|held| (held.name.as_str(), held.visibility))
+            .collect();
+        assert_eq!(
+            modules,
+            vec![
+                ("m", Visibility::Public),
+                ("hidden", Visibility::Private),
+                ("restricted", Visibility::Restricted)
+            ]
+        );
+    }
+
+    #[test]
+    fn rust_canonical_contracts_drop_bodies_attributes_names_and_private_fields() {
+        let facts = measured_facts("src/lib.rs", RUST);
+        assert_eq!(
+            signature(&facts, "S"),
+            "struct S<T: Clone> where T: Copy { a: T }"
+        );
+        assert_eq!(signature(&facts, "U"), "struct U(u8, _);");
+        assert_eq!(
+            signature(&facts, "E"),
+            "enum E { A, B(u8) = 3, C { x: u8 } }"
+        );
+        assert_eq!(
+            signature(&facts, "Tr"),
+            "trait Tr: Send { fn f(&self) -> u8; fn g(&self); type A: Copy; const N: u8; }"
+        );
+        assert_eq!(signature(&facts, "K"), "const K: u8;");
+        assert_eq!(signature(&facts, "ST"), "static mut ST: &str;");
+        assert_eq!(signature(&facts, "Al"), "type Al<T> = Vec<T>;");
+        assert_eq!(
+            signature(&facts, "ff"),
+            "unsafe extern \"C\" fn ff<T>(_: T, _: (u8, u8), _: &mut u8) -> u8 where T: Copy;"
+        );
+        assert_eq!(
+            signature(&facts, "new"),
+            "fn new(self: Box<Self>, _: u8) -> Self;"
+        );
+    }
+
+    #[test]
+    fn a_rust_method_names_the_type_its_inherent_impl_adds_it_to() {
+        let facts = measured_facts("src/lib.rs", RUST);
+        assert_eq!(declaration(&facts, "new").owner.as_deref(), Some("S"));
+        let trait_impl = facts
+            .declarations
+            .iter()
+            .filter(|held| held.name == "f")
+            .map(|held| held.owner.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(trait_impl, vec![None, None, None]);
+    }
+
+    #[test]
+    fn a_rust_pub_use_exposes_every_leaf_under_its_name_and_a_restricted_use_exposes_nothing() {
+        let facts = measured_facts("src/lib.rs", RUST);
+        type Leaves<'a> = Vec<(&'a str, Option<&'a str>)>;
+        let exports: Vec<(Option<&str>, Leaves)> = facts
+            .exports
+            .iter()
+            .map(|held| {
+                (
+                    held.source.as_deref(),
+                    held.leaves
+                        .iter()
+                        .map(|leaf| (leaf.path.as_str(), leaf.name.as_deref()))
+                        .collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            exports,
+            vec![(
+                None,
+                vec![
+                    ("crate::client::Client", Some("C")),
+                    ("crate::client::model::*", None),
+                    ("crate::client", Some("client")),
+                ]
+            )]
+        );
+        assert_eq!(
+            facts.imports[0].paths,
+            vec![
+                "crate::client::Client",
+                "crate::client::model::*",
+                "crate::client"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rust_declaration_keeps_the_inline_modules_that_hold_it() {
+        let facts = measured_facts("src/lib.rs", RUST);
+        assert_eq!(declaration(&facts, "f").nesting, vec!["m".to_string()]);
+        assert!(declaration(&facts, "S").nesting.is_empty());
+    }
+
+    const TYPESCRIPT: &str = r#"
+export function f<T extends X>(a: A, b?: B, ...rest: C[]): R { return 1; }
+export function g(a) {}
+export default function h(): void {}
+export { a, b as c };
+export { e, f as g2 } from "./m";
+export * from "./n";
+export * as ns from "./o";
+export type { T } from "./p";
+export const x: number = 1, y = 2;
+export class K<T> extends B implements I { private p: T; #q = 1; protected r?: T; static s(): void {} constructor(public a: A, b: B) {} m<U>(u: U): R { return 1 } get gg(): T { return this.p } }
+export interface I2<T> extends J { a: T; m(x: number): void; readonly ro: number; }
+export enum En { A, B = 2, C = "c" }
+export namespace NS { export const q = 1; }
+export declare function dd(x: number): number;
+export = something;
+export default foo;
+function local() {}
+"#;
+
+    #[test]
+    fn typescript_tells_an_exported_declaration_and_its_external_name() {
+        let facts = measured_facts("src/index.ts", TYPESCRIPT);
+        assert_eq!(declaration(&facts, "f").visibility, Visibility::Public);
+        assert_eq!(declaration(&facts, "local").visibility, Visibility::Private);
+        assert_eq!(declaration(&facts, "q").visibility, Visibility::Private);
+        assert_eq!(declaration(&facts, "s").visibility, Visibility::Private);
+        assert_eq!(declaration(&facts, "dd").visibility, Visibility::Public);
+        assert_eq!(
+            declaration(&facts, "h").exported_as.as_deref(),
+            Some("default")
+        );
+        assert_eq!(declaration(&facts, "f").exported_as, None);
+    }
+
+    #[test]
+    fn typescript_canonical_contracts_drop_bodies_binding_names_and_private_members() {
+        let facts = measured_facts("src/index.ts", TYPESCRIPT);
+        assert_eq!(
+            signature(&facts, "f"),
+            "function f<T extends X>(_: A, _?: B, ..._: C[]): R"
+        );
+        assert_eq!(signature(&facts, "g"), "function g(_: ?): ?");
+        assert_eq!(signature(&facts, "x"), "const x: number");
+        assert_eq!(signature(&facts, "y"), "const y: ?");
+        assert_eq!(
+            signature(&facts, "K"),
+            "class K<T> extends B implements I { constructor(public a: A, _: B); get gg(): T; m<U>(_: U): R; protected r?: T; static s(): void }"
+        );
+        assert_eq!(
+            signature(&facts, "I2"),
+            "interface I2<T> extends J { a: T; m(_: number): void; readonly ro: number }"
+        );
+        assert_eq!(signature(&facts, "En"), "enum En { A, B = 2, C = \"c\" }");
+        assert_eq!(signature(&facts, "dd"), "function dd(_: number): number");
+        assert!(declaration(&facts, "m").signature.is_none(), "a member");
+    }
+
+    #[test]
+    fn typescript_exports_keep_their_clause_source_and_type_only_flag() {
+        let facts = measured_facts("src/index.ts", TYPESCRIPT);
+        type Leaves<'a> = Vec<(&'a str, Option<&'a str>)>;
+        let exports: Vec<(Option<&str>, bool, bool, Leaves)> = facts
+            .exports
+            .iter()
+            .map(|held| {
+                (
+                    held.source.as_deref(),
+                    held.type_only,
+                    held.supported,
+                    held.leaves
+                        .iter()
+                        .map(|leaf| (leaf.path.as_str(), leaf.name.as_deref()))
+                        .collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            exports,
+            vec![
+                (None, false, true, vec![("a", Some("a")), ("b", Some("c"))]),
+                (
+                    Some("./m"),
+                    false,
+                    true,
+                    vec![("e", Some("e")), ("f", Some("g2"))]
+                ),
+                (Some("./n"), false, true, vec![("*", None)]),
+                (Some("./o"), false, true, vec![("*", Some("ns"))]),
+                (Some("./p"), true, true, vec![("T", Some("T"))]),
+                (None, false, false, vec![]),
+                (None, false, false, vec![]),
+                (None, false, true, vec![("foo", Some("default"))]),
+            ]
+        );
     }
 }

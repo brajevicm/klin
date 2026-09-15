@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### Derived public API compatibility (#46)
+
+A new Automatic gate, `public-api`, fails when a consumer-facing Rust or
+TypeScript contract the base exposed is gone or its declared contract changed.
+Klin derives public API from standard Rust library and TypeScript package
+entry points, so a project configures nothing: the section is absent, or
+`false` to exclude the gate, and any object under it is refused.
+
+A Rust surface is a Cargo library target, named by its crate name, and its
+items are what a consumer writes: root `pub` items, `pub mod` chains, `pub
+use` re-exports with their aliases and globs, and public inherent methods
+under their type. A binary target has no surface. A TypeScript surface begins
+only at explicit package metadata that names a checked-in source file, and
+its items are the exported declarations, defaults, clauses and relative
+re-exports reachable from that entry. Generated JavaScript is never mapped
+back to source. An item is measured where its declared contract is canonical
+and opaque where klin proves only that it exists; a type the compiler would
+infer is written as `?`. A form klin recognizes and cannot list is a hole: a
+NOTE in the hook and exit 2 elsewhere. An intentional break is an accepted
+entry under the surface and item identity. `klin public-api --report` prints
+the derived contract. ADR 0044 records the boundary, and `tests/public_api.rs`
+pins the behaviour.
+
+The structural adapters now extract visibility, nesting, export names,
+inherent-method owners, canonical signatures and export clauses, and the
+structural cache format changed to carry them, so the first changed run after
+an upgrade extracts the base again. The module graph names its targets and
+exposes each module's tree and one path resolver. A gate row in `--json` now
+carries `surface`, and the dense performance rows derive one surface per
+language and print its counters.
+
 ### Layering and dependency cycles (#50)
 
 A new Policy gate, `layering`, fails when a dependency crosses a layer the

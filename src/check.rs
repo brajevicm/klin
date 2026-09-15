@@ -18,7 +18,7 @@ use crate::project::Project;
 use crate::reference::{Key, Languages};
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering,
-    lockfile, modules, reachability, sarif, stubs, syntax,
+    lockfile, modules, public_api, reachability, sarif, stubs, surface, syntax,
 };
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -89,6 +89,9 @@ pub struct Records {
     pub states: Option<u64>,
     /// The module graphs the gate built over both trees. `None` for a gate that builds none.
     pub graph: Option<modules::GraphCost>,
+    /// The public surfaces the gate derived over both trees. `None` for a gate that derives
+    /// none. Spec 11.2.
+    pub surface: Option<surface::SurfaceCost>,
 }
 
 /// Who ran this check. A person running one by hand gets the run's own context lines and no
@@ -392,6 +395,18 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(layering::language_extensions),
         available: |_| false,
         run: layering::gate,
+        needs: Needs::TheCommit,
+        takes_scope: false,
+        gate_per_entry: false,
+    },
+    Row {
+        name: public_api::NAME,
+        section: public_api::SECTION,
+        activation: Activation::Automatic,
+        keys: public_api::KEYS,
+        languages: Some(public_api::language_extensions),
+        available: |project| !project.found_no_source_root(),
+        run: public_api::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
         gate_per_entry: false,

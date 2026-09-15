@@ -77,6 +77,17 @@ pub fn blobs(
     Repo::at(root).blobs(commit, paths, each)
 }
 
+/// Every file the change set renamed, by its current path, with the path it had at the base.
+pub fn renamed(changes: &[Change]) -> std::collections::HashMap<String, String> {
+    changes
+        .iter()
+        .filter_map(|change| {
+            let was = change.was.as_ref().filter(|was| **was != change.path)?;
+            Some((change.path.clone(), was.clone()))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::process::Command;

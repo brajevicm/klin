@@ -6,7 +6,7 @@
 //! guessed. Containment builds the module tree and is never an edge. A check reads modules,
 //! dependencies, holes and cycles, and never a graph library's types. ADR 0043, spec 8.4.
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::path::Path;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -59,10 +59,16 @@ impl<'a> Topology<'a> {
         }
     }
 
-    fn holds(&self, path: &str) -> bool {
+    /// Whether the tree lists a file at this path.
+    pub fn holds(&self, path: &str) -> bool {
         self.files
             .binary_search_by(|held| held.as_str().cmp(path))
             .is_ok()
+    }
+
+    /// Every file the tree lists, under its topology path, in path order.
+    pub fn files(&self) -> &[String] {
+        &self.files
     }
 
     /// Whether a file sits at this path on disk and the file list leaves it out, as it leaves out
@@ -75,11 +81,14 @@ impl<'a> Topology<'a> {
         self.physical.get(path).map_or(path, String::as_str)
     }
 
-    fn read(&self, path: &str) -> Option<Vec<u8>> {
+    /// The bytes of one file the tree holds, read from disk. A manifest is read this way; a
+    /// source file never is, because its facts are already extracted.
+    pub fn read(&self, path: &str) -> Option<Vec<u8>> {
         std::fs::read(self.root.join(self.held_path(path))).ok()
     }
 
-    fn facts(&self, path: &str) -> Option<&FileFacts> {
+    /// The structural facts of one file, and `None` for a file no adapter measured.
+    pub fn facts(&self, path: &str) -> Option<&FileFacts> {
         self.facts.get(path).map(Rc::as_ref)
     }
 
@@ -127,11 +136,56 @@ pub enum Attachment {
     File,
 }
 
+/// What a target is built as. A library is what another crate consumes, so only a library has
+/// a public surface.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum TargetKind {
+    Library,
+    Binary,
+}
+
+/// One Cargo target, or one conventional root standing in for it: the package that owns it, the
+/// crate name a consumer addresses it by, its kind, its root file, the manifest that named it,
+/// and its root module in the graph.
+pub struct Target {
+    pub package: String,
+    pub name: String,
+    pub kind: TargetKind,
+    pub root: String,
+    pub manifest: Option<String>,
+    pub module: usize,
+}
+
 /// One module: the name a report prints and the file that holds it. One file may hold several
-/// modules, and one file under two targets is a module under each.
+/// modules, and one file under two targets is a module under each. A Rust module also knows
+/// its place in its target's tree; a TypeScript module is a file and stands alone.
 pub struct Module {
     pub name: String,
     pub file: String,
+    /// The inline modules between the file and this module, outermost first.
+    pub nesting: Vec<String>,
+    /// The target this module belongs to, and `None` for a module no target owns.
+    pub target: Option<usize>,
+    /// The module that declares this one, and `None` for a target root or a file module.
+    pub parent: Option<usize>,
+    /// Each module this one declares, by the name it declares it under.
+    pub children: BTreeMap<String, usize>,
+    /// The names this module declares as modules that no file answers, so a path through one is
+    /// unresolved and never external.
+    pub unresolved: BTreeSet<String>,
+}
+
+/// Where a path from one module ends up. The module graph resolves the module part and hands
+/// back the segments after it, which name an item of that module or nothing.
+pub enum Resolved {
+    Module {
+        module: usize,
+        rest: Vec<String>,
+    },
+    /// The path starts at a name that is no module here: another crate, or a local item.
+    External,
+    /// The path goes above the crate root or through a module no file answers.
+    Unresolved,
 }
 
 /// One resolved dependency of one module on another, at the line that writes it.
@@ -152,6 +206,7 @@ pub struct Hole {
 #[derive(Default)]
 pub struct ModuleGraph {
     pub modules: Vec<Module>,
+    pub targets: Vec<Target>,
     pub dependencies: Vec<Dependency>,
     pub holes: Vec<Hole>,
     /// The dependencies written on something outside V1: another crate, a package, an alias.
@@ -179,6 +234,11 @@ impl Builder<'_> {
         self.graph.modules.push(Module {
             name,
             file: file.to_string(),
+            nesting: Vec::new(),
+            target: None,
+            parent: None,
+            children: BTreeMap::new(),
+            unresolved: BTreeSet::new(),
         });
         self.graph.modules.len() - 1
     }
@@ -261,6 +321,58 @@ impl ModuleGraph {
         format!("{}{inline}", current(&held.file))
     }
 
+    /// The module a path names from this module, and the segments left after it. `crate` starts
+    /// at the module's target root, `self` and `super` at the module and the ones above it, a
+    /// name this module declares as a child at that child, and any other first name is external.
+    /// Each further name descends into a child of that name until one is no module.
+    pub fn resolve(&self, from: usize, path: &str) -> Resolved {
+        let mut segments = path
+            .split("::")
+            .map(|segment| segment.trim_start_matches("r#"))
+            .peekable();
+        let mut at = match segments.peek().copied() {
+            Some("crate") => {
+                segments.next();
+                match self.modules[from].target {
+                    Some(target) => self.targets[target].module,
+                    None => return Resolved::External,
+                }
+            }
+            Some("self" | "super") => from,
+            Some(first) if self.modules[from].children.contains_key(first) => from,
+            _ => return Resolved::External,
+        };
+        while let Some(segment) = segments.next_if(|segment| matches!(*segment, "self" | "super")) {
+            if segment == "super" {
+                match self.modules[at].parent {
+                    Some(parent) => at = parent,
+                    None => return Resolved::Unresolved,
+                }
+            }
+        }
+        let mut rest = Vec::new();
+        for segment in segments {
+            let module = &self.modules[at];
+            match module.children.get(segment) {
+                Some(child) if rest.is_empty() => at = *child,
+                None if rest.is_empty() && module.unresolved.contains(segment) => {
+                    return Resolved::Unresolved;
+                }
+                _ => rest.push(segment.to_string()),
+            }
+        }
+        Resolved::Module { module: at, rest }
+    }
+
+    /// Every module the dependencies one line of a module writes resolve to.
+    pub fn reached_at(&self, from: usize, line: u64) -> Vec<usize> {
+        self.dependencies
+            .iter()
+            .filter(|dependency| dependency.from == from && dependency.line == line)
+            .map(|dependency| dependency.to)
+            .collect()
+    }
+
     /// The strongly connected components of the dependencies between the modules `keep` selects.
     pub fn cycles(&self, keep: impl Fn(&Module) -> bool) -> Cycles<'_> {
         let mut graph: DiGraph<usize, ()> = DiGraph::new();
@@ -333,7 +445,7 @@ impl Cycles<'_> {
 }
 
 /// A path joined to a directory, with `.` and `..` read, and `None` where it leaves the tree.
-fn joined(directory: &str, relative: &str) -> Option<String> {
+pub(crate) fn joined(directory: &str, relative: &str) -> Option<String> {
     let mut parts: Vec<&str> = directory
         .split('/')
         .filter(|part| !part.is_empty())
@@ -351,6 +463,6 @@ fn joined(directory: &str, relative: &str) -> Option<String> {
 }
 
 /// The directory a path sits in, and the empty name for the tree root.
-fn directory(path: &str) -> &str {
+pub(crate) fn directory(path: &str) -> &str {
     path.rsplit_once('/').map_or("", |(at, _)| at)
 }

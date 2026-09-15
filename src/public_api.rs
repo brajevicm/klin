@@ -1,0 +1,474 @@
+//! The `public-api` check: a consumer-facing Rust or TypeScript contract the base exposed is
+//! gone, or its declared contract changed, while the repository still compiles. It derives the
+//! public surfaces of both trees from Cargo library targets and package entry points, through
+//! the shared structural facts and module graph, and needs no configuration. Identity is the
+//! surface a consumer addresses plus the exported path or name and the item's kind, never the
+//! file that declares it, so a move behind an unchanged identity passes. Each break carries
+//! `break` at 1, the base holds none, and an intentional break is an accepted entry. The
+//! section is absent, or `false` to exclude the gate. Spec 8.2.1, ADR 0044.
+
+use std::collections::HashMap;
+use std::fmt::Write;
+use std::path::{Path, PathBuf};
+
+use serde_json::Value;
+
+use crate::base;
+use crate::changed;
+use crate::check::{self, Context, Sink};
+use crate::config::Error;
+use crate::coverage::Coverage;
+use crate::modules::{self, ModuleGraph, Topology};
+use crate::project::{Project, Tree};
+use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::reference::Key;
+use crate::surface::{self, Contract, Derived, Item, Surface};
+use crate::syntax::{self, structural};
+
+pub const SECTION: &str = "public_api";
+pub const NAME: &str = "public-api";
+pub const KEYS: &[Key] = &[];
+
+const BREAK: &str = "break";
+const KIND: &str = "kind";
+const ORIGIN: &str = "origin";
+const WAS: &str = "was";
+const NOW: &str = "now";
+const REMOVED_SURFACE: &str = "removed surface";
+const REMOVED: &str = "removed";
+const CHANGED: &str = "changed";
+const SURFACE_TEXT: &str = "(surface)";
+const REMEDY: &str = "Restore the removed surface or item, or keep the declared contract it had at the base. \
+                      A break a person means is an accepted entry, written in a reviewed commit.";
+
+#[derive(clap::Args)]
+pub struct Args {
+    /// The klin.json to run under (default: the nearest one above the working directory)
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Print nothing on success
+    #[arg(long)]
+    quiet: bool,
+    /// Fail when an accepted entry matches nothing — what CI runs
+    #[arg(long)]
+    strict: bool,
+    /// Print the derived public surfaces of the working tree, item by item, without judging them
+    #[arg(long)]
+    report: bool,
+}
+
+/// One tree as the gate judges it: its surfaces, its module graph, and the files the grammar
+/// refused.
+struct Side {
+    derived: Derived,
+    graph: ModuleGraph,
+    unparsed: Vec<syntax::Unparsed>,
+}
+
+pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start)?;
+    let at = Context {
+        strict: args.strict,
+        quiet: args.quiet,
+        ..Context::by_hand(NAME, &project)
+    };
+    let mut sink = Sink::unrecorded(out);
+    match args.report {
+        true => report(&at, &mut sink),
+        false => gate(&at, &mut sink),
+    }
+}
+
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    at.config().policy(SECTION, KEYS)?;
+    let commit = base::commit(at.project.root(), at, out)?;
+    let (was, now) = sides(at, &commit, out)?;
+    out.record(|records| {
+        records.graph = Some(was.graph.cost() + now.graph.cost());
+        records.surface = Some(was.derived.cost() + now.derived.cost());
+    });
+    let findings = breaks(&was.derived, &now.derived);
+    let code = judged(at, &now, findings, out)?;
+    let code = holes_said(&now, at, code, out);
+    inapplicable_note(&now.derived, out);
+    let inside: Vec<syntax::Unparsed> = now
+        .unparsed
+        .iter()
+        .filter(|file| {
+            now.derived
+                .surfaces
+                .iter()
+                .any(|surface| surface.files.binary_search(&file.file).is_ok())
+        })
+        .cloned()
+        .collect();
+    Ok(syntax::unread(&inside, at, code, out))
+}
+
+/// The base and the working tree, each measured, resolved and derived. A changed run that is
+/// not strict takes the base's facts for every file it did not change, as `layering` does, and
+/// judges every file of both trees whatever its scope, because a manifest or a re-export can
+/// change what an unchanged file means to a consumer.
+fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
+    let project = at.project;
+    let prior = base::whole(at, commit)?;
+    let unchanged = base::unchanged(at, prior, commit)?;
+    let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
+    let before = structural::measure_all(prior.tree(), None)?;
+    after.cost = after.cost
+        + unchanged.map_or_else(
+            structural::ExtractionCost::default,
+            structural::Unchanged::publish,
+        );
+    out.record(|records| records.facts = Some(before.cost + after.cost));
+    let renamed = changed::renamed(&project.changes(commit)?);
+    Ok((
+        side(prior.tree(), &before, &renamed)?,
+        side(project.tree(), &after, &HashMap::new())?,
+    ))
+}
+
+fn side(
+    tree: &Tree,
+    measured: &structural::Measurement,
+    renamed: &HashMap<String, String>,
+) -> Result<Side, Error> {
+    let layout = Topology::new(tree.root(), tree.files()?, measured.facts(), renamed);
+    let graph = modules::build(&layout);
+    let derived = surface::derive(&layout, &graph);
+    Ok(Side {
+        derived,
+        graph,
+        unparsed: measured
+            .unparsed
+            .iter()
+            .map(|file| syntax::Unparsed {
+                file: renamed
+                    .get(&file.file)
+                    .cloned()
+                    .unwrap_or_else(|| file.file.clone()),
+                language: file.language,
+            })
+            .collect(),
+    })
+}
+
+pub fn language_extensions() -> Vec<(&'static str, String)> {
+    structural::language_extensions()
+}
+
+/// Every break the working tree makes against the base: a base surface the working tree lacks,
+/// once at the surface; and for every item of a surface both hold, an item gone, a measured
+/// contract changed or no longer declared, or an opaque clause changed. An addition is never a
+/// break, and an opaque item that became measured is not one either.
+fn breaks(was: &Derived, now: &Derived) -> Vec<Finding> {
+    let mut out = Vec::new();
+    for surface in &was.surfaces {
+        let Some(after) = now.surfaces.iter().find(|held| held.id == surface.id) else {
+            out.push(finding(
+                surface,
+                None,
+                SURFACE_TEXT,
+                REMOVED_SURFACE,
+                None,
+                None,
+            ));
+            continue;
+        };
+        for item in &surface.items {
+            let text = format!("{} ({})", item.path, item.kind);
+            match after.item(&item.path, item.kind) {
+                None => out.push(finding(surface, Some(item), &text, REMOVED, None, None)),
+                Some(current) => {
+                    if let Some((was, now)) = changed(&item.contract, &current.contract) {
+                        out.push(finding(
+                            surface,
+                            Some(current),
+                            &text,
+                            CHANGED,
+                            Some(was),
+                            Some(now),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    out.sort_by(|a, b| (&a.file, &a.text).cmp(&(&b.file, &b.text)));
+    out
+}
+
+/// The two contracts of one item where the working tree's breaks the base's, in the words a
+/// failure prints, and `None` where it does not.
+fn changed(was: &Contract, now: &Contract) -> Option<(String, String)> {
+    match (was, now) {
+        (Contract::Measured(before), Contract::Measured(after)) if before != after => {
+            Some((before.clone(), after.clone()))
+        }
+        (Contract::Measured(before), Contract::Opaque(_)) => {
+            Some((before.clone(), "no declared contract".to_string()))
+        }
+        (Contract::Opaque(Some(before)), Contract::Opaque(Some(after))) if before != after => {
+            Some((before.clone(), after.clone()))
+        }
+        _ => None,
+    }
+}
+
+fn finding(
+    surface: &Surface,
+    item: Option<&Item>,
+    text: &str,
+    kind: &str,
+    was: Option<String>,
+    now: Option<String>,
+) -> Finding {
+    let mut values = Values::new();
+    values.insert(BREAK.into(), 1.into());
+    values.insert(KIND.into(), kind.into());
+    if let Some((file, line)) = item.and_then(|item| item.origin.as_ref()) {
+        values.insert(ORIGIN.into(), format!("{file}:{line}").into());
+    }
+    if let (Some(was), Some(now)) = (was, now) {
+        values.insert(WAS.into(), was.into());
+        values.insert(NOW.into(), now.into());
+    }
+    Finding {
+        file: surface.id.clone(),
+        line: item
+            .and_then(|item| item.origin.as_ref())
+            .map_or(0, |(_, line)| *line),
+        text: text.to_string(),
+        values,
+        body: None,
+    }
+}
+
+fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> Result<u8, Error> {
+    let cost = now.derived.cost();
+    let coverage = Coverage {
+        found: cost.surfaces + now.derived.inapplicable.len(),
+        measured: cost.surfaces,
+        not_measured: now.derived.inapplicable.len(),
+        excluded: 0,
+        unreadable: 0,
+    };
+    let said = coverage.said(out);
+    let ok = format!(
+        "OK: {} external item(s) on {} surface(s) judged against the base, {} measured, {} opaque, no removal or contract change{said}; {}",
+        cost.items,
+        cost.surfaces,
+        cost.measured,
+        cost.opaque,
+        discovered(&now.derived)
+    );
+    let evaluator = evaluator();
+    Ok(evaluator.evaluate(
+        findings,
+        Vec::new(),
+        ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
+        at,
+        &ok,
+        out,
+    ))
+}
+
+/// Where the working tree's surfaces came from, and what klin found and derived nothing from.
+fn discovered(derived: &Derived) -> String {
+    let rust = derived
+        .surfaces
+        .iter()
+        .filter(|surface| surface.language == "Rust")
+        .count();
+    let typescript = derived.surfaces.len() - rust;
+    format!(
+        "{rust} Rust library target(s), {typescript} TypeScript entry point(s), {} package(s) or target(s) with no supported surface",
+        derived.inapplicable.len()
+    )
+}
+
+fn evaluator() -> Evaluator<'static> {
+    Evaluator {
+        metrics: &[BREAK],
+        unit: "compatibility break(s)",
+        condition: "where an external surface or item the base exposed is gone or its declared contract changed",
+        fix_advice: REMEDY,
+        ceiling: None,
+        format_metrics: show,
+    }
+}
+
+fn show(values: &Values) -> String {
+    let text = |key: &str| values.get(key).and_then(Value::as_str).unwrap_or("");
+    let origin = match text(ORIGIN) {
+        "" => String::new(),
+        origin => format!(", declared at {origin}"),
+    };
+    match text(KIND) {
+        CHANGED => format!("changed{origin}, was `{}`, now `{}`", text(WAS), text(NOW)),
+        REMOVED_SURFACE => "the whole surface is gone".to_string(),
+        REMOVED => format!("removed{origin}"),
+        _ => BREAK.to_string(),
+    }
+}
+
+/// The forms klin recognizes inside a supported surface and could not resolve, the module
+/// resolution holes of #50 inside one, and the surfaces whose entry klin could not measure: a
+/// NOTE in the hook, and exit 2 elsewhere, because a green run must not imply a surface was
+/// completely measured. ADR 0021, spec 8.6.
+fn holes_said(now: &Side, at: &Context, code: u8, out: &mut Sink) -> u8 {
+    let mut named: Vec<(String, u64, String, String)> = Vec::new();
+    for surface in &now.derived.surfaces {
+        for hole in &surface.holes {
+            named.push((
+                hole.file.clone(),
+                hole.line,
+                hole.text.clone(),
+                format!("{} — {}", surface.id, hole.why),
+            ));
+        }
+        for hole in &now.graph.holes {
+            if surface.files.binary_search(&hole.file).is_ok() {
+                named.push((
+                    hole.file.clone(),
+                    hole.line,
+                    hole.text.clone(),
+                    format!("{} — {}", surface.id, hole.why),
+                ));
+            }
+        }
+    }
+    named.sort();
+    named.dedup();
+    if named.is_empty() {
+        return code;
+    }
+    let word = if at.hook() { "NOTE" } else { "FAIL" };
+    let _ = writeln!(
+        out.text,
+        "{word}: {} form(s) inside a supported public surface could not be resolved, so the surface is not completely measured:",
+        named.len()
+    );
+    for (file, line, text, why) in &named {
+        let _ = writeln!(out.text, "  {file}:{line}  {text}  — {why}");
+    }
+    let _ = writeln!(
+        out.text,
+        "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds."
+    );
+    out.record(|records| {
+        for (file, line, text, why) in &named {
+            let record = serde_json::json!({
+                "outcome": check::UNRESOLVED,
+                "file": file,
+                "line": line,
+                "text": format!("{text} — {why}"),
+            });
+            match at.hook() {
+                true => records.notes.push(record),
+                false => records.findings.push(record),
+            }
+        }
+    });
+    if at.hook() { code } else { 2 }
+}
+
+/// The packages and targets klin found and derived no surface from, said once, because a run
+/// over them is not a compatibility success.
+fn inapplicable_note(derived: &Derived, out: &mut Sink) {
+    if derived.inapplicable.is_empty() {
+        return;
+    }
+    let mut note = format!(
+        "{} package(s) or target(s) with no supported public surface:",
+        derived.inapplicable.len()
+    );
+    for held in derived.inapplicable.iter().take(20) {
+        let _ = write!(note, "\n  {}: {}", held.what, held.why);
+    }
+    if derived.inapplicable.len() > 20 {
+        let _ = write!(note, "\n  … and {} more", derived.inapplicable.len() - 20);
+    }
+    ratchet::noted(&[(String::new(), note)], out);
+}
+
+/// The derived contract of the working tree, item by item, so automatic derivation is
+/// inspectable. Nothing is judged and no base is read.
+fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    at.config().policy(SECTION, KEYS)?;
+    let tree = at.project.tree();
+    let measured = structural::measure_all(tree, None)?;
+    let layout = Topology::new(
+        tree.root(),
+        tree.files()?,
+        measured.facts(),
+        &HashMap::new(),
+    );
+    let graph = modules::build(&layout);
+    let derived = surface::derive(&layout, &graph);
+    let cost = derived.cost();
+    let _ = writeln!(
+        out.text,
+        "REPORT: {} surface(s), {} item(s): {} measured, {} opaque, {} hole(s), {} package(s) or target(s) with no supported surface",
+        cost.surfaces,
+        cost.items,
+        cost.measured,
+        cost.opaque,
+        cost.holes,
+        derived.inapplicable.len()
+    );
+    for surface in &derived.surfaces {
+        let _ = writeln!(
+            out.text,
+            "surface {}  {} — {}",
+            surface.id, surface.language, surface.source
+        );
+        for item in &surface.items {
+            let origin = item
+                .origin
+                .as_ref()
+                .map_or(String::new(), |(file, line)| format!("  {file}:{line}"));
+            match &item.contract {
+                Contract::Measured(signature) => {
+                    let _ = writeln!(
+                        out.text,
+                        "  {}  {}  measured{origin}\n      {signature}",
+                        identity(surface, item),
+                        item.kind
+                    );
+                }
+                Contract::Opaque(clause) => {
+                    let clause = clause
+                        .as_ref()
+                        .map_or(String::new(), |clause| format!(" ({clause})"));
+                    let _ = writeln!(
+                        out.text,
+                        "  {}  {}  opaque{clause}{origin}",
+                        identity(surface, item),
+                        item.kind
+                    );
+                }
+            }
+        }
+        for hole in &surface.holes {
+            let _ = writeln!(
+                out.text,
+                "  hole {}:{}  {}  — {}",
+                hole.file, hole.line, hole.text, hole.why
+            );
+        }
+    }
+    for held in &derived.inapplicable {
+        let _ = writeln!(out.text, "not applicable: {}: {}", held.what, held.why);
+    }
+    Ok(0)
+}
+
+/// What a consumer writes for one item: the crate path for Rust, the package, subpath and name
+/// for TypeScript.
+fn identity(surface: &Surface, item: &Item) -> String {
+    match surface.language {
+        "Rust" => format!("{}::{}", surface.id, item.path),
+        _ => format!("{} {}", surface.id, item.path),
+    }
+}
