@@ -119,7 +119,7 @@ struct Counts {
 }
 
 #[test]
-#[ignore = "expensive; warm20: KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture; warm100: KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm100 cargo test --release --test performance -- --ignored perf --nocapture"]
+#[ignore = "expensive; run with cargo test -- --ignored perf --nocapture"]
 fn performance_fixture() {
     let case = perf_case();
     match std::env::var("KLIN_PERF_ROW").as_deref() {
@@ -371,40 +371,61 @@ impl Fixture {
     }
 
     fn measure(&self, case: PerfCase) -> Measurements {
+        self.prime();
+        let changed = self.change20();
+        match case {
+            PerfCase::Warm20 => self.warm20(changed),
+            PerfCase::Warm100 => self.warm100(),
+            PerfCase::Full => self.full(changed),
+        }
+    }
+
+    fn prime(&self) {
         let primed = self.tree.run(&["radius"]);
         assert_eq!(primed.code, 0, "prime state: {}", primed.out);
         let primed = self.hook();
         assert_eq!(primed.code, 0, "prime survey: {}", primed.out);
         assert!(primed.out.is_empty(), "prime survey: {}", primed.out);
+    }
 
+    fn change20(&self) -> Counts {
         self.change();
         let changed = changed_counts(self.tree.root());
         assert_eq!(changed.rust, 10, "changed Rust file count");
         assert_eq!(changed.typescript, 10, "changed TypeScript file count");
         assert_eq!(changed.rust + changed.typescript, 20, "changed file count");
+        changed
+    }
 
-        if case == PerfCase::Warm100 {
-            let (changed, delta) = self.change_delta();
-            self.dense_gate_shape_is_present(&delta);
-            self.dense_cache_shape_is_present(&delta, 100);
-            return Measurements {
-                changed,
-                warm_delta: Some((changed.rust + changed.typescript, delta)),
-                ..Default::default()
-            };
-        }
-
+    fn warm(&self, changed: Counts) -> Samples {
         let warm = repeat(|| self.timed_hook());
         self.dense_cache_shape_is_present(&warm, changed.rust + changed.typescript);
-        if case == PerfCase::Warm20 {
-            self.dense_gate_shape_is_present(&warm);
-            return Measurements {
-                changed,
-                warm,
-                ..Default::default()
-            };
-        }
+        warm
+    }
 
+    fn warm20(&self, changed: Counts) -> Measurements {
+        let warm = self.warm(changed);
+        self.dense_gate_shape_is_present(&warm);
+        Measurements {
+            changed,
+            warm,
+            ..Default::default()
+        }
+    }
+
+    fn warm100(&self) -> Measurements {
+        let (changed, delta) = self.change_delta();
+        self.dense_gate_shape_is_present(&delta);
+        self.dense_cache_shape_is_present(&delta, 100);
+        Measurements {
+            changed,
+            warm_delta: Some((changed.rust + changed.typescript, delta)),
+            ..Default::default()
+        }
+    }
+
+    fn full(&self, changed: Counts) -> Measurements {
+        let warm = self.warm(changed);
         let uncached = repeat(|| {
             self.remove_structural_cache();
             self.timed_hook()
