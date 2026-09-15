@@ -648,6 +648,18 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         changed.rust,
         changed.typescript
     );
+    print_samples(size, rows);
+    print_resources(&rows.resources);
+    println!("note: hook timings exclude the project's build command");
+    println!("klin version: {}", env!("CARGO_PKG_VERSION"));
+    println!(
+        "machine: {}/{}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+}
+
+fn print_samples(size: usize, rows: &Measurements) {
     println!(
         "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
         size,
@@ -680,14 +692,6 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
             gate_medians(samples)
         );
     }
-    print_resources(&rows.resources);
-    println!("note: hook timings exclude the project's build command");
-    println!("klin version: {}", env!("CARGO_PKG_VERSION"));
-    println!(
-        "machine: {}/{}",
-        std::env::consts::OS,
-        std::env::consts::ARCH
-    );
 }
 
 /// The structural cache the cold rows' `cache clean` removed is written again by one Stop first,
