@@ -11,6 +11,13 @@ const ITERATIONS: usize = 5;
 const EVENTS: usize = 1_000;
 const STRUCTURAL_CACHE: &str = "cache/structural";
 
+#[derive(Clone, Copy, PartialEq)]
+enum PerfCase {
+    Full,
+    Warm20,
+    Warm100,
+}
+
 const DECLARATIONS_PER_KLOC: std::ops::RangeInclusive<usize> = 270..=290;
 
 #[derive(Clone, Copy)]
@@ -112,24 +119,54 @@ struct Counts {
 }
 
 #[test]
-#[ignore = "expensive; run with cargo test -- --ignored perf --nocapture"]
+#[ignore = "expensive; warm20: KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture; warm100: KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm100 cargo test --release --test performance -- --ignored perf --nocapture"]
 fn performance_fixture() {
+    let case = perf_case();
     match std::env::var("KLIN_PERF_ROW").as_deref() {
-        Err(_) => base_rows(),
-        Ok("structural_300k") => run_fixture(5_000, DENSE_300K),
-        Ok("structural_1m") => run_fixture(5_000, DENSE_1M),
-        Ok("source_areas") => source_area_rows(),
+        Err(_) => {
+            require_300k_case(case);
+            base_rows();
+        }
+        Ok("structural_300k") => run_fixture(5_000, DENSE_300K, case),
+        Ok("structural_1m") => {
+            require_300k_case(case);
+            run_fixture(5_000, DENSE_1M, PerfCase::Full);
+        }
+        Ok("source_areas") => {
+            require_300k_case(case);
+            source_area_rows();
+        }
         Ok(other) => {
             panic!("KLIN_PERF_ROW={other}: expected structural_300k, structural_1m or source_areas")
         }
     }
 }
 
+fn require_300k_case(case: PerfCase) {
+    assert!(
+        case == PerfCase::Full,
+        "KLIN_PERF_CASE=warm20 or warm100 requires KLIN_PERF_ROW=structural_300k"
+    );
+}
+
+fn perf_case() -> PerfCase {
+    match std::env::var("KLIN_PERF_CASE").as_deref() {
+        Err(_) | Ok("full") => PerfCase::Full,
+        Ok("warm20") => PerfCase::Warm20,
+        Ok("warm100") => PerfCase::Warm100,
+        Ok(other) => panic!(
+            "KLIN_PERF_CASE={other}: expected full, warm20 or warm100.\n\
+             300k warm20: KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture\n\
+             300k warm100: KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm100 cargo test --release --test performance -- --ignored perf --nocapture"
+        ),
+    }
+}
+
 fn base_rows() {
     let small = Fixture::new(1_000);
-    let small_rows = small.measure();
+    let small_rows = small.measure(PerfCase::Full);
     let guard_rows = guard(&small.tree);
-    print_rows(&small, &small_rows);
+    print_rows(&small, &small_rows, PerfCase::Full);
     println!(
         "guard 1000 events: cache=separate, iterations={ITERATIONS}, median_ms={}, per_event_ms={:.3}",
         median(&guard_rows),
@@ -137,8 +174,8 @@ fn base_rows() {
     );
 
     let large = Fixture::new(5_000);
-    let large_rows = large.measure();
-    print_rows(&large, &large_rows);
+    let large_rows = large.measure(PerfCase::Full);
+    print_rows(&large, &large_rows, PerfCase::Full);
 }
 
 /// The same 2,000 source files split over 2, 100 and 500 derived source areas, each row the
@@ -212,10 +249,10 @@ fn source_areas(files_per_language: usize, areas: usize) -> Tree {
     tree
 }
 
-fn run_fixture(files_per_language: usize, profile: Profile) {
+fn run_fixture(files_per_language: usize, profile: Profile, case: PerfCase) {
     let fixture = Fixture::with_profile(files_per_language, profile);
-    let rows = fixture.measure();
-    print_rows(&fixture, &rows);
+    let rows = fixture.measure(case);
+    print_rows(&fixture, &rows, case);
 }
 
 impl Fixture {
@@ -333,7 +370,7 @@ impl Fixture {
         assert_eq!(median_counter("public-api_surface_holes"), 0);
     }
 
-    fn measure(&self) -> Measurements {
+    fn measure(&self, case: PerfCase) -> Measurements {
         let primed = self.tree.run(&["radius"]);
         assert_eq!(primed.code, 0, "prime state: {}", primed.out);
         let primed = self.hook();
@@ -346,8 +383,28 @@ impl Fixture {
         assert_eq!(changed.typescript, 10, "changed TypeScript file count");
         assert_eq!(changed.rust + changed.typescript, 20, "changed file count");
 
+        if case == PerfCase::Warm100 {
+            let (changed, delta) = self.change_delta();
+            self.dense_gate_shape_is_present(&delta);
+            self.dense_cache_shape_is_present(&delta, 100);
+            return Measurements {
+                changed,
+                warm_delta: Some((changed.rust + changed.typescript, delta)),
+                ..Default::default()
+            };
+        }
+
         let warm = repeat(|| self.timed_hook());
         self.dense_cache_shape_is_present(&warm, changed.rust + changed.typescript);
+        if case == PerfCase::Warm20 {
+            self.dense_gate_shape_is_present(&warm);
+            return Measurements {
+                changed,
+                warm,
+                ..Default::default()
+            };
+        }
+
         let uncached = repeat(|| {
             self.remove_structural_cache();
             self.timed_hook()
@@ -376,10 +433,10 @@ impl Fixture {
         self.dense_gate_shape_is_present(&strict);
         let resources = resources(self);
         let warm_delta = if self.profile.units.is_some() {
-            let delta = self.change_delta();
+            let (changed, delta) = self.change_delta();
             self.dense_gate_shape_is_present(&delta);
             self.dense_cache_shape_is_present(&delta, 100);
-            Some((100, delta))
+            Some((changed.rust + changed.typescript, delta))
         } else {
             None
         };
@@ -430,7 +487,7 @@ impl Fixture {
         self.change_range(0, 10);
     }
 
-    fn change_delta(&self) -> Samples {
+    fn change_delta(&self) -> (Counts, Samples) {
         self.change_range(10, 50);
         let changed = changed_counts(self.tree.root());
         assert_eq!(changed.rust, 50, "scaled changed Rust file count");
@@ -446,7 +503,7 @@ impl Fixture {
         let primed = self.hook();
         assert_eq!(primed.code, 0, "scaled survey: {}", primed.out);
         assert!(primed.out.is_empty(), "scaled survey: {}", primed.out);
-        repeat(|| self.timed_hook())
+        (changed, repeat(|| self.timed_hook()))
     }
 
     fn change_range(&self, from: usize, to: usize) {
@@ -670,7 +727,7 @@ fn toolchain() -> (Tree, String) {
     (tools, path)
 }
 
-fn print_rows(fixture: &Fixture, rows: &Measurements) {
+fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
     let counts = count_paths(git_paths(fixture.tree.root(), ["ls-files", "-z"]));
     let changed = rows.changed;
     let size = fixture.files_per_language * 2;
@@ -690,8 +747,10 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         changed.rust,
         changed.typescript
     );
-    print_samples(size, rows);
-    print_resources(&rows.resources);
+    print_samples(size, rows, case);
+    if case == PerfCase::Full {
+        print_resources(&rows.resources);
+    }
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
     println!(
@@ -701,38 +760,44 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
     );
 }
 
-fn print_samples(size: usize, rows: &Measurements) {
-    println!(
-        "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
-        size,
-        median(&rows.warm.total),
-        gate_medians(&rows.warm)
-    );
-    println!(
-        "{} warm hook without the structural cache: cache=warm, structural_cache=removed, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
-        size,
-        median(&rows.uncached.total),
-        gate_medians(&rows.uncached)
-    );
-    println!(
-        "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}, {}",
-        size,
-        median(&rows.cold.total),
-        gate_medians(&rows.cold)
-    );
-    println!(
-        "{} strict: cache=warm, iterations={ITERATIONS}, median_ms={}, {}",
-        size,
-        median(&rows.strict.total),
-        gate_medians(&rows.strict)
-    );
-    if let Some((changed, samples)) = &rows.warm_delta {
+fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
+    if case != PerfCase::Warm100 {
         println!(
-            "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
             size,
-            median(&samples.total),
-            gate_medians(samples)
+            median(&rows.warm.total),
+            gate_medians(&rows.warm)
         );
+    }
+    if case == PerfCase::Full {
+        println!(
+            "{} warm hook without the structural cache: cache=warm, structural_cache=removed, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            size,
+            median(&rows.uncached.total),
+            gate_medians(&rows.uncached)
+        );
+        println!(
+            "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}, {}",
+            size,
+            median(&rows.cold.total),
+            gate_medians(&rows.cold)
+        );
+        println!(
+            "{} strict: cache=warm, iterations={ITERATIONS}, median_ms={}, {}",
+            size,
+            median(&rows.strict.total),
+            gate_medians(&rows.strict)
+        );
+    }
+    if case != PerfCase::Warm20 {
+        if let Some((changed, samples)) = &rows.warm_delta {
+            println!(
+                "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+                size,
+                median(&samples.total),
+                gate_medians(samples)
+            );
+        }
     }
 }
 
