@@ -239,7 +239,7 @@ property. The red-turn lifecycle test also revisits the exact stamped base
 after a prompt and branch switch.
 
 Measured 2026-09-15 on the same baseline machine, release build of 0.1.1
-from the working tree based on 9b8d42e, with five iterations per row:
+from implementation commit 9909b9f, with five iterations per row:
 
 | Source row | Warm, 20 changed | Warm, 100 changed | Warm, no cache | Cold | Strict | Cache bytes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
