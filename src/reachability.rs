@@ -144,8 +144,14 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let families = families(project)?;
     said_families(&families, out);
     let commit = base::commit(config.root(), at, out)?;
-    let after = measure(project.tree(), &families)?;
-    let (before, before_families) = before(at, &families, &commit)?;
+    let prior = base::whole(at, &commit)?;
+    let unchanged = at
+        .changes
+        .filter(|_| !at.strict)
+        .map(|changes| structural::Unchanged::new(prior.tree(), changes))
+        .transpose()?;
+    let after = measure(project.tree(), &families, unchanged.as_ref())?;
+    let (before, before_families) = before(at, &families, prior)?;
     out.record(|records| records.facts = Some(before.cost + after.cost));
     let (before_states, _) = states(&before.index, &before_families);
     let (after_states, unjudged) = states(&after.index, &families);
@@ -285,7 +291,11 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 
 /// The whole tree under the root, in the families' languages, because a caller may sit
 /// anywhere in the repository and a member is reached by any of them. Spec 8.4.
-fn measure(tree: &Tree, families: &[Family]) -> Result<Measurement, Error> {
+fn measure(
+    tree: &Tree,
+    families: &[Family],
+    unchanged: Option<&structural::Unchanged>,
+) -> Result<Measurement, Error> {
     let mut extensions: Vec<&str> = families
         .iter()
         .flat_map(|family| family.extensions.iter().copied())
@@ -301,7 +311,7 @@ fn measure(tree: &Tree, families: &[Family]) -> Result<Measurement, Error> {
         skip_hidden: true,
     };
     let found = files::found(tree, &[tree.root().to_path_buf()], &wanted)?;
-    structural::measure(found, tree, None)
+    structural::measure(found, tree, unchanged)
 }
 
 /// The derived families as one provenance line and its JSON entry, and nothing when none is.
@@ -332,11 +342,13 @@ fn said_families(families: &[Family], out: &mut Sink) {
 fn before(
     at: &Context,
     families: &[Family],
-    commit: &str,
+    prior: &base::Prior,
 ) -> Result<(Measurement, Vec<Family>), Error> {
-    let prior = base::whole(at, commit)?;
     let before_families = base_families(at.config(), prior.root(), families);
-    Ok((measure(prior.tree(), &before_families)?, before_families))
+    Ok((
+        measure(prior.tree(), &before_families, None)?,
+        before_families,
+    ))
 }
 
 /// Each derived family under the compact scope recorded by the base commit. Spec 8.6.

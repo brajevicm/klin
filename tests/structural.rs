@@ -303,8 +303,19 @@ fn a_changed_run_shares_one_whole_base_between_structural_gates() {
         "pub fn run_alpha() {}\npub fn also() {}\n",
     );
 
-    let report = judged(&tree, &["--changed"], &["dead-symbols", "reachability"]);
+    let run = tree.run(&[
+        "gate",
+        "--json",
+        "--changed",
+        "--gate",
+        "dead-symbols",
+        "--gate",
+        "reachability",
+    ]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("\"extracted\":0"), "{}", run.out);
+    let report = run.json();
 
     assert_eq!(extracted(&report, "dead-symbols"), (5, 3), "{report}");
-    assert_eq!(extracted(&report, "reachability"), (3, 5), "{report}");
+    assert_eq!(extracted(&report, "reachability"), (0, 8), "{report}");
 }

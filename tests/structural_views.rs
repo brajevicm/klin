@@ -4,29 +4,54 @@ use harness::{Run, Tree};
 use serde_json::{Value, json};
 
 const CONFIG: &str = r#"{"dead_symbols":{"in":["src","web"]}}"#;
+const REACHABILITY_CONFIG: &str = r#"{}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
 /// Every caller's view of one before and after pair. With `KLIN_DIFF_BIN` naming an earlier
 /// build, that build judges a second copy of the same trees, and the two views must match.
 fn views(scenario: fn(&Tree)) -> Value {
-    let seen = observed(&harness::binary(), scenario);
+    views_for(
+        CONFIG,
+        "dead-symbols",
+        &["dead-symbols", "--report"],
+        scenario,
+    )
+}
+
+fn reachability_views(scenario: fn(&Tree)) -> Value {
+    views_for(
+        REACHABILITY_CONFIG,
+        "reachability",
+        &["reachability"],
+        scenario,
+    )
+}
+
+fn views_for(config: &str, gate_name: &str, report: &[&str], scenario: fn(&Tree)) -> Value {
+    let seen = observed(&harness::binary(), config, gate_name, report, scenario);
     if let Ok(other) = std::env::var("KLIN_DIFF_BIN") {
         assert_eq!(
             seen,
-            observed(&other, scenario),
+            observed(&other, config, gate_name, report, scenario),
             "{other} judged differently"
         );
     }
     seen
 }
 
-fn observed(klin: &str, scenario: fn(&Tree)) -> Value {
+fn observed(
+    klin: &str,
+    config: &str,
+    gate_name: &str,
+    report: &[&str],
+    scenario: fn(&Tree),
+) -> Value {
     let tree = Tree::new();
-    tree.write("klin.json", CONFIG);
+    tree.write("klin.json", config);
     scenario(&tree);
     let run = |args: &[&str]| harness::feed_as(klin, tree.root(), args, A_STOP);
     let gate = |flags: &[&str]| {
-        let mut args = vec!["gate", "--json", "--gate", "dead-symbols"];
+        let mut args = vec!["gate", "--json", "--gate", gate_name];
         args.extend_from_slice(flags);
         normalized(&run(&args))
     };
@@ -34,9 +59,7 @@ fn observed(klin: &str, scenario: fn(&Tree)) -> Value {
     let strict = gate(&["--strict"]);
     let changed = gate(&["--changed"]);
     let base = tree.revision("main");
-    let report = run(&["dead-symbols", "--report"])
-        .out
-        .replace(&base[..7], "BASE");
+    let report = run(report).out.replace(&base[..7], "BASE");
     let hook = gate(&["--hook", "--changed"]);
     json!({"whole": whole, "strict": strict, "changed": changed, "report": report, "hook": hook})
 }
@@ -85,6 +108,150 @@ fn lines(view: &Value) -> Vec<String> {
 
 fn text(value: &Value) -> &str {
     value.as_str().unwrap_or_default()
+}
+
+fn reached_commands(tree: &Tree) {
+    for name in ["alpha", "beta", "gamma"] {
+        tree.write(
+            &format!("src/commands/{name}_command.rs"),
+            &format!("pub fn run_{name}() {{}}\n"),
+        );
+    }
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
+    );
+}
+
+#[test]
+fn reachability_uses_a_changed_outside_caller_for_an_unchanged_member() {
+    let seen = reachability_views(|tree| {
+        reached_commands(tree);
+        tree.base();
+        tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
+        tree.write("src/commands/epsilon_command.rs", "pub fn run_extra() {}\n");
+    });
+
+    assert!(
+        lines(&seen["whole"]).iter().any(
+            |line| line.contains("src/commands/alpha_command.rs") && line.contains("unreached")
+        ),
+        "{seen}"
+    );
+    assert_eq!(lines(&seen["strict"]), lines(&seen["whole"]));
+    assert_eq!(
+        lines(&seen["changed"]),
+        [
+            r#""FAIL" 1"#,
+            r#"new src/commands/epsilon_command.rs:0 file {"sibling":"src/commands/beta_command.rs","unreached":1}"#,
+        ]
+    );
+    assert_eq!(
+        lines(&seen["hook"])[1..],
+        lines(&seen["changed"])[1..],
+        "{seen}"
+    );
+}
+
+#[test]
+fn reachability_keeps_an_unchanged_caller_for_a_changed_member() {
+    let seen = reachability_views(|tree| {
+        reached_commands(tree);
+        tree.base();
+        tree.write(
+            "src/commands/alpha_command.rs",
+            "pub fn run_alpha() {}\npub fn also() {}\n",
+        );
+    });
+
+    assert_eq!(lines(&seen["whole"]), [r#""PASS" 0"#]);
+    assert_eq!(lines(&seen["changed"]), [r#""PASS" 0"#]);
+}
+
+#[test]
+fn reachability_keeps_ambiguous_references_and_sibling_evidence_stable() {
+    let seen = reachability_views(|tree| {
+        reached_commands(tree);
+        tree.base();
+        tree.write("src/commands/delta_command.rs", "pub fn run_alpha() {}\n");
+        tree.write("src/commands/epsilon_command.rs", "pub fn run_extra() {}\n");
+    });
+
+    assert_eq!(
+        lines(&seen["whole"]),
+        [
+            r#""FAIL" 1"#,
+            r#"new src/commands/epsilon_command.rs:0 file {"sibling":"src/commands/beta_command.rs","unreached":1}"#,
+        ]
+    );
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]), "{seen}");
+    assert_eq!(
+        lines(&seen["hook"])[1..],
+        lines(&seen["whole"])[1..],
+        "{seen}"
+    );
+}
+
+#[test]
+fn reachability_keeps_deletions_and_renames_on_the_same_view() {
+    let seen = reachability_views(|tree| {
+        reached_commands(tree);
+        tree.base();
+        tree.remove("src/commands/alpha_command.rs");
+        assert!(std::fs::create_dir_all(tree.path("src/other")).is_ok());
+        tree.git(&[
+            "mv",
+            "src/commands/beta_command.rs",
+            "src/other/beta_command.rs",
+        ]);
+        tree.git(&[
+            "mv",
+            "src/commands/gamma_command.rs",
+            "src/commands/gamma_command.ts",
+        ]);
+    });
+
+    assert_eq!(lines(&seen["whole"]), [r#""PASS" 0"#]);
+    assert_eq!(lines(&seen["changed"]), [r#""PASS" 0"#]);
+}
+
+#[test]
+fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
+    let seen = reachability_views(|tree| {
+        reached_commands(tree);
+        tree.base();
+        tree.write("src/commands/delta_command.rs", "pub fn broken( {\n");
+        tree.write("src/commands/tool.py", "def tool():\n    return 1\n");
+    });
+
+    assert!(
+        lines(&seen["whole"])[0] == r#""ERROR" 2"#
+            && lines(&seen["whole"])
+                .iter()
+                .any(|line| line.contains("delta_command.rs")),
+        "{seen}"
+    );
+    assert!(
+        lines(&seen["strict"])[0] == r#""ERROR" 2"#
+            && lines(&seen["strict"])
+                .iter()
+                .any(|line| line.contains("delta_command.rs")),
+        "{seen}"
+    );
+    assert!(
+        lines(&seen["changed"])[0] == r#""ERROR" 2"#
+            && lines(&seen["changed"])
+                .iter()
+                .any(|line| line.contains("delta_command.rs")),
+        "{seen}"
+    );
+    assert_eq!(lines(&seen["hook"])[0], r#""PASS" 1"#);
+    assert!(
+        lines(&seen["hook"])
+            .iter()
+            .any(|line| line.contains("delta_command.rs") && line.contains("grammar")),
+        "{seen}"
+    );
 }
 
 #[test]

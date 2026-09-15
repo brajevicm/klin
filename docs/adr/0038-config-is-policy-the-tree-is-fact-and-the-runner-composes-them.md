@@ -199,6 +199,14 @@ The base keeps each renamed file at its current path, so an
 extension-changing rename reads the old bytes under the new path's grammar,
 as before. The file set of each tree is still that tree's listing under that
 tree's scope, each measurement still builds its own `SourceIndex`, and the
-facts stay behind an `Rc` and die with the run. `reachability` still
-measures the working tree from its own extraction, so a run of both gates
-extracts as much as before, until #191 moves it onto the same view.
+facts stay behind an `Rc` and die with the run.
+
+## Follow-up: reachability over one base extraction (#191)
+
+The same `structural::Unchanged` view now serves `reachability`. In a changed
+run that is not strict, it takes the base extraction for every working-tree
+file the change set leaves out and the base lists under the same name. A run
+of both structural gates therefore extracts each unchanged file once for the
+comparison. Strict runs, whole runs and the check by hand keep extracting
+both trees, and each check still builds its own index from the files it
+selected.
