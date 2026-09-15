@@ -163,7 +163,7 @@ Every scenario in `tests/structural_views.rs` now runs `gate --changed` a
 second time over the cache and requires the same normalized output. Where the
 build records `cached`, the second run's `extracted` plus `cached` must equal
 the first run's `extracted`, so every base outcome that the change set does
-not name came from the cache. All 16 scenarios passed. Unit tests in `src/syntax/structural/cache.rs` cut the file
+not name came from the cache. All 17 scenarios passed. Unit tests in `src/syntax/structural/cache.rs` cut the file
 at every byte, change every byte, forge a body with a matching checksum, and
 change the epoch, version, commit and root, and each reads as no cache.
 
@@ -227,3 +227,54 @@ row.
   nor write the cache. The no-cache warm hook is 4% below #191 at 1M and 17%
   below at 300k, although that Stop also writes the cache. These rows do not
   show the cause of the 300k difference.
+
+### #193 completion
+
+The persistent policy is four newest base-commit snapshots. The cache writes
+the current snapshot atomically, then evicts older snapshots by modification
+time with a path tie-breaker. Six-base CLI coverage proves that an evicted
+base falls back to a cold run with the same verdict; missing, damaged,
+foreign, incompatible and checkout-stale files have the same fallback
+property. The red-turn lifecycle test also revisits the exact stamped base
+after a prompt and branch switch.
+
+Measured 2026-09-15 on the same baseline machine, release build of 0.1.1
+from the working tree based on 9b8d42e, with five iterations per row:
+
+| Source row | Warm, 20 changed | Warm, 100 changed | Warm, no cache | Cold | Strict | Cache bytes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 300k | 2,220 ms | 2,559 ms | 3,979 ms | 23,854 ms | 12,592 ms | 8,416,407 |
+| 1M | 2,860 ms | 3,220 ms | 8,090 ms | 48,177 ms | 30,724 ms | 25,863,432 |
+
+The full output records every gate for every row. The structural counters are
+the important fixed-repository scaling result:
+
+| Source row | Changed | Warm, 20: extracted / cached / shared | Changed | Warm, 100: extracted / cached / shared |
+| --- | ---: | ---: | ---: | ---: |
+| 300k | 20 | 40 / 9,980 / 9,980 | 100 | 200 / 9,900 / 9,900 |
+| 1M | 20 | 40 / 9,980 / 9,980 | 100 | 200 / 9,900 / 9,900 |
+
+The current sandbox did not expose peak RSS to the fixture, so its resource
+rows say unavailable rather than inventing a number. The controlled reference
+rows above still report 806,304 kB warm-cache and 833,648 kB without the cache
+at 1M, against the post-#183 roughly 955 MB comparison point; strict
+whole-tree work is the separate 1,019,936 kB path.
+
+The 1M snapshot is 25,863,432 bytes and the 300k snapshot is 8,416,407 bytes.
+Four equally sized retained snapshots therefore occupy at most 103,453,728
+bytes and 33,665,628 bytes respectively for these workloads. This is a
+measured retention envelope, not a byte-LRU policy. The 1M warm 20-file row is
+2.86 seconds, below the roughly 5 second milestone of #187.
+
+The boundary test in tests/structural_views.rs combines a cached Rust import
+and module declaration with an unparsed file and compares coverage and
+verdicts across runs. The structural cache round-trip tests cover the
+corresponding fact fields directly. Change remains run data, separate from
+the reusable structural facts, so this proves the #50 input boundary without
+adding module resolution, layering or cycle analysis.
+
+The dense fixture now reports the original 20-file warm row and a second
+100-file warm row for each source volume. Its assertions require changed-file
+fact extraction to scale with that delta while unchanged base outcomes stay
+cached and shared. The rows provide evidence for #182; they do not establish
+a final product performance or memory budget.

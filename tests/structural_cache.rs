@@ -213,6 +213,33 @@ fn the_four_newest_bases_keep_a_cache_and_an_older_one_is_removed() {
 }
 
 #[test]
+fn an_evicted_base_falls_back_to_cold_and_keeps_the_same_verdict() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let mut bases = Vec::new();
+    for at in 0..6 {
+        tree.write("src/lib.rs", &format!("pub fn api_{at}() {{}}\n"));
+        tree.base();
+        bases.push(tree.revision("main"));
+        let run = dead_symbols(&tree);
+        assert_eq!(run.code, 0, "{}", run.out);
+    }
+
+    assert!(!cache(&tree).join(&bases[0]).exists());
+    tree.git(&["checkout", "-q", "-b", "evicted"]);
+    tree.write("src/lib.rs", "pub fn api_0() {}\nfn newly_changed() {}\n");
+
+    let evicted = dead_symbols(&tree);
+    assert_eq!(counted(&facts(&evicted, "dead-symbols"))[3], 0);
+    assert_eq!(evicted.code, 1, "{}", evicted.out);
+
+    assert!(fs::remove_dir_all(cache(&tree)).is_ok());
+    let cold = dead_symbols(&tree);
+    assert_eq!(judged(&evicted), judged(&cold));
+    assert_eq!(counted(&facts(&cold, "dead-symbols"))[3], 0);
+}
+
+#[test]
 fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");

@@ -1242,6 +1242,11 @@ copied from another commit, a smudge filter added between two runs, the
 four-file bound, and repeated red stops through a prompt and a branch switch. `tests/structural_views.rs` repeats each changed
 caller over the cache and requires the same output.
 
+The shared structural view keeps imports and module declarations alongside
+declarations and references, and keeps unparsed and unsupported outcomes as
+coverage data. The project's Change data remains separate from the structural
+scope, so a consumer can reuse facts without losing which paths changed.
+
 The findings, notes, coverage and exit codes of a changed run are the ones
 two independent extractions give. `tests/structural_views.rs` pins the
 gate, changed and hook callers for edits, additions, deletions, both rename
@@ -2424,7 +2429,11 @@ read, write, shell, quoted-path, glob, heredoc, configuration-name and
 multi-path patch events through the real guard binary path five times, as a
 separate row. The test records the klin version, fixture counts, cache state,
 changed-file counts, iteration count and median milliseconds; it does not
-enforce the budgets on contributor hardware.
+enforce the budgets on contributor hardware. The dense rows additionally
+change 40 more files in each language and print a 100-file warm row. The dense
+fixture asserts that structural counters grow with that delta: changed files
+are extracted from both trees, while unchanged base files remain cached and
+shared.
 
 The same test also measures two source-dense structural rows. The
 `KLIN_PERF_ROW` environment variable selects one row:
@@ -2432,8 +2441,11 @@ The same test also measures two source-dense structural rows. The
 --ignored perf` or `KLIN_PERF_ROW=structural_1m`. Without the variable the
 test runs the 2k, 10k and guard rows as before. `structural_300k` holds 10,000
 source files and exactly 325,077 source lines. `structural_1m` holds the same
-5,000 Rust plus 5,000 TypeScript split and exactly 1,033,827 source lines. Both
-keep 50 `.tsx` files, tests, entry points and held escape and stub sites.
+5,000 Rust plus 5,000 TypeScript split and exactly 1,033,827 source lines.
+Each dense row reports the primary 20-file delta and the additional 100-file
+warm delta; the latter is a fixed-repository scaling check, not a product
+budget. Both rows keep 50 `.tsx` files, tests, entry points and held escape
+and stub sites.
 
 Each dense file repeats one structural unit: two constants, a struct or
 interface, a type alias, an `impl` or class with a method, a function in one of

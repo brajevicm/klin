@@ -77,7 +77,7 @@ impl Cache {
         }
     }
 
-    // ponytail: a file count by modification time, a storage budget across bases is #193's.
+    /// Keep the four newest snapshots; the resulting cross-base storage is measured by #193.
     fn evict(&self) {
         let Some(Ok(entries)) = self.file.parent().map(std::fs::read_dir) else {
             return;
@@ -88,7 +88,11 @@ impl Cache {
             .filter(|path| *path != self.file)
             .filter_map(|path| Some((path.metadata().ok()?.modified().ok()?, path)))
             .collect();
-        older.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
+        older.sort_by(|(left_time, left_path), (right_time, right_path)| {
+            right_time
+                .cmp(left_time)
+                .then_with(|| left_path.cmp(right_path))
+        });
         for (_, path) in older.into_iter().skip(KEPT - 1) {
             let _ = std::fs::remove_file(path);
         }

@@ -74,10 +74,13 @@ struct Fixture {
 
 #[derive(Default)]
 struct Measurements {
+    changed: Counts,
     warm: Samples,
     uncached: Samples,
     cold: Samples,
     strict: Samples,
+    warm_deltas: Vec<(usize, Samples)>,
+    resources: Resources,
 }
 
 #[derive(Default)]
@@ -86,12 +89,22 @@ struct Samples {
     gates: BTreeMap<String, Vec<u64>>,
 }
 
+#[derive(Default)]
+struct Resources {
+    cache_files: usize,
+    cache_bytes: u64,
+    warm_rss: Option<u64>,
+    uncached_rss: Option<u64>,
+    dead_symbols_rss: Option<u64>,
+    strict_rss: Option<u64>,
+}
+
 struct Sample {
     total: u128,
     gates: BTreeMap<String, u64>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 struct Counts {
     rust: usize,
     typescript: usize,
@@ -274,6 +287,20 @@ impl Fixture {
         }
     }
 
+    fn dense_cache_shape_is_present(&self, samples: &Samples, changed: usize) {
+        if self.profile.units.is_none() || std::env::var_os("KLIN_BIN").is_some() {
+            return;
+        }
+        let median_counter = |name: &str| median(&samples.gates[name]);
+        let unchanged = (self.files_per_language * 2 - changed) as u64;
+        assert_eq!(
+            median_counter("dead-symbols_facts_extracted"),
+            (changed * 2) as u64
+        );
+        assert_eq!(median_counter("dead-symbols_facts_cached"), unchanged);
+        assert_eq!(median_counter("dead-symbols_facts_shared"), unchanged);
+    }
+
     fn measure(&self) -> Measurements {
         let primed = self.tree.run(&["radius"]);
         assert_eq!(primed.code, 0, "prime state: {}", primed.out);
@@ -288,6 +315,7 @@ impl Fixture {
         assert_eq!(changed.rust + changed.typescript, 20, "changed file count");
 
         let warm = repeat(|| self.timed_hook());
+        self.dense_cache_shape_is_present(&warm, changed.rust + changed.typescript);
         let uncached = repeat(|| {
             self.remove_structural_cache();
             self.timed_hook()
@@ -314,11 +342,23 @@ impl Fixture {
         self.dense_gate_shape_is_present(&uncached);
         self.dense_gate_shape_is_present(&cold);
         self.dense_gate_shape_is_present(&strict);
+        let resources = resources(self);
+        let warm_deltas = if self.profile.units.is_some() {
+            let delta = self.change_delta();
+            self.dense_gate_shape_is_present(&delta);
+            self.dense_cache_shape_is_present(&delta, 100);
+            vec![(100, delta)]
+        } else {
+            Vec::new()
+        };
         Measurements {
+            changed,
             warm,
             uncached,
             cold,
             strict,
+            warm_deltas,
+            resources,
         }
     }
 
@@ -355,7 +395,30 @@ impl Fixture {
     }
 
     fn change(&self) {
-        for offset in 0..10 {
+        self.change_range(0, 10);
+    }
+
+    fn change_delta(&self) -> Samples {
+        self.change_range(10, 50);
+        let changed = changed_counts(self.tree.root());
+        assert_eq!(changed.rust, 50, "scaled changed Rust file count");
+        assert_eq!(
+            changed.typescript, 50,
+            "scaled changed TypeScript file count"
+        );
+        assert_eq!(
+            changed.rust + changed.typescript,
+            100,
+            "scaled changed file count"
+        );
+        let primed = self.hook();
+        assert_eq!(primed.code, 0, "scaled survey: {}", primed.out);
+        assert!(primed.out.is_empty(), "scaled survey: {}", primed.out);
+        repeat(|| self.timed_hook())
+    }
+
+    fn change_range(&self, from: usize, to: usize) {
+        for offset in from..to {
             let rust = offset + 4;
             self.tree.write(
                 &rust_path(rust),
@@ -554,7 +617,7 @@ fn toolchain() -> (Tree, String) {
 
 fn print_rows(fixture: &Fixture, rows: &Measurements) {
     let counts = count_paths(git_paths(fixture.tree.root(), ["ls-files", "-z"]));
-    let changed = changed_counts(fixture.tree.root());
+    let changed = rows.changed;
     let size = fixture.files_per_language * 2;
     println!(
         "fixture {} ({}, complexity_scope={}, config={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
@@ -596,7 +659,15 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
         median(&rows.strict.total),
         gate_medians(&rows.strict)
     );
-    print_resources(fixture);
+    for (changed, samples) in &rows.warm_deltas {
+        println!(
+            "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            size,
+            median(&samples.total),
+            gate_medians(samples)
+        );
+    }
+    print_resources(&rows.resources);
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
     println!(
@@ -608,21 +679,40 @@ fn print_rows(fixture: &Fixture, rows: &Measurements) {
 
 /// The structural cache the cold rows' `cache clean` removed is written again by one Stop first,
 /// so its size and the warm peak describe a Stop that reads it.
-fn print_resources(fixture: &Fixture) {
+fn resources(fixture: &Fixture) -> Resources {
     let primed = fixture.hook();
     assert_eq!(primed.code, 0, "structural cache prime: {}", primed.out);
     let (files, bytes) = fixture.structural_cache();
-    println!("structural cache: files={files}, bytes={bytes}");
-    let rss = |args: &[&str]| {
-        peak_rss(fixture, args).map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
-    };
-    let warm = rss(&["gate", "--hook", "--changed"]);
-    let dead_symbols = rss(&["gate", "--changed", "--json", "--gate", "dead-symbols"]);
-    let strict = rss(&["gate", "--strict", "--json"]);
+    let warm = peak_rss(fixture, &["gate", "--hook", "--changed"]);
+    let dead_symbols = peak_rss(
+        fixture,
+        &["gate", "--changed", "--json", "--gate", "dead-symbols"],
+    );
+    let strict = peak_rss(fixture, &["gate", "--strict", "--json"]);
     fixture.remove_structural_cache();
-    let uncached = rss(&["gate", "--hook", "--changed"]);
+    let uncached = peak_rss(fixture, &["gate", "--hook", "--changed"]);
+    Resources {
+        cache_files: files,
+        cache_bytes: bytes,
+        warm_rss: warm,
+        uncached_rss: uncached,
+        dead_symbols_rss: dead_symbols,
+        strict_rss: strict,
+    }
+}
+
+fn print_resources(resources: &Resources) {
+    let rss = |kb: Option<u64>| kb.map_or_else(|| "unavailable".to_string(), |kb| kb.to_string());
     println!(
-        "resource: warm_hook_peak_rss_kb={warm}, warm_hook_without_structural_cache_peak_rss_kb={uncached}, dead_symbols_changed_peak_rss_kb={dead_symbols}, strict_peak_rss_kb={strict}"
+        "structural cache: files={}, bytes={}",
+        resources.cache_files, resources.cache_bytes
+    );
+    println!(
+        "resource: warm_hook_peak_rss_kb={}, warm_hook_without_structural_cache_peak_rss_kb={}, dead_symbols_changed_peak_rss_kb={}, strict_peak_rss_kb={}",
+        rss(resources.warm_rss),
+        rss(resources.uncached_rss),
+        rss(resources.dead_symbols_rss),
+        rss(resources.strict_rss)
     );
 }
 

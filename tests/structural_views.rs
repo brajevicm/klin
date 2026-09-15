@@ -325,6 +325,43 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
 }
 
 #[test]
+fn a_cached_structural_view_keeps_imports_modules_and_coverage_together() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write(
+        "src/lib.rs",
+        "use crate::child::helper;\nmod child;\nfn root() { helper(); }\n",
+    );
+    tree.write("src/child.rs", "pub fn helper() {}\n");
+    tree.write("src/broken.rs", "fn broken( {\n");
+    tree.base();
+    tree.write("src/changed.rs", "fn changed() {}\n");
+
+    let run = || tree.run(&["gate", "--json", "--changed", "--gate", "dead-symbols"]);
+    let first = run();
+    let again = run();
+    let report = |run: &Run| {
+        run.out
+            .lines()
+            .find_map(|line| serde_json::from_str::<Value>(line).ok())
+            .unwrap_or_default()
+    };
+    let (first_report, again_report) = (report(&first), report(&again));
+
+    assert_eq!(normalized(&first), normalized(&again));
+    assert!(
+        again_report["gates"][0]["facts"]["cached"]
+            .as_u64()
+            .is_some_and(|cached| cached > 0),
+        "{again_report}"
+    );
+    assert_eq!(
+        first_report["gates"][0]["coverage"],
+        again_report["gates"][0]["coverage"]
+    );
+}
+
+#[test]
 fn an_edit_is_judged_against_every_unchanged_declaration_and_reference() {
     let seen = views(|tree| {
         tree.write("src/lib.rs", "fn helper() {}\nfn spare() {}\n");

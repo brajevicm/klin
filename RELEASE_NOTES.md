@@ -14,6 +14,23 @@ verdict. `klin cache clean` removes the cache. Gate rows record `cached`,
 with 20 changed files, the warm hook median fell from 7,939 ms to 2,711 ms.
 Measurements are in `docs/structural-views-2026-09-15.md`.
 
+### Bounded structural reuse and dense scaling evidence
+
+Structural reuse keeps the four newest base snapshots. Missing, damaged,
+incompatible and evicted snapshots fall back to the same cold extraction, so
+eviction changes cost only. The CLI tests also exercise a cached view carrying
+imports, module declarations and coverage outcomes while the changed path set
+stays separate.
+
+The dense performance fixture keeps its 20-file rows and adds a 100-file warm
+row for both source volumes. It asserts that changed-file extraction grows
+with the delta while unchanged base facts remain cached and shared. The
+controlled measurements and disk/RSS evidence are in
+docs/structural-views-2026-09-15.md.
+The release run measured 2,220 ms warm and 2,559 ms at 100 changed files on
+the 300k row, and 2,860 ms warm and 3,220 ms at 100 changed files on the 1M
+row. The corresponding snapshots were 8,416,407 and 25,863,432 bytes.
+
 ### Structural gates share one extraction per tree
 
 A run extracts each structural file of a tree once, and gate rows record it

@@ -248,5 +248,6 @@ declaration and reference beside the facts built from it. The whole file is
 read at once. A lazy per-file
 or per-symbol format waits until a measurement shows that reading the whole
 file is the cost. Each turn's stamp is a new commit, so each write keeps the
-four newest cache files and removes the rest. A storage budget across bases
-is #193's.
+four newest cache files and removes the rest. Eviction is performance-only:
+an evicted base falls back to the same cold extraction, and #193 records the
+resulting cross-base disk cost.
