@@ -347,14 +347,17 @@ fn a_cached_structural_view_keeps_imports_modules_and_coverage_together() {
             .unwrap_or_default()
     };
     let (first_report, again_report) = (report(&first), report(&again));
+    let counted = |report: &Value| {
+        ["reads", "parses", "extracted", "cached"].map(|field| {
+            report["gates"][0]["facts"][field]
+                .as_u64()
+                .unwrap_or(u64::MAX)
+        })
+    };
 
     assert_eq!(normalized(&first), normalized(&again));
-    assert!(
-        again_report["gates"][0]["facts"]["cached"]
-            .as_u64()
-            .is_some_and(|cached| cached > 0),
-        "{again_report}"
-    );
+    assert_eq!(counted(&first_report), [4, 4, 4, 0], "{first_report}");
+    assert_eq!(counted(&again_report), [1, 1, 1, 3], "{again_report}");
     assert_eq!(
         first_report["gates"][0]["coverage"],
         again_report["gates"][0]["coverage"]

@@ -18,9 +18,9 @@ Measurements are in `docs/structural-views-2026-09-15.md`.
 
 Structural reuse keeps the four newest base-commit cache files. Missing,
 damaged, incompatible and evicted files fall back to the same cold extraction, so
-eviction changes cost only. The CLI tests also exercise a cached view carrying
-imports, module declarations and coverage outcomes while the changed path set
-stays separate.
+eviction changes cost only. A changed run over a cached base holding imports,
+module declarations and an unparsed file parses only the changed file, and the
+cache round-trip test pins the import and module fields.
 
 The dense performance fixture keeps its 20-file rows and adds a 100-file warm
 row for both source volumes. It asserts that changed-file extraction grows

@@ -274,11 +274,13 @@ The work counters for the changed-file-local gates scale with the same delta:
 | 20 | 40 / 40 | 40 / 40 / 40 | 40 / 20 | 40 / 40 |
 | 100 | 200 / 200 | 200 / 200 / 200 | 200 / 100 | 200 / 200 |
 
-The current sandbox did not expose peak RSS to the fixture, so its resource
-rows say unavailable rather than inventing a number. The controlled reference
-rows above still report 806,304 kB warm-cache and 833,648 kB without the cache
-at 1M, against the post-#183 roughly 955 MB comparison point; strict
-whole-tree work is the separate 1,019,936 kB path.
+This run did not measure peak RSS: the sandbox did not expose it to the
+fixture, so its resource rows say unavailable. No RSS exists for the 9909b9f
+build or for the 100-file row. The only peak RSS in this document is the #192
+table above, measured on the earlier implementation: 806,304 kB warm-cache,
+833,648 kB without the cache and 1,019,936 kB strict at 1M. Those rows sit below
+the post-#183 roughly 955 MB warm comparison point, but they are not a #193
+measurement, and the comparison for this build stays open.
 
 The 1M cache file is 25,863,432 bytes and the 300k file is 8,416,407 bytes.
 Four equally sized retained files therefore occupy at most 103,453,728
@@ -286,10 +288,14 @@ bytes and 33,665,628 bytes respectively for these workloads. This is a
 measured retention envelope, not a byte-LRU policy. The 1M warm 20-file row is
 2.86 seconds, below the roughly 5 second milestone of #187.
 
-The boundary test in tests/structural_views.rs combines a cached Rust import
-and module declaration with an unparsed file and compares coverage and
-verdicts across runs. The structural cache round-trip tests cover the
-corresponding fact fields directly. Change remains run data, separate from
+The boundary test in tests/structural_views.rs puts a Rust import, a module
+declaration and an unparsed file in the base. On the second changed run it
+requires one read and one parse, for the changed file, and three cached base
+outcomes, with the same verdict and coverage. No gate reads imports or module
+declarations yet, so the CLI cannot show those fields.
+`every_outcome_reads_back_as_it_was_written` in src/syntax/structural/cache.rs
+pins them: a Rust `use`, a `#[path]` module and an unparsed file re-encode to
+the same bytes. Change remains run data, separate from
 the reusable structural facts, so this proves the #50 input boundary without
 adding module resolution, layering or cycle analysis.
 

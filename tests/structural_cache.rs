@@ -216,6 +216,7 @@ fn the_four_newest_bases_keep_a_cache_and_an_older_one_is_removed() {
 fn an_evicted_base_falls_back_to_cold_and_keeps_the_same_verdict() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
+    tree.write("src/caller.rs", "fn main() {}\n");
     let mut bases = Vec::new();
     for at in 0..6 {
         tree.write("src/lib.rs", &format!("pub fn api_{at}() {{}}\n"));
@@ -226,12 +227,17 @@ fn an_evicted_base_falls_back_to_cold_and_keeps_the_same_verdict() {
     }
 
     assert!(!cache(&tree).join(&bases[0]).exists());
-    tree.git(&["checkout", "-q", "-b", "evicted"]);
+    tree.git(&["checkout", "-q", "-b", "evicted", &bases[0]]);
     tree.write("src/lib.rs", "pub fn api_0() {}\nfn newly_changed() {}\n");
 
     let evicted = dead_symbols(&tree);
+    assert_eq!(evicted.json()["window"]["before"], bases[0].as_str());
     assert_eq!(counted(&facts(&evicted, "dead-symbols"))[3], 0);
     assert_eq!(evicted.code, 1, "{}", evicted.out);
+
+    let warm = dead_symbols(&tree);
+    assert!(counted(&facts(&warm, "dead-symbols"))[3] > 0);
+    assert_eq!(judged(&evicted), judged(&warm));
 
     assert!(fs::remove_dir_all(cache(&tree)).is_ok());
     let cold = dead_symbols(&tree);

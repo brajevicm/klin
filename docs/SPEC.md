@@ -1246,6 +1246,9 @@ The shared structural view keeps imports and module declarations alongside
 declarations and references, and keeps unparsed and unsupported outcomes as
 coverage data. The project's Change data remains separate from the structural
 scope, so a consumer can reuse facts without losing which paths changed.
+`tests/structural_views.rs` requires a cached base of imports, module
+declarations and an unparsed file to be read and parsed only for the changed
+file, and the cache round-trip unit test pins the import and module fields.
 
 The findings, notes, coverage and exit codes of a changed run are the ones
 two independent extractions give. `tests/structural_views.rs` pins the
