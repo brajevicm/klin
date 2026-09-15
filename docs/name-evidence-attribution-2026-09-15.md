@@ -7,20 +7,13 @@
 - **B.** Can persistent base name evidence plus a changed-name delta remove
   material warm time?
 
-This note records the attribution method, the correctness analysis, the
-invariants and the decision rule. It records no implementation of A or B.
-
-## Status
-
-The attribution counters are in the gate rows (11.2 `names`). The two
-recorded 300k rows are not measured yet. The section "Recorded rows" names
-the commands. The verdicts below are provisional. They use the #193 and #196
-rows as background evidence, and the new rows confirm or falsify them.
+This note records the attribution method, the measured rows, the verdicts,
+the correctness analysis and the invariants. It records no implementation of
+A or B.
 
 ## Method
 
-Run from the commit that adds this note, with a release build and no other
-load on the machine:
+Run from `a57c30b060ea3c3da6faaaa58ec1390813cd8b62` with a release build:
 
 ```bash
 KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture
@@ -31,12 +24,12 @@ KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm100 cargo test --release --test
 ```
 
 Each row primes the base, changes 20 files (or 100 files), and times five
-warm Stops. It prints the median of each counter. Do not run the 1M row, the
-cold row or the strict row for this decision. A Stop hook of an agent session
-that runs on the klin repository during a row is load, so record it.
+warm Stops. It prints the median of each counter. These two rows are the only
+rows for this decision. No 1M, cold or strict row ran.
 
-Record `git rev-parse HEAD`, `sysctl -n hw.model`, `sw_vers -productVersion`
-and `rustc --version` beside the rows.
+Machine: MacBookPro18,3, Apple M1 Pro, macOS 26.6.2. Toolchain: rustc 1.98.1.
+klin 0.1.1. Five iterations, median. The repository owner ran the rows from a
+clean tree.
 
 ### Where each part of the gate time goes
 
@@ -45,8 +38,8 @@ value as `<gate>_names_<tree>_<field>`.
 
 | Ticket part | `dead-symbols` counter | `reachability` counter |
 | --- | --- | --- |
-| Base layout and structural cache read, shared | `names_base_ms` | `names_base_ms` (0 when `dead-symbols` paid it) |
-| Cache read and decode, shared | `facts_cache_read_ms` (inside `names_base_ms`) | `facts_cache_read_ms` |
+| Base layout, base file list and structural cache read, shared | `names_base_ms` | `names_base_ms` (0 when `dead-symbols` paid it) |
+| Cache naming, read and decode, shared | `facts_cache_read_ms` (inside `names_base_ms`) | `facts_cache_read_ms` |
 | Before Measurement/selection assembly | `names_before_measure_ms` | `names_before_measure_ms` |
 | After Measurement/selection assembly | `names_after_measure_ms` | `names_after_measure_ms` |
 | Before `SourceIndex::of` | `names_before_index_ms` | `names_before_index_ms` |
@@ -61,14 +54,75 @@ part, and a warm Stop over a fresh cache writes nothing.
 
 The hook total less the sum of the gate `ms` values holds the build, the turn
 window, the journal and the removal of the base worktree when the run ends.
+No counter separates those parts.
 
-### Size counters
+## Recorded rows
 
-Each tree also prints `files`, `declarations`, `references` and
-`distinct_names` of its index. These counts are deterministic. A cost is
-repository-sized when it stays flat from the 20-file row to the 100-file row
-and follows these counts. A cost is delta-sized when it grows with the changed
-files.
+### Whole Stop
+
+| Median | Warm, 20 changed | Warm, 100 changed |
+| --- | ---: | ---: |
+| Hook | 2,079 ms | 2,320 ms |
+| Sum of all gate `ms` | 1,329 ms | 1,480 ms |
+| Hook outside the gates | 750 ms | 840 ms |
+| `dead-symbols` `ms` | 1,030 ms | 1,119 ms |
+| `reachability` `ms` | 107 ms | 111 ms |
+
+### Parts of the two gates
+
+| Part, median ms | `dead-symbols`, 20 | `reachability`, 20 | `dead-symbols`, 100 | `reachability`, 100 |
+| --- | ---: | ---: | ---: | ---: |
+| `names_base_ms` | 946 | 0 | 986 | 0 |
+| inside it: `facts_cache_read_ms` | 58 | 0 | 57 | 0 |
+| `names_before_measure_ms` | 10 | 4 | 30 | 4 |
+| `names_after_measure_ms` | 20 | 7 | 39 | 7 |
+| `facts_ms` (extraction, inside measure) | 14 | 0 | 53 | 0 |
+| `names_before_index_ms` | 20 | 19 | 20 | 20 |
+| `names_after_index_ms` | 20 | 20 | 20 | 20 |
+| `names_before_query_ms` | 0 | 12 | 1 | 12 |
+| `names_after_query_ms` | 0 | 13 | 1 | 13 |
+| `names_lost_ms` | 0 | none | 0 | none |
+| Remainder | 14 | 32 | 22 | 35 |
+
+The remainder is the gate `ms` less the parts. A part's median and the gate's
+median come from different Stops, so the remainder is approximate.
+
+### Index size
+
+All eight indexes of the two rows hold the same evidence:
+
+| Counter | Each tree, each gate, each row |
+| --- | ---: |
+| `files` | 10,000 |
+| `declarations` | 90,057 |
+| `references` | 320,114 |
+| `distinct_names` | 65,590 |
+
+The two gates select the same files in this fixture, so `A_max` below applies.
+
+## What the rows show
+
+- Name evidence is small. Measurement, indexes, queries and lost references
+  take 145 ms over both gates at 20 changed files (7.0% of the Stop) and
+  187 ms at 100 (8.1%).
+- One `SourceIndex::of` over 10,000 files and 320,114 reference sites takes
+  about 20 ms in both rows. A warm Stop builds four of them.
+- `dead-symbols` state queries take at most 1 ms after #196.
+  `reachability` queries every family member in both trees, in 25 ms in both
+  rows.
+- Repository-sized parts stay flat from 20 to 100 changed files: the index
+  builds, the `reachability` queries, the cache read, and `dead-symbols`
+  measurement less extraction (16 ms in both rows). `dead-symbols` measurement
+  grows by 39 ms, and its extraction grows by 39 ms, so that growth is
+  delta-sized.
+- The largest repository-sized part of the gates is `names_base_ms`: 946 ms
+  (45.5% of the Stop) and 986 ms (42.5%). Less the cache read, 888 ms and
+  929 ms go to laying out the whole base (`git worktree add`, the change set,
+  renamed files moved) and listing the base tree's files. This work is shared,
+  and it is neither A nor B.
+- From 20 to 100 changed files the Stop grows by 241 ms: 151 ms in the gates
+  and 90 ms outside them. The rows do not show how the time outside the gates
+  divides.
 
 ## What the code shows about size
 
@@ -91,32 +145,11 @@ A warm Stop builds four name indexes over the same shared `Rc<FileFacts>`:
 one per tree in each gate. The two base indexes are the same every Stop over
 one base commit, one scope and one change set.
 
-## Background evidence
-
-The #193 and #196 rows are from the MacBook Pro 18,3 (Apple M1 Pro, macOS
-26.6.2), release builds, median of five.
-
-| 300k row | Hook | `dead-symbols` | `reachability` | `dead-symbols` extraction | Cache read |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Warm, 20 changed | 2,317 ms (#196) | 1,209 ms (#196) | 95 ms (#193) | 11 ms (#192) | 27 ms (#192) |
-| Warm, 100 changed | 2,192 ms (#196) | 1,146 ms (#196) | 98 ms (#193) | not recorded | not recorded |
-
-Inference from these rows:
-
-- `reachability` measures both trees, builds two indexes over the same 20,000
-  shared facts, and queries every family member in both trees, in about
-  95 ms. So one gate's two indexes, two measurements and repository-wide
-  queries cost less than 100 ms at 300k.
-- `dead-symbols` builds indexes of the same size. About 1,170 ms of its time
-  is outside extraction and the cache read, and that time does not grow from
-  20 to 100 changed files. So it is repository-sized.
-- The most probable owner of that time is the whole-base `git worktree add`,
-  which `names_base_ms` now separates. That work is neither A nor B.
-
 ## Decision rule
 
-"Material" means at least 10% of the warm-20 hook median. The x10 target
-needs more than 90% of the Stop removed, so a smaller part cannot move it.
+"Material" means at least 10% of the warm-20 hook median, which is 208 ms.
+The x10 target needs more than 90% of the Stop removed, so a smaller part
+cannot move it.
 
 **A** survives only if the duplicated semantic work is material:
 
@@ -140,31 +173,41 @@ B_max = Σ over gates of (before.measure_ms + before.index_ms + after.index_ms)
 `B_max` is an upper bound: it assumes that applying the delta costs nothing
 and that every after-tree query becomes delta-sized.
 
-Both bounds are inference, not measurement. Record them from the medians.
+Both bounds are inference from the medians, not measurements of an
+implementation.
 
-## Provisional verdicts
+## Verdicts
 
-**A: probably falsified as a warm win.** The whole `reachability` gate is
-about 4% of the warm-20 Stop. `A_max` cannot be larger than the smaller gate's
-index and measurement time, so `A_max` is below 100 ms (inference). If A ever
-ships for other reasons, it must be one shared owner of declaration and
-reference semantics, and each gate must keep its own evidence selection.
-Separate dead-symbol and reachability indexes are not recommended.
+| Bound | Warm, 20 changed | Share of that Stop | Warm, 100 changed | Share of that Stop |
+| --- | ---: | ---: | ---: | ---: |
+| `A_max` | 19 + 20 + 4 + 7 = 50 ms | 2.4% | 20 + 20 + 4 + 7 = 51 ms | 2.2% |
+| `B_max` | 50 + 43 + 25 = 118 ms | 5.7% | 70 + 44 + 25 = 139 ms | 6.0% |
 
-**B: probably falsified.** An overlay around the current
-`Unchanged` `Rc<FileFacts>` that still rebuilds whole-repository indexes
-removes nothing. A persistent base index removes at most `B_max`, and the
-background rows put `B_max` near 200 ms (about 9% of the Stop, inference).
-B survives only if the recorded rows show `B_max` of at least 10% and flat.
+**A: falsified as a warm win.** Sharing one index and one measurement between
+the two gates removes at most 50 ms of 2,079 ms and 51 ms of 2,320 ms
+(inference). No follow-up ticket for A. If A ships later for another reason,
+it must be one shared owner of declaration and reference semantics, and each
+gate must keep its own evidence selection. Separate dead-symbol and
+reachability indexes are not recommended.
 
-**Outside A and B.** If `names_base_ms` holds most of the `dead-symbols`
-remainder, the largest repository-sized warm cost is the base checkout. A
-follow-up ticket for that cost needs the recorded rows first.
+**B: falsified.** An overlay around the current `Unchanged` `Rc<FileFacts>`
+that still rebuilds whole-repository indexes removes nothing. A persistent
+base index with a changed-name delta removes at most 118 ms and 139 ms
+(inference), below the 208 ms threshold in both rows. `B_max` grows by 21 ms
+from 20 to 100 changed files because `dead-symbols` extraction grows inside
+`before.measure_ms`, which a persistent base cannot remove. No follow-up
+ticket for B.
+
+**Outside A and B.** The repository-sized warm cost that the gates measure is
+the base layout inside `names_base_ms`: 888 ms at warm-20 and 929 ms at
+warm-100. A follow-up for that cost is outside #199. The correctness analysis
+below still applies to it, because the base layout decides which bytes the
+base evidence reads.
 
 ## Correctness analysis
 
-A surviving implementation of A or B must give the findings, notes, coverage
-and exit codes that two independent extractions give (8.4). These cases decide
+A future implementation of A or B must give the findings, notes, coverage and
+exit codes that two independent extractions give (8.4). These cases decide
 that:
 
 - **Different selections.** `dead-symbols` selects every structural extension
@@ -209,7 +252,7 @@ that:
 - **Strict and whole runs.** These runs extract both trees and read no cache.
   They must stay complete and must not read a persisted delta.
 
-## Invariants for a surviving implementation
+## Invariants for a future implementation
 
 1. Evidence stays complete over each gate's own selection. Judgement scope
    never narrows evidence.
