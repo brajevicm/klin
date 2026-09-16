@@ -16,16 +16,15 @@ the decision rule and the verdicts. It implements neither E nor F.
 ## Status
 
 The attribution counters are in the gate rows (11.2 `names.layout`) and in
-the journal line (11.4 `timing`). The two recorded 300k rows are not measured
-yet. The section "Recorded rows" names the commands and holds the tables to
-fill. The E verdict below is provisional until the rows are in. The F verdict
-and the semantic findings rest on the code and on git's documented behavior,
-and the rows do not change them.
+the journal line (11.4 `timing`). The two 300k rows are recorded below. E
+survives on both rows and on semantics. F is rejected. One implementation
+ticket follows, for E.
 
 ## Method
 
-Run from the commit that adds this note, with a release build and no other
-load on the machine:
+Run from `2f740bc`, the commit that adds this note, with a release build.
+The repository owner ran both rows on MacBookPro18,3 (Apple M1 Pro, macOS
+26.6.2), rustc 1.98.1, git 2.55.0, klin 0.1.1, five iterations, median:
 
 ```bash
 KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture
@@ -111,57 +110,97 @@ commands, not measurements inside klin, and the note labels them so.
 
 ## Recorded rows
 
-To be filled from the two rows. Every value is a five-iteration median.
+Every value is a five-iteration median. A part's median and a total's median
+come from different Stops, so a difference between them is approximate.
 
 ### Whole Stop
 
 | Median | Warm, 20 changed | Warm, 100 changed |
 | --- | ---: | ---: |
-| Hook (harness wall clock) | | |
-| `stop_total_ms` | | |
-| Harness wall clock less `stop_total_ms` | | |
-| Sum of all gate `ms` | | |
-| `stop_total_ms` less the gates and the teardown | | |
-| `dead-symbols` `ms` | | |
+| Hook (harness wall clock) | 2,279 ms | 2,538 ms |
+| `stop_total_ms` | 2,245 ms | 2,495 ms |
+| Harness wall clock less `stop_total_ms` | 34 ms | 43 ms |
+| Sum of all gate `ms` | 1,430 ms | 1,609 ms |
+| Teardown (`stop_base_remove_ms` + `stop_base_prune_ms`) | 613 ms | 639 ms |
+| `stop_total_ms` less the gates and the teardown | 202 ms | 247 ms |
+| `dead-symbols` `ms` | 1,130 ms | 1,243 ms |
+
+The #199 rows put 750 ms and 840 ms "outside the gates" with no name. The
+teardown is 613 ms and 639 ms of that. The rest, 202 ms and 247 ms, is the
+lock, the turn window, the change set, the scoped base, the survey and the
+journal, and it grows with the change set.
 
 ### The whole-base lifecycle
 
 | Part, median ms | Warm, 20 changed | Warm, 100 changed |
 | --- | ---: | ---: |
-| `names_base_ms` | | |
-| `names_layout_worktree_add_ms` | | |
-| `names_layout_changes_ms` | | |
-| `names_layout_renames_ms` | | |
-| `names_layout_cache_name_ms` | | |
-| `facts_cache_read_ms` | | |
-| `names_layout_ignored_ms` | | |
-| `names_layout_walk_ms` | | |
-| Unclassified (`names_base_ms` less the seven above) | | |
-| `stop_base_remove_ms` | | |
-| `stop_base_prune_ms` | | |
+| `names_base_ms` | 1,042 | 1,107 |
+| `names_layout_worktree_add_ms` | 926 | 995 |
+| `names_layout_changes_ms` | 0 | 0 |
+| `names_layout_renames_ms` | 0 | 0 |
+| `names_layout_cache_name_ms` | 18 | 19 |
+| `facts_cache_read_ms` | 34 | 35 |
+| `names_layout_ignored_ms` | 13 | 14 |
+| `names_layout_walk_ms` | 38 | 37 |
+| Unclassified (`names_base_ms` less the seven above) | 13 | 7 |
+| `stop_base_remove_ms` | 607 | 632 |
+| `stop_base_prune_ms` | 6 | 7 |
+
+`git worktree add` is 89% and 90% of `names_base_ms`. The file catalogue
+(`walk` plus `ignored`) is 51 ms in both rows. The cache naming and read
+together are 52 ms and 54 ms, which is the 58 ms and 57 ms the #199 rows
+called `facts_cache_read_ms` before the naming moved out of it. Nothing in
+the lifecycle grows with the change set except `worktree add` itself, by
+69 ms, which the experiment's whole checkout also shows (974 ms to 1,089 ms),
+so that growth is run-to-run variance of the checkout, not the change set.
 
 ### The worktree experiment
 
 | Median ms | Warm, 20 changed | Warm, 100 changed |
 | --- | ---: | ---: |
-| `worktree_add_whole_ms` | | |
-| `worktree_remove_whole_ms` | | |
-| `worktree_add_no_checkout_ms` | | |
-| `worktree_read_tree_ms` | | |
-| `worktree_ls_files_stage_ms` | | |
-| `worktree_checkout_index_changed_ms` | | |
-| `worktree_remove_no_checkout_ms` | | |
-| `worktree_prune_ms` | | |
-| Checkout, estimated (`add_whole` less `add_no_checkout`) | | |
+| `worktree_add_whole_ms` | 974 | 1,089 |
+| `worktree_remove_whole_ms` | 607 | 629 |
+| `worktree_add_no_checkout_ms` | 10 | 11 |
+| `worktree_read_tree_ms` | 14 | 14 |
+| `worktree_ls_files_stage_ms` | 9 | 9 |
+| `worktree_checkout_index_changed_ms` | 10 | 21 |
+| `worktree_remove_no_checkout_ms` | 9 | 15 |
+| `worktree_prune_ms` | 6 | 11 |
+| Checkout, estimated (`add_whole` less `add_no_checkout`) | 964 | 1,078 |
+
+Registration is about 10 ms; the checkout is the rest. The experiment's whole
+`worktree add` (974 ms, 1,089 ms) and removal (607 ms, 629 ms) agree with
+klin's own timers (926 ms, 995 ms; 607 ms, 632 ms), so the timers and the
+experiment measure the same work. `checkout-index` of the changed files
+grows from 10 ms at 20 files to 21 ms at 100, the one change-set-sized part
+of E.
+
+### The decision rule applied
+
+| | Warm, 20 changed | Warm, 100 changed |
+| --- | ---: | ---: |
+| `today_E` (`worktree_add` + `walk` + `ignored` + `remove` + `prune`) | 926 + 38 + 13 + 607 + 6 = 1,590 ms | 995 + 37 + 14 + 632 + 7 = 1,685 ms |
+| `E_cost` (six E commands) | 10 + 14 + 9 + 10 + 9 + 6 = 58 ms | 11 + 14 + 9 + 21 + 15 + 11 = 81 ms |
+| `E_removes` | 1,532 ms | 1,604 ms |
+| Share of the Stop | 67% | 63% |
+| Threshold | 208 ms | 208 ms |
+
+Of the 888 ms and 929 ms that #199 left standing, this run's equivalent is
+1,008 ms and 1,072 ms (`names_base_ms` less `facts_cache_read_ms`). Of that,
+`worktree add`, the walk and the ignored discovery are 977 ms and 1,046 ms,
+and E removes them. The cache naming (18 ms), the unclassified remainder
+(13 ms, 7 ms) and the cache read (34 ms, 35 ms) stay. The teardown, 613 ms
+and 639 ms, was outside every #199 timer and E removes it too.
 
 ## A preliminary estimate from a synthetic tree
 
 Before the rows, the eight experiment commands ran on a synthetic tree, not
-on the fixture: 10,002 files (5,000 `.rs`, 5,000 `.ts`, one `klin.json`,
+on the fixture. The rows above supersede it; it stays as the record of what
+was known when the experiment was designed. The tree: 10,002 files (5,000 `.rs`, 5,000 `.ts`, one `klin.json`,
 about 1 KB each), one commit, 20 files changed, under the session's
 scratchpad on `/private/tmp`. MacBookPro18,3, macOS 26.6.2, git 2.55.0, five
 iterations, median, no other load. This is an estimate of the shape of the
-cost, not a measurement of the fixture, and the rows above replace it.
+cost, not a measurement of the fixture.
 
 | Command | Median ms |
 | --- | ---: |
@@ -382,8 +421,7 @@ lower bound on what klin would pay, and `E_removes` an upper bound. Both are
 inference.
 
 **E survives** if `E_removes` is at least 208 ms in both rows and the
-semantic table above holds. It does, so E survives on semantics; the rows
-decide the magnitude.
+semantic table above holds.
 
 **F is recommended** only if E cannot deliver a material share and F can.
 F's upside over E is bounded by `worktree_add_no_checkout_ms +
@@ -398,12 +436,14 @@ candidates, and neither is attributed to the checkout.
 
 ## Verdicts
 
-**E: provisional, pending the rows.** On semantics E preserves every case in
-the table, with one recorded wrinkle (`core.symlinks=false`) the follow-up
-must settle. On cost, the code shows that four of the five parts E removes
-are repository-sized and E's replacements are change-set-sized or index-sized,
-so `E_removes` is expected to be material. The rows confirm or falsify that
-expectation; do not create the implementation ticket before they do.
+**E: survives.** `E_removes` is 1,532 ms at warm-20 and 1,604 ms at
+warm-100, seven times the 208 ms threshold, 67% and 63% of the Stop. Every
+part it removes is repository-sized and flat between the rows; its own cost
+is 58 ms and 81 ms and grows only in the `checkout-index` of the changed
+files. On semantics E preserves every case in the table, with one recorded
+wrinkle (`core.symlinks=false`) the follow-up must settle. Blast radius:
+`base.rs`, `project.rs`, `git.rs` and the `Unchanged` construction, no gate.
+The implementation ticket for E is #203.
 
 **F: rejected.** F is not smaller than E in any way that matters: its
 measurable upside over E is three git commands on an empty worktree, and it
@@ -418,7 +458,7 @@ follow-up.
 
 ## The smallest surviving direction
 
-If the rows confirm E, the implementation ticket is:
+The implementation ticket, #203, is:
 
 - `Repo::read_tree(dir, commit)`, `Repo::ls_files_stage(dir)` and
   `Repo::checkout_index(dir, paths)` in `src/git.rs`, and nothing else that
@@ -441,12 +481,13 @@ No virtual filesystem, no provider trait, no persistent index, no daemon.
 
 ## Upper-bound expected improvement (inference)
 
-From the #199 rows, the whole-base layout after the cache read is 888 ms and
-929 ms, and the teardown sits somewhere in the 750 ms and 840 ms outside the
-gates. If E removes the checkout, the catalogue, the ignored discovery and
-the whole-tree removal, and costs in the low tens of milliseconds per
-command, the warm-20 Stop of 2,079 ms could lose on the order of 900 ms to
-1,100 ms, which is 43% to 53% of the Stop. This is inference from the code
-and from #199; the rows above replace it with `E_removes`. It is not an x10
-on its own, and it does not change the product performance contract of ADR
-0042 until the final round validation of #197 runs.
+`E_removes` is the upper bound: 1,532 ms of the 2,279 ms warm-20 Stop and
+1,604 ms of the 2,538 ms warm-100 Stop, so a Stop of about 750 ms and about
+930 ms if E's commands cost inside klin what they cost in the experiment.
+That is inference, for two reasons: `E_cost` comes from separate git
+processes on an idle repository, so klin's own process launches and path
+handling add to it, and the experiment's `checkout-index` wrote only the
+changed files, where E also writes `klin.json`, the manifests and any file
+the cache lacks. A Stop of about 750 ms is a 3x improvement, not an x10 on
+its own, and it does not change the product performance contract of ADR 0042
+until the final round validation of #197 runs.
