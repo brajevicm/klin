@@ -7,7 +7,7 @@
 use std::ffi::OsStr;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 
 /// One repository at a root. The root is where git is told to run, which is the configuration
 /// root klin measures, not necessarily the repository top.
@@ -29,6 +29,13 @@ impl<'a> Repo<'a> {
 
     /// The same, with environment overrides for the invocation, such as klin's private index.
     pub fn text_with_env(&self, args: &[&str], env: &[(&OsStr, &OsStr)]) -> Option<String> {
+        let (status, out) = self.ran(args, env)?;
+        status.success().then_some(out)
+    }
+
+    /// How git ended and what it printed, for a caller that reads the exit code as an answer.
+    /// `None` only when git could not be run at all.
+    fn ran(&self, args: &[&str], env: &[(&OsStr, &OsStr)]) -> Option<(ExitStatus, String)> {
         let mut command = Command::new("git");
         command
             .arg("-C")
@@ -39,9 +46,30 @@ impl<'a> Repo<'a> {
             command.env(name, value);
         }
         let done = command.output().ok()?;
-        done.status
-            .success()
-            .then(|| String::from_utf8_lossy(&done.stdout).into_owned())
+        Some((
+            done.status,
+            String::from_utf8_lossy(&done.stdout).into_owned(),
+        ))
+    }
+
+    /// What git's configuration holds for a boolean setting at this root, canonicalized by git
+    /// itself, so every spelling git reads as a boolean — `yes`, `on`, `1`, `TRUE` — reads here
+    /// the way git reads it. Spec 8.4.
+    pub fn boolean(&self, name: &str) -> Boolean {
+        let Some((status, out)) = self.ran(&["config", "--type=bool", "--get", name], &[]) else {
+            return Boolean::Refused;
+        };
+        if !status.success() {
+            return match status.code() {
+                Some(NO_SUCH_KEY) => Boolean::Unset,
+                _ => Boolean::Refused,
+            };
+        }
+        match out.trim() {
+            "true" => Boolean::Set(true),
+            "false" => Boolean::Set(false),
+            _ => Boolean::Refused,
+        }
     }
 
     /// The bytes of one path at a commit, and `None` when the commit does not hold it as a
@@ -190,6 +218,21 @@ impl<'a> Repo<'a> {
         git.0.wait().ok()?.success().then_some(())
     }
 }
+
+/// What git's configuration says about one boolean setting: the value git read, nothing where
+/// no configuration file names the setting, and a refusal where git will not read the value it
+/// holds as a boolean, or could not answer at all. A caller that must not guess treats a
+/// refusal as a refusal and never as a default. Spec 8.4.
+#[derive(PartialEq, Eq, Debug)]
+pub enum Boolean {
+    Set(bool),
+    Unset,
+    Refused,
+}
+
+/// What `git config --get` exits with when no configuration file names the key. Every other
+/// failure is git refusing the question.
+const NO_SUCH_KEY: i32 = 1;
 
 /// One index entry as `ls-files --stage` names it. The mode says what git would write: a file,
 /// an executable file, a symbolic link, a submodule, or a shape no checkout of a commit holds.
@@ -369,6 +412,34 @@ mod tests {
         let listed = repo.text_with_env(&["add", "-A"], &[(name, value)]);
         assert_eq!(listed, Some(String::new()), "git add ran with the index");
         assert!(index.is_file(), "the private index was written");
+    }
+
+    #[test]
+    fn a_boolean_setting_reads_every_spelling_git_reads() {
+        let (dir, _) = repository(&[(".keep", b"")]);
+        let repo = Repo::at(dir.path());
+        let spellings = [
+            ("true", true),
+            ("yes", true),
+            ("on", true),
+            ("1", true),
+            ("TRUE", true),
+            ("Yes", true),
+            ("false", false),
+            ("no", false),
+            ("off", false),
+            ("0", false),
+            ("FALSE", false),
+            ("OFF", false),
+        ];
+        for (written, read) in spellings {
+            git_in(dir.path(), &["config", "klin.flag", written]);
+            assert_eq!(repo.boolean("klin.flag"), Boolean::Set(read), "{written}");
+        }
+        git_in(dir.path(), &["config", "klin.flag", "banana"]);
+        assert_eq!(repo.boolean("klin.flag"), Boolean::Refused);
+        git_in(dir.path(), &["config", "--unset", "klin.flag"]);
+        assert_eq!(repo.boolean("klin.flag"), Boolean::Unset);
     }
 
     #[test]

@@ -1271,9 +1271,12 @@ The layout changes what a run costs and never what it reports. A strict run, a
 run that is not changed, and the check by hand check the base out whole. So
 does a run with no state directory, with no cache to name, with a cache it
 cannot read, whose index holds a sparse checkout or any other shape this
-layout does not read, or whose git commands refused. A layout that could not be
-completed removes its worktree before the run checks the base out on the same
-directory, so no half-laid base reaches a gate. `tests/structural_cache.rs`
+layout does not read, or whose git commands refused. klin asks git itself what
+`core.sparseCheckout` and `core.symlinks` are worth, so every spelling git
+reads as a boolean reads the same way here, and a value git will not read as a
+boolean sends the run to the checkout rather than to a default. A layout that
+could not be completed removes its worktree before the run checks the base out
+on the same directory, so no half-laid base reaches a gate. `tests/structural_cache.rs`
 and `tests/structural_views.rs` compare each warm run with the same run over a
 removed cache and require the same findings, notes, coverage and exit code.
 

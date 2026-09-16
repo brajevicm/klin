@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 use crate::changed::{Change, blobs};
 use crate::check::{Context, Sink};
 use crate::config::Error;
-use crate::git::{Repo, Staged};
+use crate::git::{Boolean, Repo, Staged};
 use crate::project::{self, Project, Tree};
 use crate::state;
 use crate::syntax::structural::{Cache, Outcome, Unchanged, selected_extensions};
@@ -348,21 +348,25 @@ fn staged(repository: &Path, dir: &Path, root: &Path, before: &str) -> Option<Ca
     ])?;
     let worktree = Repo::at(dir);
     worktree.read_tree(before)?;
-    if told(&worktree, "core.sparseCheckout", false) {
+    if told(&worktree, "core.sparseCheckout", false)? {
         return None;
     }
     std::fs::create_dir_all(root).ok()?;
     Catalogue::of(
         Repo::at(root).ls_files_stage()?,
-        told(&worktree, "core.symlinks", true),
+        told(&worktree, "core.symlinks", true)?,
     )
 }
 
-/// What git's configuration says a boolean setting is here, and the default where it says
-/// nothing.
-fn told(repo: &Repo, name: &str, default: bool) -> bool {
-    repo.text(&["config", "--get", name])
-        .map_or(default, |set| set.trim() == "true")
+/// What a boolean setting is worth to this layout: the value git read, the default where git
+/// names none, and `None` where git refuses the value it holds, which sends the run to the
+/// checkout rather than to a guess about the bytes git would write. Spec 8.4.
+fn told(repo: &Repo, name: &str, default: bool) -> Option<bool> {
+    match repo.boolean(name) {
+        Boolean::Set(value) => Some(value),
+        Boolean::Unset => Some(default),
+        Boolean::Refused => None,
+    }
 }
 
 /// The base commit's index as the light layout reads it: every path a checkout of the commit

@@ -67,6 +67,11 @@ fn cached_files(tree: &Tree) -> Vec<PathBuf> {
 fn judged(run: &Run) -> Value {
     let mut report = run.json();
     for row in report["gates"].as_array_mut().into_iter().flatten() {
+        for group in ["graph", "surface"] {
+            if let Some(held) = row[group].as_object_mut() {
+                held.remove("ms");
+            }
+        }
         if let Some(fields) = row.as_object_mut() {
             fields.remove("ms");
             fields.remove("facts");
@@ -526,12 +531,76 @@ fn a_sparse_checkout_the_light_layout_does_not_read_checks_the_base_out_whole() 
 
     dead_symbols(&tree);
     let light = dead_symbols(&tree);
-    tree.git(&["config", "core.sparseCheckout", "true"]);
-    let sparse = dead_symbols(&tree);
-
     assert!(layout(&light)["written"].is_u64(), "{}", light.out);
-    assert!(layout(&sparse)["written"].is_null(), "{}", sparse.out);
-    assert_eq!(judged(&sparse), judged(&light));
+
+    for (set, sparse) in [
+        ("true", true),
+        ("yes", true),
+        ("on", true),
+        ("1", true),
+        ("TRUE", true),
+        ("false", false),
+        ("no", false),
+        ("off", false),
+        ("0", false),
+        ("FALSE", false),
+    ] {
+        tree.git(&["config", "core.sparseCheckout", set]);
+        dead_symbols(&tree);
+        let run = dead_symbols(&tree);
+        assert_eq!(
+            layout(&run)["written"].is_null(),
+            sparse,
+            "{set}: {}",
+            run.out
+        );
+        assert_eq!(judged(&run), judged(&light), "{set}");
+    }
+}
+
+/// A value git will not read as a boolean stops git itself, so the run reports an error and
+/// measures nothing. It never reads the value as false and lays the base out light on that
+/// reading.
+#[test]
+fn a_boolean_git_refuses_never_lets_the_light_layout_guess() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    tree.base();
+    tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    dead_symbols(&tree);
+    assert!(layout(&dead_symbols(&tree))["written"].is_u64());
+
+    for name in ["core.sparseCheckout", "core.symlinks"] {
+        tree.git(&["config", name, "banana"]);
+        let run = dead_symbols(&tree);
+        tree.git(&["config", "--unset", name]);
+        assert_eq!(run.code, 2, "{name}: {}", run.out);
+        assert!(!run.says("\"written\""), "{name}: {}", run.out);
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symlink_setting_git_spells_another_way_reads_as_git_reads_it() {
+    for set in ["on", "off"] {
+        let tree = Tree::new();
+        tree.write("klin.json", "{}");
+        tree.git(&["config", "core.symlinks", set]);
+        tree.write("src/lib.rs", "pub fn api() {}\n");
+        tree.write("src/caller.rs", "fn main() { api(); }\n");
+        let linked = std::os::unix::fs::symlink("lib.rs", tree.path("src/linked.rs"));
+        assert!(linked.is_ok(), "a symbolic link");
+        tree.base();
+        tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+        let warm = light_beside_whole(&tree, dead_symbols);
+
+        assert_eq!(warm.code, 1, "{set}: {}", warm.out);
+        assert!(warm.says("fn spare() {}"), "{set}: {}", warm.out);
+    }
 }
 
 #[test]
