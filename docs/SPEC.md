@@ -2402,11 +2402,21 @@ One object on stdout. Fields:
   `reference_name_bytes`; how many declarations carry a signature, an owner or
   an exported alias, and the bytes each of those holds, as `signatures`,
   `signature_bytes`, `owners`, `owner_bytes`, `exported_aliases` and
-  `exported_alias_bytes`; `nestings`, `nesting_entries` and `nesting_bytes`
+  `exported_alias_bytes`; over reference names it also carries
+  `reference_distinct_names`,
+  `reference_canonical_allocations`,
+  `reference_canonical_allocation_ratio_milli`,
+  `reference_canonical_bytes`,
+  `reference_representation_before_bytes` and
+  `reference_representation_after_bytes`; the JSON row also carries the
+  floating-point `reference_canonical_allocation_ratio` for the same
+  allocation/distinct-name ratio; `nestings`, `nesting_entries` and
+  `nesting_bytes`
   over every value that carries inline module names; `import_text_bytes`,
   `export_text_bytes` and `module_text_bytes`, which hold each statement's own
   text and the names and paths it carries, with a qualified path under the
-  module bytes; and `sizes`, which gives the size of one `file_facts`,
+  module bytes; and `sizes`, which includes `name` and gives the size of one
+  `file_facts`,
   `declaration`, `reference`, `import`, `module_declaration`, `export` and
   `export_leaf` without the bytes their strings and lists own. Every value
   depends only on the trees and the selection (8.4). `footprint.references`

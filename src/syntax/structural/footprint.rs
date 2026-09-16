@@ -3,9 +3,10 @@
 //! a representation decision reads them in place of process memory. Spec 11.2.
 
 use std::collections::HashSet;
+use std::mem::size_of;
 use std::rc::Rc;
 
-use super::{Declaration, Export, FileFacts, Import, ModuleDecl, Reference};
+use super::{Declaration, Export, FileFacts, Import, ModuleDecl, Name, Reference};
 use super::{ExportLeaf, QualifiedPath};
 
 #[derive(Default, Clone, Copy)]
@@ -22,6 +23,12 @@ pub struct Footprint {
     pub declaration_name_bytes: usize,
     pub declaration_text_bytes: usize,
     pub reference_name_bytes: usize,
+    pub reference_distinct_names: usize,
+    pub reference_canonical_allocations: usize,
+    pub reference_canonical_allocation_ratio_milli: usize,
+    pub reference_canonical_bytes: usize,
+    pub reference_representation_before_bytes: usize,
+    pub reference_representation_after_bytes: usize,
     pub signatures: usize,
     pub signature_bytes: usize,
     pub owners: usize,
@@ -38,7 +45,7 @@ pub struct Footprint {
 
 impl Footprint {
     /// Every counter under its name, in the order the report writes them.
-    pub fn rows(&self) -> [(&'static str, usize); 24] {
+    pub fn rows(&self) -> [(&'static str, usize); 30] {
         [
             ("files", self.files),
             ("declarations", self.declarations),
@@ -52,6 +59,24 @@ impl Footprint {
             ("declaration_name_bytes", self.declaration_name_bytes),
             ("declaration_text_bytes", self.declaration_text_bytes),
             ("reference_name_bytes", self.reference_name_bytes),
+            ("reference_distinct_names", self.reference_distinct_names),
+            (
+                "reference_canonical_allocations",
+                self.reference_canonical_allocations,
+            ),
+            (
+                "reference_canonical_allocation_ratio_milli",
+                self.reference_canonical_allocation_ratio_milli,
+            ),
+            ("reference_canonical_bytes", self.reference_canonical_bytes),
+            (
+                "reference_representation_before_bytes",
+                self.reference_representation_before_bytes,
+            ),
+            (
+                "reference_representation_after_bytes",
+                self.reference_representation_after_bytes,
+            ),
             ("signatures", self.signatures),
             ("signature_bytes", self.signature_bytes),
             ("owners", self.owners),
@@ -71,19 +96,39 @@ impl Footprint {
 /// The facts of both trees, each file counted once however many trees hold the same extraction.
 pub fn of(trees: [&[Rc<FileFacts>]; 2]) -> Footprint {
     let mut held = HashSet::new();
+    let mut distinct_names = HashSet::<Name>::new();
+    let mut canonical_allocations = HashSet::<*const String>::new();
     let mut out = Footprint::default();
     for facts in trees.into_iter().flatten() {
         if held.insert(Rc::as_ptr(facts)) {
             counted(facts, &mut out);
-            weighed(facts, &mut out);
+            weighed(
+                facts,
+                &mut out,
+                &mut distinct_names,
+                &mut canonical_allocations,
+            );
         }
     }
+    out.reference_distinct_names = distinct_names.len();
+    out.reference_canonical_allocations = canonical_allocations.len();
+    out.reference_canonical_allocation_ratio_milli = if out.reference_distinct_names == 0 {
+        0
+    } else {
+        out.reference_canonical_allocations.saturating_mul(1_000) / out.reference_distinct_names
+    };
+    out.reference_representation_before_bytes = out
+        .references
+        .saturating_mul(size_of::<String>() + size_of::<u64>());
+    out.reference_representation_after_bytes =
+        out.references.saturating_mul(size_of::<Reference>());
     out
 }
 
 /// What one of each structural value costs, without the bytes its strings and lists own.
-pub fn sizes() -> [(&'static str, usize); 7] {
+pub fn sizes() -> [(&'static str, usize); 8] {
     [
+        ("name", size_of::<Name>()),
         ("file_facts", size_of::<FileFacts>()),
         ("declaration", size_of::<Declaration>()),
         ("reference", size_of::<Reference>()),
@@ -109,13 +154,22 @@ fn counted(facts: &FileFacts, out: &mut Footprint) {
     out.qualified_paths += facts.paths.len();
 }
 
-fn weighed(facts: &FileFacts, out: &mut Footprint) {
+fn weighed(
+    facts: &FileFacts,
+    out: &mut Footprint,
+    distinct_names: &mut HashSet<Name>,
+    canonical_allocations: &mut HashSet<*const String>,
+) {
     out.path_bytes += facts.file.len();
     for declaration in &facts.declarations {
         declared(declaration, out);
     }
     for reference in &facts.references {
         out.reference_name_bytes += reference.name.len();
+        distinct_names.insert(reference.name.clone());
+        if canonical_allocations.insert(reference.name.allocation()) {
+            out.reference_canonical_bytes += reference.name.len();
+        }
     }
     for import in &facts.imports {
         imported(import, out);

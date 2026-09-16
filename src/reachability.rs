@@ -658,12 +658,13 @@ fn members_at(root: &Path, commit: &str, held: &Survey) -> Option<Vec<String>> {
 fn evidence(root: &Path, commit: &str, paths: &[String]) -> BTreeMap<String, Member> {
     let names: Vec<&str> = paths.iter().map(String::as_str).collect();
     let mut facts = Vec::new();
+    let mut name_pool = structural::Names::default();
     changed::blobs(root, commit, &names, |path, bytes| {
         let Some(bytes) = bytes else {
             return;
         };
         if let Ok(structural::Outcome::Facts(found)) =
-            structural::of(path, &String::from_utf8_lossy(bytes))
+            structural::of_with(path, &String::from_utf8_lossy(bytes), &mut name_pool)
         {
             facts.push(found);
         }

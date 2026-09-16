@@ -3,7 +3,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
@@ -1146,6 +1146,14 @@ fn footprint(held: &crate::syntax::structural::footprint::Footprint) -> Value {
         sizes.insert(name.into(), value.into());
     }
     out.insert("sizes".into(), Value::Object(sizes));
+    out.insert(
+        "reference_canonical_allocation_ratio".into(),
+        json!(if held.reference_distinct_names == 0 {
+            0.0
+        } else {
+            held.reference_canonical_allocations as f64 / held.reference_distinct_names as f64
+        }),
+    );
     Value::Object(out)
 }
 

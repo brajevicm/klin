@@ -3,9 +3,10 @@
 //! module declarations and references, and a file it did not measure says so. Rust and TypeScript
 //! are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
+use std::borrow::Borrow;
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::ops::Add;
+use std::ops::{Add, Deref};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::OnceLock;
@@ -153,8 +154,72 @@ pub struct QualifiedPath {
     pub path: String,
 }
 
+/// A thin, value-semantic owner of one canonical reference name.
+#[repr(transparent)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Name(Rc<String>);
+
+impl Name {
+    /// A self-owning name for synthetic facts and other values outside a parsing pool.
+    pub fn new(text: impl AsRef<str>) -> Name {
+        Name(Rc::new(text.as_ref().to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    /// The physical canonical allocation, used only by representation diagnostics.
+    pub(crate) fn allocation(&self) -> *const String {
+        Rc::as_ptr(&self.0)
+    }
+}
+
+impl Borrow<str> for Name {
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Deref for Name {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl PartialEq<str> for Name {
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl PartialEq<&str> for Name {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
+/// One tree or cache decode's local canonicalization pool.
+#[derive(Default)]
+pub(crate) struct Names {
+    held: HashSet<Name>,
+}
+
+impl Names {
+    pub(crate) fn intern(&mut self, text: &str) -> Name {
+        if let Some(name) = self.held.get(text) {
+            return name.clone();
+        }
+        let name = Name::new(text);
+        self.held.insert(name.clone());
+        name
+    }
+}
+
 pub struct Reference {
-    pub name: String,
+    pub name: Name,
     pub line: u64,
 }
 
@@ -272,6 +337,7 @@ pub fn timed<T>(spent: &mut Duration, work: impl FnOnce() -> T) -> T {
 pub struct Extracted {
     held: RefCell<HashMap<String, Outcome>>,
     cached: RefCell<HashMap<String, Outcome>>,
+    names: RefCell<Names>,
     kept: OnceCell<Kept>,
 }
 
@@ -310,7 +376,10 @@ impl Extracted {
         let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
         cost.reads += 1;
         cost.parses += 1;
-        let outcome = of(file, &String::from_utf8_lossy(&bytes))?;
+        let outcome = {
+            let mut names = self.names.borrow_mut();
+            of_with(file, &String::from_utf8_lossy(&bytes), &mut names)?
+        };
         cost.extracted += 1;
         cost.time += started.elapsed();
         if let Some(kept) = self.kept.get().filter(|kept| !kept.changed.contains(file)) {
@@ -488,10 +557,16 @@ impl Add for ExtractionCost {
 
 /// What structural analysis makes of one path.
 pub fn of(path: &str, source: &str) -> Result<Outcome, Error> {
+    let mut names = Names::default();
+    of_with(path, source, &mut names)
+}
+
+/// The same extraction with a caller-owned pool shared across a tree or a batch of blobs.
+pub(crate) fn of_with(path: &str, source: &str, names: &mut Names) -> Result<Outcome, Error> {
     match parse(path, source)? {
         None => Ok(Outcome::Foreign),
         Some(Parsed::Rejected(file)) => Ok(Outcome::Unparsed(file)),
-        Some(Parsed::Read(file)) => measured(&file),
+        Some(Parsed::Read(file)) => measured(&file, names),
     }
 }
 
@@ -563,8 +638,8 @@ pub fn measure(
     })
 }
 
-fn measured(file: &ParsedFile) -> Result<Outcome, Error> {
-    Ok(match facts(file)? {
+fn measured(file: &ParsedFile, names: &mut Names) -> Result<Outcome, Error> {
+    Ok(match facts_with(file, names)? {
         Some(found) => Outcome::Facts(Rc::new(found)),
         None => Outcome::Unsupported(file.language.name),
     })
@@ -572,10 +647,15 @@ fn measured(file: &ParsedFile) -> Result<Outcome, Error> {
 
 /// The facts one parsed file comes to, and `None` when no adapter reads its language.
 pub fn facts(file: &ParsedFile) -> Result<Option<FileFacts>, Error> {
+    let mut names = Names::default();
+    facts_with(file, &mut names)
+}
+
+fn facts_with(file: &ParsedFile, names: &mut Names) -> Result<Option<FileFacts>, Error> {
     let Some(adapter) = adapter(file.language.id) else {
         return Ok(None);
     };
-    harvest(file, adapter).map(Some)
+    harvest(file, adapter, names).map(Some)
 }
 
 /// The one structural registry. A new language is an adapter file and one arm here.
@@ -867,15 +947,19 @@ fn refused(language: &Language, why: &str) -> Error {
     ))
 }
 
-fn harvest(file: &ParsedFile, adapter: &'static Adapter) -> Result<FileFacts, Error> {
+fn harvest(
+    file: &ParsedFile,
+    adapter: &'static Adapter,
+    names: &mut Names,
+) -> Result<FileFacts, Error> {
     let query = compiled(file.language, adapter)?;
-    let names = query.capture_names();
-    let mut reading = Reading::new(file, adapter);
+    let captures = query.capture_names();
+    let mut reading = Reading::new(file, adapter, names);
     let mut cursor = QueryCursor::new();
     let mut matches = cursor.matches(query, file.root(), file.bytes());
     while let Some(matched) = matches.next() {
         for capture in matched.captures() {
-            reading.take(names[capture.index as usize], capture.node);
+            reading.take(captures[capture.index as usize], capture.node);
         }
     }
     Ok(reading.finish(file))
@@ -883,7 +967,7 @@ fn harvest(file: &ParsedFile, adapter: &'static Adapter) -> Result<FileFacts, Er
 
 /// One file being read: what the query found so far, and what the reference pass must leave
 /// alone because a declaration or an import already claimed it.
-struct Reading<'a> {
+struct Reading<'a, 'b> {
     language: &'static Language,
     adapter: &'static Adapter,
     source: &'a [u8],
@@ -894,10 +978,15 @@ struct Reading<'a> {
     exports: Vec<Export>,
     declared: BTreeSet<usize>,
     claimed: Vec<(usize, usize)>,
+    names: &'b mut Names,
 }
 
-impl<'a> Reading<'a> {
-    fn new(file: &ParsedFile<'a>, adapter: &'static Adapter) -> Reading<'a> {
+impl<'a, 'b> Reading<'a, 'b> {
+    fn new(
+        file: &ParsedFile<'a>,
+        adapter: &'static Adapter,
+        names: &'b mut Names,
+    ) -> Reading<'a, 'b> {
         Reading {
             language: file.language,
             adapter,
@@ -909,6 +998,7 @@ impl<'a> Reading<'a> {
             exports: Vec::new(),
             declared: BTreeSet::new(),
             claimed: Vec::new(),
+            names,
         }
     }
 
@@ -1025,7 +1115,7 @@ impl<'a> Reading<'a> {
     /// it binds, so the whole import is stepped over. A name a binding site writes — a parameter,
     /// a `let`, a field — is kept, because no adapter states its language's binding sites in V1
     /// and keeping it errs toward "referenced".
-    fn uses(&self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
+    fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
         walk(root, &mut |node| {
@@ -1034,7 +1124,9 @@ impl<'a> Reading<'a> {
                 && !self.claimed(node)
             {
                 references.push(Reference {
-                    name: text_of(node, self.source),
+                    name: self
+                        .names
+                        .intern(node.utf8_text(self.source).unwrap_or_default()),
                     line: self.row(node),
                 });
             } else if let Some(path) =
@@ -1099,7 +1191,7 @@ pub struct Declared<'a> {
 /// spec 8.4.
 pub struct SourceIndex {
     files: Vec<Rc<FileFacts>>,
-    names: HashMap<LanguageId, HashMap<String, Sites>>,
+    names: HashMap<LanguageId, HashMap<Name, Sites>>,
 }
 
 /// Where one name of one language is declared and referenced, each list in file and line order.
@@ -1113,17 +1205,20 @@ struct Sites {
 impl SourceIndex {
     pub fn of(mut files: Vec<Rc<FileFacts>>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
-        let mut names: HashMap<LanguageId, HashMap<String, Sites>> = HashMap::new();
+        let mut names: HashMap<LanguageId, HashMap<Name, Sites>> = HashMap::new();
+        for (at, file) in files.iter().enumerate() {
+            let named = names.entry(file.language).or_default();
+            for reference in &file.references {
+                record_name(named, reference.name.clone(), |sites| {
+                    sites.references.push((at, reference.line));
+                });
+            }
+        }
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
             for (which, declaration) in file.declarations.iter().enumerate() {
-                record(named, &declaration.name, |sites| {
+                record_text(named, &declaration.name, |sites| {
                     sites.declarations.push((at, which));
-                });
-            }
-            for reference in &file.references {
-                record(named, &reference.name, |sites| {
-                    sites.references.push((at, reference.line));
                 });
             }
         }
@@ -1189,15 +1284,24 @@ impl SourceIndex {
 }
 
 /// One site recorded under its name, and the name copied only the first time the index meets it.
-fn record(named: &mut HashMap<String, Sites>, name: &str, into: impl FnOnce(&mut Sites)) {
-    match named.get_mut(name) {
-        Some(sites) => into(sites),
-        None => {
-            let mut sites = Sites::default();
-            into(&mut sites);
-            named.insert(name.to_string(), sites);
-        }
+fn record_text(named: &mut HashMap<Name, Sites>, text: &str, into: impl FnOnce(&mut Sites)) {
+    if let Some(sites) = named.get_mut(text) {
+        into(sites);
+        return;
     }
+    let mut sites = Sites::default();
+    into(&mut sites);
+    named.insert(Name::new(text), sites);
+}
+
+fn record_name(named: &mut HashMap<Name, Sites>, name: Name, into: impl FnOnce(&mut Sites)) {
+    if let Some(sites) = named.get_mut(&name) {
+        into(sites);
+        return;
+    }
+    let mut sites = Sites::default();
+    into(&mut sites);
+    named.insert(name, sites);
 }
 
 /// Whether a function body holds this node, which is what makes a declaration a local of that
@@ -1772,7 +1876,7 @@ export function charge(at: number): number {
                 .iter()
                 .enumerate()
                 .map(|(at, name)| Reference {
-                    name: format!("use_{name}"),
+                    name: Name::new(format!("use_{name}")),
                     line: at as u64 + 1,
                 })
                 .collect(),

@@ -10,8 +10,8 @@ use std::rc::Rc;
 use std::time::SystemTime;
 
 use super::{
-    Declaration, DeclarationKind, Export, ExportLeaf, FileFacts, Import, ModuleDecl, Outcome,
-    QualifiedPath, Reference, Unparsed, Visibility,
+    Declaration, DeclarationKind, Export, ExportLeaf, FileFacts, Import, ModuleDecl, Names,
+    Outcome, QualifiedPath, Reference, Unparsed, Visibility,
 };
 use crate::syntax::{LANGUAGES, Language};
 use crate::write::{AtomicWrite, atomic_write};
@@ -132,7 +132,8 @@ fn decoded(bytes: &[u8], identity: &[u8]) -> Option<HashMap<String, Outcome>> {
     if u64::from_le_bytes(*sum) != checksum(BASIS, body) {
         return None;
     }
-    let mut reader = Reader(body);
+    let mut names = Names::default();
+    let mut reader = Reader(body, &mut names);
     let outcomes = reader.list(Reader::entry)?;
     reader.0.is_empty().then_some(outcomes)
 }
@@ -233,7 +234,7 @@ impl Writer {
         }
         self.number(facts.references.len() as u64);
         for reference in &facts.references {
-            self.text(&reference.name);
+            self.text(reference.name.as_str());
             self.number(reference.line);
         }
         self.number(facts.paths.len() as u64);
@@ -278,9 +279,9 @@ impl Writer {
     }
 }
 
-struct Reader<'a>(&'a [u8]);
+struct Reader<'a, 'b>(&'a [u8], &'b mut Names);
 
-impl Reader<'_> {
+impl Reader<'_, '_> {
     fn number(&mut self) -> Option<u64> {
         let mut value = 0u64;
         for shift in (0..64).step_by(7) {
@@ -468,8 +469,13 @@ impl Reader<'_> {
     }
 
     fn reference(&mut self) -> Option<Reference> {
+        let length = self.count()?;
+        let (text, rest) = self.0.split_at_checked(length)?;
+        self.0 = rest;
+        let text = std::str::from_utf8(text).ok()?;
+        let name = self.1.intern(text);
         Some(Reference {
-            name: self.text()?,
+            name,
             line: self.number()?,
         })
     }

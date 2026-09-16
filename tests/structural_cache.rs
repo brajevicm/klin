@@ -121,6 +121,33 @@ fn a_repeated_changed_run_reads_the_base_facts_from_the_cache_and_judges_the_sam
 }
 
 #[test]
+fn a_cached_decode_shares_reference_names_across_files() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"dead_symbols":{"in":"src"}}"#);
+    tree.write("src/one.rs", "fn one() { helper(); }\n");
+    tree.write("src/two.rs", "fn two() { helper(); }\n");
+    tree.write("src/changed.rs", "fn old() {}\n");
+    tree.base();
+    tree.write("src/changed.rs", "fn changed() {}\n");
+
+    dead_symbols(&tree);
+    let warm = dead_symbols(&tree);
+    let report = warm.json();
+    let row = report["gates"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|row| row["name"] == "dead-symbols")
+        .unwrap_or_else(|| panic!("no dead-symbols row in {report}"));
+    assert!(row["facts"]["cached"].as_u64() >= Some(2), "{report}");
+    assert_eq!(row["footprint"]["references"], 2, "{report}");
+    assert_eq!(
+        row["footprint"]["reference_canonical_allocations"], 1,
+        "{report}"
+    );
+}
+
+#[test]
 fn a_cache_klin_cannot_read_whole_is_extracted_again_and_written_again() {
     let tree = commands();
     let cold = changed(&tree);

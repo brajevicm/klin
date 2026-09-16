@@ -382,6 +382,32 @@ fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
     assert_eq!(held["module_declarations"], 2, "{report}");
     assert_eq!(held["owners"], 2, "{report}");
     assert_eq!(held["owner_bytes"], 8, "{report}");
+    assert!(
+        held["reference_distinct_names"].as_u64() > Some(0),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_allocations"].as_u64()
+            >= held["reference_distinct_names"].as_u64(),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_allocation_ratio_milli"].as_u64() >= Some(1_000),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_bytes"].as_u64() > Some(0),
+        "{report}"
+    );
+    assert!(
+        held["reference_representation_before_bytes"].as_u64()
+            > held["reference_representation_after_bytes"].as_u64(),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_allocation_ratio"].as_f64() >= Some(1.0),
+        "{report}"
+    );
     assert_eq!(held["nestings"], 4, "{report}");
     assert_eq!(held["nesting_entries"], 4, "{report}");
     assert_eq!(held["nesting_bytes"], 20, "{report}");
@@ -394,6 +420,7 @@ fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
     assert!(held["signatures"].as_u64() > Some(0), "{report}");
     assert!(held["path_bytes"].as_u64() > Some(0), "{report}");
     for size in [
+        "name",
         "file_facts",
         "declaration",
         "reference",
@@ -408,6 +435,21 @@ fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
         row(&report, "reachability")["footprint"].is_null(),
         "{report}"
     );
+}
+
+#[test]
+fn repeated_reference_names_share_storage_across_tree_files() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"dead_symbols":{"in":"src"}}"#);
+    tree.write("src/one.rs", "fn one() { helper(); }\n");
+    tree.write("src/two.rs", "fn two() { helper(); }\n");
+    tree.base();
+
+    let report = judged(&tree, &[], &["dead-symbols"]);
+    let footprint = &row(&report, "dead-symbols")["footprint"];
+    assert_eq!(footprint["references"], 4, "{report}");
+    assert_eq!(footprint["reference_distinct_names"], 1, "{report}");
+    assert_eq!(footprint["reference_canonical_allocations"], 2, "{report}");
 }
 
 /// One tree's index as `[files, declarations, references, distinct_names]`, with its timings

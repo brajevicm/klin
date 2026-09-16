@@ -1062,7 +1062,7 @@ fn footprint_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Valu
 }
 
 /// The population, sparsity and byte counters of the facts one run holds. #200.
-const FOOTPRINT: [&str; 24] = [
+const FOOTPRINT: [&str; 30] = [
     "files",
     "declarations",
     "references",
@@ -1075,6 +1075,12 @@ const FOOTPRINT: [&str; 24] = [
     "declaration_name_bytes",
     "declaration_text_bytes",
     "reference_name_bytes",
+    "reference_distinct_names",
+    "reference_canonical_allocations",
+    "reference_canonical_allocation_ratio_milli",
+    "reference_canonical_bytes",
+    "reference_representation_before_bytes",
+    "reference_representation_after_bytes",
     "signatures",
     "signature_bytes",
     "owners",
@@ -1089,7 +1095,8 @@ const FOOTPRINT: [&str; 24] = [
     "module_text_bytes",
 ];
 
-const TYPE_SIZES: [&str; 7] = [
+const TYPE_SIZES: [&str; 8] = [
+    "name",
     "file_facts",
     "declaration",
     "reference",
