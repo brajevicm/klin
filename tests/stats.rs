@@ -410,6 +410,13 @@ fn a_reset_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tre
     assert!(!run.says("still there"), "{}", run.out);
     assert!(!run.says("were fixed"), "{}", run.out);
 
+    let all = tree.run(&["stats", "--all"]);
+    assert!(
+        all.says("You restarted, and 2 regressions were set aside."),
+        "{}",
+        all.out
+    );
+
     let json = tree.run(&["stats", "--json"]).json();
     assert_eq!(json["counts"]["set-aside"], 2, "{json}");
     assert_eq!(json["counts"]["caught"], 2, "{json}");
@@ -457,6 +464,56 @@ fn open_attention_comes_before_the_uncertainty_a_reset_left() {
         .find("1 more was set aside when you restarted.")
         .unwrap_or_else(|| panic!("{said}"));
     assert!(open < aside, "{said}");
+}
+
+/// The whole opening order, top pair first: a window klin did not measure whole says so above
+/// the regressions it knows are open, and the set-aside uncertainty follows both.
+#[test]
+fn measurement_doubt_opens_the_report_above_the_open_regressions_it_knows_of() {
+    let unparsed = json!({"gate": "complexity", "outcome": "unparsed", "file": "src/odd.rs",
+                          "text": "no grammar reads it"});
+    let tree = tree(&[
+        stop(
+            500,
+            true,
+            vec![found(
+                "id-a",
+                "escapes",
+                "src/old.rs",
+                3,
+                "unwrap()",
+                UNWRAP,
+            )],
+            vec![],
+        ),
+        reset(400),
+        stop(
+            300,
+            true,
+            vec![found(
+                "id-b",
+                "stubs",
+                "src/pay.rs",
+                41,
+                "todo!()",
+                "Do it.",
+            )],
+            vec![unparsed],
+        ),
+    ]);
+
+    let run = tree.run(&["stats"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let said = run.out.replace("\r\n", "\n");
+    let at = |text: &str| {
+        said.find(text)
+            .unwrap_or_else(|| panic!("{text} missing from: {said}"))
+    };
+    let gap = at("Stats may be incomplete: 1 source file couldn't be parsed.");
+    let open = at("1 regression needs your attention.");
+    let aside = at("1 more was set aside when you restarted.");
+    assert!(gap < open && open < aside, "{said}");
+    assert!(!run.says("Nothing needs your attention."), "{said}");
 }
 
 #[test]

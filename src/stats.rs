@@ -675,8 +675,11 @@ impl Audit {
                 decision, reason, ..
             } => guarded(decision, reason),
             Audit::Reset { set_aside: 0, .. } => "You told klin to start over.".into(),
+            Audit::Reset { set_aside: 1, .. } => {
+                "You restarted, and 1 regression was set aside.".into()
+            }
             Audit::Reset { set_aside, .. } => {
-                format!("You restarted, and {} was set aside.", counted(*set_aside))
+                format!("You restarted, and {set_aside} regressions were set aside.")
             }
             Audit::Deleted {
                 file, line, text, ..
