@@ -140,8 +140,6 @@ pub struct Lost {
     pub why: &'static str,
 }
 
-const LOST: &str = "lost";
-
 const LOST_REMEDY: &str = "Drop the exclusion or restore the rule that reached it, or exclude it \
                            on purpose and accept that nothing measures it.";
 
@@ -162,7 +160,7 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
     out.record(|records| {
         for file in lost {
             let mut record = Map::new();
-            record.insert("outcome".into(), LOST.into());
+            record.insert("outcome".into(), check::LOST.into());
             record.insert("file".into(), file.file.clone().into());
             record.insert("text".into(), file.why.into());
             records.notes.push(Value::Object(record));
@@ -231,5 +229,5 @@ pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mu
 /// Whether a note records a file the run could not read or stopped measuring, which the hook
 /// prints even when nothing blocks the stop.
 pub fn is_lost(note: &Value) -> bool {
-    note.get("outcome").and_then(Value::as_str) == Some(LOST)
+    note.get("outcome").and_then(Value::as_str) == Some(check::LOST)
 }

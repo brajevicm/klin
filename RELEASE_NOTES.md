@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+### `klin stats` is an attention and value report (#172)
+
+The default report answers three questions in order: does anything need you,
+what did klin catch and what became of it, and can you trust the summary. It
+opens with the strongest condition the window holds. Measurement doubt comes
+first, then open regressions, then the uncertainty a reset left, then what was
+resolved. It names at most three open sites and points at `klin stats --all`
+for the rest. The stop count, the timing, the guard history and the
+previous-window comparison left the default and stayed in `--all` and `--json`.
+
+The counted unit is the Regression: one finding site a blocked stop put in
+front of the agent, counted once per window with its latest outcome. The word
+shortcut is gone from every text klin prints for a person. A regression is
+keyed by the finding id of spec 11.2, and a record that carries none, such as
+`doc-size`, falls back to gate, file, line and text. A rename produces a
+different id, and the reader counts a renamed site twice. Merging two ids whose
+text resembles each other would be the worse error.
+
+Two rules read what the record already held. The `config_hash` the journal
+recorded and never read now separates a code fix from a policy change: a
+regression that goes from a measurement taken under another configuration reads
+`Resolved after the config changed.` A site absent from a stop that measured
+its gate went, whether or not another site kept that gate red, so two sites
+under one gate resolve apart.
+
+No copy says who wrote a fix. The journal proves a regression was present and
+later absent from a measurement, so the report says `All 12 were fixed after
+klin flagged them.` The form `The agent fixed all 12.` is forbidden.
+
+Measurement confidence is one decision over unparsed and lost files,
+not-measured files, unresolved evidence, gate `ERR` rows and skipped journal
+lines. It outranks the value claim, so `Nothing needs your attention.` is
+printed only where klin measured the window whole.
+
+The words a report gives a gate's findings are now presentation metadata on the
+catalogue row, a singular and a plural, and a new row does not compile without
+them. A gate the binary has no row for still prints under its recorded name.
+
+`--json` prints one episode per regression identity and dropped the grouped
+`more` count. Turn-end and weekly messages use the same vocabulary and the same
+counting rule. `stats::turn_end` still reads the bounded journal tail of #184.
+Spec 9.5 and 11.5, `CONTEXT.md`, ADR 0034 and the journal/stats design document
+carry the decisions, and `tests/stats.rs` pins the behaviour.
+
 ### Derived public API compatibility (#46)
 
 A new Automatic gate, `public-api`, fails when a consumer-facing Rust or
