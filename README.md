@@ -89,6 +89,8 @@ codex plugin marketplace add brajevicm/klin
 codex plugin add klin@klin
 ```
 
+Codex does not trust a plugin's hooks when it installs them. Run `/hooks`, review the klin hook sources, trust them, and then start a fresh session so the hooks run.
+
 Then opt the repository into klin:
 
 ```sh
@@ -96,6 +98,8 @@ klin init
 ```
 
 That's enough for local feedback. When the agent finishes a turn, klin checks what changed and returns new regressions for repair.
+
+The first run downloads the `klin` release the plugin pins, verifies its checksum, and caches it. Every later run executes the cached binary. If that download fails, the plugin runs a `klin` on your PATH instead, and where there is none it says so and lets the turn end rather than blocking it.
 
 For independent enforcement, add klin to CI:
 
@@ -108,7 +112,7 @@ while the agent works     → fast feedback and repair
 before the change merges  → independent verification in CI
 ```
 
-A standalone binary and committed hooks are also available for teams that want to manage the integration themselves.
+The plugin is the preferred install. A standalone binary plus committed hooks is the fallback, for teams that want to manage the integration themselves.
 
 ## Conformance levels
 

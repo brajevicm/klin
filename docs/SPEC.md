@@ -3707,8 +3707,10 @@ no other, and the same lines run on both hosts. It finds the plugin through a ma
 file of its own at `.agents/plugins/marketplace.json`, which points at the
 same directory as Claude Code's `.claude-plugin/marketplace.json`. The
 install is `codex plugin marketplace add brajevicm/klin` and
-`codex plugin add klin@klin`, and Codex asks the person to review the
-plugin's hooks once before they run. The pre-tool matcher names
+`codex plugin add klin@klin`. Installing a plugin does not trust its hooks:
+Codex skips an untrusted plugin's hooks until the person reviews and trusts
+the current hook definition through the CLI `/hooks` surface, and a fresh
+session then runs them, so the install documentation names that step. The pre-tool matcher names
 `apply_patch` beside Claude Code's edit tools, so the guard reads Codex's
 edits. ADR 0030 records the decision. The Codex IDE extension loads no
 plugins, so it takes the route of 19.3.

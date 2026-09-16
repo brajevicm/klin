@@ -12,6 +12,7 @@ const HOOKS: &str = "plugins/claude-code/hooks/hooks.json";
 const MANIFEST: &str = "plugins/claude-code/.claude-plugin/plugin.json";
 const MARKET: &str = ".claude-plugin/marketplace.json";
 const CODEX_MARKET: &str = ".agents/plugins/marketplace.json";
+const README: &str = "README.md";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
 const SHELL: &str = "/bin/sh";
@@ -81,6 +82,65 @@ fn the_plugin_carries_the_skill_and_the_two_commands() {
     let skill = text(&format!("{PLUGIN}/skills/klin/SKILL.md"));
 
     assert!(skill.contains("klin-installer.sh"), "{skill}");
+}
+
+/// The install commands the README prints name the marketplace and the plugin that ship here,
+/// so a rename of either one fails in this test rather than in a person's session. Spec 19.2.
+#[test]
+fn the_readme_install_commands_name_the_shipped_plugin() {
+    let market = name(MARKET);
+    let plugin = name(MANIFEST);
+    let named = format!("{plugin}@{market}");
+    let readme = text(README);
+
+    assert_eq!(name(CODEX_MARKET), market, "the two marketplaces differ");
+    for command in [
+        "/plugin marketplace add brajevicm/klin".to_string(),
+        format!("/plugin install {named}"),
+        "codex plugin marketplace add brajevicm/klin".to_string(),
+        format!("codex plugin add {named}"),
+    ] {
+        assert!(readme.contains(&command), "the README omits {command}");
+    }
+}
+
+/// The README tells a Codex user to trust the installed hooks and to start a fresh session,
+/// because Codex skips an untrusted plugin's hooks. Spec 19.2.
+#[test]
+fn the_readme_names_the_codex_hook_trust_step() {
+    let readme = text(README);
+
+    for said in [
+        "Run `/hooks`, review the klin hook sources, trust them",
+        "start a fresh session so the hooks run",
+    ] {
+        assert!(readme.contains(said), "the README omits {said}");
+    }
+}
+
+/// The README promises a first run that verifies a checksum, a `klin` on PATH when that fetch
+/// fails, and a turn that ends either way. The last promise is the one a person is left with
+/// when neither route resolves, so the test runs the wrapper for it. Spec 19.2.
+#[test]
+fn the_readme_promises_the_turn_the_wrapper_ends() {
+    let readme = text(README);
+    let tree = Tree::bare();
+
+    let run = fetch(&tree, &["--version"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        notice(&run.printed).contains("could not be installed"),
+        "{}",
+        run.out
+    );
+    for said in [
+        "verifies its checksum",
+        "runs a `klin` on your PATH",
+        "lets the turn end",
+    ] {
+        assert!(readme.contains(said), "the README omits {said}");
+    }
 }
 
 #[test]
@@ -434,6 +494,13 @@ fn triple() -> String {
 
 fn hook(event: &str) -> String {
     json(HOOKS)["hooks"][event][0]["hooks"][0]["command"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn name(relative: &str) -> String {
+    json(relative)["name"]
         .as_str()
         .unwrap_or_default()
         .to_string()
