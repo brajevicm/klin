@@ -1209,3 +1209,110 @@ fn a_long_history_of_regressions_does_not_change_what_the_turn_end_tells() {
         run.out
     );
 }
+
+/// A whole test file the base held that the working tree no longer has. The site names no
+/// declaration, so the audit line names the file alone.
+#[test]
+fn a_deleted_test_file_reads_as_the_file_deleted() {
+    let tree = tree(&[
+        stop(
+            300,
+            true,
+            vec![finding("inventory", "tests/test_two.py", 0, "", "")],
+            vec![],
+        ),
+        stop(
+            200,
+            false,
+            vec![],
+            vec![
+                json!({"gate": "inventory", "outcome": "deleted", "file": "tests/test_two.py",
+                        "line": 0, "text": "the test file went in this window"}),
+            ],
+        ),
+    ]);
+
+    let all = tree.run(&["stats", "--all"]);
+    assert_eq!(all.code, 0, "{}", all.out);
+    assert!(
+        all.says("tests/test_two.py deleted. The agent said why."),
+        "{}",
+        all.out
+    );
+    assert_eq!(
+        tree.run(&["stats", "--json"]).json()["counts"]["asked-once"],
+        1
+    );
+}
+
+/// The facts the default report stopped printing are still facts. `--json` keeps the previous
+/// window and klin's own time, which is the `klin_ms` of spec 11.4 and never the project's build.
+#[test]
+fn json_keeps_the_previous_window_and_klins_own_time_the_default_no_longer_prints() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let other = found("id-b", "stubs", "src/pay.rs", 41, "todo!()", "Do the work.");
+    let this_week = [
+        timed(
+            stop(2 * DAY, true, vec![site.clone()], vec![]),
+            9_000,
+            7_000,
+        ),
+        timed(stop(2 * DAY - 60, false, vec![], vec![]), 9_000, 8_000),
+    ];
+    let mut two = vec![
+        stop(15 * DAY, false, vec![], vec![]),
+        stop(10 * DAY, true, vec![site, other.clone()], vec![]),
+        stop(10 * DAY - 60, false, vec![other], vec![]),
+    ];
+    two.extend(this_week.iter().cloned());
+
+    let both = tree(&two);
+    let json = both.run(&["stats", "--json"]).json();
+    assert_eq!(json["earlier"], json!({"caught": 2, "open": 1}), "{json}");
+    assert_eq!(json["activity"]["klin_ms"], 3_000, "{json}");
+
+    let run = both.run(&["stats"]);
+    assert!(!run.says("Last week"), "{}", run.out);
+    assert!(!run.says("seconds in total"), "{}", run.out);
+
+    let alone = tree(&this_week);
+    assert_eq!(
+        alone.run(&["stats", "--json"]).json()["earlier"],
+        Value::Null
+    );
+}
+
+fn timed(mut line: Value, total_ms: u64, build_ms: u64) -> Value {
+    line["timing"] = json!({"total_ms": total_ms, "build_ms": build_ms, "lock_ms": 0,
+                            "klin_ms": total_ms - build_ms});
+    line
+}
+
+fn when(mut line: Value, time: u64) -> Value {
+    line["time"] = json!(time);
+    line
+}
+
+#[test]
+fn turn_reads_exactly_the_lines_at_or_after_the_time_the_stamp_was_taken() {
+    let tree = hooked();
+    prompt(&tree);
+    let taken: u64 = tree
+        .field("time")
+        .parse()
+        .unwrap_or_else(|_| panic!("the stamp holds its time"));
+    let old = found("id-a", "escapes", "src/old.rs", 1, "unwrap()", UNWRAP);
+    let new = found("id-b", "stubs", "src/new.rs", 1, "todo!()", "Do the work.");
+    journal(
+        &tree,
+        &[
+            when(stop(0, true, vec![old], vec![]), taken - 1),
+            when(stop(0, true, vec![new], vec![]), taken),
+        ],
+    );
+
+    let run = tree.run(&["stats", "--turn"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("src/new.rs:1  todo!()"), "{}", run.out);
+    assert!(!run.says("src/old.rs"), "{}", run.out);
+}
