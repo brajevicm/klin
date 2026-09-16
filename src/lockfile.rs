@@ -54,35 +54,34 @@ impl Dependency {
     }
 }
 
-/// One ecosystem: the manifest klin reads, the lockfiles it can read beside it, the lockfiles it
-/// cannot read yet, and the two readers. Spec 8.2.1.
+/// One ecosystem: the manifest klin reads, the lockfiles it can read beside it, and the two
+/// readers. A lockfile reader returns `None` when its shape is not one it recognizes. Spec 8.2.1.
+type DependencyReader = fn(&str, &[u8]) -> Result<Vec<Dependency>, Error>;
+type LockfileReader = fn(&str, &[u8]) -> Result<Option<Vec<String>>, Error>;
+
 struct Format {
     manifest: &'static str,
     lockfiles: &'static [&'static str],
-    unreadable: &'static [&'static str],
-    dependencies: fn(&str, &[u8]) -> Result<Vec<Dependency>, Error>,
-    locked: fn(&str, &[u8]) -> Result<Vec<String>, Error>,
+    dependencies: DependencyReader,
+    locked: LockfileReader,
 }
 
 const FORMATS: &[Format] = &[
     Format {
         manifest: "Cargo.toml",
         lockfiles: &["Cargo.lock"],
-        unreadable: &[],
         dependencies: cargo_dependencies,
         locked: cargo_locked,
     },
     Format {
         manifest: "package.json",
-        lockfiles: &["package-lock.json"],
-        unreadable: &["pnpm-lock.yaml", "yarn.lock"],
+        lockfiles: &["package-lock.json", "pnpm-lock.yaml", "yarn.lock"],
         dependencies: npm_dependencies,
         locked: npm_locked,
     },
     Format {
         manifest: "go.mod",
         lockfiles: &["go.sum"],
-        unreadable: &[],
         dependencies: go_dependencies,
         locked: go_locked,
     },
@@ -181,8 +180,7 @@ fn candidates(judged: &[&(&str, &Format)]) -> Vec<String> {
     let mut out = BTreeSet::new();
     for (manifest, format) in judged {
         out.insert(manifest.to_string());
-        let names = format.lockfiles.iter().chain(format.unreadable);
-        for name in names {
+        for name in format.lockfiles {
             out.extend(nearest(manifest, name));
         }
     }
@@ -193,7 +191,7 @@ fn candidates(judged: &[&(&str, &Format)]) -> Vec<String> {
 /// every lockfile holds, parsed once however many manifests share it.
 struct Side {
     bytes: HashMap<String, Vec<u8>>,
-    locked: HashMap<String, Result<HashSet<String>, String>>,
+    locked: HashMap<String, Result<Option<HashSet<String>>, String>>,
 }
 
 impl Side {
@@ -237,18 +235,21 @@ impl Side {
         };
         let found = beside(&self.bytes, manifest, format.lockfiles);
         let none = HashSet::new();
+        let mut unreadable = None;
         let names = match &found {
-            Some(at) => locked(&mut self.locked, &self.bytes, at, format)?,
+            Some(at) => match locked(&mut self.locked, &self.bytes, at, format)? {
+                Some(names) => names,
+                None => {
+                    unreadable = Some(at.clone());
+                    &none
+                }
+            },
             None => &none,
         };
         let (deps, unparsed) = match (format.dependencies)(manifest, text) {
             Ok(deps) => (taken(deps, names), None),
             Err(Error(why)) => (BTreeMap::new(), Some(why)),
         };
-        let unreadable = found
-            .is_none()
-            .then(|| beside(&self.bytes, manifest, format.unreadable))
-            .flatten();
         Ok(Some(State {
             deps,
             unparsed,
@@ -261,17 +262,20 @@ impl Side {
 /// The names one lockfile holds, parsed on the first manifest that reads it and borrowed by
 /// every manifest after, and the error a malformed one gives each of them.
 fn locked<'a>(
-    parsed: &'a mut HashMap<String, Result<HashSet<String>, String>>,
+    parsed: &'a mut HashMap<String, Result<Option<HashSet<String>>, String>>,
     bytes: &HashMap<String, Vec<u8>>,
     at: &str,
     format: &Format,
-) -> Result<&'a HashSet<String>, Error> {
+) -> Result<Option<&'a HashSet<String>>, Error> {
     let names = parsed.entry(at.to_string()).or_insert_with(|| {
         (format.locked)(at, &bytes[at])
-            .map(|names| names.into_iter().collect())
+            .map(|names| names.map(|names| names.into_iter().collect()))
             .map_err(|Error(why)| why)
     });
-    names.as_ref().map_err(|why| Error(why.clone()))
+    names
+        .as_ref()
+        .map(Option::as_ref)
+        .map_err(|why| Error(why.clone()))
 }
 
 fn evaluator() -> Evaluator<'static> {
@@ -700,7 +704,7 @@ fn unquoted(text: &str) -> &str {
 }
 
 /// Every package name a `Cargo.lock` holds: the `name` of each `[[package]]` block.
-fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
+fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
     let text = String::from_utf8_lossy(bytes);
     let mut out = Vec::new();
     let mut package = false;
@@ -715,7 +719,7 @@ fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
             out.push(unquoted(value).to_string());
         }
     }
-    Ok(out)
+    Ok(Some(out))
 }
 
 const NPM_TABLES: &[&str] = &[
@@ -760,10 +764,20 @@ fn npm_exact(spec: &str) -> bool {
             .any(|part| part == "x" || part == "X")
 }
 
+/// Read the npm-family lockfile named by `at`; `None` means its line-scanned shape is unknown.
+fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
+    match basename(at) {
+        "package-lock.json" => package_locked(at, bytes).map(Some),
+        "pnpm-lock.yaml" => Ok(pnpm_locked(bytes)),
+        "yarn.lock" => Ok(yarn_locked(bytes)),
+        _ => unreachable!("unsupported npm lockfile: {at}"),
+    }
+}
+
 /// Every package name a `package-lock.json` holds, in both lockfile shapes: the keys of
 /// `packages` with everything up to the last `node_modules/` stripped, and the keys of the
 /// nested `dependencies` tree that version 1 writes.
-fn npm_locked(at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
+fn package_locked(at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
     let data = json(at, bytes)?;
     let mut out = Vec::new();
     if let Some(packages) = data.get("packages").and_then(Value::as_object) {
@@ -776,6 +790,214 @@ fn npm_locked(at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
     }
     npm_nested(data.get("dependencies"), &mut out);
     Ok(out)
+}
+
+/// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes.
+fn pnpm_locked(bytes: &[u8]) -> Option<Vec<String>> {
+    let text = String::from_utf8_lossy(bytes);
+    let version = pnpm_version(&text)?;
+    let packages = pnpm_packages(&text)?;
+    version.then_some(packages)
+}
+
+fn pnpm_version(text: &str) -> Option<bool> {
+    text.lines().find_map(pnpm_version_line)
+}
+
+fn pnpm_version_line(line: &str) -> Option<bool> {
+    line.strip_prefix("lockfileVersion:")
+        .map(pnpm_version_value)
+}
+
+fn pnpm_version_value(value: &str) -> bool {
+    yaml_text(value)
+        .split('.')
+        .next()
+        .and_then(|major| major.parse::<u64>().ok())
+        .is_some_and(|major| major >= 4)
+}
+
+fn pnpm_packages(text: &str) -> Option<Vec<String>> {
+    let mut lines = text.lines();
+    while let Some(line) = lines.next() {
+        if pnpm_packages_header(line) {
+            return pnpm_package_lines(lines);
+        }
+    }
+    None
+}
+
+fn pnpm_packages_header(line: &str) -> bool {
+    let Some(value) = line.strip_prefix("packages:") else {
+        return false;
+    };
+    matches!(value.trim(), "" | "{}")
+}
+
+fn pnpm_package_lines(lines: std::str::Lines<'_>) -> Option<Vec<String>> {
+    let mut package_indent = None;
+    let mut out = Vec::new();
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let indent = line.len() - line.trim_start().len();
+        if indent == 0 {
+            break;
+        }
+        let at = package_indent.get_or_insert(indent);
+        if indent == *at {
+            out.push(pnpm_name(yaml_key(trimmed)?)?);
+        }
+    }
+    Some(out)
+}
+
+fn pnpm_name(key: &str) -> Option<String> {
+    let key = yaml_text(key)
+        .split_once('(')
+        .map_or(yaml_text(key), |(name, _)| name)
+        .trim_start_matches('/');
+    if let Some((name, version)) = key.rsplit_once('@')
+        && !name.is_empty()
+        && !version.is_empty()
+    {
+        return Some(name.to_string());
+    }
+    let (name, version) = key.rsplit_once('/')?;
+    if version.is_empty() {
+        return None;
+    }
+    Some(
+        name.strip_prefix("registry.npmjs.org/")
+            .unwrap_or(name)
+            .to_string(),
+    )
+}
+
+/// Yarn classic has top-level selectors after its v1 marker; Yarn Berry has top-level locators
+/// after a `__metadata` mapping whose version is at least 4. Both only need package names here.
+fn yarn_locked(bytes: &[u8]) -> Option<Vec<String>> {
+    let text = String::from_utf8_lossy(bytes);
+    if text.lines().any(|line| line.trim() == "# yarn lockfile v1") {
+        Some(yarn_classic(&text))
+    } else {
+        yarn_berry(&text)
+    }
+}
+
+fn yarn_classic(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(yarn_classic_names)
+        .flatten()
+        .collect()
+}
+
+fn yarn_classic_names(line: &str) -> Option<Vec<String>> {
+    let trimmed = line.trim();
+    if line.len() != line.trim_start().len() {
+        return None;
+    }
+    if trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---" {
+        return None;
+    }
+    yarn_names(yaml_key(trimmed)?)
+}
+
+fn yarn_berry(text: &str) -> Option<Vec<String>> {
+    let version = yarn_metadata_version(text)?;
+    let locators = yarn_locators(text)?;
+    version.then_some(locators)
+}
+
+fn yarn_metadata_version(text: &str) -> Option<bool> {
+    let mut lines = text.lines();
+    while let Some(line) = lines.next() {
+        if yarn_metadata_header(line) {
+            return yarn_version(lines);
+        }
+    }
+    None
+}
+
+fn yarn_version(lines: std::str::Lines<'_>) -> Option<bool> {
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if line.len() == line.trim_start().len() {
+            return None;
+        }
+        if let Some(value) = trimmed.strip_prefix("version:") {
+            return Some(
+                yaml_text(value)
+                    .parse::<u64>()
+                    .ok()
+                    .is_some_and(|at| at >= 4),
+            );
+        }
+    }
+    None
+}
+
+fn yarn_metadata_header(line: &str) -> bool {
+    line.len() == line.trim_start().len() && yaml_key(line.trim()) == Some("__metadata")
+}
+
+fn yarn_locators(text: &str) -> Option<Vec<String>> {
+    let mut lines = text.lines();
+    while let Some(line) = lines.next() {
+        if yarn_metadata_header(line) {
+            return yarn_locator_lines(lines);
+        }
+    }
+    None
+}
+
+fn yarn_locator_lines(lines: std::str::Lines<'_>) -> Option<Vec<String>> {
+    let mut out = Vec::new();
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---" {
+            continue;
+        }
+        if line.len() == line.trim_start().len() {
+            out.extend(yarn_names(yaml_key(trimmed)?)?);
+        }
+    }
+    Some(out)
+}
+
+fn yarn_names(key: &str) -> Option<Vec<String>> {
+    let names = yaml_text(key)
+        .split(',')
+        .map(yarn_name)
+        .collect::<Option<Vec<_>>>()?;
+    (!names.is_empty()).then_some(names)
+}
+
+fn yarn_name(selector: &str) -> Option<String> {
+    let selector = yaml_text(selector);
+    let at = if selector.starts_with('@') {
+        let slash = selector.find('/')?;
+        slash + 1 + selector[slash + 1..].find('@')?
+    } else {
+        selector.find('@')?
+    };
+    let name = &selector[..at];
+    (!name.is_empty() && !selector[at + 1..].is_empty()).then(|| name.to_string())
+}
+
+fn yaml_key(line: &str) -> Option<&str> {
+    line.rsplit_once(':')
+        .map(|(key, _)| key.trim())
+        .filter(|key| !key.is_empty())
+}
+
+fn yaml_text(text: &str) -> &str {
+    text.trim().trim_matches(['\'', '"'])
 }
 
 fn npm_nested(held: Option<&Value>, out: &mut Vec<String>) {
@@ -847,13 +1069,14 @@ fn go_replaced(text: &str) -> Vec<String> {
 }
 
 /// Every module a `go.sum` holds: the first field of each line.
-fn go_locked(_at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
+fn go_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
     let text = String::from_utf8_lossy(bytes);
-    Ok(text
-        .lines()
-        .filter_map(|line| line.split_whitespace().next())
-        .map(str::to_string)
-        .collect())
+    Ok(Some(
+        text.lines()
+            .filter_map(|line| line.split_whitespace().next())
+            .map(str::to_string)
+            .collect(),
+    ))
 }
 
 fn bare(line: &str) -> &str {

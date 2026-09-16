@@ -1049,15 +1049,23 @@ that a package exists in a registry, because it runs offline. A dependency
 that does not exist fails the project's own install, which the `build` step
 runs. Workspace members, path dependencies and optional dependencies are
 implementation-defined and MUST be documented per manifest format, which
-8.2.1 does for the three formats that ship.
+8.2.1 does for the five formats that ship.
 
-The first version covers the three formats that need no parser klin does not
-already carry: `Cargo.toml` against `Cargo.lock`, `package.json` against
-`package-lock.json`, and `go.mod` against `go.sum`. `pnpm-lock.yaml` and
-`yarn.lock` need a YAML reader, and `poetry.lock` and `uv.lock` need a TOML
-reader, so each is a follow-up and each is a NOTE until then. A manifest
-whose lockfile format klin cannot read is one NOTE per run and no finding, so
-such a manifest never reads as a pass.
+The first version covers `Cargo.toml` against `Cargo.lock`, `package.json`
+against `package-lock.json`, `pnpm-lock.yaml` and `yarn.lock` against
+`package.json`, and `go.mod` against `go.sum`. The pnpm reader recognizes a
+`lockfileVersion` major of 4 or later and reads package names from the direct
+keys of its `packages` mapping. It accepts the path-shaped keys of older
+lockfiles and the `name@version` keys of newer ones, including peer suffixes.
+The Yarn v1 reader recognizes the `# yarn lockfile v1` marker and reads names
+from its top-level, comma-separated selectors. The Yarn 2+ reader recognizes
+the top-level `__metadata.version` value of 4 or later and reads names from
+its top-level locators. These readers scan only the package-key shapes they
+need and do not parse YAML values. A pnpm or Yarn file without its recognized
+marker, section or key shape is one NOTE per run and no finding. `poetry.lock`
+and `uv.lock` need a TOML reader and remain follow-ups. A manifest whose
+lockfile format klin cannot read is one NOTE per run and no finding, so such a
+manifest never reads as a pass.
 
 Two more checks belong to this tier by the criteria and are not in the core
 list of section 18, because each takes weeks and carries an unsolved problem:
@@ -1456,10 +1464,18 @@ everything up to the last `node_modules/` stripped and the keys of the nested
 of each line. A dependency the base manifest did not name is a site only when
 it is `unlocked`, so a new dependency with a range and a lockfile entry is
 not a finding, while a pin the base held and a lockfile entry the base held
-are both `worsened` when they go. A manifest with no lockfile in either tree
-is a NOTE and no finding, and a lockfile only the base held makes every
+are both `worsened` when they go. `pnpm-lock.yaml` gives names from the direct
+keys under its `packages` mapping: older versions use `/name/version` or
+`/name@version`, and current versions use `name@version`, with a peer suffix
+ignored after the version. `yarn.lock` v1 gives names from top-level selectors
+after `# yarn lockfile v1`; Yarn 2 and later gives them from top-level locator
+keys after `__metadata.version`. Selectors and locators are split at the
+package-name separator, preserving scoped names. The line readers recognize
+only those markers and key shapes; an unrecognized shape is a NOTE and no
+finding rather than an empty lockfile. A JSON lockfile klin cannot parse is a
+tool error naming the file. A manifest with no lockfile in either tree is a
+NOTE and no finding, and a lockfile only the base held makes every
 dependency of that manifest `unlocked`, so deleting a lockfile fails. A
-supported lockfile klin cannot parse is a tool error naming the file. A
 manifest klin cannot parse now, and that did not parse at the base or that
 the base did not hold, is a NOTE naming the manifest in every run, hook or not
 (8.6). It judges none of that manifest's dependencies, and every other
@@ -1487,7 +1503,9 @@ handful of files. Pinned by
 `a_brace_inside_a_comment_hides_no_dependency_below_it`,
 `a_renamed_dependency_is_locked_by_the_package_the_lockfile_records`,
 `both_npm_lockfile_versions_hold_a_dependency_in_the_base_state`,
-`an_unreadable_lockfile_format_is_a_note_and_judges_no_manifest`,
+`an_unrecognized_lockfile_format_is_a_note_and_judges_no_manifest`,
+`pnpm_lockfile_key_styles_hold_and_missing_dependencies_fail`,
+`both_yarn_lockfile_formats_hold_and_missing_dependencies_fail`,
 `a_malformed_lockfile_is_a_tool_error_naming_the_file`,
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
