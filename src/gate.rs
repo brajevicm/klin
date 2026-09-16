@@ -1106,6 +1106,7 @@ fn name_evidence(
         "layout".into(),
         layout.map_or(Value::Null, |layout| {
             serde_json::json!({
+                "written": layout.written,
                 "worktree_add_ms": journal::millis(layout.worktree_add),
                 "changes_ms": journal::millis(layout.changes),
                 "renames_ms": journal::millis(layout.renames),

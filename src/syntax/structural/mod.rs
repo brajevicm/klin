@@ -282,6 +282,9 @@ struct Kept {
     cache: Cache,
     changed: HashSet<String>,
     stale: Cell<bool>,
+    /// What reading the cache cost, when a caller read it before this tree held it, handed over
+    /// once to the view that would otherwise have read it. Spec 11.2.
+    read: Cell<Duration>,
 }
 
 impl Extracted {
@@ -323,19 +326,54 @@ impl Extracted {
     /// set names. The cache is named only when the tree holds none yet, and the time reading and
     /// decoding it took is the cost; naming it is the caller's part.
     fn keep(&self, cache: impl FnOnce() -> Option<Cache>, changes: &[Change]) -> ExtractionCost {
-        if self.kept.get().is_some() {
-            return ExtractionCost::default();
+        if let Some(kept) = self.kept.get() {
+            return ExtractionCost {
+                cache_read: kept.read.take(),
+                ..ExtractionCost::default()
+            };
         }
         let Some(cache) = cache() else {
             return ExtractionCost::default();
         };
         let started = Instant::now();
+        let outcomes = cache.read();
+        self.held_from(cache, outcomes, changes, Duration::ZERO);
+        ExtractionCost {
+            cache_read: started.elapsed(),
+            ..ExtractionCost::default()
+        }
+    }
+
+    /// The same, for a caller that named and read the cache itself, because it needed the
+    /// outcomes before this tree existed: the base laid out without a checkout reads them to
+    /// know which of its files it must write. The read's cost is handed to the view that asks
+    /// later, so the run records it once and in the same counter. Spec 8.4, 11.2.
+    pub fn hold(
+        &self,
+        cache: Cache,
+        outcomes: HashMap<String, Outcome>,
+        changes: &[Change],
+        read: Duration,
+    ) {
+        if self.kept.get().is_some() {
+            return;
+        }
+        self.held_from(cache, Some(outcomes), changes, read);
+    }
+
+    fn held_from(
+        &self,
+        cache: Cache,
+        outcomes: Option<HashMap<String, Outcome>>,
+        changes: &[Change],
+        read: Duration,
+    ) {
         let changed: HashSet<String> = changes
             .iter()
             .flat_map(|change| std::iter::once(&change.path).chain(&change.was))
             .cloned()
             .collect();
-        if let Some(outcomes) = cache.read() {
+        if let Some(outcomes) = outcomes {
             let held = self.held.borrow();
             self.cached.borrow_mut().extend(
                 outcomes
@@ -347,11 +385,8 @@ impl Extracted {
             cache,
             changed,
             stale: Cell::new(false),
+            read: Cell::new(read),
         });
-        ExtractionCost {
-            cache_read: started.elapsed(),
-            ..ExtractionCost::default()
-        }
     }
 
     /// Every outcome this tree holds for a path the change set does not name, written to its

@@ -1100,7 +1100,8 @@ const TYPE_SIZES: [&str; 7] = [
 ];
 
 /// The parts of one whole-base layout, on the row of the gate that laid it out. #202.
-const LAYOUT: [&str; 6] = [
+const LAYOUT: [&str; 7] = [
+    "written",
     "worktree_add_ms",
     "changes_ms",
     "renames_ms",

@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -8,10 +9,10 @@ use serde_json::{Map, Value};
 use crate::changed::{Change, blobs};
 use crate::check::{Context, Sink};
 use crate::config::Error;
-use crate::git::Repo;
-use crate::project::{Project, Tree};
+use crate::git::{Repo, Staged};
+use crate::project::{self, Project, Tree};
 use crate::state;
-use crate::syntax::structural::{Cache, Unchanged};
+use crate::syntax::structural::{Cache, Outcome, Unchanged, selected_extensions};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -27,11 +28,17 @@ pub struct Prior {
 }
 
 /// What laying the whole base out took, part by part, so a warm run's base cost is not one
-/// number: registering and checking out the linked worktree, looking the change set up, moving
-/// renamed files to today's paths, and naming the structural cache. The file list's own parts
-/// come from the tree. A scoped base records none of this. Spec 11.2.
+/// number: laying the linked worktree out, looking the change set up, moving renamed files to
+/// today's paths, and naming the structural cache. `worktree_add` holds every git command of
+/// the layout, which is one checkout for the base checked out whole and four commands that
+/// write only the files a gate reads for the base laid out light. The file list's own parts
+/// come from the tree, and a light layout walks nothing, so both are zero. A scoped base
+/// records none of this. Spec 11.2.
 #[derive(Default, Clone, Copy)]
 pub struct Layout {
+    /// How many base files a light layout wrote from the index, and `None` for a base checked
+    /// out whole, which writes every file the base commit holds.
+    pub written: Option<usize>,
     pub worktree_add: Duration,
     pub changes: Duration,
     pub renames: Duration,
@@ -49,10 +56,9 @@ pub struct Teardown {
 }
 
 impl Prior {
-    fn new(root: PathBuf, dir: tempfile::TempDir, from_worktree: Option<PathBuf>) -> Prior {
-        let _ = std::fs::create_dir_all(&root);
+    fn new(tree: Tree, dir: tempfile::TempDir, from_worktree: Option<PathBuf>) -> Prior {
         Prior {
-            tree: Tree::at(&root),
+            tree,
             dir,
             from_worktree: Cell::new(from_worktree),
             layout: Cell::new(None),
@@ -127,14 +133,33 @@ pub fn materialize(
     before: &str,
     scope: Option<&[Change]>,
 ) -> Result<Prior, Error> {
-    let dir = tempfile::Builder::new()
-        .prefix("klin-base-")
-        .tempdir()
-        .map_err(|why| Error(format!("a directory for the base could not be made: {why}")))?;
+    let dir = temporary()?;
     match scope {
         Some(changes) => written(project, before, changes, dir),
-        None => checked_out(project, before, dir),
+        None => checked_out(project, before, dir, under_the_repository(project.root())?),
     }
+}
+
+/// The whole base for a check that resolves names against all of it. A run that hands over its
+/// change set may take the layout that checks no whole commit out, and takes today's checkout
+/// wherever that layout cannot serve it: no structural cache to read, or a git command that
+/// refused. Optimization state decides the cost and never the verdict. Spec 8.4.
+pub fn laid_out(project: &Project, before: &str, light: Option<&[Change]>) -> Result<Prior, Error> {
+    let dir = temporary()?;
+    let inside = under_the_repository(project.root())?;
+    if let Some(changes) = light
+        && let Some(laid) = lightly(project, before, changes, dir.path(), &inside)
+    {
+        return Ok(held(project, laid, dir, changes));
+    }
+    checked_out(project, before, dir, inside)
+}
+
+fn temporary() -> Result<tempfile::TempDir, Error> {
+    tempfile::Builder::new()
+        .prefix("klin-base-")
+        .tempdir()
+        .map_err(|why| Error(format!("a directory for the base could not be made: {why}")))
 }
 
 fn short(commit: &str) -> &str {
@@ -149,9 +174,13 @@ fn missing(before: &str, was: &str) -> Error {
     ))
 }
 
-fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
+fn checked_out(
+    project: &Project,
+    before: &str,
+    dir: tempfile::TempDir,
+    inside: PathBuf,
+) -> Result<Prior, Error> {
     let root = project.root();
-    let inside = under_the_repository(root)?;
     let started = Instant::now();
     Repo::at(root)
         .text(&[
@@ -169,7 +198,9 @@ fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Resul
                 short(before)
             ))
         })?;
-    let prior = Prior::new(dir.path().join(inside), dir, Some(root.to_path_buf()));
+    let at = dir.path().join(inside);
+    let _ = std::fs::create_dir_all(&at);
+    let prior = Prior::new(Tree::at(&at), dir, Some(root.to_path_buf()));
     prior.add(|layout| &mut layout.worktree_add, started.elapsed());
     let changes = prior.spent(|layout| &mut layout.changes, || project.changes(before))?;
     prior.spent(
@@ -207,6 +238,227 @@ fn under_the_repository(root: &Path) -> Result<PathBuf, Error> {
         .to_path_buf())
 }
 
+/// The whole base laid out without checking the base commit out: a linked worktree registered
+/// with no file on disk, the base commit read into its index, and only the base files a gate
+/// may read written from that index. Every one of those files is written before any rename
+/// moves it, so git converts each one under the base commit's own attribute topology, as a
+/// checkout of the commit does. `None` where the run cannot take this layout, and where a
+/// command failed the worktree is removed again, so nothing half-laid reaches a gate. Spec 8.4.
+fn lightly(
+    project: &Project,
+    before: &str,
+    changes: &[Change],
+    dir: &Path,
+    inside: &Path,
+) -> Option<Laid> {
+    let mut layout = Layout::default();
+    let started = Instant::now();
+    let under = project
+        .facts()
+        .state
+        .as_deref()?
+        .join(state::CACHE)
+        .join(state::STRUCTURAL);
+    let cache = Cache::at(&under, before, &checkout(project.root()))?;
+    layout.cache_name = started.elapsed();
+    let started = Instant::now();
+    let outcomes = cache.read()?;
+    let read = started.elapsed();
+
+    let root = dir.join(inside);
+    let started = Instant::now();
+    let laid = (|| {
+        let catalogue = staged(project.root(), dir, &root, before)?;
+        let wanted = required(&catalogue, changes, &outcomes);
+        let written = wanted.len();
+        Repo::at(&root).checkout_index(&wanted)?;
+        Some((catalogue, written))
+    })();
+    let Some((catalogue, written)) = laid else {
+        abandoned(project.root(), dir);
+        return None;
+    };
+    layout.worktree_add = started.elapsed();
+    layout.written = Some(written);
+
+    let started = Instant::now();
+    for change in changes {
+        let Some(was) = change.was.as_deref().filter(|was| *was != change.path) else {
+            continue;
+        };
+        if move_within(&root, was, &change.path).is_err() {
+            abandoned(project.root(), dir);
+            return None;
+        }
+    }
+    layout.renames = started.elapsed();
+
+    Some(Laid {
+        files: catalogue.listing(changes),
+        root,
+        cache,
+        outcomes,
+        read,
+        layout,
+    })
+}
+
+/// A base laid out light, before it becomes a `Prior`: where it sits, the files it lists, and
+/// the structural cache the layout already named and read.
+struct Laid {
+    root: PathBuf,
+    files: Vec<String>,
+    cache: Cache,
+    outcomes: HashMap<String, Outcome>,
+    read: Duration,
+    layout: Layout,
+}
+
+/// A light layout made into the base every gate reads, with the outcomes the layout read handed
+/// to the tree, so the view that asks later neither names nor reads the cache again.
+fn held(project: &Project, laid: Laid, dir: tempfile::TempDir, changes: &[Change]) -> Prior {
+    let tree = Tree::listed(&laid.root, laid.files);
+    tree.extracted()
+        .hold(laid.cache, laid.outcomes, changes, laid.read);
+    let prior = Prior::new(tree, dir, Some(project.root().to_path_buf()));
+    prior.layout.set(Some(laid.layout));
+    prior
+}
+
+/// A light layout that could not be completed removed again, so the run checks the base out on
+/// the same directory. A directory git never registered is left as it was.
+fn abandoned(repository: &Path, dir: &Path) {
+    let repo = Repo::at(repository);
+    repo.text(&["worktree", "remove", "--force", &dir.to_string_lossy()]);
+    repo.text(&["worktree", "prune"]);
+}
+
+/// The base commit registered as a linked worktree with nothing on disk, and its index listed
+/// from the directory the configuration sits in, so a configuration root below the git top
+/// level lists its own subtree by relative paths.
+fn staged(repository: &Path, dir: &Path, root: &Path, before: &str) -> Option<Catalogue> {
+    Repo::at(repository).text(&[
+        "worktree",
+        "add",
+        "--detach",
+        "--no-checkout",
+        "--quiet",
+        &dir.to_string_lossy(),
+        before,
+    ])?;
+    let worktree = Repo::at(dir);
+    worktree.read_tree(before)?;
+    if told(&worktree, "core.sparseCheckout", false) {
+        return None;
+    }
+    std::fs::create_dir_all(root).ok()?;
+    Catalogue::of(
+        Repo::at(root).ls_files_stage()?,
+        told(&worktree, "core.symlinks", true),
+    )
+}
+
+/// What git's configuration says a boolean setting is here, and the default where it says
+/// nothing.
+fn told(repo: &Repo, name: &str, default: bool) -> bool {
+    repo.text(&["config", "--get", name])
+        .map_or(default, |set| set.trim() == "true")
+}
+
+/// The base commit's index as the light layout reads it: every path a checkout of the commit
+/// would write, and the paths a tree lists, which is that set less what a walk never reaches.
+struct Catalogue {
+    written: Vec<String>,
+    listed: Vec<String>,
+}
+
+/// The index modes a checkout of a commit writes.
+const FILE: u32 = 0o100_644;
+const EXECUTABLE: u32 = 0o100_755;
+const SYMLINK: u32 = 0o120_000;
+const GITLINK: u32 = 0o160_000;
+
+impl Catalogue {
+    /// One index reading, by mode. A file and an executable file are written and listed. A
+    /// submodule is neither, because an uninitialized submodule is an empty directory that
+    /// holds no file. A symbolic link is written, and it is listed only where `core.symlinks`
+    /// is false, since git then writes the target path as a plain file that a walk lists, where
+    /// otherwise it writes a link that a walk skips. `None` for any other mode and for an
+    /// unmerged entry, which are shapes this layout does not prove equivalent to a checkout.
+    fn of(entries: Vec<Staged>, symlinks: bool) -> Option<Catalogue> {
+        let mut catalogue = Catalogue {
+            written: Vec::new(),
+            listed: Vec::new(),
+        };
+        for entry in entries {
+            if entry.stage != 0 {
+                return None;
+            }
+            let lists = match entry.mode {
+                GITLINK => continue,
+                FILE | EXECUTABLE => true,
+                SYMLINK => !symlinks,
+                _ => return None,
+            };
+            if lists && project::reached(&entry.path) {
+                catalogue.listed.push(entry.path.clone());
+            }
+            catalogue.written.push(entry.path);
+        }
+        Some(catalogue)
+    }
+
+    /// The base tree's file list: the index's paths with every renamed file under the name it
+    /// has today, where `move_within` left it, sorted as a walk sorts a tree.
+    fn listing(&self, changes: &[Change]) -> Vec<String> {
+        let renamed: HashMap<&str, &str> = changes
+            .iter()
+            .filter_map(|change| {
+                let was = change.was.as_deref().filter(|was| *was != change.path)?;
+                Some((was, change.path.as_str()))
+            })
+            .collect();
+        let mut files: Vec<String> = self
+            .listed
+            .iter()
+            .map(|path| match renamed.get(path.as_str()) {
+                Some(now) => (*now).to_string(),
+                None => path.clone(),
+            })
+            .collect();
+        files.sort();
+        files
+    }
+}
+
+/// Every base path the light layout writes: the whole index, less the source files whose facts
+/// the structural cache already holds, which no gate reads from disk. A file the change set
+/// names is never served from the cache, so it is always written.
+fn required<'a>(
+    catalogue: &'a Catalogue,
+    changes: &[Change],
+    outcomes: &HashMap<String, Outcome>,
+) -> Vec<&'a str> {
+    let extensions = selected_extensions(&[]).unwrap_or_default();
+    let changed: HashSet<&str> = changes
+        .iter()
+        .flat_map(|change| std::iter::once(change.path.as_str()).chain(change.was.as_deref()))
+        .collect();
+    let served: HashSet<&str> = catalogue
+        .listed
+        .iter()
+        .map(String::as_str)
+        .filter(|path| extensions.iter().any(|end| path.ends_with(end)))
+        .filter(|path| outcomes.contains_key(*path) && !changed.contains(path))
+        .collect();
+    catalogue
+        .written
+        .iter()
+        .map(String::as_str)
+        .filter(|path| !served.contains(path))
+        .collect()
+}
+
 fn move_within(root: &Path, was: &str, now: &str) -> Result<(), Error> {
     let (from, to) = (root.join(was), root.join(now));
     if !from.is_file() {
@@ -226,7 +478,8 @@ fn written(
     dir: tempfile::TempDir,
 ) -> Result<Prior, Error> {
     let root = project.root();
-    let prior = Prior::new(dir.path().to_path_buf(), dir, None);
+    let at = dir.path().to_path_buf();
+    let prior = Prior::new(Tree::at(&at), dir, None);
     let requested: Vec<(&str, &Change)> = changes
         .iter()
         .filter_map(|change| change.was.as_deref().map(|was| (was, change)))
@@ -303,7 +556,9 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
 pub fn whole<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
     match (at.prior, at.changes) {
         (Some(prior), None) => Ok(prior),
-        _ => at.project.whole_base(commit),
+        _ => at
+            .project
+            .whole_base(commit, at.changes.filter(|_| !at.strict)),
     }
 }
 

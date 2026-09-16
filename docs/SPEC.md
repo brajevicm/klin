@@ -1251,6 +1251,32 @@ copied from another commit, a smudge filter added between two runs, the
 four-file bound, and repeated red stops through a prompt and a branch switch. `tests/structural_views.rs` repeats each changed
 caller over the cache and requires the same output.
 
+A run that reads that cache lays the whole base out without checking the base
+commit out. It registers the base commit as a linked worktree with no file on
+disk, reads the commit into that worktree's index, and writes from the index
+only the base files a gate may read: every file the index holds, less the
+source files whose facts the cache already holds. The base tree's file list is
+the index's, under the rules of 4.3, so no walk and no ignored-path discovery
+runs in the base; a fresh checkout holds tracked files only, so the base's
+ignored set is empty either way. A submodule entry is no file, as an
+uninitialized submodule is an empty directory. A symbolic-link entry is no
+file where git writes a link, and is a file where `core.symlinks` is false and
+git writes the target path as a plain file. Every file the layout writes is
+written before any rename moves it, so git converts each one under the base
+commit's own attribute topology, which is the topology a checkout of the
+commit reads. Renames then move files to today's paths, as they do for a base
+checked out whole.
+
+The layout changes what a run costs and never what it reports. A strict run, a
+run that is not changed, and the check by hand check the base out whole. So
+does a run with no state directory, with no cache to name, with a cache it
+cannot read, whose index holds a sparse checkout or any other shape this
+layout does not read, or whose git commands refused. A layout that could not be
+completed removes its worktree before the run checks the base out on the same
+directory, so no half-laid base reaches a gate. `tests/structural_cache.rs`
+and `tests/structural_views.rs` compare each warm run with the same run over a
+removed cache and require the same findings, notes, coverage and exit code.
+
 The shared structural view keeps imports and module declarations alongside
 declarations and references, and keeps unparsed and unsupported outcomes as
 coverage data. The project's Change data remains separate from the structural
@@ -2339,12 +2365,16 @@ One object on stdout. Fields:
   and naming and reading the structural cache of 8.4, so it holds
   `facts.cache_read_ms`, and only the first gate of a run that needs the base
   pays it. `names.layout` divides the whole base's layout into its parts,
-  each in milliseconds: `worktree_add_ms` (registering and checking out the
-  linked worktree), `changes_ms` (looking the change set up), `renames_ms`
+  each in milliseconds: `worktree_add_ms` (every git command that laid the
+  linked worktree out), `changes_ms` (looking the change set up), `renames_ms`
   (moving renamed files to today's paths), `cache_name_ms` (naming the
   structural cache, which asks git for the checkout identity of 8.4),
   `ignored_ms` (asking git what the base tree ignores) and `walk_ms`
-  (walking the base tree's directories into its file list). A run lays the
+  (walking the base tree's directories into its file list). `written` is how
+  many base files a light layout (8.4) wrote from the base commit's index, and
+  null for a base checked out whole. A base checked out whole walks the
+  checkout, and a light layout reads its file list from the index, so
+  `ignored_ms` and `walk_ms` are zero on a light layout. A run lays the
   whole base out once, so the parts sit on the row of the first name-resolving
   gate that asks for them and are null on every other row, and on every row
   of a run whose base was laid out scoped. `facts.cache_read_ms` is reading

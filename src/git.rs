@@ -144,6 +144,71 @@ impl<'a> Repo<'a> {
     pub fn worktrees(&self) -> Option<String> {
         self.text(&["worktree", "list", "--porcelain"])
     }
+
+    /// A commit read into this root's index, writing no file. A worktree registered without a
+    /// checkout holds the commit's paths, modes and attributes after this, and nothing on disk.
+    pub fn read_tree(&self, commit: &str) -> Option<()> {
+        self.text(&["read-tree", commit]).map(|_| ())
+    }
+
+    /// Every index entry at or below this root, as `ls-files --stage` prints it: the entry's
+    /// mode, its stage and its path relative to the root. `None` where git could not run or an
+    /// entry is not in that shape.
+    pub fn ls_files_stage(&self) -> Option<Vec<Staged>> {
+        self.text(&["ls-files", "-z", "--stage"])?
+            .split('\0')
+            .filter(|entry| !entry.is_empty())
+            .map(staged)
+            .collect()
+    }
+
+    /// The index's bytes for these paths written to disk under this root, converted as a
+    /// checkout converts them. The paths are handed to git on standard input, so no argument
+    /// list bounds the set, and they are relative to the root as the index names them.
+    pub fn checkout_index(&self, paths: &[&str]) -> Option<()> {
+        if paths.is_empty() {
+            return Some(());
+        }
+        let mut git = Reaped(
+            Command::new("git")
+                .arg("-C")
+                .arg(self.root)
+                .args(["-c", "core.quotePath=false"])
+                .args(["checkout-index", "-f", "-z", "--stdin"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .ok()?,
+        );
+        let mut requests = git.0.stdin.take()?;
+        for path in paths {
+            requests.write_all(path.as_bytes()).ok()?;
+            requests.write_all(&[0]).ok()?;
+        }
+        drop(requests);
+        git.0.wait().ok()?.success().then_some(())
+    }
+}
+
+/// One index entry as `ls-files --stage` names it. The mode says what git would write: a file,
+/// an executable file, a symbolic link, a submodule, or a shape no checkout of a commit holds.
+pub struct Staged {
+    pub mode: u32,
+    pub stage: u32,
+    pub path: String,
+}
+
+fn staged(entry: &str) -> Option<Staged> {
+    let (fields, path) = entry.split_once('\t')?;
+    let mut fields = fields.split_whitespace();
+    let mode = u32::from_str_radix(fields.next()?, 8).ok()?;
+    let stage = fields.nth(1)?.parse().ok()?;
+    Some(Staged {
+        mode,
+        stage,
+        path: path.to_string(),
+    })
 }
 
 /// A git process that is killed and reaped when the read ends, on success or failure, so no
@@ -304,6 +369,53 @@ mod tests {
         let listed = repo.text_with_env(&["add", "-A"], &[(name, value)]);
         assert_eq!(listed, Some(String::new()), "git add ran with the index");
         assert!(index.is_file(), "the private index was written");
+    }
+
+    #[test]
+    fn a_light_worktree_lists_the_commit_and_writes_only_the_paths_it_is_given() {
+        let (dir, _) = repository(&[("src/a.rs", b"fn a() {}\n"), ("src/b.rs", b"fn b() {}\n")]);
+        let laid = tempfile::tempdir().expect("a temporary directory");
+        let at = laid.path().join("base");
+        let named = at.to_string_lossy().into_owned();
+        Repo::at(dir.path())
+            .text(&[
+                "worktree",
+                "add",
+                "--detach",
+                "--no-checkout",
+                "-q",
+                &named,
+                "HEAD",
+            ])
+            .expect("the worktree registered");
+        let worktree = Repo::at(&at);
+        worktree.read_tree("HEAD").expect("the commit read");
+
+        let listed = worktree.ls_files_stage().expect("the index listed");
+        let paths: Vec<&str> = listed.iter().map(|entry| entry.path.as_str()).collect();
+        assert_eq!(paths, ["src/a.rs", "src/b.rs"]);
+        assert!(
+            listed
+                .iter()
+                .all(|entry| entry.mode == 0o100_644 && entry.stage == 0)
+        );
+        assert!(!at.join("src/a.rs").exists(), "read-tree wrote a file");
+
+        worktree
+            .checkout_index(&["src/a.rs"])
+            .expect("the file written");
+        assert_eq!(
+            std::fs::read(at.join("src/a.rs")).ok(),
+            Some(b"fn a() {}\n".to_vec())
+        );
+        assert!(
+            !at.join("src/b.rs").exists(),
+            "a path no one asked for was written"
+        );
+        assert_eq!(worktree.checkout_index(&[]), Some(()), "no path is no work");
+        assert_eq!(worktree.checkout_index(&["src/gone.rs"]), None);
+
+        Repo::at(dir.path()).text(&["worktree", "remove", "--force", &named]);
     }
 
     #[test]

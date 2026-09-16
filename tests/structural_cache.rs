@@ -298,3 +298,306 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
         );
     }
 }
+
+/// The whole base's layout as a run recorded it, off the row of the gate that laid it out.
+fn layout(run: &Run) -> Value {
+    let report = run.json();
+    report["gates"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|row| row["names"]["layout"].clone())
+        .find(|held| held.is_object())
+        .unwrap_or_else(|| panic!("no whole-base layout in {report}"))
+}
+
+/// One run warm, which lays the whole base out without checking the base commit out, beside the
+/// same run over a removed cache, which checks it out whole. The two must agree on the findings,
+/// the notes, the coverage and the exit code. #203.
+fn light_beside_whole(tree: &Tree, run: impl Fn(&Tree) -> Run) -> Run {
+    run(tree);
+    let warm = run(tree);
+    assert!(
+        layout(&warm)["written"].is_u64(),
+        "the warm run checked the base out whole: {}",
+        warm.out
+    );
+    assert!(fs::remove_dir_all(cache(tree)).is_ok());
+    let whole = run(tree);
+    assert!(
+        layout(&whole)["written"].is_null(),
+        "the run without a cache laid the base out light: {}",
+        whole.out
+    );
+    assert_eq!(judged(&warm), judged(&whole));
+    warm
+}
+
+const LAYERS: &str = r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":[]},"domain":{"in":"src/domain","can_use":[]}}}}"#;
+
+fn layered(tree: &Tree) -> Run {
+    tree.run(&[
+        "gate",
+        "--json",
+        "--changed",
+        "--gate",
+        "layering",
+        "--gate",
+        "dead-symbols",
+    ])
+}
+
+#[test]
+fn a_manifest_the_working_tree_changed_is_read_from_the_base_on_a_light_layout() {
+    let tree = Tree::new();
+    tree.write("klin.json", LAYERS);
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("src/lib.rs", "mod domain;\nmod ui;\n");
+    tree.write(
+        "src/other.rs",
+        "mod domain;\nmod ui;\n#[path = \"ui/shared.rs\"]\nmod shared;\n",
+    );
+    tree.write("src/ui/mod.rs", "pub fn show() {}\n");
+    tree.write("src/ui/shared.rs", "pub fn shared() {}\n");
+    tree.write(
+        "src/domain/mod.rs",
+        "pub fn rule() { crate::shared::shared(); }\n",
+    );
+    tree.base();
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\nedition = \"2024\"\n[lib]\npath = \"src/other.rs\"\n",
+    );
+
+    let warm = light_beside_whole(&tree, layered);
+
+    assert!(warm.says("layering"), "{}", warm.out);
+}
+
+#[test]
+fn a_manifest_the_working_tree_renamed_is_read_from_the_base_at_its_base_path() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"layering":{"layers":{"ui":{"in":"lib/src/ui","can_use":[]},"domain":{"in":"lib/src/domain","can_use":[]}}}}"#);
+    tree.write(
+        "lib/Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("lib/src/lib.rs", "mod domain;\nmod ui;\n");
+    tree.write("lib/src/ui/mod.rs", "pub fn show() {}\n");
+    tree.write(
+        "lib/src/domain/mod.rs",
+        "pub fn rule() { crate::ui::show(); }\n",
+    );
+    tree.write("src/extra.rs", "pub fn extra() {}\n");
+    tree.write("src/user.rs", "fn main() { extra(); }\n");
+    tree.base();
+    for under in ["app/src/ui", "app/src/domain"] {
+        assert!(fs::create_dir_all(tree.path(under)).is_ok());
+    }
+    for name in [
+        "Cargo.toml",
+        "src/lib.rs",
+        "src/ui/mod.rs",
+        "src/domain/mod.rs",
+    ] {
+        tree.git(&["mv", &format!("lib/{name}"), &format!("app/{name}")]);
+    }
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"ui":{"in":"app/src/ui","can_use":[]},"domain":{"in":"app/src/domain","can_use":[]}}}}"#,
+    );
+
+    let warm = light_beside_whole(&tree, layered);
+
+    assert!(warm.says("layering"), "{}", warm.out);
+}
+
+#[test]
+fn the_base_attributes_convert_the_base_bytes_where_the_working_tree_changed_them() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.git(&["config", "filter.drop.smudge", "sed -e s/helper//"]);
+    tree.git(&["config", "filter.drop.clean", "cat"]);
+    tree.write(
+        ".gitattributes",
+        "src/caller.rs filter=drop\n*.rs eol=crlf\n",
+    );
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { helper(); }\n");
+    tree.base();
+    tree.write(".gitattributes", "*.rs eol=lf\n");
+    tree.write("src/lib.rs", "pub fn api() {}\nfn helper() {}\n");
+
+    let warm = light_beside_whole(&tree, dead_symbols);
+
+    assert_eq!(warm.code, 1, "{}", warm.out);
+    assert!(warm.says("fn helper() {}"), "{}", warm.out);
+}
+
+#[test]
+fn a_renamed_attributes_file_converts_a_cache_miss_before_the_rename_moves_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.git(&["config", "filter.drop.smudge", "sed -e s/helper//"]);
+    tree.git(&["config", "filter.drop.clean", "cat"]);
+    tree.write("src/.gitattributes", "caller.rs filter=drop\n");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { helper(); }\n");
+    tree.base();
+
+    tree.write("src/caller.rs", "fn main() { helper(); helper(); }\n");
+    assert_eq!(dead_symbols(&tree).code, 0);
+    tree.write("src/caller.rs", "fn main() { helper(); }\n");
+    assert!(fs::create_dir_all(tree.path("other")).is_ok());
+    tree.git(&["mv", "src/.gitattributes", "other/.gitattributes"]);
+    tree.write("src/lib.rs", "pub fn api() {}\nfn helper() {}\n");
+
+    let warm = dead_symbols(&tree);
+    assert!(
+        layout(&warm)["written"].is_u64(),
+        "the warm run checked the base out whole: {}",
+        warm.out
+    );
+    assert!(fs::remove_dir_all(cache(&tree)).is_ok());
+    let whole = dead_symbols(&tree);
+
+    assert_eq!(judged(&warm), judged(&whole));
+    assert_eq!(warm.code, 1, "{}", warm.out);
+    assert!(warm.says("fn helper() {}"), "{}", warm.out);
+}
+
+#[test]
+fn a_base_file_the_cache_lacks_is_written_from_the_index() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    tree.base();
+
+    tree.write("src/caller.rs", "fn main() { api(); api(); }\n");
+    assert_eq!(dead_symbols(&tree).code, 0);
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    let warm = dead_symbols(&tree);
+    assert!(layout(&warm)["written"].is_u64(), "{}", warm.out);
+    assert!(fs::remove_dir_all(cache(&tree)).is_ok());
+
+    assert_eq!(judged(&warm), judged(&dead_symbols(&tree)));
+    assert_eq!(warm.code, 1, "{}", warm.out);
+    assert!(warm.says("fn spare() {}"), "{}", warm.out);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symbolic_link_the_base_holds_is_no_file_of_the_base_tree() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    let linked = std::os::unix::fs::symlink("lib.rs", tree.path("src/linked.rs"));
+    assert!(linked.is_ok(), "a symbolic link");
+    tree.base();
+    tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    let warm = light_beside_whole(&tree, dead_symbols);
+
+    assert_eq!(warm.code, 1, "{}", warm.out);
+    assert!(warm.says("fn spare() {}"), "{}", warm.out);
+}
+
+#[test]
+fn a_sparse_checkout_the_light_layout_does_not_read_checks_the_base_out_whole() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    tree.base();
+    tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    dead_symbols(&tree);
+    let light = dead_symbols(&tree);
+    tree.git(&["config", "core.sparseCheckout", "true"]);
+    let sparse = dead_symbols(&tree);
+
+    assert!(layout(&light)["written"].is_u64(), "{}", light.out);
+    assert!(layout(&sparse)["written"].is_null(), "{}", sparse.out);
+    assert_eq!(judged(&sparse), judged(&light));
+}
+
+#[test]
+fn a_configuration_root_below_the_git_top_level_lists_its_own_subtree() {
+    let tree = Tree::new();
+    tree.write("README.md", "# outside\n");
+    tree.write("app/klin.json", "{}");
+    tree.write("app/src/lib.rs", "pub fn api() {}\n");
+    tree.write("app/src/caller.rs", "fn main() { api(); }\n");
+    tree.base();
+    tree.write("app/src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    let warm = light_beside_whole(&tree, |tree| {
+        harness::run_from(
+            &tree.path("app"),
+            &["gate", "--json", "--changed", "--gate", "dead-symbols"],
+        )
+    });
+
+    assert_eq!(warm.code, 1, "{}", warm.out);
+    assert!(warm.says("src/lib.rs"), "{}", warm.out);
+}
+
+#[test]
+fn the_base_scope_comes_from_the_base_configuration_on_a_light_layout() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"dead_symbols":{"in":["src"]}}"#);
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    tree.write(
+        "web/widget.ts",
+        "function spare() {}\nexport function used() {}\n",
+    );
+    tree.write("web/main.ts", "import { used } from './widget';\nused();\n");
+    tree.base();
+    tree.write("klin.json", r#"{"dead_symbols":{"in":["src","web"]}}"#);
+    tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    let warm = light_beside_whole(&tree, dead_symbols);
+
+    assert_eq!(warm.code, 1, "{}", warm.out);
+}
+
+#[test]
+fn a_strict_run_a_whole_run_and_a_damaged_cache_check_the_base_out_whole() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/caller.rs", "fn main() { api(); }\n");
+    tree.base();
+    tree.write("src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
+
+    dead_symbols(&tree);
+    let light = dead_symbols(&tree);
+    let strict = tree.run(&[
+        "gate",
+        "--json",
+        "--changed",
+        "--strict",
+        "--gate",
+        "dead-symbols",
+    ]);
+    let whole = tree.run(&["gate", "--json", "--gate", "dead-symbols"]);
+    for file in cached_files(&tree) {
+        assert!(fs::write(&file, b"not a cache").is_ok());
+    }
+    let damaged = dead_symbols(&tree);
+
+    assert!(layout(&light)["written"].is_u64(), "{}", light.out);
+    for run in [&strict, &whole, &damaged] {
+        assert!(layout(run)["written"].is_null(), "{}", run.out);
+    }
+    assert_eq!(judged(&damaged), judged(&light));
+    assert_eq!(strict.code, light.code, "{}", strict.out);
+}

@@ -109,6 +109,15 @@ impl Tree {
         }
     }
 
+    /// A tree at this root whose file list a caller already knows, because it read the list
+    /// from somewhere other than a walk: the base laid out without a checkout reads it from the
+    /// base commit's index. The list carries the same rules a walk gives it. Spec 4.3, 8.4.
+    pub fn listed(root: &Path, files: Vec<String>) -> Tree {
+        let tree = Tree::at(root);
+        let _ = tree.files.set(Ok(files));
+        tree
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -170,6 +179,15 @@ impl Tree {
                 .is_ok_and(|held| held.file_type().is_symlink())
         })
     }
+}
+
+/// Whether a walk of a tree reaches a file at this path: it descends no directory of the
+/// default skip set. A walk keeps a file whatever the file itself is called, so only the
+/// directories above it decide. This is `Tree::covers` for a file the tree does not list yet,
+/// which is what the base laid out from an index has. Spec 4.3.
+pub fn reached(path: &str) -> bool {
+    path.rsplit_once('/')
+        .is_none_or(|(parents, _)| !parents.split('/').any(files::skipped))
 }
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
@@ -249,8 +267,10 @@ impl Project {
 
     /// The base commit laid out whole, once for every check that resolves names against the
     /// whole base, and removed when the run ends. A run judges one base, so a second commit is
-    /// refused rather than laid out beside the first. ADR 0038.
-    pub fn whole_base(&self, commit: &str) -> Result<&Prior, Error> {
+    /// refused rather than laid out beside the first. `light` is the change set of a run that
+    /// may take the layout that checks no whole commit out, and `None` for every run that takes
+    /// today's checkout. ADR 0038, Spec 8.4.
+    pub fn whole_base(&self, commit: &str, light: Option<&[Change]>) -> Result<&Prior, Error> {
         if let Some((held, prior)) = self.whole_base.get() {
             return match held == commit {
                 true => Ok(prior),
@@ -259,7 +279,7 @@ impl Project {
                 ))),
             };
         }
-        let prior = base::materialize(self, commit, None)?;
+        let prior = base::laid_out(self, commit, light)?;
         Ok(&self
             .whole_base
             .get_or_init(|| (commit.to_string(), prior))
