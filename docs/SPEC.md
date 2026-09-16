@@ -3097,6 +3097,7 @@ same in all three.
 | Host event unreadable in the hook | report to stderr and exit 1, never block |
 | Host event unreadable in the guard | allow |
 | A `run` entry exits without writing its report, or the report is not SARIF | that gate is ERR, in every mode. The command's exit status alone is not judged (8.3). |
+| An accepted entry that names a pattern row klin retired from a built-in table | the NOTE and the `--strict` failure of 4.8 name the row and where it went, so the first run after an upgrade states its cause. The outcome is the one 4.8 gives every unmatched entry. A row a project deleted from its own `patterns` is not one of these |
 | Survey cache unreadable | recompute, overwrite |
 | State directory unwritable | the hook reads the stamp it can find, per the two rows above, writes no verdict and no build count, prints why, and never blocks on it. A build failure is reported, not blocked, because no count could bound the blocks. |
 | Survey finds no source root | `--strict`: exit 2 naming the directory surveyed. Otherwise a NOTE naming it, and in the hook the turn ends. |

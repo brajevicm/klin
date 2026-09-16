@@ -33,6 +33,43 @@ const RETIRED: &[(&str, &str)] = &[
     ),
 ];
 
+/// A pattern row klin retired from a built-in table, as the gate that held it, the values key
+/// its name is recorded under, the name, the file suffix the row read, and where the row went.
+/// An accepted entry naming one matches nothing for a reason the entry cannot show, so the note
+/// and the `--strict` failure say which row it names and what replaced it. The suffix is part of
+/// the key, because a table retires one language's row and keeps the same name for another's. A
+/// row a project deleted from its own `patterns` is not one of these. Section 14.
+const RETIRED_ROWS: &[(&str, &str, &str, &str, &str)] = &[
+    (
+        "escapes",
+        "escape",
+        "todo",
+        ".rs",
+        "is a row klin retired, which moved to the \"stubs\" check, so one site is never \
+         reported by two checks. Accept the site as {\"gate\": \"stubs\", \"stub\": \"not \
+         implemented\"}, or delete the entry.",
+    ),
+    (
+        "escapes",
+        "escape",
+        "skipped test",
+        ".py",
+        "is a row klin narrowed, whose Python pattern now ends in a word boundary, so \
+         `pytest.mark.skipif` no longer matches it: a conditional skip states which platforms a \
+         test supports. Delete the entry.",
+    ),
+];
+
+/// What one unmatched accepted entry names, when it names a row klin retired.
+fn retired_row(gate: &str, entry: &Values) -> Option<String> {
+    RETIRED_ROWS
+        .iter()
+        .find(|(named, key, row, suffix, _)| {
+            *named == gate && text(entry, key) == *row && text(entry, "file").ends_with(suffix)
+        })
+        .map(|(_, _, row, _, went)| format!("\"{row}\" {went}"))
+}
+
 /// A section naming a key klin retired, refused before any gate runs. Section 14.
 pub fn no_retired_key(
     file: &std::path::Path,
@@ -497,16 +534,15 @@ fn report(
     });
     if comparison.failed() {
         failures(comparison, evaluator, held, out.text);
-        notes(comparison, evaluator, out.text);
+        notes(comparison, evaluator, at.gate, out.text);
         return 1;
     }
     if !at.quiet {
         let _ = writeln!(out.text, "{ok_line}");
     }
-    notes(comparison, evaluator, out.text);
+    notes(comparison, evaluator, at.gate, out.text);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
-        let _ = writeln!(
-            out.text,
+        let heading = format!(
             "FAIL: the accepted list holds {} entr{} that matched nothing — under --strict an \
              entry that no longer describes the code is a failure. Delete the line.",
             comparison.unmatched_accepted.len(),
@@ -514,6 +550,18 @@ fn report(
                 1 => "y",
                 _ => "ies",
             }
+        );
+        listed(
+            out.text,
+            &heading,
+            comparison
+                .unmatched_accepted
+                .iter()
+                .filter_map(|entry| {
+                    retired_row(at.gate, entry)
+                        .map(|went| format!("{}: {went}", text(entry, "file")))
+                })
+                .collect(),
         );
         return 1;
     }
@@ -603,7 +651,7 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(comparison: &Comparison, evaluator: &Evaluator, out: &mut String) {
+fn notes(comparison: &Comparison, evaluator: &Evaluator, gate: &str, out: &mut String) {
     if comparison.unmatched_accepted.is_empty() {
         return;
     }
@@ -617,10 +665,14 @@ fn notes(comparison: &Comparison, evaluator: &Evaluator, out: &mut String) {
             .iter()
             .map(|entry| {
                 format!(
-                    "{}  {}  {}",
+                    "{}  {}  {}{}",
                     text(entry, "file"),
                     (evaluator.format_metrics)(entry),
-                    clip(&text(entry, "text"))
+                    clip(&text(entry, "text")),
+                    match retired_row(gate, entry) {
+                        Some(went) => format!("  — {went}"),
+                        None => String::new(),
+                    }
                 )
             })
             .collect(),
