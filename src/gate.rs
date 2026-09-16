@@ -456,13 +456,7 @@ fn does_not_build(
 /// already reads stderr ignores the text and returns 2.
 fn blocked_build(root: &Path, event: Option<&host::Event>, text: String, code: u8) -> u8 {
     match code {
-        2 => {
-            let adapter = host::answering(event);
-            if adapter.follows_up() {
-                turn::expect_followup(root, &text);
-            }
-            adapter.stop(&Stop::Block(text))
-        }
+        2 => block(root, host::answering(event), text),
         _ => code,
     }
 }
@@ -933,10 +927,15 @@ fn spend(
     {
         log.flags.push("count-unwritable");
     }
+    block(root, host, said.to_string())
+}
+
+/// Record the exact report a follow-up host will echo, then deliver the block. Spec 9.1, 9.3.
+fn block(root: &Path, host: &dyn host::Adapter, said: String) -> u8 {
     if host.follows_up() {
-        turn::expect_followup(root, said);
+        turn::expect_followup(root, &said);
     }
-    host.stop(&Stop::Block(said.to_string()))
+    host.stop(&Stop::Block(said))
 }
 
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.

@@ -2125,11 +2125,13 @@ launch command there and the agent did not run it. `conversation_id` is the
 session. Cursor sends no `stop_hook_active`, so `blocked_before` is always
 false and klin's own gate-spent record bounds the block (9.3). `loop_count`
 counts the follow-ups one conversation has already taken and MUST NOT be
-read as `blocked_before`. Guard decisions go out as `permission` on stdout.
-An allow carries `allow`. Both a deny and an ask carry `deny` and the reason
-in `agent_message`, and exit 2, because Cursor 3.20.21 accepted `ask` on a
+read as `blocked_before`. Guard decisions that refuse go out as `permission`
+on stdout: both a deny and an ask carry `deny` and the reason in
+`agent_message`, and exit 2, because Cursor 3.20.21 accepted `ask` on a
 shell event but did not enforce it. A question the host does not enforce
-fails closed, as it does on Codex. Stop blocks print a JSON
+fails closed, as it does on Codex. An allow is exit 0 with no stdout, matching
+Claude Code and Codex, so a user-scope plugin stays silent in a tree that
+never wrote `klin.json`. Stop blocks print a JSON
 `followup_message` on stdout and still
 exit 2, so the agent sees the report and the refusal holds where that answer
 goes unread — the same pairing as a deny. A stop that tells the

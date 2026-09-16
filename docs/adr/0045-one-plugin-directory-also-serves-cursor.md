@@ -59,12 +59,19 @@ proceeded. A question that does not hold is not klin's `ask`; the adapter
 therefore returns `deny` and exit 2 for that decision, as Codex does where it
 has no question channel.
 
+Measured host facts for that build live in
+[`docs/cursor-compatibility.md`](../cursor-compatibility.md). Rows that record
+klin's own follow-up hash or its gate-spent bound are implementation, not host
+measurement; the matrix marks which of those are still unmeasured.
+
 ## Consequences
 
 A Cursor user installs klin the way a Claude Code or Codex user does: add
 the GitHub repository as a marketplace (or copy the plugin directory into
 `~/.cursor/plugins/local/klin`) and enable the plugin. The official Cursor
-Marketplace remains a review queue klin does not control.
+Marketplace remains a review queue klin does not control. The Team Marketplace
+import route is documented in the README and has not been recorded in the
+compatibility matrix.
 
 A fourth host still adds one module and one marketplace file, not a second
 plugin tree.

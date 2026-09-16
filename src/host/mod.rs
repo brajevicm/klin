@@ -145,6 +145,23 @@ pub struct Event {
     pub prompt: String,
 }
 
+impl Event {
+    /// What every adapter starts from: the host, and the fields `read` fills after placement.
+    pub fn of(host: &'static dyn Adapter) -> Event {
+        Event {
+            host,
+            root: None,
+            prompted: false,
+            tool: String::new(),
+            file_paths: Vec::new(),
+            command: String::new(),
+            blocked_before: false,
+            session: String::new(),
+            prompt: String::new(),
+        }
+    }
+}
+
 /// What the guard decides about a tool call. ADR 0020. A deny exits 2 with the reason on
 /// stderr. An ask needs the decision on stdout under exit 0, because a blocking exit says
 /// only that the call is refused, and an ask leaves the answer to a person.

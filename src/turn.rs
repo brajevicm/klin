@@ -71,7 +71,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.report {
         return radius::asked(start, out);
     }
-    let Some((event, named, at, prompt)) = opening(start, out) else {
+    let Some((event, named, at)) = opening(start, out) else {
         return Ok(0);
     };
     let start = named.as_path();
@@ -80,7 +80,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let tree = tree(start, &at);
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
-    if prompt {
+    if event.as_ref().is_some_and(|event| event.prompted) {
         journaled_prompt(
             start,
             &at,
@@ -101,17 +101,13 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 
 /// Read and place the hook event once, resolve its tree, and stop before a turn opens when the
 /// event is the exact follow-up a prior stop recorded.
-fn opening(
-    start: &Path,
-    out: &mut String,
-) -> Option<(Option<host::Event>, PathBuf, PathBuf, bool)> {
+fn opening(start: &Path, out: &mut String) -> Option<(Option<host::Event>, PathBuf, PathBuf)> {
     let event = host::read(None);
     let root = event
         .as_ref()
         .and_then(|event| event.root.clone())
         .unwrap_or_else(|| start.to_path_buf());
     state::dir(&root)?;
-    let prompt = event.as_ref().is_some_and(|event| event.prompted);
     if event
         .as_ref()
         .is_some_and(|event| event.prompted && consumes_followup(&root, &event.prompt, out))
@@ -125,7 +121,7 @@ fn opening(
             return None;
         }
     };
-    Some((event, root, at, prompt))
+    Some((event, root, at))
 }
 
 /// The prompt line of spec 9.6 and 11.4: the counter, the session and excerpt from the event,

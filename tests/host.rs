@@ -119,8 +119,10 @@ fn a_claude_event_that_carries_permission_mode_is_still_asked() {
     assert!(run.says(r#""permissionDecision":"ask""#), "{}", run.out);
 }
 
-/// Cursor reads `permission` from stdout on every guarded event. Its documented `ask` was not
-/// enforced by the verified host, so klin fails the question closed like Codex does.
+/// Cursor reads `permission` from stdout on a refusal. Its documented `ask` was not enforced by
+/// the verified host, so klin fails the question closed like Codex does. An allow is exit 0 with
+/// no stdout, matching Claude Code and Codex, so a user-scope plugin does not pre-approve every
+/// call in a tree that never wrote `klin.json`. Issue #67 AC 6, Spec 9.1.
 #[test]
 fn cursor_events_use_native_permission_decisions() {
     let refused = guard(&[], A_CURSOR_SHELL_COMMAND);
@@ -138,7 +140,7 @@ fn cursor_events_use_native_permission_decisions() {
 
     let allowed = guard(&[], &cursor("Write", r#"{"file_path":"src/main.rs"}"#));
     assert_eq!(allowed.code, 0, "{}", allowed.out);
-    assert!(allowed.says(r#""permission":"allow""#), "{}", allowed.out);
+    assert!(!allowed.says("permission"), "{}", allowed.out);
 }
 
 /// An MCP event carries the server's own launch command at the top level. The agent did not run
@@ -147,8 +149,25 @@ fn cursor_events_use_native_permission_decisions() {
 fn cursor_mcp_events_ignore_the_server_launch_command() {
     let run = guard(&[], A_CURSOR_MCP_CALL);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says(r#""permission":"allow""#), "{}", run.out);
+    assert!(!run.says("permission"), "{}", run.out);
     assert!(!run.says("klin.json"), "{}", run.out);
+}
+
+/// A Cursor guard in a tree that never wrote `klin.json` prints nothing on an allow, on every
+/// event the plugin hooks. Spec 9.1, issue #67 AC 6.
+#[test]
+fn cursor_guard_is_silent_in_a_tree_without_klin_json() {
+    for event in [
+        cursor("Write", r#"{"file_path":"src/main.rs"}"#),
+        A_CURSOR_SHELL_EVENT
+            .to_string()
+            .replace("rm klin.json", "ls"),
+        A_CURSOR_MCP_CALL.to_string(),
+    ] {
+        let run = guard(&[], &event);
+        assert_eq!(run.code, 0, "{event}: {}", run.out);
+        assert!(run.out.is_empty(), "{event}: {}", run.out);
+    }
 }
 
 /// Cursor runs a user-scope hook from `~/.cursor`, so the tree comes from the event: `cwd` on a

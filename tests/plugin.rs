@@ -98,6 +98,35 @@ fn the_cursor_marketplace_entry_points_at_the_same_plugin() {
     );
 }
 
+/// The three marketplaces name one directory in three spellings, and they are not
+/// interchangeable. Claude Code 2.1.273 refuses a relative source without the `./` prefix as
+/// `source: Invalid input`, Codex lists no plugin at all for one, and Cursor documents the bare
+/// form. A tidy-up that makes the three agree fails here rather than in a person's install.
+/// Spec 19.2.
+#[test]
+fn each_marketplace_spells_the_plugin_path_as_its_host_requires() {
+    let claude = json(MARKET)["plugins"][0]["source"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let codex = json(CODEX_MARKET)["plugins"][0]["source"]["path"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let cursor = json(CURSOR_MARKET)["plugins"][0]["source"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+
+    assert_eq!(
+        claude,
+        format!("./{PLUGIN}"),
+        "Claude Code needs the prefix"
+    );
+    assert_eq!(codex, format!("./{PLUGIN}"), "Codex needs the prefix");
+    assert_eq!(cursor, PLUGIN, "Cursor documents the bare form");
+}
+
 #[test]
 fn the_plugin_carries_the_skill_and_the_two_commands() {
     for named in [

@@ -66,15 +66,13 @@ impl Adapter for Codex {
             false => (Vec::new(), command),
         };
         Event {
-            host: self,
-            root: None,
-            prompted: false,
             tool,
             file_paths,
             command,
             blocked_before: flag(payload, "stop_hook_active"),
             session: text(payload.get("session_id")),
             prompt: text(payload.get("prompt")),
+            ..Event::of(self)
         }
     }
 

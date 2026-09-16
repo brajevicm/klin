@@ -17,15 +17,16 @@ against a measured host rather than a guess.
 | shell/MCP matcher | none written | those events name no tool, so a tool matcher would gate nothing |
 | Stop block | `followup_message` and exit 2 | stderr still holds the report; native stop has no other channel |
 | Stop note | `followup_message` | not `systemMessage` |
-| klin's own follow-up | exact report hash recorded and consumed once | a person's different prompt always opens a turn |
-| repeated follow-up bound | klin's gate-spent record; `loop_count` ignored | conversation-wide counter, and Cursor sends no `stop_hook_active` |
-| no `klin.json` silence | hook-mode CLI fixture exits 0 with no output | ADR 0028 |
+| klin's own follow-up | exact report hash recorded and consumed once | **klin implementation**, not a measured host fact. Whether `beforeSubmitPrompt` fires on an automatic `followup_message` was **not measured** on 3.20.21; the hash exists so a firing cannot refresh the block budget |
+| repeated follow-up bound | klin's gate-spent record; `loop_count` ignored | **unmeasured** whether `loop_count` resets on a person's message; conversation-wide counter is what the docs say, and Cursor sends no `stop_hook_active` |
+| no `klin.json` silence | hook-mode gate exits 0 with no output; guard allow is exit 0 with no stdout | ADR 0028; CLI fixtures cover both. A deny of a write to the `klin.json` path still speaks, as on every host |
+| Team Marketplace import | **unverified** | README documents Dashboard → Plugins → Team Marketplaces → import; this matrix has no recorded result for that route. Local `plugins/local/<name>` and marketplace cache detection are covered by CLI fixtures |
 
 Issue #67 originally required the Claude-compatible hook route to be tested
 first. That route was not tested. The later product decision requires a
 first-class native Cursor plugin, so ADR 0045 explicitly supersedes that
 process constraint instead of presenting this native matrix as compatibility
-evidence.
+evidence. When #67 closes, AC 1 (compat-first) should be struck, not ticked.
 
 Plugin detection covers the documented local layout
 `plugins/local/<name>` and the marketplace cache layout observed in 3.20.21,

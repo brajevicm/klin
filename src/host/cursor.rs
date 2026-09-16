@@ -111,28 +111,24 @@ impl Adapter for Cursor {
     fn event(&'static self, payload: &Value) -> Event {
         let path = path(payload);
         Event {
-            host: self,
-            root: None,
-            prompted: false,
             tool: tool(payload),
             file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
             command: command(payload),
             blocked_before: false,
             session: session(payload),
             prompt: text(payload.get("prompt")),
+            ..Event::of(self)
         }
     }
 
-    /// Cursor reads `permission` on the pre-tool, shell and MCP events. Its documented `ask`
-    /// was not enforced by 3.20.21, so klin fails that answer closed like Codex does. A refusal
-    /// carries its reason in `agent_message` and still exits 2, so it holds even where stdout
-    /// goes unread. Section 9.1.
+    /// Cursor reads `permission` on the pre-tool, shell and MCP events. An allow is exit 0 with
+    /// no stdout, matching Claude Code and Codex, so a user-scope plugin does not speak in a tree
+    /// that never wrote `klin.json`. Its documented `ask` was not enforced by 3.20.21, so klin
+    /// fails that answer closed like Codex does. A refusal carries its reason in `agent_message`
+    /// and still exits 2, so it holds even where stdout goes unread. Section 9.1.
     fn decide(&self, decision: &Decision) -> u8 {
         match decision {
-            Decision::Allow => {
-                println!("{}", serde_json::json!({ "permission": "allow" }));
-                0
-            }
+            Decision::Allow => 0,
             Decision::Ask(reason) => deny(&format!(
                 "klin: refused — {reason} Cursor did not enforce a question on this event."
             )),
@@ -213,16 +209,16 @@ fn deny(reason: &str) -> u8 {
 }
 
 fn tool(payload: &Value) -> String {
-    let shell = if text(payload.get("hook_event_name")) == SHELL_EVENT {
+    let shell = if shell_event(payload) {
         "Shell".to_string()
     } else {
         String::new()
     };
-    first(text(payload.get("tool_name")), shell)
+    first_nonempty(text(payload.get("tool_name")), shell)
 }
 
 fn path(payload: &Value) -> String {
-    first(input(payload, "file_path"), text(payload.get("file_path")))
+    first_nonempty(input(payload, "file_path"), text(payload.get("file_path")))
 }
 
 /// The shell command the event carries. `beforeShellExecution` puts it at the top level, and
@@ -230,15 +226,19 @@ fn path(payload: &Value) -> String {
 /// launch command at the top level, which the agent did not run, so only the shell event is read
 /// there. Section 9.1.
 fn command(payload: &Value) -> String {
-    let top = if text(payload.get("hook_event_name")) == SHELL_EVENT {
+    let top = if shell_event(payload) {
         text(payload.get("command"))
     } else {
         String::new()
     };
-    first(input(payload, "command"), top)
+    first_nonempty(input(payload, "command"), top)
 }
 
-fn first(preferred: String, fallback: String) -> String {
+fn shell_event(payload: &Value) -> bool {
+    text(payload.get("hook_event_name")) == SHELL_EVENT
+}
+
+fn first_nonempty(preferred: String, fallback: String) -> String {
     match preferred.is_empty() {
         true => fallback,
         false => preferred,
@@ -246,7 +246,7 @@ fn first(preferred: String, fallback: String) -> String {
 }
 
 fn session(payload: &Value) -> String {
-    first(
+    first_nonempty(
         text(payload.get("conversation_id")),
         text(payload.get("session_id")),
     )
