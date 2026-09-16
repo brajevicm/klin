@@ -3103,6 +3103,11 @@ same in all three.
 
 ## 15. Trust Model and Conformance Levels
 
+`docs/THREAT_MODEL.md` carries the reader-facing form of this section: the four
+trust zones, which behavior is local feedback and which is re-measured outside
+the agent's environment, and where the boundaries end. It states this section,
+9.4 and 19.2 and adds no rule of its own. The contract is here.
+
 ### 15.1 Feedback level
 
 Hooks only. klin puts every failure in front of the agent once per turn, keeps

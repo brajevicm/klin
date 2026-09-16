@@ -110,13 +110,21 @@ before the change merges  → independent verification in CI
 
 A standalone binary and committed hooks are also available for teams that want to manage the integration themselves.
 
+## Conformance levels
+
+**Feedback** — hooks only. klin puts every new regression in front of the agent during the turn and refuses its edits to `klin.json` and to klin's own state. This is local assistance. An agent that controls the worktree can still work around it.
+
+**Enforced** — Feedback plus a required `klin gate --strict` run on an independent CI checkout, against a protected branch, with `klin.json`, the workflow and CODEOWNERS under review. Only at this level does a gate hold against an agent, and loosening it takes a reviewed commit.
+
+[What each level guarantees, and where the boundaries are](docs/THREAT_MODEL.md).
+
 ## Built for the agent loop
 
 **Turn-aware.** klin judges the change against the state of the repository when the agent's turn began, keeping feedback focused on what this agent just changed.
 
 **Ratcheted.** Existing debt is held. Improvements pass. Only new or worsened debt fails, so real codebases can adopt strict checks without a cleanup project first.
 
-**Verified again in CI.** Local hooks are fast feedback, not a security boundary. The same policy runs again in independent CI before merge.
+**Verified again in CI.** Local hooks are fast feedback, not a security boundary. The same policy runs again in independent CI before merge. See the [trust model](docs/THREAT_MODEL.md).
 
 **The agent gets the mechanical failures. Humans keep the judgment calls.**
 
@@ -170,5 +178,6 @@ klin handles the deterministic quality-control loop around code changes. Humans 
 ## Documentation
 
 - [Configuration reference](docs/REFERENCE.md)
+- [Trust model](docs/THREAT_MODEL.md)
 
 Apache-2.0.
