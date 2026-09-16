@@ -645,12 +645,6 @@ fn measured(file: &ParsedFile, names: &mut Names) -> Result<Outcome, Error> {
     })
 }
 
-/// The facts one parsed file comes to, and `None` when no adapter reads its language.
-pub fn facts(file: &ParsedFile) -> Result<Option<FileFacts>, Error> {
-    let mut names = Names::default();
-    facts_with(file, &mut names)
-}
-
 fn facts_with(file: &ParsedFile, names: &mut Names) -> Result<Option<FileFacts>, Error> {
     let Some(adapter) = adapter(file.language.id) else {
         return Ok(None);

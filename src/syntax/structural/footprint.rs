@@ -112,11 +112,11 @@ pub fn of(trees: [&[Rc<FileFacts>]; 2]) -> Footprint {
     }
     out.reference_distinct_names = distinct_names.len();
     out.reference_canonical_allocations = canonical_allocations.len();
-    out.reference_canonical_allocation_ratio_milli = if out.reference_distinct_names == 0 {
-        0
-    } else {
-        out.reference_canonical_allocations.saturating_mul(1_000) / out.reference_distinct_names
-    };
+    out.reference_canonical_allocation_ratio_milli = out
+        .reference_canonical_allocations
+        .saturating_mul(1_000)
+        .checked_div(out.reference_distinct_names)
+        .unwrap_or_default();
     out.reference_representation_before_bytes = out
         .references
         .saturating_mul(size_of::<String>() + size_of::<u64>());
