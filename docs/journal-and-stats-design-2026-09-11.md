@@ -7,7 +7,8 @@ what a new gate costs, where the words live, and what was decided and why.
 tickets. Where this file and the spec differ, the spec wins.
 
 The words are in `CONTEXT.md`: Turn, Session, Intervention, Journal, and
-Shortcut once #155 lands.
+Regression. #172 replaced Shortcut with Regression and moved `shortcut` to the
+avoid list. See "What #172 changed" at the end of this file.
 
 ## What it is for
 
@@ -281,9 +282,11 @@ From the grilling of 2026-09-11. The reason is beside each.
 - #115 is Claude Code only, one model. A duplicate Codex install advances
   the prompt counter twice until #149 lands.
 - Stories before tallies. A line that names `todo!()` in the reader's own
-  file shows them; a count of "3 stubs" asks them to trust klin.
+  file shows them, and a count of "3 stubs" asks them to trust klin. #172
+  reverses this for the default report and keeps it for `--all`.
 - "Shortcut" is the person's word for a new finding the agent introduced in
-  a turn. Finding stays the ratchet's unit.
+  a turn. Finding stays the ratchet's unit. #172 replaced the word with
+  Regression and changed the unit it counts.
 - The prompt excerpt is recorded. It is local, like the file paths and code
   text the journal already holds, and it turns a list into the person's own
   story. A config key turns it off.
@@ -345,3 +348,51 @@ Spec 9.6, 11.4 and 11.5 record the result. The reason is beside each.
 | #156 | `--turn`, `--session`, "You were asked", last week, the turn end | #154, #155 |
 | #157 | the spec 13 performance fixture | none |
 | #115 | shadow against active, six tasks, ten runs, three labels | #155, #133 |
+
+## What #172 changed, 2026-09-16
+
+The journal is unchanged. Only its interpretation moved, which is what
+"outcomes are computed by the reader" was for.
+
+The report above is an activity dashboard. It answers "what happened" when the
+person's question is "what needs me". #172 makes the default an attention and
+value summary, two or three lines long, and moves the stories, the audit trail,
+the timing and the previous-window comparison behind `--all` and `--json`.
+
+Five decisions of this file are reversed or replaced.
+
+- **Stories before tallies** now holds for `--all` and not for the default.
+- **"Nothing in the reader names a check"** is replaced. The human label for a
+  gate is presentation metadata on the catalogue row, a singular and a plural,
+  and a new row does not compile without it. The reader still holds no table of
+  gate names, which is what the rule was protecting, and a gate the binary has
+  no row for still prints under its recorded name.
+- **Intervention at gate granularity** stays the hook's unit and stops being
+  the person's. `klin stats` counts one Regression per finding site per window,
+  with its latest outcome.
+- **Finding ids key nothing** is replaced. A current id is the primary stats
+  identity. A record with no id falls back to gate, file, line and text, and
+  the rename limitation is stated rather than worked around.
+- **"regression" on the avoid list** is reversed. `shortcut` is on it instead.
+
+Three rules were added, each reading what the record already held.
+
+- `config_hash` was recorded and not read. A site that goes from a measurement
+  taken under a different hash is now reported as resolved after the config
+  changed, and never as a code fix.
+- A site absent from a stop that measured its gate went, whether or not another
+  site kept that gate red, so two sites under one gate resolve apart.
+- Measurement confidence is one decision for the whole report, over unparsed
+  and lost files, not-measured files, unresolved evidence, gate `ERR` rows and
+  skipped journal lines. It outranks the value story, so a positive claim never
+  sits above a window klin did not measure whole.
+
+No copy klin prints for a person says who authored a fix. The journal proves a
+site was present and later absent from a measurement, and nothing more.
+
+`stats::turn_end` still reads the bounded tail of #184 and never the whole
+journal. The long-history fixture in `tests/stats.rs` now carries blocked stops
+with their own regressions, so the richer aggregation is what the bound holds
+out of the stop path.
+
+Spec 9.5 and 11.5, `CONTEXT.md` and ADR 0034 carry the result.

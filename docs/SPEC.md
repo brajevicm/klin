@@ -128,6 +128,19 @@ position (4.8). An accepted entry must give a number for every value the
 gate ratchets, so no value grows unjudged behind it (4.8). ADR 0008 and 0009
 carry notes.
 
+`klin stats` became an attention and value report on 2026-09-16 (#172), and
+that reverses five earlier decisions. Stories before tallies goes: the default
+report is the attention and value summary, and the stories moved to `--all`.
+"Nothing in the reader names a check" goes: the human label for a gate is
+presentation metadata on the catalogue row, so the reader keeps no vocabulary
+of its own. The person's counted unit is the Regression, one finding site per
+identity in a window, in place of the gate-level intervention, which stays the
+hook's unit. Finding ids no longer key nothing: a current id is the primary
+stats identity, with a conservative fallback for a record that carries none and
+the rename limitation stated. And `regression` left the avoid list, where
+`shortcut` now sits. The journal's records are unchanged: only their
+interpretation moved (9.5, 11.5, CONTEXT.md, ADR 0034).
+
 The compact configuration of #180 on 2026-09-14 finished what ADR 0038 began
 (ADR 0040). `klin.json` holds a person's decisions and `{}` is complete. Every
 check resolves its own policy from the facts of 4.3, and no component
@@ -2228,26 +2241,32 @@ the same report and a line saying the window stays open until a person fixes,
 accepts or resets it.
 The `--json` form is available for a host that reads JSON.
 
-A stop that nothing blocks can end a turn, and on a turn with an
-intervention (11.5) it tells the person what happened in one `systemMessage`
-of 9.1. A green stop names the count the agent fixed: `klin: the agent took 2
-shortcuts this turn and fixed both after klin asked.` A red pass-through names
-what is still there: ``klin: one shortcut is still there. `klin stats --turn`
-names it.`` The line and the headline of 11.5 come from the same words. A turn
-with no intervention prints no such line, and a session start prints none. A
-fix in a later prompt of the same turn still gets its line, because the turn
-stamp records the intervention (6.5) until the stamp moves.
+A stop that nothing blocks can end a turn, and on a turn that caught a
+regression (11.5) it tells the person what happened in one `systemMessage` of
+9.1. A green stop names what the turn caught and what became of it: `klin
+caught 2 regressions this turn. All 2 were fixed after klin flagged them.` A
+red pass-through names what still needs the person: ``1 regression still needs
+your attention. `klin stats --turn` shows it.`` The line and the report of 11.5
+come from the same words and the same counting rule, and neither says who
+authored a fix: the journal proves a regression was present and later absent
+from a measurement, and nothing more. A turn that caught none prints no such
+line, and a session start prints none. A fix in a later prompt of the same turn
+still gets its line, because the turn stamp records the intervention (6.5)
+until the stamp moves.
 
 At most once every seven days, and only when the journal holds seven days,
 one sentence about the week follows the line, with the command that lists it:
-``In the last seven days, klin caught 9 shortcuts and the agent fixed 8 of
-them on its own. `klin stats` lists them.`` Where the agent fixed none, the
-sentence ends after the count. A command in the message stands in backticks,
-and the message never names a command that accepts debt. The notes the run
-left (8.2, 14), the turn-end line and the weekly line join in one message, in
-that order. The stop reads the journal for this only where the turn stamp
-records an intervention, or where the prompt's gate block is spent (16.3),
-and its journal line records which parts it printed (11.4).
+``klin caught 9 regressions in the last seven days. 8 were fixed after klin
+flagged them. `klin stats` shows the rest.`` Where the week's regressions were
+all fixed, the command sentence reads ``klin stats` shows them.`, and where
+none were, the sentence ends after the count. A command in the message stands
+in backticks, and the message never names a command that accepts debt. The
+notes the run left (8.2, 14), the turn-end line and the weekly line join in one
+message, in that order. The stop reads the journal for this only where the turn
+stamp records an intervention, or where the prompt's gate block is spent
+(16.3), it reads the bounded tail of 11.4 and never the whole file, and its
+journal line records which parts it printed (11.4). The word `shortcut` appears
+in no message klin prints for a person.
 
 A red pass-through that finds the prompt's gate block spent also checks the
 journal for a `prompt` line carrying the stop event's session id. If the event
@@ -2606,11 +2625,12 @@ reads, and the two readers of the design read nothing else.
 
 ### 11.5 `klin stats`
 
-`klin stats` reads the journal of 11.4 and reports what klin caught, for the
-person and not for the agent. `--since Nd` sets the window, seven days by
-default. `--all` lifts the cap of five items per group. `--json` prints the
-episodes instead of the text. The command exits 0 whatever it finds: it
-reports and judges nothing.
+`klin stats` reads the journal of 11.4 and reports what needs the person's
+attention and what klin was worth, for the person and not for the agent. It
+re-runs no gate and reads no working tree: it interprets the record. `--since
+Nd` sets the window, seven days by default. `--all` adds the evidence and the
+audit trail. `--json` prints the facts instead of the text. The command exits 0
+whatever it finds: it reports and judges nothing.
 
 Two more scopes replace the window of days, and the three exclude each other:
 
@@ -2619,110 +2639,220 @@ Two more scopes replace the window of days, and the three exclude each other:
   second, so the last `reset` line bounds the scope too: a reset starts the
   report over, as it starts the judgment over.
 - `--session` reads the lines carrying the newest `session` id the journal
-  holds, and the `reset` lines among them, which carry none and still end the
-  episodes before them.
+  holds, and the `reset` lines among them, which carry none and still set aside
+  the regressions before them.
 
-The reader turns lines into episodes with no I/O and no clock of its own. An
-**intervention** is one gate's failure on a stop that spent the prompt's gate
-block, so one stop with three failing gates is one blocked stop and three
-interventions. Its **outcome** is a relation between that line and the lines
-after it, which the writer never stores:
+#### The counted unit
 
-- `fixed-next`, the gate passed on the next stop that ran it
-- `fixed-later`, the gate passed on a later stop in the window that ran it
-- `asked-once`, a later stop recorded the site, by its gate, file and line,
-  as one klin let through after it asked (8.2), so the code is as the agent
-  left it and the fix is the person's to make. The sites that stop let through
-  end apart from the rest of the intervention, which ends as its gate does
-- `reset`, a person moved the turn stamp before the gate went clear
-- `open`, no stop in the window ran the gate and passed it
+A **regression** is one finding site that a blocked stop put in front of the
+agent because it was new or worse than the base. It is the person's unit, and
+the word `shortcut` MUST NOT appear in any text `klin stats` or a turn end
+prints.
+
+The same site over several blocked stops in the window is one regression, with
+its latest outcome. A regression's identity is the finding `id` of 11.2 where
+the record carries one. That id hashes the gate, the path and the declaration
+text, so a rename produces a different id. The reader MUST stay conservative
+and MUST NOT merge two ids because their text resembles each other. A record
+carrying no usable id — `doc-size` is one such shape — is keyed by the smallest
+conservative key its recorded fields allow, which is its gate, file, line and
+text. Such a record MUST NOT be dropped, and two distinguishable findings MUST
+NOT be merged. A reader MUST NOT deduplicate by line number alone.
+
+The **outcome** is a relation between the lines, which the writer never stores:
+
+- `fixed-next`, the site was absent from the first stop after it was flagged
+  that measured its gate
+- `fixed-later`, the site was absent from a later measuring stop, and the
+  record says how many measured stops it took
+- `config-changed`, the site went from a measurement taken under a
+  `config_hash` (11.4) other than the one in force when it was flagged. The
+  report MUST NOT call that a code fix
+- `set-aside`, a person moved the turn stamp before the site went. The report
+  MUST NOT call it fixed, MUST NOT call it currently open, and MUST NOT say it
+  is still in the tree, which the report cannot see
+- `open`, no stop in the window measured its gate without it
+- `asked-once`, a later stop recorded the site, by its gate, file and line, as
+  one klin let through after it asked (8.2). The code is as the agent left it
+  and the fix is the person's to make, so it is a question and not a regression:
+  it stays out of the regression count and keeps its own audit entry
 
 A gate the stop's `gates` list of 11.2 carries no row for did not run, and a
-row that says `ERR` measured nothing. Neither ends an episode, because neither
-says the site went, and neither counts as the next stop.
+row that says `ERR` measured nothing. Neither ends a regression, and neither
+counts as a measured try. Two sites under one failing gate end apart from each
+other: a site absent from a stop that measured its gate went, whether or not
+another site kept that gate red.
 
-Nothing in the reader names a check. A line for a gate the binary has no
-check for is read and printed like any other.
+The report MUST NOT say who authored a fix. The journal proves a site was
+present and later absent from a measurement, and nothing about who edited the
+code. `The agent fixed all 12.` is therefore forbidden, and `All 12 were fixed
+after klin flagged them.` is the form.
 
-`--json` prints one object: `window` `{scope, days}`, where `scope` is
-`turn`, `session` or `days` and `days` stands only beside `days`, `stops`, `skipped` (the lines
-of 11.4 the reader could not read or does not know), `unreadable` (how many distinct
-files the window's stops could not read or measure, counted once each), `counts` `{caught, fixed-next,
-fixed-later, reset, open, asked-once}`, `episodes`, `asked` and `earlier`.
-`episodes` is a list of `{gate, file, line, text, remedy, time, more, outcome,
-prompt}` newest first, where `more` is how many further findings that gate
-left on that stop ended the same way and `prompt` is the excerpt of 11.4 the
-stop ran under, or null. `asked` is a list of `{time, kind, decision, reason, file, line}` newest
-first, one for each item of `You were asked`: `kind` is `guard`, `reset` or
-`asked-once`, and a field that does not apply to the kind is null. `earlier`
-is `{caught, open}` for the window before this one, or null where the journal
-does not reach back over it. The object holds facts and none of the person's
-sentences.
+#### Measurement confidence
 
-The text has these line shapes:
+One decision per report says whether klin measured the window whole. The
+conditions are the smallest conservative set the records support: a source file
+a grammar refused (`unparsed`), a file `before` measured and `after` did not
+(`lost`), a known-language file with no structural adapter (`not-measured`), a
+dependency or public-surface form a check supports and could not resolve
+(`unresolved`), a gate row that says `ERR`, and a journal line the reader could
+not take. Not every note lowers confidence: a `near-ceiling`, `derivation`,
+`deleted` or `note` record does not.
 
-- the title, `klin, SCOPE in PLACE`, where SCOPE is `this turn`, `this
-  session`, `today`, `this week`, `this month` or `the last N days`, and PLACE
-  is `this repository` where the repository has one worktree and `this
-  worktree` where it has more
-- the headline, `klin caught N shortcuts.`, and beside it `The agent fixed N
-  of them on its own and asked you N times.` The fixed half reads `fixed it`,
-  `fixed both` or `fixed all N` where the agent fixed every one, and `asked
-  you once` for one. Each half is left out where its count is zero, so the
-  sentence can read `The agent asked you once.` The asked count is the guard
-  asks and `asked-once` episodes of `You were asked`: a guard refusal and a
-  reset ask the person nothing. Then `One is still there.` or `N are still
-  there.` on its own line
-- the groups `Still there`, `Fixed after klin asked` and `You were asked`, in
-  that order, and no heading carries a count. An open item reads `SITE in
-  FILE:LINE, left on DAY` and carries its check's remedy on the line under it;
-  every other group is headed by the day it happened on: `Today`,
-  `Yesterday`, the weekday name inside seven days, then `YYYY-MM-DD`. The
-  local offset is read from the system once per report, with UTC as the
-  fallback.
-- an open item, a fixed item and a shortcut a reset set aside end with `,
-  while you asked for "EXCERPT"` where the stop's prompt line of 11.4 carries
-  an excerpt, quoted as the person wrote it. The item carries nothing in its
-  place where `journal.prompt` is `false` or the excerpt is not in the lines
-  read
-- `You were asked` holds one item per guard answer, reset and `asked-once`
-  episode, newest first:
-  - `klin asked before X` for a guard `ask` and `klin refused X` for a guard
-    `deny`, where X names the reason tag of 11.4 (`an edit to klin.json`, `a
-    command that named klin.json`, `an edit to klin's own state`, `a command
-    that named klin's own state`, `klin init, which only you run`, `klin turn
-    reset, which only you run`, and `a tool call` for a tag the binary does
-    not know)
-  - for a reset that ended episodes, `You set aside N shortcuts.`, each
-    shortcut on its own line under it, and then ``If they're still there, fix
-    them, or accept them in `klin.json`, before you push.``, in the singular
-    for one. The report cannot see whether the code is still in the tree, and
-    CI still judges the branch (6.3). A reset that ended none reads `You told
-    klin to start over.`
-  - `a test deleted from FILE:LINE, SITE. The agent said why.` for an
-    `asked-once` episode, where SITE is the declaration line without a
-    trailing `{` or `:`, and `FILE deleted. The agent said why.` where the
-    site names no declaration because the whole file went
-- `and N more. klin stats --all` under a group the cap trimmed
-- `Last week: N shortcuts, N left open. This week is better.`, for a window of
-  days where the journal reaches back over the whole window before it, and
-  never otherwise. The word is `better`, `worse` or `the same`, judged on the
-  open count first and on the caught count after, and only this worktree's
-  journal is read. The two names follow the title: `Yesterday` and `Today`,
-  `Last week` and `This week`, `Last month` and `This month`, or `The N days
-  before` and `These N days`
-- `klin ran N times and took N seconds in total.`, where the seconds are
-  klin's own time, the `klin_ms` of 11.4, and never the project's build (13)
-- `Measurement`, with what klin skipped or could not read under it, printed
-  only where there was something. Green with half the tree unparsed is the
-  one lie the report must not tell.
-- `klin caught no shortcuts. klin ran N times and asked nothing.` for a
-  window with no intervention, with `asked you N times` in place of `asked
-  nothing` where the window holds guard asks, and `klin started watching today. Come back
-  after a few turns.` for a journal with no line at all.
+The default text summarizes the problem in one clause and never dumps the rows:
+`Stats may be incomplete: 2 files weren't measured.`, or the narrower `Stats may
+be incomplete: 2 source files couldn't be parsed.` where every unmeasured file
+is one a grammar refused. `--all` carries the rows behind it.
 
-No word of the agent's glossary appears in the text, and the report carries
-no score, no color, no glyph, no praise and no estimate of time saved.
+#### The default report
+
+The default report is an attention and value summary, never a fixed dashboard
+or a table. Its opening state is the strongest condition the window holds, in
+this order: measurement doubt, then known open regressions, then the
+uncertainty a reset left, then everything resolved, then nothing found, then no
+data. `Nothing needs your attention.` MUST be printed only where no known open
+or set-aside state remains **and** measurement confidence supports the claim.
+Where open regressions and set-aside ones both exist, the open line comes first
+and the set-aside line follows it.
+
+```text
+Nothing needs your attention.
+
+klin caught 12 regressions this week. All 12 were fixed after klin flagged them.
+```
+
+```text
+1 regression needs your attention.
+
+klin caught 12 this week. 11 were fixed after klin flagged them.
+
+src/io.rs:12  response.unwrap()
+```
+
+```text
+7 regressions were set aside when you restarted.
+
+klin caught 8 this week. 1 was fixed after klin flagged it.
+```
+
+```text
+Stats may be incomplete: 2 files weren't measured.
+
+klin caught 12 regressions this week. All 12 known regressions were fixed.
+```
+
+```text
+Nothing needs your attention.
+No regressions were found this week.
+```
+
+```text
+klin is on. Your first recap appears after the agent finishes a task.
+```
+
+The last is the report for a journal with no line at all. The value sentence
+names the unit once: where the opening state already said `regression`, the
+count sentence reads `klin caught 12 this week.` Where the window holds a
+`config-changed` regression, `N resolved after the config changed.` follows the
+count, so the difference between the caught count and the fixed count is never
+left for the reader to guess.
+
+The default report names at most three open sites, each on one line: where the
+site is, then the recorded text, the measured values where the record carries
+no text, or the gate's own noun where it carries neither. A fourth is `and N
+more · klin stats --all`, which `--all` itself does not print.
+
+The default report MUST NOT carry, merely because the journal records it: the
+stop or run count, `klin_ms` or any timing, the previous window's better or
+worse comparison, the guard deny count, guard ask history once resolved, the
+deleted-test question count once resolved, prompt excerpts, every fixed
+regression, gate names as a dashboard, zero-valued rows, reset history beyond
+the current set-aside uncertainty, or per-day history. The journal keeps
+recording all of it, and `--all` and `--json` carry it.
+
+#### `--all`
+
+`--all` prints the default report and then the evidence: the title `klin, SCOPE
+in PLACE`, where SCOPE is `this turn`, `this session`, `today`, `this week`,
+`this month` or `in the last N days`, and PLACE is `this repository` where the
+repository has one worktree and `this worktree` where it has more. Then comes
+every regression of the window, grouped into the turns they were caught in and
+newest first.
+
+A chapter is headed by the day it happened on — `Today`, `Yesterday`, the
+weekday name inside seven days, then `YYYY-MM-DD`, with the local offset read
+from the system once per report and UTC as the fallback. Where the journal
+recorded an excerpt for the prompt the turn ran under, `You asked: "EXCERPT"`
+follows it. Inside a chapter the sites group under the gate's human label and
+its count, each site carrying its outcome sentence, and its remedy where it is
+still open:
+
+- `Fixed after klin flagged it on the next measured try.`
+- `Fixed after klin flagged it N measured tries later.`
+- `Resolved after the config changed.`
+- `Set aside when you restarted.`
+- `Still open.`
+
+`Audit` follows, one dated line per item: `klin asked you before X` for a guard
+`ask` and `klin refused X` for a guard `deny`, where X names the reason tag of
+11.4 (`an edit to klin.json`, `a command that named klin.json`, `an edit to
+klin's own state`, `a command that named klin's own state`, `klin init, which
+only you run`, `klin turn reset, which only you run`, and `a tool call` for a
+tag the binary does not know). A reset reads `You restarted, and N regressions
+were set aside.`, or `You told klin to start over.` where it set none aside. An
+`asked-once` regression reads `a test deleted from FILE:LINE, SITE. The agent
+said why.`, where SITE is the declaration line without a trailing `{` or `:`,
+and `FILE deleted. The agent said why.` where the site names no declaration
+because the whole file went. A reset is not an ask and a guard `deny` is not an
+ask: only a guard `ask` is described as asking the person.
+
+`Measurement` follows where the window was not measured whole, with the files
+and counts behind the confidence clause.
+
+#### Human labels
+
+The words a report gives a gate's findings are presentation metadata on the
+catalogue row of 4.6, a singular and a plural. `klin stats` MUST NOT keep a
+second gate-name vocabulary of its own, and MUST NOT match on a gate name to
+choose words. Every shipped row MUST supply its labels, and a row that does not
+MUST NOT compile. Labels change no gate identity, no config section, no journal
+record, no accepted entry and no judgement.
+
+A gate the binary holds no row for is read and printed under its recorded gate
+name, so a journal line for a gate klin no longer has stays readable. One
+`sarif` entry runs under the name a person gave it, so the catalogue row owns
+the generic noun and the journal keeps the specific historical identity.
+
+#### `--json`
+
+`--json` prints one object of facts and none of the person's sentences. A
+factual field is not removed because the default text stopped printing it.
+
+- `window` `{scope, days}`, where `scope` is `turn`, `session` or `days` and
+  `days` stands only beside `days`
+- `counts` `{caught, open, fixed-next, fixed-later, config-changed, set-aside,
+  asked-once}`, over deduplicated regression identities and latest outcomes.
+  `caught` excludes `asked-once`
+- `episodes`, one entry per regression identity, newest first, with no grouped
+  `more` count: `{gate, label, id, key, file, line, text, values, remedy, time,
+  first, last, prompt, outcome, tries, config_changed}`. `id` is the finding id
+  of 11.2 or null, and `key` is the conservative identity `{gate, file, line,
+  text}` a reader falls back to. `tries` is how many stops measured the gate
+  after the site was flagged
+- `audit`, one entry per guard answer, reset and `asked-once` regression,
+  newest first: `{time, kind, decision, reason, file, line}`, where `kind` is
+  `guard`, `reset` or `asked-once` and a field that does not apply is null
+- `confidence` `{whole, gap, unparsed, lost, not_measured, unresolved, errored,
+  skipped}`, where `gap` is the summary clause or null
+- `activity` `{stops, klin_ms}`, the run count and klin's own time, the
+  `klin_ms` of 11.4 and never the project's build (13)
+- `stops`, `skipped` and `unreadable`, the same facts beside the object's root
+- `earlier` `{caught, open}` for the window before this one, or null where the
+  journal does not reach back over it
+
+The report carries no score, no color, no glyph, no praise, no joke, no
+estimate of time saved, no count of bugs prevented, and no value claim the
+journal cannot prove. No word of the agent's glossary appears in the text.
 
 ## 12. Determinism
 
@@ -3363,7 +3493,7 @@ Core:
   workflow and klin's state directory is allowed.
 
 Paired scenarios. Every `stubs`, `escapes` and `inventory` pattern carries
-two fixtures, one shortcut that fails and one legitimate change that stays
+two fixtures, one regression that fails and one legitimate change that stays
 green, because deterministic detection is not correct judgement:
 
 - A failing test is deleted, fails. The same test moves to another file with

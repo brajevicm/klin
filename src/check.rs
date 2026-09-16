@@ -29,6 +29,10 @@ pub const UNPARSED: &str = "unparsed";
 /// hook lets end hands it to a person. Spec 8.2.
 pub const DELETED: &str = "deleted";
 
+/// The outcome of a file `before` measured and `after` did not, which a run records so a report
+/// never reads a window it stopped measuring as a whole one. Spec 8.6.
+pub const LOST: &str = "lost";
+
 /// The outcome of a parser-readable file for which no semantic adapter exists. It is a hole in
 /// a structural gate, not a green measurement. Spec 8.4, 8.6.
 pub const NOT_MEASURED: &str = "not-measured";
@@ -261,6 +265,34 @@ pub fn derived_entry(section: &str, key: Option<&str>, value: Value, rule: &str)
     serde_json::json!({ "section": section, "key": key, "value": value, "rule": rule })
 }
 
+/// The words a report gives one check's findings, in the person's language. `klin stats` reads
+/// these so the report keeps no second gate-name vocabulary of its own, and a new row does not
+/// compile until it supplies them. They are presentation only: they change no gate identity, no
+/// section, no journal record, no accepted entry and no judgement. Spec 11.5.
+pub struct Labels {
+    pub one: &'static str,
+    pub many: &'static str,
+}
+
+impl Labels {
+    pub fn count(&self, many: usize) -> &'static str {
+        match many {
+            1 => self.one,
+            _ => self.many,
+        }
+    }
+}
+
+/// The words one gate's findings print under, and `None` for a gate this binary holds no row
+/// for: a journal line naming a gate klin no longer has, or a `sarif` entry under the name a
+/// person gave it, is read under its recorded name. Spec 11.5.
+pub fn labels(gate: &str) -> Option<&'static Labels> {
+    CATALOGUE
+        .iter()
+        .find(|row| row.name == gate)
+        .map(|row| &row.labels)
+}
+
 /// One row of the catalogue: one check, as the runner, the configuration, the reference and
 /// the plan all read it.
 pub struct Row {
@@ -285,6 +317,8 @@ pub struct Row {
     /// Whether the section is a list of entries a person writes, each its own gate under its
     /// own `name`, rather than one section the whole check runs under. Spec 8.3.
     pub gate_per_entry: bool,
+    /// What a report calls this check's findings when it writes for a person. Spec 11.5.
+    pub labels: Labels,
 }
 
 pub const CATALOGUE: &[Row] = &[
@@ -298,6 +332,10 @@ pub const CATALOGUE: &[Row] = &[
         run: doc_size::gate,
         needs: Needs::Nothing,
         takes_scope: false,
+        labels: Labels {
+            one: "long document",
+            many: "long documents",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -310,6 +348,10 @@ pub const CATALOGUE: &[Row] = &[
         run: doc_citations::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "broken citation",
+            many: "broken citations",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -322,6 +364,10 @@ pub const CATALOGUE: &[Row] = &[
         run: lockfile::gate,
         needs: Needs::TheTree,
         takes_scope: false,
+        labels: Labels {
+            one: "unlocked dependency",
+            many: "unlocked dependencies",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -334,6 +380,10 @@ pub const CATALOGUE: &[Row] = &[
         run: escapes::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "escape hatch",
+            many: "escape hatches",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -346,6 +396,10 @@ pub const CATALOGUE: &[Row] = &[
         run: stubs::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "stub",
+            many: "stubs",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -358,6 +412,10 @@ pub const CATALOGUE: &[Row] = &[
         run: inventory::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "missing test",
+            many: "missing tests",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -370,6 +428,10 @@ pub const CATALOGUE: &[Row] = &[
         run: complexity::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "tangled function",
+            many: "tangled functions",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -382,6 +444,10 @@ pub const CATALOGUE: &[Row] = &[
         run: dead_symbols::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "dead symbol",
+            many: "dead symbols",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -394,6 +460,10 @@ pub const CATALOGUE: &[Row] = &[
         run: reachability::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "unreferenced file",
+            many: "unreferenced files",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -406,6 +476,10 @@ pub const CATALOGUE: &[Row] = &[
         run: layering::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
+        labels: Labels {
+            one: "layering breach",
+            many: "layering breaches",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -418,6 +492,10 @@ pub const CATALOGUE: &[Row] = &[
         run: public_api::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
+        labels: Labels {
+            one: "broken public contract",
+            many: "broken public contracts",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -430,6 +508,10 @@ pub const CATALOGUE: &[Row] = &[
         run: conventions::gate,
         needs: Needs::TheTree,
         takes_scope: true,
+        labels: Labels {
+            one: "convention breach",
+            many: "convention breaches",
+        },
         gate_per_entry: false,
     },
     Row {
@@ -442,6 +524,10 @@ pub const CATALOGUE: &[Row] = &[
         run: sarif::gate,
         needs: Needs::TheCommit,
         takes_scope: false,
+        labels: Labels {
+            one: "scanner finding",
+            many: "scanner findings",
+        },
         gate_per_entry: true,
     },
 ];

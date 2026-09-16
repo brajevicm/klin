@@ -24,9 +24,10 @@ _Avoid_: allowlist, exemption, suppression
 One violation at one site, as a gate reports it.
 _Avoid_: error, issue, violation
 
-**Shortcut**:
-A new finding the agent introduced in a turn, as `klin stats` counts it.
-_Avoid_: regression, slip
+**Regression**:
+One finding site a blocked stop put in front of the agent, counted once per
+finding identity in a window, as `klin stats` counts it.
+_Avoid_: shortcut, slip
 
 **Site**:
 The identity a finding is keyed by, so moved code is not new debt.
@@ -103,7 +104,8 @@ _Avoid_: conversation, run
 
 **Intervention**:
 One gate failure on a stop that spent the prompt's gate block. A later failure,
-once that block is spent, is an observation.
+once that block is spent, is an observation. It is the hook's unit, not the
+person's: `klin stats` counts regressions.
 _Avoid_: catch, prevention
 
 **Journal**:
