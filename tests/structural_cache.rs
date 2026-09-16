@@ -335,7 +335,9 @@ fn light_beside_whole(tree: &Tree, run: impl Fn(&Tree) -> Run) -> Run {
 
 const LAYERS: &str = r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":[]},"domain":{"in":"src/domain","can_use":[]}}}}"#;
 
-fn layered(tree: &Tree) -> Run {
+/// Every gate that reads the whole base, in one run, so each one is judged on the light layout
+/// and on the checkout of the same base. Spec 8.4.
+fn whole_base_gates(tree: &Tree) -> Run {
     tree.run(&[
         "gate",
         "--json",
@@ -343,7 +345,11 @@ fn layered(tree: &Tree) -> Run {
         "--gate",
         "layering",
         "--gate",
+        "public-api",
+        "--gate",
         "dead-symbols",
+        "--gate",
+        "reachability",
     ])
 }
 
@@ -372,7 +378,7 @@ fn a_manifest_the_working_tree_changed_is_read_from_the_base_on_a_light_layout()
         "[package]\nname = \"t\"\nversion = \"0.1.0\"\nedition = \"2024\"\n[lib]\npath = \"src/other.rs\"\n",
     );
 
-    let warm = light_beside_whole(&tree, layered);
+    let warm = light_beside_whole(&tree, whole_base_gates);
 
     assert!(warm.says("layering"), "{}", warm.out);
 }
@@ -410,7 +416,7 @@ fn a_manifest_the_working_tree_renamed_is_read_from_the_base_at_its_base_path() 
         r#"{"layering":{"layers":{"ui":{"in":"app/src/ui","can_use":[]},"domain":{"in":"app/src/domain","can_use":[]}}}}"#,
     );
 
-    let warm = light_beside_whole(&tree, layered);
+    let warm = light_beside_whole(&tree, whole_base_gates);
 
     assert!(warm.says("layering"), "{}", warm.out);
 }
