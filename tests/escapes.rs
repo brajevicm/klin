@@ -753,7 +753,7 @@ fn an_accepted_entry_for_a_retired_row_names_the_row_and_where_it_went() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(run.says("\"todo\" is a row klin retired"), "{}", run.out);
-    assert!(run.says("\"stubs\""), "{}", run.out);
+    assert!(run.says("\"stub\": \"not implemented\""), "{}", run.out);
 
     let strict = tree.run(&["escapes", "--strict"]);
     assert_eq!(strict.code, 1, "{}", strict.out);
@@ -762,7 +762,11 @@ fn an_accepted_entry_for_a_retired_row_names_the_row_and_where_it_went() {
         "{}",
         strict.out
     );
-    assert!(strict.says("\"stubs\""), "{}", strict.out);
+    assert!(
+        strict.says("\"stub\": \"not implemented\""),
+        "{}",
+        strict.out
+    );
 }
 
 #[test]
@@ -797,7 +801,7 @@ fn an_accepted_entry_that_matches_nothing_for_another_reason_names_no_row() {
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
-    assert!(!run.says("klin retired"), "{}", run.out);
+    assert!(!run.says("is a row klin"), "{}", run.out);
 }
 
 #[test]
@@ -815,5 +819,5 @@ fn a_live_row_of_another_language_is_not_read_as_the_retired_one() {
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
-    assert!(!run.says("klin retired"), "{}", run.out);
+    assert!(!run.says("is a row klin"), "{}", run.out);
 }

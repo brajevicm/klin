@@ -45,17 +45,18 @@ const RETIRED_ROWS: &[(&str, &str, &str, &str, &str)] = &[
         "escape",
         "todo",
         ".rs",
-        "which moved to the \"stubs\" check, that now holds `todo!(` and `unimplemented!(`, so \
-         one site is never reported by two checks. Accept the site under the \"stubs\" gate, or \
-         delete the entry.",
+        "is a row klin retired, which moved to the \"stubs\" check, so one site is never \
+         reported by two checks. Accept the site as {\"gate\": \"stubs\", \"stub\": \"not \
+         implemented\"}, or delete the entry.",
     ),
     (
         "escapes",
         "escape",
         "skipped test",
         ".py",
-        "whose Python pattern now ends in a word boundary, so `pytest.mark.skipif` no longer \
-         matches it: a conditional skip states which platforms a test supports. Delete the entry.",
+        "is a row klin narrowed, whose Python pattern now ends in a word boundary, so \
+         `pytest.mark.skipif` no longer matches it: a conditional skip states which platforms a \
+         test supports. Delete the entry.",
     ),
 ];
 
@@ -66,7 +67,7 @@ fn retired_row(gate: &str, entry: &Values) -> Option<String> {
         .find(|(named, key, row, suffix, _)| {
             *named == gate && text(entry, key) == *row && text(entry, "file").ends_with(suffix)
         })
-        .map(|(_, _, row, _, went)| format!("\"{row}\" is a row klin retired, {went}"))
+        .map(|(_, _, row, _, went)| format!("\"{row}\" {went}"))
 }
 
 /// A section naming a key klin retired, refused before any gate runs. Section 14.
@@ -541,8 +542,7 @@ fn report(
     }
     notes(comparison, evaluator, at.gate, out.text);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
-        let _ = writeln!(
-            out.text,
+        let heading = format!(
             "FAIL: the accepted list holds {} entr{} that matched nothing — under --strict an \
              entry that no longer describes the code is a failure. Delete the line.",
             comparison.unmatched_accepted.len(),
@@ -551,11 +551,18 @@ fn report(
                 _ => "ies",
             }
         );
-        for entry in &comparison.unmatched_accepted {
-            if let Some(went) = retired_row(at.gate, entry) {
-                let _ = writeln!(out.text, "  {}: {went}", text(entry, "file"));
-            }
-        }
+        listed(
+            out.text,
+            &heading,
+            comparison
+                .unmatched_accepted
+                .iter()
+                .filter_map(|entry| {
+                    retired_row(at.gate, entry)
+                        .map(|went| format!("{}: {went}", text(entry, "file")))
+                })
+                .collect(),
+        );
         return 1;
     }
     0
