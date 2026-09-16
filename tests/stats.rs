@@ -1373,3 +1373,50 @@ fn turn_reads_exactly_the_lines_at_or_after_the_time_the_stamp_was_taken() {
     assert!(run.says("src/new.rs:1  todo!()"), "{}", run.out);
     assert!(!run.says("src/old.rs"), "{}", run.out);
 }
+
+/// A window the reader could not place. `--turn` over a worktree holding no readable stamp reads
+/// no line at all, so the report says so instead of reporting a quiet turn.
+#[test]
+fn a_window_klin_cannot_place_says_so_and_never_reads_as_a_quiet_one() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let tree = tree(&[stop(300, true, vec![site], vec![])]);
+
+    let turn = tree.run(&["stats", "--turn"]);
+    assert_eq!(turn.code, 0, "{}", turn.out);
+    assert!(
+        turn.says("Stats may be incomplete: klin could not tell where this turn began."),
+        "{}",
+        turn.out
+    );
+    assert!(!turn.says("Nothing needs your attention."), "{}", turn.out);
+    assert!(!turn.says("No regressions were found"), "{}", turn.out);
+    assert_eq!(
+        tree.run(&["stats", "--turn", "--json"]).json()["confidence"]["whole"],
+        false
+    );
+
+    let week = tree.run(&["stats"]);
+    assert!(!week.says("could not tell where"), "{}", week.out);
+    assert!(
+        week.says("1 regression needs your attention."),
+        "{}",
+        week.out
+    );
+}
+
+/// The same hole on the sibling scope: a journal carrying no session id cannot place --session.
+#[test]
+fn a_session_scope_over_a_journal_with_no_session_id_says_it_could_not_place_it() {
+    let mut line = stop(300, false, vec![], vec![]);
+    line["session"] = json!(null);
+    let tree = tree(&[line]);
+
+    let run = tree.run(&["stats", "--session"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("Stats may be incomplete: klin could not tell where this session began."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("No regressions were found"), "{}", run.out);
+}

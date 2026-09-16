@@ -210,7 +210,8 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let (lines, skipped) = journal::read(start);
     let now = clock();
     let held = scoped(&lines, scope, start, now);
-    let report = Report::read(&held, scope, now, skipped, lines.is_empty() && skipped == 0);
+    let mut report = Report::read(&held, scope, now, skipped, lines.is_empty() && skipped == 0);
+    report.confidence.unscoped = unscoped(&lines, scope, start);
     match args.json {
         true => json(out, &report, &lines, scope, now),
         false => text(out, args, start, &report),
@@ -272,6 +273,23 @@ fn blocked(line: &Value) -> bool {
         .and_then(|hook| hook.get("blocked"))
         .and_then(Value::as_bool)
         .unwrap_or_default()
+}
+
+/// Whether klin could tell where the window the person asked for begins. `--turn` needs a turn
+/// stamp it can read, and `--session` needs a session id somewhere in the journal. Without one
+/// the scope holds no line at all, and a report that never found its window must not read as a
+/// quiet one. A window of days always begins somewhere. Spec 6.2, 11.5.
+fn unscoped(lines: &[Value], scope: Scope, root: &Path) -> Option<String> {
+    match scope {
+        Scope::Since(_) => None,
+        Scope::Turn => turn::taken_at(root)
+            .is_none()
+            .then(|| "klin could not tell where this turn began".to_string()),
+        Scope::Session => lines
+            .iter()
+            .all(|line| word(line, "session").is_empty())
+            .then(|| "klin could not tell where this session began".to_string()),
+    }
 }
 
 /// The lines a scope holds, oldest first. Spec 11.5.
@@ -497,6 +515,8 @@ struct Confidence {
     errored: Vec<String>,
     /// Journal lines the reader could not take.
     skipped: u64,
+    /// The window the person asked for, where klin could not tell where it begins.
+    unscoped: Option<String>,
 }
 
 impl Confidence {
@@ -544,6 +564,9 @@ impl Confidence {
     /// measured whole. The narrowest claim the records support wins, and `--all` carries the rows
     /// behind it.
     fn gap(&self) -> Option<String> {
+        if self.unscoped.is_some() {
+            return self.unscoped.clone();
+        }
         let files = self.files();
         if files > 0 {
             return Some(self.unmeasured(files));
@@ -884,7 +907,9 @@ fn restarted(aside: usize, after_open: bool) -> String {
 fn value(out: &mut String, report: &Report, named: bool) {
     let counts = &report.counts;
     if counts.caught == 0 {
-        let _ = writeln!(out, "No regressions were found {}.", when(report.scope));
+        if report.confidence.unscoped.is_none() {
+            let _ = writeln!(out, "No regressions were found {}.", when(report.scope));
+        }
         return;
     }
     let caught = match named {
@@ -1159,6 +1184,7 @@ fn confidence(held: &Confidence) -> Value {
     serde_json::json!({
         "whole": held.whole(),
         "gap": held.gap(),
+        "unscoped": held.unscoped,
         "unparsed": held.unparsed,
         "lost": held.lost,
         "not_measured": held.not_measured,

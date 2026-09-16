@@ -2699,6 +2699,12 @@ dependency or public-surface form a check supports and could not resolve
 not take. Not every note lowers confidence: a `near-ceiling`, `derivation`,
 `deleted` or `note` record does not.
 
+A window the reader could not place outranks all of them, because it read no
+line at all. `--turn` with no readable turn stamp (6.2), and `--session` over a
+journal holding no `session` id, are the two. Such a report MUST say it could
+not tell where the window began, and MUST NOT say no regressions were found: it
+looked at nothing. A window of days always begins somewhere.
+
 The default text summarizes the problem in one clause and never dumps the rows:
 `Stats may be incomplete: 2 files weren't measured.`, or the narrower `Stats may
 be incomplete: 2 source files couldn't be parsed.` where every unmeasured file
@@ -2842,8 +2848,9 @@ factual field is not removed because the default text stopped printing it.
 - `audit`, one entry per guard answer, reset and `asked-once` regression,
   newest first: `{time, kind, decision, reason, file, line}`, where `kind` is
   `guard`, `reset` or `asked-once` and a field that does not apply is null
-- `confidence` `{whole, gap, unparsed, lost, not_measured, unresolved, errored,
-  skipped}`, where `gap` is the summary clause or null
+- `confidence` `{whole, gap, unscoped, unparsed, lost, not_measured, unresolved,
+  errored, skipped}`, where `gap` is the summary clause or null and `unscoped`
+  is the clause for a window the reader could not place
 - `activity` `{stops, klin_ms}`, the run count and klin's own time, the
   `klin_ms` of 11.4 and never the project's build (13)
 - `stops`, `skipped` and `unreadable`, the same facts beside the object's root
