@@ -626,3 +626,62 @@ fn turn_reset_appends_a_line_with_the_prompt_counter() {
     assert_eq!(field(line, &["session"]), &Value::Null, "{line}");
     assert_eq!(field(line, &["prompt"]), 2, "{line}");
 }
+
+/// Unrelated history in front of the lines a stop reads, dated a month back, so the bounded
+/// reader of 11.4 must stop before any of it to answer for the session in front of it.
+fn old_history(tree: &Tree, rows: usize) {
+    let at = tree.state("journal.jsonl");
+    assert!(
+        at.parent()
+            .is_some_and(|dir| std::fs::create_dir_all(dir).is_ok()),
+        "the state directory"
+    );
+    let old = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_secs())
+        .saturating_sub(30 * 86_400);
+    let text: String = (0..rows)
+        .map(|_| {
+            format!(
+                "{{\"schema\":1,\"version\":\"0.0.0\",\"kind\":\"stop\",\"time\":{old},\
+                 \"session\":\"s-0\",\"prompt\":1,\"flags\":[],\"told\":[]}}\n"
+            )
+        })
+        .collect();
+    assert!(std::fs::write(&at, text).is_ok(), "the journal");
+}
+
+#[test]
+fn a_spent_gate_block_finds_this_session_prompt_behind_an_old_journal() {
+    let tree = tree(EVERY_GATE);
+    old_history(&tree, 10_000);
+    prompt(&tree);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("klin radius"), "{}", second.out);
+
+    let lines = stops(&tree);
+    let last = lines.last().unwrap_or_else(|| panic!("a stop line"));
+    assert!(!has_flag(last, "no-prompt-event"), "{last}");
+}
+
+#[test]
+fn a_spent_gate_block_behind_an_old_journal_still_reports_a_missing_prompt() {
+    let tree = tree(EVERY_GATE);
+    old_history(&tree, 10_000);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(second.says("klin radius"), "{}", second.out);
+
+    let lines = stops(&tree);
+    let last = lines.last().unwrap_or_else(|| panic!("a stop line"));
+    assert!(has_flag(last, "no-prompt-event"), "{last}");
+}
