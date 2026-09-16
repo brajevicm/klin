@@ -24,6 +24,7 @@ use crate::syntax::{
 };
 
 mod cache;
+pub mod footprint;
 mod rust;
 mod typescript;
 

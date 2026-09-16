@@ -1115,6 +1115,20 @@ fn name_evidence(cost: &crate::syntax::structural::NameCost) -> Value {
     Value::Object(out)
 }
 
+/// What the facts one gate held cost, and what one of each structural value costs. Spec 11.2.
+fn footprint(held: &crate::syntax::structural::footprint::Footprint) -> Value {
+    let mut out = Map::new();
+    for (name, value) in held.rows() {
+        out.insert(name.into(), value.into());
+    }
+    let mut sizes = Map::new();
+    for (name, value) in crate::syntax::structural::footprint::sizes() {
+        sizes.insert(name.into(), value.into());
+    }
+    out.insert("sizes".into(), Value::Object(sizes));
+    Value::Object(out)
+}
+
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
 /// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
 /// line prints as held at the base, and the structural facts it extracted or shared. Spec 11.2.
@@ -1134,6 +1148,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     out.insert(
         "names".into(),
         records.names.as_ref().map_or(Value::Null, name_evidence),
+    );
+    out.insert(
+        "footprint".into(),
+        records.footprint.as_ref().map_or(Value::Null, footprint),
     );
     out.insert(
         "work".into(),

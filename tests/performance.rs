@@ -769,8 +769,12 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         changed.typescript
     );
     print_samples(size, rows, case);
-    if case == PerfCase::Full {
-        print_resources(&rows.resources);
+    match case {
+        PerfCase::Full => print_resources(&rows.resources),
+        _ => {
+            let (files, bytes) = fixture.structural_cache();
+            println!("structural cache: files={files}, bytes={bytes}");
+        }
     }
     println!("note: hook timings exclude the project's build command");
     println!("klin version: {}", env!("CARGO_PKG_VERSION"));
@@ -977,48 +981,109 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
         if let Some(ms) = gate["ms"].as_u64() {
             times.insert(format!("{name}_ms"), ms);
         }
-        for (group, fields) in [
-            (
-                "facts",
-                &[
-                    "reads",
-                    "parses",
-                    "extracted",
-                    "shared",
-                    "cached",
-                    "ms",
-                    "cache_read_ms",
-                    "cache_write_ms",
-                ][..],
-            ),
-            ("work", &["reads", "parses"][..]),
-            ("graph", &["modules", "dependencies", "ms"][..]),
-            (
-                "surface",
-                &["surfaces", "items", "measured", "opaque", "holes", "ms"][..],
-            ),
-        ] {
-            counters(&mut times, name, &gate[group], group, fields);
-        }
-        counters(
-            &mut times,
-            name,
-            &gate["names"],
-            "names",
-            &["base_ms", "lost_ms"],
-        );
-        for tree in ["before", "after"] {
-            counters(
-                &mut times,
-                name,
-                &gate["names"][tree],
-                &format!("names_{tree}"),
-                &TREE_NAMES,
-            );
-        }
+        work_counters(&mut times, name, gate);
+        name_counters(&mut times, name, gate);
+        footprint_counters(&mut times, name, gate);
     }
     times
 }
+
+/// The extraction, content, module-graph and surface groups of one gate's row.
+fn work_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
+    for (group, fields) in [
+        (
+            "facts",
+            &[
+                "reads",
+                "parses",
+                "extracted",
+                "shared",
+                "cached",
+                "ms",
+                "cache_read_ms",
+                "cache_write_ms",
+            ][..],
+        ),
+        ("work", &["reads", "parses"][..]),
+        ("graph", &["modules", "dependencies", "ms"][..]),
+        (
+            "surface",
+            &["surfaces", "items", "measured", "opaque", "holes", "ms"][..],
+        ),
+    ] {
+        counters(times, name, &gate[group], group, fields);
+    }
+}
+
+/// The name-evidence group of `dead-symbols` and `reachability`, each tree apart. #199.
+fn name_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
+    counters(
+        times,
+        name,
+        &gate["names"],
+        "names",
+        &["base_ms", "lost_ms"],
+    );
+    for tree in ["before", "after"] {
+        counters(
+            times,
+            name,
+            &gate["names"][tree],
+            &format!("names_{tree}"),
+            &TREE_NAMES,
+        );
+    }
+}
+
+/// The representation counters and the type sizes of the facts one run held. #200.
+fn footprint_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
+    counters(times, name, &gate["footprint"], "footprint", &FOOTPRINT);
+    counters(
+        times,
+        name,
+        &gate["footprint"]["sizes"],
+        "footprint_size",
+        &TYPE_SIZES,
+    );
+}
+
+/// The population, sparsity and byte counters of the facts one run holds. #200.
+const FOOTPRINT: [&str; 24] = [
+    "files",
+    "declarations",
+    "references",
+    "imports",
+    "module_declarations",
+    "exports",
+    "export_leaves",
+    "qualified_paths",
+    "path_bytes",
+    "declaration_name_bytes",
+    "declaration_text_bytes",
+    "reference_name_bytes",
+    "signatures",
+    "signature_bytes",
+    "owners",
+    "owner_bytes",
+    "exported_aliases",
+    "exported_alias_bytes",
+    "nestings",
+    "nesting_entries",
+    "nesting_bytes",
+    "import_text_bytes",
+    "export_text_bytes",
+    "module_text_bytes",
+];
+
+const TYPE_SIZES: [&str; 7] = [
+    "file_facts",
+    "declaration",
+    "reference",
+    "import",
+    "module_declaration",
+    "export",
+    "export_leaf",
+];
 
 const TREE_NAMES: [&str; 7] = [
     "measure_ms",

@@ -2349,6 +2349,26 @@ One object on stdout. Fields:
   file and line, and the names of each language partition. `lost_ms` is the
   part spent building the working tree's findings and the lost references
   that explain them. The counts depend only on the trees and the selection.
+  `footprint` is what the facts `dead-symbols` held over both trees cost, and
+  null for any other gate or for one that never got that far. A file the two
+  trees hold as one extraction counts once. It holds the populations `files`,
+  `declarations`, `references`, `imports`, `module_declarations`, `exports`,
+  `export_leaves` and `qualified_paths`; the owned bytes `path_bytes`,
+  `declaration_name_bytes`, `declaration_text_bytes` and
+  `reference_name_bytes`; how many declarations carry a signature, an owner or
+  an exported alias, and the bytes each of those holds, as `signatures`,
+  `signature_bytes`, `owners`, `owner_bytes`, `exported_aliases` and
+  `exported_alias_bytes`; `nestings`, `nesting_entries` and `nesting_bytes`
+  over every value that carries inline module names; `import_text_bytes`,
+  `export_text_bytes` and `module_text_bytes`, which hold each statement's own
+  text and the names and paths it carries, with a qualified path under the
+  module bytes; and `sizes`, which gives the size of one `file_facts`,
+  `declaration`, `reference`, `import`, `module_declaration`, `export` and
+  `export_leaf` without the bytes their strings and lists own. Every value
+  depends only on the trees and the selection (8.4). `footprint.references`
+  counts the reference values the facts hold, so it is at least
+  `names.before.references` plus `names.after.references`, which count the
+  sites an index keeps, one per file and line for each name.
   `work` is `{reads, parses}` for the file-local gates
   `complexity`, `escapes` and `stubs`, counting source contents read and parsed
   over the current and base trees; it is null for other gates or for a gate
@@ -2737,7 +2757,12 @@ and `reachability` rows also print the `names` group of 11.2 as
 `names_base_ms`, `names_lost_ms`, and each tree's values under
 `names_before_` and `names_after_`, so a warm row separates the base layout,
 each tree's measurement, index build and name queries, and the lost
-references from the rest of the gate's time. A second warm hook
+references from the rest of the gate's time. The `dead-symbols` row also
+prints the `footprint` group of 11.2, each counter as `footprint_<name>` and
+each type size as `footprint_size_<name>`, so one row carries the population,
+sparsity and byte proxies of the facts that run held. A row that runs one
+targeted warm scenario prints the structural cache's file count and bytes
+after its stops, where a full row prints them beside the peak memory. A second warm hook
 row removes the structural cache of 8.4 before each stop, so it measures a
 stop that extracts the base and writes the cache, beside the first row's
 stop that reads it. After the rows, one untimed stop writes the structural

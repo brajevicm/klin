@@ -120,6 +120,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         records.facts = Some(before.cost + after.cost);
         records.states = Some(built);
         records.names = Some(names);
+        records.footprint = Some(structural::footprint::of([before.facts(), after.facts()]));
     });
     let judged = after_states
         .iter()

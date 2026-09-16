@@ -343,6 +343,58 @@ fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took()
     assert!(row(&report, "complexity")["names"].is_null(), "{report}");
 }
 
+#[test]
+fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
+    let tree = commands("{}");
+    tree.write(
+        "src/held.rs",
+        "mod inner {\n    pub struct Held;\n    impl Held {\n        pub fn take(&self, at: usize) -> usize { at }\n    }\n}\n",
+    );
+    tree.base();
+
+    let report = judged(&tree, &[], &["dead-symbols", "reachability"]);
+
+    let held = &row(&report, "dead-symbols")["footprint"];
+    assert_eq!(held["files"], 10, "{report}");
+    assert_eq!(held["declarations"], 12, "{report}");
+    assert_eq!(held["references"], 14, "{report}");
+    assert_eq!(
+        row(&report, "dead-symbols")["names"]["after"]["references"],
+        6,
+        "the index keeps one site per file and line: {report}"
+    );
+    assert_eq!(held["declaration_name_bytes"], 76, "{report}");
+    assert_eq!(held["module_declarations"], 2, "{report}");
+    assert_eq!(held["owners"], 2, "{report}");
+    assert_eq!(held["owner_bytes"], 8, "{report}");
+    assert_eq!(held["nestings"], 4, "{report}");
+    assert_eq!(held["nesting_entries"], 4, "{report}");
+    assert_eq!(held["nesting_bytes"], 20, "{report}");
+    assert_eq!(held["exported_aliases"], 0, "{report}");
+    assert!(held["reference_name_bytes"].as_u64() > Some(0), "{report}");
+    assert!(
+        held["declaration_text_bytes"].as_u64() > Some(0),
+        "{report}"
+    );
+    assert!(held["signatures"].as_u64() > Some(0), "{report}");
+    assert!(held["path_bytes"].as_u64() > Some(0), "{report}");
+    for size in [
+        "file_facts",
+        "declaration",
+        "reference",
+        "import",
+        "module_declaration",
+        "export",
+        "export_leaf",
+    ] {
+        assert!(held["sizes"][size].as_u64() > Some(0), "{size}: {report}");
+    }
+    assert!(
+        row(&report, "reachability")["footprint"].is_null(),
+        "{report}"
+    );
+}
+
 /// One tree's index as `[files, declarations, references, distinct_names]`, with its timings
 /// required beside them.
 fn indexed(tree: &Value) -> [u64; 4] {

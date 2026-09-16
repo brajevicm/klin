@@ -90,6 +90,9 @@ pub struct Records {
     /// The name evidence `dead-symbols` and `reachability` built over both trees. `None` for a
     /// gate that resolves no names. Spec 11.2.
     pub names: Option<syntax::structural::NameCost>,
+    /// What the facts `dead-symbols` held over both trees cost in population and bytes. `None`
+    /// for a gate that records none. Spec 11.2.
+    pub footprint: Option<syntax::structural::footprint::Footprint>,
     /// The module graphs the gate built over both trees. `None` for a gate that builds none.
     pub graph: Option<modules::GraphCost>,
     /// The public surfaces the gate derived over both trees. `None` for a gate that derives

@@ -111,6 +111,7 @@ fn normalized(run: &Run) -> Value {
             fields.remove("ms");
             fields.remove("facts");
             fields.remove("names");
+            fields.remove("footprint");
         }
     }
     json!({"code": run.code, "report": report})
