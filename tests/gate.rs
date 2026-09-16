@@ -1429,3 +1429,13 @@ fn a_coverage_loss_in_the_hook_is_a_note_and_the_turn_ends() {
         run.out
     );
 }
+
+#[test]
+fn a_coverage_loss_under_strict_fails_the_run() {
+    let tree = lost_file();
+
+    let run = tree.run(&["gate", "--strict"]);
+
+    assert_ne!(run.code, 0, "{}", run.out);
+    assert!(run.says("FAIL: 1 file(s) left scrutiny"), "{}", run.out);
+}

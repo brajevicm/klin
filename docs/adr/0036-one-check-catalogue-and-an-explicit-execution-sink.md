@@ -34,6 +34,10 @@ is the one derivable section no check reads.
 `config`, `reference` and `survey` read the catalogue. None of them imports
 `gate`.
 
+The table is ordered, cheapest first, and a run executes its gates in that
+order. No row carries a cost of its own, so where a check sits in the table is
+the whole of the ordering decision. SPEC 4.6.
+
 ### Clap stays a second edit site, with a test between them
 
 Issue #21's trade-off stands: derive-generated Clap help is worth the second

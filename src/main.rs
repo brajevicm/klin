@@ -112,7 +112,7 @@ enum Structural {
 /// the survey keeps.
 #[derive(Subcommand)]
 enum Runner {
-    /// Run every gate the configuration names, cheapest first
+    /// Run every gate the configuration names, in catalogue order, which is cheapest first
     Gate(gate::Args),
     /// Survey the tree and write the configuration it can say for itself
     Init(init::Args),

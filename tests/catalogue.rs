@@ -227,3 +227,80 @@ fn every_catalogue_check_is_accounted_for_in_the_plan() {
         run.out
     );
 }
+
+/// The gates one run executed, in the order the report names them.
+fn executed(tree: &Tree) -> Vec<String> {
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let Some(gates) = report.get("gates").and_then(serde_json::Value::as_array) else {
+        panic!("no gate list in: {}", run.out);
+    };
+    gates
+        .iter()
+        .filter_map(|gate| gate.get("name")?.as_str())
+        .map(str::to_string)
+        .collect()
+}
+
+#[test]
+fn a_run_executes_its_gates_in_catalogue_order() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", "pub fn one(a: i32) -> i32 {\n    a + 1\n}\n");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("Cargo.lock", "version = 3\n");
+    tree.base();
+
+    let declared = catalogue();
+    let ran: Vec<String> = executed(&tree)
+        .into_iter()
+        .filter(|name| declared.contains(name))
+        .collect();
+
+    assert!(
+        ran.len() > 3,
+        "too few gates ran to prove an order: {ran:?}"
+    );
+    let mut left = declared.iter();
+    for name in &ran {
+        assert!(
+            left.any(|declared| declared == name),
+            "{name} ran out of catalogue order: ran {ran:?}, catalogue {declared:?}"
+        );
+    }
+}
+
+#[test]
+fn a_per_entry_check_plans_its_gates_in_the_order_the_section_lists_them() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn one(a: i32) -> i32 {\n    a + 1\n}\n");
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "zed", "report": "z.sarif"},
+                     {"name": "alpha", "report": "a.sarif"}]}"#,
+    );
+    tree.base();
+
+    let run = tree.run(&["gate", "--list"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    let Some(zed) = run.out.find("zed — runs") else {
+        panic!("no zed gate in: {}", run.out);
+    };
+    let Some(alpha) = run.out.find("alpha — runs") else {
+        panic!("no alpha gate in: {}", run.out);
+    };
+    let Some(escapes) = run.out.find("escapes — runs") else {
+        panic!("no escapes gate in: {}", run.out);
+    };
+    assert!(zed < alpha, "the section's order was lost: {}", run.out);
+    assert!(
+        escapes < zed,
+        "the entries left the catalogue position of sarif: {}",
+        run.out
+    );
+}

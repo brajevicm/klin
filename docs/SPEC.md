@@ -232,8 +232,8 @@ Nine components, in one binary.
    the value it ratchets is whether a site still exists (16.4).
 5. **Ratchet Engine** matches Findings between the two trees plus the accepted
    list, and sorts each into new, worsened or held (ADR 0009).
-6. **Gate Runner** runs every applicable gate cheapest first, prints a status
-   row per gate, and returns one exit code.
+6. **Gate Runner** runs every applicable gate in catalogue order, which is
+   cheapest first, prints a status row per gate, and returns one exit code.
 7. **Host Adapter** reads a host's hook event and writes the decision in the
    host's shape. Section 9.
 8. **Guard** refuses or questions an agent's tool call that would change the
@@ -393,7 +393,13 @@ configured or derived instance of a check. A check declares:
   the external tool (ADR 0038). No component derives a section for a check:
   each check reads the facts, resolves its own policy, and prints the
   provenance of each value it used (ADR 0040).
-- `cost`, an ordinal that orders the run cheapest first
+
+A check declares no cost of its own. The catalogue is one ordered table,
+written cheapest first, and a run executes its gates in the order the
+catalogue declares them (ADR 0036). A check that plans several gates, one per
+entry a person wrote, keeps them together in that position, in the order the
+section lists them. The order is a property of the table, so adding a check
+in the right place is the whole of the decision.
 
 A Policy or Integration check runs only when its section is present. An
 Automatic check runs unless its section is `false`.
@@ -2302,8 +2308,9 @@ tolerates what an interrupted writer can leave: a truncated last line.
 
 ## 10. Runner and CI Contract
 
-- `klin gate` runs every applicable gate cheapest first and prints a status
-  row per gate, the full output of each failing gate, and one summary line.
+- `klin gate` runs every applicable gate in catalogue order, which is cheapest
+  first (4.6), and prints a status row per gate, the full output of each
+  failing gate, and one summary line.
 - `--gate NAME` runs one gate. Naming an excluded or unknown gate is exit 2.
 - `--strict` adds four failures: an accepted entry matching nothing, a
   same-tree comparison klin cannot explain (6.4), a file measured in `before`
@@ -3516,9 +3523,10 @@ green, because deterministic detection is not correct judgement:
 - Accepting finding A holds A and leaves B failing.
 - A `run` command that exits without writing the report is ERR, and a run
   that writes it is judged on the new report.
-- Runner: cheapest first, every gate runs after a failure, ERR beats FAIL in
-  the exit code, `--gate` on an excluded gate, `--list` shows derived and
-  pinned, no source root is exit 2 under `--strict` and a NOTE in the hook.
+- Runner: gates run in catalogue order, every gate runs after a failure, ERR
+  beats FAIL in the exit code, `--gate` on an excluded gate, `--list` shows
+  derived and pinned, no source root is exit 2 under `--strict` and a NOTE in
+  the hook.
 - Hook: build failure blocks every stop and stops after eight, a new prompt
   restores the eight, a build failure writes a red verdict and the next
   prompt does not move the stamp, gate failure blocks once, the stamp hands
@@ -3555,44 +3563,45 @@ Extension:
 
 Core, in this order:
 
-- [ ] Guard: fix the glob prefix and quoted splitting, add the `ask` decision
+- [x] Guard: fix the glob prefix and quoted splitting, add the `ask` decision
 - [x] State directory under the git directory, `KLIN_STATE_DIR` override,
       `cache clean`
-- [ ] The turn stamp as a commit with HEAD as parent, under `refs/worktree/klin/turn`
+- [x] The turn stamp as a commit with HEAD as parent, under `refs/worktree/klin/turn`
 - [x] Amend ADR 0016 and 0017 to match 5.4, 6.2 and 6.6
 - [x] Amend ADR 0016, 0020 and 0022 for the fourth review of section 0
 
-- [ ] One stamp rule for session start and prompt, `turn reset` for a person,
+- [x] One stamp rule for session start and prompt, `turn reset` for a person,
       the `turn` file written atomically with its prompt counter, a lock on
       the state directory for the whole stop, the build stamp counting blocks
       under the prompt counter and stopping after eight, a red verdict before
       a build block
 
-- [ ] The hook reads the turn window, writes the verdict, restores a missing
+- [x] The hook reads the turn window, writes the verdict, restores a missing
       `turn` file from the ref, and judges the branch when both are gone
-- [ ] The guard denies `init` and `turn reset`, asks on a non-reader that
+- [x] The guard denies `init` and `turn reset`, asks on a non-reader that
       names `klin.json`, and allows every file that left the guarded set
 
-- [ ] Survey at run time from the derivation commit, cached by it, derived
+- [x] Survey at run time from the derivation commit, cached by it, derived
       values printed. Derived numbers come from the derivation commit's own
       paths. Roots, languages, documents and manifests are the union of that
       survey and the `after` walk, and a site under a path the survey did not
       hold is `new`.
-- [ ] `doc-citations` and every other derivable check compare to `before`
+- [x] `doc-citations` and every other derivable check compare to `before`
 - [x] No source root is exit 2 under `--strict`, and `--list` says derived or
       pinned per key
-- [ ] Derived complexity ceilings, floor and minimum sample, floor for a new
+- [x] Derived complexity ceilings, floor and minimum sample, floor for a new
       language
-- [ ] Pinned dated ceilings in every check that takes a ceiling, in UTC, date
+- [x] Pinned dated ceilings in every check that takes a ceiling, in UTC, date
       printed
 - [x] One key vocabulary, old names print the new one, differential test
       retired
 - [x] Unreadable file is a NOTE in the hook
-- [ ] Coverage counts on every `OK:` line, matched site and both values on
+- [x] Coverage counts on every `OK:` line, matched site and both values on
       every failure, a finding `id`, all in the JSON, and the coverage
       regression NOTE and strict failure
-- [ ] Host adapter, Claude Code first, README stops naming other hosts
-- [ ] Three escapes rows: `fit(`, `fdescribe(`, `xfail`
+- [x] Host adapter, Claude Code first, then Codex (ADR 0030). What the README
+      may claim about hosts is #169's audit, not this row.
+- [x] Three escapes rows: `fit(`, `fdescribe(`, `xfail`
 - [x] Cross-file move matching by body hash (4.4)
 - [x] `inventory` over test files and test functions, with the
       deleted-subject NOTE and the body-hash rename match
@@ -3603,7 +3612,7 @@ Core, in this order:
 - [x] `lockfile`, Rust, npm and Go, with pnpm, yarn, Poetry and uv deferred
 - [ ] `CONTEXT.md` takes Window and Derived, README names the two
       conformance levels
-- [ ] New ADRs for each row of section 0 that is accepted, and one for the
+- [x] New ADRs for each row of section 0 that is accepted, and one for the
       stamp as a parented, ref-held commit
 
 Next, after core is green, each with an unsolved problem named in section 8:
@@ -3618,7 +3627,7 @@ Distribution, in this order, because each step depends on the one before:
 - [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
 - [x] `init --hooks` for Codex and its host adapter (#68)
 - [ ] `init --hooks` for Cursor and its host adapter (#67)
-- [ ] The GitHub Action
+- [x] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64)
 
 Recommended:

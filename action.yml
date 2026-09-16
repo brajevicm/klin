@@ -8,7 +8,7 @@ inputs:
     required: false
     default: ""
   args:
-    description: Arguments appended to klin gate --strict, such as --gate names or --sarif PATH.
+    description: Arguments appended to klin gate --strict, such as --gate names or --json.
     required: false
     default: ""
 runs:
