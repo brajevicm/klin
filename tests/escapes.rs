@@ -736,3 +736,66 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     let strict = tree.run(&["escapes", "--strict"]);
     assert_eq!(strict.code, 2, "{}", strict.out);
 }
+
+#[test]
+fn an_accepted_entry_for_a_retired_row_names_the_row_and_where_it_went() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "escapes", "file": "src/gone.rs", "text": "fn vanished() {",
+                "escape": "todo", "count": 1}"#,
+        ),
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("matched nothing this run"), "{}", run.out);
+    assert!(run.says("\"todo\" is a row klin retired"), "{}", run.out);
+    assert!(run.says("\"stubs\""), "{}", run.out);
+
+    let strict = tree.run(&["escapes", "--strict"]);
+    assert_eq!(strict.code, 1, "{}", strict.out);
+    assert!(
+        strict.says("\"todo\" is a row klin retired"),
+        "{}",
+        strict.out
+    );
+    assert!(strict.says("\"stubs\""), "{}", strict.out);
+}
+
+#[test]
+fn an_accepted_entry_for_the_narrowed_skipped_test_row_names_skipif() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "escapes", "file": "src/gone.py", "text": "@pytest.mark.skipif(win)",
+                "escape": "skipped test", "count": 1}"#,
+        ),
+    );
+    tree.write("src/lib.py", "def f():\n    return 1\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("pytest.mark.skipif"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_that_matches_nothing_for_another_reason_names_no_row() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "escapes", "file": "src/gone.rs", "text": "fn vanished() {",
+                "escape": "unwrap", "count": 1}"#,
+        ),
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("matched nothing this run"), "{}", run.out);
+    assert!(!run.says("klin retired"), "{}", run.out);
+}

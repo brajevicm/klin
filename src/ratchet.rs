@@ -33,6 +33,38 @@ const RETIRED: &[(&str, &str)] = &[
     ),
 ];
 
+/// A pattern row klin removed from a built-in table, as the gate that held it, the values key
+/// its name is recorded under, the name, and where the row went. An accepted entry naming one
+/// matches nothing for a reason the entry cannot show, so the note and the `--strict` failure
+/// say which row it names and what replaced it. A row a project deleted from its own `patterns`
+/// is not one of these. Section 14.
+const RETIRED_ROWS: &[(&str, &str, &str, &str)] = &[
+    (
+        "escapes",
+        "escape",
+        "todo",
+        "which moved to the \"stubs\" check, that now holds `todo!(` and `unimplemented!(`, so \
+         one site is never reported by two checks. Accept the site under the \"stubs\" gate, or \
+         delete the entry.",
+    ),
+    (
+        "escapes",
+        "escape",
+        "skipped test",
+        "whose Python pattern now ends in a word boundary, so `pytest.mark.skipif` no longer \
+         matches it: a conditional skip states which platforms a test supports. Delete the entry \
+         when it named a `skipif` site.",
+    ),
+];
+
+/// What one unmatched accepted entry names, when it names a row klin retired.
+fn retired_row(gate: &str, entry: &Values) -> Option<String> {
+    RETIRED_ROWS
+        .iter()
+        .find(|(named, key, row, _)| *named == gate && text(entry, key) == *row)
+        .map(|(_, _, row, went)| format!("\"{row}\" is a row klin retired, {went}"))
+}
+
 /// A section naming a key klin retired, refused before any gate runs. Section 14.
 pub fn no_retired_key(
     file: &std::path::Path,
@@ -497,13 +529,13 @@ fn report(
     });
     if comparison.failed() {
         failures(comparison, evaluator, held, out.text);
-        notes(comparison, evaluator, out.text);
+        notes(comparison, evaluator, at.gate, out.text);
         return 1;
     }
     if !at.quiet {
         let _ = writeln!(out.text, "{ok_line}");
     }
-    notes(comparison, evaluator, out.text);
+    notes(comparison, evaluator, at.gate, out.text);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
         let _ = writeln!(
             out.text,
@@ -515,6 +547,11 @@ fn report(
                 _ => "ies",
             }
         );
+        for entry in &comparison.unmatched_accepted {
+            if let Some(went) = retired_row(at.gate, entry) {
+                let _ = writeln!(out.text, "  {}: {went}", text(entry, "file"));
+            }
+        }
         return 1;
     }
     0
@@ -603,7 +640,7 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(comparison: &Comparison, evaluator: &Evaluator, out: &mut String) {
+fn notes(comparison: &Comparison, evaluator: &Evaluator, gate: &str, out: &mut String) {
     if comparison.unmatched_accepted.is_empty() {
         return;
     }
@@ -617,10 +654,14 @@ fn notes(comparison: &Comparison, evaluator: &Evaluator, out: &mut String) {
             .iter()
             .map(|entry| {
                 format!(
-                    "{}  {}  {}",
+                    "{}  {}  {}{}",
                     text(entry, "file"),
                     (evaluator.format_metrics)(entry),
-                    clip(&text(entry, "text"))
+                    clip(&text(entry, "text")),
+                    match retired_row(gate, entry) {
+                        Some(went) => format!("  — {went}"),
+                        None => String::new(),
+                    }
                 )
             })
             .collect(),
