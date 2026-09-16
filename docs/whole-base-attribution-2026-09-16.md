@@ -20,6 +20,9 @@ the journal line (11.4 `timing`). The two 300k rows are recorded below. E
 survives on both rows and on semantics. F is rejected. One implementation
 ticket follows, for E.
 
+E landed in #203. "After #203" at the end of this note records the same two
+rows over the implemented layout, beside the rows below.
+
 ## Method
 
 Run from `2f740bc`, the commit that adds this note, with a release build.
@@ -491,3 +494,105 @@ changed files, where E also writes `klin.json`, the manifests and any file
 the cache lacks. A Stop of about 750 ms is a 3x improvement, not an x10 on
 its own, and it does not change the product performance contract of ADR 0042
 until the final round validation of #197 runs.
+
+## After #203
+
+#203 implemented E. This section records the same two rows over the
+implemented layout, so the before and after medians sit beside each other.
+
+### Method
+
+Run from `783e21e`, the commit that lays the whole base out from the base
+commit's index, with a release build. The repository owner ran both rows,
+macos/aarch64, rustc 1.98.1, klin 0.1.1, five iterations, median. The rows
+are the same two commands as above. The fixture digest is unchanged
+(`f62c3dae3eaff7ab`), and the structural cache is one file of 11,850,967
+bytes at warm-20 and 11,850,966 at warm-100, as before.
+
+`before` is the row recorded above, from `2f740bc`. `after` is this run.
+
+### Whole Stop
+
+| Median, ms | 20 before | 20 after | 100 before | 100 after |
+| --- | ---: | ---: | ---: | ---: |
+| Hook (harness wall clock) | 2,279 | 687 | 2,538 | 825 |
+| `stop_total_ms` | 2,245 | 655 | 2,495 | 794 |
+| Sum of all gate `ms` | 1,430 | 492 | 1,609 | 585 |
+| Teardown (`stop_base_remove_ms` + `stop_base_prune_ms`) | 613 | 14 | 639 | 17 |
+| `stop_total_ms` less the gates and the teardown | 202 | 149 | 247 | 192 |
+| `dead-symbols` `ms` | 1,130 | 207 | 1,243 | 249 |
+
+### The whole-base lifecycle
+
+| Part, median ms | 20 before | 20 after | 100 before | 100 after |
+| --- | ---: | ---: | ---: | ---: |
+| `names_base_ms` | 1,042 | 117 | 1,107 | 119 |
+| `names_layout_worktree_add_ms` | 926 | 58 | 995 | 63 |
+| `names_layout_written` | null | 27 | null | 107 |
+| `names_layout_changes_ms` | 0 | 0 | 0 | 0 |
+| `names_layout_renames_ms` | 0 | 0 | 0 | 0 |
+| `names_layout_cache_name_ms` | 18 | 17 | 19 | 16 |
+| `facts_cache_read_ms` | 34 | 32 | 35 | 31 |
+| `names_layout_ignored_ms` | 13 | 0 | 14 | 0 |
+| `names_layout_walk_ms` | 38 | 0 | 37 | 0 |
+| Unclassified (`names_base_ms` less the seven above) | 13 | 10 | 7 | 9 |
+| `stop_base_remove_ms` | 607 | 9 | 632 | 12 |
+| `stop_base_prune_ms` | 6 | 5 | 7 | 5 |
+
+`names_layout_worktree_add_ms` now holds four git commands rather than one
+checkout: `worktree add --no-checkout`, `read-tree`, `ls-files --stage` and
+one `checkout-index`. `names_layout_written` is 27 where 20 files changed and
+107 where 100 did, so the layout writes the change set plus a constant seven
+paths, and not the repository. `walk` and `ignored` are zero on both rows,
+because the file list comes from the index and no `ls-files --others
+--ignored` runs in the base.
+
+### The decision rule applied, measured
+
+| | Warm, 20 changed | Warm, 100 changed |
+| --- | ---: | ---: |
+| `today_E` before | 1,590 ms | 1,685 ms |
+| The same five counters after | 58 + 0 + 0 + 9 + 5 = 72 ms | 63 + 0 + 0 + 12 + 5 = 80 ms |
+| Measured removal | 1,518 ms | 1,605 ms |
+| #202's predicted `E_removes` | 1,532 ms | 1,604 ms |
+
+The prediction was an upper bound from separate git processes on an idle
+repository. The implemented layout removed 1,518 ms of a predicted 1,532 at
+warm-20, 99% of the bound, and 1,605 ms of a predicted 1,604 at warm-100.
+
+The whole Stop fell by more than the layout did: 1,592 ms at warm-20 and
+1,713 ms at warm-100, against the 1,518 ms and 1,605 ms above. Of that
+difference, 53 ms and 55 ms sit in `stop_total_ms` less the gates and the
+teardown, and the rest is spread over the other gates and the harness wall
+clock. This note does not attribute either part. Both may be run-to-run
+variance, and neither is claimed as an effect of the layout.
+
+### The worktree experiment, this run
+
+| Median ms | Warm, 20 changed | Warm, 100 changed |
+| --- | ---: | ---: |
+| `worktree_add_whole_ms` | 948 | 927 |
+| `worktree_remove_whole_ms` | 508 | 581 |
+| `worktree_add_no_checkout_ms` | 10 | 9 |
+| `worktree_read_tree_ms` | 12 | 12 |
+| `worktree_ls_files_stage_ms` | 8 | 8 |
+| `worktree_checkout_index_changed_ms` | 9 | 18 |
+| `worktree_remove_no_checkout_ms` | 12 | 12 |
+| `worktree_prune_ms` | 6 | 6 |
+| The six commands of candidate E | 57 | 65 |
+
+klin's own five counters cost 72 ms and 80 ms against the experiment's 57 ms
+and 65 ms, 15 ms more on both rows. #202 predicted that gap: klin adds its own
+process launches and path handling, and it writes 27 and 107 paths where the
+experiment wrote 20 and 100.
+
+### Verdict
+
+A warm changed Stop on the 300k dense fixture is 687 ms where it was
+2,279 ms, and 825 ms where it was 2,538 ms. That is 3.3 times and 3.1 times
+faster, and it beats the 750 ms and 930 ms the note called an upper-bound
+prediction, because parts of the Stop outside E also fell.
+
+This is not an x10 on its own, and it does not change the product performance
+contract of ADR 0042 until the final round validation of #197 runs. No 1M row
+and no RSS measurement was taken for #203.
