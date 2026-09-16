@@ -35,23 +35,26 @@ def line($key; $before; $after):
 flat as $head
 | if ($base | length) == 0 then $head
   else
-    ($base + $head | keys)
-    | map(select($base[.] != $head[.]))
-    | if length == 0 then empty
-      else
-        [ "<!-- klin-benchmark -->",
-          "## Benchmark: the base binary against this branch's binary",
-          "",
-          "Both binaries ran `gate --strict` over the same tree at the same commit, so only the",
-          "binary differs.",
-          "",
-          "| Measurement | Base | This branch | Change |",
-          "| --- | ---: | ---: | ---: |" ]
-        + map(line(.; $base[.]; $head[.]))
-        + [ "",
-            "⚠ marks a counter that rose by more than \(rise)%, a counter that rose from zero, or",
-            "a measurement the base reported and this branch does not. Times and peak RSS are left",
-            "out, because a shared runner is not a timing oracle (ADR 0042)." ]
-        | .[]
-      end
+    ($base + $head | keys) as $every
+    | ($every | map(select($base[.] != $head[.]))) as $moved
+    | [ "<!-- klin-benchmark -->",
+        "## Benchmark: the base binary against this branch's binary",
+        "",
+        "Both binaries ran `gate --strict` over the same tree at the same commit, so only the",
+        "binary differs." ]
+      + ( if ($moved | length) == 0
+          then [ "", "All \($every | length) counters agree." ]
+          else [ "",
+                 "| Measurement | Base | This branch | Change |",
+                 "| --- | ---: | ---: | ---: |" ]
+               + ($moved | map(line(.; $base[.]; $head[.])))
+               + [ "",
+                   "\($moved | length) of \($every | length) counters moved. ⚠ marks a counter",
+                   "that rose by more than \(rise)%, a counter that rose from zero, or a measurement",
+                   "the base reported and this branch does not." ]
+          end )
+      + [ "",
+          "Times and peak RSS are left out, because a shared runner is not a timing oracle",
+          "(ADR 0042)." ]
+    | .[]
   end

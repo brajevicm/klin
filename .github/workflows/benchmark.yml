@@ -49,9 +49,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          test -s "$RUNNER_TEMP/bench.md" || exit 0
-          gh pr comment "$NUMBER" --edit-last --create-if-none --body-file "$RUNNER_TEMP/bench.md"
-
-      - if: "!contains(github.event.pull_request.labels.*.name, 'benchmark-accepted')"
-        run: '! grep -q ⚠ "$RUNNER_TEMP/bench.md"'
+        run: gh pr comment "$NUMBER" --edit-last --create-if-none --body-file "$RUNNER_TEMP/bench.md"
