@@ -550,14 +550,23 @@ fn deleted(episode: &Episode) -> String {
     }
 }
 
+/// The journal a stop's telling needs and no more: back to the seven-day cutoff the week's
+/// headline reads, or to the turn stamp where the turn reaches further back. The `klin radius`
+/// run that appends a prompt line takes the stamp after it, and a journal time is a whole
+/// second, so the stamp's own second is not the bound and the second before it is. A worktree
+/// holding no readable stamp is the one case nothing bounds, and it reads the whole file.
+/// Spec 9.5, 11.4.
+pub fn stop_tail(root: &Path) -> journal::Tail {
+    let week = clock().saturating_sub(7 * DAY);
+    let cutoff = turn::taken_at(root).map_or(0, |taken| taken.saturating_sub(1).min(week));
+    journal::tail(root, cutoff)
+}
+
 /// What the turn end tells the person on a stop nothing blocks: the turn line, and beside it at
 /// most once every seven days the week's headline, each with the name the journal records it
 /// under. `this` is the stop's own line, which the journal does not hold yet. Spec 9.5.
-///
-/// ponytail: reads the whole journal on each stop in a turn with an intervention; read only its
-/// tail if a long-lived journal pushes the hook past the budget of spec 13.
-pub fn turn_end(root: &Path, this: Value) -> Vec<(&'static str, String)> {
-    let (mut lines, _) = journal::read(root);
+pub fn turn_end(root: &Path, tail: journal::Tail, this: Value) -> Vec<(&'static str, String)> {
+    let mut lines = tail.lines;
     lines.push(this);
     let now = clock();
     let turn = episodes(&scoped(&lines, Scope::Turn, root, now));
@@ -565,7 +574,7 @@ pub fn turn_end(root: &Path, this: Value) -> Vec<(&'static str, String)> {
         return Vec::new();
     };
     let mut parts = vec![("turn", said)];
-    if weekly(&lines, now) {
+    if weekly(&lines, tail.older, now) {
         parts.push((
             "weekly",
             weekly_line(&scoped(&lines, Scope::Since(7), root, now)),
@@ -595,11 +604,12 @@ fn turn_line(episodes: &[Episode]) -> Option<String> {
 }
 
 /// Whether the week's headline is due: no line of the last seven days carried it, and the
-/// journal reaches back a week, so there is a week to tell.
-fn weekly(lines: &[Value], now: u64) -> bool {
+/// journal reaches back a week, so there is a week to tell. `older` is the bounded reader's
+/// word that the journal holds a line before the lines it returned.
+fn weekly(lines: &[Value], older: bool, now: u64) -> bool {
     let week = now.saturating_sub(7 * DAY);
     let told = |line: &Value| list(line, "told").iter().any(|part| part == "weekly");
-    lines.first().is_some_and(|first| at(first) <= week)
+    (older || lines.first().is_some_and(|first| at(first) <= week))
         && !lines.iter().any(|line| at(line) > week && told(line))
 }
 

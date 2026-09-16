@@ -2581,6 +2581,26 @@ The `reset` line is `klin turn reset`:
 - `prompt`, the counter the stamp carried over. A reset does not end the
   turn, so the counter is unchanged by it (6.2).
 
+A reader on the stop path MUST NOT read the whole file, whose length is the
+worktree's whole lifetime. It reads backwards from the end and stops at the
+first line older than the history the stop's decision needs: the seven-day
+cutoff the weekly line of 9.5 reads, or the second before the turn stamp was
+taken where the turn reaches further back. The stamp's own second cannot be
+the bound, because the `klin radius` run that appends a `prompt` line takes
+the stamp after appending it. That stopping line is also how the stop
+tells a journal reaching further back from one beginning inside the window,
+which the weekly line of 9.5 asks about. One bounded reader answers for the
+whole stop: the turn end and the `no-prompt-event` check of 16.3 read one
+tail and not one each.
+
+The bounded reader MUST NOT stop at a line it could not parse or whose
+schema it does not know: a truncated last write is not an older line, and a
+line from a newer klin is skipped and counted like any other. It MUST NOT
+report a `prompt` line absent because a byte or line limit was reached. A
+worktree holding no readable stamp bounds nothing and reads the whole file.
+`klin stats` (11.5) keeps the whole-file reader, because its windows ask for
+history the stop path never needs.
+
 The file is a public surface. `klin stats --json` (11.5) is what a harness
 reads, and the two readers of the design read nothing else.
 

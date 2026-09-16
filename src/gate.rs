@@ -211,16 +211,21 @@ fn tell(
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_spent || turn::intervened(root);
     if code == 0 && !args.json && log.host.is_some() && intervened {
-        add_prompt_note(root, log, &mut parts);
-        parts.extend(stats::turn_end(root, journal::line(log)));
+        let tail = stats::stop_tail(root);
+        add_prompt_note(&tail, log, &mut parts);
+        parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
     (!said.is_empty()).then(|| said.join("\n"))
 }
 
-fn add_prompt_note(root: &Path, log: &mut journal::Stop, parts: &mut Vec<(&'static str, String)>) {
-    if log.gate_spent && log.verdict == "red" && no_prompt_event(root, log.session.as_deref()) {
+fn add_prompt_note(
+    tail: &journal::Tail,
+    log: &mut journal::Stop,
+    parts: &mut Vec<(&'static str, String)>,
+) {
+    if log.gate_spent && log.verdict == "red" && no_prompt_event(tail, log.session.as_deref()) {
         log.flags.push("no-prompt-event");
         parts.push((
             "note",
@@ -231,11 +236,15 @@ fn add_prompt_note(root: &Path, log: &mut journal::Stop, parts: &mut Vec<(&'stat
     }
 }
 
-fn no_prompt_event(root: &Path, session: Option<&str>) -> bool {
+/// Whether no `prompt` line of this stop's session reached the journal. The tail the stop read
+/// reaches back past the turn stamp, which the `klin radius` run that appends that line takes
+/// after appending it, so a tail with no such line is the absence and not a short read.
+/// Spec 16.3.
+fn no_prompt_event(tail: &journal::Tail, session: Option<&str>) -> bool {
     let Some(session) = session else {
         return false;
     };
-    !journal::read(root).0.iter().any(|line| {
+    !tail.lines.iter().any(|line| {
         line.get("kind").and_then(Value::as_str) == Some("prompt")
             && line.get("session").and_then(Value::as_str) == Some(session)
     })

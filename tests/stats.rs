@@ -872,3 +872,50 @@ fn the_weekly_line_rides_the_first_turn_end_seven_days_after_the_last_and_not_th
         next.out
     );
 }
+
+/// A stop's telling reads the history its turn and its week need and stops there, so unrelated
+/// older lines change neither line it prints. The prefix is a month old, so it only tells the
+/// turn end that the journal reaches back far enough to describe a week.
+#[test]
+fn an_old_journal_does_not_change_what_the_turn_end_tells() {
+    let tree = hooked();
+    let old: Vec<Value> = (0..10_000)
+        .map(|step| stop(30 * DAY + step, false, vec![], vec![]))
+        .collect();
+    journal(&tree, &old);
+
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    let run = hook(&tree, A_SECOND_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        told(&run).starts_with(
+            "klin: the agent took 1 shortcut this turn and fixed it after klin asked."
+        ),
+        "{}",
+        run.out
+    );
+    assert!(
+        told(&run).ends_with(
+            "\nIn the last seven days, klin caught 1 shortcut and the agent fixed it on its own. \
+             `klin stats` lists them."
+        ),
+        "{}",
+        run.out
+    );
+
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    let next = hook(&tree, A_SECOND_STOP);
+    assert_eq!(next.code, 0, "{}", next.out);
+    assert!(
+        told(&next).starts_with("klin: the agent took"),
+        "{}",
+        next.out
+    );
+    assert!(
+        !told(&next).contains("In the last seven days"),
+        "{}",
+        next.out
+    );
+}

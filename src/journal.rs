@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -300,12 +300,18 @@ pub fn read(root: &Path) -> (Vec<Value>, u64) {
         if text.trim().is_empty() {
             continue;
         }
-        match serde_json::from_str::<Value>(&text) {
-            Ok(line) if known(&line) => lines.push(line),
-            _ => skipped += 1,
+        match understood(text.as_bytes()) {
+            Some(line) => lines.push(line),
+            None => skipped += 1,
         }
     }
     (lines, skipped)
+}
+
+/// The line both readers take, and `None` for the one neither does: a line that will not parse,
+/// which is a truncated last write, or a line whose `schema` a newer klin wrote. Spec 11.4.
+fn understood(text: &[u8]) -> Option<Value> {
+    serde_json::from_slice::<Value>(text).ok().filter(known)
 }
 
 /// Whether this binary understands the line's format. The match is on the current schema with no
@@ -314,5 +320,180 @@ fn known(line: &Value) -> bool {
     let schema = line.get("schema").and_then(Value::as_u64);
     match SCHEMA {
         Schema::One => schema == Some(Schema::One as u64),
+    }
+}
+
+/// The tail of this worktree's journal, and what the reader proved beyond it. A stop reads a
+/// tail and not the whole file, so a journal that grows for a year does not lengthen a stop.
+/// Spec 11.4.
+#[derive(Default)]
+pub struct Tail {
+    /// The known lines from the cutoff onwards, newest last, as `read` orders them.
+    pub lines: Vec<Value>,
+    /// The lines in that range the reader could not take.
+    pub skipped: u64,
+    /// Whether a known line older than the cutoff exists, which is how a reader tells a journal
+    /// that reaches further back from one that begins inside the window.
+    pub older: bool,
+}
+
+/// How much of the file one backward read takes.
+const CHUNK: u64 = 64 * 1024;
+
+/// The journal from `cutoff` onwards, read backwards from the end in chunks and stopped at the
+/// first line older than the cutoff, so older history is never parsed. A line the reader cannot
+/// parse is skipped and counted, never read as the older line that would end the scan, so a
+/// truncated last write and a line from a newer klin both leave the bound where it was. A cutoff
+/// of zero reads the whole file. Spec 11.4.
+pub fn tail(root: &Path, cutoff: u64) -> Tail {
+    match state::dir(root) {
+        Some(at) => scan(&at.join(FILE), cutoff),
+        None => Tail::default(),
+    }
+}
+
+fn scan(file: &Path, cutoff: u64) -> Tail {
+    let mut tail = Tail::default();
+    let Ok(mut file) = std::fs::File::open(file) else {
+        return tail;
+    };
+    let Ok(mut end) = file.seek(SeekFrom::End(0)) else {
+        return tail;
+    };
+    let mut held: Vec<u8> = Vec::new();
+    while end > 0 && !tail.older {
+        let from = end.saturating_sub(CHUNK);
+        let Some(mut bytes) = chunk(&mut file, from, end) else {
+            break;
+        };
+        bytes.extend_from_slice(&held);
+        let (front, whole) = cut(&bytes, from == 0);
+        held = front.to_vec();
+        for text in whole.split(|byte| *byte == b'\n').rev() {
+            if take(&mut tail, text, cutoff) {
+                break;
+            }
+        }
+        end = from;
+    }
+    tail.lines.reverse();
+    tail
+}
+
+/// The bytes of one backward read, and `None` where the file moved under the reader.
+fn chunk(file: &mut std::fs::File, from: u64, end: u64) -> Option<Vec<u8>> {
+    let mut bytes = vec![0; usize::try_from(end - from).ok()?];
+    file.seek(SeekFrom::Start(from)).ok()?;
+    file.read_exact(&mut bytes).ok()?;
+    Some(bytes)
+}
+
+/// A chunk cut into the fragment of a line the chunk before it begins, which is nothing once the
+/// read reaches the start of the file, and the complete lines after it.
+fn cut(chunk: &[u8], first: bool) -> (&[u8], &[u8]) {
+    if first {
+        return (&[], chunk);
+    }
+    match chunk.iter().position(|byte| *byte == b'\n') {
+        Some(at) => chunk.split_at(at + 1),
+        None => (chunk, &[]),
+    }
+}
+
+/// One line of a backward read, newest first. The answer is whether the line proved the cutoff
+/// and ended the scan: only a known line carrying a time older than the cutoff does.
+fn take(tail: &mut Tail, text: &[u8], cutoff: u64) -> bool {
+    if text.iter().all(u8::is_ascii_whitespace) {
+        return false;
+    }
+    let Some(line) = understood(text) else {
+        tail.skipped += 1;
+        return false;
+    };
+    match line.get("time").and_then(Value::as_u64) {
+        Some(time) if time < cutoff => tail.older = true,
+        _ => tail.lines.push(line),
+    }
+    tail.older
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const OLD: u64 = 1_000;
+    const RECENT: u64 = 100_000;
+    const CUTOFF: u64 = 50_000;
+
+    fn row(time: u64, kind: &str) -> String {
+        format!("{{\"schema\":1,\"time\":{time},\"kind\":\"{kind}\",\"session\":\"s\"}}\n")
+    }
+
+    fn recent() -> String {
+        (0..5).map(|step| row(RECENT + step, "stop")).collect()
+    }
+
+    fn read_back(old: usize, tail: &str) -> Tail {
+        let text: String = (0..old).map(|_| row(OLD, "stop")).collect::<String>() + tail;
+        let at = tempfile::tempdir().expect("a temporary directory");
+        let file = at.path().join(FILE);
+        std::fs::write(&file, text).expect("the journal written");
+        scan(&file, CUTOFF)
+    }
+
+    /// The lines the reader parsed: the ones it took, the ones it skipped, and the older one it
+    /// stopped on. Nothing else is read, so this is the work a longer history must not widen.
+    fn parsed(tail: &Tail) -> usize {
+        tail.lines.len() + tail.skipped as usize + usize::from(tail.older)
+    }
+
+    #[test]
+    fn a_longer_history_does_not_widen_the_read() {
+        let small = read_back(1_000, &recent());
+        let large = read_back(100_000, &recent());
+        assert_eq!(parsed(&small), 6);
+        assert_eq!(parsed(&large), parsed(&small));
+        assert_eq!(large.lines.len(), small.lines.len());
+        assert!(small.older && large.older);
+    }
+
+    #[test]
+    fn the_lines_come_back_oldest_first() {
+        let tail = read_back(10, &recent());
+        let times: Vec<u64> = tail
+            .lines
+            .iter()
+            .map(|line| line.get("time").and_then(Value::as_u64).unwrap_or_default())
+            .collect();
+        assert_eq!(
+            times,
+            vec![RECENT, RECENT + 1, RECENT + 2, RECENT + 3, RECENT + 4]
+        );
+    }
+
+    #[test]
+    fn a_truncated_last_write_is_skipped_and_is_not_the_bound() {
+        let tail = read_back(10, &(recent() + "{\"schema\":1,\"tim"));
+        assert_eq!(tail.lines.len(), 5);
+        assert_eq!(tail.skipped, 1);
+        assert!(tail.older);
+    }
+
+    #[test]
+    fn a_line_from_a_newer_klin_is_skipped_and_is_not_the_bound() {
+        let tail = read_back(
+            10,
+            &(recent() + "{\"schema\":99,\"time\":1,\"kind\":\"stop\"}\n"),
+        );
+        assert_eq!(tail.lines.len(), 5);
+        assert_eq!(tail.skipped, 1);
+        assert!(tail.older);
+    }
+
+    #[test]
+    fn a_journal_that_begins_inside_the_window_says_so() {
+        let tail = read_back(0, &recent());
+        assert_eq!(tail.lines.len(), 5);
+        assert!(!tail.older);
     }
 }
