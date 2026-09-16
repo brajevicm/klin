@@ -382,32 +382,7 @@ fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
     assert_eq!(held["module_declarations"], 2, "{report}");
     assert_eq!(held["owners"], 2, "{report}");
     assert_eq!(held["owner_bytes"], 8, "{report}");
-    assert!(
-        held["reference_distinct_names"].as_u64() > Some(0),
-        "{report}"
-    );
-    assert!(
-        held["reference_canonical_allocations"].as_u64()
-            >= held["reference_distinct_names"].as_u64(),
-        "{report}"
-    );
-    assert!(
-        held["reference_canonical_allocation_ratio_milli"].as_u64() >= Some(1_000),
-        "{report}"
-    );
-    assert!(
-        held["reference_canonical_bytes"].as_u64() > Some(0),
-        "{report}"
-    );
-    assert!(
-        held["reference_representation_before_bytes"].as_u64()
-            > held["reference_representation_after_bytes"].as_u64(),
-        "{report}"
-    );
-    assert!(
-        held["reference_canonical_allocation_ratio"].as_f64() >= Some(1.0),
-        "{report}"
-    );
+    assert_reference_footprint(held, &report);
     assert_eq!(held["nestings"], 4, "{report}");
     assert_eq!(held["nesting_entries"], 4, "{report}");
     assert_eq!(held["nesting_bytes"], 20, "{report}");
@@ -433,6 +408,35 @@ fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
     }
     assert!(
         row(&report, "reachability")["footprint"].is_null(),
+        "{report}"
+    );
+}
+
+fn assert_reference_footprint(held: &Value, report: &Value) {
+    assert!(
+        held["reference_distinct_names"].as_u64() > Some(0),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_allocations"].as_u64()
+            >= held["reference_distinct_names"].as_u64(),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_allocation_ratio_milli"].as_u64() >= Some(1_000),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_bytes"].as_u64() > Some(0),
+        "{report}"
+    );
+    assert!(
+        held["reference_representation_before_bytes"].as_u64()
+            > held["reference_representation_after_bytes"].as_u64(),
+        "{report}"
+    );
+    assert!(
+        held["reference_canonical_allocation_ratio"].as_f64() >= Some(1.0),
         "{report}"
     );
 }
