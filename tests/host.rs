@@ -33,10 +33,20 @@ const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": t
 const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm klin.json"}}"#;
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
 const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":true}"#;
+const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm klin.json"}}"#;
+const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
+const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;
+const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":5}"#;
 
 fn codex(name: &str, command: &str) -> String {
     format!(
         r#"{{"hook_event_name":"PreToolUse","session_id":"s1","turn_id":"t1","permission_mode":"default","tool_name":{name:?},"tool_input":{{"command":{command:?}}}}}"#
+    )
+}
+
+fn cursor(name: &str, input: &str) -> String {
+    format!(
+        r#"{{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","tool_name":{name:?},"tool_input":{input}}}"#
     )
 }
 
@@ -107,6 +117,172 @@ fn a_claude_event_that_carries_permission_mode_is_still_asked() {
     let run = guard(&[], A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says(r#""permissionDecision":"ask""#), "{}", run.out);
+}
+
+/// Cursor reads `permission` from stdout on every guarded event. Its documented `ask` was not
+/// enforced by the verified host, so klin fails the question closed like Codex does.
+#[test]
+fn cursor_events_use_native_permission_decisions() {
+    let refused = guard(&[], A_CURSOR_SHELL_COMMAND);
+    assert_eq!(refused.code, 2, "{}", refused.out);
+    assert!(refused.says(r#""permission":"deny""#), "{}", refused.out);
+    assert!(
+        refused.says("did not enforce a question"),
+        "{}",
+        refused.out
+    );
+
+    let denied = guard(&[], &cursor("Write", r#"{"file_path":"klin.json"}"#));
+    assert_eq!(denied.code, 2, "{}", denied.out);
+    assert!(denied.says(r#""permission":"deny""#), "{}", denied.out);
+
+    let allowed = guard(&[], &cursor("Write", r#"{"file_path":"src/main.rs"}"#));
+    assert_eq!(allowed.code, 0, "{}", allowed.out);
+    assert!(allowed.says(r#""permission":"allow""#), "{}", allowed.out);
+}
+
+/// An MCP event carries the server's own launch command at the top level. The agent did not run
+/// it, so the guard reads no command there.
+#[test]
+fn cursor_mcp_events_ignore_the_server_launch_command() {
+    let run = guard(&[], A_CURSOR_MCP_CALL);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#""permission":"allow""#), "{}", run.out);
+    assert!(!run.says("klin.json"), "{}", run.out);
+}
+
+/// Cursor runs a user-scope hook from `~/.cursor`, so the tree comes from the event: `cwd` on a
+/// tool event, and `workspace_roots` on a stop.
+#[test]
+fn cursor_guard_measures_the_tree_the_event_names() {
+    let tree = failing();
+    let elsewhere = Tree::bare();
+    let event = serde_json::json!({
+        "hook_event_name": "preToolUse",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()],
+        "cwd": tree.root(),
+        "tool_name": "Write",
+        "tool_input": {"file_path": "klin.json"}
+    });
+
+    let run = feed(elsewhere.root(), &["guard"], &event.to_string());
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(r#""permission":"deny""#), "{}", run.out);
+}
+
+#[test]
+fn cursor_stop_measures_the_workspace_root_the_event_names() {
+    let tree = failing();
+    let elsewhere = Tree::bare();
+    let event = serde_json::json!({
+        "hook_event_name": "stop",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()],
+        "status": "completed",
+        "loop_count": 0
+    });
+
+    let run = feed(
+        elsewhere.root(),
+        &["gate", "--hook", "--changed"],
+        &event.to_string(),
+    );
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(r#""followup_message":"#), "{}", run.out);
+    assert!(run.says("README.md"), "{}", run.out);
+}
+
+#[test]
+fn cursor_reads_a_shell_command_off_the_event_itself() {
+    let run = guard(&[], A_CURSOR_SHELL_EVENT);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(r#""permission":"deny""#), "{}", run.out);
+    assert!(run.says("klin.json"), "{}", run.out);
+}
+
+#[test]
+fn cursor_stop_blocks_and_ignores_loop_count() {
+    let tree = Tree::new();
+    tree.write("klin.json", A_CONFIG);
+    tree.words("README.md", 5);
+    tree.base();
+    let session = serde_json::json!({
+        "hook_event_name": "sessionStart",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()]
+    });
+    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    assert_eq!(opened.code, 0, "{}", opened.out);
+    tree.words("README.md", 30);
+
+    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(blocked.code, 2, "{}", blocked.out);
+    assert!(blocked.says(r#""followup_message":"#), "{}", blocked.out);
+    assert!(blocked.says("fix what each names"), "{}", blocked.out);
+    assert!(
+        !blocked.says("not blocking a second time"),
+        "{}",
+        blocked.out
+    );
+
+    let answer: serde_json::Value = match serde_json::from_str(blocked.printed.trim()) {
+        Ok(answer) => answer,
+        Err(why) => panic!("{why} — Cursor stop printed:\n{}", blocked.printed),
+    };
+    let followup = answer["followup_message"].as_str().unwrap_or_default();
+    assert!(!followup.is_empty(), "{answer}");
+    let prompts = tree.field("prompts");
+    let echoed = serde_json::json!({
+        "hook_event_name": "beforeSubmitPrompt",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()],
+        "prompt": followup
+    });
+    let radius = feed(tree.root(), &["radius"], &echoed.to_string());
+    assert_eq!(radius.code, 0, "{}", radius.out);
+    assert_eq!(radius.out, "", "the expected follow-up opened a turn");
+    assert_eq!(
+        tree.field("prompts"),
+        prompts,
+        "the follow-up raised the counter"
+    );
+
+    let passed = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(passed.code, 0, "{}", passed.out);
+    assert!(passed.says("not blocking a second time"), "{}", passed.out);
+
+    let silent = stop(&Tree::new(), A_CURSOR_STOP, &[]);
+    assert_eq!(silent.code, 0, "{}", silent.out);
+    assert_eq!(silent.out, "", "{}", silent.out);
+}
+
+/// A note the stop tells the person uses Cursor's follow-up field, not Claude Code's notice.
+#[test]
+fn cursor_tells_a_note_as_a_followup() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{
+  "complexity": {"cc": 1, "lines": 1}
+}"#,
+    );
+    tree.write("src/flow.rs", "fn f() {}\n");
+    tree.base();
+    tree.write("src/flow.rs", "%%% not rust %%%\n");
+
+    let run = stop(&tree, A_CURSOR_STOP, &[]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#""followup_message":"#), "{}", run.out);
+    assert!(run.says("NOTE:"), "{}", run.out);
+    assert!(!run.says("systemMessage"), "{}", run.out);
 }
 
 #[test]

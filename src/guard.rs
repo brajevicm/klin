@@ -62,7 +62,7 @@ pub fn run(args: &Args) -> u8 {
     let Some(event) = host::read(args.host.as_deref()) else {
         return 0;
     };
-    let guarded = Guarded::default();
+    let guarded = Guarded::at(event.root.clone());
     let (decision, reason) = decided(&guarded, &event);
     let delivered = event.host.decide(&decision);
     if !matches!(decision, Decision::Allow)
@@ -116,8 +116,11 @@ fn strictest(
 /// What klin guards in this tree: the configuration beside the tree root, and the state
 /// directory `state::dir` resolves. Both are found when the first path needs proving and not
 /// before, so a tool call that names none never reaches for git. Section 9.4.
-#[derive(Default)]
-struct Guarded(OnceCell<Option<Paths>>);
+struct Guarded {
+    /// The tree the host's event named, for a host that does not run its hooks in it.
+    named: Option<PathBuf>,
+    paths: OnceCell<Option<Paths>>,
+}
 
 struct Paths {
     /// Where the guard runs, which is what a relative path in a command names from.
@@ -133,8 +136,17 @@ enum Which {
 }
 
 impl Guarded {
+    fn at(named: Option<PathBuf>) -> Guarded {
+        Guarded {
+            named,
+            paths: OnceCell::new(),
+        }
+    }
+
     fn paths(&self) -> Option<&Paths> {
-        self.0.get_or_init(Paths::here).as_ref()
+        self.paths
+            .get_or_init(|| Paths::at(self.named.as_deref()))
+            .as_ref()
     }
 
     fn which(&self, path: &str) -> Option<Which> {
@@ -174,8 +186,12 @@ impl Guarded {
 }
 
 impl Paths {
-    fn here() -> Option<Paths> {
-        let here = real(&std::env::current_dir().ok()?);
+    /// The tree the event named, or the one the guard runs in.
+    fn at(named: Option<&Path>) -> Option<Paths> {
+        let here = real(&match named {
+            Some(root) => root.to_path_buf(),
+            None => std::env::current_dir().ok()?,
+        });
         let root = crate::config::repository(&here).unwrap_or_else(|| here.clone());
         Some(Paths {
             config: real(&root.join(NAME)),

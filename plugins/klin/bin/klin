@@ -2,10 +2,10 @@
 # Fetch the pinned klin release once, cache it, and execute it. ADR 0023, spec 19.2.
 set -u
 
-# Both hosts read a JSON object on stdout, and show its systemMessage as a notice. Plain text
-# on the Stop event is invalid for Codex and unseen in Claude Code.
+# Claude Code and Codex show systemMessage. Cursor's native stop shows followup_message.
+# One object carries both, so a missing binary still tells the person on every host.
 said() {
-	printf '{"systemMessage":"%s"}\n' "$1"
+	printf '{"systemMessage":"%s","followup_message":"%s"}\n' "$1" "$1"
 }
 
 MANIFEST="$(dirname "$0")/../.claude-plugin/plugin.json"

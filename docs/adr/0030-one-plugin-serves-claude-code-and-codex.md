@@ -20,11 +20,14 @@ object rather than a path string.
 
 ## The decision
 
-The plugin directory under `plugins/claude-code` is the plugin for both
+The plugin directory, then `plugins/claude-code`, is the plugin for both
 hosts. Two marketplace files point at it, one per host. The manifest names
 the hooks file, and the pre-tool matcher names `apply_patch` beside Claude
 Code's edit tools. Nothing else in the plugin changes, and the version pin
 stays in one manifest.
+
+ADR 0045 extends this directory to Cursor with a third marketplace file and
+a Cursor-format hooks file. The wrapper and the pin stay one copy.
 
 For Codex the install is two commands and one review of the plugin's hooks:
 
@@ -62,8 +65,10 @@ about a release it could not fetch.
 Codex users get the install ADR 0023 gave Claude Code users. One pin, one
 wrapper, one hooks file. A release moves both hosts at once.
 
-The plugin directory keeps its name. Renaming it would move the one manifest
-the release tooling rewrites, for no gain a person would notice.
+The plugin directory kept its name here, on the reasoning that renaming it
+would move the one manifest the release tooling rewrites for no gain a person
+would notice. ADR 0045 renamed it to `plugins/klin`, because a third host made
+the install instructions name Claude Code at a person who is not using it.
 
 Codex asks the person to trust the plugin's hooks once. That is Codex's
 policy for every plugin, and klin does not try to bypass it.

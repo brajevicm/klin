@@ -92,6 +92,14 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         );
         return Ok(1);
     }
+    let event = args
+        .hook
+        .then(|| host::read(args.host.as_deref()))
+        .flatten();
+    let start = event
+        .as_ref()
+        .and_then(|event| event.root.as_deref())
+        .unwrap_or(start);
     if args.hook && !config::present(args.config.as_deref(), start) {
         return Ok(0);
     }
@@ -101,7 +109,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         return refused(args, judged, out).map(|tally| code(&tally));
     }
     match loaded {
-        Ok(project) => Ok(stopped(args, &project, out)),
+        Ok(project) => Ok(stopped(args, &project, event, out)),
         Err(problem) => {
             eprintln!(
                 "klin: FAIL: {problem} — only a person edits that file, so this stop is not \
@@ -119,10 +127,9 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// One stop in the hook: the lock, the turn window, the build, the gates, and the verdict the
 /// next prompt reads. The lock is held from before the run measures until after the verdict is
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
-fn stopped(args: &Args, project: &Project, out: &mut String) -> u8 {
+fn stopped(args: &Args, project: &Project, event: Option<host::Event>, out: &mut String) -> u8 {
     let begun = std::time::Instant::now();
     let root = project.root();
-    let event = host::read(args.host.as_deref());
     let mut log = journal::Stop::begun(event.as_ref(), config_hash(project));
     let (lock, lock_ms) =
         journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
@@ -162,7 +169,7 @@ fn stopped(args: &Args, project: &Project, out: &mut String) -> u8 {
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
-        host::stop(&Stop::Tell(said));
+        host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     code
 }
@@ -277,12 +284,16 @@ fn ran(
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     match outcome {
-        Ok((Some(failure), said)) => (
-            does_not_build(args, project.root(), &failure, &said, window, log, out),
-            false,
-            None,
-            None,
-        ),
+        Ok((Some(failure), said)) => {
+            let code = does_not_build(args, project.root(), &failure, &said, window, log, out);
+            let text = format!("klin: {}:\n{failure}", does_not_build_said());
+            (
+                blocked_build(project.root(), event, text, code),
+                false,
+                None,
+                None,
+            )
+        }
         Err(problem) => {
             let (code, note) = handed(args, project, Err(problem), event, log, out);
             (code, false, None, note)
@@ -439,6 +450,21 @@ fn does_not_build(
     };
     log.report = Some(reported(args, failure, said, window, stopped, code, out));
     code
+}
+
+/// A host that cannot read stderr still has to show the build failure. An adapter whose stop
+/// already reads stderr ignores the text and returns 2.
+fn blocked_build(root: &Path, event: Option<&host::Event>, text: String, code: u8) -> u8 {
+    match code {
+        2 => {
+            let adapter = host::answering(event);
+            if adapter.follows_up() {
+                turn::expect_followup(root, &text);
+            }
+            adapter.stop(&Stop::Block(text))
+        }
+        _ => code,
+    }
 }
 
 /// The block this build failure spends, or `None` when klin could not record it, either
@@ -842,16 +868,18 @@ fn hook(
         true => " — still, after one round of fixes:",
         false => " — fix what each names, then stop again:",
     };
-    eprintln!("klin: {}{tail}", lead(failed, errored));
+    let lead = format!("klin: {}{tail}", lead(failed, errored));
+    eprintln!("{lead}");
     eprint!("{report}");
     if !again {
-        return (spend(held, log), None);
+        let said = format!("{lead}\n{report}");
+        return (spend(root, held, log, event.host, &said), None);
     }
     eprintln!(
         "klin: not blocking a second time; the window stays open until a person fixes, accepts \
          or resets it."
     );
-    (host::stop(&Stop::Pass), None)
+    (event.host.stop(&Stop::Pass), None)
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
@@ -887,7 +915,13 @@ fn gate_spent(held: Option<&(Count, PathBuf)>, blocked_before: bool) -> bool {
 }
 
 /// The block the gate takes, recorded so the stop after it reports and lets the turn end.
-fn spend(held: Option<(Count, PathBuf)>, log: &mut journal::Stop) -> u8 {
+fn spend(
+    root: &Path,
+    held: Option<(Count, PathBuf)>,
+    log: &mut journal::Stop,
+    host: &dyn host::Adapter,
+    said: &str,
+) -> u8 {
     if let Some((count, at)) = held
         && !counted(
             &at,
@@ -899,7 +933,10 @@ fn spend(held: Option<(Count, PathBuf)>, log: &mut journal::Stop) -> u8 {
     {
         log.flags.push("count-unwritable");
     }
-    host::stop(&Stop::Block)
+    if host.follows_up() {
+        turn::expect_followup(root, said);
+    }
+    host.stop(&Stop::Block(said.to_string()))
 }
 
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.

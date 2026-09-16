@@ -6,12 +6,15 @@ use std::process::Command;
 
 use harness::Tree;
 
-const PLUGIN: &str = "plugins/claude-code";
-const WRAPPER: &str = "plugins/claude-code/bin/klin";
-const HOOKS: &str = "plugins/claude-code/hooks/hooks.json";
-const MANIFEST: &str = "plugins/claude-code/.claude-plugin/plugin.json";
+const PLUGIN: &str = "plugins/klin";
+const WRAPPER: &str = "plugins/klin/bin/klin";
+const HOOKS: &str = "plugins/klin/hooks/hooks.json";
+const CURSOR_HOOKS: &str = "plugins/klin/hooks/cursor.json";
+const MANIFEST: &str = "plugins/klin/.claude-plugin/plugin.json";
+const CURSOR_MANIFEST: &str = "plugins/klin/.cursor-plugin/plugin.json";
 const MARKET: &str = ".claude-plugin/marketplace.json";
 const CODEX_MARKET: &str = ".agents/plugins/marketplace.json";
+const CURSOR_MARKET: &str = ".cursor-plugin/marketplace.json";
 const README: &str = "README.md";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
@@ -53,6 +56,18 @@ fn the_manifest_names_the_hooks_file() {
     assert!(at(&format!("{PLUGIN}/{named}")).is_file(), "{named}");
 }
 
+/// Cursor must not discover Claude Code's nested `hooks/hooks.json`, so the Cursor manifest
+/// names the flat file.
+#[test]
+fn the_cursor_manifest_names_the_cursor_hooks_file() {
+    let named = json(CURSOR_MANIFEST)["hooks"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert_eq!(named, "./hooks/cursor.json", "{named}");
+    assert!(at(&format!("{PLUGIN}/{named}")).is_file(), "{named}");
+}
+
 #[test]
 fn the_codex_marketplace_entry_points_at_the_same_plugin() {
     let entry = json(CODEX_MARKET)["plugins"][0].clone();
@@ -67,6 +82,20 @@ fn the_codex_marketplace_entry_points_at_the_same_plugin() {
         "local"
     );
     assert_eq!(at(&path), at(PLUGIN), "{path}");
+}
+
+#[test]
+fn the_cursor_marketplace_entry_points_at_the_same_plugin() {
+    let entry = json(CURSOR_MARKET)["plugins"][0].clone();
+    let path = entry["source"].as_str().unwrap_or_default().to_string();
+
+    assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
+    assert_eq!(at(&path), at(PLUGIN), "{path}");
+    assert!(
+        at(&path).join(".cursor-plugin/plugin.json").is_file(),
+        "{}",
+        path
+    );
 }
 
 #[test]
@@ -94,6 +123,11 @@ fn the_readme_install_commands_name_the_shipped_plugin() {
     let readme = text(README);
 
     assert_eq!(name(CODEX_MARKET), market, "the two marketplaces differ");
+    assert_eq!(
+        name(CURSOR_MARKET),
+        market,
+        "the Cursor marketplace differs"
+    );
     for command in [
         "/plugin marketplace add brajevicm/klin".to_string(),
         format!("/plugin install {named}"),
@@ -101,6 +135,13 @@ fn the_readme_install_commands_name_the_shipped_plugin() {
         format!("codex plugin add {named}"),
     ] {
         assert!(readme.contains(&command), "the README omits {command}");
+    }
+    for said in [
+        "https://github.com/brajevicm/klin",
+        "~/.cursor/plugins/local/klin",
+        "Team Marketplaces",
+    ] {
+        assert!(readme.contains(said), "the README omits {said}");
     }
 }
 
@@ -151,6 +192,11 @@ fn the_plugin_pins_the_crate_version() {
         .to_string();
 
     assert_eq!(carried, PINNED, "the plugin pins another version");
+    let cursor = json(CURSOR_MANIFEST)["version"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert_eq!(cursor, PINNED, "the Cursor plugin pins another version");
 }
 
 /// The wrapper reads the version from the plugin manifest beside it, so a wrapper without one
@@ -272,6 +318,25 @@ fn the_hook_lines_name_the_plugin_root_in_the_form_both_hosts_substitute() {
             "{event}: {line}"
         );
         assert!(!line.contains("CLAUDE_PLUGIN_ROOT:-"), "{event}: {line}");
+    }
+}
+
+#[test]
+fn the_cursor_hook_lines_name_the_cursor_plugin_root() {
+    for event in [
+        "sessionStart",
+        "beforeSubmitPrompt",
+        "preToolUse",
+        "beforeShellExecution",
+        "beforeMCPExecution",
+        "stop",
+    ] {
+        let line = cursor_hook(event);
+        assert!(
+            line.contains("${CURSOR_PLUGIN_ROOT}/bin/klin"),
+            "{event}: {line}"
+        );
+        assert!(!line.contains("CLAUDE_PLUGIN_ROOT"), "{event}: {line}");
     }
 }
 
@@ -494,6 +559,13 @@ fn triple() -> String {
 
 fn hook(event: &str) -> String {
     json(HOOKS)["hooks"][event][0]["hooks"][0]["command"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn cursor_hook(event: &str) -> String {
+    json(CURSOR_HOOKS)["hooks"][event][0]["command"]
         .as_str()
         .unwrap_or_default()
         .to_string()

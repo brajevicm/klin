@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::fmt::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
@@ -62,30 +62,34 @@ pub struct Stamp {
     /// Whether a stop under this stamp spent a gate block, so the turn holds an intervention for
     /// the turn end to tell. A fresh stamp holds none. Spec 6.5, 9.5.
     pub intervened: bool,
+    /// The hash of the exact stop report a host will submit as its next prompt. It is consumed
+    /// once, so protocol-generated text cannot open a fresh turn and another prompt clears it.
+    pub followup: Option<u64>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.report {
         return radius::asked(start, out);
     }
-    if state::dir(start).is_none() {
+    let Some((event, named, at, prompt)) = opening(start, out) else {
         return Ok(0);
-    }
-    let prompt = prompted();
-    let at = match state::ready(start) {
-        Ok(at) => at,
-        Err(why) => {
-            note(out, &format!("{why}, so this turn has no stamp"));
-            return Ok(0);
-        }
     };
+    let start = named.as_path();
     let never = !at.join(INDEX).exists();
     let opened = mark(start, &at);
     let tree = tree(start, &at);
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     if prompt {
-        journaled_prompt(start, &at, prompts, opened.as_deref(), tree.as_deref(), out);
+        journaled_prompt(
+            start,
+            &at,
+            prompts,
+            opened.as_deref(),
+            tree.as_deref(),
+            event.as_ref(),
+            out,
+        );
     }
     let mark = tree.as_deref().and_then(|tree| marked(start, tree));
     if let Some(stamp) = next(start, tree.as_deref(), never, held, prompts, out) {
@@ -93,6 +97,35 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         write(&at, &Stamp { mark, ..stamp }, out);
     }
     Ok(0)
+}
+
+/// Read and place the hook event once, resolve its tree, and stop before a turn opens when the
+/// event is the exact follow-up a prior stop recorded.
+fn opening(
+    start: &Path,
+    out: &mut String,
+) -> Option<(Option<host::Event>, PathBuf, PathBuf, bool)> {
+    let event = host::read(None);
+    let root = event
+        .as_ref()
+        .and_then(|event| event.root.clone())
+        .unwrap_or_else(|| start.to_path_buf());
+    state::dir(&root)?;
+    let prompt = event.as_ref().is_some_and(|event| event.prompted);
+    if event
+        .as_ref()
+        .is_some_and(|event| event.prompted && consumes_followup(&root, &event.prompt, out))
+    {
+        return None;
+    }
+    let at = match state::ready(&root) {
+        Ok(at) => at,
+        Err(why) => {
+            note(out, &format!("{why}, so this turn has no stamp"));
+            return None;
+        }
+    };
+    Some((event, root, at, prompt))
 }
 
 /// The prompt line of spec 9.6 and 11.4: the counter, the session and excerpt from the event,
@@ -105,9 +138,9 @@ fn journaled_prompt(
     prompts: u64,
     opened: Option<&str>,
     tree: Option<&str>,
+    event: Option<&host::Event>,
     out: &mut String,
 ) {
-    let event = host::read(None);
     let config = Config::load(None, start).ok();
     let (enabled, facts) = match &config {
         Some(config) => (
@@ -116,16 +149,8 @@ fn journaled_prompt(
         ),
         None => (false, None),
     };
-    journal::prompt(start, prompts, event.as_ref(), enabled, facts);
+    journal::prompt(start, prompts, event, enabled, facts);
 }
-
-/// A session start opens a window and ends no turn, so only a prompt carries the spread
-/// report. An event klin cannot read is not a prompt. Spec 9.2, ADR 0014.
-fn prompted() -> bool {
-    host::named().is_some_and(|name| name == PROMPT)
-}
-
-const PROMPT: &str = "UserPromptSubmit";
 
 /// Where this turn's window opened: the prompt mark the last event left, or the mark ref when
 /// the turn file is gone. It writes nothing back, because the report judges nothing. ADR 0024.
@@ -231,6 +256,36 @@ pub fn intervened(root: &Path) -> bool {
         .is_some_and(|held| held.intervened)
 }
 
+/// Remember the exact report a host will submit as its next prompt. The host adapter says
+/// whether it has that delivery mode; the turn owns the state that keeps it from becoming a
+/// person's next turn.
+pub fn expect_followup(root: &Path, report: &str) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let Some(mut held) = read(&at) else {
+        return;
+    };
+    held.followup = Some(state::hash(report.as_bytes()));
+    write(&at, &held, &mut String::new());
+}
+
+/// Consume one expected follow-up. A different prompt clears the expectation and remains a
+/// person's prompt; an exact match is host-generated and opens no turn.
+fn consumes_followup(root: &Path, prompt: &str, out: &mut String) -> bool {
+    let Some(at) = state::dir(root) else {
+        return false;
+    };
+    let Some(mut held) = read(&at) else {
+        return false;
+    };
+    let expected = held.followup.take();
+    if expected.is_some() {
+        write(&at, &held, out);
+    }
+    expected == Some(state::hash(prompt.as_bytes()))
+}
+
 fn read(at: &Path) -> Option<Stamp> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;
@@ -264,6 +319,7 @@ fn read(at: &Path) -> Option<Stamp> {
             .get("intervened")
             .and_then(Value::as_bool)
             .unwrap_or_default(),
+        followup: held.get("followup").and_then(Value::as_u64),
     })
 }
 
@@ -286,6 +342,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         prompts,
         asked: Vec::new(),
         intervened: false,
+        followup: None,
     })
 }
 
@@ -331,6 +388,7 @@ fn kept(root: &Path) -> Option<Stamp> {
         prompts: 0,
         asked: Vec::new(),
         intervened: false,
+        followup: None,
     })
 }
 
@@ -356,6 +414,7 @@ fn restored(
         prompts,
         asked: Vec::new(),
         intervened: false,
+        followup: None,
     })
 }
 
@@ -390,6 +449,7 @@ pub fn window(
             prompts: held.as_ref().map_or(0, |held| held.prompts),
             asked: Vec::new(),
             intervened: false,
+            followup: None,
         },
         out,
     );
@@ -572,6 +632,9 @@ fn recorded(stamp: &Stamp) -> Value {
     }
     if stamp.intervened {
         fields.insert("intervened".into(), true.into());
+    }
+    if let Some(followup) = &stamp.followup {
+        fields.insert("followup".into(), (*followup).into());
     }
     Value::Object(fields)
 }

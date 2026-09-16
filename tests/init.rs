@@ -164,6 +164,31 @@ fn settings(tree: &Tree) -> Value {
     settings_at(&tree.path(".claude/settings.json"))
 }
 
+fn cursor_settings(tree: &Tree) -> Value {
+    settings_at(&tree.path(".cursor/hooks.json"))
+}
+
+/// Cursor stores one command per event, not a nested `hooks` array.
+fn cursor_commands(settings: &Value, event: &str) -> Vec<String> {
+    settings["hooks"][event]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|entry| entry["command"].as_str().map(str::to_string))
+        .collect()
+}
+
+fn cursor_matchers(settings: &Value, event: &str) -> Vec<String> {
+    settings["hooks"][event]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|entry| entry["matcher"].as_str().map(str::to_string))
+        .collect()
+}
+
 fn codex_settings(tree: &Tree) -> Value {
     settings_at(&tree.path(".codex/hooks.json"))
 }
@@ -299,11 +324,9 @@ fn hooks_adds_no_second_klin_entry_on_a_second_run() {
 fn hooks_for_a_host_with_no_adapter_is_refused() {
     let tree = two_documents();
 
-    for name in ["cursor", "borg"] {
-        let run = tree.run(&["init", "--hooks", "--host", name]);
-        assert_eq!(run.code, 2, "{name}: {}", run.out);
-        assert!(run.says(name), "{name}: {}", run.out);
-    }
+    let run = tree.run(&["init", "--hooks", "--host", "borg"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("borg"), "{}", run.out);
 }
 
 #[test]
@@ -450,23 +473,117 @@ fn hooks_adds_its_entry_beside_a_hook_that_only_mentions_klin() {
     );
 }
 
-/// A tree that names a host klin cannot write yet still gets the hooks of the host it can.
 #[test]
-fn hooks_writes_the_host_it_can_and_notes_the_one_it_cannot() {
+fn hooks_writes_klins_entries_for_cursor_and_leaves_the_others_alone() {
+    let tree = two_documents();
+    tree.write(
+        ".cursor/hooks.json",
+        r#"{"version":1,"hooks":{"stop":[{"command":"cargo fmt"}]}}"#,
+    );
+
+    let run = tree.run(&["init", "--hooks", "--host", "cursor"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let settings = cursor_settings(&tree);
+    assert_eq!(settings["version"], 1, "{settings}");
+    assert_eq!(
+        cursor_commands(&settings, "stop"),
+        ["cargo fmt".to_string(), line("gate --hook --changed")],
+        "{settings}"
+    );
+    assert_eq!(
+        cursor_commands(&settings, "preToolUse"),
+        [line("guard")],
+        "{settings}"
+    );
+    assert_eq!(
+        cursor_matchers(&settings, "preToolUse"),
+        ["Write|Edit|Delete".to_string()],
+        "{settings}"
+    );
+    assert_eq!(
+        cursor_commands(&settings, "beforeShellExecution"),
+        [line("guard")],
+        "{settings}"
+    );
+    // A shell or MCP event carries no tool name, so a tool matcher there would gate nothing.
+    for event in ["beforeShellExecution", "beforeMCPExecution"] {
+        assert_eq!(
+            cursor_matchers(&settings, event),
+            Vec::<String>::new(),
+            "{event}: {settings}"
+        );
+    }
+    assert_eq!(
+        cursor_commands(&settings, "sessionStart"),
+        [line("radius")],
+        "{settings}"
+    );
+    assert!(!tree.path(".claude/settings.json").exists(), "{}", run.out);
+}
+
+#[test]
+fn hooks_detects_cursor_from_its_marker() {
+    let tree = two_documents();
+    tree.write(".cursor/rules", "\n");
+
+    let run = tree.run(&["init", "--hooks"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        cursor_commands(&cursor_settings(&tree), "stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+}
+
+/// A tree that names two hosts gets the hooks of both, each in its host's own shape.
+#[test]
+fn hooks_writes_every_host_the_tree_names() {
     let tree = two_documents();
     tree.write(".claude/settings.json", "{}\n");
     tree.write(".cursor/rules", "\n");
 
     let run = tree.run(&["init", "--hooks"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("NOTE"), "{}", run.out);
-    assert!(run.says("#67"), "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "PreToolUse"),
         [line("guard")],
         "{}",
         run.out
     );
+    assert_eq!(
+        cursor_commands(&cursor_settings(&tree), "stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+}
+
+const CURSOR_EVENTS: &[&str] = &[
+    "sessionStart",
+    "beforeSubmitPrompt",
+    "preToolUse",
+    "beforeShellExecution",
+    "beforeMCPExecution",
+    "stop",
+];
+
+#[test]
+fn hooks_adds_no_second_cursor_entry_on_a_second_run() {
+    let tree = two_documents();
+    tree.write(".cursor/hooks.json", "{}\n");
+
+    assert_eq!(tree.run(&["init", "--hooks", "--host", "cursor"]).code, 0);
+    let run = tree.run(&["init", "--hooks", "--host", "cursor"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let settings = cursor_settings(&tree);
+    for event in CURSOR_EVENTS {
+        assert_eq!(
+            cursor_commands(&settings, event).len(),
+            1,
+            "{event}: {settings}"
+        );
+    }
 }
 
 #[test]
@@ -536,13 +653,71 @@ fn hooks_global_adds_no_second_entry_on_a_second_run() {
 }
 
 #[test]
-fn hooks_global_for_a_host_with_no_adapter_is_refused() {
+fn hooks_global_writes_cursor_hooks_to_the_users_file() {
     let (tree, home) = a_home();
 
     let run = globally(&tree, &home, &["--host", "cursor"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let written = settings_at(&home.path(".cursor/hooks.json"));
+    assert_eq!(
+        cursor_commands(&written, "stop"),
+        [line("gate --hook --changed")],
+        "{written}"
+    );
+    assert_eq!(
+        cursor_commands(&written, "preToolUse"),
+        [line("guard")],
+        "{written}"
+    );
+    assert_eq!(tree.status(), "", "{}", run.out);
+}
+
+#[test]
+fn hooks_global_for_a_host_with_no_adapter_is_refused() {
+    let (tree, home) = a_home();
+
+    let run = globally(&tree, &home, &["--host", "borg"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("#67"), "{}", run.out);
-    assert!(run.says("--hooks --global --host"), "{}", run.out);
+    assert!(run.says("no host klin knows"), "{}", run.out);
+}
+
+const A_CURSOR_PLUGIN: &str = r#"{"name":"klin","version":"0.1.1"}"#;
+
+/// Cursor documents local development plugins under `plugins/local/<name>`.
+#[test]
+fn hooks_adds_nothing_when_the_local_cursor_plugin_is_installed() {
+    let tree = two_documents();
+    tree.write(
+        ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
+        A_CURSOR_PLUGIN,
+    );
+
+    let run = tree.run(&["init", "--hooks", "--host", "cursor"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
+}
+
+/// Cursor marketplace installs observed in 3.20.21 live under
+/// `plugins/cache/<marketplace>/<plugin>/<revision>`.
+#[test]
+fn hooks_adds_nothing_when_a_marketplace_cursor_plugin_is_installed() {
+    let tree = two_documents();
+    let home = Tree::bare();
+    home.write(
+        ".cursor/plugins/cache/team-marketplace/klin/revision/.cursor-plugin/plugin.json",
+        A_CURSOR_PLUGIN,
+    );
+    let home_at = home.root().display().to_string();
+
+    let run = tree.run_with(
+        &[("HOME", home_at.as_str())],
+        &["init", "--hooks", "--host", "cursor"],
+    );
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert!(run.says("plugin"), "{}", run.out);
 }
 
 #[test]

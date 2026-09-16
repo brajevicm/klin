@@ -7,6 +7,8 @@ const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 const A_CODEX_PROMPT: &str = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s1","turn_id":"t1","permission_mode":"default"}"#;
 /// A session start is not turn-scoped, so Codex sends it without `turn_id`.
 const A_CODEX_SESSION: &str = r#"{"hook_event_name":"SessionStart","session_id":"s1","cwd":"/x","model":"m","source":"startup"}"#;
+const A_CURSOR_SESSION: &str = r#"{"hook_event_name":"sessionStart","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1"}"#;
+const A_CURSOR_PROMPT: &str = r#"{"hook_event_name":"beforeSubmitPrompt","cursor_version":"3.20.21","conversation_id":"s1","prompt":"go on"}"#;
 const CONFIG: &str = r#"{
   "radius": { "lines": 50, "directories": 2 }
 }
@@ -242,6 +244,63 @@ fn codex_session_start_and_prompt_use_the_radius_events() {
 
     tree.write("docs/wider.md", &lines(60, "line "));
     let run = radius(&tree, A_CODEX_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("wider than"), "{}", run.out);
+}
+
+/// Cursor runs a user-scope hook from `~/.cursor`, so the prompt that opens the window names the
+/// workspace on the event. A radius that read the working directory would stamp nothing.
+#[test]
+fn a_cursor_prompt_moves_the_stamp_of_the_workspace_the_event_names() {
+    let tree = tree();
+    stamped(&tree);
+    a_wide_turn(&tree);
+    let elsewhere = Tree::bare();
+    let event = serde_json::json!({
+        "hook_event_name": "beforeSubmitPrompt",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()],
+        "prompt": "go on"
+    });
+
+    let run = harness::feed(elsewhere.root(), &["radius"], &event.to_string());
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("wider than"), "{}", run.out);
+}
+
+/// A person's words are never a protocol marker. An expected stop follow-up is matched against
+/// klin's turn record instead, so an ordinary prompt may start with klin's name.
+#[test]
+fn a_cursor_prompt_starting_with_klin_still_opens_a_turn() {
+    let tree = tree();
+    stamped(&tree);
+    a_wide_turn(&tree);
+    let prompts = tree.field("prompts");
+    let event = serde_json::json!({
+        "hook_event_name": "beforeSubmitPrompt",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "prompt": "klin: a quality gate failed — fix what each names, then stop again:"
+    });
+
+    let run = radius(&tree, &event.to_string());
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("wider than"), "{}", run.out);
+    assert_ne!(tree.field("prompts"), prompts, "the prompt was not counted");
+}
+
+#[test]
+fn cursor_session_start_and_prompt_use_the_radius_events() {
+    let tree = tree();
+    stamped(&tree);
+    a_wide_turn(&tree);
+    assert_eq!(radius(&tree, A_CURSOR_SESSION).code, 0);
+
+    tree.write("docs/wider.md", &lines(60, "line "));
+    let run = radius(&tree, A_CURSOR_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("wider than"), "{}", run.out);
 }

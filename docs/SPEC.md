@@ -2073,8 +2073,10 @@ implements the adapter's trait: the name `--host` takes, the marker
 directory, the hook file, the guard's tool matcher, the key its hook file
 lists plugins under if it has one, how an unlabelled event is recognised as
 this host's, how the event is read, and how a decision goes back. A port of a
-shell-hook host adds that module and registers it in the adapter list, and
-touches nothing else. No other module names a host.
+shell-hook host adds that module and registers it in the adapter list. No
+other module names a host. The trait MAY grow when a host needs a seam no host
+had — the prompt event's name, the tree the event names, the stop channel — and
+the existing adapters fill the new method with what they already did.
 
 A program-hook host loads a module in its own process and has no shell hook.
 OpenCode and Pi are this kind, and klin cannot be the hook. A shim outside
@@ -2112,12 +2114,56 @@ reason a continuation prompt inside the same turn, which runs no
 `UserPromptSubmit`. A stop that tells the person uses `systemMessage` too,
 because Codex rejects plain text on a stop that exits 0.
 
+For Cursor, an event carrying `cursor_version` is Cursor's, and Cursor sends
+that field on every request. The adapter is
+tried after Codex and before Claude Code, because those events also carry
+Claude Code's fields. `preToolUse` names `Write`, `Edit` and `Delete`.
+`beforeShellExecution` carries the shell command at the top level of the
+event rather than under `tool_input`; klin reads a top-level `command` on
+that event alone, because `beforeMCPExecution` carries the MCP server's own
+launch command there and the agent did not run it. `conversation_id` is the
+session. Cursor sends no `stop_hook_active`, so `blocked_before` is always
+false and klin's own gate-spent record bounds the block (9.3). `loop_count`
+counts the follow-ups one conversation has already taken and MUST NOT be
+read as `blocked_before`. Guard decisions go out as `permission` on stdout.
+An allow carries `allow`. Both a deny and an ask carry `deny` and the reason
+in `agent_message`, and exit 2, because Cursor 3.20.21 accepted `ask` on a
+shell event but did not enforce it. A question the host does not enforce
+fails closed, as it does on Codex. Stop blocks print a JSON
+`followup_message` on stdout and still
+exit 2, so the agent sees the report and the refusal holds where that answer
+goes unread — the same pairing as a deny. A stop that tells the
+person writes a JSON `followup_message` on stdout under exit 0. Cursor submits
+that follow-up as the next user prompt. Before delivery, klin records a hash
+of the exact report in the turn stamp. A prompt with that hash consumes the
+record and moves neither the prompt counter nor the mark. Every different
+prompt, including one that starts with `klin:`, clears the record and opens a
+turn normally. A prose prefix is not a protocol marker. ADR 0045.
+
+Cursor runs a project hook from the workspace root and a user hook from
+`~/.cursor`, so the working directory is not the tree on a user-scope
+install. Every Cursor request carries `workspace_roots`, and a tool event
+also carries the `cwd` a relative path in a command stands on. The adapter
+names the tree from `cwd`, then from the first `workspace_roots` entry, and
+every command a hook runs measures that tree instead of the working
+directory: the guard, the hook-mode gate, and the `radius` that moves the
+stamp and the mark of 6.2.1. A host that runs its hooks in the tree names
+none, and klin reads the working directory as before. `radius --report` is a
+person's command with no event, so it reads the working directory.
+
+Each host names the event a person's prompt raises: it is the last `radius`
+line in that host's hook table (`UserPromptSubmit` for Claude Code and Codex,
+`beforeSubmitPrompt` for Cursor). The spread report of 9.2 rides that event,
+and no module outside the adapter names it. The adapter places the payload
+once and the resulting event carries its host, named tree and whether it is
+this prompt event; guard, gate and radius do not place or parse it again.
+
 In hook mode the exit code is the host's protocol, not the verdict. Exit 2
 means "block this stop", whatever caused it. The verdict of section 4.9 lives
 in the report and in the `turn` file. Outside hook mode the exit code is the
 verdict.
 
-The Cursor variant is a separate ticket (#67). Codex CLI sends Claude Code's
+Codex CLI sends Claude Code's
 event fields plus `turn_id` on every turn-scoped event. `turn_id` alone
 places an event as Codex, and it is tried before Claude Code's fields.
 `permission_mode` places nothing, because both hosts send it. A session
@@ -2137,7 +2183,7 @@ that reads a host's JSON.
 | prompt submitted | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
 | stop | `klin gate --hook --changed` | each stop while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
 
-The hook lines are the same on every host and call `klin` from PATH:
+The shared hook lines call `klin` from PATH:
 
 ```
 klin guard
@@ -2160,8 +2206,10 @@ two processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
 the current Claude Code documentation. klin MUST bound its own blocks (ADR
-0022). A gate failure blocks once per turn. A deleted test is the one gate
-failure that does not stay red: the stop that blocks on it records the
+0022). A gate failure blocks once per turn. A host that submits the block
+report as another prompt records that exact report in the turn stamp before
+delivery; the matching prompt consumes it without opening another turn. A
+deleted test is the one gate failure that does not stay red: the stop that blocks on it records the
 question beside the stamp, and the next stop lets it through as a NOTE and
 ends green (8.2, ADR 0031). A build failure blocks at each
 stop until the tree builds, up to eight in one turn, and then the hook
@@ -3632,7 +3680,7 @@ Distribution, in this order, because each step depends on the one before:
 - [ ] Install script with `--version`
 - [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
 - [x] `init --hooks` for Codex and its host adapter (#68)
-- [ ] `init --hooks` for Cursor and its host adapter (#67)
+- [x] `init --hooks` for Cursor and its host adapter (#67)
 - [x] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64)
 
@@ -3652,7 +3700,7 @@ Before calling it 1.0:
       turns and hook latency. This is a benchmark, not a test, and it is what
       shows the tool is useful rather than correct.
 - [ ] The hook-output facts in 9.3 verified against the host's documentation
-- [ ] Cursor adapter, or the README stays silent on it
+- [x] Cursor adapter, or the README stays silent on it
 
 ## 19. Installation and Distribution
 
@@ -3690,13 +3738,15 @@ order of least friction for the person:
 Cross-compilation for Windows is not a target of this draft. The Codex hook
 system is not available on Windows either.
 
-### 19.2 Claude Code and Codex CLI: the plugin is the whole install
+### 19.2 Claude Code, Codex CLI and Cursor: the plugin is the whole install
 
-One plugin directory serves both hosts. It holds `hooks.json` with the three
-hooks of 9.2, one skill that tells the agent how to read a failure and what
+One plugin directory serves all three hosts. It holds `hooks.json` with the three
+hooks of 9.2, Cursor's flat `hooks/cursor.json` with the same three commands on
+Cursor's event names, one skill that tells the agent how to read a failure and what
 it may not touch, two slash commands that run the gates and list them, and a
-`bin/klin` wrapper. The manifest names the hooks file, so neither host has to
-find it by convention.
+`bin/klin` wrapper. Each host's manifest names its hooks file, so none of them has to
+find it by convention. Cursor's manifest MUST name `./hooks/cursor.json`, because the
+default `hooks/hooks.json` is Claude Code's nested shape. ADR 0045.
 
 Codex CLI reads the same manifest and the same `hooks.json` shape. It
 substitutes the literal `${CLAUDE_PLUGIN_ROOT}` into a plugin's hook line,
@@ -3716,6 +3766,15 @@ session then runs them, so the install documentation names that step. The pre-to
 edits. ADR 0030 records the decision. The Codex IDE extension loads no
 plugins, so it takes the route of 19.3.
 
+Cursor finds the plugin through `.cursor-plugin/marketplace.json` at the
+repository root, which points at the same directory. Cursor Teams import
+that repository under Dashboard → Plugins → Team Marketplaces. A person
+without a team marketplace copies `plugins/klin` to
+`~/.cursor/plugins/local/klin` and reloads the window. Cursor skips a
+symlink whose target sits outside that folder. The Cursor hook lines name
+`${CURSOR_PLUGIN_ROOT}/bin/klin` in that form and no other, the way Claude
+Code and Codex name `${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables.
+
 The wrapper is a shell script. It reads the version from the plugin manifest
 beside it, so the plugin carries one pin. On first run it downloads that
 release into `~/.cache/klin/bin/<version>/klin`, verifies the
@@ -3728,9 +3787,10 @@ This is the one place klin touches the network, and it is install, not
 measurement.
 
 Every line the wrapper or a hook prints on exit 0 is a JSON object with a
-`systemMessage`, because that is the one shape both hosts show as a notice on
-every event. Codex rejects plain text on a Stop that exits 0, and Claude Code
-writes it to the debug log alone.
+`systemMessage`, and the same object carries `followup_message` with the same
+text. Claude Code and Codex show `systemMessage`. Cursor's native stop shows
+`followup_message`. Codex rejects plain text on a Stop that exits 0, and
+Claude Code writes it to the debug log alone.
 
 Each hook line runs `${CLAUDE_PLUGIN_ROOT}/bin/klin` when that file is
 executable, and otherwise the `klin` that PATH resolves. Claude Code appends
@@ -3764,17 +3824,17 @@ baselines, went with ADR 0009. Its second reason is handled by the PATH
 fallback above. A version difference between the wrapper's binary and a CI
 binary is a NOTE per 5.2, not a failure.
 
-### 19.3 Cursor and Codex: a hooks file in the repository
+### 19.3 Cursor and Codex: hooks in the repository
 
-Both hosts are shell-hook hosts (9.1). Cursor has no plugin of klin's, and a
-Codex team may prefer hooks that are committed and covered by CODEOWNERS over
+A team may prefer hooks that are committed and covered by CODEOWNERS over
 the plugin of 19.2. On this route the binary comes from 19.1 and
-`klin init --hooks` writes the host file:
+`klin init --hooks` writes:
 
-- Cursor reads `.cursor/hooks.json` at the project root, and its blocking
-  events answer `allow`, `ask` or `deny`, which is the guard's vocabulary.
-  `beforeShellExecution` and the file-edit events carry the guard.
-  `beforeSubmitPrompt` carries `radius`. `stop` carries the gate.
+- Cursor's native hooks to `.cursor/hooks.json` at schema version 1, with
+  `sessionStart`, `beforeSubmitPrompt`, `preToolUse`, `beforeShellExecution`,
+  `beforeMCPExecution` and `stop`. `preToolUse` is the one entry that carries
+  a matcher, `Write|Edit|Delete`. A shell or MCP event names no tool, so a
+  matcher there MUST NOT be written: it would match nothing and gate nothing.
 - Codex CLI reads a `hooks.json` with `PreToolUse`, `UserPromptSubmit` and
   `Stop` at turn scope. The mapping is one to one with Claude Code's.
 
@@ -3791,10 +3851,10 @@ who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event.
 
 `init --hooks` writes nothing for a host that already runs klin's hooks over
-the file it would write, and names what runs them. Two things do: a plugin,
+the file it would write, and names what runs them. Two things run them: a plugin,
 and a user-level install klin wrote itself, which a host reads together with
 the tree's file. The plugin registers the
-same four events, so a second copy of them runs klin twice on every event: two
+same host events, so a second copy of them runs klin twice on every event: two
 gates race for one turn stamp, and the prompt counter of 6.2 moves by two.
 Each host's adapter knows where that host lists its enabled plugins. Claude
 Code lists them under `enabledPlugins` in its settings files: for a write into
@@ -3803,8 +3863,12 @@ for a write into the home directory the user's alone, because a plugin one
 repository enables gates that repository and not the machine. Codex CLI lists
 them as `[plugins."klin@<marketplace>"]` tables in `config.toml`, on unless
 the table says `enabled = false`, and klin reads the tree's and the user's the
-same way. A write into a tree is refused the same way by a user file that
-holds klin's entries.
+same way. Cursor's documented local layout is
+`.cursor/plugins/local/<name>`, and Cursor 3.20.21's observed marketplace
+cache is `.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin
+searches those bounded trees for `.cursor-plugin/plugin.json` named `klin`,
+under the project and the user's home. A write into a tree is refused the
+same way by a user file that holds klin's entries.
 
 klin replaces a host's settings file whole, through a neighbour and a rename,
 so a run that dies partway leaves the file it found. It follows a path that is
@@ -3812,10 +3876,10 @@ a link, so a settings file kept in a dotfiles tree stays a link, and it keeps
 the permissions the file had.
 
 `--global` moves both the detection and the write to the host's user-level
-directory: `~/.claude/settings.json`, `~/.cursor/hooks.json`,
-`~/.codex/hooks.json`. Everything else is the same, so a host with no adapter
-is refused under `--global` with the message the per-tree form gives, and
-gains `--global` when its adapter lands. A global install is not committed,
+directory: `~/.claude/settings.json` for Claude Code, `~/.cursor/hooks.json`
+for Cursor, and `~/.codex/hooks.json` for Codex. Everything else is the same, so a host with
+no adapter is refused under `--global` with the
+message the per-tree form gives. A global install is not committed,
 so the write says it covers every repository rather than asking for a commit,
 and a person who chooses it accepts that an agent can remove the lines.
 

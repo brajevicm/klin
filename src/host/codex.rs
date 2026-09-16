@@ -67,6 +67,8 @@ impl Adapter for Codex {
         };
         Event {
             host: self,
+            root: None,
+            prompted: false,
             tool,
             file_paths,
             command,

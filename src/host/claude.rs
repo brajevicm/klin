@@ -60,6 +60,8 @@ impl Adapter for Claude {
         };
         Event {
             host: self,
+            root: None,
+            prompted: false,
             tool: text(payload.get("tool_name")),
             file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
             command: input(payload, "command"),

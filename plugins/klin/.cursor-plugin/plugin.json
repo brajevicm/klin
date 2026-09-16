@@ -1,0 +1,13 @@
+{
+  "name": "klin",
+  "version": "0.1.1",
+  "description": "A quality ratchet for AI-driven development. The hooks gate every stop against the base commit, and the wrapper fetches the pinned binary on first run.",
+  "author": {
+    "name": "Milos Brajevic"
+  },
+  "homepage": "https://github.com/brajevicm/klin",
+  "repository": "https://github.com/brajevicm/klin",
+  "license": "Apache-2.0",
+  "hooks": "./hooks/cursor.json",
+  "keywords": ["quality", "ratchet", "gate", "complexity", "hooks"]
+}

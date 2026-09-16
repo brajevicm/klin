@@ -4,67 +4,43 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::config::Error;
-use crate::host::{ADAPTERS, Adapter};
+use crate::host::{ADAPTERS, Adapter, Filter, Hook, HookFile};
 use crate::init;
 
-/// A host klin writes hooks for. A built host is its adapter. A pending host is one klin knows
-/// the name of, carries the ticket that lands its adapter, and is refused until then.
-/// Section 19.3.
-#[derive(Clone, Copy)]
-enum Port {
-    Built(&'static dyn Adapter),
-    Pending {
-        name: &'static str,
-        marker: &'static str,
-        ticket: &'static str,
-    },
-}
-
-impl Port {
-    fn name(&self) -> &'static str {
-        match self {
-            Port::Built(host) => host.name(),
-            Port::Pending { name, .. } => name,
-        }
+/// The host `--host` names, or every host this tree root says it uses. A tree that names none
+/// is refused rather than guessed at, because a hook file klin invented gates nothing.
+fn wanted(root: &Path, named: Option<&str>) -> Result<Vec<&'static dyn Adapter>, Error> {
+    if let Some(name) = named {
+        return match ADAPTERS.iter().copied().find(|host| host.name() == name) {
+            Some(host) => Ok(vec![host]),
+            None => Err(Error(format!(
+                "--host {name} names no host klin knows — name one of {}",
+                names()
+            ))),
+        };
     }
-
-    fn marker(&self) -> &'static str {
-        match self {
-            Port::Built(host) => host.marker(),
-            Port::Pending { marker, .. } => marker,
-        }
-    }
-
-    fn built(&self) -> Option<&'static dyn Adapter> {
-        match self {
-            Port::Built(host) => Some(*host),
-            Port::Pending { .. } => None,
-        }
+    let found: Vec<&'static dyn Adapter> = ADAPTERS
+        .iter()
+        .copied()
+        .filter(|host| root.join(host.marker()).is_dir())
+        .collect();
+    match found.is_empty() {
+        true => Err(Error(format!(
+            "{}: no host klin knows has a directory here — name one with --host, one of {}",
+            root.display(),
+            names()
+        ))),
+        false => Ok(found),
     }
 }
 
-const PENDING: &[Port] = &[Port::Pending {
-    name: "cursor",
-    marker: ".cursor",
-    ticket: "#67",
-}];
-
-fn ports() -> impl Iterator<Item = Port> {
+fn names() -> String {
     ADAPTERS
         .iter()
-        .map(|host| Port::Built(*host))
-        .chain(PENDING.iter().copied())
+        .map(|host| host.name())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
-
-/// klin's hook lines, one per event of section 9.2. The guard's event takes the host's matcher
-/// for the tools the guard reads, and every other event takes every call.
-const ENTRIES: &[(&str, &str)] = &[
-    ("SessionStart", "radius"),
-    ("UserPromptSubmit", "radius"),
-    (GUARDED, "guard"),
-    ("Stop", "gate --hook --changed"),
-];
-const GUARDED: &str = "PreToolUse";
 
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
@@ -77,10 +53,7 @@ const HOOKS: &str = "hooks";
 
 pub fn run(root: &Path, named: Option<&str>, shared: bool, out: &mut String) -> Result<u8, Error> {
     let hosts = wanted(root, named)?;
-    if let Some(host) = refused(named, &hosts) {
-        return Err(pending(&host, shared));
-    }
-    for host in &hosts {
+    for host in hosts {
         hooked(host, root, shared, out)?;
     }
     Ok(0)
@@ -88,11 +61,12 @@ pub fn run(root: &Path, named: Option<&str>, shared: bool, out: &mut String) -> 
 
 /// One host's file, or the note that klin cannot write it. A host whose plugin already
 /// carries the entries gets neither, and is told which settings file enables it.
-fn hooked(port: &Port, root: &Path, shared: bool, out: &mut String) -> Result<(), Error> {
-    let Some(host) = port.built() else {
-        let _ = writeln!(out, "klin: NOTE: {}", pending(port, shared));
-        return Ok(());
-    };
+fn hooked(
+    host: &'static dyn Adapter,
+    root: &Path,
+    shared: bool,
+    out: &mut String,
+) -> Result<(), Error> {
     let target = root.join(host.hook_file());
     match elsewhere(host, root, shared, &target) {
         Some(said) => {
@@ -141,77 +115,6 @@ fn installed(user: &Path, file: &Path) -> String {
     )
 }
 
-/// A host klin has no adapter for is refused when `--host` named it, and when this tree names
-/// no other host, because klin then has nothing to write. A tree that names it beside a host
-/// klin does write takes the hooks it can and a note about the rest.
-fn refused(named: Option<&str>, ports: &[Port]) -> Option<Port> {
-    let pending = ports.iter().find(|port| port.built().is_none())?;
-    let alone = ports.iter().all(|port| port.built().is_none());
-    (named.is_some() || alone).then_some(*pending)
-}
-
-/// The host `--host` names, or every host this tree root says it uses. A tree that names none
-/// is refused rather than guessed at, because a hook file klin invented gates nothing.
-fn wanted(root: &Path, named: Option<&str>) -> Result<Vec<Port>, Error> {
-    if let Some(name) = named {
-        return match ports().find(|port| port.name() == name) {
-            Some(port) => Ok(vec![port]),
-            None => Err(Error(format!(
-                "--host {name} names no host klin knows — name one of {}",
-                names()
-            ))),
-        };
-    }
-    let found: Vec<Port> = ports()
-        .filter(|port| root.join(port.marker()).is_dir())
-        .collect();
-    match found.is_empty() {
-        true => Err(Error(format!(
-            "{}: no host klin knows has a directory here — name one with --host, one of {}",
-            root.display(),
-            names()
-        ))),
-        false => Ok(found),
-    }
-}
-
-fn names() -> String {
-    listed(ports())
-}
-
-/// The hosts klin can write today, which is what a person can name after a refusal.
-fn built() -> String {
-    listed(ports().filter(|port| port.built().is_some()))
-}
-
-fn listed(ports: impl Iterator<Item = Port>) -> String {
-    ports
-        .map(|port| port.name())
-        .collect::<Vec<&str>>()
-        .join(", ")
-}
-
-/// The refusal names the command that works today, and keeps `--global` when that is the
-/// install the person asked for, because the per-tree form writes into a repository.
-fn pending(port: &Port, shared: bool) -> Error {
-    let ticket = match port {
-        Port::Pending { ticket, .. } => ticket,
-        Port::Built(_) => "",
-    };
-    Error(format!(
-        "klin has no {} adapter yet, so it cannot write {}'s hooks — {} lands it. Until then \
-         name a host klin writes: klin init --hooks{} --host {}",
-        port.name(),
-        port.name(),
-        ticket,
-        match shared {
-            true => " --global",
-            false => "",
-        },
-        built()
-    ))
-}
-
 fn registered(settings: &Path, file: &Path) -> String {
     format!(
         "{}: klin's plugin is enabled here and carries the hooks itself, so klin added nothing \
@@ -229,6 +132,11 @@ fn wrote(host: &dyn Adapter, file: &Path, shared: bool, out: &mut String) -> Res
         std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
     }
     let mut settings = read(file)?;
+    if let HookFile::Flat { version } = host.hook_file_kind() {
+        settings
+            .entry("version")
+            .or_insert_with(|| Value::from(version));
+    }
     let held = settings
         .entry(HOOKS)
         .or_insert_with(|| Value::Object(Map::new()));
@@ -249,28 +157,29 @@ fn merged(
 ) -> Result<(Vec<&'static str>, Vec<&'static str>), Error> {
     let mut added = Vec::new();
     let mut held_already = Vec::new();
-    for (event, command) in ENTRIES {
+    for hook in host.hooks() {
         let held = events
-            .entry(*event)
+            .entry(hook.event.to_string())
             .or_insert_with(|| Value::Array(Vec::new()));
         let Some(entries) = held.as_array_mut() else {
-            return Err(malformed(file, event));
+            return Err(malformed(file, hook.event));
         };
         if entries.iter().any(calls_klin) {
-            held_already.push(*event);
+            held_already.push(hook.event);
             continue;
         }
-        entries.push(entry(matcher(host, event), &line(command)));
-        added.push(*event);
+        entries.push(entry(host, hook, &line(hook.arguments)));
+        added.push(hook.event);
     }
     Ok((added, held_already))
 }
 
-/// The guard's event takes the host's tool matcher, and every other event takes every call.
-fn matcher(host: &dyn Adapter, event: &str) -> &'static str {
-    match event == GUARDED {
-        true => host.matcher(),
-        false => "",
+/// What one entry filters by, in the host's matcher syntax: nothing, or the tools the guard
+/// reads. The hook table says which, per event.
+fn matcher(host: &dyn Adapter, hook: &Hook) -> &'static str {
+    match hook.filter {
+        Filter::Every => "",
+        Filter::Tools => host.matcher(),
     }
 }
 
@@ -313,6 +222,11 @@ fn malformed(file: &Path, key: &str) -> Error {
 /// the entry: a hook that only mentions klin, such as a script under a directory named after
 /// it, is another tool's entry, and reading it as klin's leaves the event ungated.
 fn calls_klin(entry: &Value) -> bool {
+    if let Some(command) = entry.get("command").and_then(Value::as_str)
+        && runs_klin(command)
+    {
+        return true;
+    }
     entry["hooks"]
         .as_array()
         .map(Vec::as_slice)
@@ -329,15 +243,25 @@ fn runs_klin(command: &str) -> bool {
         .any(|word| word == "klin" || word.ends_with("/klin"))
 }
 
-fn entry(matcher: &str, command: &str) -> Value {
+/// One entry in the host's own shape: the matcher the event filters by, when it filters, and
+/// the command either beside it or under the host's nested `hooks` array.
+fn entry(host: &dyn Adapter, hook: &Hook, command: &str) -> Value {
     let mut entry = Map::new();
+    let matcher = matcher(host, hook);
     if !matcher.is_empty() {
         entry.insert("matcher".to_string(), matcher.into());
     }
-    entry.insert(
-        HOOKS.to_string(),
-        serde_json::json!([{"type": "command", "command": command}]),
-    );
+    match host.hook_file_kind() {
+        HookFile::Flat { .. } => {
+            entry.insert("command".to_string(), command.into());
+        }
+        HookFile::Nested => {
+            entry.insert(
+                HOOKS.to_string(),
+                serde_json::json!([{"type": "command", "command": command}]),
+            );
+        }
+    }
     Value::Object(entry)
 }
 

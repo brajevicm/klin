@@ -8,7 +8,7 @@
       "name": "klin",
       "source": {
         "source": "local",
-        "path": "./plugins/claude-code"
+        "path": "./plugins/klin"
       },
       "policy": {
         "installation": "AVAILABLE"

@@ -91,6 +91,18 @@ codex plugin add klin@klin
 
 Codex does not trust a plugin's hooks when it installs them. Run `/hooks`, review the klin hook sources, trust them, and then start a fresh session so the hooks run.
 
+### Cursor
+
+Teams: Dashboard → Plugins → Team Marketplaces → import
+`https://github.com/brajevicm/klin`, then install klin. Otherwise copy the
+plugin and reload:
+
+```sh
+git clone https://github.com/brajevicm/klin /tmp/klin
+mkdir -p ~/.cursor/plugins/local
+cp -R /tmp/klin/plugins/klin ~/.cursor/plugins/local/klin
+```
+
 Then opt the repository into klin:
 
 ```sh
