@@ -145,12 +145,14 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     said_families(&families, out);
     let commit = base::commit(config.root(), at, out)?;
     let mut names = structural::NameCost::default();
-    let (before, before_families, after) = sweeps(at, &families, &commit, &mut names)?;
+    let mut layout = None;
+    let (before, before_families, after) = sweeps(at, &families, &commit, &mut names, &mut layout)?;
     let (before_states, _) = judgement(&before, &mut names.before, &before_families);
     let (after_states, unjudged) = judgement(&after, &mut names.after, &families);
     out.record(|records| {
         records.facts = Some(before.cost + after.cost);
         records.names = Some(names);
+        records.layout = layout;
     });
     let held_before: Vec<&State> = before_states
         .iter()
@@ -202,9 +204,11 @@ fn sweeps(
     families: &[Family],
     commit: &str,
     names: &mut structural::NameCost,
+    layout: &mut Option<base::Layout>,
 ) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
     let prior = structural::timed(&mut names.base, || base::whole(at, commit))?;
     let unchanged = structural::timed(&mut names.base, || base::unchanged(at, prior, commit))?;
+    *layout = prior.layout();
     let mut after = structural::timed(&mut names.after.measure, || {
         measure(at.project.tree(), families, unchanged.as_ref())
     })?;

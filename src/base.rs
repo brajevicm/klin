@@ -1,5 +1,7 @@
+use std::cell::Cell;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
@@ -20,7 +22,30 @@ pub struct Prior {
     dir: tempfile::TempDir,
     /// The base tree's files, read once however many gates measure it. ADR 0038.
     tree: Tree,
-    from_worktree: Option<PathBuf>,
+    from_worktree: Cell<Option<PathBuf>>,
+    layout: Cell<Option<Layout>>,
+}
+
+/// What laying the whole base out took, part by part, so a warm run's base cost is not one
+/// number: registering and checking out the linked worktree, looking the change set up, moving
+/// renamed files to today's paths, and naming the structural cache. The file list's own parts
+/// come from the tree. A scoped base records none of this. Spec 11.2.
+#[derive(Default, Clone, Copy)]
+pub struct Layout {
+    pub worktree_add: Duration,
+    pub changes: Duration,
+    pub renames: Duration,
+    pub cache_name: Duration,
+    pub ignored: Duration,
+    pub walk: Duration,
+}
+
+/// What removing the whole base's linked worktree took: `worktree remove --force` and
+/// `worktree prune`. Spec 11.4.
+#[derive(Default, Clone, Copy)]
+pub struct Teardown {
+    pub remove: Duration,
+    pub prune: Duration,
 }
 
 impl Prior {
@@ -29,7 +54,54 @@ impl Prior {
         Prior {
             tree: Tree::at(&root),
             dir,
-            from_worktree,
+            from_worktree: Cell::new(from_worktree),
+            layout: Cell::new(None),
+        }
+    }
+
+    /// One part of the layout timed, added to what this base already recorded.
+    fn spent<T>(&self, part: fn(&mut Layout) -> &mut Duration, work: impl FnOnce() -> T) -> T {
+        let started = Instant::now();
+        let out = work();
+        self.add(part, started.elapsed());
+        out
+    }
+
+    fn add(&self, part: fn(&mut Layout) -> &mut Duration, spent: Duration) {
+        let mut layout = self.layout.take().unwrap_or_default();
+        *part(&mut layout) += spent;
+        self.layout.set(Some(layout));
+    }
+
+    /// What laying this base out took, handed over once to the first gate that asks, so the
+    /// parts appear on one row of the run. `None` for a scoped base and on every later call.
+    pub fn layout(&self) -> Option<Layout> {
+        let mut layout = self.layout.take()?;
+        let listed = self.tree.listing_cost();
+        layout.ignored += listed.ignored;
+        layout.walk += listed.walk;
+        Some(layout)
+    }
+
+    /// The linked worktree removed and pruned now rather than when the run drops this base, and
+    /// what that took. Nothing for a scoped base, or once it is removed.
+    pub fn teardown(&self) -> Teardown {
+        let Some(repository) = self.from_worktree.take() else {
+            return Teardown::default();
+        };
+        let started = Instant::now();
+        Repo::at(&repository).text(&[
+            "worktree",
+            "remove",
+            "--force",
+            &self.dir.path().to_string_lossy(),
+        ]);
+        let remove = started.elapsed();
+        let started = Instant::now();
+        Repo::at(&repository).text(&["worktree", "prune"]);
+        Teardown {
+            remove,
+            prune: started.elapsed(),
         }
     }
 
@@ -46,16 +118,7 @@ impl Prior {
 
 impl Drop for Prior {
     fn drop(&mut self) {
-        let Some(repository) = &self.from_worktree else {
-            return;
-        };
-        Repo::at(repository).text(&[
-            "worktree",
-            "remove",
-            "--force",
-            &self.dir.path().to_string_lossy(),
-        ]);
-        Repo::at(repository).text(&["worktree", "prune"]);
+        self.teardown();
     }
 }
 
@@ -89,6 +152,7 @@ fn missing(before: &str, was: &str) -> Error {
 fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Result<Prior, Error> {
     let root = project.root();
     let inside = under_the_repository(root)?;
+    let started = Instant::now();
     Repo::at(root)
         .text(&[
             "worktree",
@@ -106,12 +170,20 @@ fn checked_out(project: &Project, before: &str, dir: tempfile::TempDir) -> Resul
             ))
         })?;
     let prior = Prior::new(dir.path().join(inside), dir, Some(root.to_path_buf()));
-    for change in project.changes(before)?.iter() {
-        let Some(was) = change.was.as_deref().filter(|was| *was != change.path) else {
-            continue;
-        };
-        move_within(prior.root(), was, &change.path)?;
-    }
+    prior.add(|layout| &mut layout.worktree_add, started.elapsed());
+    let changes = prior.spent(|layout| &mut layout.changes, || project.changes(before))?;
+    prior.spent(
+        |layout| &mut layout.renames,
+        || {
+            for change in changes.iter() {
+                let Some(was) = change.was.as_deref().filter(|was| *was != change.path) else {
+                    continue;
+                };
+                move_within(prior.root(), was, &change.path)?;
+            }
+            Ok::<(), Error>(())
+        },
+    )?;
     Ok(prior)
 }
 
@@ -248,8 +320,13 @@ pub fn unchanged<'a>(
     };
     let dir = at.project.facts().state.as_deref();
     let cache = || {
-        let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
-        Cache::at(&under, commit, &checkout(at.project.root()))
+        prior.spent(
+            |layout| &mut layout.cache_name,
+            || {
+                let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
+                Cache::at(&under, commit, &checkout(at.project.root()))
+            },
+        )
     };
     Unchanged::new(prior.tree(), changes, cache).map(Some)
 }

@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use crate::config::{Config, Error};
 use crate::git::Repo;
@@ -180,10 +181,19 @@ fn select(tree: &Tree, directory: &str, wanted: &Wanted, into: &mut Found) -> Re
     Ok(())
 }
 
+/// What one tree's file list cost: asking git what it ignores, and walking the directories.
+/// Spec 11.2.
+#[derive(Default, Clone, Copy)]
+pub struct Listing {
+    pub ignored: Duration,
+    pub walk: Duration,
+}
+
 /// Every file under the root, by its relative path, sorted: the default skip set pruned, every
 /// path git ignores pruned, and no symbolic link. Hidden directories are walked, and a caller
-/// that skips them filters them out. Read once per tree, by `project::Tree`. Spec 4.3.
-pub fn listing(root: &Path) -> Result<Vec<String>, Error> {
+/// that skips them filters them out. Read once per tree, by `project::Tree`, with what the two
+/// parts of the read took. Spec 4.3.
+pub fn listing(root: &Path) -> Result<(Vec<String>, Listing), Error> {
     let skip_dirs = default_skip_dirs();
     let wanted = Wanted {
         extensions: &[""],
@@ -193,10 +203,18 @@ pub fn listing(root: &Path) -> Result<Vec<String>, Error> {
         skip_hidden: false,
     };
     let mut found = Found::default();
-    walk(root, &wanted, &ignored(root), &mut found)?;
+    let started = Instant::now();
+    let ignored = ignored(root);
+    let mut cost = Listing {
+        ignored: started.elapsed(),
+        walk: Duration::ZERO,
+    };
+    let started = Instant::now();
+    walk(root, &wanted, &ignored, &mut found)?;
     let mut files: Vec<String> = found.kept.iter().map(|path| relative(path, root)).collect();
     files.sort();
-    Ok(files)
+    cost.walk = started.elapsed();
+    Ok((files, cost))
 }
 
 /// What git ignores under a root. A gate judges the tree git describes, so a generated file

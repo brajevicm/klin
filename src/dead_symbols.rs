@@ -106,7 +106,8 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let spec = spec(project)?;
     let commit = base::commit(project.root(), at, out)?;
     let mut names = structural::NameCost::default();
-    let (before, after) = sweeps(at, &spec, &commit, &mut names)?;
+    let mut layout = None;
+    let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
     let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
     let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
     let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
@@ -120,6 +121,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         records.facts = Some(before.cost + after.cost);
         records.states = Some(built);
         records.names = Some(names);
+        records.layout = layout;
         records.footprint = Some(structural::footprint::of([before.facts(), after.facts()]));
     });
     let judged = after_states
@@ -152,9 +154,11 @@ fn sweeps(
     spec: &Spec,
     commit: &str,
     names: &mut structural::NameCost,
+    layout: &mut Option<base::Layout>,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
     let prior = structural::timed(&mut names.base, || base::whole(at, commit))?;
     let unchanged = structural::timed(&mut names.base, || base::unchanged(at, prior, commit))?;
+    *layout = prior.layout();
     let mut after = structural::timed(&mut names.after.measure, || {
         measure(at.project.tree(), &spec.selection, unchanged.as_ref())
     })?;

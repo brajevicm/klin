@@ -341,6 +341,21 @@ fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took()
     assert!(row(&report, "dead-symbols")["names"]["lost_ms"].is_u64());
     assert!(row(&report, "reachability")["names"]["lost_ms"].is_null());
     assert!(row(&report, "complexity")["names"].is_null(), "{report}");
+    let layout = &row(&report, "dead-symbols")["names"]["layout"];
+    for part in [
+        "worktree_add_ms",
+        "changes_ms",
+        "renames_ms",
+        "cache_name_ms",
+        "ignored_ms",
+        "walk_ms",
+    ] {
+        assert!(layout[part].is_u64(), "{part}: {report}");
+    }
+    assert!(
+        row(&report, "reachability")["names"]["layout"].is_null(),
+        "the run lays the base out once, so one row carries the parts: {report}"
+    );
 }
 
 #[test]

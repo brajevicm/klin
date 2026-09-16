@@ -2338,8 +2338,19 @@ One object on stdout. Fields:
   far. `base_ms` is the part of the gate's `ms` spent laying the base tree out
   and naming and reading the structural cache of 8.4, so it holds
   `facts.cache_read_ms`, and only the first gate of a run that needs the base
-  pays it. `before` and `after` are each `{measure_ms, index_ms, query_ms,
-  files, declarations, references, distinct_names}` for one tree.
+  pays it. `names.layout` divides the whole base's layout into its parts,
+  each in milliseconds: `worktree_add_ms` (registering and checking out the
+  linked worktree), `changes_ms` (looking the change set up), `renames_ms`
+  (moving renamed files to today's paths), `cache_name_ms` (naming the
+  structural cache, which asks git for the checkout identity of 8.4),
+  `ignored_ms` (asking git what the base tree ignores) and `walk_ms`
+  (walking the base tree's directories into its file list). A run lays the
+  whole base out once, so the parts sit on the row of the first name-resolving
+  gate that asks for them and are null on every other row, and on every row
+  of a run whose base was laid out scoped. `facts.cache_read_ms` is reading
+  and decoding the cache alone. `before` and `after` are each `{measure_ms,
+  index_ms, query_ms, files, declarations, references, distinct_names}` for
+  one tree.
   `measure_ms` is the part spent selecting and measuring the tree's files,
   which holds that tree's share of `facts.ms`. `index_ms` is the part spent
   building the tree's name index, and `query_ms` is the part spent judging the
@@ -2454,8 +2465,13 @@ failure, or an error alike — plus what only the hook knew:
   a `why` string beside `none` that names the reason this stop had and no
   other: the lock timed out, the state directory could not be readied, it held
   no stamp klin could read, or the stamp klin read could not be written back.
-- `timing` `{total_ms, build_ms, lock_ms, klin_ms}`, where `klin_ms` is the
-  total less the build, so the budget of 13 reads straight off it.
+- `timing` `{total_ms, build_ms, lock_ms, base_remove_ms, base_prune_ms,
+  klin_ms}`, where `klin_ms` is the total less the build, so the budget of 13
+  reads straight off it. A stop that laid the whole base out removes its
+  linked worktree before it writes this line, so `total_ms` holds the removal,
+  and `base_remove_ms` and `base_prune_ms` are the parts `git worktree remove
+  --force` and `git worktree prune` took, zero for a stop that laid out no
+  whole base.
 - `asked`, the site ids this stop asked about, as the turn stamp records
   them (8.2).
 - `flags`, the unusual paths this stop took, empty on a clean stop:
@@ -2757,7 +2773,17 @@ and `reachability` rows also print the `names` group of 11.2 as
 `names_base_ms`, `names_lost_ms`, and each tree's values under
 `names_before_` and `names_after_`, so a warm row separates the base layout,
 each tree's measurement, index build and name queries, and the lost
-references from the rest of the gate's time. The `dead-symbols` row also
+references from the rest of the gate's time. The row that laid the base out
+also prints the parts of `names.layout` as `names_layout_<name>`, and a warm
+hook row prints the stop's `timing` values as `stop_<name>`, so the worktree
+checkout, the base file list, the cache and the worktree removal are told
+apart. A targeted warm row also times, on the fixture's repository and apart
+from every stop, the git commands a lighter base layout would use, five times
+each with the median printed as `worktree_<name>_ms`: a whole detached
+`worktree add`, its `worktree remove --force`, a `worktree add --no-checkout`,
+a `read-tree` into it, an `ls-files --stage` listing of it, a `checkout-index`
+of the changed files' base paths into it, its removal, and `worktree prune`.
+Those medians are an estimate of a candidate, not a measurement of klin. The `dead-symbols` row also
 prints the `footprint` group of 11.2, each counter as `footprint_<name>` and
 each type size as `footprint_size_<name>`, so one row carries the population,
 sparsity and byte proxies of the facts that run held. A row that runs one

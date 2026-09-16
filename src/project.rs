@@ -9,7 +9,7 @@
 //! own no lifetime of their own. ADR 0038, ADR 0040.
 
 use std::borrow::Cow;
-use std::cell::OnceCell;
+use std::cell::{Cell, OnceCell};
 use std::path::{Path, PathBuf};
 
 use crate::base::{self, Prior};
@@ -94,6 +94,7 @@ pub fn language_of(path: &str) -> Option<&'static str> {
 pub struct Tree {
     root: PathBuf,
     files: OnceCell<Result<Vec<String>, String>>,
+    listing: Cell<files::Listing>,
     extracted: Extracted,
 }
 
@@ -103,6 +104,7 @@ impl Tree {
         Tree {
             root: root.to_path_buf(),
             files: OnceCell::new(),
+            listing: Cell::new(files::Listing::default()),
             extracted: Extracted::default(),
         }
     }
@@ -120,9 +122,22 @@ impl Tree {
     /// read is an error naming it, as it was for every walk before. Spec 4.3, 14.
     pub fn files(&self) -> Result<&[String], Error> {
         self.files
-            .get_or_init(|| files::listing(&self.root).map_err(|why| why.to_string()))
+            .get_or_init(|| {
+                files::listing(&self.root)
+                    .map(|(files, cost)| {
+                        self.listing.set(cost);
+                        files
+                    })
+                    .map_err(|why| why.to_string())
+            })
             .as_deref()
             .map_err(|why| Error(why.clone()))
+    }
+
+    /// What reading the file list cost, handed over once: a second call, or a call before the
+    /// list is read, is zero. Spec 11.2.
+    pub fn listing_cost(&self) -> files::Listing {
+        self.listing.take()
     }
 
     /// The file list's name for a directory this tree holds, and `None` for one the walk did
@@ -249,6 +264,15 @@ impl Project {
             .whole_base
             .get_or_init(|| (commit.to_string(), prior))
             .1)
+    }
+
+    /// The whole base's worktree removed now, before the run's journal line is written, rather
+    /// than when the run drops it, and what the removal took. Nothing when no whole base was
+    /// laid out, or it was removed already. Spec 11.4.
+    pub fn teardown_base(&self) -> base::Teardown {
+        self.whole_base
+            .get()
+            .map_or_else(base::Teardown::default, |(_, prior)| prior.teardown())
     }
 
     /// Whether the survey found no source root in this tree. Spec 10, 14.

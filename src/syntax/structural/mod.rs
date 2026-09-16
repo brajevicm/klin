@@ -320,16 +320,16 @@ impl Extracted {
     }
 
     /// This tree's outcomes read from its cache, once for the run, less every path the change
-    /// set names. The cache is named only when the tree holds none yet, and the time naming and
-    /// reading it took is the cost.
+    /// set names. The cache is named only when the tree holds none yet, and the time reading and
+    /// decoding it took is the cost; naming it is the caller's part.
     fn keep(&self, cache: impl FnOnce() -> Option<Cache>, changes: &[Change]) -> ExtractionCost {
         if self.kept.get().is_some() {
             return ExtractionCost::default();
         }
-        let started = Instant::now();
         let Some(cache) = cache() else {
             return ExtractionCost::default();
         };
+        let started = Instant::now();
         let changed: HashSet<String> = changes
             .iter()
             .flat_map(|change| std::iter::once(&change.path).chain(&change.was))

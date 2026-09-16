@@ -108,6 +108,11 @@ fn a_stop_appends_one_line_holding_the_record_and_what_the_hook_knew() {
         assert!(line.get(key).is_some(), "no {key} in {line}");
     }
     assert!(field(line, &["timing", "klin_ms"]).is_u64(), "{line}");
+    assert!(
+        field(line, &["timing", "base_remove_ms"]).is_u64(),
+        "{line}"
+    );
+    assert!(field(line, &["timing", "base_prune_ms"]).is_u64(), "{line}");
 }
 
 #[test]

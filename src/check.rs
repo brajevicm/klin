@@ -11,7 +11,7 @@
 
 use serde_json::Value;
 
-use crate::base::Prior;
+use crate::base::{self, Prior};
 use crate::changed::Change;
 use crate::config::{Config, Error};
 use crate::project::Project;
@@ -90,6 +90,9 @@ pub struct Records {
     /// The name evidence `dead-symbols` and `reachability` built over both trees. `None` for a
     /// gate that resolves no names. Spec 11.2.
     pub names: Option<syntax::structural::NameCost>,
+    /// The parts of laying the whole base out, on the row of the gate that laid it out. `None`
+    /// for every other gate. Spec 11.2.
+    pub layout: Option<base::Layout>,
     /// What the facts `dead-symbols` held over both trees cost in population and bytes. `None`
     /// for a gate that records none. Spec 11.2.
     pub footprint: Option<syntax::structural::footprint::Footprint>,

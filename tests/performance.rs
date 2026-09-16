@@ -482,10 +482,10 @@ impl Fixture {
         assert!(run.out.is_empty(), "warm hook: {}", run.out);
         let lines = journal(&self.tree);
         assert!(lines.len() > stops, "warm hook wrote no journal line");
-        Sample {
-            total,
-            gates: gate_times(&lines[lines.len() - 1]),
-        }
+        let line = &lines[lines.len() - 1];
+        let mut gates = gate_times(line);
+        counters(&mut gates, "stop", &line["timing"], "", &STOP_TIMING);
+        Sample { total, gates }
     }
 
     fn remove_structural_cache(&self) {
@@ -774,6 +774,12 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         _ => {
             let (files, bytes) = fixture.structural_cache();
             println!("structural cache: files={files}, bytes={bytes}");
+            let experiment = worktree_experiment(fixture.tree.root())
+                .into_iter()
+                .map(|(name, ms)| format!("{name}={ms}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            println!("worktree experiment: iterations={ITERATIONS}, {experiment}");
         }
     }
     println!("note: hook timings exclude the project's build command");
@@ -1015,7 +1021,8 @@ fn work_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
     }
 }
 
-/// The name-evidence group of `dead-symbols` and `reachability`, each tree apart. #199.
+/// The name-evidence group of `dead-symbols` and `reachability`, each tree apart, with the
+/// parts of the whole base's layout on the row that laid it out. #199, #202.
 fn name_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
     counters(
         times,
@@ -1023,6 +1030,13 @@ fn name_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
         &gate["names"],
         "names",
         &["base_ms", "lost_ms"],
+    );
+    counters(
+        times,
+        name,
+        &gate["names"]["layout"],
+        "names_layout",
+        &LAYOUT,
     );
     for tree in ["before", "after"] {
         counters(
@@ -1085,6 +1099,25 @@ const TYPE_SIZES: [&str; 7] = [
     "export_leaf",
 ];
 
+/// The parts of one whole-base layout, on the row of the gate that laid it out. #202.
+const LAYOUT: [&str; 6] = [
+    "worktree_add_ms",
+    "changes_ms",
+    "renames_ms",
+    "cache_name_ms",
+    "ignored_ms",
+    "walk_ms",
+];
+
+/// The stop's own timing, off the journal line of a warm hook. #202.
+const STOP_TIMING: [&str; 5] = [
+    "total_ms",
+    "build_ms",
+    "lock_ms",
+    "base_remove_ms",
+    "base_prune_ms",
+];
+
 const TREE_NAMES: [&str; 7] = [
     "measure_ms",
     "index_ms",
@@ -1103,11 +1136,141 @@ fn counters(
     group: &str,
     fields: &[&str],
 ) {
+    let group = match group.is_empty() {
+        true => String::new(),
+        false => format!("{group}_"),
+    };
     for field in fields {
         if let Some(value) = held[*field].as_u64() {
-            times.insert(format!("{name}_{group}_{field}"), value);
+            times.insert(format!("{name}_{group}{field}"), value);
         }
     }
+}
+
+/// The git commands a lighter whole-base layout would run, each timed on the fixture's
+/// repository apart from every stop, `ITERATIONS` times, median. The whole detached checkout and
+/// its removal are what klin runs today; the no-checkout worktree, the `read-tree` into it, the
+/// `ls-files --stage` listing, the `checkout-index` of the changed files' base paths, its
+/// removal and the prune are candidate E of #202. An estimate of a candidate, not klin.
+fn worktree_experiment(root: &Path) -> BTreeMap<String, u64> {
+    let changed: Vec<String> = git_paths(root, ["diff", "--name-only", "-z", "HEAD"])
+        .into_iter()
+        .map(|path| String::from_utf8_lossy(&path).into_owned())
+        .collect();
+    let mut samples: BTreeMap<&str, Vec<u64>> = BTreeMap::new();
+    for round in 0..ITERATIONS {
+        let dir = std::env::temp_dir().join(format!(
+            "klin-worktree-experiment-{}-{round}",
+            std::process::id()
+        ));
+        experiment_round(root, &dir, &changed, &mut samples);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    samples
+        .into_iter()
+        .map(|(name, values)| (format!("worktree_{name}_ms"), median(&values)))
+        .collect()
+}
+
+fn experiment_round<'a>(
+    root: &Path,
+    dir: &Path,
+    changed: &[String],
+    samples: &mut BTreeMap<&'a str, Vec<u64>>,
+) {
+    let at = dir.to_string_lossy().into_owned();
+    let mut step = |name: &'a str, cwd: &Path, args: &[&str]| {
+        samples.entry(name).or_default().push(git_ms(cwd, args));
+    };
+    step(
+        "add_whole",
+        root,
+        &["worktree", "add", "--detach", "--quiet", &at, "HEAD"],
+    );
+    step(
+        "remove_whole",
+        root,
+        &["worktree", "remove", "--force", &at],
+    );
+    step(
+        "add_no_checkout",
+        root,
+        &[
+            "worktree",
+            "add",
+            "--detach",
+            "--no-checkout",
+            "--quiet",
+            &at,
+            "HEAD",
+        ],
+    );
+    step("read_tree", dir, &["read-tree", "HEAD"]);
+    step("ls_files_stage", dir, &["ls-files", "-z", "--stage"]);
+    let mut checkout = vec!["checkout-index", "-f", "--"];
+    checkout.extend(changed.iter().map(String::as_str));
+    step("checkout_index_changed", dir, &checkout);
+    step(
+        "remove_no_checkout",
+        root,
+        &["worktree", "remove", "--force", &at],
+    );
+    step("prune", root, &["worktree", "prune"]);
+}
+
+fn git_ms(cwd: &Path, args: &[&str]) -> u64 {
+    let started = Instant::now();
+    let status = Command::new("git")
+        .arg("-C")
+        .arg(cwd)
+        .args(args)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    let elapsed = started.elapsed().as_millis();
+    assert!(
+        status.is_ok_and(|status| status.success()),
+        "git {} failed in {}",
+        args.join(" "),
+        cwd.display()
+    );
+    u64::try_from(elapsed).unwrap_or(u64::MAX)
+}
+
+#[test]
+fn the_worktree_experiment_runs_every_command_it_times() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn api() {}\n");
+    tree.write("src/held.rs", "pub fn held() {}\n");
+    tree.base();
+    tree.write("src/lib.rs", "pub fn api() { held() }\n");
+
+    let medians = worktree_experiment(tree.root());
+
+    let names: Vec<&str> = medians.keys().map(String::as_str).collect();
+    assert_eq!(
+        names,
+        [
+            "worktree_add_no_checkout_ms",
+            "worktree_add_whole_ms",
+            "worktree_checkout_index_changed_ms",
+            "worktree_ls_files_stage_ms",
+            "worktree_prune_ms",
+            "worktree_read_tree_ms",
+            "worktree_remove_no_checkout_ms",
+            "worktree_remove_whole_ms",
+        ]
+    );
+    let listed = git_paths(tree.root(), ["worktree", "list", "--porcelain", "-z"]);
+    assert_eq!(
+        listed
+            .iter()
+            .filter(|line| line.starts_with(b"worktree "))
+            .count(),
+        1,
+        "the experiment leaves no worktree behind"
+    );
 }
 
 fn journal(tree: &Tree) -> Vec<Value> {

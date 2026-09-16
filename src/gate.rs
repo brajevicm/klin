@@ -140,6 +140,9 @@ fn stopped(args: &Args, project: &Project, out: &mut String) -> u8 {
         &mut log,
         out,
     );
+    let teardown = project.teardown_base();
+    log.timing.base_remove_ms = journal::millis(teardown.remove);
+    log.timing.base_prune_ms = journal::millis(teardown.prune);
     if let Some(Value::Object(report)) = &mut log.report {
         report.insert("exit".into(), code.into());
         if let Some(window) = &window {
@@ -1094,8 +1097,24 @@ fn facts(records: &Records) -> Value {
 }
 
 /// What one name-resolving gate's evidence cost, each tree apart. Spec 11.2.
-fn name_evidence(cost: &crate::syntax::structural::NameCost) -> Value {
+fn name_evidence(
+    cost: &crate::syntax::structural::NameCost,
+    layout: Option<base::Layout>,
+) -> Value {
     let mut out = Map::new();
+    out.insert(
+        "layout".into(),
+        layout.map_or(Value::Null, |layout| {
+            serde_json::json!({
+                "worktree_add_ms": journal::millis(layout.worktree_add),
+                "changes_ms": journal::millis(layout.changes),
+                "renames_ms": journal::millis(layout.renames),
+                "cache_name_ms": journal::millis(layout.cache_name),
+                "ignored_ms": journal::millis(layout.ignored),
+                "walk_ms": journal::millis(layout.walk),
+            })
+        }),
+    );
     out.insert("base_ms".into(), journal::millis(cost.base).into());
     if let Some(lost) = cost.lost {
         out.insert("lost_ms".into(), journal::millis(lost).into());
@@ -1147,7 +1166,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     out.insert("facts".into(), facts(records));
     out.insert(
         "names".into(),
-        records.names.as_ref().map_or(Value::Null, name_evidence),
+        records
+            .names
+            .as_ref()
+            .map_or(Value::Null, |names| name_evidence(names, records.layout)),
     );
     out.insert(
         "footprint".into(),

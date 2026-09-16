@@ -59,6 +59,8 @@ pub struct Timing {
     pub total_ms: u64,
     pub build_ms: u64,
     pub lock_ms: u64,
+    pub base_remove_ms: u64,
+    pub base_prune_ms: u64,
 }
 
 impl Stop {
@@ -138,6 +140,8 @@ pub fn line(stop: &Stop) -> Value {
             "total_ms": stop.timing.total_ms,
             "build_ms": stop.timing.build_ms,
             "lock_ms": stop.timing.lock_ms,
+            "base_remove_ms": stop.timing.base_remove_ms,
+            "base_prune_ms": stop.timing.base_prune_ms,
             "klin_ms": stop.timing.total_ms.saturating_sub(stop.timing.build_ms),
         }),
     );
