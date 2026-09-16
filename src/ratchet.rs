@@ -33,16 +33,18 @@ const RETIRED: &[(&str, &str)] = &[
     ),
 ];
 
-/// A pattern row klin removed from a built-in table, as the gate that held it, the values key
-/// its name is recorded under, the name, and where the row went. An accepted entry naming one
-/// matches nothing for a reason the entry cannot show, so the note and the `--strict` failure
-/// say which row it names and what replaced it. A row a project deleted from its own `patterns`
-/// is not one of these. Section 14.
-const RETIRED_ROWS: &[(&str, &str, &str, &str)] = &[
+/// A pattern row klin retired from a built-in table, as the gate that held it, the values key
+/// its name is recorded under, the name, the file suffix the row read, and where the row went.
+/// An accepted entry naming one matches nothing for a reason the entry cannot show, so the note
+/// and the `--strict` failure say which row it names and what replaced it. The suffix is part of
+/// the key, because a table retires one language's row and keeps the same name for another's. A
+/// row a project deleted from its own `patterns` is not one of these. Section 14.
+const RETIRED_ROWS: &[(&str, &str, &str, &str, &str)] = &[
     (
         "escapes",
         "escape",
         "todo",
+        ".rs",
         "which moved to the \"stubs\" check, that now holds `todo!(` and `unimplemented!(`, so \
          one site is never reported by two checks. Accept the site under the \"stubs\" gate, or \
          delete the entry.",
@@ -51,9 +53,9 @@ const RETIRED_ROWS: &[(&str, &str, &str, &str)] = &[
         "escapes",
         "escape",
         "skipped test",
+        ".py",
         "whose Python pattern now ends in a word boundary, so `pytest.mark.skipif` no longer \
-         matches it: a conditional skip states which platforms a test supports. Delete the entry \
-         when it named a `skipif` site.",
+         matches it: a conditional skip states which platforms a test supports. Delete the entry.",
     ),
 ];
 
@@ -61,8 +63,10 @@ const RETIRED_ROWS: &[(&str, &str, &str, &str)] = &[
 fn retired_row(gate: &str, entry: &Values) -> Option<String> {
     RETIRED_ROWS
         .iter()
-        .find(|(named, key, row, _)| *named == gate && text(entry, key) == *row)
-        .map(|(_, _, row, went)| format!("\"{row}\" is a row klin retired, {went}"))
+        .find(|(named, key, row, suffix, _)| {
+            *named == gate && text(entry, key) == *row && text(entry, "file").ends_with(suffix)
+        })
+        .map(|(_, _, row, _, went)| format!("\"{row}\" is a row klin retired, {went}"))
 }
 
 /// A section naming a key klin retired, refused before any gate runs. Section 14.

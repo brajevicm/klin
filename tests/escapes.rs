@@ -771,7 +771,7 @@ fn an_accepted_entry_for_the_narrowed_skipped_test_row_names_skipif() {
     tree.write(
         "klin.json",
         &accepted(
-            r#"{"gate": "escapes", "file": "src/gone.py", "text": "@pytest.mark.skipif(win)",
+            r#"{"gate": "escapes", "file": "src/gone.py", "text": "def vanished():",
                 "escape": "skipped test", "count": 1}"#,
         ),
     );
@@ -790,6 +790,24 @@ fn an_accepted_entry_that_matches_nothing_for_another_reason_names_no_row() {
         &accepted(
             r#"{"gate": "escapes", "file": "src/gone.rs", "text": "fn vanished() {",
                 "escape": "unwrap", "count": 1}"#,
+        ),
+    );
+    tree.write("src/lib.rs", "fn f() {}\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("matched nothing this run"), "{}", run.out);
+    assert!(!run.says("klin retired"), "{}", run.out);
+}
+
+#[test]
+fn a_live_row_of_another_language_is_not_read_as_the_retired_one() {
+    let tree = tree();
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "escapes", "file": "src/gone.rs", "text": "fn vanished() {",
+                "escape": "skipped test", "count": 1}"#,
         ),
     );
     tree.write("src/lib.rs", "fn f() {}\n");
