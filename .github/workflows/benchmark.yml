@@ -1,7 +1,9 @@
 name: benchmark
 
 on:
+  # `labeled` is not a default type, and the `benchmark` label needs a run of its own.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 
@@ -39,11 +41,46 @@ jobs:
               gate --strict --json > "$RUNNER_TEMP/$side.json" || true
           done
 
+      # The dense fixture takes tens of minutes, so a pull request opts in with the `benchmark`
+      # label. `KLIN_BIN` is set on both sides, so both rows build the same fixture sections.
+      - name: Measure the dense 300k row with each binary
+        if: contains(github.event.pull_request.labels.*.name, 'benchmark')
+        env:
+          KLIN_PERF_ROW: structural_300k
+          KLIN_PERF_CASE: warm20
+        run: |
+          set -o pipefail
+          for side in base head; do
+            KLIN_BIN="$RUNNER_TEMP/klin-$side" \
+              cargo test --release --locked --test performance -- --ignored perf --nocapture \
+              | tee "$RUNNER_TEMP/$side-dense.txt" \
+              | grep -oE '[A-Za-z_][A-Za-z0-9_.-]*=[0-9]+\b' \
+              | jq -R -s 'split("\n") | map(select(length > 0) | split("="))
+                          | map({key: .[0], value: (.[1] | tonumber)}) | from_entries' \
+              > "$RUNNER_TEMP/$side-dense.json"
+          done
+
       - name: Compare the counters
         run: |
-          jq -S --argjson base '{}' -f .github/bench.jq "$RUNNER_TEMP/base.json" > "$RUNNER_TEMP/flat.json"
-          jq -r --argjson base "$(cat "$RUNNER_TEMP/flat.json")" -f .github/bench.jq \
-            "$RUNNER_TEMP/head.json" | tee -a "$GITHUB_STEP_SUMMARY" > "$RUNNER_TEMP/bench.md"
+          section() {
+            jq -S --argjson base '{}' --arg title x -f .github/bench.jq "$2" \
+              > "$RUNNER_TEMP/flat.json"
+            jq -r --argjson base "$(cat "$RUNNER_TEMP/flat.json")" --arg title "$1" \
+              -f .github/bench.jq "$3"
+          }
+          {
+            echo '<!-- klin-benchmark -->'
+            echo "## Benchmark: the base binary against this branch's binary"
+            echo
+            echo 'Both binaries ran the same measurements on this runner, so only the binary differs.'
+            echo
+            section 'klin on klin, strict run' "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json"
+            if [ -f "$RUNNER_TEMP/base-dense.json" ]; then
+              section 'Dense 300k fixture, warm hook, 20 changed files' \
+                "$RUNNER_TEMP/base-dense.json" "$RUNNER_TEMP/head-dense.json"
+            fi
+            echo 'Times and peak RSS are left out, because a shared runner is not a timing oracle (ADR 0042).'
+          } | tee -a "$GITHUB_STEP_SUMMARY" > "$RUNNER_TEMP/bench.md"
 
       - if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:

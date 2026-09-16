@@ -1,15 +1,19 @@
-# With no `$base` this prints one `klin gate --strict --json` report's deterministic counters.
-# With one it prints the Markdown comparison, so one program serves both calls of the job.
+# With no `$base` this prints one measurement's deterministic counters. With one it prints the
+# Markdown section named by `$title`, so one program serves both calls of the job.
 # Times and memory stay out: a shared runner is not a timing oracle (ADR 0042).
 def rise: 10;
 
+# A `klin gate --strict --json` report, or a set of counters a row already printed as key=value.
 def flat:
-  { findings: (.findings | length) }
-  + ( [ .gates[]
-        | . as $gate
-        | ($gate | paths(type == "number")) as $path
-        | { key: ([$gate.name] + $path | join(".")), value: ($gate | getpath($path)) } ]
-      | from_entries )
+  ( if has("gates")
+    then { findings: (.findings | length) }
+         + ( [ .gates[]
+               | . as $gate
+               | ($gate | paths(type == "number")) as $path
+               | { key: ([$gate.name] + $path | join(".")), value: ($gate | getpath($path)) } ]
+             | from_entries )
+    else .
+    end )
   | with_entries(select(.key | test("(_|\\.)ms$|rss") | not));
 
 def cell($held): if $held == null then "—" else ($held | tostring) end;
@@ -43,23 +47,16 @@ flat as $head
   else
     ($base + $head | keys) as $every
     | ($every | map(select($base[.] != $head[.]))) as $moved
-    | [ "<!-- klin-benchmark -->",
-        "## Benchmark: the base binary against this branch's binary",
-        "",
-        "Both binaries ran `gate --strict` over the same tree at the same commit, so only the",
-        "binary differs." ]
+    | [ "### \($title)", "" ]
       + ( if ($moved | length) == 0
-          then [ "", "All \($every | length) counters agree." ]
-          else [ "",
-                 "| Measurement | Base | This branch | Change |",
+          then [ "All \($every | length) counters agree.", "" ]
+          else [ "| Measurement | Base | This branch | Change |",
                  "| --- | ---: | ---: | ---: |" ]
                + ($moved | map(line(.; $base[.]; $head[.])))
                + [ "",
                    "\($moved | length) of \($every | length) counters moved. ⚠ marks one that rose",
-                   "by more than \(rise)%, or one that only the base or only this branch reports." ]
+                   "by more than \(rise)%, or one that only the base or only this branch reports.",
+                   "" ]
           end )
-      + [ "",
-          "Times and peak RSS are left out, because a shared runner is not a timing oracle",
-          "(ADR 0042)." ]
     | .[]
   end
