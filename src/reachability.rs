@@ -18,7 +18,7 @@ use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::{self, Key};
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
@@ -173,10 +173,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(config, at.gate, evaluator.metrics)?,
         at,
-        &format!(
-            "OK: {judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
-             eligible declaration, all held at the base{said}"
-        ),
+        Line {
+            state: &format!(
+                "{judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
+                 eligible declaration"
+            ),
+            tail: &said,
+        },
         out,
     );
     let code = coverage_result(

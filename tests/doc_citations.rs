@@ -26,7 +26,7 @@ fn citations_that_resolve_pass_counting_them() {
     ]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("OK: 0 citation(s) resolve nowhere, all held at the base"),
+        run.says("OK: 0 citation(s) resolve nowhere ("),
         "{}",
         run.out
     );

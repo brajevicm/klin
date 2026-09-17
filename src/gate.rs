@@ -1217,6 +1217,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     );
     out.insert("ms".into(), ms.into());
     out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
+    out.insert(
+        "accepted".into(),
+        records.accepted.map_or(Value::Null, Value::from),
+    );
     out.insert("facts".into(), facts(records));
     out.insert(
         "names".into(),
@@ -1229,6 +1233,12 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
         "footprint".into(),
         records.footprint.as_ref().map_or(Value::Null, footprint),
     );
+    costs(&mut out, records);
+    Value::Object(out)
+}
+
+/// The content, module-graph and public-surface work of one gate's row. Spec 11.2.
+fn costs(out: &mut Map<String, Value>, records: &Records) {
     out.insert(
         "work".into(),
         records.work.map_or(Value::Null, |work| {
@@ -1261,7 +1271,6 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
             })
         }),
     );
-    Value::Object(out)
 }
 
 /// A note the hook tells a person even when nothing blocks the stop: a file the run could not

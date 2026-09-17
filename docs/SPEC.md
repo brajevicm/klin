@@ -2080,7 +2080,21 @@ Every check MUST:
   says the value the base holds it at, for the same reason. Section 11.1
   fixes those line shapes.
 - print one `OK:` line with what it judged on success, plus any `NOTE:`
-  lines, and nothing else. What it judged includes the coverage: how many
+  lines, and nothing else. A ratcheting check writes the state it measured in
+  its own vocabulary and its own counts, and the ratchet writes why those
+  findings do not fail, because only the comparison knows that. The reasons
+  are distinct and a green line MUST NOT claim more than the comparison
+  proved, on the one line the ratchet writes for the whole gate:
+  `, all held at the base` when a base site holds every finding,
+  `, all on the accepted list` when a person-authored entry holds every one,
+  `, N held at the base and M on the accepted list` when both hold some, and
+  nothing at all when the run judged no finding. A run that measured no file
+  judges no finding, so it claims no comparison either, and its coverage says
+  what it measured. No check composes that qualifier for itself. A check that
+  judges documents one by one and holds them against the base itself, which is
+  `doc_size` alone, still says per document what the base holds that document
+  at, because that line names a value and not the gate's pass reason.
+  What it judged includes the coverage: how many
   files it found, measured, not measured, excluded and could not read, so a
   green run over an unexpectedly small scope is visible on its one line.
   Section 11.1 writes the boundary between those five counts down once, and
@@ -2527,9 +2541,12 @@ One object on stdout. Fields:
   gate's own measure and judge took, and `held` counts the findings the run
   let through because a base site or an accepted entry carried them, which is
   one quantity and not two: a gate that also drops sites its window never
-  reached counts those in its `coverage` and never in `held`. On a passing run
-  it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
-  it is null for a gate that never got that far. `facts` is
+  reached counts those in its `coverage` and never in `held`. `accepted`
+  counts how many of `held` a person-authored entry carried rather than a base
+  site, which is the one number the `OK:` line's qualifier of 8.6 turns on, so
+  the text and the JSON read the same comparison. `held` less `accepted` is
+  what the base held. Both are null for a gate that never got that far, and
+  `accepted` is 0 for a ratcheting gate no accepted entry matched. `facts` is
   `{reads, parses, extracted, shared, cached, ms, cache_read_ms,
   cache_write_ms}`, with `states` beside them for `dead-symbols`, for a gate
   that reads structural

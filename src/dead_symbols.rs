@@ -17,7 +17,7 @@ use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
@@ -136,9 +136,10 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
         at,
-        &format!(
-            "OK: {judged} declaration(s) judged, {dead} dead symbol(s), all held at the base{said}"
-        ),
+        Line {
+            state: &format!("{judged} declaration(s) judged, {dead} dead symbol(s)"),
+            tail: &said,
+        },
         out,
     );
     let code = coverage_result(code, at, &before, &after, out);

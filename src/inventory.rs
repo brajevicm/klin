@@ -18,7 +18,7 @@ use crate::config::Error;
 use crate::coverage::{self, Coverage};
 use crate::git::Repo;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
@@ -130,8 +130,18 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let held = ratchet::scoped(&now, at.only);
     let accepted = ratchet::accepted(config, at.gate, evaluator().metrics)?;
     let said = covered(&judged, &paired, &measured.unparsed, at).said(out);
-    let ok = standing(held, went.len(), &said);
-    let code = evaluator().evaluate(now, before, accepted, at, &ok, out);
+    let state = standing(held, went.len());
+    let code = evaluator().evaluate(
+        now,
+        before,
+        accepted,
+        at,
+        Line {
+            state: &state,
+            tail: &said,
+        },
+        out,
+    );
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
@@ -225,11 +235,12 @@ fn said(project: &Project, out: &mut Sink) {
     );
 }
 
-/// The OK line: how many test sites the base holds, and how many of them the run let go.
-fn standing(held: usize, gone: usize, said: &str) -> String {
+/// What the OK line says of the state: how many test sites the base holds, and how many of them
+/// the run let go. Why those sites pass is the ratchet's own qualifier and not this text.
+fn standing(held: usize, gone: usize) -> String {
     match gone {
-        0 => format!("OK: {held} test site(s) the base holds, all still there{said}"),
-        gone => format!("OK: {held} test site(s) the base holds, {gone} of them gone{said}"),
+        0 => format!("{held} test site(s) the base holds"),
+        gone => format!("{held} test site(s) the base holds, {gone} of them gone"),
     }
 }
 

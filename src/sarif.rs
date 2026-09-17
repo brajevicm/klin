@@ -18,7 +18,7 @@ use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::hunks::Hunks;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 
 pub const SECTION: &str = "sarif";
@@ -109,8 +109,19 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(config, at.gate, METRICS)?;
-    let ok = said(&judged, entry.differential) + &coverage.said(out);
-    let code = evaluator().evaluate(judged.findings, Vec::new(), accepted, at, &ok, out);
+    let state = said(&judged, entry.differential);
+    let tail = coverage.said(out);
+    let code = evaluator().evaluate(
+        judged.findings,
+        Vec::new(),
+        accepted,
+        at,
+        Line {
+            state: &state,
+            tail: &tail,
+        },
+        out,
+    );
     ratchet::noted(&found.notes, out);
     Ok(code)
 }
@@ -552,11 +563,11 @@ fn collected(seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
 fn said(judged: &Judged, differential: bool) -> String {
     match differential {
         true => format!(
-            "OK: {} result(s) judged, which is every result the scanner reported",
+            "{} result(s) judged, which is every result the scanner reported",
             judged.judged
         ),
         false => format!(
-            "OK: {} result(s) on lines this window changed, {} held on lines it did not",
+            "{} result(s) on lines this window changed, {} held on lines it did not",
             judged.judged, judged.held
         ),
     }

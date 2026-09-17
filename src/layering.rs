@@ -21,7 +21,7 @@ use crate::check::{self, Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::modules::{self, Attachment, Cycles, GraphCost, Hole, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
@@ -543,18 +543,21 @@ fn judged(
     };
     let (forbidden, cyclic) = (kinds(Kind::Forbidden), kinds(Kind::Cycle));
     let said = now.covered(policy).coverage(None).said(out);
-    let ok = format!(
-        "OK: {} dependency edge(s) judged, {forbidden} forbidden, {cyclic} cyclic, all held at the base{said}; {}",
-        selected_dependencies(policy, &now.graph),
-        attachment(&now.graph)
+    let state = format!(
+        "{} dependency edge(s) judged, {forbidden} forbidden, {cyclic} cyclic",
+        selected_dependencies(policy, &now.graph)
     );
+    let tail = format!("{said}; {}", attachment(&now.graph));
     let evaluator = evaluator();
     Ok(evaluator.evaluate(
         findings,
         prior,
         ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
         at,
-        &ok,
+        Line {
+            state: &state,
+            tail: &tail,
+        },
         out,
     ))
 }

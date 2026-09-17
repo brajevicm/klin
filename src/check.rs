@@ -79,9 +79,13 @@ pub struct Records {
     /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
     pub derived: Vec<Value>,
     pub derived_lines: Vec<String>,
-    /// The count the check's own `OK:` line prints as held at the base, which the runner puts
-    /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
+    /// The findings the ratchet passed, which the runner puts on the gate's row. `None` for a
+    /// gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
+    /// How many of `held` a person-authored accepted entry passed rather than a base site, which
+    /// is the one number the OK line's qualifier turns on. `None` for a gate that never got that
+    /// far, and 0 for a ratcheting gate no accepted entry matched. Spec 11.2.
+    pub accepted: Option<u64>,
     /// The structural facts the gate read over both trees: extracted by it, or shared from an
     /// earlier gate of the run. `None` for a gate that reads none. Spec 11.2.
     pub facts: Option<syntax::structural::ExtractionCost>,
