@@ -174,13 +174,7 @@ fn reachability_uses_a_changed_outside_caller_for_an_unchanged_member() {
         "{seen}"
     );
     assert_eq!(lines(&seen["strict"]), lines(&seen["whole"]));
-    assert_eq!(
-        lines(&seen["changed"]),
-        [
-            r#""FAIL" 1"#,
-            r#"new src/commands/epsilon_command.rs:0 file {"sibling":"src/commands/beta_command.rs","unreached":1}"#,
-        ]
-    );
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]), "{seen}");
     assert_eq!(
         lines(&seen["hook"])[1..],
         lines(&seen["changed"])[1..],

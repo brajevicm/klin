@@ -68,9 +68,6 @@ pub struct Args {
     /// Fail when an accepted entry matches nothing — what CI runs
     #[arg(long)]
     strict: bool,
-    /// Judge only these repo-relative files, against only their sites at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
 }
 
 /// One family the derivation commit proves: where its files are and what they are called.
@@ -130,7 +127,6 @@ struct State {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let project = Project::load(args.config.as_deref(), start)?;
     let at = Context {
-        only: args.only.as_deref(),
         strict: args.strict,
         quiet: args.quiet,
         ..Context::by_hand(SECTION, &project)
@@ -167,13 +163,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .filter(|state| state.unreached)
         .map(|state| finding(state, sibling(&after_states, state)))
         .collect();
-    let judged = after_states
-        .iter()
-        .filter(|state| coverage::in_scope(&state.file, at.only))
-        .count();
+    let judged = after_states.len();
     let unreached = now.len();
     let covered_after = covered(&after, &families);
-    let said = covered_after.coverage(at.only).said(out);
+    let said = covered_after.coverage(None).said(out);
     let evaluator = evaluator();
     let code = evaluator.evaluate(
         now,
@@ -193,7 +186,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         (&after, &families),
         out,
     );
-    base_note(&held_before, at.only, out);
+    base_note(&held_before, out);
     Ok(code)
 }
 
@@ -537,8 +530,7 @@ fn coverage_result(
         })
         .collect();
     let code = coverage::not_measured_said(&unsupported, at, code, out);
-    let lost =
-        covered(after, families).lost(&covered(before, before_families), at.project, at.only);
+    let lost = covered(after, families).lost(&covered(before, before_families), at.project, None);
     let code = coverage::lost_said(&lost, at, code, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
@@ -575,10 +567,10 @@ fn show(values: &Values) -> String {
     }
 }
 
-fn base_note(states: &[&State], only: Option<&[String]>, out: &mut Sink) {
+fn base_note(states: &[&State], out: &mut Sink) {
     let unreached: Vec<&State> = states
         .iter()
-        .filter(|state| state.unreached && coverage::in_scope(&state.file, only))
+        .filter(|state| state.unreached)
         .copied()
         .collect();
     if unreached.is_empty() {
