@@ -176,6 +176,39 @@ fn an_unknown_protocol_version_refuses_and_is_not_read_as_another_host() {
     assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
 }
 
+/// A host that refuses a call the guard itself allowed still leaves a journal line. It is the
+/// only record a person has of why every tool call of that session was blocked.
+#[test]
+fn an_unknown_protocol_version_records_its_refusal_in_the_journal() {
+    let tree = failing();
+    let unknown = json!({
+        "klin_protocol": 2,
+        "event": "pre_tool",
+        "root": tree.root(),
+        "tool": "write_file"
+    });
+
+    let run = feed(tree.root(), &["guard"], &unknown.to_string());
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let lines = journal(&tree);
+    let guards: Vec<&Value> = lines
+        .iter()
+        .filter(|line| line["kind"] == "guard")
+        .collect();
+    assert_eq!(guards.len(), 1, "{lines:?}");
+    assert_eq!(guards[0]["decision"], "deny", "{lines:?}");
+    assert_eq!(guards[0]["reason"], "host-refusal", "{lines:?}");
+}
+
+/// Every line klin appended to this tree's journal, spec 11.4's record.
+fn journal(tree: &Tree) -> Vec<Value> {
+    let text = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    text.lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect()
+}
+
 #[test]
 fn a_named_generic_host_without_a_version_is_refused() {
     let tree = failing();

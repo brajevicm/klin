@@ -2346,7 +2346,10 @@ moves the mark and raises the counter of 6.2 the same way but appends no
 line of its own, because it opens a window and ends no turn. The guard MUST
 append a `guard` line for an `ask` or a `deny`, and MUST append none for an
 `allow`, because the guard runs on every tool call under its 50 millisecond
-budget (13) and an allow tells a reader nothing. `klin turn reset` MUST
+budget (13) and an allow tells a reader nothing. An allow the host refused
+anyway is a `deny` line under the reason `host-refusal`: a custom integration
+on a protocol version klin does not speak refuses every call (9.7), and the
+line is the only record of why the agent is blocked. `klin turn reset` MUST
 append a `reset` line.
 
 The write MUST NOT change a block or a pass: it is best-effort, a failed
