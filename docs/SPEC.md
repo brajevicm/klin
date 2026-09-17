@@ -668,13 +668,9 @@ families, build commands or package structure (ADR 0040). The snapshot flags
 an agent. `init` MUST NOT edit `.gitignore`, because klin writes nothing that
 git could see.
 
-`init --hooks` writes the hook entries for each host it detects, or for the
-host `--host` names, at project scope. `init --hooks --global` writes the
-host's user-level file instead of the tree's own, at user scope: it covers
-every repository the person opens on that machine, and no project file carries
-klin. Section 19.3. The hook file is not guarded (9.4),
-but `init` in any form is a person's command, so the guard refuses this one
-from an agent like it refuses `init` itself.
+`init` carries no host integration. `klin install` owns it, and the `--hooks`,
+`--host` and `--global` flags of `init` are gone (19.3, ADR 0046). A command
+line that names one is a usage error.
 
 `init` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
@@ -2243,8 +2239,8 @@ path. Everything else is `allow`, and a write the guard misses costs nothing,
 because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 
 - `deny`: an edit tool whose path is the configuration or reaches inside the
-  state directory, a redirect onto either, `init` in any form, and `turn
-  reset`. The reason names the file and says a person changes it in a
+  state directory, a redirect onto either, `init` in any form, `install` in
+  any form, and `turn reset`. The reason names the file and says a person changes it in a
   reviewed commit, or names the command a person runs instead: `klin turn
   reset` for the stamp, and `klin cache clean`, which stays open to an agent,
   for the cache. Nothing else denies.
@@ -2266,7 +2262,7 @@ The guard matches no path in a command that holds shell it does not read: an
 unbalanced quote, `$(`, a backtick, `${`, `<<`, a backslash, or a `cd`
 command word. An unbalanced quote allows the whole command, because the
 command then does not say where its arguments end. The other six suppress
-path matching alone. `init` and `turn reset` name no path, so their `deny`
+path matching alone. `init`, `install` and `turn reset` name no path, so their `deny`
 stands behind any of them, and a command substitution in command position is
 a prefix in front of klin's own name.
 
@@ -2861,8 +2857,8 @@ still open:
 `ask` and `klin refused X` for a guard `deny`, where X names the reason tag of
 11.4 (`an edit to klin.json`, `a command that named klin.json`, `an edit to
 klin's own state`, `a command that named klin's own state`, `klin init, which
-only you run`, `klin turn reset, which only you run`, and `a tool call` for a
-tag the binary does not know). A reset reads `You restarted, and N regressions
+only you run`, `klin install, which only you run`, `klin turn reset, which
+only you run`, and `a tool call` for a tag the binary does not know). A reset reads `You restarted, and N regressions
 were set aside.`, or `You told klin to start over.` where it set none aside. An
 `asked-once` regression reads `a test deleted from FILE:LINE, SITE. The agent
 said why.`, where SITE is the declaration line without a trailing `{` or `:`,
@@ -3591,18 +3587,26 @@ green, because deterministic detection is not correct judgement:
   worktree does not spend it, unreadable event never blocks, the verdict is
   written.
 
-- Guard: one test per deny route including `init` and `turn reset`, one per
+- Guard: one test per deny route including `init`, `install` and `turn reset`, one per
   ask route, every reader allowed including `git rev-parse` and `git cat-file`
   on the ref, every file that left the guarded set allowed for both an edit
   and a write, a heredoc opened inside a command substitution allowed, glob
   does not match by empty prefix, quoted pipe does not split, under 50
   milliseconds.
 - Init: plain `init` writes `{}`, `--pin` writes only guardrails and keeps
-  every value a person wrote, `--add` and `--force` are usage errors, never
-  touches `.gitignore`, `--hooks` writes each host's file and leaves an existing
-  entry alone, `--hooks --global` writes the user-scope file and leaves the
-  tree's own untouched, a written line exits 0 when no binary resolves, and a
-  host whose plugin is enabled gets no entries at all.
+  every value a person wrote, `--add`, `--force`, `--hooks`, `--host` and
+  `--global` are usage errors, and it never touches `.gitignore`.
+- Install: the marker lands at the repository root from a nested directory, a
+  marker a person wrote is kept, a host with no evidence is refused with the
+  supported names, a plugin-owned host gets no entries, each host's file
+  carries one entry per event in that host's shape, a stale matcher and a
+  stale command are replaced, a partial install is repaired, a duplicate entry
+  of klin's is removed, an entry of klin's on an event klin no longer writes is
+  removed, another tool's entries survive, a second complete run writes no
+  file, an unreadable host file leaves every file untouched, a written line
+  exits 0 when no binary resolves, `--user` writes the person's own file and
+  no home-directory `klin.json`, and the project form outside a repository is
+  refused.
 - State: default under the git directory, per worktree, `KLIN_STATE_DIR`
   relocates it, two clones never share a stamp, an unwritable directory never
   blocks, `cache clean` removes only klin's files.
@@ -3682,8 +3686,9 @@ Distribution, in this order, because each step depends on the one before:
 - [x] Release pipeline: four binaries and a checksum file per tag (#62)
 - [ ] Install script with `--version`
 - [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
-- [x] `init --hooks` for Codex and its host adapter (#68)
-- [x] `init --hooks` for Cursor and its host adapter (#67)
+- [x] Explicit hooks for Codex and its host adapter (#68)
+- [x] Explicit hooks for Cursor and its host adapter (#67)
+- [x] `klin install`, the standalone integration reconciler (#216)
 - [x] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64). None of them ships,
       and 19.1 records why the spec advertises no install command for them.
@@ -3750,8 +3755,8 @@ The contract uses five scope words, and no others:
   integration contract of section 9.
 
 `global` is too broad a word for a user-scope install, so this contract does
-not use it for one. The `--global` flag of `init --hooks` writes the user
-scope today; #216 owns renaming the flag.
+not use it for one. The CLI uses the same word: `klin install --user` writes
+the user scope, and no flag is called `--global`.
 
 ### 19.1 The binary
 
@@ -3852,7 +3857,7 @@ The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
 Claude Code and Codex CLI emit, so the guard reads edits and MCP calls on both
 hosts. A name missing from this matcher leaves that host's corresponding tool
-call unguarded; a name the host never emits is dead text. `init --hooks` uses
+call unguarded; a name the host never emits is dead text. `klin install` uses
 the same union for both hosts, keeping the standalone route aligned with the
 plugin. ADR 0030 records the decision.
 
@@ -3905,68 +3910,130 @@ baselines, went with ADR 0009. Its second reason is handled by the PATH
 fallback above. A version difference between the wrapper's binary and a CI
 binary is a NOTE per 5.2, not a failure.
 
-### 19.3 The standalone route: hooks in the repository or for one user
+### 19.3 The standalone route: `klin install`
 
 A team may prefer hooks that are committed and covered by CODEOWNERS over the
-plugin of 19.2, and a host surface that loads no plugin has no other route.
-On this route the binary comes from 19.1 and `klin init --hooks` writes:
+plugin of 19.2, and a host surface that loads no plugin has no other route. On
+this route the binary comes from 19.1, and `klin install` is the one command
+that installs and repairs the integration. It is not a second step after a
+native plugin install: a plugin user opts a repository in by committing a
+`klin.json` and installs no binary. ADR 0046 records the decision.
 
-- Cursor's native hooks to `.cursor/hooks.json` at schema version 1, with
-  `sessionStart`, `beforeSubmitPrompt`, `preToolUse`, `beforeShellExecution`,
+`klin install` does three things in one run: it opts the repository in, it
+selects the hosts to serve, and it reconciles the explicit hook files klin
+owns.
+
+**The repository opt-in.** Inside a git repository, `klin install` writes the
+`klin.json` marker at the **repository root** that `git rev-parse
+--show-toplevel` names, and not at the directory the command was run from. So
+a run inside `repo/apps/web` writes `repo/klin.json`. A marker that already
+exists is a person's, and its content MUST be kept whole. Outside a repository
+the project form is refused and names the `--user` form; `--user` outside a
+repository opts no repository in and says so. `--user` MUST NOT write a
+`klin.json` beside the home directory.
+
+**Host selection.** A supported host is a candidate when `--host NAME` names
+it, when the scope holds that host's own configuration directory, or when klin
+can prove that host's native plugin is enabled for that scope. A marker
+directory is evidence of the host and never of the install. Where no host is
+provable and no `--host` is given, the command MUST refuse to guess, and the
+refusal names the supported `--host` values. Where several hosts are provable,
+every one of them is reconciled unless `--host` narrows the run. `--host` may
+be named again for a second host.
+
+**Plugin ownership.** A selected host whose native plugin already supplies
+klin's hooks MUST receive no explicit entries, and the run names the file that
+proves the plugin. The plugin registers the same host events, so a second copy
+of them runs klin twice on every event: two gates race for one turn stamp, and
+the prompt counter of 6.2 moves by two. Each host's adapter knows where that
+host lists its enabled plugins. Claude Code lists them under `enabledPlugins`
+in its settings files: for a repository write klin reads the repository's, the
+local ones beside them and the user's, and for a user write the user's alone,
+because a plugin one repository enables gates that repository and not the
+machine. Codex CLI lists them as `[plugins."klin@<marketplace>"]` tables in
+`config.toml`, on unless the table says `enabled = false`, and klin reads the
+repository's and the user's the same way. Cursor's documented local layout is
+`.cursor/plugins/local/<name>`, and Cursor 3.20.21's observed marketplace
+cache is `.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin
+searches those bounded trees for `.cursor-plugin/plugin.json` named `klin`,
+under the project and the user's home. A repository write is held back the
+same way by a user file that already holds klin's entries, and the run names
+the command that changes them.
+
+**Reconciliation.** The files klin writes are:
+
+- Claude Code's `.claude/settings.json`, with `SessionStart`,
+  `UserPromptSubmit`, `PreToolUse` and `Stop`. `PreToolUse` is the one entry
+  that carries a matcher, the union of 19.2.
+- Codex CLI's `.codex/hooks.json`, in the same nested shape and on the same
+  event names, at turn scope.
+- Cursor's `.cursor/hooks.json` at schema version 1, with `sessionStart`,
+  `beforeSubmitPrompt`, `preToolUse`, `beforeShellExecution`,
   `beforeMCPExecution` and `stop`. `preToolUse` is the one entry that carries
   a matcher, `Write|Edit|Delete`. A shell or MCP event names no tool, so a
   matcher there MUST NOT be written: it would match nothing and gate nothing.
-- Codex CLI reads a `hooks.json` with `PreToolUse`, `UserPromptSubmit` and
-  `Stop` at turn scope. The mapping is one to one with Claude Code's.
 
-`init --hooks` detects a host by the presence of `.claude/`, `.cursor/` or
-`.codex/` at the root, or takes `--host NAME`. It adds klin's entries and
-leaves every other entry alone. It MUST NOT overwrite an entry that already
-calls `klin`. The files are committed, so this is project scope: a teammate
-who clones gets the hooks, and CODEOWNERS SHOULD cover them. The hook file is
-not guarded (9.4), but `init` in any form is refused from an agent, so this
-command is too.
+For each selected host the run MUST bring klin's own entries to the canonical
+contract above, and not merely add what is missing:
+
+- a command klin owns is one that runs the klin binary on `radius`, `guard`
+  or `gate`. A command that runs another klin command, and a command that only
+  mentions klin, is a person's. Claude Code and Codex nest several commands
+  under one entry, so ownership is judged per command and never per entry: a
+  person's command that shares an entry with klin's MUST survive, with its own
+  text, when klin's command is taken out of that entry.
+- a missing canonical entry is added;
+- a klin-owned entry whose command, matcher or event is stale is replaced,
+  including a matcher from before #214;
+- a second klin-owned entry on one event is removed, because two copies run
+  the lifecycle twice;
+- a klin-owned entry on an event klin no longer writes is removed, and an
+  event that removal empties goes with it;
+- every command that is not klin's keeps its text and its order, and an entry
+  left holding no command at all goes;
+- one klin hook in the file MUST NOT be read as a complete install: a partial
+  install is repaired.
+
+This is how a person on the binary route receives a later fix without deleting
+a hook file by hand.
 
 Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
 who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event.
 
-`init --hooks` writes nothing for a host that already runs klin's hooks over
-the file it would write, and names what runs them. Two things run them: a
-plugin, and a user-scope install klin wrote itself, which a host reads
-together with the tree's file. The plugin registers the same host events, so a
-second copy of them runs klin twice on every event: two gates race for one
-turn stamp, and the prompt counter of 6.2 moves by two. Each host's adapter
-knows where that host lists its enabled plugins. Claude Code lists them under
-`enabledPlugins` in its settings files: for a write into a tree klin reads the
-tree's, the local ones beside them and the user's, and for a write into the
-home directory the user's alone, because a plugin one repository enables gates
-that repository and not the machine. Codex CLI lists them as
-`[plugins."klin@<marketplace>"]` tables in `config.toml`, on unless the table
-says `enabled = false`, and klin reads the tree's and the user's the same way.
-Cursor's documented local layout is `.cursor/plugins/local/<name>`, and Cursor
-3.20.21's observed marketplace cache is
-`.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin searches those
-bounded trees for `.cursor-plugin/plugin.json` named `klin`, under the project
-and the user's home. A write into a tree is refused the same way by a user
-file that holds klin's entries.
+**Preflight and partial failure.** One run may touch several files. It MUST
+resolve the repository root, the selected hosts, plugin ownership, every
+target path and every host file's shape before it writes anything, so a
+deterministic error leaves every file as it was. Each owned file is written
+whole, through a neighbour and a rename, so a run that dies partway leaves the
+file it found. It follows a path that is a link, so a settings file kept in a
+dotfiles tree stays a link, and it keeps the permissions the file had. Where a
+filesystem failure still happens after the first write, the output MUST name
+what was written and what was not, and the run MUST NOT print a plain success.
 
-klin replaces a host's settings file whole, through a neighbour and a rename,
-so a run that dies partway leaves the file it found. It follows a path that is
-a link, so a settings file kept in a dotfiles tree stays a link, and it keeps
-the permissions the file had.
+**Scope.** The default is project scope: the files are committed, a teammate
+who clones gets the hooks, and CODEOWNERS SHOULD cover them. `--user` writes
+the host's user-level file instead — `~/.claude/settings.json`,
+`~/.codex/hooks.json`, `~/.cursor/hooks.json`. That write covers every
+repository the person opens on that machine, it is not committed, it does not
+travel with the repository, and this document MUST NOT claim it reaches a
+cloud or remote agent. A person who chooses it accepts that an agent can
+remove the lines. No flag is named `--global` (19.0).
 
-`--global` moves both the detection and the write to the host's user-level
-directory: `~/.claude/settings.json` for Claude Code, `~/.cursor/hooks.json`
-for Cursor, and `~/.codex/hooks.json` for Codex. Everything else is the same,
-so a host with no adapter is refused under `--global` with the message the
-per-tree form gives. That write is user scope: it covers every repository the
-person opens on that machine, it is not committed, it does not travel with the
-repository, and this document MUST NOT claim it reaches a cloud or remote
-agent. A person who chooses it accepts that an agent can remove the lines.
-The flag's name is the one the CLI ships today; #216 owns renaming it to the
-`user` word this contract uses.
+**Output.** A run prints one line per component: the repository marker, and
+each host klin knows with what happened to it — reconciled, already current,
+supplied by the plugin, or not requested. The marker's own line says to commit
+it, because the repository's opt-in travels with the repository at either
+scope. One closing line follows, and it speaks of the host files alone: a run
+that wrote none of them MUST NOT tell a person to commit hooks, and MUST say
+the integration is already current. So a second run over a complete
+installation writes no file and says exactly that. Raw host configuration is
+not printed unless there is an error.
+
+**Guard.** The hook files are not guarded (9.4), but `klin install` writes a
+person's configuration and integration files, so the guard refuses the command
+from an agent exactly as it refuses `klin init` and `klin turn reset`.
 
 ### 19.4 A custom harness
 

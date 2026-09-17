@@ -6,8 +6,9 @@
 ADR 0023 made the Claude Code plugin the whole install for that host: the
 hooks, a skill, two commands, and a wrapper that fetches the pinned release.
 It left Codex CLI on the other route, where a person installs the binary and
-`klin init --hooks --host codex` writes a hook file into the repository. That
-route is three steps and a commit.
+`klin install --host codex` writes a hook file into the repository. That
+route is three steps and a commit. ADR 0046 renamed that command, which was
+`klin init --hooks --host codex` when this decision was taken.
 
 Codex's plugin system turned out to read the same shapes. It looks for a
 manifest at `.codex-plugin/plugin.json` and, failing that, at
@@ -36,7 +37,7 @@ codex plugin marketplace add brajevicm/klin
 codex plugin add klin@klin
 ```
 
-`klin init --hooks --host codex` stays, for a team that wants the hooks
+`klin install --host codex` stays, for a team that wants the hooks
 committed and covered by CODEOWNERS, and for the Codex IDE extension, which
 loads no plugins. It writes nothing when the plugin is enabled. Each host's
 adapter knows where its host lists enabled plugins, because Claude Code keeps

@@ -103,6 +103,8 @@ fn refuses_the_commands_only_a_person_runs() {
         "cd repo && target/debug/klin init --add --config klin.json",
         "klin turn reset",
         "target/debug/klin turn reset",
+        "klin install",
+        "klin install --user --host claude",
     ] {
         denied(&bash(command), command);
     }

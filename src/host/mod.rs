@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-/// One line `init --hooks` writes for a host event. The adapter owns the event names and what
+/// One line `klin install` writes for a host event. The adapter owns the event names and what
 /// each one filters by, so a fourth host adds a table rather than a branch in the writer.
 /// Section 19.3.
 pub struct Hook {
@@ -80,7 +80,7 @@ pub trait Adapter: Sync {
             .map(|hook| hook.event)
             .unwrap_or("")
     }
-    /// The events `init --hooks` writes. Claude Code and Codex share the table; Cursor names
+    /// The events `klin install` writes. Claude Code and Codex share the table; Cursor names
     /// its own events.
     fn hooks(&self) -> &'static [Hook] {
         DEFAULT_HOOKS

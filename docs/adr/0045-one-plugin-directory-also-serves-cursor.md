@@ -4,7 +4,8 @@
 
 ADR 0030 put Claude Code and Codex CLI on one plugin directory,
 `plugins/claude-code`, with two marketplace files, one wrapper, one version pin.
-Cursor was left on the other route: a binary on PATH and `klin init --hooks`.
+Cursor was left on the other route: a binary on PATH and explicit hook files,
+written by `klin install` since ADR 0046.
 
 Cursor's plugin format is not Claude Code's. It reads
 `.cursor-plugin/plugin.json` and a flat `hooks.json` at schema version 1,
@@ -33,7 +34,7 @@ Cursor is a runtime adapter, registered after Codex and before Claude Code,
 because its events also carry Claude Code's fields. It owns the install
 file `.cursor/hooks.json`, the matcher, the decision shape, the stop
 shape, the name of its prompt event, and the tree its events name.
-`init --hooks --host cursor` writes that file when the plugin is not
+`klin install --host cursor` writes that file when the plugin is not
 already installed under `.cursor/plugins`.
 
 Two of Cursor's fields decide behaviour no other host has. Cursor runs a

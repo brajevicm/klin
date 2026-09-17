@@ -116,6 +116,8 @@ enum Runner {
     Gate(gate::Args),
     /// Survey the tree and write the configuration it can say for itself
     Init(init::Args),
+    /// Opt this repository in and reconcile the explicit host hooks klin owns
+    Install(hooks::Args),
     /// Refuse an agent's tool call that would edit the configuration
     Guard(guard::Args),
     /// Remove the cache klin keeps for this tree, or every orphaned one
@@ -175,6 +177,7 @@ fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, config
     match command {
         Runner::Gate(args) => gate::run(args, start, out),
         Runner::Init(args) => init::run(args, start, out),
+        Runner::Install(args) => hooks::run(args, start, out),
         Runner::Guard(args) => Ok(guard::run(args)),
         Runner::Cache(args) => cache::run(args, start, out),
     }

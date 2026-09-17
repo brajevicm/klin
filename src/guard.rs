@@ -30,11 +30,14 @@ const INIT_REFUSAL: &str = "klin: refused — `klin init` writes the configurati
     person runs it, in a reviewed commit.";
 const RESET_REFUSAL: &str = "klin: refused — `klin turn reset` reopens the window a gate \
     failed in. Only a person runs it.";
+const INSTALL_REFUSAL: &str = "klin: refused — `klin install` writes the configuration and \
+    the host's hook files. Only a person runs it, in a reviewed commit.";
 
 /// klin's own subcommands that only a person runs, the reason each is refused, and the
 /// hyphenated tag a journal line names the refusal by. Spec 9.6.
 const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
     (&["init"], INIT_REFUSAL, "init"),
+    (&["install"], INSTALL_REFUSAL, "install"),
     (&["turn", "reset"], RESET_REFUSAL, "turn-reset"),
 ];
 

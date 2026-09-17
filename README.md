@@ -125,7 +125,7 @@ while the agent works     → fast feedback and repair
 before the change merges  → independent verification in CI
 ```
 
-The plugin is the preferred install. A standalone binary plus committed hooks is the fallback, for teams that want to manage the integration themselves.
+The plugin is the preferred install. For teams that manage the integration themselves, `klin install` opts the repository in and writes each host's hook files; a later run repairs them.
 
 ## Conformance levels
 

@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 
 use crate::config::{self, Config, Error};
 use crate::project::Project;
-use crate::{complexity, doc_size, hooks, radius, write};
+use crate::{complexity, doc_size, radius, write};
 
 const FILENAME: &str = "klin.json";
 
@@ -16,30 +16,13 @@ pub struct Args {
     config: Option<PathBuf>,
     /// Write today's complexity ceilings, document ceilings and change radius into the
     /// configuration as policy, and keep every value it already holds
-    #[arg(long, conflicts_with = "hooks")]
-    pin: bool,
-    /// Write the hook entries for the hosts this tree uses, and nothing else
     #[arg(long)]
-    hooks: bool,
-    /// The host whose hook file --hooks writes, instead of the ones this tree names
-    #[arg(long, requires = "hooks")]
-    host: Option<String>,
-    /// Write the hooks to the host's user-level file, so one install covers every repository
-    #[arg(long, requires = "hooks")]
-    global: bool,
+    pin: bool,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let file = wanted(args, start);
     let root = file.parent().unwrap_or(start).to_path_buf();
-    if args.hooks {
-        return hooks::run(
-            &hooks_root(args, &root)?,
-            args.host.as_deref(),
-            args.global,
-            out,
-        );
-    }
     let held = read(&file)?;
     match args.pin {
         true => pin(&file, &root, held, out)?,
@@ -58,21 +41,6 @@ fn opt_in(file: &Path, held: bool, out: &mut String) -> Result<(), Error> {
     write(file, &Map::new())?;
     let _ = writeln!(out, "{}", opted_in(file));
     Ok(())
-}
-
-/// Where `--hooks` reads a host's marker directory and writes its file: this tree, or the
-/// home directory whose files every repository shares. Section 19.3.
-fn hooks_root(args: &Args, root: &Path) -> Result<PathBuf, Error> {
-    if !args.global {
-        return Ok(root.to_path_buf());
-    }
-    std::env::home_dir().ok_or_else(|| {
-        Error(
-            "--global writes the host's user-level file, and this system names no home \
-               directory — run it without --global to write this tree's file"
-                .to_string(),
-        )
-    })
 }
 
 fn already(file: &Path) -> String {

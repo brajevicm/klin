@@ -11,6 +11,7 @@ const ONLY_IN_A_GATE: &[&str] = &["inventory", "lockfile"];
 const TOOLS: &[&str] = &[
     "gate",
     "init",
+    "install",
     "guard",
     "cache",
     "radius",

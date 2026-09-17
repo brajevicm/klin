@@ -48,8 +48,8 @@ fn the_hooks_carry_the_three_commands() {
 
 #[test]
 fn the_cursor_plugin_keeps_the_generated_hook_shape() {
-    let tree = Tree::bare();
-    let run = tree.run(&["init", "--hooks", "--host", "cursor"]);
+    let tree = Tree::new();
+    let run = tree.run(&["install", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let generated = json_file(&tree.path(".cursor/hooks.json"), "generated Cursor hooks");

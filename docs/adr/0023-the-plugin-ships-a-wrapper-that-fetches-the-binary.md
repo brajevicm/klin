@@ -41,5 +41,6 @@ repository that also pins `version` in `klin.json` sees a note when the two
 differ.
 
 Cursor and Codex CLI have no plugin that carries a binary. For them the binary
-comes from an install route and `klin init --hooks` writes the host's hook
-file into the repository, where CODEOWNERS covers it.
+comes from an install route and `klin install` writes the host's hook file
+into the repository, where CODEOWNERS covers it. ADR 0046 renamed that
+command and made it reconcile.
