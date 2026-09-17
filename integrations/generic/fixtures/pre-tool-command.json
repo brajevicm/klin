@@ -1,0 +1,8 @@
+{
+  "klin_protocol": 1,
+  "event": "pre_tool",
+  "root": "/repo",
+  "session": "5f2c1a9e",
+  "tool": "shell",
+  "command": "rm klin.json"
+}

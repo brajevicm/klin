@@ -1,0 +1,7 @@
+{
+  "klin_protocol": 1,
+  "event": "prompt",
+  "root": "/repo",
+  "session": "5f2c1a9e",
+  "prompt": "Make the failing gate green."
+}
