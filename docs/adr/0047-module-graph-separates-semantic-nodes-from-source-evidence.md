@@ -56,6 +56,17 @@ The shared graph has no zero-source synthetic modules. A namespace/package or
 runtime concept with no provable tracked physical source remains external,
 unsupported or a hole.
 
+### Physical coverage remains per source
+
+`ModuleGraph.attached` / `unattached` remain physical-file measurement
+accounting, not semantic-node accounting. A resolver that groups several
+sources into one `Module` marks each physical source it successfully attaches.
+
+Multi-source grouping must therefore not make ten measured package files look
+like one measured graph item for coverage purposes. This preserves the
+existing boundary between semantic dependency topology and file-level
+measurement coverage.
+
 ### A dependency records semantic endpoints and exact physical provenance
 
 A resolved dependency carries:
@@ -112,12 +123,11 @@ A physical dependency site first has to satisfy source scope; its destination
 must be unambiguously inside the scope. Eligible sites then become unique
 semantic endpoint pairs and SCCs run over semantic module nodes.
 
-Thus an out-of-scope file of a multi-source package cannot leak its import into
-the cycle graph, and one unrelated out-of-scope package file does not erase an
-otherwise valid in-scope dependency site.
-
-A mixed destination remains coverage-visible rather than guessed into or out
-of the graph.
+Thus an out-of-scope source file cannot leak its import into the cycle graph,
+while another out-of-scope file of the same **source module** does not erase an
+otherwise valid in-scope dependency site. The destination is different: if
+its own source set crosses the scope boundary it is `Mixed`, so the relation
+remains coverage-visible rather than guessed into or out of the graph.
 
 ### Semantic continuity is established before physical Findings
 
@@ -133,6 +143,12 @@ scope, split/merge topology or ambiguity, the change remains observable.
 materializing ordinary physical `Finding`s. The generic ratchet is not given a
 new universal semantic-identity mechanism unless a concrete implementation
 fixture proves this consumer-local bridge insufficient.
+
+This pairing applies to factual base/current graph evidence. It does **not**
+silently retarget a human-authored accepted entry to another physical source.
+An accepted entry remains explicit reviewed configuration; if its physical
+site no longer exists, the existing unmatched-entry / `--strict` contract
+continues to make that stale acceptance visible.
 
 Existing Rust/TypeScript finding characterization is a compatibility
 constraint.
