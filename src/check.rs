@@ -459,7 +459,7 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: reachability::gate,
         needs: Needs::TheTree,
-        takes_scope: true,
+        takes_scope: false,
         labels: Labels {
             one: "unreferenced file",
             many: "unreferenced files",
