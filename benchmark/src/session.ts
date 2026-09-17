@@ -12,8 +12,13 @@ import type { Workspace } from "./workspace.ts";
  * One headless Claude Code session over one subject workspace.
  *
  * Both arms use the same host, the same flags, the same model and the same production hook
- * lifecycle. Only `KLIN_BENCH_DELIVER` differs, and the hook wrapper is byte-identical in both
- * arms.
+ * lifecycle. The arm reaches the wrapper through the hook command in the plane's settings file,
+ * and the wrapper is byte-identical in both arms.
+ *
+ * Nothing the harness knows reaches the subject's environment. The subject has `Bash`, so it
+ * inherits this process's environment and could read its own arm out of it. Every `KLIN_`
+ * variable is dropped for the same reason: one left over in the operator's own shell would
+ * otherwise name klin's binary, klin's state or the arm.
  */
 
 export interface SessionOptions {
@@ -85,12 +90,27 @@ function flagsFor(workspace: Workspace, sessionId: string, options: SessionOptio
   ];
 }
 
-/** Run the agent over one workspace. `deliver` is the treatment: klin's answer reaches the
- * agent, or it does not. */
+/**
+ * Every variable of `process.env` less the ones klin and this harness use.
+ *
+ * A behaviour test and a subject session both get this: nothing the harness or klin set may reach
+ * the process that decides whether the requested behaviour is correct, and nothing may reach a
+ * subject that could tell it which arm it is in.
+ */
+export function withoutKlin(): NodeJS.ProcessEnv {
+  const kept: NodeJS.ProcessEnv = {};
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!name.startsWith("KLIN_")) {
+      kept[name] = value;
+    }
+  }
+  return kept;
+}
+
+/** Run the agent over one workspace. The treatment is in the workspace's settings, not here. */
 export function run(
   workspace: Workspace,
   prompt: string,
-  deliver: boolean,
   options: SessionOptions,
   configDir = "",
 ): SessionResult {
@@ -107,11 +127,7 @@ export function run(
     timeout: options.timeoutMs,
     maxBuffer: 64 * 1024 * 1024,
     env: {
-      ...process.env,
-      KLIN_BIN: options.klinBin,
-      KLIN_STATE_DIR: workspace.state,
-      KLIN_BENCH_HOOKS: workspace.hooks,
-      KLIN_BENCH_DELIVER: deliver ? "1" : "0",
+      ...withoutKlin(),
       ...(configDir === "" ? {} : { CLAUDE_CONFIG_DIR: configDir }),
     },
   });
@@ -146,6 +162,40 @@ function eventOf(payload: string): string {
   }
 }
 
+/**
+ * The keys of a tool input that hold a path.
+ *
+ * Nothing else is kept. A `Write` carries the file's whole content and an `Edit` carries the text
+ * it replaces, and a moved TypeScript file's own `import "../socket"` would read as a path out of
+ * the workspace if either were scanned. Keeping only these also keeps the record small and holds
+ * none of the subject's prose.
+ */
+const PATH_KEYS = ["command", "file_path", "notebook_path", "path"];
+
+/**
+ * The tool a payload names, and the paths its input holds.
+ *
+ * The guard event carries what the agent asked to do. It is the harness's only record of the
+ * subject's own tool calls, and `integrity.stayedInside` reads it to say whether the subject went
+ * looking outside its repository. A tool klin's production matcher does not cover raises no hook,
+ * so `Read`, `Glob` and `Grep` leave nothing here.
+ */
+function toolOf(payload: string): { tool: string; paths: string } {
+  try {
+    const held = JSON.parse(payload) as Record<string, unknown>;
+    const input = (held.tool_input ?? {}) as Record<string, unknown>;
+    return {
+      tool: String(held.tool_name ?? ""),
+      paths: PATH_KEYS.filter((key) => typeof input[key] === "string")
+        .map((key) => input[key] as string)
+        .join(" ")
+        .slice(0, 4000),
+    };
+  } catch {
+    return { tool: "", paths: "" };
+  }
+}
+
 function slurp(file: string): string {
   return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
 }
@@ -169,9 +219,12 @@ export function hookEvidence(directory: string): HookInvocation[] {
       const kept = path.join(directory, name);
       const payload = slurp(path.join(kept, "payload.json"));
       const status = slurp(path.join(kept, "status")).trim();
+      const asked = toolOf(payload);
       return {
         order,
         event: eventOf(payload),
+        tool: asked.tool,
+        paths: asked.paths,
         arguments: slurp(path.join(kept, "arguments")).trim(),
         status: Number(status),
         delivered: slurp(path.join(kept, "deliver")).trim() === "1",
@@ -190,7 +243,7 @@ export function stats(repo: string, state: string, klinBin: string, scope: strin
   const ran = spawnSync(klinBin, ["stats", "--json", ...scope], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, KLIN_STATE_DIR: state },
+    env: { ...withoutKlin(), KLIN_STATE_DIR: state },
   });
   try {
     return JSON.parse(ran.stdout ?? "");

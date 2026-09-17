@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
 
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 

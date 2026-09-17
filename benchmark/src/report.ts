@@ -51,6 +51,25 @@ function counts(held: RunRecord[]): string[][] {
     ]);
 }
 
+/**
+ * Cells whose two arms named different models.
+ *
+ * The host names its housekeeping model beside the session's, and an arm that needed no
+ * housekeeping names fewer for a legitimate reason. So this is reported and `verify` does not
+ * fail the cell for it, unlike every other frozen variable.
+ */
+function modelDrift(held: RunRecord[]): string {
+  const byCell = new Map<string, Set<string>>();
+  for (const record of held) {
+    const key = record.family + "/" + record.variant;
+    byCell.set(key, new Set([...(byCell.get(key) ?? []), record.model.reported ?? "none"]));
+  }
+  const drifted = [...byCell].filter(([, named]) => named.size > 1);
+  return drifted.length === 0
+    ? "Every cell's arms named one set of models."
+    : drifted.map(([key, named]) => "- " + key + ": " + [...named].join(" against ")).join("\n");
+}
+
 export function write(directory: string): string {
   const held = records(directory);
   const problems = verify(directory);
@@ -98,6 +117,10 @@ export function write(directory: string): string {
     problems.length === 0
       ? "Every record holds the protocol's contract."
       : problems.map((one) => "- " + one).join("\n"),
+    "",
+    "## Where the arms named different models",
+    "",
+    modelDrift(held),
     "",
     "## Challenge exposure, for the later round's floor",
     "",

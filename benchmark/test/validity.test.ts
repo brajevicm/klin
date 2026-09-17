@@ -8,7 +8,7 @@ import { outcomeOf, validity, sourceCommit } from "../src/trial.ts";
 import { verify } from "../src/calibrate.ts";
 import { write as reportOf } from "../src/report.ts";
 import * as paths from "../src/paths.ts";
-import type { Check } from "../src/integrity.ts";
+import type { Check } from "../src/record.ts";
 import type { SessionResult } from "../src/session.ts";
 import type { Judgement } from "../src/oracle.ts";
 
@@ -127,6 +127,8 @@ test("a session the harness killed carries no product outcome", () => {
     {
       order: 0,
       event: "PreToolUse",
+      tool: "Edit",
+      paths: "src/store.rs",
       arguments: "guard",
       status: 0,
       delivered: true,
@@ -215,7 +217,8 @@ function setOf(where: string, runs: Record<string, unknown>[]): string {
     fs.mkdirSync(into, { recursive: true });
     fs.writeFileSync(
       path.join(into, "record.json"),
-      JSON.stringify({ ...held, protocol: paths.PROTOCOL, ...over }) + "\n",
+      JSON.stringify({ ...held, protocol: paths.PROTOCOL, trialId: "t" + String(index), ...over }) +
+        "\n",
     );
   });
   fs.writeFileSync(
@@ -303,6 +306,149 @@ test("the calibration report tells an invalid run from a valid one", () => {
     report,
     /Valid Shadow risk runs: 0/,
     "an invalid run measured apparatus, so it is no challenge evidence",
+  );
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+/** Two arms of one cell, alike in everything a paired cell is compared on. */
+function pair(over: Record<string, unknown>[]): Record<string, unknown>[] {
+  const alike = {
+    ...WORKED,
+    klin: { commit: "abc", version: "klin 0.2.0", binarySha256: "cafe" },
+    harness: { commit: "abc", dirty: false, treeSha256: "beef" },
+    agent: { wiringSha256: "w1", wrapperSha256: "w2" },
+    model: { requested: "sonnet", reported: "sonnet" },
+    host: {
+      name: "claude-code",
+      version: "2.1.0",
+      flags: ["--model", "sonnet", "--session-id", "u1", "--settings", "/plane/t0/settings.json"],
+      flagsSha256: "f",
+      isolatedConfiguration: false,
+      memory: null,
+    },
+  };
+  return over.map((one, index) => ({ ...alike, arm: index === 0 ? "active" : "shadow", ...one }));
+}
+
+test("a paired cell alike in every frozen variable raises nothing", () => {
+  const where = room();
+  const problems = verify(setOf(where, pair([{}, {}])));
+  assert.deepEqual(
+    problems.filter((one) => one.includes("did not share")),
+    [],
+    "verify said: " + problems.join(" / "),
+  );
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a paired cell whose arms ran different klin binaries fails", () => {
+  const where = room();
+  const problems = verify(
+    setOf(where, pair([{}, { klin: { commit: "abc", version: "klin 0.2.0", binarySha256: "other" } }])),
+  );
+  assert.ok(
+    problems.some((one) => one.includes("the klin binary")),
+    "verify said: " + problems.join(" / "),
+  );
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a paired cell whose arms differ in host version, model or memory fails", () => {
+  const cases: [string, Record<string, unknown>][] = [
+    ["the host version", { host: { ...(pair([{}])[0].host as object), version: "9.9.9" } }],
+    ["the requested model", { model: { requested: "opus", reported: "sonnet" } }],
+    [
+      "the user memory",
+      { host: { ...(pair([{}])[0].host as object), memory: { sha256: "zz", bytes: 3 } } },
+    ],
+  ];
+  for (const [what, over] of cases) {
+    const where = room();
+    const problems = verify(setOf(where, pair([{}, over])));
+    assert.ok(
+      problems.some((one) => one.includes(what)),
+      what + ": verify said " + problems.join(" / "),
+    );
+    fs.rmSync(where, { recursive: true, force: true });
+  }
+});
+
+test("the session id and the settings path are not frozen variables", () => {
+  const where = room();
+  const problems = verify(
+    setOf(
+      where,
+      pair([
+        {},
+        {
+          host: {
+            ...(pair([{}])[0].host as object),
+            flags: [
+              "--model",
+              "sonnet",
+              "--session-id",
+              "a-different-uuid",
+              "--settings",
+              "/plane/t1/settings.json",
+            ],
+          },
+        },
+      ]),
+    ),
+  );
+  assert.deepEqual(
+    problems.filter((one) => one.includes("the host flags")),
+    [],
+    "both differ between any two trials by construction: " + problems.join(" / "),
+  );
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a host flag that is not the session id or the settings path is frozen", () => {
+  const where = room();
+  const problems = verify(
+    setOf(where, pair([{}, { host: { ...(pair([{}])[0].host as object), flags: ["--model", "opus"] } }])),
+  );
+  assert.ok(
+    problems.some((one) => one.includes("the host flags")),
+    "verify said: " + problems.join(" / "),
+  );
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("arms that named different models are reported and the cell is not failed", () => {
+  const where = room();
+  const set = setOf(where, pair([{}, { model: { requested: "sonnet", reported: "sonnet, haiku" } }]));
+  assert.deepEqual(
+    verify(set).filter((one) => one.includes("did not share")),
+    [],
+    "a housekeeping model an arm did not need is a legitimate difference",
+  );
+  assert.match(reportOf(set), /sonnet against sonnet, haiku|sonnet, haiku against sonnet/);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("verify names a subject that went looking outside its workspace", () => {
+  const where = room();
+  const problems = verify(
+    setOf(where, [
+      {
+        ...WORKED,
+        isolation: {
+          workspace: { verified: true, checks: [] },
+          freshness: { verified: true, checks: [] },
+          outside: {
+            name: "no-tool-call-outside-the-workspace",
+            passed: false,
+            detail: "Bash ../h/0003-9918/stdout",
+          },
+        },
+      },
+    ]),
+  );
+  assert.ok(
+    problems.some((one) => one.includes("outside its workspace")),
+    "verify said: " + problems.join(" / "),
   );
   fs.rmSync(where, { recursive: true, force: true });
 });

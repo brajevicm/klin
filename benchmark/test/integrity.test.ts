@@ -7,12 +7,32 @@ import { family } from "../src/catalogue.ts";
 import * as integrity from "../src/integrity.ts";
 import * as workspace from "../src/workspace.ts";
 import { files } from "../src/trees.ts";
+import type { Check, Isolation } from "../src/record.ts";
 
 function room(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-integrity-"));
 }
 
-function named(isolation: integrity.Isolation, name: string): integrity.Check {
+const KLIN = "/opt/klin/klin";
+
+/** One trial, with a plane of its own. `clear` removes both halves. */
+function laid(familyName: string, variantName: "risk" | "control", id: string, deliver = true) {
+  const plane = path.join(room(), "plane");
+  const place = workspace.materialize(
+    family(familyName).variants[variantName],
+    id,
+    plane,
+    KLIN,
+    deliver,
+  );
+  const clear = (): void => {
+    fs.rmSync(place.root, { recursive: true, force: true });
+    fs.rmSync(plane, { recursive: true, force: true });
+  };
+  return { place, plane, clear };
+}
+
+function named(isolation: Isolation, name: string): Check {
   const one = isolation.checks.find((check) => check.name === name);
   assert.ok(one, "no check named " + name);
   return one;
@@ -105,31 +125,44 @@ test("a control plane inside the workspace is refused", () => {
 });
 
 test("materializing a trial gives a fresh repository, state and session store", () => {
-  const variant = family("stubs").variants.risk;
-  const place = workspace.materialize(variant, "selftest-fresh");
+  const { place, clear } = laid("stubs", "risk", "selftest-fresh");
   const judged = integrity.freshness(place.repo, place.state, "", place.commits);
   assert.equal(judged.verified, true, JSON.stringify(judged.checks));
   assert.equal(place.commits, 1);
   assert.ok(fs.existsSync(path.join(place.repo, "klin.json")));
   assert.ok(fs.existsSync(place.settings));
   assert.ok(!fs.existsSync(path.join(place.repo, ".claude")));
-  fs.rmSync(place.root, { recursive: true, force: true });
+  clear();
+});
+
+test("the repository is the only thing in its own parent directory", () => {
+  const { place, clear } = laid("stubs", "risk", "selftest-alone");
+  assert.deepEqual(
+    fs.readdirSync(place.root),
+    ["repo"],
+    "an ls of the subject's parent must reach nothing the harness owns",
+  );
+  for (const held of [place.hook, place.settings, place.state, place.hooks]) {
+    assert.ok(
+      !held.startsWith(place.root),
+      held + " sits beside the subject, one ls away from it",
+    );
+  }
+  clear();
 });
 
 test("a second trial over the same family starts from the same tree", () => {
-  const variant = family("stubs").variants.risk;
-  const one = workspace.materialize(variant, "selftest-one");
-  const two = workspace.materialize(variant, "selftest-two");
-  assert.equal(one.treeSha256, two.treeSha256);
-  assert.notEqual(one.root, two.root);
-  assert.notEqual(one.state, two.state);
-  fs.rmSync(one.root, { recursive: true, force: true });
-  fs.rmSync(two.root, { recursive: true, force: true });
+  const one = laid("stubs", "risk", "selftest-one");
+  const two = laid("stubs", "risk", "selftest-two");
+  assert.equal(one.place.treeSha256, two.place.treeSha256);
+  assert.notEqual(one.place.root, two.place.root);
+  assert.notEqual(one.place.state, two.place.state);
+  one.clear();
+  two.clear();
 });
 
 test("the host settings point every event at the wrapper and live outside the workspace", () => {
-  const variant = family("stubs").variants.control;
-  const place = workspace.materialize(variant, "selftest-settings");
+  const { place, clear } = laid("stubs", "control", "selftest-settings");
   const settings = JSON.parse(fs.readFileSync(place.settings, "utf8")) as {
     hooks: Record<string, { hooks: { command: string }[] }[]>;
   };
@@ -147,36 +180,61 @@ test("the host settings point every event at the wrapper and live outside the wo
     }
   }
   assert.ok(!place.settings.startsWith(place.repo));
-  fs.rmSync(place.root, { recursive: true, force: true });
+  clear();
 });
 
 test("the arms differ in nothing a workspace can read", () => {
-  const variant = family("lockfile").variants.risk;
-  const active = workspace.materialize(variant, "selftest-active");
-  const shadow = workspace.materialize(variant, "selftest-shadow");
-  assert.equal(active.treeSha256, shadow.treeSha256);
-  assert.equal(
-    fs.readFileSync(active.hook, "utf8"),
-    fs.readFileSync(shadow.hook, "utf8"),
-    "the wrapper must be one file in both arms",
+  const active = laid("lockfile", "risk", "selftest-active", true);
+  const shadow = laid("lockfile", "risk", "selftest-shadow", false);
+  assert.equal(active.place.treeSha256, shadow.place.treeSha256);
+  assert.deepEqual(
+    fs.readFileSync(active.place.hook),
+    fs.readFileSync(shadow.place.hook),
+    "the wrapper must be one file in both arms, byte for byte",
   );
-  fs.rmSync(active.root, { recursive: true, force: true });
-  fs.rmSync(shadow.root, { recursive: true, force: true });
+  assert.notEqual(
+    fs.readFileSync(active.place.settings, "utf8"),
+    fs.readFileSync(shadow.place.settings, "utf8"),
+    "the arm is in the settings, which sit in the plane and not beside the subject",
+  );
+  assert.equal(
+    workspace.wiringSha256(active.place.settings, active.place.plane),
+    workspace.wiringSha256(shadow.place.settings, shadow.place.plane),
+    "the digest names the plane and the arm, so two arms of one cell must match",
+  );
+  for (const one of [active, shadow]) {
+    assert.deepEqual(fs.readdirSync(one.place.root), ["repo"]);
+  }
+  active.clear();
+  shadow.clear();
+});
+
+test("the wiring digest attests the settings file's own bytes", () => {
+  const { place, clear } = laid("lockfile", "risk", "selftest-wiring");
+  const before = workspace.wiringSha256(place.settings, place.plane);
+  const edited = fs
+    .readFileSync(place.settings, "utf8")
+    .replace('"timeout": 900', '"timeout": 5');
+  fs.writeFileSync(place.settings, edited);
+  assert.notEqual(
+    workspace.wiringSha256(place.settings, place.plane),
+    before,
+    "a hand-edited Stop timeout must change the digest, or a paired cell could not catch it",
+  );
+  clear();
 });
 
 test("a trial that shares the operator's host configuration says so and is not refused", () => {
-  const variant = family("stubs").variants.risk;
-  const place = workspace.materialize(variant, "selftest-shared-config");
+  const { place, clear } = laid("stubs", "risk", "selftest-shared-config");
   const judged = integrity.freshness(place.repo, place.state, "", place.commits);
   assert.equal(judged.verified, true);
   assert.match(named(judged, "fresh-host-configuration").detail, /shares the operator's/);
-  fs.rmSync(place.root, { recursive: true, force: true });
+  clear();
 });
 
 test("a trial given its own host configuration is refused when that is not fresh", () => {
   const where = room();
-  const variant = family("stubs").variants.risk;
-  const place = workspace.materialize(variant, "selftest-own-config");
+  const { place, clear } = laid("stubs", "risk", "selftest-own-config");
   const config = path.join(where, "config");
   fs.mkdirSync(config, { recursive: true });
   assert.equal(
@@ -193,5 +251,5 @@ test("a trial given its own host configuration is refused when that is not fresh
     "a directory another trial left behind is not fresh",
   );
   fs.rmSync(where, { recursive: true, force: true });
-  fs.rmSync(place.root, { recursive: true, force: true });
+  clear();
 });

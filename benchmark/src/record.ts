@@ -1,5 +1,4 @@
 import * as paths from "./paths.ts";
-import type { Check } from "./integrity.ts";
 
 /**
  * The machine run record.
@@ -11,6 +10,25 @@ import type { Check } from "./integrity.ts";
  * The record holds no hidden chain of thought. It holds the agent's final result text, the hook
  * evidence, the oracle's answers and the facts `klin stats --json` reports.
  */
+
+/**
+ * One named thing a trial was held to, passed or failed, with the sentence that says why.
+ *
+ * `integrity.ts` produces these and `trial.ts` collects them. The type lives here because the
+ * record is what they are for: `record.schema.json` defines the same shape as `$defs/check`, and
+ * a module that produces one should not own the contract it satisfies.
+ */
+export interface Check {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
+/** A group of checks and whether every one of them passed. `$defs/isolation` in the schema. */
+export interface Isolation {
+  verified: boolean;
+  checks: Check[];
+}
 
 export interface Signal {
   identity: string;
@@ -35,6 +53,10 @@ export interface Signal {
 export interface HookInvocation {
   order: number;
   event: string;
+  /** The tool the agent asked for, where the event carries one. */
+  tool: string;
+  /** The paths that tool's input held. `integrity.stayedInside` reads it and nothing else does. */
+  paths: string;
   arguments: string;
   status: number;
   delivered: boolean;
@@ -68,7 +90,7 @@ export interface RunRecord {
     memory: { sha256: string; bytes: number } | null;
   };
   model: { requested: string; reported: string | null };
-  agent: { configSha256: string; configurationDigest: string };
+  agent: { wiringSha256: string; wrapperSha256: string };
   startedAt: string;
   endedAt: string;
   wallMs: number;
@@ -94,7 +116,7 @@ export interface RunRecord {
   stats: unknown;
   activity: { klinMs: number | null };
   turns: number | null;
-  isolation: { workspace: unknown; freshness: unknown };
+  isolation: { workspace: Isolation; freshness: Isolation; outside: Check };
 }
 
 const REQUIRED = [

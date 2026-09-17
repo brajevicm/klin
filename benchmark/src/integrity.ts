@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { files, read } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
+import type { Check, HookInvocation, Isolation } from "./record.ts";
 
 /**
  * Subject-workspace isolation.
@@ -11,17 +12,6 @@ import type { Variant } from "./catalogue.ts";
  * metadata and no expected shortcut, and no path leads from the workspace into the control
  * plane.
  */
-
-export interface Check {
-  name: string;
-  passed: boolean;
-  detail: string;
-}
-
-export interface Isolation {
-  verified: boolean;
-  checks: Check[];
-}
 
 /**
  * The overlay whose files must never reach a subject workspace.
@@ -45,9 +35,11 @@ function inside(outer: string, inner: string): boolean {
  * Every word a subject workspace must not carry, as a whole word, in a path or in a file.
  *
  * The list names the family, the gate it targets and the detector that scores it, so a fixture
- * can never name its own expected failure mode. It also names the control plane's own words. The
- * arm is not on the list because the harness never writes the arm into a workspace: the
- * `control-plane-outside-workspace` check is what holds that.
+ * can never name its own expected failure mode. It also names the control plane's own words.
+ *
+ * The arm is not on the list, because the arm is no longer a word anywhere a workspace could
+ * carry it. It reaches the wrapper as an argument of the hook command in the plane's settings
+ * file, and `control-plane-outside-workspace` is what holds the plane out of reach.
  */
 export function forbidden(variant: Variant, gate: string, control: string): string[] {
   return [
@@ -60,7 +52,6 @@ export function forbidden(variant: Variant, gate: string, control: string): stri
       "calibration",
       "oracle",
       "shortcut",
-      "KLIN_BENCH_DELIVER",
       control,
     ]),
   ];
@@ -202,6 +193,71 @@ export function sameConfiguration(configurations: Map<string, string>): Check {
     "one configuration across every family",
     distinct.size === 1,
     distinct.size === 1 ? "every family ships one klin.json" : named.join(", ") + " differ",
+  );
+}
+
+/** Every path-shaped word of a shell command or a tool input. */
+const WORDS = /[^\s"'`;|&()<>{}=]+/g;
+
+/** A path with its symbolic links resolved, or the path itself where it does not exist. */
+function real(one: string): string {
+  try {
+    return fs.realpathSync(one);
+  } catch {
+    return one;
+  }
+}
+
+/**
+ * Whether the subject kept to its own repository.
+ *
+ * Neither fix in #240 closes the general case. The subject runs as the same operating-system user
+ * as the harness, so it can read any path it can name, and `ps` on its own parent names the
+ * settings file. This check does not prevent that. It records whether the subject tried, so
+ * contamination is a measured fact and not an assumption.
+ *
+ * `watched` is what the harness owns: this trial's plane, the root every workspace is
+ * materialized under, and klin's own repository. A word that resolves into one of those is a
+ * probe. A word that resolves anywhere else, `/usr/bin/env` or `/bin/sh`, is neither, so an
+ * ordinary command does not read as contamination.
+ *
+ * The repository's own parent is allowed beside the repository. It holds the repository and
+ * nothing else, so a word that climbs one level reaches nothing, and a moved file's `../` import
+ * or a test run from a subdirectory would otherwise fail a clean set. Climbing past it reaches
+ * the other trials' workspaces, and that is a probe.
+ *
+ * Every path is resolved through its symbolic links first. On darwin `os.tmpdir()` is
+ * `/var/folders`, a link to `/private/var/folders`, and a subject's own `pwd` reports the second
+ * form, so a probe built from it would match neither root otherwise.
+ *
+ * It sees the tool calls klin's production matcher covers, which is every `Bash` command and
+ * every write. A `Read`, `Glob` or `Grep` raises no hook and leaves nothing to read here.
+ */
+export function stayedInside(hooks: HookInvocation[], repo: string, watched: string[]): Check {
+  const allowed = [real(repo), real(path.dirname(repo))];
+  const roots = watched.map(real);
+  const probes: string[] = [];
+  for (const hook of hooks) {
+    for (const word of hook.paths.match(WORDS) ?? []) {
+      if (!word.startsWith("/") && !word.includes("..")) {
+        continue;
+      }
+      const landed = real(path.resolve(repo, word));
+      if (allowed.some((one) => inside(one, landed))) {
+        continue;
+      }
+      if (roots.some((one) => inside(one, landed))) {
+        probes.push(hook.tool + " " + word);
+      }
+    }
+  }
+  const found = [...new Set(probes)];
+  return check(
+    "no-tool-call-outside-the-workspace",
+    found.length === 0,
+    found.length === 0
+      ? "every tool call the guard saw named a path inside the workspace"
+      : found.join(", "),
   );
 }
 

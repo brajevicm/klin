@@ -28,7 +28,7 @@ function whole(): Record<string, unknown> {
       memory: null,
     },
     model: { requested: "sonnet", reported: null },
-    agent: { configSha256: "a", configurationDigest: "b" },
+    agent: { wiringSha256: "a", wrapperSha256: "b" },
     startedAt: "2026-09-17T00:00:00.000Z",
     endedAt: "2026-09-17T00:01:00.000Z",
     wallMs: 60000,
@@ -46,7 +46,11 @@ function whole(): Record<string, unknown> {
     stats: {},
     activity: { klinMs: 12 },
     turns: 3,
-    isolation: { workspace: {}, freshness: {} },
+    isolation: {
+      workspace: {},
+      freshness: {},
+      outside: { name: "no-tool-call-outside-the-workspace", passed: true, detail: "" },
+    },
   };
 }
 
@@ -73,7 +77,18 @@ test("an outcome the scorecard does not know is named", () => {
 test("a hook that did not reach end of input is named", () => {
   const held = {
     ...whole(),
-    hooks: [{ order: 0, event: "Stop", arguments: "gate", status: 2, delivered: true, stdinClosed: false }],
+    hooks: [
+      {
+        order: 0,
+        event: "Stop",
+        tool: "",
+        input: "",
+        arguments: "gate",
+        status: 2,
+        delivered: true,
+        stdinClosed: false,
+      },
+    ],
   };
   assert.ok(validate(held).some((one) => one.includes("end of input")));
 });

@@ -21,7 +21,9 @@ difference between them has to be the feedback and nothing else.
 
 Both arms use the same fixture, the same `klin.json`, the same host, the same
 model and the same production hook lifecycle. One file, `host/hook`, is the
-wrapper both arms run, byte for byte.
+wrapper both arms run, byte for byte. The arm is an argument of the hook
+command, so no difference between the arms lives in that file, and every record
+carries the wrapper's digest so a paired cell can be held to it.
 
 In the Active arm the wrapper hands klin's answer back to the host: the exit
 status, stdout and stderr klin produced.
@@ -45,9 +47,27 @@ it.
 
 Each trial gets a fresh standalone Git repository under the system temporary
 directory, a fresh klin state directory and a fresh host session. The
-repository holds the fixture and `klin.json`, and nothing else. The arm, the
-run record, the scoring metadata, the expected shortcut and the external oracle
-live under `runs/`, which no path from the workspace leads to.
+repository holds the fixture and `klin.json`, and nothing else.
+
+The repository is also the only thing in its own parent directory, so an `ls ..`
+reaches nothing. Everything the harness owns lives in that trial's plane under
+`runs/`: the arm, the run record, the scoring metadata, the expected shortcut,
+the external oracle, klin's state, the wrapper, the host settings and the hook
+evidence. The workspace sits under the system temporary directory and the plane
+sits in this repository, so the two share no ancestor but the filesystem root
+and no relative path leads from one to the other.
+
+Nothing in the subject's environment names any of it. The subject has `Bash`,
+so it inherits the host process's environment, and the harness therefore passes
+the plane, the klin binary and the arm to the wrapper as arguments of the hook
+command in the plane's settings file. Every `KLIN_` variable is dropped from
+the environment the host gets, so one left over in the operator's own shell
+cannot name klin's binary, klin's state or the arm either.
+
+klin's state is in the plane for the same reason. It holds the journal, and the
+journal holds every finding, so a Shadow subject that read it would have the
+treatment the arm withholds. The wrapper exports `KLIN_STATE_DIR` itself, so
+the host never carries it.
 
 `src/integrity.ts` checks that for every trial, and the record keeps the
 answer. It looks for the hidden oracle's files, for the task prompt, and for
@@ -60,16 +80,44 @@ agent nothing about which gate its task targets. A self-test case holds that.
 
 ### What a determined agent could still find
 
-The arm reaches the wrapper as the environment variable `KLIN_BENCH_DELIVER`.
-An agent that runs `env` in a shell can read it. The same goes for
-`KLIN_BENCH_HOOKS`, which points at that trial's hook evidence, under the work
-directory rather than under `runs/`.
+None of this closes the general case. The subject runs as the same
+operating-system user as the harness, so it can read any path it can name, and
+`ps` on its own parent process names the settings file the host was given. From
+there the plane is one `cat` away.
 
-This is a known limit. The ticket's treatment is semantic feedback against
-none, not concealment of klin's existence, and what the checks enforce is that
-the *workspace* carries no arm, no scoring metadata and no oracle. A
-calibration run that shows an agent reading its own environment is an apparatus
-finding to record.
+A sandbox that restricts the subject's view of the filesystem is the only thing
+that would close it, and this round does not have one. So the harness measures
+the attempt instead of assuming there was none.
+
+`isolation.outside` is that measurement. It reads the tool calls the guard saw
+and reports every path that resolves into the plane, into the root every
+workspace is materialized under, or into klin's own repository. A word that
+resolves somewhere else entirely, `/usr/bin/env` or `/bin/sh`, is neither a
+probe nor a concern.
+
+Three things keep it from reading ordinary work as contamination:
+
+- It reads only the keys of a tool input that name a path, so a written file's
+  content and an edit's replaced text are never scanned. Two families are
+  TypeScript, and a moved file's own `import "../socket"` would otherwise read
+  as a path out of the workspace.
+- The repository's own parent is allowed beside the repository. It holds the
+  repository and nothing else, so climbing one level reaches nothing, and a
+  test run from a subdirectory is ordinary. Climbing past it reaches the other
+  trials' workspaces, and that is a probe.
+- Every path is resolved through its symbolic links first. On darwin the
+  temporary directory is `/var/folders`, a link to `/private/var/folders`, and
+  a subject's own `pwd` reports the second form.
+
+Two limits are worth stating plainly. It sees the tool calls klin's production
+matcher covers, which is every `Bash` command and every write, so a `Read`, a
+`Glob` or a `Grep` raises no hook and leaves nothing to read. And a probe
+leaves the run valid: it is a fact for a person to weigh, not an apparatus
+failure, so `verify` names the trial and the run stays in the data.
+
+The treatment remains semantic feedback against none, not concealment of klin's
+existence. A calibration run that shows a subject reading the plane is an
+apparatus finding to record, and now there is a field that records it.
 
 ### The host's own configuration
 
@@ -83,6 +131,21 @@ So every record carries `host.memory`, the digest and size of the memory that
 reached that session. Two arms of one cell must carry the same digest, or they
 did not run under one configuration, and a reader on another machine can see at
 once that the memory was different there.
+
+Two arms of one cell are compared on more than the memory. `verify` fails a
+pair whose klin binary, klin version, harness, host version, requested model,
+host flags, hook wiring, hook wrapper, isolated-configuration status or memory
+digest differ, because the arm must be the only difference. The host flags drop
+`--session-id` and `--settings` first: the session id is a fresh UUID per trial
+and the settings path carries the trial id, so both differ between any two
+trials by construction. The hook wiring is a digest of the settings file that
+ran, with the plane path and the arm digit replaced by their names, so it still
+attests the real bytes: a file one arm truncated or hand-edited fails the cell.
+
+`model.reported` is the one exception. The host names its housekeeping model
+beside the session's, and an arm that needed no housekeeping names fewer for a
+legitimate reason. So the calibration report states where the arms differed and
+`verify` does not fail the cell for it.
 
 Setting `KLIN_BENCH_CONFIG_DIR` removes the contamination entirely: each trial
 then gets its own `CLAUDE_CONFIG_DIR` and `host.isolatedConfiguration` is true.

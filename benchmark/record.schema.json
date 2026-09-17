@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/brajevicm/klin/benchmark/record.schema.json",
-  "title": "klin Shadow/Active benchmark run record, version 2",
+  "title": "klin Shadow/Active benchmark run record, version 3",
   "description": "One trial, completely enough for the later scorecard to be computed without reading terminal text. The record holds no hidden chain of thought.",
   "type": "object",
   "additionalProperties": false,
@@ -39,7 +39,7 @@
   ],
   "properties": {
     "protocol": {
-      "const": 2,
+      "const": 3,
       "description": "The benchmark protocol version."
     },
     "kind": {
@@ -223,17 +223,18 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "configSha256",
-        "configurationDigest"
+        "wiringSha256",
+        "wrapperSha256"
       ],
+      "description": "The host wiring the trial ran under, by digest, in a form two arms of one cell must share.",
       "properties": {
-        "configSha256": {
+        "wiringSha256": {
           "type": "string",
-          "description": "A hash of the host settings file the trial ran under."
+          "description": "The settings file with the plane path and the arm replaced by their names, so what is compared is the hook table, the matcher, the timeouts and the binary the wrapper runs."
         },
-        "configurationDigest": {
+        "wrapperSha256": {
           "type": "string",
-          "description": "A hash of the agent and sandbox configuration, for provenance."
+          "description": "The hook wrapper's own bytes. One file serves both arms, so two arms of one cell must state one digest."
         }
       }
     },
@@ -476,6 +477,8 @@
         "required": [
           "order",
           "event",
+          "tool",
+          "paths",
           "arguments",
           "status",
           "delivered",
@@ -489,7 +492,8 @@
             "type": "string"
           },
           "arguments": {
-            "type": "string"
+            "type": "string",
+            "description": "klin's own arguments, without the plane, the binary and the arm the wrapper takes first."
           },
           "status": {
             "type": "integer"
@@ -512,6 +516,14 @@
           "stdinClosed": {
             "type": "boolean",
             "description": "The wrapper wrote the payload and closed the pipe, so klin's read reached end of input and the process exited."
+          },
+          "tool": {
+            "type": "string",
+            "description": "The tool the agent asked for, where the event carries one."
+          },
+          "paths": {
+            "type": "string",
+            "description": "The paths that tool's input held, space separated. Only the keys that name a path are kept, so a written file's content and an edit's replaced text are not here. The reach check is what reads it. It holds no reasoning."
           }
         }
       }
@@ -577,7 +589,8 @@
       "additionalProperties": false,
       "required": [
         "workspace",
-        "freshness"
+        "freshness",
+        "outside"
       ],
       "properties": {
         "workspace": {
@@ -585,6 +598,10 @@
         },
         "freshness": {
           "$ref": "#/$defs/isolation"
+        },
+        "outside": {
+          "$ref": "#/$defs/check",
+          "description": "Whether the subject kept to its own repository. It records a probe and never prevents one: the subject runs as the same operating-system user as the harness. A failed check leaves the run valid and `verify` names it."
         }
       }
     }

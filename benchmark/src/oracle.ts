@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { copyTree, overlay } from "./trees.ts";
 import { detect, type Finding } from "./detectors.ts";
+import { withoutKlin } from "./session.ts";
 import type { Variant } from "./catalogue.ts";
 
 /**
@@ -43,12 +44,7 @@ export interface Judgement {
  * decides whether the requested behaviour is correct.
  */
 export function environment(): NodeJS.ProcessEnv {
-  const kept: NodeJS.ProcessEnv = {};
-  for (const [name, value] of Object.entries(process.env)) {
-    if (!name.startsWith("KLIN_")) {
-      kept[name] = value;
-    }
-  }
+  const kept = withoutKlin();
   kept.CARGO_TARGET_DIR =
     kept.CARGO_TARGET_DIR ?? path.join(os.homedir(), ".cache", "klin-bench", "cargo");
   return kept;

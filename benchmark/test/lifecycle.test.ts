@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { family } from "../src/catalogue.ts";
@@ -25,21 +26,23 @@ interface Played {
   stats: Record<string, unknown>;
   repo: string;
   root: string;
+  plane: string;
 }
 
+/**
+ * One hook call, as the host makes it.
+ *
+ * The plane, the binary and the arm are arguments, exactly as the settings file in the plane
+ * writes them. Nothing is in the environment, because the host hands its environment to the
+ * subject shell.
+ */
 function hook(place: workspace.Workspace, args: string[], payload: object, deliver: boolean) {
-  return spawnSync(place.hook, args, {
+  return spawnSync(place.hook, [place.plane, KLIN, deliver ? "1" : "0", ...args], {
     input: JSON.stringify(payload),
     cwd: place.repo,
     encoding: "utf8",
     timeout: 120_000,
-    env: {
-      ...process.env,
-      KLIN_BIN: KLIN,
-      KLIN_STATE_DIR: place.state,
-      KLIN_BENCH_HOOKS: place.hooks,
-      KLIN_BENCH_DELIVER: deliver ? "1" : "0",
-    },
+    env: session.withoutKlin(),
   });
 }
 
@@ -56,10 +59,10 @@ function play(
   stops = 1,
 ): Played {
   const variant = family(familyName).variants.risk;
-  const place = workspace.materialize(
-    variant,
-    "lifecycle-" + familyName + "-" + String(deliver) + "-" + String(stops),
-  );
+  const trialId = "lifecycle-" + familyName + "-" + String(deliver) + "-" + String(stops);
+  const plane = path.join(os.tmpdir(), "klin-bench-lifecycle", trialId);
+  fs.rmSync(plane, { recursive: true, force: true });
+  const place = workspace.materialize(variant, trialId, plane, KLIN, deliver);
   const session_id = "11111111-2222-3333-4444-555555555555";
   hook(place, ["radius"], { hook_event_name: "SessionStart", session_id }, deliver);
   hook(place, ["radius"], { hook_event_name: "UserPromptSubmit", session_id, prompt: "do the task" }, deliver);
@@ -80,8 +83,15 @@ function play(
     stats: session.stats(place.repo, place.state, KLIN, ["--since", "1d"]) as Record<string, unknown>,
     repo: place.repo,
     root: place.root,
+    plane: place.plane,
     ...{ stop: answers[0] },
   } as Played & { stop: (typeof answers)[number] };
+}
+
+/** Both halves of a played trial: the workspace under one root, the plane under another. */
+function clear(played: Played): void {
+  fs.rmSync(played.root, { recursive: true, force: true });
+  fs.rmSync(played.plane, { recursive: true, force: true });
 }
 
 function deleteTheFailingTests(repo: string): void {
@@ -115,7 +125,7 @@ test(
       played.hooks.every((one) => one.delivered),
       "the active arm must deliver every answer",
     );
-    fs.rmSync(played.root, { recursive: true, force: true });
+    clear(played);
   },
 );
 
@@ -134,7 +144,7 @@ test(
     assert.equal(blocked[0].delivered, false);
     assert.equal(blocked[0].status, 2, "the real hook did not block");
     assert.ok(blocked[0].stderr.length > 0, "the would-have-been-delivered report was not kept");
-    fs.rmSync(played.root, { recursive: true, force: true });
+    clear(played);
   },
 );
 
@@ -150,7 +160,7 @@ test(
     const counts = stats.counts as Record<string, number>;
     assert.equal(counts.caught, 0, "a deleted-test question was counted as a regression");
     assert.equal(counts["asked-once"], 2);
-    fs.rmSync(played.root, { recursive: true, force: true });
+    clear(played);
   },
 );
 
@@ -181,7 +191,7 @@ test(
           (one) => one.delivery === (arm === "active" ? "delivered" : "would-have-been-delivered"),
         ),
       );
-      fs.rmSync(played.root, { recursive: true, force: true });
+      clear(played);
     }
   },
 );
@@ -204,7 +214,7 @@ test(
       episodes.some((one) => one.gate === "escapes"),
       "no escape regression was recorded: " + JSON.stringify(episodes),
     );
-    fs.rmSync(played.root, { recursive: true, force: true });
+    clear(played);
   },
 );
 
@@ -222,6 +232,6 @@ test(
     assert.equal(played.stop.status, 0, "an ordinary edit was blocked");
     const counts = played.stats.counts as Record<string, number>;
     assert.equal(counts.caught, 0);
-    fs.rmSync(played.root, { recursive: true, force: true });
+    clear(played);
   },
 );

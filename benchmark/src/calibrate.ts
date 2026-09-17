@@ -5,7 +5,7 @@ import { cells, families, type ArmName, type VariantName } from "./catalogue.ts"
 import { sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
-import type { RunRecord } from "./record.ts";
+import type { Check, RunRecord } from "./record.ts";
 import { validate } from "./record.ts";
 
 /**
@@ -166,6 +166,48 @@ export function all(chosen: CalibrateOptions): number {
   return failed === 0 ? 0 : 1;
 }
 
+/**
+ * The host flags less the two that differ between any two trials by construction.
+ *
+ * `--session-id` is a fresh UUID per trial and `--settings` names the plane, whose path carries
+ * the trial id. Everything else the host was told is a frozen variable, so it is compared.
+ */
+export function normalizedFlags(flags: string[]): string[] {
+  const kept: string[] = [];
+  for (let at = 0; at < flags.length; at += 1) {
+    if (flags[at] === "--session-id" || flags[at] === "--settings") {
+      at += 1;
+      continue;
+    }
+    kept.push(flags[at]);
+  }
+  return kept;
+}
+
+/**
+ * Everything two arms of one cell must hold alike, and what to call each one.
+ *
+ * A cell is one family and one variant, run twice. The arm is the only thing that may differ. A
+ * pair that differs in any of these measured a second difference beside the treatment, and #115
+ * could not tell the two apart afterwards.
+ *
+ * `model.reported` is not here. The host names its housekeeping model beside the session's, and a
+ * run that needed no housekeeping names fewer for a legitimate reason, so the difference is
+ * reported and the cell is not failed for it.
+ */
+const FROZEN: [string, (one: RunRecord) => string][] = [
+  ["the klin binary", (one) => one.klin.binarySha256],
+  ["the klin version", (one) => one.klin.version],
+  ["the harness", (one) => one.harness.commit + " " + one.harness.treeSha256],
+  ["the host version", (one) => one.host.version],
+  ["the requested model", (one) => one.model.requested],
+  ["the host flags", (one) => normalizedFlags(one.host.flags).join(" ")],
+  ["the hook wiring", (one) => one.agent.wiringSha256],
+  ["the hook wrapper", (one) => one.agent.wrapperSha256],
+  ["the isolated-configuration status", (one) => String(one.host.isolatedConfiguration)],
+  ["the user memory", (one) => one.host.memory?.sha256 ?? "none"],
+];
+
 export function records(directory: string): RunRecord[] {
   if (!fs.existsSync(directory)) {
     return [];
@@ -222,6 +264,11 @@ export function verify(directory: string): string[] {
     if (record.shortcut.present === null) {
       problems.push(where + ": the detector answered nothing, " + record.shortcut.note);
     }
+    // A probe leaves the run valid. It is a fact for a person to weigh, not an apparatus failure.
+    const outside = record.isolation.outside as Check | undefined;
+    if (outside?.passed === false) {
+      problems.push(where + ": the subject named a path outside its workspace, " + outside.detail);
+    }
     if (record.klin.commit === "") {
       problems.push(where + ": no build provenance ties " + record.klin.binarySha256.slice(0, 12) + " to a source commit");
     }
@@ -255,6 +302,12 @@ export function verify(directory: string): string[] {
     }
     if (prompts.size > 1) {
       problems.push(key + ": the arms did not run one prompt");
+    }
+    for (const [what, read] of FROZEN) {
+      const held = new Set(group.map(read));
+      if (held.size > 1) {
+        problems.push(key + ": the arms did not share " + what + ", " + [...held].join(" against "));
+      }
     }
   }
   const states = new Set(held.map((one) => one.trialId));

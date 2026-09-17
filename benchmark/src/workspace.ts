@@ -2,21 +2,28 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { copyTree, overlay, digest } from "./trees.ts";
+import { copyTree, overlay, digest, sha256 } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
 
 /**
  * The subject workspace and the control plane.
  *
  * Every trial gets a fresh standalone Git repository, a fresh klin state directory and a fresh
- * host session. The workspace holds the fixture and klin's configuration, and nothing else. The
- * arm, the scoring metadata, the expected shortcut and the external oracle stay in the control
- * plane, which sits under a different root.
+ * host session. The repository is the only thing in its own parent directory, so no `ls ..` from
+ * the subject's working directory reaches anything the harness owns.
+ *
+ * The arm, the scoring metadata, the expected shortcut, the external oracle, klin's state, the
+ * hook wrapper, the host settings and the hook evidence all live in the plane. The plane sits
+ * inside this repository and the workspace sits under the system temporary directory, so the two
+ * share no ancestor but the filesystem root and no relative path leads from one to the other.
  */
 
 export interface Workspace {
+  /** The workspace root. It holds `repo` and nothing else. */
   root: string;
   repo: string;
+  /** The control plane for this trial. Nothing under it is named in the subject's environment. */
+  plane: string;
   hook: string;
   settings: string;
   state: string;
@@ -45,8 +52,19 @@ export function git(repo: string, ...args: string[]): string {
   return (ran.stdout ?? "").trim();
 }
 
-function settingsFor(hook: string): string {
-  const command = (args: string): string => JSON.stringify(hook) + " " + args;
+/**
+ * The host settings for one trial, which carry the arm.
+ *
+ * The arm reaches the wrapper as an argument of the hook command, and the settings file lives in
+ * the plane. Neither the subject's environment nor any path beside its repository states it.
+ *
+ * The events, the matcher and the timeouts are klin's own production wiring. The matcher is the
+ * one klin installs, so the trial runs the lifecycle a person's repository runs.
+ */
+function settingsFor(place: { hook: string; plane: string }, klinBin: string, deliver: boolean): string {
+  const quoted = (one: string): string => JSON.stringify(one);
+  const command = (args: string): string =>
+    [quoted(place.hook), quoted(place.plane), quoted(klinBin), deliver ? "1" : "0", args].join(" ");
   return JSON.stringify(
     {
       hooks: {
@@ -89,22 +107,54 @@ function layStartingTree(variant: Variant, into: string): string {
   return into;
 }
 
-/** Materialize one trial's subject workspace and its host wiring. */
-export function materialize(variant: Variant, trialId: string): Workspace {
+/**
+ * The settings file the trial ran under, by digest, with its two per-trial values named.
+ *
+ * The file itself cannot be compared across arms: it names the plane, whose path carries the
+ * trial id, and it carries the arm. So the plane's path becomes `<plane>` and the arm digit
+ * becomes `<arm>`, and what the digest still attests is the real bytes of the real file: the hook
+ * table, the matcher, the timeouts and the binary the wrapper runs. Two arms that differ here did
+ * not run one configuration, and a file one of them truncated or hand-edited says so.
+ *
+ * The arm is the one digit that follows a command's escaped closing quote, because a command is
+ * a JSON string inside the settings file and the klin path before the arm ends in one. No other
+ * number in the file sits in that position.
+ */
+export function wiringSha256(settings: string, plane: string): string {
+  const text = fs.readFileSync(settings, "utf8").split(plane).join("<plane>");
+  return sha256(text.replace(/\\" [01] /g, '\\" <arm> '));
+}
+
+/**
+ * Materialize one trial's subject workspace and its control plane.
+ *
+ * `deliver` is the treatment, and it is written into the plane's settings file rather than into
+ * the environment the host hands the subject.
+ */
+export function materialize(
+  variant: Variant,
+  trialId: string,
+  plane: string,
+  klinBin: string,
+  deliver: boolean,
+): Workspace {
   const root = path.join(paths.workRoot(), trialId);
   fs.rmSync(root, { recursive: true, force: true });
   const repo = path.join(root, "repo");
-  const hook = path.join(root, "hook");
-  const settings = path.join(root, "settings.json");
-  const state = path.join(root, "state");
-  const hooks = path.join(root, "h");
+  const hook = path.join(plane, "hook");
+  const settings = path.join(plane, "settings.json");
+  const state = path.join(plane, "state");
+  const hooks = path.join(plane, "hooks");
   fs.mkdirSync(repo, { recursive: true });
+  fs.mkdirSync(plane, { recursive: true });
+  fs.rmSync(state, { recursive: true, force: true });
+  fs.rmSync(hooks, { recursive: true, force: true });
 
   layStartingTree(variant, repo);
 
   fs.copyFileSync(paths.HOOK, hook);
   fs.chmodSync(hook, 0o755);
-  fs.writeFileSync(settings, settingsFor(hook) + "\n");
+  fs.writeFileSync(settings, settingsFor({ hook, plane }, klinBin, deliver) + "\n");
 
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");
@@ -116,6 +166,7 @@ export function materialize(variant: Variant, trialId: string): Workspace {
   return {
     root,
     repo,
+    plane,
     hook,
     settings,
     state,

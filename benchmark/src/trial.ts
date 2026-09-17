@@ -8,7 +8,14 @@ import * as workspace from "./workspace.ts";
 import * as session from "./session.ts";
 import * as oracle from "./oracle.ts";
 import * as integrity from "./integrity.ts";
-import { signalsFrom, validate, type HookInvocation, type RunRecord } from "./record.ts";
+import {
+  signalsFrom,
+  validate,
+  type Check,
+  type HookInvocation,
+  type Isolation,
+  type RunRecord,
+} from "./record.ts";
 
 /** One trial: one family, one variant, one arm, one fresh repository and one fresh session. */
 
@@ -110,18 +117,18 @@ export function outcomeOf(ran: session.SessionResult, hooks: HookInvocation[]): 
  * may rename, move or break whatever the family measures, and a run is still a run.
  */
 export function validity(held: {
-  isolation: integrity.Isolation;
-  freshness: integrity.Isolation;
+  isolation: Isolation;
+  freshness: Isolation;
   ran: session.SessionResult;
   judged: oracle.Judgement;
   links: string[];
-}): integrity.Check[] {
-  const term = (name: string, passed: boolean, detail: string): integrity.Check => ({
+}): Check[] {
+  const term = (name: string, passed: boolean, detail: string): Check => ({
     name,
     passed,
     detail,
   });
-  const broke = (isolation: integrity.Isolation): string =>
+  const broke = (isolation: Isolation): string =>
     isolation.checks
       .filter((one) => !one.passed)
       .map((one) => one.name)
@@ -230,11 +237,11 @@ export function run(
   const here = provenance();
   const binaryHash = binarySha256(options.klinBin);
   const configDir = session.configFor(options, trialId);
-  const place = workspace.materialize(variant, trialId);
+  const place = workspace.materialize(variant, trialId, control, options.klinBin, arm === "active");
   const freshness = integrity.freshness(place.repo, place.state, configDir, place.commits);
   const isolation = integrity.judge(variant, found.spec.gate, place.repo, control);
 
-  const ran = session.run(place, variant.prompt, arm === "active", options, configDir);
+  const ran = session.run(place, variant.prompt, options, configDir);
   isolation.checks.push(integrity.stillHidden(variant, place.repo));
   isolation.verified = isolation.checks.every((one) => one.passed);
 
@@ -261,6 +268,11 @@ export function run(
   >;
   const bySession = session.stats(place.repo, place.state, options.klinBin, ["--session"]);
   const hooks = session.hookEvidence(place.hooks);
+  const outside = integrity.stayedInside(hooks, place.repo, [
+    place.plane,
+    paths.workRoot(),
+    paths.REPO,
+  ]);
   const signals = signalsFrom(stats, arm);
   const activity = (stats.activity ?? {}) as Record<string, number>;
 
@@ -300,8 +312,8 @@ export function run(
     },
     model: { requested: options.model, reported: modelsRan(ran) },
     agent: {
-      configSha256: sha256(fs.readFileSync(place.settings)),
-      configurationDigest: sha256(ran.flags.join(" ") + "|" + options.model),
+      wiringSha256: workspace.wiringSha256(place.settings, place.plane),
+      wrapperSha256: sha256(fs.readFileSync(place.hook)),
     },
     startedAt: ran.startedAt,
     endedAt: ran.endedAt,
@@ -330,14 +342,13 @@ export function run(
     stats,
     activity: { klinMs: activity.klin_ms ?? null },
     turns: (ran.agent?.num_turns as number | undefined) ?? null,
-    isolation: { workspace: isolation, freshness },
+    isolation: { workspace: isolation, freshness, outside },
   };
 
   write(control, "record.json", record);
   write(control, "agent.json", { ...ran, stdout: ran.stdout, agent: ran.agent });
   write(control, "behaviour.json", judged.behaviour);
   write(control, "stats-session.json", bySession);
-  copyTree(place.hooks, path.join(control, "hooks"));
 
   const problems = validate(record as unknown as Record<string, unknown>);
   if (problems.length > 0) {
