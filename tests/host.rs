@@ -6,6 +6,9 @@ const A_CONFIG: &str = r#"{
   "doc_size": {"README.md": 10}
 }"#;
 
+/// Claude Code's event shape, from its hooks reference. The ledger in
+/// `docs/HOST_COMPATIBILITY.md` names the host version and date each claim was last verified
+/// against, and the weekly canary re-runs that check on the current stable release.
 const A_GUARDED_EDIT: &str = r#"{
   "hook_event_name": "PreToolUse",
   "session_id": "s1",
@@ -31,8 +34,13 @@ const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 /// Claude Code sends `permission_mode` on most events, and so does Codex. Only `turn_id` is Codex's.
 const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s1","cwd":"/x","permission_mode":"default","tool_name":"Bash","tool_input":{"command":"rm klin.json"}}"#;
+/// Codex CLI's event shape, from its hooks reference. `docs/HOST_COMPATIBILITY.md` records
+/// which Codex version last carried it.
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
 const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":true}"#;
+/// Cursor's event shape, measured on Cursor 3.20.21 on 2026-09-16; the payloads carry that
+/// version. `docs/cursor-compatibility.md` holds the measurements, `docs/HOST_COMPATIBILITY.md`
+/// the support row.
 const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm klin.json"}}"#;
 const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
 const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;

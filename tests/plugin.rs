@@ -718,6 +718,28 @@ fn name(relative: &str) -> String {
         .to_string()
 }
 
+/// The host canary is a vendor-drift alarm, not a gate on a person's pull request: a red host
+/// is the vendor's change, not the branch's. It stays on a schedule and manual dispatch, and
+/// `docs/HOST_COMPATIBILITY.md` records what it proves.
+#[test]
+fn the_host_canary_stays_out_of_pull_request_gating() {
+    let workflow = text(".github/workflows/host-compatibility.yml");
+
+    assert!(workflow.contains("schedule:"), "the canary has no schedule");
+    assert!(
+        workflow.contains("workflow_dispatch:"),
+        "the canary cannot be dispatched by hand"
+    );
+    assert!(
+        !workflow.contains("pull_request"),
+        "the canary gates pull requests"
+    );
+    assert!(
+        !text(".github/workflows/quality.yml").contains("host-canary"),
+        "PR gating runs the host canary"
+    );
+}
+
 fn json(relative: &str) -> serde_json::Value {
     match serde_json::from_str(&text(relative)) {
         Ok(held) => held,

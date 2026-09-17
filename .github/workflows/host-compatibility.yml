@@ -1,0 +1,48 @@
+name: host compatibility
+
+# A vendor-drift alarm, not a PR gate. It runs one golden lifecycle per host
+# against the current stable release of Claude Code, Codex and Cursor.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [claude, codex, cursor]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: run the ${{ matrix.host }} canary
+        id: canary
+        env:
+          ART: ${{ github.workspace }}/canary-artifacts/${{ matrix.host }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CODEX_TRUST_COMMAND: ${{ vars.CODEX_TRUST_COMMAND }}
+        run: ci/host-canary.sh ${{ matrix.host }}
+      - name: read the classification
+        if: always()
+        id: read
+        run: |
+          file=canary-artifacts/${{ matrix.host }}/classification.txt
+          echo "class=$(cat "$file" 2>/dev/null || echo INFRA)" >> "$GITHUB_OUTPUT"
+      - name: keep the evidence
+        if: always() && steps.read.outputs.class != 'PASS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-${{ matrix.host }}-${{ steps.read.outputs.class }}
+          path: canary-artifacts/${{ matrix.host }}
+          if-no-files-found: warn
+      - name: warn on an inconclusive run
+        if: always() && steps.read.outputs.class != 'PASS' && steps.read.outputs.class != 'COMPAT'
+        run: |
+          echo "::warning title=${{ matrix.host }} canary inconclusive::\
+          ${{ steps.read.outputs.class }} — the ledger keeps its previous verified row"
