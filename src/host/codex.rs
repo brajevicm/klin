@@ -35,10 +35,10 @@ impl Adapter for Codex {
         ".codex/hooks.json"
     }
 
-    /// `Bash` is the shell tool's name on stdin, `apply_patch` the edit tool's, and an MCP tool
-    /// is `mcp__server__tool`.
+    /// The shared matcher also names Claude Code's tools; Codex never emits those alternatives,
+    /// so they are dead text here while the two install routes stay in step.
     fn matcher(&self) -> &'static str {
-        "Bash|apply_patch|mcp__.*"
+        super::CLAUDE_CODE_AND_CODEX_MATCHER
     }
 
     /// A write into a tree is covered by the tree's config and the user's. A write into the

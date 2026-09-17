@@ -253,7 +253,7 @@ fn hooks_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     );
     assert_eq!(
         matchers(&settings, "PreToolUse"),
-        ["Write|Edit|MultiEdit|NotebookEdit|Bash".to_string()],
+        ["Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*".to_string()],
         "{settings}"
     );
     assert_eq!(
@@ -291,7 +291,7 @@ fn hooks_writes_klins_entries_for_codex_cli_and_leaves_the_others_alone() {
     );
     assert_eq!(
         matchers(&settings, "PreToolUse"),
-        ["Bash|apply_patch|mcp__.*".to_string()],
+        ["Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*".to_string()],
         "{settings}"
     );
     assert_eq!(

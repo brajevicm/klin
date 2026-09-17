@@ -3764,8 +3764,12 @@ install is `codex plugin marketplace add brajevicm/klin` and
 Codex skips an untrusted plugin's hooks until the person reviews and trusts
 the current hook definition through the CLI `/hooks` surface, and a fresh
 session then runs them, so the install documentation names that step. The pre-tool matcher names
-`apply_patch` beside Claude Code's edit tools, so the guard reads Codex's
-edits. ADR 0030 records the decision. The Codex IDE extension loads no
+the union `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the
+tools Claude Code and Codex CLI emit, so the guard reads edits and MCP calls on
+both hosts. A name missing from this matcher leaves that host's corresponding
+tool call unguarded; a name the host never emits is dead text. `init --hooks`
+uses the same union for both hosts, keeping the fallback route aligned with
+the plugin. ADR 0030 records the decision. The Codex IDE extension loads no
 plugins, so it takes the route of 19.3.
 
 Cursor finds the plugin through `.cursor-plugin/marketplace.json` at the

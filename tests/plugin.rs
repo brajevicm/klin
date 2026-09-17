@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use harness::Tree;
+use serde_json::Value;
 
 const PLUGIN: &str = "plugins/klin";
 const WRAPPER: &str = "plugins/klin/bin/klin";
@@ -16,6 +17,7 @@ const MARKET: &str = ".claude-plugin/marketplace.json";
 const CODEX_MARKET: &str = ".agents/plugins/marketplace.json";
 const CURSOR_MARKET: &str = ".cursor-plugin/marketplace.json";
 const README: &str = "README.md";
+const SHARED_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
 const SHELL: &str = "/bin/sh";
@@ -41,9 +43,37 @@ fn the_hooks_carry_the_three_commands() {
     assert!(hook("UserPromptSubmit").ends_with("\"$k\" radius"));
     assert!(hook("PreToolUse").ends_with("\"$k\" guard"));
     assert!(hook("Stop").ends_with("\"$k\" gate --hook --changed"));
-    assert!(matcher.contains("Edit"), "{matcher}");
-    assert!(matcher.contains("Bash"), "{matcher}");
-    assert!(matcher.contains("apply_patch"), "{matcher}");
+    assert_eq!(matcher, SHARED_MATCHER);
+}
+
+#[test]
+fn the_cursor_plugin_keeps_the_generated_hook_shape() {
+    let tree = Tree::bare();
+    let run = tree.run(&["init", "--hooks", "--host", "cursor"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let generated: Value = serde_json::from_str(
+        &fs::read_to_string(tree.path(".cursor/hooks.json")).expect("generated Cursor hooks"),
+    )
+    .expect("generated Cursor hooks are JSON");
+    let shipped = json(CURSOR_HOOKS);
+    assert_eq!(shipped["version"], generated["version"]);
+
+    let shipped_events = shipped["hooks"].as_object().expect("shipped hook events");
+    let generated_events = generated["hooks"]
+        .as_object()
+        .expect("generated hook events");
+    assert_eq!(
+        shipped_events.keys().collect::<Vec<_>>(),
+        generated_events.keys().collect::<Vec<_>>()
+    );
+    for event in shipped_events.keys() {
+        assert_eq!(
+            cursor_matchers(&shipped, event),
+            cursor_matchers(&generated, event),
+            "{event} matcher differs"
+        );
+    }
 }
 
 /// Codex CLI reads the same manifest, and is told where the hooks are rather than left to look.
@@ -366,6 +396,7 @@ fn the_cursor_hook_lines_name_the_cursor_plugin_root() {
             "{event}: {line}"
         );
         assert!(!line.contains("CLAUDE_PLUGIN_ROOT"), "{event}: {line}");
+        assert!(!line.contains("CURSOR_PLUGIN_ROOT:-"), "{event}: {line}");
     }
 }
 
@@ -598,6 +629,16 @@ fn cursor_hook(event: &str) -> String {
         .as_str()
         .unwrap_or_default()
         .to_string()
+}
+
+fn cursor_matchers(settings: &Value, event: &str) -> Vec<String> {
+    settings["hooks"][event]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|entry| entry["matcher"].as_str().map(str::to_string))
+        .collect()
 }
 
 fn name(relative: &str) -> String {

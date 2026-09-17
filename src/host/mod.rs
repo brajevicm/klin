@@ -31,6 +31,10 @@ pub enum HookFile {
     Flat { version: u64 },
 }
 
+/// The shared plugin hook and both generated routes must cover every tool either host emits.
+const CLAUDE_CODE_AND_CODEX_MATCHER: &str =
+    "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
+
 const DEFAULT_HOOKS: &[Hook] = &[
     Hook {
         event: "SessionStart",

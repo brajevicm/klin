@@ -33,7 +33,7 @@ impl Adapter for Claude {
     }
 
     fn matcher(&self) -> &'static str {
-        "Write|Edit|MultiEdit|NotebookEdit|Bash"
+        super::CLAUDE_CODE_AND_CODEX_MATCHER
     }
 
     /// A write into a tree is covered by that tree's settings, the local settings beside them
