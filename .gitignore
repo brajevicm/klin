@@ -3,3 +3,4 @@
 .codegraph
 .DS_Store
 /canary-artifacts
+benchmark/**/sentinel.txt
