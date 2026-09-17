@@ -193,7 +193,7 @@ fn incomplete(components: &[Component], component_at: usize, target_at: usize, o
         .iter()
         .enumerate()
         .flat_map(|(at, component)| {
-            let start = (at == 0).then_some(target_at).unwrap_or(0);
+            let start = if at == 0 { target_at } else { 0 };
             component.targets[start..]
                 .iter()
                 .map(|target| target.file.display().to_string())

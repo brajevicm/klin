@@ -41,6 +41,11 @@ const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
     (&["turn", "reset"], RESET_REFUSAL, "turn-reset"),
 ];
 
+/// The journal's name for a call the guard allowed and the host refused anyway, which is a host
+/// that answers every call the same way: a custom integration on a protocol version klin does not
+/// speak (9.7). The line is the only record a person has of why the agent is blocked. Spec 9.6.
+const HOST_REFUSAL: &str = "host-refusal";
+
 const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
 /// The one file klin guards, beside klin's own state directory. A check's own configuration, a
 /// host's hook file and the code owners are ordinary files: klin cannot tell a loosening from a
@@ -68,11 +73,16 @@ pub fn run(args: &Args) -> u8 {
     let guarded = Guarded::at(event.root.clone());
     let (decision, reason) = decided(&guarded, &event);
     let delivered = event.host.decide(&decision);
-    if !matches!(decision, Decision::Allow)
+    let refused = !matches!(decision, Decision::Allow);
+    if (refused || delivered != 0)
         && let Some(paths) = guarded.paths()
         && let (Some(root), Some(at)) = (paths.config.parent(), paths.state.as_deref())
     {
-        journal::guard(root, at, &event, delivered, reason);
+        let named = match refused {
+            true => reason,
+            false => HOST_REFUSAL,
+        };
+        journal::guard(root, at, &event, delivered, named);
     }
     delivered
 }

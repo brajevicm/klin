@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brajevicm/klin/integrations/generic/response.schema.json",
+  "title": "klin generic harness decision, version 1",
+  "description": "The one JSON object klin prints on stdout in answer to a generic event. The integration translates it back into its own host protocol. klin's exit code carries the same answer: 0 for allow and tell, 2 for deny and block.",
+  "type": "object",
+  "required": ["action"],
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "description": "allow: let the call or the stop through. deny: refuse this tool call. block: refuse this stop and put the message in front of the agent. tell: let the stop end and put the message in front of the person.",
+      "enum": ["allow", "deny", "block", "tell"]
+    },
+    "reason": {
+      "description": "Why the call was refused. A deny carries it.",
+      "type": "string"
+    },
+    "message": {
+      "description": "The report a block returns, or the note a tell carries.",
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "deny" } }, "required": ["action"] },
+      "then": { "required": ["reason"] }
+    },
+    {
+      "if": { "properties": { "action": { "enum": ["block", "tell"] } }, "required": ["action"] },
+      "then": { "required": ["message"] }
+    }
+  ]
+}

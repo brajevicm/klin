@@ -238,6 +238,81 @@ fn the_readme_promises_the_turn_the_wrapper_ends() {
     }
 }
 
+/// The README leads with the three first-class plugins, keeps the standalone binary a
+/// fallback, gives the repository opt-in its own heading, and claims no platform klin does
+/// not ship. Spec 19.0, 19.1, 19.4.
+#[test]
+fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
+    let readme = text(README);
+
+    for said in [
+        "**First-class integrations:** Claude Code, Codex and Cursor",
+        "the native plugin is the install",
+        "it needs no second binary",
+        "## Activate this repository",
+        "`{}` is a complete marker",
+        "hook-mode klin stays deliberately silent",
+        "portability layer, not an equal second default",
+        "Native Windows is unsupported",
+        "WSL is not a documented route",
+        "recorded no verification",
+        "## Other coding agents",
+        "docs/HARNESS_INTEGRATION.md",
+        "not first-class support",
+        "`klin update`",
+    ] {
+        assert!(readme.contains(said), "the README omits {said}");
+    }
+}
+
+/// The README's Cursor fallback is a copy a person may run twice, so it must leave one usable
+/// plugin and never nest one plugin inside another. Spec 19.2.
+#[test]
+fn the_readmes_cursor_copy_leaves_one_plugin_when_it_runs_twice() {
+    let tree = Tree::bare();
+    let home = tree.root().display().to_string();
+    let seed = format!(
+        "d=$(mktemp -d) && cp -R \"{}\" \"$d/plugins\"",
+        at("plugins").display()
+    );
+    let script = block(&text(README), "~/.cursor/plugins/local/klin").replace(
+        "d=$(mktemp -d) && git clone --depth 1 https://github.com/brajevicm/klin \"$d\"",
+        &seed,
+    );
+
+    for _ in 0..2 {
+        let run = ran(
+            SHELL,
+            &["-c", &script],
+            tree.root(),
+            &[("PATH", SYSTEM_PATH), ("HOME", &home)],
+        );
+        assert_eq!(run.code, 0, "{}", run.out);
+    }
+
+    let installed = tree.path(".cursor/plugins/local/klin");
+    assert!(
+        installed.join(".cursor-plugin/plugin.json").is_file(),
+        "the copy left no plugin manifest"
+    );
+    assert!(
+        !installed.join("klin").exists(),
+        "a second run nested the plugin inside the first copy"
+    );
+}
+
+/// The fenced block of a document that holds one line, so a test runs the commands a person
+/// is given rather than a copy of them.
+fn block(document: &str, holds: &str) -> String {
+    for fenced in document.split("\n```").skip(1).step_by(2) {
+        let lines: Vec<&str> = fenced.lines().skip(1).collect();
+        if lines.iter().any(|line| line.contains(holds)) {
+            return lines.join("\n");
+        }
+    }
+    panic!("no fenced block holds {holds}")
+}
+
 #[test]
 fn the_plugin_pins_the_crate_version() {
     let carried = json(MANIFEST)["version"]
@@ -641,6 +716,28 @@ fn name(relative: &str) -> String {
         .as_str()
         .unwrap_or_default()
         .to_string()
+}
+
+/// The host canary is a vendor-drift alarm, not a gate on a person's pull request: a red host
+/// is the vendor's change, not the branch's. It stays on a schedule and manual dispatch, and
+/// `docs/HOST_COMPATIBILITY.md` records what it proves.
+#[test]
+fn the_host_canary_stays_out_of_pull_request_gating() {
+    let workflow = text(".github/workflows/host-compatibility.yml");
+
+    assert!(workflow.contains("schedule:"), "the canary has no schedule");
+    assert!(
+        workflow.contains("workflow_dispatch:"),
+        "the canary cannot be dispatched by hand"
+    );
+    assert!(
+        !workflow.contains("pull_request"),
+        "the canary gates pull requests"
+    );
+    assert!(
+        !text(".github/workflows/quality.yml").contains("host-canary"),
+        "PR gating runs the host canary"
+    );
 }
 
 fn json(relative: &str) -> serde_json::Value {

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brajevicm/klin/integrations/generic/event.schema.json",
+  "title": "klin generic harness event, version 1",
+  "description": "One lifecycle event a harness klin does not maintain sends klin on stdin. A harness sends only the evidence it can prove; a field it cannot prove is left out.",
+  "type": "object",
+  "required": ["klin_protocol", "event"],
+  "additionalProperties": true,
+  "properties": {
+    "klin_protocol": {
+      "description": "The version of this contract. klin speaks version 1 and refuses every other version.",
+      "const": 1
+    },
+    "event": {
+      "description": "Which lifecycle event this is. It selects the klin command the integration runs.",
+      "enum": ["session", "prompt", "pre_tool", "stop"]
+    },
+    "root": {
+      "description": "The absolute path of the repository the agent is working in. Left out when the integration runs klin inside that repository.",
+      "type": "string"
+    },
+    "session": {
+      "description": "The harness's own id for the conversation. klin records it and judges nothing by it.",
+      "type": "string"
+    },
+    "prompt": {
+      "description": "The text a person submitted. The prompt event alone carries it.",
+      "type": "string"
+    },
+    "tool": {
+      "description": "The harness's name for the tool about to run. It is diagnostic: klin never reads a file write out of it.",
+      "type": "string"
+    },
+    "file_paths": {
+      "description": "The paths the harness can prove this tool call will touch. Left out or empty when the harness cannot prove any.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "command": {
+      "description": "The shell command the agent is about to run, when the harness knows it. Left out for a tool that runs no command.",
+      "type": "string"
+    },
+    "blocked_before": {
+      "description": "Whether this integration already blocked a stop in this turn. A harness that cannot tell sends false or leaves it out.",
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

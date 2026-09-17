@@ -1,6 +1,7 @@
 mod claude;
 mod codex;
 mod cursor;
+mod generic;
 
 use std::io::{IsTerminal, Read};
 use std::path::{Path, PathBuf};
@@ -97,6 +98,11 @@ pub trait Adapter: Sync {
     /// directory when `shared`. The plugin carries the hooks itself, so the file klin would
     /// write must then stay as it is. Section 19.3.
     fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf>;
+    /// The host's own name for the event this payload is. Every host klin maintains sends it
+    /// under `hook_event_name`; the generic contract of 19.4 names its own field.
+    fn event_name(&self, payload: &Value) -> String {
+        text(payload.get("hook_event_name"))
+    }
     /// Whether an event with no `--host` has this host's shape.
     fn placed(&self, payload: &Value) -> bool;
     /// The tree the event names, for a host that runs its hooks somewhere else. A host that
@@ -193,7 +199,7 @@ pub enum Stop {
 pub fn read(flag: Option<&str>) -> Option<Event> {
     let payload = payload()?;
     let host = placed(flag, &payload);
-    let name = text(payload.get("hook_event_name"));
+    let name = host.event_name(&payload);
     let mut event = host.event(&payload);
     event.root = host.root(&payload);
     event.prompted = !name.is_empty() && host.prompt_event() == name;
@@ -217,6 +223,9 @@ fn read_stdin() -> Option<Value> {
 }
 
 fn placed(flag: Option<&str>, payload: &Value) -> &'static dyn Adapter {
+    if let Some(host) = generic::placed(flag, payload) {
+        return host;
+    }
     let found = match flag {
         Some(name) => ADAPTERS.iter().find(|host| host.name() == name),
         None => ADAPTERS.iter().find(|host| host.placed(payload)),

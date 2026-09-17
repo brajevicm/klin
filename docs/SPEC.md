@@ -2077,9 +2077,11 @@ the existing adapters fill the new method with what they already did.
 
 A program-hook host loads a module in its own process and has no shell hook.
 OpenCode and Pi are this kind, and klin cannot be the hook. A shim outside
-this crate translates the host's event into Claude Code's payload shape,
-spawns `klin <command> --host claude`, and translates the answer back. The
-shim is the whole port, and klin gains no variant for it.
+this crate translates the host's event into the generic contract of 9.7,
+spawns the same `klin` command, and translates the answer back. The shim is
+the whole port, and klin gains no variant for it. A shim MUST NOT fabricate a
+first-class host's payload to reach klin: the generic contract exists so that
+a harness klin does not maintain speaks as itself.
 
 Two facts shape both kinds. The stop answer is the report text, and the
 adapter chooses the channel it goes out on: the exit code, stderr, or a JSON
@@ -2344,7 +2346,10 @@ moves the mark and raises the counter of 6.2 the same way but appends no
 line of its own, because it opens a window and ends no turn. The guard MUST
 append a `guard` line for an `ask` or a `deny`, and MUST append none for an
 `allow`, because the guard runs on every tool call under its 50 millisecond
-budget (13) and an allow tells a reader nothing. `klin turn reset` MUST
+budget (13) and an allow tells a reader nothing. An allow the host refused
+anyway is a `deny` line under the reason `host-refusal`: a custom integration
+on a protocol version klin does not speak refuses every call (9.7), and the
+line is the only record of why the agent is blocked. `klin turn reset` MUST
 append a `reset` line.
 
 The write MUST NOT change a block or a pass: it is best-effort, a failed
@@ -2352,6 +2357,45 @@ append prints nothing to the agent, and a state directory klin cannot write
 costs the record and nothing else, by the rule of 14. The hook never prunes
 the file, and `cache clean` leaves it alone (7.4). Only the reader of 11.4
 tolerates what an interrupted writer can leave: a truncated last line.
+
+### 9.7 The generic contract
+
+A harness klin does not maintain speaks klin's own event shape rather than
+another host's, so no port has to fabricate a first-class host's payload.
+`klin_protocol` names the version, and it is the field that places the event:
+no host klin maintains sends it, so the generic adapter is tried before all of
+them. `--host generic` overrides detection, and refuses a payload that carries
+no version of this contract.
+
+Version 1 carries `event`, one of `session`, `prompt`, `pre_tool` and `stop`,
+and then `root`, `session`, `prompt`, `tool`, `file_paths`, `command` and
+`blocked_before`. `integrations/generic/event.schema.json` is the checked-in
+schema. The adapter maps these onto the one internal record of 9.1 and nothing
+further: klin gains no second turn, guard or gate engine for a custom harness.
+
+The contract carries only evidence the harness proves. `file_paths` holds the
+paths the harness can prove the call will touch, and `command` holds a command
+only where the harness knows the one the agent is about to run. Missing
+evidence stays missing: klin MUST NOT read a file write out of a tool name or
+out of opaque tool arguments, and a call that proves neither a path nor a
+command is allowed.
+
+The decision is one JSON object on stdout, under
+`integrations/generic/response.schema.json`: `allow`, `deny` with a `reason`,
+`block` with the report as its `message`, or `tell` with a note as its
+`message`. Exit 0 carries `allow` and `tell`, exit 2 carries `deny` and
+`block`, and a refusal also goes to stderr so it holds where stdout goes
+unread. At most one decision is printed, on a line of its own, beside the
+report text a blocked stop also prints. A stop that passes prints no decision,
+as it does on every other host, so exit 0 with no decision ends the turn. No host-specific field of Claude Code, Codex CLI or Cursor appears in
+this contract. There is no `ask`: nothing here proves a question the harness
+enforces, so the ambiguous class of 9.4 fails closed as it does on Codex and
+Cursor, and 19.4 has the integrator record that difference.
+
+A `klin_protocol` klin does not speak fails clearly and closed. klin names the
+version the event sent and the version it speaks, refuses every tool call and
+blocks every stop while that mismatch stands, and MUST NOT read the event as
+another host's.
 
 ## 10. Runner and CI Contract
 
@@ -3844,7 +3888,11 @@ covering it; that surface takes the standalone route of 19.3.
 same directory. Cursor Teams import that repository under Dashboard → Plugins
 → Team Marketplaces. A person without a team marketplace copies `plugins/klin`
 to `~/.cursor/plugins/local/klin` and reloads the window, which is a user-scope
-install for that machine alone. Cursor skips a symlink whose target sits
+install for that machine alone. The copy instructions a document gives MUST be
+idempotent: a second run leaves one usable copy and never nests one plugin
+inside another. The Team Marketplace import has no recorded verification
+(`docs/cursor-compatibility.md`), so a document MUST label it as such rather
+than present it as a verified route. Cursor skips a symlink whose target sits
 outside that folder. The Cursor hook lines name `${CURSOR_PLUGIN_ROOT}/bin/klin`
 in that form and no other, the way Claude Code and Codex name
 `${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A project
@@ -4051,12 +4099,46 @@ from an agent exactly as it refuses `klin init` and `klin turn reset`.
 
 ### 19.4 A custom harness
 
-A harness klin does not maintain integrates through the public contract of
-section 9: the three events, the JSON on stdin, the exit codes and the
-`systemMessage` shape. It supplies the binary from 19.1 and translates its own
-lifecycle into those events. klin ships no adapter, no hook file and no skill
-for such a harness, and a custom integration is not part of the compatibility
-promise that covers the first-class plugins.
+A harness klin does not maintain integrates through the generic contract of
+9.7: klin's own versioned event on stdin, klin's own decision on stdout, and
+the same three commands. It supplies the binary from 19.1 and translates its
+own lifecycle into that contract. klin ships no adapter, no hook file and no
+skill placement for such a harness, and a custom integration is not part of the
+compatibility promise that covers the first-class plugins. The contract is a
+portability seam, not a second engine: a generic event normalizes into the one
+internal event of 9.1 and runs the same turn, guard and gate loop.
+
+Claude Code, Codex CLI and Cursor are first-class and MUST NOT route through
+the generic contract in production. Each keeps its built-in adapter, its native
+plugin, its compatibility tests and its own documentation. A generic
+integration is custom until a separate ticket promotes the harness: that ticket
+proves the host's current official semantics, adds a built-in adapter or native
+plugin, adds adversarial compatibility fixtures, defines install, update and
+trust behavior, and moves the harness into the first-class matrix. Speaking the
+generic contract alone MUST NOT be described as first-class support.
+
+**The porting kit.** `integrations/generic/` carries the two schemas, one
+fixture per event kind and a reference shim; `docs/HARNESS_INTEGRATION.md`
+carries the worksheet, the lifecycle mapping and the conformance levels. The
+kit MUST be enough to port a harness without reading klin's Rust adapters. The
+shim stays small and dependency-light: it demonstrates the translation and is
+not a second supported host runtime. The kit MUST NOT hold a copy of the skill.
+klin's canonical skill is the one authored text of 19.3, and the guide points a
+custom integration at it.
+
+**Conformance levels.** A custom integration states its level, and states what
+is missing rather than claiming equivalence with a native one.
+
+- **Full** — session or prompt lifecycle, pre-tool interception with proven
+  evidence, an end-of-turn hook, and a block that returns the report to the
+  agent. One difference from a first-class host remains: klin's `ask` has no
+  channel this contract can prove, so the ambiguous class of 9.4 is refused
+  (9.7).
+- **Gate** — an end-of-turn check that reports a failure, missing one or more
+  of the pre-tool and turn-feedback capabilities. The missing ones are named.
+- **Manual / CI** — no reliable lifecycle hook. A person runs `klin gate`, and
+  CI runs `klin gate --strict`. There is no same-turn feedback contract, and
+  none is claimed.
 
 ### 19.5 CI
 
