@@ -264,9 +264,12 @@ fn a_file_the_grammar_rejects_keeps_the_unparsed_rule() {
     tree.write("src/commands/delta_command.rs", "pub fn broken( {\n");
 
     let run = tree.run(&["reachability"]);
+    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("1 unreadable"), "{}", run.out);
+    assert_eq!(changed.code, 2, "{}", changed.out);
+    assert!(changed.says("1 unreadable"), "{}", changed.out);
 }
 
 #[test]
