@@ -794,40 +794,45 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
 fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
     if case != PerfCase::Warm100 {
         println!(
-            "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            "{} warm hook: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, warm20_ms={}, project_build=excluded",
             size,
             median(&rows.warm.total),
-            gate_medians(&rows.warm)
+            gate_medians(&rows.warm),
+            median(&rows.warm.total)
         );
     }
     if case == PerfCase::Full {
         println!(
-            "{} warm hook without the structural cache: cache=warm, structural_cache=removed, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            "{} warm hook without the structural cache: cache=warm, structural_cache=removed, iterations={ITERATIONS}, median_ms={}, {}, uncached_ms={}, project_build=excluded",
             size,
             median(&rows.uncached.total),
-            gate_medians(&rows.uncached)
+            gate_medians(&rows.uncached),
+            median(&rows.uncached.total)
         );
         println!(
-            "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}, {}",
+            "{} cold survey: cache=cold, iterations={ITERATIONS}, median_ms={}, {}, cold_ms={}",
             size,
             median(&rows.cold.total),
-            gate_medians(&rows.cold)
+            gate_medians(&rows.cold),
+            median(&rows.cold.total)
         );
         println!(
-            "{} strict: cache=warm, iterations={ITERATIONS}, median_ms={}, {}",
+            "{} strict: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, strict_ms={}",
             size,
             median(&rows.strict.total),
-            gate_medians(&rows.strict)
+            gate_medians(&rows.strict),
+            median(&rows.strict.total)
         );
     }
     if case != PerfCase::Warm20
         && let Some((changed, samples)) = &rows.warm_delta
     {
         println!(
-            "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, project_build=excluded",
+            "{} warm hook, changed_files={changed}: cache=warm, iterations={ITERATIONS}, median_ms={}, {}, warm100_ms={}, project_build=excluded",
             size,
             median(&samples.total),
-            gate_medians(samples)
+            gate_medians(samples),
+            median(&samples.total)
         );
     }
 }
