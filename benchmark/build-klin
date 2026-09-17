@@ -1,0 +1,35 @@
+#!/bin/sh
+# Build klin and record the commit it was built from, beside the binary.
+#
+# The build is the only moment that knows both the binary and its source. Nothing downstream can
+# tie the two together: `klin --version` names a release and no commit, and a stale binary carries
+# an older commit's behaviour under today's HEAD. So a benchmark record states a klin source commit
+# only where this file proves one, and `src/trial.ts` reads it.
+#
+# A tree holding uncommitted changes gets no provenance, because no commit describes what was
+# built. Any file an earlier build left is removed, so a stale one can never be read as this
+# build's.
+#
+# Usage: benchmark/build-klin [further cargo build arguments]
+set -eu
+
+repo=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repo"
+
+cargo build --release "$@"
+
+binary=target/release/klin
+if command -v sha256sum > /dev/null 2>&1; then
+    hash=$(sha256sum "$binary" | cut -d' ' -f1)
+else
+    hash=$(shasum -a 256 "$binary" | cut -d' ' -f1)
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+    rm -f "$binary.provenance"
+    printf '%s: built, and no commit describes it. The tree holds uncommitted changes.\n' "$binary" >&2
+    exit 1
+fi
+
+printf '{"binarySha256":"%s","commit":"%s"}\n' "$hash" "$(git rev-parse HEAD)" > "$binary.provenance"
+printf '%s built from %s\n' "$binary" "$(git rev-parse HEAD)"

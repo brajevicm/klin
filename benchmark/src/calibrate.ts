@@ -82,10 +82,14 @@ export function one(family: string, variant: string, arm: string, into: string):
  *
  * Without this the hook exits 127 on every event, every trial runs with klin effectively absent,
  * and `verify` only says so after the whole set has been paid for.
+ *
+ * A binary with no build provenance beside it is a warning and not a refusal. It runs, and every
+ * record of the set states no klin source commit. `preflight` cannot write that file itself: it
+ * sees the binary and it can ask git for HEAD, and it cannot know that the one built the other.
  */
 export function preflight(binary: string): string {
   if (!fs.existsSync(binary)) {
-    return "no klin binary at " + binary + ". Build it with: cargo build --release";
+    return "no klin binary at " + binary + ". Build it with: benchmark/build-klin";
   }
   const named = session.klinVersion(binary);
   return named === "" ? "the binary at " + binary + " did not answer --version" : "";
@@ -108,7 +112,7 @@ export function all(chosen: CalibrateOptions): number {
     process.stdout.write(
       "no build provenance beside " +
         known.klinBin +
-        ". Every record will state no klin source commit. benchmark/README.md says how to write it.\n",
+        ". Every record will state no klin source commit. benchmark/build-klin writes one.\n",
     );
   }
   const wanted = cells().filter(

@@ -251,20 +251,28 @@ and never an outcome.
 ### What the klin source commit says
 
 `klin.binarySha256` is the authoritative identity of what ran. `klin.commit`
-is empty unless a build wrote `<binary>.provenance` beside it, holding that
-same hash and the commit it was built from:
+is empty unless a build wrote `<binary>.provenance` beside the binary, holding
+that same hash and the commit it was built from. `build-klin` is the build
+that writes it:
 
 ```sh
-cargo build --release
-printf '{"binarySha256":"%s","commit":"%s"}\n' \
-  "$(shasum -a 256 target/release/klin | cut -d' ' -f1)" \
-  "$(git rev-parse HEAD)" > target/release/klin.provenance
+benchmark/build-klin        # cargo build --release, and the provenance beside it
 ```
 
 Repository HEAD on its own is not an answer, because a stale build carries an
 older commit's behaviour under today's HEAD, and `klin --version` names a
-release and no commit. `harness.commit` still records HEAD, because that is
-where the harness itself came from.
+release and no commit. The build is the only moment that knows both the binary
+and its source, so the build is what records the pair. A tree holding
+uncommitted changes gets no provenance, because no commit describes what was
+built, and `build-klin` removes any file an earlier build left rather than
+leave a stale one to be read as this build's.
+
+`harness.commit` still records HEAD, because that is where the harness itself
+came from.
+
+Nothing is blocked without provenance. `calibrate` warns before a paid set,
+`verify` names every record that ties no commit to its binary, and the runs
+work either way.
 
 Signal evidence is kept in both arms. In Active a signal was delivered. In
 Shadow the same hook ran and the same signal would have been delivered. Each
@@ -297,7 +305,7 @@ arm could have delivered it.
 ## Running it
 
 ```sh
-cargo build --release                       # the binary under test
+benchmark/build-klin                        # the binary under test, with its provenance
 node --test 'benchmark/test/**/*.test.ts'   # the harness, the wrapper, the lifecycle
 node benchmark/src/cli.ts selftest          # every fixture and every oracle
 node benchmark/src/cli.ts list              # the families and their opaque task ids
