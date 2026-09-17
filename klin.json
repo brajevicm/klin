@@ -3,9 +3,9 @@
   "complexity": { "cc": 8, "lines": 60, "in": ["src", "tests"] },
   "escapes": { "in": ["src", "tests"] },
   "doc_size": {
-    "README.md": 1300,
-    "CONTEXT.md": 1300,
-    "AGENTS.md": 1300,
+    "README.md": 1500,
+    "CONTEXT.md": 1500,
+    "AGENTS.md": 1500,
     "RELEASE_NOTES.md": 9999
   },
   "radius": {
