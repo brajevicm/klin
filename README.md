@@ -5,20 +5,27 @@
 <h1 align="center">Quality control for coding agents.</h1>
 
 <p align="center">
-  <strong>Deterministic quality gates and feedback loops for Claude Code, Codex, Cursor, and other coding agents.</strong>
+  <strong>Keep agents from getting green the wrong way.</strong>
 </p>
 
-Coding agents are very good at getting to green — sometimes by a shortcut you would never accept in review: deleting a failing test, skipping a check, swallowing an error, or leaving a stub.
+<p align="center">
+  Deterministic quality gates and feedback loops for Claude Code, Codex, Cursor, and other coding agents.
+</p>
 
-**klin catches those regressions while the agent works, and sends them back for repair.**
+Coding agents are very good at getting to green.
+
+Sometimes they get there by a shortcut you would never accept in review: deleting a failing test, skipping a check, swallowing an error, or leaving a stub.
+
+**klin catches those regressions while the agent is still working and sends them back for repair.**
 
 ```text
 agent works → klin checks the change → new regression?
                                  yes → failure returned → agent repairs
-                                 no  → done → CI verifies
+                                 no  → done → independent CI verifies
+                                              the same quality policy
 ```
 
-klin needs no clean codebase first. It compares what existed before the change with what exists after, and rejects only **new or worsened debt**.
+klin needs no clean codebase first. It compares what existed before the change with what exists after it and rejects only **new or worsened debt**.
 
 ```text
 quality debt           before      after      result
@@ -27,27 +34,25 @@ improved                   8          6         ✓ pass
 worsened                   8          9         ✗ fail
 ```
 
-**Existing debt doesn't block adoption.** klin measures against the repository as the agent's turn began, so the feedback is about this change alone.
-
-**The agent gets the mechanical failures. Humans keep the judgment calls.**
+**Existing problems don't block adoption. klin only stops the change when the measured quality gets worse.**
 
 ## What klin catches
 
 klin looks for a change that passes while making the codebase worse.
 
-- **Tests disappear** — a failing test is deleted, not fixed.
+- **Tests disappear** — a failing test is deleted instead of fixed.
 - **Checks get silenced** — tests skipped, warnings suppressed, errors swallowed.
-- **Work is left unfinished** — TODOs and stubs.
-- **Complexity grows** — a complex function gets another branch.
-- **Dependencies drift** — a dependency is used without the lock state.
-- **Code is added but never wired in** — nothing reaches it.
-- **Internal APIs leak outward** — a private symbol goes public.
-- **Project conventions are ignored** — repository-specific rules are violated.
-- **Architecture drifts** — dependencies cross boundaries or add cycles.
-- **Documentation falls behind** — code moves, references stay stale.
+- **Work is left unfinished** — TODOs, placeholders, and other stubs remain.
+- **Complexity grows** — an already-complex function gets another branch.
+- **Dependencies drift** — code relies on a dependency without the lock state.
+- **Code is added but never wired in** — it looks finished, but nothing reaches it.
+- **Internal APIs leak outward** — a private symbol goes public to make a change work.
+- **Project conventions are ignored** — exact repository-specific rules are violated.
+- **Architecture drifts** — dependencies cross boundaries or introduce new cycles.
+- **Documentation falls behind** — code moves while references to it stay stale.
 - **Changed code loses test coverage** — behavior changes, tests do not.
 
-These are deterministic checks. klin does not ask an LLM whether code is "good"; it measures a specific regression and hands the agent a concrete failure.
+These are deterministic checks. klin does not ask an LLM whether code is "good"; it measures specific regressions and gives the agent a concrete failure to repair.
 
 ## Quick start
 
@@ -129,7 +134,10 @@ For independent enforcement, add klin to CI:
 - uses: brajevicm/klin@v1
 ```
 
-Local hooks are feedback, not a security boundary: the same policy runs again in an independent checkout before merge.
+```text
+while the agent works     → fast feedback and repair
+before the change merges  → independent verification in CI
+```
 
 ## Updating klin
 
@@ -139,23 +147,42 @@ Local hooks are feedback, not a security boundary: the same policy runs again in
 
 ## Conformance levels
 
-**Feedback** — hooks only. klin puts every new regression in front of the agent during the turn, and refuses its edits to `klin.json` and to klin's own state. This is local assistance: an agent that controls the worktree can still work around it.
+**Feedback** — hooks only. klin puts every new regression in front of the agent during the turn and refuses its edits to `klin.json` and to klin's own state. This is local assistance. An agent that controls the worktree can still work around it.
 
-**Enforced** — Feedback plus a required `klin gate --strict` on an independent CI checkout, against a protected branch, with `klin.json`, the workflow and CODEOWNERS under review. Only here does a gate hold against an agent, and loosening it takes a reviewed commit.
+**Enforced** — Feedback plus a required `klin gate --strict` run on an independent CI checkout, against a protected branch, with `klin.json`, the workflow and CODEOWNERS under review. Only at this level does a gate hold against an agent, and loosening it takes a reviewed commit.
 
 [What each level guarantees, and where the boundaries are](docs/THREAT_MODEL.md).
 
+## Built for the agent loop
+
+**Turn-aware.** klin judges the change against the repository as the agent's turn began, so the feedback is about this change alone.
+
+**Ratcheted.** Existing debt is held and improvements pass, so a real codebase adopts strict checks without a cleanup project first.
+
+**Verified again in CI.** Local hooks are feedback, not a security boundary. The same policy runs again in independent CI before merge.
+
+**The agent gets the mechanical failures. Humans keep the judgment calls.**
+
 ## Works with your existing tools
 
-Your linters, tests, type checkers, and scanners are good at **finding problems**. klin takes a deterministic finding, puts it in front of the agent, and checks the repair.
+Your linters, tests, type checkers, coverage tools, and security scanners are good at **finding problems**. klin takes a deterministic finding, puts it in front of the coding agent, and checks the repair. Use the best tool for each kind of analysis; klin adds the turn-aware ratchet, the feedback loop, and CI verification around those signals.
 
 ## Does it actually help?
 
-Before 1.0, we compare one agent, task, and repository two ways: **shadow**, where klin observes but sends no feedback, and **active**, where klin sends failures back during the turn. An external oracle judges each task. Results are published separately, so negative and mixed outcomes stay visible.
+klin is designed to improve the final changes produced by coding agents, not just to add more checks.
+
+Before 1.0, we compare the same agent, task, and starting repository in two modes:
+
+- **Shadow** — klin observes the work but does not send feedback to the agent.
+- **Active** — klin sends failures back during the turn so the agent can repair them.
+
+Each task is judged by an external oracle rather than by klin itself.
+
+The full methodology and results are published separately, so positive, negative, and mixed outcomes remain visible.
 
 ## What klin is not
 
-klin is one layer of an agentic system. It is **not**:
+klin is one layer of an agentic engineering system, not the whole stack. It is **not**:
 
 - an AI code reviewer;
 - a replacement for tests, linters, or type checkers;
@@ -163,7 +190,7 @@ klin is one layer of an agentic system. It is **not**:
 - a sandbox or security boundary for coding agents;
 - a hosted dashboard or agent orchestration platform.
 
-klin handles the deterministic quality-control loop around a change.
+klin handles the deterministic quality-control loop around code changes. Humans still own requirements, architecture, judgment, and review.
 
 ## Documentation
 

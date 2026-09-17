@@ -286,10 +286,9 @@ fn this_repositorys_own_documents_are_under_their_ceilings() {
     tree.write("README.md", include_str!("../README.md"));
     tree.write("CONTEXT.md", include_str!("../CONTEXT.md"));
     tree.write("AGENTS.md", include_str!("../AGENTS.md"));
-    tree.write(
-        "klin.json",
-        r#"{"doc_size": {"README.md": 1300, "CONTEXT.md": 1300, "AGENTS.md": 1300}}"#,
-    );
+    tree.write("RELEASE_NOTES.md", include_str!("../RELEASE_NOTES.md"));
+    tree.write("klin.json", include_str!("../klin.json"));
+
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
