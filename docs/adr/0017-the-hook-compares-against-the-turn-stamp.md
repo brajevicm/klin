@@ -100,3 +100,35 @@ exists, the prompt writes no fresh stamp and the next stop judges a branch
 window from the base `klin gate` would choose by hand, HEAD only when no base
 resolves, and writes that base as the stamp. Only an absent state directory
 is a first session. `docs/SPEC.md` 6.2, 14 and 16.1 carry the rule.
+
+Amended 2026-09-17, third amendment. The rule above said a red stamp simply
+stays across prompts and sessions. It does not stay across a change of
+history. A session opened on one branch, the worktree moved to a divergent
+`main`, and the next stop judged the working tree against a stamp taken over
+the other branch's tip. The stop reported a ~280-file change set and 66
+deleted test functions that belonged to the branch the checkout had left, and
+no edit on `main` could reach green. The rule is now:
+
+> A red stamp stays while the HEAD it was taken over remains in current HEAD
+> history. If current HEAD no longer holds that parent, the stamp cannot
+> describe the current turn and the stop falls back to the current branch
+> window.
+
+Commit ancestry is the invariant, not the branch name, so the rule holds for
+detached HEADs, resets and rebases alike, and a branch created at the same
+HEAD or descending from the parent keeps the turn. The test is on the stamp's
+parent and never on the stamp itself: the stamp is a synthetic commit hanging
+off that parent, so it is never an ancestor of a later commit, and testing it
+would end every ordinary turn. A commit made inside the turn keeps the parent
+an ancestor of HEAD, so this amendment leaves the guarantee above it intact.
+
+Only an answer git gave counts. `git merge-base --is-ancestor` exits 1 for a
+proven divergence and other non-zero codes when it refused the question, and
+a refusal leaves the turn where it is. The stop that falls back deletes both
+`refs/worktree/klin/turn` and the mark ref, so neither recovery copy can bring
+the abandoned history back on a later stop. Losing the `turn` file after that
+widens to the branch window the fallback already judged, so the deletion
+forgives nothing, and pointing the ref at the base instead would not work: a
+stamp restored from the ref reads its parent as `<commit>^`, which names the
+stamped HEAD for a synthetic stamp alone.
+`docs/SPEC.md` 6.2, 14 and 16.1 carry the rule. #238.

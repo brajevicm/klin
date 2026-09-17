@@ -160,6 +160,19 @@ impl<'a> Repo<'a> {
             .and_then(|text| (!text.trim().is_empty()).then(|| text.trim().to_string()))
     }
 
+    /// Whether current HEAD history holds a commit: `Some(true)` when git proved the commit is
+    /// HEAD or an ancestor of it, `Some(false)` when git proved it is not, and `None` when git
+    /// could not answer. The three answers stay apart, because a caller that reads a refusal as
+    /// a proven no acts on an answer git never gave. Spec 6.2.
+    pub fn contains(&self, commit: &str) -> Option<bool> {
+        let (status, _) = self.ran(&["merge-base", "--is-ancestor", commit, "HEAD"], &[])?;
+        match status.code() {
+            Some(0) => Some(true),
+            Some(NOT_AN_ANCESTOR) => Some(false),
+            _ => None,
+        }
+    }
+
     /// The path git answers a rev-parse path-format question with, and `None` where git
     /// refuses or names nothing.
     pub fn rev_parse_path(&self, flag: &str) -> Option<PathBuf> {
@@ -233,6 +246,10 @@ pub enum Boolean {
 /// What `git config --get` exits with when no configuration file names the key. Every other
 /// failure is git refusing the question.
 const NO_SUCH_KEY: i32 = 1;
+
+/// What `git merge-base --is-ancestor` exits with when the commit is proven not to be an
+/// ancestor. Every other failure is git refusing the question.
+const NOT_AN_ANCESTOR: i32 = 1;
 
 /// One index entry as `ls-files --stage` names it. The mode says what git would write: a file,
 /// an executable file, a symbolic link, a submodule, or a shape no checkout of a commit holds.
@@ -347,6 +364,24 @@ mod tests {
             None,
             "a refused query is None"
         );
+    }
+
+    #[test]
+    fn head_containment_keeps_a_proven_no_apart_from_a_question_git_refused() {
+        let (dir, _) = repository(&[("src/a.rs", b"fn a() {}\n")]);
+        let repo = Repo::at(dir.path());
+        let head = repo.rev_parse(&["HEAD"]).expect("HEAD");
+        git_in(dir.path(), &["checkout", "-q", "-b", "beside"]);
+        git_in(
+            dir.path(),
+            &["commit", "-q", "--allow-empty", "-m", "beside"],
+        );
+        let beside = repo.rev_parse(&["HEAD"]).expect("HEAD on the branch");
+        git_in(dir.path(), &["checkout", "-q", "-"]);
+
+        assert_eq!(repo.contains(&head), Some(true));
+        assert_eq!(repo.contains(&beside), Some(false));
+        assert_eq!(repo.contains(&"0".repeat(40)), None);
     }
 
     #[test]

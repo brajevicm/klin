@@ -770,6 +770,45 @@ denies the command by name from an agent, the way it denies `init`. Without
 this command a red window that nobody acts on degrades into a report that
 everyone learns to ignore.
 
+A stamp describes the current turn only while current HEAD history still holds
+the commit it was taken over. That commit is the stamp's parent, HEAD at
+stamping time, and not the stamp itself: the stamp is a synthetic sibling of
+its parent and is never an ancestor of a later commit. So the rule is keyed to
+commit history and not to branch names.
+
+> A red stamp stays while the HEAD it was taken over remains in current HEAD
+> history. Where current HEAD no longer holds that commit, the stamp cannot
+> describe the current turn.
+
+A commit made inside the turn keeps the parent an ancestor of HEAD, so the
+turn window stays, and so does `git checkout -b` at the same HEAD and any
+branch that descends from the parent. A switch to divergent history, a
+detached checkout of an unrelated commit, a hard reset, and a rebase that
+drops the parent each take the parent out of HEAD history. The stop then
+prints a NOTE that names the reason, judges a branch window from the base of
+6.3 for the current checkout, and writes that base as the stamp, red, keeping
+the prompt counter and dropping the `asked` record of 8.2, `intervened` and
+the follow-up hash, because all three belong to the turn the checkout left.
+The journal records the stop as `branch-fallback` (11.4).
+
+The recovery copies go with it. The stop deletes `refs/worktree/klin/turn`
+and `refs/worktree/klin/mark`, because both are copies of a turn the checkout
+left and a copy of that turn is the one thing a later stop must not read. A
+stop that loses the `turn` file after this widens to the branch window, which
+is the window the fallback already judged, so the deletion forgives nothing.
+The ref MUST NOT instead be moved to the base: a stamp restored from the ref
+reads its parent as `<commit>^`, which names the stamped HEAD for a synthetic
+stamp and the commit before the base for an ordinary one, so a moved ref would
+name a parent no stop ever took and would pass this section's test on history
+that holds no base at all.
+
+klin MUST tell a proven "not an ancestor" apart from a question git could not
+answer. `git merge-base --is-ancestor <parent> HEAD` exits 0 for an ancestor,
+1 for a proven divergence, and other codes when git refused the question. Only
+the proven divergence takes the fallback above. A stamp that names no parent,
+which is the shape a stamp taken over an unborn HEAD has, keeps the turn
+window.
+
 A stamp is missing when the state directory exists and holds no `turn` file.
 A `turn` file that is gone while the ref of 6.5 remains is restored from the
 ref with a RED verdict, and a NOTE says so. When the file and the ref are
@@ -2748,9 +2787,10 @@ failure, or an error alike — plus what only the hook knew:
   them (8.2).
 - `flags`, the unusual paths this stop took, empty on a clean stop:
   `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
-  window because no stamp resolved), `count-unwritable` (a build stamp that
-  would not write, 14), `no-prompt-event` (16.3, a spent gate block found no
-  prompt line for the stop's session).
+  window because no stamp resolved, or because the commit the stamp was taken
+  over is outside current HEAD history, 6.2), `count-unwritable` (a build
+  stamp that would not write, 14), `no-prompt-event` (16.3, a spent gate block
+  found no prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
   empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
   (9.5). A reader finds the last weekly line from it.
@@ -3276,6 +3316,8 @@ same in all three.
 | No base resolves outside the hook | exit 2 naming what was tried |
 | `turn` file missing in the hook, ref present | restored from the ref with a RED verdict, and a NOTE says so |
 | `turn` file and ref both missing in the hook | a branch window from the base of 6.3, or from HEAD when none resolves, a NOTE names the missing stamp, and the stop writes that base as the stamp |
+| The commit the stamp was taken over is outside current HEAD history in the hook | a branch window from the base of 6.3 for the current checkout, a NOTE names the commit HEAD no longer holds, and the stop writes that base as the stamp, red, keeping the prompt counter, dropping `asked`, `intervened` and the follow-up hash, and deleting both `refs/worktree/klin/turn` and `refs/worktree/klin/mark` (6.2) |
+| Git cannot answer whether HEAD history holds that commit | the turn window stays, because only a proven divergence is a turn the checkout left (6.2) |
 | A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE, told to the person through `systemMessage` on a stop that ends (9.1). |
 | A deleted test (8.2) | Hook: blocks the first stop that finds it, once. The next stop lets it through as a NOTE, tells the person, and ends green. Outside the hook: a NOTE, `--strict` included. |
 | The build fails in the hook | block with the build output, no gate runs. Outside the hook the build step does not run (ADR 0012). |
@@ -3341,17 +3383,39 @@ read_stamp():
   if commit is None: return None
   note("turn file missing, restored from the ref")
   stamp = Stamp(commit, parent=parent(commit), time=None, last_verdict=RED)
+  # parent(commit) is commit^, which names the stamped HEAD only because the ref holds a
+  # synthetic stamp. 6.2 is why no other commit may be written to that ref.
   write_atomic(state/turn, stamp)
   return stamp
 
+holds_head(commit):                    # 6.2, the three answers stay apart
+  status = run("git merge-base --is-ancestor " + commit + " HEAD")
+  if status == 0: return True                              # ancestor of HEAD, or HEAD
+  if status == 1: return False                             # proven divergent
+  return None                                              # git could not answer
+
+left_behind(stamp):
+  return stamp.parent is not None and holds_head(stamp.parent) is False
+
 hook_window():
   stamp = read_stamp()
+  if stamp is not None and left_behind(stamp):
+    note("the turn started from a commit HEAD no longer holds, judging the branch")
+    delete_ref("refs/worktree/klin/turn")                  # no restore of what HEAD left
+    delete_ref("refs/worktree/klin/mark")                  # 6.2.1
+    before = branch_stamp(stamp, mark=None)
+    return Window(BRANCH, before, WORKING, "the turn HEAD left behind")
   if stamp is None:
     note("stamp deleted, judging the branch")
-    before = choose_window(strict=False).before or HEAD     # 16.2
-    write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED)
-    return Window(BRANCH, before, WORKING, "stamp missing")
+    return Window(BRANCH, branch_stamp(stamp, mark=mark_of(stamp)), WORKING, "stamp missing")
   return Window(TURN, stamp.commit, WORKING, "since " + stamp.time)
+
+branch_stamp(stamp, mark):             # the base this stop judges, written back red
+  before = choose_window(strict=False).before or HEAD      # 16.2
+  write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED,
+               prompt=prompt_of(stamp), mark=mark,
+               asked=[], intervened=False, followup=None)
+  return before
 
 on_session_start_or_prompt():          # one rule for both events
   stamp = read_stamp()
