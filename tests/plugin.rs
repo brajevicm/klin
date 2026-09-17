@@ -52,17 +52,12 @@ fn the_cursor_plugin_keeps_the_generated_hook_shape() {
     let run = tree.run(&["init", "--hooks", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
 
-    let generated: Value = serde_json::from_str(
-        &fs::read_to_string(tree.path(".cursor/hooks.json")).expect("generated Cursor hooks"),
-    )
-    .expect("generated Cursor hooks are JSON");
+    let generated = json_file(&tree.path(".cursor/hooks.json"), "generated Cursor hooks");
     let shipped = json(CURSOR_HOOKS);
     assert_eq!(shipped["version"], generated["version"]);
 
-    let shipped_events = shipped["hooks"].as_object().expect("shipped hook events");
-    let generated_events = generated["hooks"]
-        .as_object()
-        .expect("generated hook events");
+    let shipped_events = hook_events(&shipped, "shipped Cursor hooks");
+    let generated_events = hook_events(&generated, "generated Cursor hooks");
     assert_eq!(
         shipped_events.keys().collect::<Vec<_>>(),
         generated_events.keys().collect::<Vec<_>>()
@@ -652,6 +647,24 @@ fn json(relative: &str) -> serde_json::Value {
     match serde_json::from_str(&text(relative)) {
         Ok(held) => held,
         Err(why) => panic!("{relative} is not JSON: {why}"),
+    }
+}
+
+fn json_file(path: &Path, label: &str) -> Value {
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(why) => panic!("{label} could not be read: {why}"),
+    };
+    match serde_json::from_str(&text) {
+        Ok(value) => value,
+        Err(why) => panic!("{label} are not JSON: {why}"),
+    }
+}
+
+fn hook_events<'a>(settings: &'a Value, label: &str) -> &'a serde_json::Map<String, Value> {
+    match settings["hooks"].as_object() {
+        Some(events) => events,
+        None => panic!("{label} have no event map"),
     }
 }
 
