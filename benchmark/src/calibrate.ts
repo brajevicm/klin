@@ -286,12 +286,16 @@ export function verify(directory: string): string[] {
     if (record.oracle.reason.includes("klin")) {
       problems.push(where + ": the oracle named klin");
     }
+    // Under the trial's confinement a denial has two readings, and the record cannot tell them
+    // apart: the sandbox refused a subject that went looking, or it refused a call the task
+    // needed. The first is a fact about the subject and the second changes what was measured, so
+    // a person reads `hooks` and `isolation.outside` and decides.
     if (record.friction.hostDenials > 0) {
       problems.push(
         where +
           ": the host refused " +
           String(record.friction.hostDenials) +
-          " tool call(s) of its own, so the trial may not have run the task the fixture states",
+          " tool call(s) of its own, so either the subject went looking or the trial did not run the task the fixture states",
       );
     }
   }

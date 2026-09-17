@@ -162,21 +162,27 @@ export function run(familyName: string, into: string): number {
     plant(paths.RUNS, "harness-records"),
   ];
 
-  const ran = session.run(
-    place,
-    prompt({ plane, work: paths.workRoot(), records: paths.RUNS }),
-    options,
-    session.configFor(options, trialId),
-  );
-  const hooks = session.hookEvidence(place.hooks);
-  const held = judge(
-    transcript(ran, place.repo),
-    planted,
-    hooks,
-    integrity.stayedInside(hooks, place.repo, [plane, paths.workRoot(), paths.REPO]),
-  );
-  for (const one of planted) {
-    fs.rmSync(one.file, { force: true });
+  let held: ProbeResult;
+  try {
+    const ran = session.run(
+      place,
+      prompt({ plane, work: paths.workRoot(), records: paths.RUNS }),
+      options,
+      session.configFor(options, trialId),
+    );
+    const hooks = session.hookEvidence(place.hooks);
+    held = judge(
+      transcript(ran, place.repo),
+      planted,
+      hooks,
+      integrity.stayedInside(hooks, place.repo, [plane, paths.workRoot(), paths.REPO]),
+    );
+  } finally {
+    // A host that throws and an operator who interrupts both leave the tokens on disk, one of
+    // them in this repository.
+    for (const one of planted) {
+      fs.rmSync(one.file, { force: true });
+    }
   }
   fs.writeFileSync(
     path.join(plane, "probe.json"),

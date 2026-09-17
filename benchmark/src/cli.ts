@@ -30,6 +30,24 @@ function flag(args: string[], name: string, fallback: string): string {
   return at >= 0 && at + 1 < args.length ? args[at + 1] : fallback;
 }
 
+/**
+ * The arguments that are not a flag or a flag's value.
+ *
+ * A flag's value does not start with a dash, so filtering on the dash alone reads `--into DIR` as
+ * a family name, and `probe --into /tmp/x` looked for a family called `/tmp/x`.
+ */
+export function positionals(args: string[]): string[] {
+  const kept: string[] = [];
+  for (let at = 0; at < args.length; at += 1) {
+    if (args[at].startsWith("-")) {
+      at += 1;
+      continue;
+    }
+    kept.push(args[at]);
+  }
+  return kept;
+}
+
 /** Every way a `run` command line names something the catalogue does not have. */
 export function wrongArguments(family: string, variant: string, arm: string): string[] {
   const named = Object.keys(families());
@@ -104,7 +122,7 @@ export function main(argv: string[]): number {
     return list();
   }
   if (command === "selftest") {
-    return runSelftest(args.filter((one) => !one.startsWith("-")));
+    return runSelftest(positionals(args));
   }
   if (command === "run") {
     const [family, variant, arm] = args;
@@ -117,7 +135,7 @@ export function main(argv: string[]): number {
     return calibrate.one(family, variant, arm, into);
   }
   if (command === "probe") {
-    const [family] = args.filter((one) => !one.startsWith("-"));
+    const [family] = positionals(args);
     const named = family ?? Object.keys(families())[0];
     if (!Object.keys(families()).includes(named)) {
       process.stdout.write("no family named " + named + "\n\n" + USAGE);

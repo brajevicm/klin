@@ -53,6 +53,19 @@ export function git(repo: string, ...args: string[]): string {
 }
 
 /**
+ * The hosts a fixture task may need, and nothing else.
+ *
+ * Both package managers are here because the families are Rust and TypeScript. Neither registry
+ * can tell a subject which arm it is in.
+ */
+const REGISTRIES = [
+  "registry.npmjs.org",
+  "crates.io",
+  "index.crates.io",
+  "static.crates.io",
+];
+
+/**
  * A path and its symbolic-link-resolved form, deduplicated.
  *
  * On darwin the system temporary directory is `/var/folders`, a link to `/private/var/folders`,
@@ -61,11 +74,13 @@ export function git(repo: string, ...args: string[]): string {
  * the same reason.
  */
 function forms(one: string): string[] {
+  let held = [one];
   try {
-    return [...new Set([one, fs.realpathSync(one)])];
+    held = [...new Set([one, fs.realpathSync(one)])];
   } catch {
-    return [one];
+    held = [one];
   }
+  return held.sort((a, b) => b.length - a.length);
 }
 
 /**
@@ -83,10 +98,15 @@ function forms(one: string): string[] {
  * tools and no sandbox holds them, so `blockReadsOutsideWorkingDirectories` is what refuses them
  * the same paths.
  *
- * `~/.cargo` and `~/.npm` are writable. Four families are Rust and five are TypeScript, and a
- * subject that cannot take cargo's own package lock cannot run the suite its task tells it to
- * make green, which would measure a different task. Neither directory holds anything about this
- * benchmark.
+ * `~/.cargo` and `~/.npm` are writable, and the two package registries are reachable. Four
+ * families are Rust and five are TypeScript, and one task asks the agent to bring a dependency
+ * in at an exact version, which it cannot record without the registry that states it. A subject
+ * that cannot install or take cargo's own package lock measures a different task. Neither
+ * directory nor either registry holds anything about this benchmark.
+ *
+ * `strictAllowlist` is what keeps any other host from reaching the permission flow. A headless
+ * session has no one to answer a network prompt, so a domain that is not named here is refused
+ * outright and the command fails, rather than the trial stalling until the harness times out.
  */
 function confinement(repo: string, denied: string[]): Record<string, unknown> {
   const out = denied.flatMap(forms);
@@ -102,6 +122,7 @@ function confinement(repo: string, denied: string[]): Record<string, unknown> {
         denyWrite: out,
         allowWrite: [...own, "~/.cargo", "~/.npm"],
       },
+      network: { allowedDomains: REGISTRIES, strictAllowlist: true },
     },
     permissions: { blockReadsOutsideWorkingDirectories: true },
   };

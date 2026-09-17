@@ -100,10 +100,16 @@ carries it:
 - `permissions.blockReadsOutsideWorkingDirectories`, because `Read`, `Glob` and
   `Grep` are the host's own file tools and no sandbox holds them.
 
-`~/.cargo` and `~/.npm` stay writable. A subject that cannot take cargo's own
-package lock cannot run the suite its task tells it to make green, and the
-trial would measure a different task. Neither directory holds anything about
-this benchmark.
+Two openings are deliberate. `~/.cargo` and `~/.npm` stay writable, and
+`sandbox.network.allowedDomains` reaches the npm and crates registries: one
+task asks the agent to bring a dependency in at an exact version, which it
+cannot record without the registry that states it, and a subject that cannot
+run its suite measures a different task. Neither directory nor either registry
+can tell a subject which arm it is in.
+
+`strictAllowlist` closes the rest. A headless session has no one to answer a
+network prompt, so a host that is not on the list is refused outright and the
+command fails, rather than the trial stalling until the harness times out.
 
 This is the shape issue #194 verified for Claude Code against klin's real hook
 lifecycle. The hooks are the host's own lifecycle and no sandbox holds them, so

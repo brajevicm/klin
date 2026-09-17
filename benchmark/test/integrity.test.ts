@@ -280,6 +280,7 @@ test("the settings confine the subject to its own repository", () => {
       enabled: boolean;
       allowUnsandboxedCommands: boolean;
       filesystem: { denyRead: string[]; allowRead: string[]; denyWrite: string[] };
+      network: { allowedDomains: string[]; strictAllowlist: boolean };
     };
     permissions: { blockReadsOutsideWorkingDirectories: boolean };
   };
@@ -293,9 +294,17 @@ test("the settings confine the subject to its own repository", () => {
     }
   }
   assert.deepEqual(
-    settings.sandbox.filesystem.allowRead,
-    [...new Set([place.repo, fs.realpathSync(place.repo)])],
+    [...settings.sandbox.filesystem.allowRead].sort(),
+    [...new Set([place.repo, fs.realpathSync(place.repo)])].sort(),
     "the repository sits inside a denied root, so only it is re-opened, in both its forms",
+  );
+  assert.deepEqual(
+    settings.sandbox.network,
+    {
+      allowedDomains: ["registry.npmjs.org", "crates.io", "index.crates.io", "static.crates.io"],
+      strictAllowlist: true,
+    },
+    "a task that installs a dependency needs its registry, and a headless session cannot answer a network prompt",
   );
   clear();
 });

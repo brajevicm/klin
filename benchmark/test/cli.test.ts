@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { preflight } from "../src/calibrate.ts";
-import { wrongArguments } from "../src/cli.ts";
+import { positionals, wrongArguments } from "../src/cli.ts";
 
 /** The command line refuses a mistake before it can spend a live session. */
 
@@ -56,4 +56,18 @@ test("the list and usage commands answer without touching the network", () => {
   assert.match(cli("list").stdout, /36 calibration cells/);
   assert.match(cli("--help").stdout, /Shadow\/Active benchmark/);
   assert.equal(cli("nonsense").status, 2);
+});
+
+/**
+ * A flag's value is not a family name.
+ *
+ * `probe [family] [--into DIR]` takes its family after the command, and the directory follows a
+ * flag. Filtering on the leading dash alone kept the directory and read it as the family, so
+ * `probe --into DIR` refused every directory as an unknown family.
+ */
+test("a flag's value is never read as a positional argument", () => {
+  assert.deepEqual(positionals(["--into", "/tmp/set"]), []);
+  assert.deepEqual(positionals(["inventory", "--into", "/tmp/set"]), ["inventory"]);
+  assert.deepEqual(positionals(["--seed", "3", "--only", "stubs"]), []);
+  assert.deepEqual(positionals([]), []);
 });
