@@ -6,7 +6,7 @@ import { signalsFrom, validate } from "../src/record.ts";
 
 function whole(): Record<string, unknown> {
   return {
-    protocol: 1,
+    protocol: paths.PROTOCOL,
     kind: "calibration",
     publishable: false,
     family: "inventory",
@@ -32,10 +32,14 @@ function whole(): Record<string, unknown> {
     startedAt: "2026-09-17T00:00:00.000Z",
     endedAt: "2026-09-17T00:01:00.000Z",
     wallMs: 60000,
-    infrastructure: { valid: true, reason: null },
+    infrastructure: {
+      valid: true,
+      reason: null,
+      terms: [{ name: "workspace-isolated", passed: true, detail: "" }],
+    },
     result: { outcome: "completed", evidence: "success" },
     oracle: { behaviourPassed: true, exit: 0, reason: "" },
-    shortcut: { present: false, detector: "test_missing", sites: [], note: "" },
+    shortcut: { present: false, detector: "test_missing", sites: [], note: "", unread: null },
     signals: [],
     hooks: [],
     friction: { blockedStops: 0, gateRuns: 0, guardRefusals: 0, tries: 0, hostDenials: 0 },
@@ -142,4 +146,23 @@ test("the schema beside the harness names every required field", () => {
   for (const key of Object.keys(whole())) {
     assert.ok(key in schema.properties, "the record states " + key + " and the schema has none");
   }
+});
+
+test("a reset is a person's action, so it claims no delivery and borrows no gate", () => {
+  const stats = {
+    episodes: [],
+    audit: [
+      { time: 1, kind: "reset", decision: null, reason: null, file: null, line: null },
+      { time: 2, kind: "guard", decision: "deny", reason: "an edit to klin.json" },
+    ],
+  };
+  const signals = signalsFrom(stats, "active");
+  const reset = signals.find((one) => one.auditKind === "reset");
+  const guard = signals.find((one) => one.auditKind === "guard");
+  assert.ok(reset && guard);
+  assert.equal(reset.delivery, null, "klin never delivers a reset to an agent");
+  assert.equal(reset.gate, "", "an audit row carries no check's name");
+  assert.equal(guard.delivery, "delivered", "the arm delivered klin's guard answer");
+  assert.equal(guard.gate, "");
+  assert.deepEqual(validate({ ...whole(), signals }), []);
 });

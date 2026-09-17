@@ -23,3 +23,8 @@ records kept in this repository are never measured as klin's own source.
 A calibration record says `publishable: false`, and `verify` refuses a set
 that says otherwise. Issue #115 excludes calibration from the product
 scorecard.
+
+`ad-hoc/0ce3ce1cb732` is one live trial from 2026-09-17, kept as raw evidence.
+It is a protocol 1 record, so it holds no `infrastructure.terms` and `verify`
+names it as a protocol mismatch. It is evidence of what ran, not a set to
+verify.

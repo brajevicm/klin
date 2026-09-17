@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/brajevicm/klin/benchmark/record.schema.json",
-  "title": "klin Shadow/Active benchmark run record, version 1",
+  "title": "klin Shadow/Active benchmark run record, version 2",
   "description": "One trial, completely enough for the later scorecard to be computed without reading terminal text. The record holds no hidden chain of thought.",
   "type": "object",
   "additionalProperties": false,
@@ -39,7 +39,7 @@
   ],
   "properties": {
     "protocol": {
-      "const": 1,
+      "const": 2,
       "description": "The benchmark protocol version."
     },
     "kind": {
@@ -136,7 +136,7 @@
       "properties": {
         "commit": {
           "type": "string",
-          "description": "The repository's HEAD when the trial ran. A stale build carries an older commit's behaviour, so binarySha256 is the binary's own identity and the one to trust."
+          "description": "The source commit a build provenance file beside the binary ties to binarySha256, or empty where nothing proves one. Repository HEAD is not an answer, because a stale build carries an older commit's behaviour. binarySha256 is the authoritative identity."
         },
         "version": {
           "type": "string"
@@ -253,17 +253,29 @@
       "additionalProperties": false,
       "required": [
         "valid",
-        "reason"
+        "reason",
+        "terms"
       ],
+      "description": "Whether the apparatus worked. A failed term names the harness's own failure, so the run is excluded rather than scored, and no field under `result`, `oracle` or `shortcut` is a fact about the agent.",
       "properties": {
         "valid": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "True where every term passed."
         },
         "reason": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "The names of the failed terms, or null where none failed."
+        },
+        "terms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "description": "Every term the trial was judged against, passed or failed, so a later reader sees which one excluded the run."
         }
       }
     },
@@ -274,7 +286,7 @@
         "outcome",
         "evidence"
       ],
-      "description": "Agent completion, give-up or person-required. Give-up and person-required are product outcomes, never an infrastructure exclusion.",
+      "description": "Agent completion, give-up or person-required. Give-up is a product outcome only the host can report, through its own turn limit or budget. The harness timeout is a validity term and never an outcome.",
       "properties": {
         "outcome": {
           "enum": [
@@ -320,9 +332,10 @@
         "present",
         "detector",
         "sites",
-        "note"
+        "note",
+        "unread"
       ],
-      "description": "Whether the family's target shortcut sits in the final tree. Null where the detector could not tell.",
+      "description": "Whether the family's target shortcut sits in the final tree. Null where the detector answered nothing, and `unread` then says which tree it could not read.",
       "properties": {
         "present": {
           "type": [
@@ -338,6 +351,14 @@
         },
         "note": {
           "type": "string"
+        },
+        "unread": {
+          "enum": [
+            "base",
+            "final",
+            null
+          ],
+          "description": "The tree a detector could not read. `base` is a fixture defect and invalidates the run. `final` is the agent's own doing, because an agent may rename, move or break what the family measures, so that run stays valid and `verify` names it."
         }
       }
     },
@@ -371,7 +392,8 @@
             ]
           },
           "gate": {
-            "type": "string"
+            "type": "string",
+            "description": "The gate an episode names. Empty for a row the audit list carries alone, because a gate's own name lives on the episode and `auditKind` names such a row."
           },
           "label": {
             "type": [
@@ -437,8 +459,10 @@
           "delivery": {
             "enum": [
               "delivered",
-              "would-have-been-delivered"
-            ]
+              "would-have-been-delivered",
+              null
+            ],
+            "description": "What the arm did with the signal. Null where klin delivers nothing to an agent, as for a reset a person ran."
           }
         }
       }
@@ -580,26 +604,29 @@
         "checks": {
           "type": "array",
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "name",
-              "passed",
-              "detail"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "passed": {
-                "type": "boolean"
-              },
-              "detail": {
-                "type": "string"
-              }
-            },
-            "description": "The workspace checks run before the session, over the tree the harness materialized. One more runs afterwards, and it looks only for a hidden oracle file."
-          }
+            "$ref": "#/$defs/check"
+          },
+          "description": "The workspace checks run before the session, over the tree the harness materialized. One more runs afterwards, and it looks only for a hidden oracle file."
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "passed",
+        "detail"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "detail": {
+          "type": "string"
         }
       }
     }

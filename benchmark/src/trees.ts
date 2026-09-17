@@ -5,15 +5,15 @@ import path from "node:path";
 const IGNORED = new Set([".git", "node_modules", "target", ".klin"]);
 
 /**
- * Every file under `root` by its relative path, sorted, less the directories a build writes.
+ * Every entry under `root` that `keep` accepts, by relative path, sorted, less the directories a
+ * build writes.
  *
- * A symbolic link is neither listed nor copied, because the walk asks for a directory or a plain
- * file and a link is neither. No fixture ships one. An agent that creates one would leave it out
- * of the digest and out of the scoring copy, which is a fixture defect to record if it happens.
+ * `readdirSync` does not follow a symbolic link, so a link is a directory to neither `files` nor
+ * this walk, and the walk never descends through one.
  */
-export function files(root: string): string[] {
+function walk(root: string, keep: (entry: fs.Dirent) => boolean): string[] {
   const found: string[] = [];
-  const walk = (directory: string, prefix: string): void => {
+  const step = (directory: string, prefix: string): void => {
     let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -25,15 +25,31 @@ export function files(root: string): string[] {
         continue;
       }
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
-      if (entry.isDirectory()) {
-        walk(path.join(directory, entry.name), relative);
-      } else if (entry.isFile()) {
+      if (keep(entry)) {
         found.push(relative);
+      }
+      if (entry.isDirectory()) {
+        step(path.join(directory, entry.name), relative);
       }
     }
   };
-  walk(root, "");
+  step(root, "");
   return found.sort();
+}
+
+/**
+ * Every plain file under `root` by its relative path, sorted.
+ *
+ * A symbolic link is neither listed nor copied, so a tree holding one is measured incompletely.
+ * `links` is what finds that, and a trial whose final tree holds one is invalid.
+ */
+export function files(root: string): string[] {
+  return walk(root, (entry) => entry.isFile());
+}
+
+/** Every symbolic link under `root`, which `files`, `digest` and `copyTree` all leave out. */
+export function links(root: string): string[] {
+  return walk(root, (entry) => entry.isSymbolicLink());
 }
 
 export function read(root: string, relative: string): string {

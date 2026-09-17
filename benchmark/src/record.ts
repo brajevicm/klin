@@ -1,4 +1,5 @@
 import * as paths from "./paths.ts";
+import type { Check } from "./integrity.ts";
 
 /**
  * The machine run record.
@@ -27,7 +28,8 @@ export interface Signal {
   decision: string | null;
   reason: string | null;
   time: number | null;
-  delivery: "delivered" | "would-have-been-delivered";
+  /** Null where klin delivers nothing to an agent, as for a reset a person ran. */
+  delivery: "delivered" | "would-have-been-delivered" | null;
 }
 
 export interface HookInvocation {
@@ -70,10 +72,16 @@ export interface RunRecord {
   startedAt: string;
   endedAt: string;
   wallMs: number;
-  infrastructure: { valid: boolean; reason: string | null };
+  infrastructure: { valid: boolean; reason: string | null; terms: Check[] };
   result: { outcome: string; evidence: string };
   oracle: { behaviourPassed: boolean; exit: number | null; reason: string };
-  shortcut: { present: boolean | null; detector: string; sites: unknown[]; note: string };
+  shortcut: {
+    present: boolean | null;
+    detector: string;
+    sites: unknown[];
+    note: string;
+    unread: "base" | "final" | null;
+  };
   signals: Signal[];
   hooks: HookInvocation[];
   friction: {
@@ -124,6 +132,10 @@ const REQUIRED = [
 
 const OUTCOMES = ["completed", "gave-up", "person-required", "error"];
 
+const ASKED = "asked-once";
+/** The one audit kind klin never hands to an agent: a person ran it. */
+const RESET = "reset";
+
 /** Every way one record fails the contract, as sentences. A valid record gives none. */
 export function validate(record: Record<string, unknown>): string[] {
   const problems: string[] = [];
@@ -142,14 +154,24 @@ export function validate(record: Record<string, unknown>): string[] {
   if (result && !OUTCOMES.includes(String(result.outcome))) {
     problems.push("the result outcome " + String(result.outcome) + " is not one of " + OUTCOMES.join(", "));
   }
+  const infrastructure = record.infrastructure as { valid?: boolean; terms?: Check[] } | undefined;
+  if (infrastructure) {
+    const terms = infrastructure.terms ?? [];
+    if (terms.length === 0) {
+      problems.push("the record states no validity term");
+    }
+    if (infrastructure.valid !== terms.every((one) => one.passed)) {
+      problems.push("the record claims validity its terms do not hold");
+    }
+  }
   const signals = (record.signals ?? []) as Signal[];
   const wanted = record.arm === "active" ? "delivered" : "would-have-been-delivered";
-  for (const signal of signals) {
+  for (const signal of signals.filter((one) => one.auditKind !== RESET)) {
     if (signal.delivery !== wanted) {
       problems.push("a signal of the " + String(record.arm) + " arm states delivery " + signal.delivery);
     }
   }
-  const asked = signals.filter((one) => one.auditKind === "asked-once");
+  const asked = signals.filter((one) => one.auditKind === ASKED);
   if (asked.some((one) => one.kind !== "audit")) {
     problems.push("an asked-once signal is recorded as a regression");
   }
@@ -193,8 +215,6 @@ function identityOf(episode: Episode): string {
   return [key.gate, key.file, key.line, key.text].map((one) => String(one ?? "")).join("|");
 }
 
-const ASKED = "asked-once";
-
 /**
  * The distinct signal sites one trial produced, from `klin stats --json`.
  *
@@ -205,8 +225,11 @@ const ASKED = "asked-once";
  * --json` reports such a site twice: as an episode whose outcome is `asked-once`, and again in
  * the audit list. The episode carries the gate, the file, the line, the declaration text and the
  * remedy, so it is the one kept, under `audit`. An audit entry for a site no episode carries is
- * kept too, so nothing is lost if klin ever reports one alone, and it takes the audit kind as
- * its gate because the episode is where the gate's own name lives.
+ * kept too, so nothing is lost if klin ever reports one alone.
+ *
+ * An audit row alone states no gate, because a gate's own name lives on the episode. `auditKind`
+ * is what names such a row. A reset states no delivery either: a person ran it and klin hands an
+ * agent nothing, so neither arm could have delivered it.
  *
  * No gate name appears in this file. A new gate needs a fixture family, not a change here.
  */
@@ -247,7 +270,7 @@ export function signalsFrom(stats: Record<string, unknown>, arm: string): Signal
         .join("|"),
       kind: "audit",
       auditKind: entry.kind ?? null,
-      gate: String(entry.kind ?? ""),
+      gate: "",
       label: null,
       file: entry.file ?? null,
       line: entry.line ?? null,
@@ -259,7 +282,7 @@ export function signalsFrom(stats: Record<string, unknown>, arm: string): Signal
       decision: entry.decision ?? null,
       reason: entry.reason ?? null,
       time: entry.time ?? null,
-      delivery,
+      delivery: entry.kind === RESET ? null : delivery,
     }));
   return [...fromEpisodes, ...fromAudit];
 }

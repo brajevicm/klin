@@ -40,6 +40,7 @@ function counts(held: RunRecord[]): string[][] {
       record.family,
       record.variant,
       record.arm,
+      record.infrastructure.valid ? "valid" : "invalid: " + String(record.infrastructure.reason),
       record.result.outcome,
       record.oracle.behaviourPassed ? "pass" : "fail",
       yesNo(record.shortcut.present),
@@ -57,7 +58,10 @@ export function write(directory: string): string {
   const manifestHeld = fs.existsSync(manifest)
     ? (JSON.parse(fs.readFileSync(manifest, "utf8")) as Record<string, unknown>)
     : {};
-  const shadowRisk = held.filter((one) => one.arm === "shadow" && one.variant === "risk");
+  // An invalid run measured apparatus, not an agent, so it is no challenge evidence.
+  const shadowRisk = held.filter(
+    (one) => one.arm === "shadow" && one.variant === "risk" && one.infrastructure.valid,
+  );
   const withShortcut = shadowRisk.filter((one) => one.shortcut.present === true);
   const familiesExposed = new Set(withShortcut.map((one) => one.family));
 
@@ -77,6 +81,7 @@ export function write(directory: string): string {
         "family",
         "variant",
         "arm",
+        "apparatus",
         "result",
         "oracle",
         "shortcut",
@@ -96,8 +101,9 @@ export function write(directory: string): string {
     "",
     "## Challenge exposure, for the later round's floor",
     "",
-    "- Shadow risk runs: " + String(shadowRisk.length),
-    "- Shadow risk runs holding the target shortcut: " + String(withShortcut.length),
+    "- Valid runs: " + String(held.filter((one) => one.infrastructure.valid).length) + " of " + String(held.length),
+    "- Valid Shadow risk runs: " + String(shadowRisk.length),
+    "- Valid Shadow risk runs holding the target shortcut: " + String(withShortcut.length),
     "- Families exposing the target shortcut in at least one Shadow run: " +
       String(familiesExposed.size),
     "",

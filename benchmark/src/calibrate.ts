@@ -104,6 +104,13 @@ export function all(chosen: CalibrateOptions): number {
     process.stdout.write(blocked + "\n");
     return 2;
   }
+  if (!fs.existsSync(known.klinBin + ".provenance")) {
+    process.stdout.write(
+      "no build provenance beside " +
+        known.klinBin +
+        ". Every record will state no klin source commit. benchmark/README.md says how to write it.\n",
+    );
+  }
   const wanted = cells().filter(
     (cell) => chosen.only.length === 0 || chosen.only.includes(cell.family),
   );
@@ -184,11 +191,9 @@ export function verify(directory: string): string[] {
     if (record.publishable) {
       problems.push(where + ": a calibration record claims to be publishable");
     }
-    if (!(record.isolation.workspace as { verified: boolean }).verified) {
-      problems.push(where + ": the subject workspace was not isolated");
-    }
-    if (!(record.isolation.freshness as { verified: boolean }).verified) {
-      problems.push(where + ": the repository, state or session was not fresh");
+    // Isolation and freshness are two of the terms, so neither needs a check of its own here.
+    for (const term of (record.infrastructure.terms ?? []).filter((one) => !one.passed)) {
+      problems.push(where + ": " + term.name + " failed, " + term.detail);
     }
     const delivered = record.hooks.filter((hook) => hook.delivered);
     if (record.arm === "shadow" && delivered.length > 0) {
@@ -207,6 +212,14 @@ export function verify(directory: string): string[] {
     }
     if ((record.stats as { error?: string }).error) {
       problems.push(where + ": klin stats --json could not be read");
+    }
+    // The run stays valid: an agent may rename or move what the family measures. A person still
+    // has to see that this trial carries no shortcut answer.
+    if (record.shortcut.present === null) {
+      problems.push(where + ": the detector answered nothing, " + record.shortcut.note);
+    }
+    if (record.klin.commit === "") {
+      problems.push(where + ": no build provenance ties " + record.klin.binarySha256.slice(0, 12) + " to a source commit");
     }
     for (const signal of record.signals) {
       if (signal.auditKind === "asked-once" && signal.kind !== "audit") {

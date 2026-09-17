@@ -212,6 +212,60 @@ enough for #115's scorecard to be computed without scraping terminal text:
 provenance, scheduled order, timing, the agent's outcome, the oracle's two
 answers, klin's own facts, the hook evidence and the isolation checks.
 
+### What invalidates a run
+
+`infrastructure.terms` is the whole list a trial is judged against, each term
+named and passed or failed, and `valid` holds only when every one passed. A
+term that failed names the harness's own failure, so the run is excluded
+rather than scored, and nothing under `result`, `oracle` or `shortcut` is then
+a fact about the agent.
+
+| term | what it holds |
+| --- | --- |
+| `workspace-isolated` | the control plane stayed out of the workspace |
+| `state-fresh` | the repository, klin's state and the session were new |
+| `host-result-read` | the host's own JSON result parsed |
+| `no-harness-timeout` | the session ended before the harness killed it |
+| `behaviour-scored` | the hidden behaviour test ran |
+| `shortcut-baseline-read` | the detector read the starting tree it measures against |
+| `no-symlink-in-final-tree` | every entry is a plain file, so the digest and the scoring copy hold the whole tree |
+
+The five terms after the first two are why an apparatus failure can never
+reach the scorecard as a product outcome. A scorer that could not run, a
+fixture whose own starting tree the detector could not read, and a tree the
+harness measures incompletely would otherwise read as a failed task. `verify`
+reports every failed term, and the calibration report carries an `apparatus`
+column beside the result.
+
+A detector that could not read the tree the *agent* left is a different thing,
+and it leaves the run valid. An agent may rename, move or break whatever the
+family measures, and that run is still a run. `shortcut.unread` says which
+tree a detector could not read, `shortcut.present` stays null, and `verify`
+names the trial so a person sees it.
+
+`gave-up` is a product outcome, so only the host may report one, through its
+own turn limit or budget. The harness timeout is the harness's own wall clock
+and says nothing about what the agent would have done next, so it is a term
+and never an outcome.
+
+### What the klin source commit says
+
+`klin.binarySha256` is the authoritative identity of what ran. `klin.commit`
+is empty unless a build wrote `<binary>.provenance` beside it, holding that
+same hash and the commit it was built from:
+
+```sh
+cargo build --release
+printf '{"binarySha256":"%s","commit":"%s"}\n' \
+  "$(shasum -a 256 target/release/klin | cut -d' ' -f1)" \
+  "$(git rev-parse HEAD)" > target/release/klin.provenance
+```
+
+Repository HEAD on its own is not an answer, because a stale build carries an
+older commit's behaviour under today's HEAD, and `klin --version` names a
+release and no commit. `harness.commit` still records HEAD, because that is
+where the harness itself came from.
+
 Signal evidence is kept in both arms. In Active a signal was delivered. In
 Shadow the same hook ran and the same signal would have been delivered. Each
 carries the identity `klin stats --json` gives it, and its measured tries, so
@@ -234,6 +288,11 @@ carries guard answers, resets and the deleted-test question. `activity` carries
 `klin_ms`. The harness reads all of it through the command line and never opens
 a journal file. klin itself is unchanged, so the specification and `tests/`
 are untouched.
+
+A row the audit list carries alone states no gate, because a gate's own name
+lives on the episode, and `auditKind` is what names such a row. A reset states
+no delivery either: a person ran it, klin hands an agent nothing, so neither
+arm could have delivered it.
 
 ## Running it
 

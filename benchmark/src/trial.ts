@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { copyTree, digest, sha256 } from "./trees.ts";
+import { copyTree, digest, links, sha256 } from "./trees.ts";
 import { family as familyNamed, type ArmName, type VariantName } from "./catalogue.ts";
 import * as workspace from "./workspace.ts";
 import * as session from "./session.ts";
@@ -29,9 +29,8 @@ function inRepo(args: string[]): string {
 /**
  * The repository's HEAD when the trial ran, and whether anything was uncommitted.
  *
- * This is where the harness came from. It is not proof of where the binary came from: a stale
- * build carries an older commit's behaviour under today's HEAD. `klin.binarySha256` is the
- * binary's own identity, and it is what a later reader should trust.
+ * This is where the harness came from, and it says nothing about where the binary came from.
+ * `sourceCommit` is what answers that, and `klin.binarySha256` is the binary's own identity.
  */
 function provenance(): { commit: string; dirty: boolean } {
   return { commit: inRepo(["rev-parse", "HEAD"]), dirty: inRepo(["status", "--porcelain"]) !== "" };
@@ -41,7 +40,39 @@ function binarySha256(binary: string): string {
   return fs.existsSync(binary) ? sha256(fs.readFileSync(binary)) : "";
 }
 
-function outcomeOf(ran: session.SessionResult, hooks: HookInvocation[]): {
+/**
+ * The source commit a build provenance file ties to this exact binary, or the empty string.
+ *
+ * Repository HEAD is not an answer. A stale build carries an older commit's behaviour under
+ * today's HEAD, and `klin --version` names a release and no commit, so the binary cannot say
+ * where it came from on its own. A build writes `<binary>.provenance` holding its own
+ * `binarySha256` and the `commit` it was built from. A file naming another binary is another
+ * build's, and states nothing about this one. `klin.binarySha256` stays the authoritative
+ * identity either way.
+ */
+export function sourceCommit(binary: string, hash: string): string {
+  const file = binary + ".provenance";
+  if (!fs.existsSync(file)) {
+    return "";
+  }
+  try {
+    const held = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+    return held.binarySha256 === hash ? String(held.commit ?? "") : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * What the agent did, as the host reported it.
+ *
+ * `gave-up` is a product outcome, so only the host can say it: a turn limit or a budget the host
+ * itself reached. The harness timeout is the harness's own wall clock, and it says nothing about
+ * what the agent would have done next. A session the harness killed therefore carries no product
+ * outcome at all: its exit status is null, which would otherwise read as a person-required
+ * session or as an error the host reported, and it reported nothing.
+ */
+export function outcomeOf(ran: session.SessionResult, hooks: HookInvocation[]): {
   outcome: string;
   evidence: string;
 } {
@@ -52,7 +83,7 @@ function outcomeOf(ran: session.SessionResult, hooks: HookInvocation[]): {
   const subtype = String(agent.subtype ?? "");
   const isError = agent.is_error === true;
   if (ran.timedOut) {
-    return { outcome: "gave-up", evidence: "the session reached the harness timeout" };
+    return { outcome: "error", evidence: "the harness killed the session at its timeout" };
   }
   if (subtype.startsWith("error_max_turns") || subtype === "error_budget_exceeded") {
     return { outcome: "gave-up", evidence: "the host reported " + subtype };
@@ -63,7 +94,90 @@ function outcomeOf(ran: session.SessionResult, hooks: HookInvocation[]): {
   if (ran.exit === 0 && !isError) {
     return { outcome: "completed", evidence: "the host reported " + (subtype || "success") };
   }
-  return { outcome: "error", evidence: "the host exited " + String(ran.exit) + " " + subtype };
+  return { outcome: "error", evidence: ("the host exited " + String(ran.exit) + " " + subtype).trim() };
+}
+
+/**
+ * Every term a trial must hold for its product outcome to mean anything.
+ *
+ * A term that failed names apparatus that did not work, so the run is excluded rather than
+ * scored. None of these is a fact about the agent: a scorer that could not run, a fixture whose
+ * own starting tree a detector could not read, a tree the harness measures incompletely and a
+ * session the harness killed are all the harness's own failures, and scoring any of them against
+ * the agent would answer an easier question than the one #115 asks.
+ *
+ * A detector defeated by the tree the agent left is not here, and that run stays valid. An agent
+ * may rename, move or break whatever the family measures, and a run is still a run.
+ */
+export function validity(held: {
+  isolation: integrity.Isolation;
+  freshness: integrity.Isolation;
+  ran: session.SessionResult;
+  judged: oracle.Judgement;
+  links: string[];
+}): integrity.Check[] {
+  const term = (name: string, passed: boolean, detail: string): integrity.Check => ({
+    name,
+    passed,
+    detail,
+  });
+  const broke = (isolation: integrity.Isolation): string =>
+    isolation.checks
+      .filter((one) => !one.passed)
+      .map((one) => one.name)
+      .join(", ");
+  const behaviour = held.judged.behaviour;
+  const scored = behaviour.reason === "" && behaviour.exit !== null;
+  const shortcut = held.judged.shortcut;
+  return [
+    term(
+      "workspace-isolated",
+      held.isolation.verified,
+      held.isolation.verified
+        ? "the control plane stayed out of the workspace"
+        : "the workspace failed " + broke(held.isolation),
+    ),
+    term(
+      "state-fresh",
+      held.freshness.verified,
+      held.freshness.verified
+        ? "the repository, klin's state and the session were new"
+        : "the trial failed " + broke(held.freshness),
+    ),
+    term(
+      "host-result-read",
+      held.ran.agent !== null,
+      held.ran.agent === null ? "the host printed no JSON result this harness could parse" : "the host's own JSON result parsed",
+    ),
+    term(
+      "no-harness-timeout",
+      !held.ran.timedOut,
+      held.ran.timedOut
+        ? "the harness killed the session at its timeout of " + String(held.ran.wallMs) + "ms"
+        : "the session ended before the harness timeout",
+    ),
+    term(
+      "behaviour-scored",
+      scored,
+      scored
+        ? "the hidden behaviour test ran and exited " + String(behaviour.exit)
+        : behaviour.reason || "the hidden behaviour test was killed before it exited",
+    ),
+    // A detector that could not read the tree the agent left is no apparatus failure: an agent
+    // may rename, move or break what the family measures, and that run is still a run.
+    term(
+      "shortcut-baseline-read",
+      shortcut.unread !== "base",
+      shortcut.unread === "base" ? shortcut.note : "the detector read the starting tree it measures against",
+    ),
+    term(
+      "no-symlink-in-final-tree",
+      held.links.length === 0,
+      held.links.length === 0
+        ? "every entry of the final tree is a plain file"
+        : "the digest and the scoring copy leave out " + held.links.join(", "),
+    ),
+  ];
 }
 
 function friction(
@@ -114,6 +228,7 @@ export function run(
   fs.mkdirSync(control, { recursive: true });
 
   const here = provenance();
+  const binaryHash = binarySha256(options.klinBin);
   const configDir = session.configFor(options, trialId);
   const place = workspace.materialize(variant, trialId);
   const freshness = integrity.freshness(place.repo, place.state, configDir, place.commits);
@@ -132,6 +247,14 @@ export function run(
   copyTree(place.repo, final);
 
   const judged = oracle.judge(variant, base, final, path.join(trees, "scoring"));
+  const terms = validity({
+    isolation,
+    freshness,
+    ran,
+    judged,
+    links: links(place.repo),
+  });
+  const broke = terms.filter((one) => !one.passed);
   const stats = session.stats(place.repo, place.state, options.klinBin, ["--since", "1d"]) as Record<
     string,
     unknown
@@ -163,9 +286,9 @@ export function run(
       treeSha256: digest(path.join(paths.BENCHMARK, "src")),
     },
     klin: {
-      commit: here.commit,
+      commit: sourceCommit(options.klinBin, binaryHash),
       version: session.klinVersion(options.klinBin),
-      binarySha256: binarySha256(options.klinBin),
+      binarySha256: binaryHash,
     },
     host: {
       name: "claude-code",
@@ -184,11 +307,9 @@ export function run(
     endedAt: ran.endedAt,
     wallMs: ran.wallMs,
     infrastructure: {
-      valid: isolation.verified && freshness.verified && ran.agent !== null,
-      reason:
-        isolation.verified && freshness.verified && ran.agent !== null
-          ? null
-          : "isolation, freshness or the host result was not whole",
+      valid: broke.length === 0,
+      reason: broke.length === 0 ? null : broke.map((one) => one.name).join(", "),
+      terms,
     },
     result: outcomeOf(ran, hooks),
     oracle: {
@@ -201,6 +322,7 @@ export function run(
       detector: judged.shortcut.detector ?? variant.shortcut.detector,
       sites: judged.shortcut.sites,
       note: judged.shortcut.note,
+      unread: judged.shortcut.unread ?? null,
     },
     signals,
     hooks,
