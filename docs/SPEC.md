@@ -379,7 +379,22 @@ configured or derived instance of a check. A check declares:
   kind `--strict` reaches, because it has a comparison or an accepted list to
   judge. `sarif` needs the commit and not the tree: it reads which lines the
   window changed and runs the scanner once, over the working tree only (8.3).
-- `takes_scope`, whether a changed-file list narrows it
+- `takes_scope`, whether a changed-file list narrows it. False says only that
+  it does not, and a check sets it false for its own reason: `doc-size` and
+  `lockfile` judge a set small enough that narrowing it buys nothing,
+  `layering` and `sarif` read the whole tree by construction (8.3). The
+  physical changed-file set is the default judgement boundary, and one of
+  those reasons is that a check owns a broader bounded judgement unit
+  instead, because a change elsewhere in the repository deterministically
+  changes the meaning of evidence in a file the window did not touch.
+  `public-api` judges the whole consumer-facing surface, `reachability` judges
+  every member of each family, and `doc-citations` judges the whole derived
+  root-document set. A check that owns such a unit MUST name it in its own
+  contract in 8.2.1, and the runner never infers one: there is no dependency
+  graph and no propagation rule above the catalogue. The turn window of ADR
+  0014 says which work belongs to the turn. It does not require every finding
+  of that turn to sit on a line the turn edited, and the two-tree ratchet, not
+  the changed-file list, is what keeps old debt quiet.
 - `gate_per_entry`, whether the section is a list of entries a person writes,
   each its own gate under its own `name`, rather than one section the whole
   check runs under. Only `sarif` sets it (8.3).
@@ -562,6 +577,7 @@ Each check documents its rule. The rules for the shipped checks:
   its pinned ceiling instead, and is judged wherever it sits.
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
   each read against the whole tree with the built-in extension list of 8.2.1.
+  This set is the check's judgement unit on a changed run too (8.2.1).
 - `inventory`: every file under a test root the survey finds, which is a
   source root a test directory segment names or one whose every source file
   carries a test affix, and every source file a test directory segment or a
@@ -1403,6 +1419,28 @@ same string moved to another line is held. Pinned by
 `the_same_stale_string_cited_once_more_is_worsened_with_the_count` in
 `tests/doc_citations.rs`. Known limit: a citation split across two lines, a
 path in a Markdown link, and a path with a space are never read.
+
+The check takes no scope: a changed run judges every derived root document of
+both trees, because the edit that breaks a citation is a move, a rename or a
+new basename clash in the source, and not an edit to the document that cites
+it, so a run narrowed to the changed files would judge no document at all.
+The derived root-document set is bounded by 5.2, and each document already
+resolves against whole-tree path facts, so the whole judgement costs one
+resolution per citation. The physical changed-file set is therefore not this
+check's judgement boundary, and the wider boundary raises no old debt: a
+citation broken in both trees stays held under the ordinary two-tree ratchet,
+and never fails because a run re-judged it. One root-document set drives the
+findings, the base and accepted matching, the coverage counts and the
+moved-target remedy alike, so a changed run never reports a document that its
+coverage says it did not measure. `--file` and `--root` by hand are
+unchanged: a person naming a document still judges that document only. Pinned
+by `under_changed_a_move_breaks_the_citation_of_a_document_the_window_did_not_touch`,
+`the_stop_hook_blocks_on_a_move_that_breaks_an_untouched_documents_citation`,
+`under_changed_a_stale_citation_of_an_untouched_document_stays_held`,
+`under_changed_a_new_basename_clash_makes_an_untouched_citation_ambiguous`,
+`under_changed_removing_a_basename_clash_leaves_an_untouched_citation_silent`
+and `file_and_root_by_hand_judge_that_document_against_the_base` in
+`tests/doc_citations.rs`.
 
 **`complexity` measures each function on its own.** The unit is a function
 node of the language's grammar, and an accessor or initializer body counts

@@ -347,7 +347,7 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.facts().found.documents.is_empty(),
         run: doc_citations::gate,
         needs: Needs::TheTree,
-        takes_scope: true,
+        takes_scope: false,
         labels: Labels {
             one: "broken citation",
             many: "broken citations",

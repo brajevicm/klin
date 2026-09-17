@@ -19,7 +19,7 @@
         "--test",
         "check/**/*.test.ts"
       ],
-      "hookFires": false
+      "hookFires": true
     },
     "control": {
       "behaviour": [

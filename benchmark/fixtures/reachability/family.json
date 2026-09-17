@@ -24,7 +24,7 @@
         "--test",
         "oracle"
       ],
-      "hookFires": false
+      "hookFires": true
     },
     "control": {
       "behaviour": [

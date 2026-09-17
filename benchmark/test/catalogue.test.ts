@@ -92,15 +92,15 @@ test("every variant records what the production hook does with its known-bad tre
   }
 });
 
-test("a risk variant the hook cannot flag is declared, not hidden", () => {
+test("every risk variant the hook flags is declared as such", () => {
   const silent = Object.values(families())
     .filter((one) => !one.variants.risk.hookFires)
     .map((one) => one.name)
     .sort();
   assert.deepEqual(
     silent,
-    ["doc-citations", "reachability"],
-    "a family whose risk variant the hook cannot flag must be declared in family.json",
+    [],
+    "a risk variant the Stop hook cannot flag is a product gap in klin to fix, not a fact to record",
   );
 });
 

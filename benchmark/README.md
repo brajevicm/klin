@@ -191,26 +191,19 @@ it must fail, as overlays over the starting tree. `selftest` runs all of them.
 
 `selftest` also runs `klin gate --hook --changed`, the command the Stop hook
 runs, over each known-bad tree against its own starting tree, and compares the
-answer with the `hookFires` the fixture records. Seven of the nine risk
-variants are flagged at the turn's end. Two are not:
+answer with the `hookFires` the fixture records. All nine risk variants are
+flagged at the turn's end.
 
-| variant | at the turn's end | in a whole run |
-| --- | --- | --- |
-| `doc-citations` risk | silent | flagged |
-| `reachability` risk | silent | flagged |
-
-Both are the same shape. A changed run judges the files the turn changed, and
-in each of those two the evidence sits in a file the turn left alone: the
-document that still cites the moved file, and the command module the new
-dispatch no longer reaches. `public-api` has an explicit exemption in the
-specification for exactly this reason, and these two do not.
-
-This is a fact about klin, found by the first probe runs on 2026-09-17. It is
-not a fixture defect and it was not tuned away. A risk trial in either of those
-two families can end with the target shortcut present and no signal in either
-arm, and the run record says exactly that: `shortcut.present` true beside an
-empty `signals`. Issue #115 reads it; whether klin should change is a
-specification question with a ticket of its own.
+Two of them were not when the apparatus was built. The first probe runs, on
+2026-09-17, recorded that the Stop hook stayed silent over the `doc-citations`
+and `reachability` risk trees, because a changed run judged only the files the
+turn changed and in each of those two the evidence sits in a file the turn
+left alone: the document that still cites the moved file, and the command
+module the new dispatch no longer reaches. That was recorded rather than tuned
+away, and it was a product gap, not a fixture defect. Issues #234 and #235
+closed it. Each of those two checks now owns a bounded judgement unit wider
+than the changed-file set, the way `public-api` already did, so both fire at
+the turn's end and the fixtures record `hookFires` true.
 
 ## The run record
 
