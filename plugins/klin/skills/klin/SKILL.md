@@ -48,8 +48,46 @@ is visible in the diff a person reviews.
 - Editing the host's hook file, such as `.claude/settings.json`, or
   CODEOWNERS. The guard allows an edit to both, because a person owns them by
   convention rather than by refusal. Leave them alone.
-- `klin init` in any form, and `klin turn reset`. The guard denies both,
-  because both are a person's command.
+- `klin init` in any form, and `klin install` in any form. Both write a
+  person's configuration or integration; a person runs them.
+- `klin turn reset`. A person owns the decision to start a new turn.
+
+## Installation ownership
+
+The native Claude Code, Codex CLI and Cursor plugins already carry this skill.
+When a native plugin owns the selected host and scope, do not install a second
+copy with the standalone route.
+
+The standalone command is klin install. It opts a project into klin by writing
+klin.json at the repository root, selects hosts from evidence or from
+--host, and reconciles their hooks and this skill. It is a person-owned
+command.
+
+Project-scope skill paths are:
+
+- Claude Code: .claude/skills/klin/SKILL.md
+- Codex and Cursor: .agents/skills/klin/SKILL.md
+
+Codex and Cursor intentionally share one project file. User-scope paths under
+klin install --user are:
+
+- Claude Code: ~/.claude/skills/klin/SKILL.md
+- Codex and Cursor: ~/.agents/skills/klin/SKILL.md
+
+User scope is local to one person's machine. It is not committed, does not
+travel with the repository, and does not reach a cloud or remote agent. The
+flag is --user, never --global.
+
+When klin install finds no skill file, it writes the canonical skill. When
+the file is byte-identical, it does nothing. When it differs, it reports an
+explicit conflict and never overwrites the person's file. After a binary
+update, rerun klin install to reconcile files klin can safely own; resolve a
+different file as a person rather than losing its contents. The standalone
+route copies this skill only; plugin slash commands remain plugin-owned.
+
+klin init is separate. It surveys the tree, and klin init --pin writes
+derived ceilings as policy a person reviews. It does not install host hooks or
+this skill.
 
 ## Asking klin about its state
 

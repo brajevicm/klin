@@ -5,10 +5,11 @@ use serde_json::{Map, Value};
 
 use crate::config::{self, Error};
 use crate::host::{ADAPTERS, Adapter, Filter, Hook, HookFile};
-use crate::init;
+use crate::write;
 
 const HOOKS: &str = "hooks";
 const MARKER: &str = "klin.json";
+const SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
 
 /// The klin commands a host hook runs. An entry that runs one of them is klin's own, whatever
 /// shape the klin that wrote it used. An entry that runs another klin command is a person's,
@@ -49,7 +50,7 @@ fn hooks_written(components: &[Component]) -> bool {
     components
         .iter()
         .filter(|component| component.host)
-        .any(|component| component.target.is_some())
+        .any(|component| !component.targets.is_empty())
 }
 
 /// Where one run installs: the directory whose host files it writes, and the repository it
@@ -112,11 +113,12 @@ impl Scope {
 /// host reads fails here, where no file has been touched yet. Section 19.3.
 fn planned(args: &Args, scope: &Scope) -> Result<Vec<Component>, Error> {
     let wanted = selected(args, scope)?;
+    let mut skills = Vec::new();
     let mut components = vec![opt_in(scope)];
     for host in ADAPTERS.iter().copied() {
         let named = wanted.iter().any(|one| one.name() == host.name());
         components.push(match named {
-            true => component(host, scope)?,
+            true => component(host, scope, &mut skills)?,
             false => told(host, "no integration requested.".to_string()),
         });
     }
@@ -127,20 +129,20 @@ fn planned(args: &Args, scope: &Scope) -> Result<Vec<Component>, Error> {
 /// already so. A component with no file is already as it should be.
 struct Component {
     said: String,
-    target: Option<Target>,
+    targets: Vec<Target>,
     /// Whether this is a host's integration, rather than the repository's own marker.
     host: bool,
 }
 
 struct Target {
     file: PathBuf,
-    settings: Map<String, Value>,
+    bytes: Vec<u8>,
 }
 
 fn told(host: &dyn Adapter, said: String) -> Component {
     Component {
         said: format!("{}: {said}", host.name()),
-        target: None,
+        targets: Vec::new(),
         host: true,
     }
 }
@@ -150,11 +152,11 @@ fn told(host: &dyn Adapter, said: String) -> Component {
 /// never reached, because a partial install read as a complete one leaves a host ungated.
 fn applied(components: &[Component], out: &mut String) -> Result<(), Error> {
     for (at, component) in components.iter().enumerate() {
-        if let Some(target) = &component.target
-            && let Err(why) = written(target)
-        {
-            incomplete(&components[at..], out);
-            return Err(why);
+        for (target_at, target) in component.targets.iter().enumerate() {
+            if let Err(why) = written(target) {
+                incomplete(components, at, target_at, out);
+                return Err(why);
+            }
         }
         let _ = writeln!(out, "{}", component.said);
     }
@@ -165,16 +167,48 @@ fn written(target: &Target) -> Result<(), Error> {
     if let Some(parent) = target.file.parent() {
         std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
     }
-    init::write(&target.file, &target.settings)
+    let held = std::fs::canonicalize(&target.file);
+    let path = held.as_deref().unwrap_or(&target.file);
+    write::atomic_write(write::AtomicWrite {
+        target: path,
+        bytes: &target.bytes,
+        keep_mode_from: Some(path),
+    })
+    .map_err(|why| {
+        Error(format!(
+            "{} could not be written: {why}",
+            target.file.display()
+        ))
+    })
 }
 
-fn incomplete(left: &[Component], out: &mut String) {
-    let files: Vec<String> = left
+fn incomplete(components: &[Component], component_at: usize, target_at: usize, out: &mut String) {
+    let written: Vec<String> = components[..component_at]
         .iter()
-        .filter_map(|component| component.target.as_ref())
+        .flat_map(|component| component.targets.iter())
+        .chain(components[component_at].targets[..target_at].iter())
         .map(|target| target.file.display().to_string())
         .collect();
-    let _ = writeln!(out, "incomplete: klin did not write {}.", files.join(", "));
+    let not_written: Vec<String> = components[component_at..]
+        .iter()
+        .enumerate()
+        .flat_map(|(at, component)| {
+            let start = (at == 0).then_some(target_at).unwrap_or(0);
+            component.targets[start..]
+                .iter()
+                .map(|target| target.file.display().to_string())
+        })
+        .collect();
+    let _ = write!(
+        out,
+        "incomplete: klin did not write {}",
+        not_written.join(", ")
+    );
+    if !written.is_empty() {
+        let _ = writeln!(out, "; it wrote {}.", written.join(", "));
+    } else {
+        let _ = writeln!(out, ".");
+    }
 }
 
 /// The repository's opt-in marker, at the repository root and not at the directory the command
@@ -185,7 +219,7 @@ fn opt_in(scope: &Scope) -> Component {
         return Component {
             said: "klin: no repository was opted in, because this is no git repository."
                 .to_string(),
-            target: None,
+            targets: Vec::new(),
             host: false,
         };
     };
@@ -193,7 +227,7 @@ fn opt_in(scope: &Scope) -> Component {
     match file.is_file() {
         true => Component {
             said: format!("klin: {} already opts this repository in.", file.display()),
-            target: None,
+            targets: Vec::new(),
             host: false,
         },
         false => Component {
@@ -202,10 +236,10 @@ fn opt_in(scope: &Scope) -> Component {
                  for everyone.",
                 file.display()
             ),
-            target: Some(Target {
+            targets: vec![Target {
                 file,
-                settings: Map::new(),
-            }),
+                bytes: b"{}\n".to_vec(),
+            }],
             host: false,
         },
     }
@@ -263,7 +297,11 @@ fn names() -> String {
 
 /// What one selected host needs: nothing where klin's hooks already run over the file klin
 /// would write, and otherwise that file with klin's entries brought to today's contract.
-fn component(host: &'static dyn Adapter, scope: &Scope) -> Result<Component, Error> {
+fn component(
+    host: &'static dyn Adapter,
+    scope: &Scope,
+    skills: &mut Vec<PathBuf>,
+) -> Result<Component, Error> {
     if let Some(settings) = host.plugin_enabled(&scope.at, scope.user) {
         return Ok(told(
             host,
@@ -283,7 +321,16 @@ fn component(host: &'static dyn Adapter, scope: &Scope) -> Result<Component, Err
             ),
         ));
     }
-    reconciled(host, &scope.at.join(host.hook_file()))
+    let mut component = reconciled(host, &scope.at.join(host.hook_file()))?;
+    let (target, said) = skill(host, scope, skills)?;
+    if let Some(target) = target {
+        component.targets.push(target);
+    }
+    if let Some(said) = said {
+        let prefix = component.said.trim_end_matches('.');
+        component.said = format!("{prefix}; {said}.");
+    }
+    Ok(component)
 }
 
 /// One host's file as klin would have it. A file already holding exactly that is left alone,
@@ -297,14 +344,50 @@ fn reconciled(host: &'static dyn Adapter, file: &Path) -> Result<Component, Erro
             format!("{} is already current.", file.display()),
         ));
     }
+    let mut bytes = serde_json::to_vec_pretty(&Value::Object(settings))
+        .map_err(|why| Error(format!("{} could not be written: {why}", file.display())))?;
+    bytes.push(b'\n');
     Ok(Component {
         said: format!("{}: reconciled {}.", host.name(), file.display()),
-        target: Some(Target {
+        targets: vec![Target {
             file: file.to_path_buf(),
-            settings,
-        }),
+            bytes,
+        }],
         host: true,
     })
+}
+
+/// The standalone skill is one canonical text. A missing file is klin's to write, the exact
+/// current text is already current, and any other text belongs to a person and is a conflict.
+/// Shared Codex and Cursor paths are planned once. Section 19.3.
+fn skill(
+    host: &dyn Adapter,
+    scope: &Scope,
+    seen: &mut Vec<PathBuf>,
+) -> Result<(Option<Target>, Option<String>), Error> {
+    let file = scope.at.join(host.skill_file());
+    if seen.iter().any(|held| held == &file) {
+        return Ok((None, None));
+    }
+    seen.push(file.clone());
+    match std::fs::read(&file) {
+        Ok(held) if held == SKILL.as_bytes() => {
+            Ok((None, Some(format!("{} is already current", file.display()))))
+        }
+        Ok(_) => Err(Error(format!(
+            "{}: existing skill differs from klin's canonical skill; refusing to overwrite it. \
+             Move it aside or reconcile it, then rerun klin install",
+            file.display()
+        ))),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok((
+            Some(Target {
+                file: file.clone(),
+                bytes: SKILL.as_bytes().to_vec(),
+            }),
+            Some(format!("wrote {}", file.display())),
+        )),
+        Err(why) => Err(Error::unreadable(&file, why)),
+    }
 }
 
 /// klin's own entries brought to the current contract: one entry per event klin writes, with

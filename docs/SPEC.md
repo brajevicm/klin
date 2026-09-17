@@ -3689,6 +3689,7 @@ Distribution, in this order, because each step depends on the one before:
 - [x] Explicit hooks for Codex and its host adapter (#68)
 - [x] Explicit hooks for Cursor and its host adapter (#67)
 - [x] `klin install`, the standalone integration reconciler (#216)
+- [x] The standalone agent skill and its project/user reconciliation contract (#217)
 - [x] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64). None of them ships,
       and 19.1 records why the spec advertises no install command for them.
@@ -4001,6 +4002,19 @@ Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
 who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event.
+
+**Standalone skill.** The standalone route writes the exact text authored at `plugins/klin/skills/klin/SKILL.md`; the binary embeds that source so the plugin and standalone copies cannot drift.
+
+At project scope the selected hosts receive:
+
+- Claude Code: `.claude/skills/klin/SKILL.md`
+- Codex and Cursor: `.agents/skills/klin/SKILL.md`
+
+At user scope, `klin install --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that owns the selected host and scope supplies the skill, so klin writes no explicit duplicate.
+
+Skill targets participate in the same preflight as hooks. A missing file is written, a byte-identical file is already current, and a different existing file is an explicit conflict that is never overwritten. A later binary may reconcile an older standalone file only when klin can prove it owns that file; without that proof, the different file is preserved and refused. The conflict is found before the marker or any host integration is written. Rerunning `klin install` is the reconciliation step after a binary update.
+
+The standalone route copies the skill only. Slash commands and other host-specific command surfaces remain plugin-owned. User scope is local to one machine and does not reach a cloud or remote agent.
 
 **Preflight and partial failure.** One run may touch several files. It MUST
 resolve the repository root, the selected hosts, plugin ownership, every

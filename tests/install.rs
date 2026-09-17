@@ -3,6 +3,8 @@ mod harness;
 use harness::Tree;
 use serde_json::Value;
 
+const CANONICAL_SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
+
 /// A repository klin can install into: a base commit, and nothing else.
 fn a_repository() -> Tree {
     let tree = Tree::new();
@@ -24,6 +26,10 @@ fn settings_at(path: &std::path::Path) -> Value {
         Ok(value) => value,
         Err(why) => panic!("{} is not JSON: {why}\n{text}", path.display()),
     }
+}
+
+fn skill_at(path: &std::path::Path) -> String {
+    std::fs::read_to_string(path).unwrap_or_else(|why| panic!("{}: {why}", path.display()))
 }
 
 fn settings(tree: &Tree) -> Value {
@@ -308,6 +314,91 @@ fn install_adds_no_hooks_where_the_plugin_owns_the_host() {
     assert_eq!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
     assert!(run.says("supplied by the klin plugin"), "{}", run.out);
     assert!(run.says(".claude/settings.json"), "{}", run.out);
+    assert!(
+        !tree.path(".claude/skills/klin/SKILL.md").exists(),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn install_writes_the_canonical_skill_once_for_codex_and_cursor() {
+    let tree = a_repository();
+
+    let run = tree.run(&["install", "--host", "codex", "--host", "cursor"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        skill_at(&tree.path(".agents/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+    assert_eq!(
+        run.out.matches(".agents/skills/klin/SKILL.md").count(),
+        1,
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn install_user_writes_the_canonical_shared_skill() {
+    let tree = a_repository();
+    let home = Tree::bare();
+    let at = home_of(&home);
+
+    let run = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["install", "--user", "--host", "codex", "--host", "cursor"],
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        skill_at(&home.path(".agents/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+    assert!(
+        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("do not reach a cloud or remote agent"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn install_refuses_a_different_skill_before_writing_anything() {
+    let tree = a_repository();
+    tree.write(".claude/settings.json", "{}\n");
+    tree.write(".claude/skills/klin/SKILL.md", "a person's skill\n");
+
+    let run = tree.run(&["install", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("SKILL.md"), "{}", run.out);
+    assert!(run.says("refusing to overwrite"), "{}", run.out);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+    assert_eq!(
+        skill_at(&tree.path(".claude/skills/klin/SKILL.md")),
+        "a person's skill\n"
+    );
+    assert_eq!(skill_at(&tree.path(".claude/settings.json")), "{}\n");
+}
+
+#[test]
+fn install_refuses_a_shared_skill_conflict_before_writing_either_host() {
+    let tree = a_repository();
+    tree.write(".agents/skills/klin/SKILL.md", "a person's shared skill\n");
+
+    let run = tree.run(&["install", "--host", "codex", "--host", "cursor"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(".agents/skills/klin/SKILL.md"), "{}", run.out);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+    assert!(!tree.path(".codex/hooks.json").exists(), "{}", run.out);
+    assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert_eq!(
+        skill_at(&tree.path(".agents/skills/klin/SKILL.md")),
+        "a person's shared skill\n"
+    );
 }
 
 /// The matcher of an older klin is stale, and the reconciler brings it to today's contract
@@ -580,6 +671,10 @@ fn install_user_writes_the_persons_own_file_and_leaves_the_repository_alone() {
         [line("guard")],
         "{written}"
     );
+    assert_eq!(
+        skill_at(&home.path(".claude/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
     assert!(!tree.path(".claude/settings.json").exists(), "{}", run.out);
     assert!(
         run.says("every repository you open on this machine"),
@@ -668,6 +763,11 @@ fn install_adds_nothing_when_the_local_cursor_plugin_is_installed() {
     let run = tree.run(&["install", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert!(
+        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        "{}",
+        run.out
+    );
     assert!(run.says("plugin"), "{}", run.out);
 }
 
@@ -686,6 +786,11 @@ fn install_adds_nothing_when_a_marketplace_cursor_plugin_is_installed() {
     let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert!(
+        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        "{}",
+        run.out
+    );
     assert!(run.says("plugin"), "{}", run.out);
 }
 
@@ -703,6 +808,11 @@ fn install_adds_nothing_when_the_codex_plugin_is_enabled() {
     let run = tree.run(&["install", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!tree.path(".codex/hooks.json").exists(), "{}", run.out);
+    assert!(
+        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        "{}",
+        run.out
+    );
     assert!(run.says("config.toml"), "{}", run.out);
 }
 
@@ -787,6 +897,11 @@ fn install_user_adds_nothing_when_the_persons_plugin_is_enabled() {
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
     assert_eq!(written["hooks"], Value::Null, "{}", run.out);
+    assert!(
+        !home.path(".claude/skills/klin/SKILL.md").exists(),
+        "{}",
+        run.out
+    );
     assert!(run.says("plugin"), "{}", run.out);
 }
 
@@ -847,6 +962,27 @@ fn install_names_what_it_did_not_write_when_a_write_fails() {
     assert_eq!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
 }
 
+#[test]
+fn install_names_a_host_file_it_wrote_before_the_skill_failed() {
+    let tree = a_repository();
+    tree.write(".claude/settings.json", "{}\n");
+    assert!(std::fs::create_dir_all(tree.path(".claude/skills/klin/SKILL.writing")).is_ok());
+
+    let run = tree.run(&["install", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(tree.path("klin.json").is_file(), "{}", run.out);
+    assert_eq!(
+        commands(&settings(&tree), "Stop"),
+        [line("gate --hook --changed")]
+    );
+    assert!(run.says(".claude/skills/klin/SKILL.md"), "{}", run.out);
+    assert!(
+        run.says("; it wrote") && run.says(".claude/settings.json"),
+        "{}",
+        run.out
+    );
+}
+
 /// An event that is not a list of entries belongs to whatever wrote it, and klin writes no
 /// entry there, so the reconciler leaves it whole rather than refusing the run.
 #[test]
@@ -869,8 +1005,8 @@ fn install_leaves_an_event_it_does_not_write_and_cannot_read() {
     );
 }
 
-/// klin writes the marker and the host's file, and nothing else. It never edits `.gitignore`,
-/// because klin writes nothing the working tree can see.
+/// klin writes the marker, the host's file and its skill. It never edits `.gitignore`, because
+/// klin writes nothing the working tree can see.
 #[test]
 fn install_writes_the_marker_and_the_host_file_and_nothing_else() {
     let tree = a_repository();
@@ -882,7 +1018,7 @@ fn install_writes_the_marker_and_the_host_file_and_nothing_else() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         tree.status(),
-        " M .claude/settings.json\n?? klin.json\n",
+        " M .claude/settings.json\n?? .claude/skills/\n?? klin.json\n",
         "{}",
         run.out
     );

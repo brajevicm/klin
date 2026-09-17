@@ -32,6 +32,10 @@ impl Adapter for Claude {
         ".claude/settings.json"
     }
 
+    fn skill_file(&self) -> &'static str {
+        ".claude/skills/klin/SKILL.md"
+    }
+
     fn matcher(&self) -> &'static str {
         super::CLAUDE_CODE_AND_CODEX_MATCHER
     }

@@ -67,6 +67,10 @@ pub trait Adapter: Sync {
     fn marker(&self) -> &'static str;
     /// The file the host reads its hooks from, relative to a tree root or to the home directory.
     fn hook_file(&self) -> &'static str;
+    /// The skill path the standalone route writes, relative to the same scope.
+    fn skill_file(&self) -> &'static str {
+        ".agents/skills/klin/SKILL.md"
+    }
     /// The tools the guard reads on the pre-tool event, in the host's matcher syntax.
     fn matcher(&self) -> &'static str;
     /// The host's name for the event a person's prompt raises, which is the one event that
