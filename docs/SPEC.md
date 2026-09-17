@@ -3888,7 +3888,11 @@ covering it; that surface takes the standalone route of 19.3.
 same directory. Cursor Teams import that repository under Dashboard → Plugins
 → Team Marketplaces. A person without a team marketplace copies `plugins/klin`
 to `~/.cursor/plugins/local/klin` and reloads the window, which is a user-scope
-install for that machine alone. Cursor skips a symlink whose target sits
+install for that machine alone. The copy instructions a document gives MUST be
+idempotent: a second run leaves one usable copy and never nests one plugin
+inside another. The Team Marketplace import has no recorded verification
+(`docs/cursor-compatibility.md`), so a document MUST label it as such rather
+than present it as a verified route. Cursor skips a symlink whose target sits
 outside that folder. The Cursor hook lines name `${CURSOR_PLUGIN_ROOT}/bin/klin`
 in that form and no other, the way Claude Code and Codex name
 `${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A project
