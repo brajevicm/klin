@@ -112,7 +112,7 @@ test("a signal whose arm does not match its delivery is named", () => {
   assert.ok(validate(held).some((one) => one.includes("delivery")));
 });
 
-test("a deleted-test question is review evidence, never a regression and never an audit row", () => {
+test("a deleted-test question stays audit evidence and is never a regression", () => {
   const stats = {
     episodes: [],
     audit: [
