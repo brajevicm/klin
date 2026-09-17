@@ -131,7 +131,7 @@ Another harness integrates through klin's versioned generic lifecycle contract. 
 For independent enforcement, add klin to CI:
 
 ```yaml
-- uses: brajevicm/klin@v1
+- uses: brajevicm/klin@v0.2.0
 ```
 
 ```text
