@@ -422,6 +422,27 @@ fn a_reset_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
 }
 
 #[test]
+fn a_rebase_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
+    let tree = stamped();
+    tree.git(&["config", "user.name", "klin"]);
+    tree.git(&["config", "user.email", "klin@example.com"]);
+    tree.git(&["checkout", "-q", "main"]);
+    tree.write(
+        "src/only_on_main.rs",
+        "fn other(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+    tree.commit("a commit the branch does not hold");
+    tree.git(&["checkout", "-q", "work"]);
+    tree.git(&["rebase", "-q", "main"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+}
+
+#[test]
 fn a_branch_made_at_the_same_head_keeps_the_turn_window() {
     let tree = stamped();
     tree.write("src/lib.rs", text::WRAPPED);
