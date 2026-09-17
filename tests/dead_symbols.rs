@@ -574,3 +574,25 @@ fn unrelated_declarations_do_not_enter_a_changed_runs_judgement_state() {
 
     assert_eq!(few, many, "an unaffected name grew the changed run's state");
 }
+
+#[test]
+fn a_changed_file_that_keeps_its_reference_names_widens_nothing() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\nfn spare() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); spare(); }\n");
+    tree.base();
+    tree.write(
+        "src/caller.rs",
+        "pub fn call() { helper(); spare(); }\n// a comment\n",
+    );
+
+    let report = tree
+        .run(&["gate", "--json", "--changed", "--gate", "dead-symbols"])
+        .json();
+
+    assert_eq!(
+        report["gates"][0]["facts"]["states"], 0,
+        "the unchanged declarations were judged: {report}"
+    );
+}

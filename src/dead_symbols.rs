@@ -108,7 +108,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
-    let affected = affected_scope(at, &before, &after);
+    let affected = affected_scope(at, &before, &after, &mut names);
     let widened = at.scoped(affected.as_deref().or(at.only));
     let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
@@ -178,29 +178,34 @@ fn sweeps(
 /// The effective judgement scope of a changed, non-strict run: the physical scope the runner
 /// gave, plus every file declaring a name whose reference evidence this turn changed. A
 /// declaration that did not move can still change from referenced to dead when its last caller
-/// changed, so the physical scope alone is not the semantic impact scope. The set stays bounded
-/// by the changed files' own reference names: no type, import or receiver resolution enters
-/// here, and a name with several declarations widens to all of them, which fails less. Issue
-/// #237, spec 8.4.
+/// changed, so the physical scope alone is not the semantic impact scope. A name a changed file
+/// references on both sides cannot flip one, so only the names one side holds alone widen
+/// anything: no type, import or receiver resolution enters here, and a name with several
+/// declarations widens to all of them, which fails less. Issue #237, spec 8.4.
 fn affected_scope(
     at: &Context,
     before: &structural::Measurement,
     after: &structural::Measurement,
+    names: &mut structural::NameCost,
 ) -> Option<Vec<String>> {
     let only = at.only.filter(|_| at.changes.is_some() && !at.strict)?;
-    let mut names = BTreeSet::new();
+    structural::timed(&mut names.before.index, || before.index());
+    structural::timed(&mut names.after.index, || after.index());
+    let mut affected = BTreeSet::new();
     for change in at.changes? {
-        reference_names(after.index().file(&change.path), &mut names);
-        if let Some(was) = change
+        if !measured_after(after, &change.path) {
+            continue;
+        }
+        let now = reference_names(after.index().file(&change.path));
+        let was = change
             .was
             .as_ref()
-            .filter(|_| measured_after(after, &change.path))
-        {
-            reference_names(before.index().file(was), &mut names);
-        }
+            .map(|was| reference_names(before.index().file(was)))
+            .unwrap_or_default();
+        affected.extend(now.symmetric_difference(&was).cloned());
     }
     let mut scope: BTreeSet<String> = only.iter().cloned().collect();
-    scope.extend(declaring_files(&names, before, after));
+    scope.extend(declaring_files(&affected, before, after));
     Some(scope.into_iter().collect())
 }
 
@@ -223,12 +228,14 @@ fn declaring_files(
 
 fn reference_names(
     file: Option<&structural::FileFacts>,
-    into: &mut BTreeSet<(syntax::LanguageId, structural::Name)>,
-) {
-    let Some(file) = file else { return };
-    for reference in &file.references {
-        into.insert((file.language, reference.name.clone()));
-    }
+) -> BTreeSet<(syntax::LanguageId, structural::Name)> {
+    let Some(file) = file else {
+        return BTreeSet::new();
+    };
+    file.references
+        .iter()
+        .map(|reference| (file.language, reference.name.clone()))
+        .collect()
 }
 
 /// Whether the working tree's structural evidence for this path is a measurement. A changed

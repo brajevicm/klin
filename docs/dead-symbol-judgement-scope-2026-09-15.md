@@ -70,8 +70,10 @@ unchanged declaration from referenced to dead. Under the scope written here,
 the Stop hook missed exactly that refactor.
 
 The changed run now judges its physical scope plus the declarations indexed
-under the reference names the changed files contribute on either semantic
-side. Both parts come from the same complete before and after `SourceIndex`
+under the reference names a changed file holds on one semantic side and not
+the other. A name the file references both before and after cannot flip a
+declaration's liveness, so it widens nothing, and a turn that edits comments
+or bodies without moving a call stays as narrow as it was before. Both parts come from the same complete before and after `SourceIndex`
 this note already keeps, so the cost model is unchanged in shape: state grows
 with the changed files' name fan-out, not with the repository. A changed file
 the grammar could not read widens nothing, so a coverage hole stays a hole.

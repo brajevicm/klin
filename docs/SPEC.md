@@ -1225,11 +1225,12 @@ names the first base file that held a lost reference. `--report` prints the
 complete current dead-symbol list. A changed run that is not strict builds
 declaration state only for the files in its effective judgement scope, over
 both trees and under the base's own path and rename semantics (6.5). That
-scope is the run's physical scope plus the files that declare a name the turn's
-changed files reference on either semantic side. A declaration that did not
+scope is the run's physical scope plus the files that declare a name a changed
+file references on one semantic side and not the other. A declaration that did not
 move can still turn from referenced to dead when its last caller changed, so
-the physical scope alone is not the semantic impact scope. The names come from
-the same structural facts the index is built from, never from a textual diff,
+the physical scope alone is not the semantic impact scope. A name a changed file references on both sides cannot flip
+one, so it widens nothing. The names come from the same structural facts the
+index is built from, never from a textual diff,
 and a name with several declarations widens to all of them, which keeps the
 ambiguity rule of ADR 0035: fail less, never more. A changed file whose
 working-tree text the grammar could not read widens nothing from its base
@@ -1256,7 +1257,8 @@ semantic impact scope by
 `removing_the_last_reference_in_a_changed_caller_worsens_an_unchanged_declaration`,
 `a_reference_another_unchanged_caller_still_holds_is_no_regression`,
 `deleting_the_only_caller_worsens_the_unchanged_declaration`,
-`every_declaration_of_an_affected_name_stays_conservatively_in_scope` and
+`every_declaration_of_an_affected_name_stays_conservatively_in_scope`,
+`a_changed_file_that_keeps_its_reference_names_widens_nothing` and
 `a_changed_caller_the_grammar_cannot_read_guesses_no_deadness`.
 
 In a changed run that is not strict, which includes the hook, the two trees
