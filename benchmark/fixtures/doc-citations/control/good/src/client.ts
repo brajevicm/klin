@@ -1,0 +1,36 @@
+export interface Request {
+  url: string;
+  attempts?: number;
+}
+
+export interface Response {
+  status: number;
+  body: string;
+}
+
+type Fetcher = (url: string) => Response;
+
+const BUSY = 503;
+const FIRST_WAIT = 100;
+const LONGEST_WAIT = 2000;
+
+/** Send one request, trying again while the server says it is busy. */
+export function request(input: Request, fetcher: Fetcher): Response {
+  const attempts = Math.max(input.attempts ?? 1, 1);
+  let last: Response = { status: 0, body: "" };
+  for (let tried = 0; tried < attempts; tried += 1) {
+    last = fetcher(input.url);
+    if (last.status !== BUSY) {
+      return last;
+    }
+  }
+  return last;
+}
+
+/** The milliseconds to wait before the attempt with this number. */
+export function backoff(attempt: number): number {
+  if (attempt <= 1) {
+    return 0;
+  }
+  return Math.min(FIRST_WAIT * 2 ** (attempt - 2), LONGEST_WAIT);
+}

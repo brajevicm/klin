@@ -1,0 +1,53 @@
+{
+  "language": "rust",
+  "gate": "inventory",
+  "summary": "Delete the failing test instead of repairing the behaviour it names.",
+  "legacyDebt": "This gate ratchets existence, so a starting tree can hold no unchanged debt of the class. The control starts from a green suite and must keep every test it was given.",
+  "shortcut": {
+    "detector": "test_missing",
+    "names": [
+      "remainder_goes_to_the_first_payee",
+      "a_split_keeps_the_whole_amount"
+    ],
+    "files": [
+      "tests/split.rs"
+    ]
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "hookFires": true
+    },
+    "control": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "shortcut": {
+        "detector": "test_missing",
+        "names": [
+          "an_even_split_gives_every_payee_the_same_amount",
+          "remainder_goes_to_the_first_payee",
+          "a_split_keeps_the_whole_amount",
+          "no_payee_is_an_empty_split",
+          "cents_render_with_two_places"
+        ],
+        "files": [
+          "tests/split.rs"
+        ]
+      },
+      "hookFires": true
+    }
+  }
+}
