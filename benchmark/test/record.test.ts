@@ -41,6 +41,7 @@ function whole(): Record<string, unknown> {
     oracle: { behaviourPassed: true, exit: 0, reason: "" },
     shortcut: { present: false, detector: "test_missing", sites: [], note: "", unread: null },
     signals: [],
+    audit: [],
     hooks: [],
     friction: { blockedStops: 0, gateRuns: 0, guardRefusals: 0, tries: 0, hostDenials: 0 },
     stats: {},
@@ -98,20 +99,20 @@ test("an active record's signals were delivered and a shadow record's would have
     episodes: [{ gate: "inventory", id: "abc", file: "tests/split.rs", line: 8, tries: 2 }],
     audit: [],
   };
-  assert.equal(signalsFrom(stats, "active")[0].delivery, "delivered");
-  assert.equal(signalsFrom(stats, "shadow")[0].delivery, "would-have-been-delivered");
+  assert.equal(signalsFrom(stats, "active").signals[0].delivery, "delivered");
+  assert.equal(signalsFrom(stats, "shadow").signals[0].delivery, "would-have-been-delivered");
 });
 
 test("a signal whose arm does not match its delivery is named", () => {
   const held = {
     ...whole(),
     arm: "shadow",
-    signals: signalsFrom({ episodes: [{ gate: "inventory", id: "abc" }] }, "active"),
+    signals: signalsFrom({ episodes: [{ gate: "inventory", id: "abc" }] }, "active").signals,
   };
   assert.ok(validate(held).some((one) => one.includes("delivery")));
 });
 
-test("a deleted-test question stays audit evidence and is never a regression", () => {
+test("a deleted-test question is review evidence, never a regression and never an audit row", () => {
   const stats = {
     episodes: [],
     audit: [
@@ -119,16 +120,48 @@ test("a deleted-test question stays audit evidence and is never a regression", (
       { time: 2, kind: "guard", decision: "deny", reason: "an edit to klin.json" },
     ],
   };
-  const signals = signalsFrom(stats, "shadow");
-  const asked = signals.filter((one) => one.auditKind === "asked-once");
-  assert.equal(asked.length, 1);
-  assert.equal(asked[0].kind, "audit");
-  assert.equal(asked[0].auditKind, "asked-once");
-  assert.deepEqual(validate({ ...whole(), arm: "shadow", signals }), []);
+  const { signals, audit } = signalsFrom(stats, "shadow");
+  assert.equal(signals.length, 1);
+  assert.equal(signals[0].kind, "audit");
+  assert.equal(signals[0].auditKind, "asked-once");
+  assert.deepEqual(
+    audit.map((one) => one.auditKind),
+    ["guard"],
+    "a guard decision is the factual trail and no site to classify",
+  );
+  assert.deepEqual(validate({ ...whole(), arm: "shadow", signals, audit }), []);
+});
+
+test("an ordinary audit row filed as a signal site is named", () => {
+  const { signals, audit } = signalsFrom(
+    { episodes: [], audit: [{ time: 1, kind: "guard", decision: "deny", reason: "an edit" }] },
+    "active",
+  );
+  assert.deepEqual(signals, [], "a guard decision is no signal site");
+  assert.ok(
+    validate({ ...whole(), signals: audit, audit: [] }).some((one) =>
+      one.includes("ordinary audit row"),
+    ),
+  );
+});
+
+test("a deleted-test question filed as an ordinary audit row is named", () => {
+  const { signals } = signalsFrom(
+    {
+      episodes: [],
+      audit: [{ time: 1, kind: "asked-once", file: "a.rs", line: 1, decision: null, reason: null }],
+    },
+    "active",
+  );
+  assert.ok(
+    validate({ ...whole(), signals: [], audit: signals }).some((one) =>
+      one.includes("deleted-test question"),
+    ),
+  );
 });
 
 test("a regression keeps its measured tries, so repeated stops stay friction", () => {
-  const signals = signalsFrom(
+  const { signals } = signalsFrom(
     { episodes: [{ gate: "escapes", id: "abc", tries: 4, outcome: "fixed-later" }], audit: [] },
     "active",
   );
@@ -138,7 +171,7 @@ test("a regression keeps its measured tries, so repeated stops stay friction", (
 });
 
 test("a record with no finding id falls back to the conservative key", () => {
-  const signals = signalsFrom(
+  const { signals } = signalsFrom(
     {
       episodes: [
         { gate: "doc-size", id: null, key: { gate: "doc-size", file: "README.md", line: 1, text: "x" } },
@@ -171,13 +204,14 @@ test("a reset is a person's action, so it claims no delivery and borrows no gate
       { time: 2, kind: "guard", decision: "deny", reason: "an edit to klin.json" },
     ],
   };
-  const signals = signalsFrom(stats, "active");
-  const reset = signals.find((one) => one.auditKind === "reset");
-  const guard = signals.find((one) => one.auditKind === "guard");
+  const { signals, audit } = signalsFrom(stats, "active");
+  const reset = audit.find((one) => one.auditKind === "reset");
+  const guard = audit.find((one) => one.auditKind === "guard");
   assert.ok(reset && guard);
+  assert.deepEqual(signals, [], "neither row is a site anyone classifies");
   assert.equal(reset.delivery, null, "klin never delivers a reset to an agent");
   assert.equal(reset.gate, "", "an audit row carries no check's name");
   assert.equal(guard.delivery, "delivered", "the arm delivered klin's guard answer");
   assert.equal(guard.gate, "");
-  assert.deepEqual(validate({ ...whole(), signals }), []);
+  assert.deepEqual(validate({ ...whole(), signals, audit }), []);
 });

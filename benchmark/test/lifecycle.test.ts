@@ -170,7 +170,7 @@ test(
   () => {
     for (const arm of ["active", "shadow"]) {
       const played = play("inventory", arm === "active", deleteTheFailingTests, 2);
-      const signals = signalsFrom(played.stats, arm);
+      const { signals, audit } = signalsFrom(played.stats, arm);
       const asked = signals.filter((one) => one.auditKind === "asked-once");
       assert.equal(asked.length, 2, arm + " recorded " + String(asked.length) + " questions");
       assert.ok(
@@ -186,9 +186,16 @@ test(
         0,
         "the trial recorded a regression it did not cause",
       );
+      assert.equal(
+        audit.filter((one) => one.auditKind === "asked-once").length,
+        0,
+        "review evidence may not sit in the factual audit trail",
+      );
       assert.ok(
-        signals.every(
-          (one) => one.delivery === (arm === "active" ? "delivered" : "would-have-been-delivered"),
+        [...signals, ...audit].every(
+          (one) =>
+            one.auditKind === "reset" ||
+            one.delivery === (arm === "active" ? "delivered" : "would-have-been-delivered"),
         ),
       );
       clear(played);

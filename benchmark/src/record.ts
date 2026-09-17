@@ -30,6 +30,14 @@ export interface Isolation {
   checks: Check[];
 }
 
+/**
+ * One site a person may classify, or one factual audit row.
+ *
+ * The two live in two fields of the record. `signals` holds the Regression episodes and the
+ * deleted-test questions klin asked, which is what #115 blinds and classifies. `audit` holds the
+ * factual trail beside them, a guard decision or a reset, which no one classifies. One shape
+ * serves both, because a reader of either wants the same columns.
+ */
 export interface Signal {
   identity: string;
   kind: "regression" | "audit";
@@ -105,6 +113,7 @@ export interface RunRecord {
     unread: "base" | "final" | null;
   };
   signals: Signal[];
+  audit: Signal[];
   hooks: HookInvocation[];
   friction: {
     blockedStops: number;
@@ -144,6 +153,7 @@ const REQUIRED = [
   "oracle",
   "shortcut",
   "signals",
+  "audit",
   "hooks",
   "friction",
   "stats",
@@ -187,15 +197,21 @@ export function validate(record: Record<string, unknown>): string[] {
     }
   }
   const signals = (record.signals ?? []) as Signal[];
+  const audit = (record.audit ?? []) as Signal[];
   const wanted = record.arm === "active" ? "delivered" : "would-have-been-delivered";
-  for (const signal of signals.filter((one) => one.auditKind !== RESET)) {
+  for (const signal of [...signals, ...audit].filter((one) => one.auditKind !== RESET)) {
     if (signal.delivery !== wanted) {
       problems.push("a signal of the " + String(record.arm) + " arm states delivery " + signal.delivery);
     }
   }
-  const asked = signals.filter((one) => one.auditKind === ASKED);
-  if (asked.some((one) => one.kind !== "audit")) {
+  if (signals.some((one) => one.auditKind === ASKED && one.kind !== "audit")) {
     problems.push("an asked-once signal is recorded as a regression");
+  }
+  if (signals.some((one) => one.kind === "audit" && one.auditKind !== ASKED)) {
+    problems.push("an ordinary audit row is recorded as a signal site to classify");
+  }
+  if (audit.some((one) => one.auditKind === ASKED)) {
+    problems.push("a deleted-test question is filed as an ordinary audit row");
   }
   for (const hook of (record.hooks ?? []) as HookInvocation[]) {
     if (!hook.stdinClosed) {
@@ -238,16 +254,21 @@ function identityOf(episode: Episode): string {
 }
 
 /**
- * The distinct signal sites one trial produced, from `klin stats --json`.
+ * The two surfaces one trial's `klin stats --json` produces.
  *
- * Both arms record them. In Active the signal reached the agent. In Shadow the same hook ran and
+ * `signals` holds what a person may classify: every Regression episode, and the deleted-test
+ * question klin asked once, which is review evidence for the same reading. `audit` holds the
+ * factual trail klin keeps beside them, a guard decision or a reset a person ran. A reset is not
+ * a signal site, and #115 would have had to tell one from the other afterwards if both sat in one
+ * field.
+ *
+ * Both arms record both. In Active the signal reached the agent. In Shadow the same hook ran and
  * the harness suppressed delivery, so the signal is the one that would have been delivered.
  *
- * A deleted test klin asked about once is review evidence, never a claimed repair. `klin stats
- * --json` reports such a site twice: as an episode whose outcome is `asked-once`, and again in
- * the audit list. The episode carries the gate, the file, the line, the declaration text and the
- * remedy, so it is the one kept, under `audit`. An audit entry for a site no episode carries is
- * kept too, so nothing is lost if klin ever reports one alone.
+ * `klin stats --json` reports a deleted-test question twice: as an episode whose outcome is
+ * `asked-once`, and again in the audit list. The episode carries the gate, the file, the line,
+ * the declaration text and the remedy, so it is the one kept. An audit entry for a site no
+ * episode carries is kept too, so nothing is lost if klin ever reports one alone.
  *
  * An audit row alone states no gate, because a gate's own name lives on the episode. `auditKind`
  * is what names such a row. A reset states no delivery either: a person ran it and klin hands an
@@ -255,7 +276,10 @@ function identityOf(episode: Episode): string {
  *
  * No gate name appears in this file. A new gate needs a fixture family, not a change here.
  */
-export function signalsFrom(stats: Record<string, unknown>, arm: string): Signal[] {
+export function signalsFrom(
+  stats: Record<string, unknown>,
+  arm: string,
+): { signals: Signal[]; audit: Signal[] } {
   const delivery = arm === "active" ? "delivered" : "would-have-been-delivered";
   const episodes = (stats.episodes ?? []) as Episode[];
   const askedSites = new Set(
@@ -306,5 +330,8 @@ export function signalsFrom(stats: Record<string, unknown>, arm: string): Signal
       time: entry.time ?? null,
       delivery: entry.kind === RESET ? null : delivery,
     }));
-  return [...fromEpisodes, ...fromAudit];
+  return {
+    signals: [...fromEpisodes, ...fromAudit.filter((one) => one.auditKind === ASKED)],
+    audit: fromAudit.filter((one) => one.auditKind !== ASKED),
+  };
 }

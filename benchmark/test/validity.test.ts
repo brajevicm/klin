@@ -43,6 +43,12 @@ function judged(over: Partial<Judgement> = {}): Judgement {
 
 const WHOLE: Check[] = [{ name: "workspace-isolated", passed: true, detail: "" }];
 
+const STAYED: Check = {
+  name: "no-tool-call-outside-the-workspace",
+  passed: true,
+  detail: "every tool call the guard saw named a path inside the workspace",
+};
+
 function terms(over: Partial<Parameters<typeof validity>[0]> = {}): Check[] {
   return validity({
     isolation: { verified: true, checks: WHOLE },
@@ -50,6 +56,7 @@ function terms(over: Partial<Parameters<typeof validity>[0]> = {}): Check[] {
     ran: session(),
     judged: judged(),
     links: [],
+    outside: STAYED,
     ...over,
   });
 }
@@ -111,6 +118,21 @@ test("a detector the agent's own tree defeated leaves the run valid", () => {
   );
 });
 
+test("a subject that named a path outside its repository invalidates the run", () => {
+  const held = terms({
+    outside: {
+      name: "no-tool-call-outside-the-workspace",
+      passed: false,
+      detail: "Bash cat /plane/t1/hooks/0003-9918/stdout",
+    },
+  });
+  assert.deepEqual(
+    failed(held),
+    ["no-tool-call-outside-the-workspace"],
+    "the sandbox refuses the read, so a trial that asked for one cannot be scored",
+  );
+});
+
 test("a final tree holding a symbolic link invalidates the run", () => {
   assert.deepEqual(failed(terms({ links: ["src/shortcut.ts"] })), ["no-symlink-in-final-tree"]);
 });
@@ -162,6 +184,7 @@ test("a failed term never states the condition it failed", () => {
     ran: session({ timedOut: true, exit: null, agent: null }),
     judged: judged(),
     links: ["src/shortcut.ts"],
+    outside: STAYED,
   });
   for (const term of held.filter((one) => !one.passed)) {
     assert.ok(term.detail.length > 0, term.name + " states no detail");
@@ -217,7 +240,13 @@ function setOf(where: string, runs: Record<string, unknown>[]): string {
     fs.mkdirSync(into, { recursive: true });
     fs.writeFileSync(
       path.join(into, "record.json"),
-      JSON.stringify({ ...held, protocol: paths.PROTOCOL, trialId: "t" + String(index), ...over }) +
+      JSON.stringify({
+        ...held,
+        protocol: paths.PROTOCOL,
+        audit: [],
+        trialId: "t" + String(index),
+        ...over,
+      }) +
         "\n",
     );
   });
@@ -357,6 +386,20 @@ test("a paired cell whose arms differ in host version, model or memory fails", (
   const cases: [string, Record<string, unknown>][] = [
     ["the host version", { host: { ...(pair([{}])[0].host as object), version: "9.9.9" } }],
     ["the requested model", { model: { requested: "opus", reported: "sonnet" } }],
+    [
+      "the klin version",
+      { klin: { commit: "abc", version: "klin 0.3.0", binarySha256: "cafe" } },
+    ],
+    [
+      "the klin source commit",
+      { klin: { commit: "another", version: "klin 0.2.0", binarySha256: "cafe" } },
+    ],
+    ["the harness", { harness: { commit: "abc", dirty: true, treeSha256: "beef" } }],
+    ["the hook wiring", { agent: { wiringSha256: "another", wrapperSha256: "w2" } }],
+    [
+      "the isolated-configuration status",
+      { host: { ...(pair([{}])[0].host as object), isolatedConfiguration: true } },
+    ],
     [
       "the user memory",
       { host: { ...(pair([{}])[0].host as object), memory: { sha256: "zz", bytes: 3 } } },

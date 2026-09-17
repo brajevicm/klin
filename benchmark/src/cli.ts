@@ -4,6 +4,7 @@ import * as paths from "./paths.ts";
 import { ARMS, VARIANTS, cells, families } from "./catalogue.ts";
 import * as selftest from "./selftest.ts";
 import * as calibrate from "./calibrate.ts";
+import * as probe from "./probe.ts";
 import * as report from "./report.ts";
 
 const USAGE = `klin Shadow/Active benchmark
@@ -11,6 +12,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts list
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
+  node benchmark/src/cli.ts probe [family] [--into DIR]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
@@ -113,6 +115,15 @@ export function main(argv: string[]): number {
     }
     const into = flag(args, "--into", path.join(paths.RUNS, "ad-hoc"));
     return calibrate.one(family, variant, arm, into);
+  }
+  if (command === "probe") {
+    const [family] = args.filter((one) => !one.startsWith("-"));
+    const named = family ?? Object.keys(families())[0];
+    if (!Object.keys(families()).includes(named)) {
+      process.stdout.write("no family named " + named + "\n\n" + USAGE);
+      return 2;
+    }
+    return probe.run(named, flag(args, "--into", path.join(paths.RUNS, "probe")));
   }
   if (command === "calibrate") {
     return calibrate.all({

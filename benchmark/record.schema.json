@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/brajevicm/klin/benchmark/record.schema.json",
-  "title": "klin Shadow/Active benchmark run record, version 3",
+  "title": "klin Shadow/Active benchmark run record, version 4",
   "description": "One trial, completely enough for the later scorecard to be computed without reading terminal text. The record holds no hidden chain of thought.",
   "type": "object",
   "additionalProperties": false,
@@ -30,6 +30,7 @@
     "oracle",
     "shortcut",
     "signals",
+    "audit",
     "hooks",
     "friction",
     "stats",
@@ -39,7 +40,7 @@
   ],
   "properties": {
     "protocol": {
-      "const": 3,
+      "const": 4,
       "description": "The benchmark protocol version."
     },
     "kind": {
@@ -230,7 +231,7 @@
       "properties": {
         "wiringSha256": {
           "type": "string",
-          "description": "The settings file with the plane path and the arm replaced by their names, so what is compared is the hook table, the matcher, the timeouts and the binary the wrapper runs."
+          "description": "The settings file with the plane path, the workspace path and the arm replaced by their names, so what is compared is the hook table, the matcher, the timeouts, the binary the wrapper runs and every sandbox and permission rule the subject ran under."
         },
         "wrapperSha256": {
           "type": "string",
@@ -365,107 +366,16 @@
     },
     "signals": {
       "type": "array",
-      "description": "Every distinct signal site the trial produced, from klin stats --json. Active records what was delivered. Shadow records what would have been delivered.",
+      "description": "Every site of this trial a person may classify: each Regression episode, and each deleted test klin asked about once, which is review evidence for the same reading. Active records what was delivered. Shadow records what would have been delivered. The factual audit trail is not here.",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "identity",
-          "kind",
-          "auditKind",
-          "gate",
-          "delivery"
-        ],
-        "properties": {
-          "identity": {
-            "type": "string"
-          },
-          "kind": {
-            "enum": [
-              "regression",
-              "audit"
-            ]
-          },
-          "auditKind": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "gate": {
-            "type": "string",
-            "description": "The gate an episode names. Empty for a row the audit list carries alone, because a gate's own name lives on the episode and `auditKind` names such a row."
-          },
-          "label": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "file": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "line": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "text": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "values": {},
-          "remedy": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "outcome": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "tries": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "decision": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "time": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "delivery": {
-            "enum": [
-              "delivered",
-              "would-have-been-delivered",
-              null
-            ],
-            "description": "What the arm did with the signal. Null where klin delivers nothing to an agent, as for a reset a person ran."
-          }
-        }
+        "$ref": "#/$defs/signal"
+      }
+    },
+    "audit": {
+      "type": "array",
+      "description": "The factual audit trail klin kept beside the signals: a guard decision, a reset a person ran. No one classifies these, so a later blinded reading never sees one as a signal site. A deleted-test question belongs under `signals` and never here.",
+      "items": {
+        "$ref": "#/$defs/signal"
       }
     },
     "hooks": {
@@ -601,12 +511,113 @@
         },
         "outside": {
           "$ref": "#/$defs/check",
-          "description": "Whether the subject kept to its own repository. It records a probe and never prevents one: the subject runs as the same operating-system user as the harness. A failed check leaves the run valid and `verify` names it."
+          "description": "Whether the subject kept to its own repository. The sandbox refuses its shell every path outside the repository and the host's file tools refuse it the same paths, so a tool call that named one is a validity term and the run is excluded rather than scored."
         }
       }
     }
   },
   "$defs": {
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "kind",
+        "auditKind",
+        "gate",
+        "delivery"
+      ],
+      "properties": {
+        "identity": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "regression",
+            "audit"
+          ]
+        },
+        "auditKind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gate": {
+          "type": "string",
+          "description": "The gate an episode names. Empty for a row the audit list carries alone, because a gate's own name lives on the episode and `auditKind` names such a row."
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "values": {},
+        "remedy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tries": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "decision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "time": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "delivery": {
+          "enum": [
+            "delivered",
+            "would-have-been-delivered",
+            null
+          ],
+          "description": "What the arm did with the signal. Null where klin delivers nothing to an agent, as for a reset a person ran."
+        }
+      }
+    },
     "isolation": {
       "type": "object",
       "additionalProperties": false,

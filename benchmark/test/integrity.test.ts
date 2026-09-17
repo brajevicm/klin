@@ -7,6 +7,7 @@ import { family } from "../src/catalogue.ts";
 import * as integrity from "../src/integrity.ts";
 import * as workspace from "../src/workspace.ts";
 import { files } from "../src/trees.ts";
+import * as paths from "../src/paths.ts";
 import type { Check, Isolation } from "../src/record.ts";
 
 function room(): string {
@@ -198,9 +199,9 @@ test("the arms differ in nothing a workspace can read", () => {
     "the arm is in the settings, which sit in the plane and not beside the subject",
   );
   assert.equal(
-    workspace.wiringSha256(active.place.settings, active.place.plane),
-    workspace.wiringSha256(shadow.place.settings, shadow.place.plane),
-    "the digest names the plane and the arm, so two arms of one cell must match",
+    workspace.wiringSha256(active.place.settings, active.place.plane, active.place.root),
+    workspace.wiringSha256(shadow.place.settings, shadow.place.plane, shadow.place.root),
+    "the digest names the plane, the workspace and the arm, so two arms of one cell must match",
   );
   for (const one of [active, shadow]) {
     assert.deepEqual(fs.readdirSync(one.place.root), ["repo"]);
@@ -211,15 +212,90 @@ test("the arms differ in nothing a workspace can read", () => {
 
 test("the wiring digest attests the settings file's own bytes", () => {
   const { place, clear } = laid("lockfile", "risk", "selftest-wiring");
-  const before = workspace.wiringSha256(place.settings, place.plane);
-  const edited = fs
-    .readFileSync(place.settings, "utf8")
-    .replace('"timeout": 900', '"timeout": 5');
-  fs.writeFileSync(place.settings, edited);
+  const digestNow = (): string => workspace.wiringSha256(place.settings, place.plane, place.root);
+  const before = digestNow();
+  const edit = (from: string, to: string): void => {
+    fs.writeFileSync(place.settings, fs.readFileSync(place.settings, "utf8").replace(from, to));
+  };
+  edit('"timeout": 900', '"timeout": 5');
   assert.notEqual(
-    workspace.wiringSha256(place.settings, place.plane),
+    digestNow(),
     before,
     "a hand-edited Stop timeout must change the digest, or a paired cell could not catch it",
+  );
+  edit('"timeout": 5', '"timeout": 900');
+  assert.equal(digestNow(), before);
+  edit('"allowUnsandboxedCommands": false', '"allowUnsandboxedCommands": true');
+  assert.notEqual(
+    digestNow(),
+    before,
+    "a sandbox rule is a real difference between two arms, so it must change the digest",
+  );
+  clear();
+});
+
+/**
+ * What normalizes away, and what may not.
+ *
+ * Two arms run in two workspaces and two planes, and both paths carry the trial id. Nothing else
+ * about the file may drop out of the digest.
+ */
+test("the session's own paths normalize away and the rules do not", () => {
+  const one = laid("lockfile", "control", "selftest-norm-one", true);
+  const two = laid("lockfile", "control", "selftest-norm-two", true);
+  assert.notEqual(one.place.root, two.place.root);
+  assert.notEqual(one.place.plane, two.place.plane);
+  assert.equal(
+    workspace.wiringSha256(one.place.settings, one.place.plane, one.place.root),
+    workspace.wiringSha256(two.place.settings, two.place.plane, two.place.root),
+    "only the trial's own paths differ between these two",
+  );
+  const before = workspace.wiringSha256(one.place.settings, one.place.plane, one.place.root);
+  fs.writeFileSync(
+    one.place.settings,
+    fs
+      .readFileSync(one.place.settings, "utf8")
+      .replace('"blockReadsOutsideWorkingDirectories": true', '"blockReadsOutsideWorkingDirectories": false'),
+  );
+  assert.notEqual(
+    workspace.wiringSha256(one.place.settings, one.place.plane, one.place.root),
+    before,
+    "a tool permission is a real difference and may not normalize away",
+  );
+  one.clear();
+  two.clear();
+});
+
+/**
+ * The subject is confined by the operating system, not by the layout.
+ *
+ * `cwd` is no sandbox: the plane, the other trials' workspaces and klin's own repository are all
+ * absolute paths a shell can name. These rules are what refuse them, and `allowUnsandboxedCommands`
+ * is what stops the host from retrying a refused command outside the sandbox.
+ */
+test("the settings confine the subject to its own repository", () => {
+  const { place, clear } = laid("lockfile", "risk", "selftest-sandbox", false);
+  const settings = JSON.parse(fs.readFileSync(place.settings, "utf8")) as {
+    sandbox: {
+      enabled: boolean;
+      allowUnsandboxedCommands: boolean;
+      filesystem: { denyRead: string[]; allowRead: string[]; denyWrite: string[] };
+    };
+    permissions: { blockReadsOutsideWorkingDirectories: boolean };
+  };
+  assert.equal(settings.sandbox.enabled, true);
+  assert.equal(settings.sandbox.allowUnsandboxedCommands, false);
+  assert.equal(settings.permissions.blockReadsOutsideWorkingDirectories, true);
+  for (const denied of [place.plane, paths.workRoot(), paths.REPO]) {
+    for (const form of [denied, fs.realpathSync(denied)]) {
+      assert.ok(settings.sandbox.filesystem.denyRead.includes(form), form + " is readable");
+      assert.ok(settings.sandbox.filesystem.denyWrite.includes(form), form + " is writable");
+    }
+  }
+  assert.deepEqual(
+    settings.sandbox.filesystem.allowRead,
+    [...new Set([place.repo, fs.realpathSync(place.repo)])],
+    "the repository sits inside a denied root, so only it is re-opened, in both its forms",
   );
   clear();
 });

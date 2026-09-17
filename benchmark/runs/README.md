@@ -1,8 +1,13 @@
 # Run records
 
-This is the control plane. Nothing here is visible to a coding agent: no path
-from a subject workspace leads to it, and `src/integrity.ts` checks that for
-every trial.
+This is the control plane. Nothing here is visible to a coding agent: the
+host's sandbox refuses the subject's shell every path under it, the host's file
+tools refuse it the same paths, no path from a subject workspace leads to it,
+and `src/integrity.ts` checks the layout for every trial.
+
+`node benchmark/src/cli.ts probe` is what proves the first two, through one
+real session that is told where this directory is and asked to read it. It
+leaves `probe/<id>/probe.json`.
 
 `calibrate` writes one directory per run, named by the trial id. That directory
 is the trial's plane: the harness runs the trial out of it, and everything the

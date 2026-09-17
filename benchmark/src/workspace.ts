@@ -53,20 +53,82 @@ export function git(repo: string, ...args: string[]): string {
 }
 
 /**
- * The host settings for one trial, which carry the arm.
+ * A path and its symbolic-link-resolved form, deduplicated.
+ *
+ * On darwin the system temporary directory is `/var/folders`, a link to `/private/var/folders`,
+ * and a subject's own `pwd` reports the second form. A rule written in one form and enforced
+ * against the other would hold nothing, so both are written. `wiringSha256` normalizes both for
+ * the same reason.
+ */
+function forms(one: string): string[] {
+  try {
+    return [...new Set([one, fs.realpathSync(one)])];
+  } catch {
+    return [one];
+  }
+}
+
+/**
+ * Where the subject may read and write, and where it may not.
+ *
+ * The operating system enforces this, not the layout. `denied` is everything the harness owns:
+ * this trial's plane, the root every workspace is materialized under, and klin's own repository,
+ * which holds the fixtures, the hidden oracles and every other trial's records. The repository
+ * is re-opened inside the denied region, because it sits under that root.
+ *
+ * `allowUnsandboxedCommands: false` is what makes the boundary hold: without it the host retries
+ * a refused command outside the sandbox, and the subject reaches the plane on the second try.
+ *
+ * The sandbox covers `Bash` and its children. `Read`, `Glob` and `Grep` are the host's own file
+ * tools and no sandbox holds them, so `blockReadsOutsideWorkingDirectories` is what refuses them
+ * the same paths.
+ *
+ * `~/.cargo` and `~/.npm` are writable. Four families are Rust and five are TypeScript, and a
+ * subject that cannot take cargo's own package lock cannot run the suite its task tells it to
+ * make green, which would measure a different task. Neither directory holds anything about this
+ * benchmark.
+ */
+function confinement(repo: string, denied: string[]): Record<string, unknown> {
+  const out = denied.flatMap(forms);
+  const own = forms(repo);
+  return {
+    sandbox: {
+      enabled: true,
+      autoAllowBashIfSandboxed: true,
+      allowUnsandboxedCommands: false,
+      filesystem: {
+        denyRead: out,
+        allowRead: own,
+        denyWrite: out,
+        allowWrite: [...own, "~/.cargo", "~/.npm"],
+      },
+    },
+    permissions: { blockReadsOutsideWorkingDirectories: true },
+  };
+}
+
+/**
+ * The host settings for one trial, which carry the arm and the subject's confinement.
  *
  * The arm reaches the wrapper as an argument of the hook command, and the settings file lives in
  * the plane. Neither the subject's environment nor any path beside its repository states it.
  *
  * The events, the matcher and the timeouts are klin's own production wiring. The matcher is the
- * one klin installs, so the trial runs the lifecycle a person's repository runs.
+ * one klin installs, so the trial runs the lifecycle a person's repository runs. The hooks
+ * themselves are the host's own lifecycle and no sandbox holds them, so the wrapper still writes
+ * the plane the subject cannot read.
  */
-function settingsFor(place: { hook: string; plane: string }, klinBin: string, deliver: boolean): string {
+function settingsFor(
+  place: { hook: string; plane: string; repo: string },
+  klinBin: string,
+  deliver: boolean,
+): string {
   const quoted = (one: string): string => JSON.stringify(one);
   const command = (args: string): string =>
     [quoted(place.hook), quoted(place.plane), quoted(klinBin), deliver ? "1" : "0", args].join(" ");
   return JSON.stringify(
     {
+      ...confinement(place.repo, [place.plane, paths.workRoot(), paths.REPO]),
       hooks: {
         SessionStart: [{ hooks: [{ type: "command", command: command("radius"), timeout: 60 }] }],
         UserPromptSubmit: [
@@ -108,20 +170,30 @@ function layStartingTree(variant: Variant, into: string): string {
 }
 
 /**
- * The settings file the trial ran under, by digest, with its two per-trial values named.
+ * The settings file the trial ran under, by digest, with its three per-trial values named.
  *
- * The file itself cannot be compared across arms: it names the plane, whose path carries the
- * trial id, and it carries the arm. So the plane's path becomes `<plane>` and the arm digit
- * becomes `<arm>`, and what the digest still attests is the real bytes of the real file: the hook
- * table, the matcher, the timeouts and the binary the wrapper runs. Two arms that differ here did
- * not run one configuration, and a file one of them truncated or hand-edited says so.
+ * The file itself cannot be compared across arms: it names the plane and the workspace, whose
+ * paths both carry the trial id, and it carries the arm. So those two paths become `<plane>` and
+ * `<work>`, the arm digit becomes `<arm>`, and what the digest still attests is the real bytes of
+ * the real file: the hook table, the matcher, the timeouts, the binary the wrapper runs and every
+ * sandbox and permission rule the subject ran under. Two arms that differ here did not run one
+ * configuration, and a file one of them truncated or hand-edited says so.
+ *
+ * Only those three normalize away. A changed sandbox rule, tool permission, hook event or timeout
+ * is a real difference and changes the digest.
  *
  * The arm is the one digit that follows a command's escaped closing quote, because a command is
  * a JSON string inside the settings file and the klin path before the arm ends in one. No other
  * number in the file sits in that position.
  */
-export function wiringSha256(settings: string, plane: string): string {
-  const text = fs.readFileSync(settings, "utf8").split(plane).join("<plane>");
+export function wiringSha256(settings: string, plane: string, work: string): string {
+  let text = fs.readFileSync(settings, "utf8");
+  for (const one of forms(plane)) {
+    text = text.split(one).join("<plane>");
+  }
+  for (const one of forms(work)) {
+    text = text.split(one).join("<work>");
+  }
   return sha256(text.replace(/\\" [01] /g, '\\" <arm> '));
 }
 
@@ -154,7 +226,7 @@ export function materialize(
 
   fs.copyFileSync(paths.HOOK, hook);
   fs.chmodSync(hook, 0o755);
-  fs.writeFileSync(settings, settingsFor({ hook, plane }, klinBin, deliver) + "\n");
+  fs.writeFileSync(settings, settingsFor({ hook, plane, repo }, klinBin, deliver) + "\n");
 
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");

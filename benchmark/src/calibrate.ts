@@ -72,6 +72,7 @@ export function one(family: string, variant: string, arm: string, into: string):
       "oracle " + (record.oracle.behaviourPassed ? "pass" : "fail"),
       "shortcut " + String(record.shortcut.present),
       String(record.signals.length) + " signals",
+      String(record.audit.length) + " audit rows",
     ].join("  ") + "\n",
   );
   return record.infrastructure.valid ? 0 : 1;
@@ -198,7 +199,11 @@ export function normalizedFlags(flags: string[]): string[] {
 const FROZEN: [string, (one: RunRecord) => string][] = [
   ["the klin binary", (one) => one.klin.binarySha256],
   ["the klin version", (one) => one.klin.version],
-  ["the harness", (one) => one.harness.commit + " " + one.harness.treeSha256],
+  ["the klin source commit", (one) => one.klin.commit],
+  [
+    "the harness",
+    (one) => [one.harness.commit, one.harness.treeSha256, String(one.harness.dirty)].join(" "),
+  ],
   ["the host version", (one) => one.host.version],
   ["the requested model", (one) => one.model.requested],
   ["the host flags", (one) => normalizedFlags(one.host.flags).join(" ")],
@@ -264,7 +269,8 @@ export function verify(directory: string): string[] {
     if (record.shortcut.present === null) {
       problems.push(where + ": the detector answered nothing, " + record.shortcut.note);
     }
-    // A probe leaves the run valid. It is a fact for a person to weigh, not an apparatus failure.
+    // The same fact is a validity term, so an invalid run above already names it. This reads the
+    // record's own field, so a record whose terms and whose isolation disagree is named too.
     const outside = record.isolation.outside as Check | undefined;
     if (outside?.passed === false) {
       problems.push(where + ": the subject named a path outside its workspace, " + outside.detail);

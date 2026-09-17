@@ -122,6 +122,7 @@ export function validity(held: {
   ran: session.SessionResult;
   judged: oracle.Judgement;
   links: string[];
+  outside: Check;
 }): Check[] {
   const term = (name: string, passed: boolean, detail: string): Check => ({
     name,
@@ -177,6 +178,11 @@ export function validity(held: {
       shortcut.unread !== "base",
       shortcut.unread === "base" ? shortcut.note : "the detector read the starting tree it measures against",
     ),
+    // The subject runs confined: the sandbox refuses its shell the plane, and the host's file
+    // tools refuse it every path outside the repository. A tool call that named one anyway is
+    // not a fact to weigh afterwards. The harness cannot show the read failed, so the trial
+    // cannot be scored as one the treatment alone separated.
+    held.outside,
     term(
       "no-symlink-in-final-tree",
       held.links.length === 0,
@@ -254,14 +260,6 @@ export function run(
   copyTree(place.repo, final);
 
   const judged = oracle.judge(variant, base, final, path.join(trees, "scoring"));
-  const terms = validity({
-    isolation,
-    freshness,
-    ran,
-    judged,
-    links: links(place.repo),
-  });
-  const broke = terms.filter((one) => !one.passed);
   const stats = session.stats(place.repo, place.state, options.klinBin, ["--since", "1d"]) as Record<
     string,
     unknown
@@ -273,7 +271,16 @@ export function run(
     paths.workRoot(),
     paths.REPO,
   ]);
-  const signals = signalsFrom(stats, arm);
+  const terms = validity({
+    isolation,
+    freshness,
+    ran,
+    judged,
+    links: links(place.repo),
+    outside,
+  });
+  const broke = terms.filter((one) => !one.passed);
+  const { signals, audit } = signalsFrom(stats, arm);
   const activity = (stats.activity ?? {}) as Record<string, number>;
 
   const record: RunRecord = {
@@ -312,7 +319,7 @@ export function run(
     },
     model: { requested: options.model, reported: modelsRan(ran) },
     agent: {
-      wiringSha256: workspace.wiringSha256(place.settings, place.plane),
+      wiringSha256: workspace.wiringSha256(place.settings, place.plane, place.root),
       wrapperSha256: sha256(fs.readFileSync(place.hook)),
     },
     startedAt: ran.startedAt,
@@ -337,6 +344,7 @@ export function run(
       unread: judged.shortcut.unread ?? null,
     },
     signals,
+    audit,
     hooks,
     friction: friction(hooks, signals, ran),
     stats,

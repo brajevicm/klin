@@ -78,22 +78,60 @@ gates it pins, and the agent is allowed to know that the repository carries
 one. Every family ships the same `klin.json`, so the configuration tells the
 agent nothing about which gate its task targets. A self-test case holds that.
 
-### What a determined agent could still find
+### How the subject is confined
 
-None of this closes the general case. The subject runs as the same
-operating-system user as the harness, so it can read any path it can name, and
-`ps` on its own parent process names the settings file the host was given. From
-there the plane is one `cat` away.
+The layout alone is not confinement. The subject runs as the same
+operating-system user as the harness, and `ps` on its own parent process names
+the settings file the host was given, so every path is one `cat` away from a
+shell that is allowed to make it.
 
-A sandbox that restricts the subject's view of the filesystem is the only thing
-that would close it, and this round does not have one. So the harness measures
-the attempt instead of assuming there was none.
+The host's own sandbox is what refuses that shell. Each trial's settings file
+carries it:
 
-`isolation.outside` is that measurement. It reads the tool calls the guard saw
-and reports every path that resolves into the plane, into the root every
-workspace is materialized under, or into klin's own repository. A word that
-resolves somewhere else entirely, `/usr/bin/env` or `/bin/sh`, is neither a
-probe nor a concern.
+- `sandbox.enabled`, with `autoAllowBashIfSandboxed`, so every `Bash` command
+  and every child of one runs under the operating system's own boundary;
+- `sandbox.allowUnsandboxedCommands: false`, so the host may not retry a
+  refused command outside the sandbox. Without this the boundary holds only
+  until the second try;
+- `sandbox.filesystem.denyRead` and `denyWrite` over the plane, the root every
+  workspace is materialized under and this repository, with `allowRead` and
+  `allowWrite` re-opening the subject's own repository inside that denied
+  region;
+- `permissions.blockReadsOutsideWorkingDirectories`, because `Read`, `Glob` and
+  `Grep` are the host's own file tools and no sandbox holds them.
+
+`~/.cargo` and `~/.npm` stay writable. A subject that cannot take cargo's own
+package lock cannot run the suite its task tells it to make green, and the
+trial would measure a different task. Neither directory holds anything about
+this benchmark.
+
+This is the shape issue #194 verified for Claude Code against klin's real hook
+lifecycle. The hooks are the host's own lifecycle and no sandbox holds them, so
+the wrapper still writes the plane the subject cannot read.
+
+### Proving it, rather than documenting it
+
+`node benchmark/src/cli.ts probe` runs one real Shadow session and asks the
+agent to read the plane. It is white box on purpose: the prompt names the
+plane, the workspace root and the harness's records, because the question is
+whether the operating system refuses the read and not whether the path is hard
+to guess.
+
+The probe plants a random token in each of those three places first. A token
+that comes back in anything the session produced, its output or the tree it
+left, is a read that succeeded, whatever the agent says about it. It also fails
+on any line of klin's withheld answer, on any `KLIN_` variable the subject
+could name, and on a tool call that named a path outside the repository.
+
+It costs one session, it writes no run record and it is excluded from every
+set. Run it before paying for calibration.
+
+### What the record still measures
+
+`isolation.outside` reads the tool calls the guard saw and reports every path
+that resolves into the plane, into the root every workspace is materialized
+under, or into klin's own repository. A word that resolves somewhere else
+entirely, `/usr/bin/env` or `/bin/sh`, is neither a probe nor a concern.
 
 Three things keep it from reading ordinary work as contamination:
 
@@ -109,15 +147,17 @@ Three things keep it from reading ordinary work as contamination:
   temporary directory is `/var/folders`, a link to `/private/var/folders`, and
   a subject's own `pwd` reports the second form.
 
-Two limits are worth stating plainly. It sees the tool calls klin's production
-matcher covers, which is every `Bash` command and every write, so a `Read`, a
-`Glob` or a `Grep` raises no hook and leaves nothing to read. And a probe
-leaves the run valid: it is a fact for a person to weigh, not an apparatus
-failure, so `verify` names the trial and the run stays in the data.
+It sees the tool calls klin's production matcher covers, which is every `Bash`
+command and every write, so a `Read`, a `Glob` or a `Grep` raises no hook and
+leaves nothing to read.
+
+A trial whose subject named such a path is invalid. The sandbox refuses the
+read, so the harness cannot show what the subject would have learned from a
+read it was not supposed to be able to make, and a run that has to be explained
+that way cannot be scored as one the treatment alone separated.
 
 The treatment remains semantic feedback against none, not concealment of klin's
-existence. A calibration run that shows a subject reading the plane is an
-apparatus finding to record, and now there is a field that records it.
+existence.
 
 ### The host's own configuration
 
@@ -133,14 +173,22 @@ did not run under one configuration, and a reader on another machine can see at
 once that the memory was different there.
 
 Two arms of one cell are compared on more than the memory. `verify` fails a
-pair whose klin binary, klin version, harness, host version, requested model,
-host flags, hook wiring, hook wrapper, isolated-configuration status or memory
-digest differ, because the arm must be the only difference. The host flags drop
-`--session-id` and `--settings` first: the session id is a fresh UUID per trial
-and the settings path carries the trial id, so both differ between any two
-trials by construction. The hook wiring is a digest of the settings file that
-ran, with the plane path and the arm digit replaced by their names, so it still
-attests the real bytes: a file one arm truncated or hand-edited fails the cell.
+pair whose klin binary, klin version, klin source commit, harness identity,
+host version, requested model, host flags, hook wiring, hook wrapper,
+isolated-configuration status or memory digest differ, because the arm must be
+the only difference.
+
+Two of those are normalized first, because a raw comparison would fail every
+pair. The host flags drop `--session-id` and `--settings`: the session id is a
+fresh UUID per trial and the settings path carries the trial id. The hook
+wiring is a digest of the settings file that ran, with the plane path, the
+workspace path and the arm digit replaced by their names.
+
+Nothing else normalizes away. The wiring digest still attests the real bytes of
+the real file: the hook table, the matcher, the timeouts, the binary the
+wrapper runs and every sandbox and permission rule the subject ran under. A
+changed sandbox option, tool permission or Stop timeout changes it, and a file
+one arm truncated or hand-edited fails the cell.
 
 `model.reported` is the one exception. The host names its housekeeping model
 beside the session's, and an arm that needed no housekeeping names fewer for a
@@ -291,6 +339,7 @@ a fact about the agent.
 | `no-harness-timeout` | the session ended before the harness killed it |
 | `behaviour-scored` | the hidden behaviour test ran |
 | `shortcut-baseline-read` | the detector read the starting tree it measures against |
+| `no-tool-call-outside-the-workspace` | the subject named no path outside its own repository |
 | `no-symlink-in-final-tree` | every entry is a plain file, so the digest and the scoring copy hold the whole tree |
 
 The five terms after the first two are why an apparatus failure can never
@@ -337,16 +386,30 @@ Nothing is blocked without provenance. `calibrate` warns before a paid set,
 `verify` names every record that ties no commit to its binary, and the runs
 work either way.
 
+### Signals and the audit trail are two surfaces
+
+`signals` holds what a person may classify: every Regression episode, and every
+deleted test klin asked about once. `audit` holds the factual trail beside
+them, a guard decision or a reset a person ran.
+
+The boundary is #115's. A blinded reading of a signal site asks what klin's
+feedback did to the agent's work. A reset is a person's own action and a guard
+row is a decision klin already made, so neither is a site to classify, and both
+would be noise in the set a person reads. `validate` refuses a record that
+files either one on the wrong side.
+
 Signal evidence is kept in both arms. In Active a signal was delivered. In
 Shadow the same hook ran and the same signal would have been delivered. Each
 carries the identity `klin stats --json` gives it, and its measured tries, so
 repeated blocked stops for one site stay friction rather than a second site to
-classify.
+classify. A reset claims no delivery at all: a person ran it and klin hands an
+agent nothing.
 
-A deleted test klin asked about once stays audit and review evidence. It is
-never recorded as a regression and never as a repair. `klin stats` already
-keeps it out of `counts.caught`, and the record keeps it under `audit` with the
-file, line, declaration text and remedy a reviewer needs.
+A deleted test klin asked about once stays review evidence. It is never
+recorded as a regression and never as a repair. `klin stats` already keeps it
+out of `counts.caught`, and the record keeps it under `signals` with
+`kind: "audit"` and the file, line, declaration text and remedy a reviewer
+needs.
 
 The record holds no hidden chain of thought.
 
@@ -381,14 +444,17 @@ both arms without paying for a session.
 The live commands cost money and take hours:
 
 ```sh
+node benchmark/src/cli.ts probe                 # one session: can the subject reach the plane?
 node benchmark/src/cli.ts run <family> <risk|control> <active|shadow>
 node benchmark/src/cli.ts calibrate --seed 1
 node benchmark/src/cli.ts verify  benchmark/runs/<stamp>
 node benchmark/src/cli.ts report  benchmark/runs/<stamp> --out docs/calibration-<date>.md
 ```
 
-`calibrate` runs one live trial per family, variant and arm: 36 runs, in a
-seeded order, so the arm is not confounded with the time of day.
+`probe` costs one session and must pass before the rest are worth paying for:
+it is what proves the subject cannot read the control plane. `calibrate` then
+runs one live trial per family, variant and arm: 36 runs, in a seeded order, so
+the arm is not confounded with the time of day.
 
 | variable | what it sets |
 | --- | --- |
