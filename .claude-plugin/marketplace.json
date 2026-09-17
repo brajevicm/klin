@@ -5,7 +5,7 @@
     "name": "brajevicm",
     "url": "https://github.com/brajevicm"
   },
-  "description": "klin, a quality ratchet for AI-driven development. Installing the plugin is the whole install for Claude Code.",
+  "description": "klin, a quality ratchet for AI-driven development. The plugin is the whole install for Claude Code. A repository opts in with its own klin.json.",
   "plugins": [
     {
       "name": "klin",

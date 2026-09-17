@@ -103,10 +103,11 @@ mkdir -p ~/.cursor/plugins/local
 cp -R /tmp/klin/plugins/klin ~/.cursor/plugins/local/klin
 ```
 
-Then opt the repository into klin:
+Then opt the repository into klin. The marker is a `klin.json` at the
+repository root, and `{}` is a complete one:
 
 ```sh
-klin init
+echo '{}' > klin.json
 ```
 
 That's enough for local feedback. When the agent finishes a turn, klin checks what changed and returns new regressions for repair.

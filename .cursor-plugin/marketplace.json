@@ -4,7 +4,7 @@
     "name": "brajevicm"
   },
   "metadata": {
-    "description": "klin, a quality ratchet for AI-driven development. Installing the plugin is the whole install for Cursor."
+    "description": "klin, a quality ratchet for AI-driven development. The plugin is the whole install for Cursor. A repository opts in with its own klin.json."
   },
   "plugins": [
     {

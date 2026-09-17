@@ -669,9 +669,10 @@ an agent. `init` MUST NOT edit `.gitignore`, because klin writes nothing that
 git could see.
 
 `init --hooks` writes the hook entries for each host it detects, or for the
-host `--host` names. `init --hooks --global` writes the host's user-level
-file instead of the tree's own, so one install covers every repository and no
-project file carries klin. Section 19.3. The hook file is not guarded (9.4),
+host `--host` names, at project scope. `init --hooks --global` writes the
+host's user-level file instead of the tree's own, at user scope: it covers
+every repository the person opens on that machine, and no project file carries
+klin. Section 19.3. The hook file is not guarded (9.4),
 but `init` in any form is a person's command, so the guard refuses this one
 from an agent like it refuses `init` itself.
 
@@ -3599,7 +3600,7 @@ green, because deterministic detection is not correct judgement:
 - Init: plain `init` writes `{}`, `--pin` writes only guardrails and keeps
   every value a person wrote, `--add` and `--force` are usage errors, never
   touches `.gitignore`, `--hooks` writes each host's file and leaves an existing
-  entry alone, `--hooks --global` writes the user-level file and leaves the
+  entry alone, `--hooks --global` writes the user-scope file and leaves the
   tree's own untouched, a written line exits 0 when no binary resolves, and a
   host whose plugin is enabled gets no entries at all.
 - State: default under the git directory, per worktree, `KLIN_STATE_DIR`
@@ -3684,7 +3685,8 @@ Distribution, in this order, because each step depends on the one before:
 - [x] `init --hooks` for Codex and its host adapter (#68)
 - [x] `init --hooks` for Cursor and its host adapter (#67)
 - [x] The GitHub Action
-- [ ] Homebrew tap, `cargo install`, npm wrapper (#64)
+- [ ] Homebrew tap, `cargo install`, npm wrapper (#64). None of them ships,
+      and 19.1 records why the spec advertises no install command for them.
 
 Recommended:
 
@@ -3706,9 +3708,50 @@ Before calling it 1.0:
 
 ## 19. Installation and Distribution
 
-Two things are installed, and they stay separate. The binary is one static
-file per platform. The hooks are three lines of host configuration that call
-it. Every route installs the binary once and then writes hook lines.
+### 19.0 Three product roles, and the words for a scope
+
+klin ships three different things, and they are not interchangeable routes to
+one install:
+
+1. **The first-class native plugin.** klin maintains one for Claude Code, one
+   for Codex CLI and one for Cursor. It is the preferred local product
+   experience on those hosts and part of klin's compatibility promise. It
+   carries the host hooks, the klin skill and a pinned wrapper that fetches a
+   pinned runtime. Section 19.2.
+2. **The standalone binary.** It is the portability and reconciliation layer.
+   It owns explicit hook files a repository or a person commits or keeps,
+   standalone skill placement, managed and manual installations, and every
+   host that has no native plugin surface. Sections 19.1 and 19.3.
+3. **A custom harness integration.** A harness klin does not maintain that
+   translates its own lifecycle into the hook contract of section 9. klin
+   states the contract; it ships no adapter for such a harness.
+
+A person on a first-class host installs the plugin alone. The plugin is not
+half of an install that a second standalone binary completes: the wrapper it
+carries fetches the runtime. The standalone binary is for the person who
+deliberately does not use a plugin, for a host surface that loads no plugin,
+and for a managed or custom environment that needs explicit files.
+
+No route gates a repository by itself. Under `--hook` a `klin.json` at the
+repository root is the marker that the repository opted in, and a tree without
+one stays silent (5.1, ADR 0028). Installing a plugin makes klin available to
+every repository the host opens. It opts none of them in.
+
+The contract uses five scope words, and no others:
+
+- **project** — integration the repository owns, committed with it. It is
+  portable with the repository wherever the host loads project configuration.
+- **user** — integration for one person on one machine. It is not portable
+  with the repository, and it MUST NOT be described as reaching a cloud or
+  remote agent.
+- **plugin** — a first-class integration the host manages and klin maintains.
+- **managed** — host policy or configuration an organization controls.
+- **custom** — a harness that is not first-class and uses the public
+  integration contract of section 9.
+
+`global` is too broad a word for a user-scope install, so this contract does
+not use it for one. The `--global` flag of `init --hooks` writes the user
+scope today; #216 owns renaming the flag.
 
 ### 19.1 The binary
 
@@ -3717,80 +3760,111 @@ arm64, and attaches the four archives, a `.sha256` beside each one, a
 `sha256.sum` over all of them, and the install script to a GitHub release.
 `dist` runs that pipeline, so its artifact names and its install script are
 what a route consumes. ADR 0026 records that choice. `klin --version` prints
-the version the binary was built from, which is the tag without its `v`. Every route below
-downloads from that release and MUST verify the checksum. The routes, in
-order of least friction for the person:
+the version the binary was built from, which is the tag without its `v`. Every
+route below downloads from that release and MUST verify the checksum.
+
+Two routes ship:
 
 1. The install script the release carries, `klin-installer.sh`, run through
    `sh`. It detects the platform, verifies the checksum it was generated
    with, and puts `klin` and `klin-update` in `~/.local/bin`, or in the
-   directory `KLIN_INSTALL_DIR` names. Each release carries the script that installs
-   that release, so a URL under a tag pins a version.
-2. A Homebrew tap, for macOS and Linux users who already have brew.
-3. `npm install --save-dev klin`, for a JavaScript project. The package holds
-   no compiled code. Its install step downloads the release for the host and
-   verifies it. The package version equals the release tag, so the lockfile
-   pins the binary.
-4. `cargo install klin`, for a Rust user. Free once the crate is published.
-5. A GitHub Action, `action.yml` at the root of this repository, that
+   directory `KLIN_INSTALL_DIR` names. Each release carries the script that
+   installs that release, so a URL under a tag pins a version.
+2. A GitHub Action, `action.yml` at the root of this repository, that
    installs a pinned version and runs `klin gate --strict`. For CI only. A
    workflow pins it by the release tag, `uses: brajevicm/klin@vX.Y.Z`, so one
    tag names the binary, the plugin and the Action.
 
-Cross-compilation for Windows is not a target of this draft. The Codex hook
-system is not available on Windows either.
+The plugin wrapper of 19.2 is not a third route into this list. It fetches the
+same release for the plugin alone, into the plugin's own cache.
 
-### 19.2 Claude Code, Codex CLI and Cursor: the plugin is the whole install
+No other channel ships. There is no Homebrew tap, no npm package and no
+published crate, and this document MUST NOT print an install command for one.
+Each of them is a distribution channel with its own release obligations, and
+none is required to make klin work on a supported platform, so each stays
+deferred (#64). A future channel is added here only once it ships.
 
-One plugin directory serves all three hosts. It holds `hooks.json` with the three
-hooks of 9.2, Cursor's flat `hooks/cursor.json` with the same three commands on
-Cursor's event names, one skill that tells the agent how to read a failure and what
-it may not touch, two slash commands that run the gates and list them, and a
-`bin/klin` wrapper. Each host's manifest names its hooks file, so none of them has to
-find it by convention. Cursor's manifest MUST name `./hooks/cursor.json`, because the
-default `hooks/hooks.json` is Claude Code's nested shape. ADR 0045.
+The supported binary targets are macOS and Linux, on x86_64 and arm64. The
+plugin wrapper resolves that same set, so the public contract and the release
+targets stay one list. Native Windows is not a supported target: klin builds
+no Windows binary and ships none. WSL is not a documented supported route
+either, because klin has no compatibility evidence for it. A person on Windows
+has no shipped klin install today.
 
-Codex CLI reads the same manifest and the same `hooks.json` shape. It
-substitutes the literal `${CLAUDE_PLUGIN_ROOT}` into a plugin's hook line,
-and the hook lines do not rely on the variable being exported, because a
+### 19.2 The first-class plugins: Claude Code, Codex CLI and Cursor
+
+One plugin directory serves all three hosts. It holds `hooks.json` with the
+three hooks of 9.2, Cursor's flat `hooks/cursor.json` with the same three
+commands on Cursor's event names, one skill that tells the agent how to read a
+failure and what it may not touch, two slash commands that run the gates and
+list them, and a `bin/klin` wrapper. Each host's manifest names its hooks
+file, so none of them has to find it by convention. Cursor's manifest MUST
+name `./hooks/cursor.json`, because the default `hooks/hooks.json` is Claude
+Code's nested shape. ADR 0045.
+
+The plugin is self-sufficient. It carries the hooks, the skill and the pinned
+wrapper, and the wrapper fetches the pinned runtime on first run. A plugin
+user MUST NOT be told to install the standalone binary of 19.1 to make the
+plugin work. The one exception is the managed case below, where the host gives
+the plugin no usable `bin/`.
+
+**Claude Code.** klin maintains a native Claude Code plugin, and it is the
+first-class route. The project route of 19.3, under `.claude/`, stays the
+portable and manual alternative, and it is what a person takes where user
+settings are not available. A plugin a person installed, and the settings that
+enable it, live on that person's machine. This document MUST NOT claim that
+they exist in a remote or cloud environment.
+
+**Codex CLI.** klin maintains a native Codex plugin for the Codex surfaces
+that load plugins. Codex CLI reads the same manifest and the same `hooks.json`
+shape. It substitutes the literal `${CLAUDE_PLUGIN_ROOT}` into a plugin's hook
+line, and the hook lines do not rely on the variable being exported, because a
 shell default form such as `${CLAUDE_PLUGIN_ROOT:-}` was left unsubstituted
 and expanded to nothing. Claude Code exports the variable and reads the bare
-form the same way, so the hook lines name the plugin root in that form and
-no other, and the same lines run on both hosts. It finds the plugin through a marketplace
-file of its own at `.agents/plugins/marketplace.json`, which points at the
-same directory as Claude Code's `.claude-plugin/marketplace.json`. The
-install is `codex plugin marketplace add brajevicm/klin` and
-`codex plugin add klin@klin`. Installing a plugin does not trust its hooks:
-Codex skips an untrusted plugin's hooks until the person reviews and trusts
-the current hook definition through the CLI `/hooks` surface, and a fresh
-session then runs them, so the install documentation names that step. The pre-tool matcher names
-the union `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the
-tools Claude Code and Codex CLI emit, so the guard reads edits and MCP calls on
-both hosts. A name missing from this matcher leaves that host's corresponding
-tool call unguarded; a name the host never emits is dead text. `init --hooks`
-uses the same union for both hosts, keeping the fallback route aligned with
-the plugin. ADR 0030 records the decision. The Codex IDE extension loads no
-plugins, so it takes the route of 19.3.
+form the same way, so the hook lines name the plugin root in that form and no
+other, and the same lines run on both hosts. Codex finds the plugin through a
+marketplace file of its own at `.agents/plugins/marketplace.json`, which points
+at the same directory as Claude Code's `.claude-plugin/marketplace.json`. The
+install is `codex plugin marketplace add brajevicm/klin` and `codex plugin add
+klin@klin`. Installing a plugin does not trust its hooks: Codex skips an
+untrusted plugin's hooks until the person reviews and trusts the current hook
+definition through the CLI `/hooks` surface, and a fresh session then runs
+them, so the install documentation names both steps. The Codex IDE extension's
+contract loads no plugins, so klin's plugin support MUST NOT be described as
+covering it; that surface takes the standalone route of 19.3.
 
-Cursor finds the plugin through `.cursor-plugin/marketplace.json` at the
-repository root, which points at the same directory. Cursor Teams import
-that repository under Dashboard → Plugins → Team Marketplaces. A person
-without a team marketplace copies `plugins/klin` to
-`~/.cursor/plugins/local/klin` and reloads the window. Cursor skips a
-symlink whose target sits outside that folder. The Cursor hook lines name
-`${CURSOR_PLUGIN_ROOT}/bin/klin` in that form and no other, the way Claude
-Code and Codex name `${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables.
+**Cursor.** klin maintains a native Cursor plugin. Cursor finds it through
+`.cursor-plugin/marketplace.json` at the repository root, which points at the
+same directory. Cursor Teams import that repository under Dashboard → Plugins
+→ Team Marketplaces. A person without a team marketplace copies `plugins/klin`
+to `~/.cursor/plugins/local/klin` and reloads the window, which is a user-scope
+install for that machine alone. Cursor skips a symlink whose target sits
+outside that folder. The Cursor hook lines name `${CURSOR_PLUGIN_ROOT}/bin/klin`
+in that form and no other, the way Claude Code and Codex name
+`${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A project
+`.cursor/hooks.json` (19.3) stays the portable and manual route, and it is the
+route for an environment that loads a repository's hooks but not a person's
+own. A user-scope Cursor hook or skill is local to that machine. This document
+MUST NOT call it global, and MUST NOT imply that it reaches Cursor Cloud
+Agents.
+
+The pre-tool matcher names the union
+`Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
+Claude Code and Codex CLI emit, so the guard reads edits and MCP calls on both
+hosts. A name missing from this matcher leaves that host's corresponding tool
+call unguarded; a name the host never emits is dead text. `init --hooks` uses
+the same union for both hosts, keeping the standalone route aligned with the
+plugin. ADR 0030 records the decision.
 
 The wrapper is a shell script. It reads the version from the plugin manifest
 beside it, so the plugin carries one pin. On first run it downloads that
-release into `~/.cache/klin/bin/<version>/klin`, verifies the
-checksum, and executes it. That install removes every other version from the
-cache, so the cache holds one binary. Every later run executes the cached
-binary with no network call. When the download fails, the wrapper runs a
-`klin` that PATH resolves if there is one, and otherwise prints one line
-saying so and exits 0, so a turn is never blocked by a missing network.
-This is the one place klin touches the network, and it is install, not
-measurement.
+release into `~/.cache/klin/bin/<version>/klin`, verifies the checksum, and
+executes it. That install removes every other version from the cache, so the
+cache holds one binary. Every later run executes the cached binary with no
+network call. When the download fails, the wrapper runs a `klin` that PATH
+resolves if there is one, and otherwise prints one line saying so and exits 0,
+so a turn is never blocked by a missing network. This is the one place klin
+touches the network, and it is install, not measurement.
 
 Every line the wrapper or a hook prints on exit 0 is a JSON object with a
 `systemMessage`, and the same object carries `followup_message` with the same
@@ -3804,37 +3878,38 @@ every installed plugin's `bin/` to the end of PATH, for hooks as for the Bash
 tool, so a binary an installer left in `~/.local/bin` would win over the
 wrapper if the hooks called `klin` by name. Calling the wrapper by its path
 makes the version the plugin pins the one Claude Code runs. Where `bin/` is
-unavailable, which is the case for plugins distributed through organization
-settings, the hooks find `klin` on PATH from a route in 19.1, and the skill
-says which command installs it. When neither is present the Stop hook says so
-once and lets the turn end.
+unavailable, which is the managed case of a plugin distributed through
+organization settings, the hooks find `klin` on PATH from a route in 19.1, and
+the skill says which command installs it. When neither is present the Stop
+hook says so once and lets the turn end.
 
 The hook lines resolve the binary before they run it, because a person may
 install the plugin where no binary resolves yet. With neither the wrapper nor
 a `klin` on PATH the session start, the prompt and the pre-tool events say
 nothing and block nothing. The Stop hook names the install command in a
 `systemMessage` on stdout, and only where a `klin.json` resolves at the
-project root, so a tree that never opted in stays silent (ADR 0028). Nothing blocks, so the turn ends at that stop and
-the line appears once.
+project root, so a tree that never opted in stays silent (ADR 0028). Nothing
+blocks, so the turn ends at that stop and the line appears once.
 
-The wrapper reads two overrides, `KLIN_RELEASE_BASE_URL` and
-`KLIN_CACHE_DIR`. They exist so a CLI test can fetch a release of its own over
-`file://` and prove the two paths that a real release cannot: the first run
-that installs, and the failure that installs nothing.
+The wrapper reads two overrides, `KLIN_RELEASE_BASE_URL` and `KLIN_CACHE_DIR`.
+They exist so a CLI test can fetch a release of its own over `file://` and
+prove the two paths that a real release cannot: the first run that installs,
+and the failure that installs nothing.
 
-With the optional config of section 5, installing the plugin is the complete
-install. No `init` runs. The first stop is gated.
+Installing the plugin is the whole install for the host. It is not the whole
+install for a repository: no `init` runs, and the repository opts in through
+its own `klin.json` (5.1). Once it has one, the first stop is gated.
 
 This reverses ADR 0002. Its first reason, a version pin beside committed
 baselines, went with ADR 0009. Its second reason is handled by the PATH
 fallback above. A version difference between the wrapper's binary and a CI
 binary is a NOTE per 5.2, not a failure.
 
-### 19.3 Cursor and Codex: hooks in the repository
+### 19.3 The standalone route: hooks in the repository or for one user
 
-A team may prefer hooks that are committed and covered by CODEOWNERS over
-the plugin of 19.2. On this route the binary comes from 19.1 and
-`klin init --hooks` writes:
+A team may prefer hooks that are committed and covered by CODEOWNERS over the
+plugin of 19.2, and a host surface that loads no plugin has no other route.
+On this route the binary comes from 19.1 and `klin init --hooks` writes:
 
 - Cursor's native hooks to `.cursor/hooks.json` at schema version 1, with
   `sessionStart`, `beforeSubmitPrompt`, `preToolUse`, `beforeShellExecution`,
@@ -3847,9 +3922,10 @@ the plugin of 19.2. On this route the binary comes from 19.1 and
 `init --hooks` detects a host by the presence of `.claude/`, `.cursor/` or
 `.codex/` at the root, or takes `--host NAME`. It adds klin's entries and
 leaves every other entry alone. It MUST NOT overwrite an entry that already
-calls `klin`. The files are committed, so a teammate who clones gets the
-hooks, and CODEOWNERS SHOULD cover them. The hook file is not guarded (9.4),
-but `init` in any form is refused from an agent, so this command is too.
+calls `klin`. The files are committed, so this is project scope: a teammate
+who clones gets the hooks, and CODEOWNERS SHOULD cover them. The hook file is
+not guarded (9.4), but `init` in any form is refused from an agent, so this
+command is too.
 
 Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
@@ -3857,24 +3933,24 @@ who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event.
 
 `init --hooks` writes nothing for a host that already runs klin's hooks over
-the file it would write, and names what runs them. Two things run them: a plugin,
-and a user-level install klin wrote itself, which a host reads together with
-the tree's file. The plugin registers the
-same host events, so a second copy of them runs klin twice on every event: two
-gates race for one turn stamp, and the prompt counter of 6.2 moves by two.
-Each host's adapter knows where that host lists its enabled plugins. Claude
-Code lists them under `enabledPlugins` in its settings files: for a write into
-a tree klin reads the tree's, the local ones beside them and the user's, and
-for a write into the home directory the user's alone, because a plugin one
-repository enables gates that repository and not the machine. Codex CLI lists
-them as `[plugins."klin@<marketplace>"]` tables in `config.toml`, on unless
-the table says `enabled = false`, and klin reads the tree's and the user's the
-same way. Cursor's documented local layout is
-`.cursor/plugins/local/<name>`, and Cursor 3.20.21's observed marketplace
-cache is `.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin
-searches those bounded trees for `.cursor-plugin/plugin.json` named `klin`,
-under the project and the user's home. A write into a tree is refused the
-same way by a user file that holds klin's entries.
+the file it would write, and names what runs them. Two things run them: a
+plugin, and a user-scope install klin wrote itself, which a host reads
+together with the tree's file. The plugin registers the same host events, so a
+second copy of them runs klin twice on every event: two gates race for one
+turn stamp, and the prompt counter of 6.2 moves by two. Each host's adapter
+knows where that host lists its enabled plugins. Claude Code lists them under
+`enabledPlugins` in its settings files: for a write into a tree klin reads the
+tree's, the local ones beside them and the user's, and for a write into the
+home directory the user's alone, because a plugin one repository enables gates
+that repository and not the machine. Codex CLI lists them as
+`[plugins."klin@<marketplace>"]` tables in `config.toml`, on unless the table
+says `enabled = false`, and klin reads the tree's and the user's the same way.
+Cursor's documented local layout is `.cursor/plugins/local/<name>`, and Cursor
+3.20.21's observed marketplace cache is
+`.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin searches those
+bounded trees for `.cursor-plugin/plugin.json` named `klin`, under the project
+and the user's home. A write into a tree is refused the same way by a user
+file that holds klin's entries.
 
 klin replaces a host's settings file whole, through a neighbour and a rename,
 so a run that dies partway leaves the file it found. It follows a path that is
@@ -3883,13 +3959,25 @@ the permissions the file had.
 
 `--global` moves both the detection and the write to the host's user-level
 directory: `~/.claude/settings.json` for Claude Code, `~/.cursor/hooks.json`
-for Cursor, and `~/.codex/hooks.json` for Codex. Everything else is the same, so a host with
-no adapter is refused under `--global` with the
-message the per-tree form gives. A global install is not committed,
-so the write says it covers every repository rather than asking for a commit,
-and a person who chooses it accepts that an agent can remove the lines.
+for Cursor, and `~/.codex/hooks.json` for Codex. Everything else is the same,
+so a host with no adapter is refused under `--global` with the message the
+per-tree form gives. That write is user scope: it covers every repository the
+person opens on that machine, it is not committed, it does not travel with the
+repository, and this document MUST NOT claim it reaches a cloud or remote
+agent. A person who chooses it accepts that an agent can remove the lines.
+The flag's name is the one the CLI ships today; #216 owns renaming it to the
+`user` word this contract uses.
 
-### 19.4 CI
+### 19.4 A custom harness
+
+A harness klin does not maintain integrates through the public contract of
+section 9: the three events, the JSON on stdin, the exit codes and the
+`systemMessage` shape. It supplies the binary from 19.1 and translates its own
+lifecycle into those events. klin ships no adapter, no hook file and no skill
+for such a harness, and a custom integration is not part of the compatibility
+promise that covers the first-class plugins.
+
+### 19.5 CI
 
 The Action installs the pinned version and runs `klin gate --strict` with
 `fetch-depth: 0`, and an `args` input appends flags such as `--gate` names or
@@ -3900,7 +3988,7 @@ URL, and that script verifies the checksum, so a mismatch fails the job
 before any gate runs. A workflow without the Action runs the same script and
 the same command.
 
-### 19.5 Upgrades
+### 19.6 Upgrades
 
 A new klin version may change a measurement. Under the base commit model both
 trees are measured by one binary, so an upgrade changes nothing about any
