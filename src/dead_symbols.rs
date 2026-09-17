@@ -108,6 +108,9 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
+    let affected = affected_scope(at, &before, &after);
+    let widened = at.scoped(affected.as_deref().or(at.only));
+    let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
     let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
     let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
@@ -170,6 +173,70 @@ fn sweeps(
             structural::Unchanged::publish,
         );
     Ok((before, after))
+}
+
+/// The effective judgement scope of a changed, non-strict run: the physical scope the runner
+/// gave, plus every file declaring a name whose reference evidence this turn changed. A
+/// declaration that did not move can still change from referenced to dead when its last caller
+/// changed, so the physical scope alone is not the semantic impact scope. The set stays bounded
+/// by the changed files' own reference names: no type, import or receiver resolution enters
+/// here, and a name with several declarations widens to all of them, which fails less. Issue
+/// #237, spec 8.4.
+fn affected_scope(
+    at: &Context,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
+) -> Option<Vec<String>> {
+    let only = at.only.filter(|_| at.changes.is_some() && !at.strict)?;
+    let mut names = BTreeSet::new();
+    for change in at.changes? {
+        reference_names(after.index().file(&change.path), &mut names);
+        if let Some(was) = change
+            .was
+            .as_ref()
+            .filter(|_| measured_after(after, &change.path))
+        {
+            reference_names(before.index().file(was), &mut names);
+        }
+    }
+    let mut scope: BTreeSet<String> = only.iter().cloned().collect();
+    scope.extend(declaring_files(&names, before, after));
+    Some(scope.into_iter().collect())
+}
+
+/// Every file that declares one of these names in either tree.
+fn declaring_files(
+    names: &BTreeSet<(syntax::LanguageId, structural::Name)>,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
+) -> BTreeSet<String> {
+    let mut files = BTreeSet::new();
+    for (language, name) in names {
+        for index in [before.index(), after.index()] {
+            for declared in index.declarations(*language, name.as_str()) {
+                files.insert(declared.file.to_string());
+            }
+        }
+    }
+    files
+}
+
+fn reference_names(
+    file: Option<&structural::FileFacts>,
+    into: &mut BTreeSet<(syntax::LanguageId, structural::Name)>,
+) {
+    let Some(file) = file else { return };
+    for reference in &file.references {
+        into.insert((file.language, reference.name.clone()));
+    }
+}
+
+/// Whether the working tree's structural evidence for this path is a measurement. A changed
+/// file the analyzer could not read is a coverage hole the run already reports, and its old
+/// reference names are not proof that the references went away, so nothing widens from it.
+fn measured_after(after: &structural::Measurement, path: &str) -> bool {
+    !after.unparsed.iter().any(|held| held.file == path)
+        && !after.unsupported.iter().any(|held| held.file == path)
 }
 
 fn judgement(

@@ -409,7 +409,7 @@ fn an_addition_exists_only_in_the_after_view_and_resolves_unchanged_references()
             "note  1 dead symbol(s) the base already held:\n  src/lib.rs:1  fn lonely() {}",
         ]
     );
-    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"])[..2]);
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]));
 }
 
 #[test]
@@ -431,13 +431,7 @@ fn a_deletion_exists_only_in_the_before_view_and_names_the_lost_reference() {
             "note  1 dead symbol(s) the base already held:\n  src/gone.rs:1  fn gone() {}",
         ]
     );
-    assert_eq!(
-        lines(&seen["changed"]),
-        [
-            r#""PASS" 0"#,
-            "note  1 dead symbol(s) the base already held:\n  src/gone.rs:1  fn gone() {}",
-        ]
-    );
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]));
 }
 
 #[test]

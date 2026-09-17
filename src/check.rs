@@ -199,6 +199,25 @@ impl Context<'_> {
     pub fn config(&self) -> &Config {
         &self.project.config
     }
+
+    /// The same run with another judgement scope, for a check that derives a narrower or wider
+    /// effective scope from evidence the runner does not read. Nothing else moves.
+    pub fn scoped<'b>(&self, only: Option<&'b [String]>) -> Context<'b>
+    where
+        Self: 'b,
+    {
+        Context {
+            only,
+            gate: self.gate,
+            project: self.project,
+            prior: self.prior,
+            base: self.base,
+            changes: self.changes,
+            caller: self.caller,
+            strict: self.strict,
+            quiet: self.quiet,
+        }
+    }
 }
 
 impl<'a> Context<'a> {

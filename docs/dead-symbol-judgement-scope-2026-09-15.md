@@ -60,3 +60,18 @@ Those runs build the same state before and after this change, so the
 difference is run-to-run variation on an uncontrolled machine and not an
 effect of it. The warm rows' `facts` counters are identical in both columns,
 which is the check that extraction was not narrowed.
+
+## Follow-up, 2026-09-17 (#237)
+
+The optimization above stands, but the sentence that a changed run's judgement
+state is *only* `Context.only` was too narrow. Liveness is a property of a
+name, not of a file, so a turn that changes only the caller can turn an
+unchanged declaration from referenced to dead. Under the scope written here,
+the Stop hook missed exactly that refactor.
+
+The changed run now judges its physical scope plus the declarations indexed
+under the reference names the changed files contribute on either semantic
+side. Both parts come from the same complete before and after `SourceIndex`
+this note already keeps, so the cost model is unchanged in shape: state grows
+with the changed files' name fan-out, not with the repository. A changed file
+the grammar could not read widens nothing, so a coverage hole stays a hole.

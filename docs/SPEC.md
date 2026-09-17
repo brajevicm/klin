@@ -1223,8 +1223,22 @@ after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
 complete current dead-symbol list. A changed run that is not strict builds
-declaration state only for the files it judges, over both trees and under the
-base's own path and rename semantics (6.5). Its evidence stays whole: both
+declaration state only for the files in its effective judgement scope, over
+both trees and under the base's own path and rename semantics (6.5). That
+scope is the run's physical scope plus the files that declare a name the turn's
+changed files reference on either semantic side. A declaration that did not
+move can still turn from referenced to dead when its last caller changed, so
+the physical scope alone is not the semantic impact scope. The names come from
+the same structural facts the index is built from, never from a textual diff,
+and a name with several declarations widens to all of them, which keeps the
+ambiguity rule of ADR 0035: fail less, never more. A changed file whose
+working-tree text the grammar could not read widens nothing from its base
+reference names: that hole is reported as a hole, and missing evidence never
+becomes proven deadness. One effective scope drives the state of both trees,
+the ratchet, the base and accepted matching, `lost_reference`, the notes, the
+counts and the coverage line, so no run reports a finding at a site it says it
+did not judge. `Context.only` keeps its runner meaning: the check derives this
+scope locally. Its evidence stays whole: both
 trees keep the complete index of 8.4, so a judged declaration is alive on a
 reference from any measured file, changed or not, and a lost reference in an
 unchanged file still explains a worsened finding. A whole run, a strict run
@@ -1236,7 +1250,14 @@ and the check by hand build state for every eligible declaration. Pinned by
 `tests/dead_symbols.rs`; the report cap is covered by
 `report_lists_every_current_dead_symbol_without_the_note_cap`, and the
 judgement scope by
-`a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge`.
+`a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge` and
+`unrelated_historical_debt_outside_the_changed_scope_stays_silent`, and the
+semantic impact scope by
+`removing_the_last_reference_in_a_changed_caller_worsens_an_unchanged_declaration`,
+`a_reference_another_unchanged_caller_still_holds_is_no_regression`,
+`deleting_the_only_caller_worsens_the_unchanged_declaration`,
+`every_declaration_of_an_affected_name_stays_conservatively_in_scope` and
+`a_changed_caller_the_grammar_cannot_read_guesses_no_deadness`.
 
 In a changed run that is not strict, which includes the hook, the two trees
 `dead-symbols` and `reachability` compare share one base extraction. The run's
