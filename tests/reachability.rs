@@ -294,12 +294,18 @@ fn excepting_a_file_measured_at_the_base_reports_lost_coverage() {
     );
 
     let run = tree.run(&["reachability"]);
+    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("src/commands/alpha_command.rs was measured at the base"),
         "{}",
         run.out
+    );
+    assert!(
+        changed.says("src/commands/alpha_command.rs was measured at the base"),
+        "{}",
+        changed.out
     );
 }
 
@@ -573,4 +579,65 @@ fn the_stop_hook_blocks_a_turn_that_left_a_member_unreached() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("src/commands/alpha_command.rs"), "{}", run.out);
     assert!(run.says("src/commands/beta_command.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_changed_run_reports_one_surface_the_whole_run_reports_too() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/main.rs", "fn main() { run_gamma(); }\n");
+
+    let row = |flags: &[&str]| {
+        let mut args = vec!["gate", "--json", "--gate", "reachability"];
+        args.extend_from_slice(flags);
+        let report = tree.run(&args).json();
+        let mut row = report["gates"][0].clone();
+        if let Some(fields) = row.as_object_mut() {
+            fields.remove("ms");
+            fields.remove("facts");
+            fields.remove("names");
+        }
+        (row, report["findings"].clone(), report["notes"].clone())
+    };
+
+    let changed = row(&["--changed"]);
+    let whole = row(&[]);
+
+    assert_eq!(changed, whole, "{changed:?}");
+    assert_eq!(
+        changed.0["coverage"]["measured"], 3,
+        "the row claims fewer members than it judged: {:?}",
+        changed.0
+    );
+}
+
+#[test]
+fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
+    let tree = three_reached_commands();
+    tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
+    tree.base();
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
+    );
+    tree.commit("alpha wired again");
+    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(prompt.code, 0, "{}", prompt.out);
+    tree.write("src/other.rs", "pub fn other() { run_beta(); }\n");
+
+    let stop = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
+
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert_eq!(changed.code, 0, "{}", changed.out);
+    assert!(
+        changed.says("3 file(s) judged, 0 unreached"),
+        "{}",
+        changed.out
+    );
+    assert!(
+        changed.says("NOTE: 1 unreached file(s) the base already held"),
+        "{}",
+        changed.out
+    );
 }

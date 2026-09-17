@@ -1348,7 +1348,11 @@ strands a member is an edit to its caller and not to the member, so a run
 narrowed to the changed files would judge no member at all and report every
 site as held at the base. A derived family is small by construction, and the
 index is built over the whole partition either way, so the whole judgement
-costs a lookup per member. Identity is the
+costs a lookup per member, and the check reads no second extraction of its
+own. The physical changed-file set is therefore not this check's judgement
+boundary, and the wider boundary raises no old debt: a member unreached in
+both trees stays one NOTE under the ordinary two-tree ratchet, and never
+fails because a run re-judged it. Identity is the
 repository-relative path, so a file two families match is judged once,
 under the first family in the list, and an accepted entry names the path. A
 measured member with no eligible declaration is measured and not judged,
@@ -1369,9 +1373,13 @@ by `a_new_command_file_nothing_references_fails_as_new`,
 `a_file_with_only_entry_points_or_methods_is_measured_and_not_judged`,
 `the_remedy_names_a_proven_sibling_and_not_one_reached_by_ambiguity`,
 `a_family_the_base_proves_is_derived_and_judges_a_new_working_tree_member`,
-`a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing` and
-`the_stop_hook_blocks_a_turn_that_left_a_member_unreached`
-in `tests/reachability.rs`.
+`a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing`,
+`the_stop_hook_blocks_a_turn_that_left_a_member_unreached`,
+`a_changed_run_reports_one_surface_the_whole_run_reports_too` and
+`legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`
+in `tests/reachability.rs`, and by
+`a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction` in
+`tests/structural.rs`.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens
