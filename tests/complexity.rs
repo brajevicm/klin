@@ -1399,3 +1399,27 @@ fn a_scope_spelled_with_dot_slash_or_a_trailing_slash_measures_its_files() {
         assert!(run.says("1 measured"), "{root}: {}", run.out);
     }
 }
+
+#[test]
+fn failure_output_asks_for_a_design_fix_and_not_a_split_to_the_number() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write("src/knot.rs", TANGLED);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("Reduce the function's responsibility or decision complexity."),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("coherent behavior boundaries, not into arbitrary helpers"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("policy decision for a person, in the config, in a reviewed commit."),
+        "{}",
+        run.out
+    );
+}

@@ -414,8 +414,10 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
         unit: "function(s)",
         condition: &spec.gate_text,
         ceiling: Some(&spec.ceiling_text),
-        fix_advice: "Split the function so each piece is under the gate. Accepting new debt is a \
-                     policy decision for a person, in the config, in a reviewed commit.",
+        fix_advice: "Reduce the function's responsibility or decision complexity. Split at \
+                     coherent behavior boundaries, not into arbitrary helpers that only get \
+                     under the gate. Accepting new debt is a policy decision for a person, in \
+                     the config, in a reviewed commit.",
         format_metrics: show,
     }
 }
