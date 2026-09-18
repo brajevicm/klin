@@ -8,6 +8,7 @@ import * as paths from "../src/paths.ts";
 import { family } from "../src/catalogue.ts";
 import * as workspace from "../src/workspace.ts";
 import * as session from "../src/session.ts";
+import * as trial from "../src/trial.ts";
 import { signalsFrom } from "../src/record.ts";
 
 /**
@@ -242,3 +243,11 @@ test(
     clear(played);
   },
 );
+
+test("a relative control directory still gives the host an absolute settings path", () => {
+  const relative = trial.planeFor("benchmark/runs/some-round", "abc123");
+  assert.ok(path.isAbsolute(relative), relative);
+  assert.equal(relative, path.resolve("benchmark/runs/some-round", "abc123"));
+  const absolute = path.join(paths.RUNS, "some-round");
+  assert.equal(trial.planeFor(absolute, "abc123"), path.join(absolute, "abc123"));
+});

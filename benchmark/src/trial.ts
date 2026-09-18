@@ -230,6 +230,18 @@ function write(where: string, name: string, held: unknown): void {
   fs.writeFileSync(path.join(where, name), JSON.stringify(held, null, 2) + "\n");
 }
 
+/**
+ * One trial's control plane, always as an absolute path.
+ *
+ * The host resolves `--settings` against its own working directory, which is the subject
+ * workspace, not the harness's. A relative control directory therefore names a settings file the
+ * host cannot find, and every run of the round dies in under a second with the same unreadable
+ * result. The sandbox deny rules name this directory too, and a relative rule confines nothing.
+ */
+export function planeFor(controlRoot: string, trialId: string): string {
+  return path.resolve(controlRoot, trialId);
+}
+
 export function run(
   familyName: string,
   variantName: VariantName,
@@ -239,7 +251,7 @@ export function run(
 ): RunRecord {
   const found = familyNamed(familyName);
   const variant = found.variants[variantName];
-  const control = path.join(options.control, trialId);
+  const control = planeFor(options.control, trialId);
   fs.mkdirSync(control, { recursive: true });
 
   const here = provenance();
