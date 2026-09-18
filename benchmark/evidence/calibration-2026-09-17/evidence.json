@@ -1,7 +1,0 @@
-{
-  "status": "incomplete",
-  "setId": "calibration-2026-09-17",
-  "kind": "calibration",
-  "publishable": false,
-  "reason": "The original calibration raw run directory must be supplied and packaged before this descriptor can be completed."
-}
