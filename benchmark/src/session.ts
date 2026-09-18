@@ -112,19 +112,56 @@ function owned(): string[] {
 }
 
 /**
- * Every variable of `process.env` less the ones klin uses and the ones that name a path the
- * harness owns.
+ * What a subject session and a behaviour test are allowed to inherit.
  *
- * A behaviour test and a subject session both get this: nothing the harness or klin set may reach
- * the process that decides whether the requested behaviour is correct, and nothing may reach a
- * subject that could tell it which arm it is in.
+ * This is an allowlist because the operator's own environment is not a safe thing to hand a
+ * subject. A probe session read it and reported a GitHub OAuth token, a fine-grained GitHub PAT,
+ * two API keys, this host's own IPC auth token and a proxy `username:password` pair. The subject
+ * of a trial is an untrusted agent under test: it can write anything it reads into its own tree,
+ * and the harness then copies that tree into the run record and the raw archive.
  *
- * The second rule is why this is a filter over values and not a list of names. The harness runs
- * out of klin's own repository, so `PWD` and `OLDPWD` both carry that path into every child
- * process by inheritance, whatever `cwd` the child is given. A live trial found a subject that
- * read those and ran the klin binary under `target/release` against its own tree. Naming the two
- * variables would close that one route and leave the next one open, so every variable whose
- * value names an owned path is dropped instead.
+ * Every name here is either a path, a locale or a terminal setting. `ANTHROPIC_API_KEY` and
+ * `ANTHROPIC_BASE_URL` are the exception and they are a real trade-off: with
+ * `KLIN_BENCH_CONFIG_DIR` set, the host keys its keychain entry by the configuration directory
+ * and a fresh one has no credential, so it cannot authenticate without them. A run that does not
+ * set that variable does not need them and, on this machine, does not have them.
+ *
+ * `CLAUDE_`, `CLAUDECODE` and `SSH_AUTH_SOCK` are deliberately absent. The first two carry this
+ * session's own messaging token, and the child host sets what it needs for itself. The third is
+ * a live agent socket, which is credential access by another name.
+ */
+const KEPT = [
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_BASE_URL",
+  "CARGO_HOME",
+  "CARGO_TARGET_DIR",
+  "HOME",
+  "LANG",
+  "LC_ALL",
+  "LOGNAME",
+  "PATH",
+  "RUSTUP_HOME",
+  "SHELL",
+  "SSL_CERT_DIR",
+  "SSL_CERT_FILE",
+  "TERM",
+  "TMPDIR",
+  "USER",
+];
+
+/** Node version managers put the toolchain on PATH through these. None of them holds a secret. */
+const KEPT_PREFIXES = ["FNM_", "NPM_CONFIG_", "npm_config_"];
+
+/**
+ * The environment a subject session and a behaviour test run under.
+ *
+ * Two rules, and a variable must pass both. It has to be one this harness allows, and its value
+ * must not name a path the harness owns.
+ *
+ * The second rule is why this filters values and not only names. The harness runs out of klin's
+ * own repository, so `PWD` and `OLDPWD` both carried that path into every child process by
+ * inheritance, whatever `cwd` the child was given. A live trial found a subject that read one and
+ * ran the klin binary under `target/release` against its own tree.
  *
  * `PATH` is filtered rather than dropped, because a subject with no `PATH` cannot run its build
  * at all. An entry under an owned path would put the klin binary one `klin` away.
@@ -133,8 +170,10 @@ export function withoutKlin(): NodeJS.ProcessEnv {
   const kept: NodeJS.ProcessEnv = {};
   const secret = owned();
   const names = (value: string): boolean => secret.some((one) => value.includes(one));
+  const allowed = (name: string): boolean =>
+    KEPT.includes(name) || KEPT_PREFIXES.some((one) => name.startsWith(one));
   for (const [name, value] of Object.entries(process.env)) {
-    if (name.startsWith("KLIN_") || value === undefined) {
+    if (value === undefined || !allowed(name)) {
       continue;
     }
     if (name === "PATH") {
