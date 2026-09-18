@@ -161,6 +161,12 @@ fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
         .find(|(name, _)| name == gate)
         .ok_or_else(|| shape(config))?;
     let held = held.as_object().ok_or_else(|| shape(config))?;
+    crate::config::known_fields(
+        &config.file,
+        SECTION,
+        held,
+        &[check::NAMED.name, REPORT.name, RUN.name, DIFFERENTIAL.name],
+    )?;
     let report = held
         .get(REPORT.name)
         .and_then(Value::as_str)
