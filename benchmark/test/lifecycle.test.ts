@@ -32,12 +32,13 @@ interface Played {
 /**
  * One hook call, as the host makes it.
  *
- * The plane, the binary and the arm are arguments, exactly as the settings file in the plane
- * writes them. Nothing is in the environment, because the host hands its environment to the
- * subject shell.
+ * klin's own event arguments are all the wrapper is given, exactly as the settings file in the
+ * plane writes them. The plane, the binary and the arm are baked into the wrapper `materialize`
+ * wrote, because the host shows the agent the whole command line when a Stop hook blocks. Nothing
+ * is in the environment either, because the host hands its environment to the subject shell.
  */
-function hook(place: workspace.Workspace, args: string[], payload: object, deliver: boolean) {
-  return spawnSync(place.hook, [place.plane, KLIN, deliver ? "1" : "0", ...args], {
+function hook(place: workspace.Workspace, args: string[], payload: object) {
+  return spawnSync(place.hook, args, {
     input: JSON.stringify(payload),
     cwd: place.repo,
     encoding: "utf8",
@@ -64,18 +65,17 @@ function play(
   fs.rmSync(plane, { recursive: true, force: true });
   const place = workspace.materialize(variant, trialId, plane, KLIN, deliver);
   const session_id = "11111111-2222-3333-4444-555555555555";
-  hook(place, ["radius"], { hook_event_name: "SessionStart", session_id }, deliver);
-  hook(place, ["radius"], { hook_event_name: "UserPromptSubmit", session_id, prompt: "do the task" }, deliver);
+  hook(place, ["radius"], { hook_event_name: "SessionStart", session_id });
+  hook(place, ["radius"], { hook_event_name: "UserPromptSubmit", session_id, prompt: "do the task" });
   edit(place.repo);
   const answers = [];
   for (let played = 0; played < stops; played += 1) {
     answers.push(
-      hook(
-        place,
-        ["gate", "--hook", "--changed"],
-        { hook_event_name: "Stop", session_id, stop_hook_active: played > 0 },
-        deliver,
-      ),
+      hook(place, ["gate", "--hook", "--changed"], {
+        hook_event_name: "Stop",
+        session_id,
+        stop_hook_active: played > 0,
+      }),
     );
   }
   return {

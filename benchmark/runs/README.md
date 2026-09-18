@@ -18,7 +18,7 @@ subject must not reach is in it.
 <stamp>/<trial>/record.json    the machine run record, against record.schema.json
 <stamp>/<trial>/agent.json     the host's own result, with no hidden reasoning
 <stamp>/<trial>/behaviour.json the hidden oracle's answer and its output
-<stamp>/<trial>/hook           the wrapper, as it ran
+<stamp>/<trial>/hook           the wrapper, as it ran, under its settled name
 <stamp>/<trial>/settings.json  the host wiring, which carries the arm
 <stamp>/<trial>/state/         klin's own state and journal for the trial
 <stamp>/<trial>/hooks/         every wrapped hook call, with its real status

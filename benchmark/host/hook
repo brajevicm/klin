@@ -1,26 +1,32 @@
 #!/bin/sh
-# The benchmark's host hook. One file serves both arms, byte for byte: the arm is an argument,
-# never a difference in this file and never a variable in the host's environment, because the
-# subject shell inherits that environment and would read its own arm from it.
+# The benchmark's host hook, as a template. `workspace.materialize` writes one copy per trial with
+# the three values below substituted, under a name of random bytes inside that trial's plane.
 #
-# Usage: hook <plane> <klin binary> <deliver> <klin arguments...>
+# The values are baked in rather than passed as arguments because the host shows the agent the
+# whole hook command line when a Stop hook blocks, under "Stop hook feedback:". A live set found
+# that echo handing four Active subjects the wrapper path, the plane, the klin binary and the arm
+# digit, and two of them then ran klin against their own tree. Nothing in the command line may
+# name any of those, so nothing does: the line is the wrapper and klin's own event arguments.
 #
-# <plane>     the control plane for this trial: klin's state, and where this hook writes evidence
-# <deliver>   1 to pass klin's answer back to the host, 0 to suppress it
+# The random name is the second half. The host prints its sandbox deny rules into the subject's
+# system prompt, so every subject is told where the plane is. A wrapper called `hook` there is one
+# guess away. A subject that cannot read the directory cannot list the name, and a subject that
+# names the plane at all fails `no-tool-call-outside-the-workspace` and invalidates its own trial.
+#
+# Usage: <this file> <klin arguments...>
 #
 # The plane holds klin's state, so KLIN_STATE_DIR is exported here and not by the harness. The
 # host would otherwise carry it into the subject shell, which would then read klin's journal and
 # find, in the Shadow arm, every finding the treatment withholds.
 set -u
 
-plane=$1
-klin=$2
-deliver=$3
-shift 3
+plane=@PLANE@
+klin=@KLIN@
+deliver=@DELIVER@
 
-# A plane that is not an absolute path means this was called with klin's own arguments first, the
-# way the host's settings file wrote them before the arm left the environment. Writing evidence
-# under a relative path would scatter a directory wherever the host happened to be.
+# A plane that is not an absolute path means the substitution did not happen, or happened wrong.
+# Writing evidence under a relative path would scatter a directory wherever the host happened to
+# be, so this stops instead.
 case "$plane" in
     /*) ;;
     *)

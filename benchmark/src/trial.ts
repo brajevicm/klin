@@ -248,6 +248,7 @@ export function run(
   const isolation = integrity.judge(variant, found.spec.gate, place.repo, control);
 
   const ran = session.run(place, variant.prompt, options, configDir);
+  const wrapperRan = workspace.settle(place);
   isolation.checks.push(integrity.stillHidden(variant, place.repo));
   isolation.verified = isolation.checks.every((one) => one.passed);
 
@@ -319,8 +320,8 @@ export function run(
     },
     model: { requested: options.model, reported: modelsRan(ran) },
     agent: {
-      wiringSha256: workspace.wiringSha256(place.settings, place.plane, place.root),
-      wrapperSha256: sha256(fs.readFileSync(place.hook)),
+      wiringSha256: workspace.wiringSha256(place.settings, place.plane, place.root, place.hook),
+      wrapperSha256: workspace.wrapperSha256(wrapperRan, place.plane, options.klinBin),
     },
     startedAt: ran.startedAt,
     endedAt: ran.endedAt,

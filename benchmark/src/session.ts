@@ -91,18 +91,63 @@ function flagsFor(workspace: Workspace, sessionId: string, options: SessionOptio
 }
 
 /**
- * Every variable of `process.env` less the ones klin and this harness use.
+ * The paths a subject must not learn, in both their symbolic-link-resolved forms.
+ *
+ * klin's own repository is one of them. It holds the fixtures, the hidden oracles, every other
+ * trial's records and, under `benchmark/runs`, this trial's plane. A subject that learns this
+ * one path can name all of it, and it can name the klin binary under `target/release` without
+ * ever reading a file the sandbox refuses.
+ */
+function owned(): string[] {
+  const held = new Set<string>();
+  for (const one of [paths.REPO, paths.workRoot()]) {
+    held.add(one);
+    try {
+      held.add(fs.realpathSync(one));
+    } catch {
+      // The work root does not exist before the first trial materializes a workspace.
+    }
+  }
+  return [...held];
+}
+
+/**
+ * Every variable of `process.env` less the ones klin uses and the ones that name a path the
+ * harness owns.
  *
  * A behaviour test and a subject session both get this: nothing the harness or klin set may reach
  * the process that decides whether the requested behaviour is correct, and nothing may reach a
  * subject that could tell it which arm it is in.
+ *
+ * The second rule is why this is a filter over values and not a list of names. The harness runs
+ * out of klin's own repository, so `PWD` and `OLDPWD` both carry that path into every child
+ * process by inheritance, whatever `cwd` the child is given. A live trial found a subject that
+ * read those and ran the klin binary under `target/release` against its own tree. Naming the two
+ * variables would close that one route and leave the next one open, so every variable whose
+ * value names an owned path is dropped instead.
+ *
+ * `PATH` is filtered rather than dropped, because a subject with no `PATH` cannot run its build
+ * at all. An entry under an owned path would put the klin binary one `klin` away.
  */
 export function withoutKlin(): NodeJS.ProcessEnv {
   const kept: NodeJS.ProcessEnv = {};
+  const secret = owned();
+  const names = (value: string): boolean => secret.some((one) => value.includes(one));
   for (const [name, value] of Object.entries(process.env)) {
-    if (!name.startsWith("KLIN_")) {
-      kept[name] = value;
+    if (name.startsWith("KLIN_") || value === undefined) {
+      continue;
     }
+    if (name === "PATH") {
+      kept.PATH = value
+        .split(path.delimiter)
+        .filter((entry) => !names(entry))
+        .join(path.delimiter);
+      continue;
+    }
+    if (names(value)) {
+      continue;
+    }
+    kept[name] = value;
   }
   return kept;
 }
@@ -128,6 +173,9 @@ export function run(
     maxBuffer: 64 * 1024 * 1024,
     env: {
       ...withoutKlin(),
+      // `cwd` moves the process. `PWD` is what a shell reports, and an inherited one would still
+      // name the directory the harness ran from.
+      PWD: workspace.repo,
       ...(configDir === "" ? {} : { CLAUDE_CONFIG_DIR: configDir }),
     },
   });

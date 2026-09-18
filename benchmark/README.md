@@ -20,10 +20,26 @@ difference between them has to be the feedback and nothing else.
 ## The two arms
 
 Both arms use the same fixture, the same `klin.json`, the same host, the same
-model and the same production hook lifecycle. One file, `host/hook`, is the
-wrapper both arms run, byte for byte. The arm is an argument of the hook
-command, so no difference between the arms lives in that file, and every record
-carries the wrapper's digest so a paired cell can be held to it.
+model and the same production hook lifecycle. `host/hook` is a template, and
+each trial gets one copy with the plane, the klin binary and the arm
+substituted into it. Every record carries `wrapperSha256`, which normalizes
+those three and attests every other byte, so a paired cell can be held to one
+wrapper.
+
+The arm is in the file rather than on the command line because the host shows
+the agent the whole hook command line when a Stop hook blocks, under `Stop hook
+feedback:`. A live set found that echo handing four Active subjects the wrapper
+path, the plane, the klin binary and the arm digit, and two of them then ran
+`klin gate --hook --changed` against their own tree. The command line is now
+the wrapper and klin's own event arguments, and nothing else.
+
+The wrapper's name is random bytes, because the host prints its sandbox deny
+rules into the subject's system prompt and those rules name the plane. A
+wrapper called `hook` in an advertised directory is one guess away. A subject
+cannot list a directory it cannot read, and a subject that names the plane at
+all fails `no-tool-call-outside-the-workspace`. `settle` puts the wrapper back
+under the name `hook` once the session is over, so the verifier and
+`evidence-prepare` see one stable name.
 
 In the Active arm the wrapper hands klin's answer back to the host: the exit
 status, stdout and stderr klin produced.
@@ -64,6 +80,17 @@ command in the plane's settings file. Every `KLIN_` variable is dropped from
 the environment the host gets, so one left over in the operator's own shell
 cannot name klin's binary, klin's state or the arm either.
 
+A variable whose name carries no `KLIN_` carries the same secret if its value
+names a path the harness owns, so every one of those is dropped too, and `PATH`
+loses any entry under such a path. This is not a precaution. `cwd` moves the
+subject's process and does not rewrite what that process inherits, so `PWD` and
+`OLDPWD` named klin's own repository in every trial. A live trial found a
+subject that read one and ran the klin binary under `target/release` against
+its own tree, which is klin's reference documentation and klin's own verdict
+reaching a subject the treatment says gets neither. The probe's
+`no-owned-path-in-the-environment` check is what would now catch it, and
+`integrity.test.ts` holds the filter to it.
+
 klin's state is in the plane for the same reason. It holds the journal, and the
 journal holds every finding, so a Shadow subject that read it would have the
 treatment the arm withholds. The wrapper exports `KLIN_STATE_DIR` itself, so
@@ -100,12 +127,20 @@ carries it:
 - `permissions.blockReadsOutsideWorkingDirectories`, because `Read`, `Glob` and
   `Grep` are the host's own file tools and no sandbox holds them.
 
-Two openings are deliberate. `~/.cargo` and `~/.npm` stay writable, and
+Two openings are deliberate.
+
+`~/.cargo`, `~/.rustup` and `~/.npm` are readable and writable. `cargo` and
+`rustc` are rustup shims that resolve a toolchain under `~/.rustup`, so a
+subject refused those homes cannot compile the four Rust families at all, and
+`~/.npm` is the same for the five TypeScript families.
+
 `sandbox.network.allowedDomains` reaches the npm and crates registries: one
 task asks the agent to bring a dependency in at an exact version, which it
 cannot record without the registry that states it, and a subject that cannot
-run its suite measures a different task. Neither directory nor either registry
-can tell a subject which arm it is in.
+run its suite measures a different task.
+
+Neither those directories nor either registry can tell a subject which arm it
+is in.
 
 `strictAllowlist` closes the rest. A headless session has no one to answer a
 network prompt, so a host that is not on the list is refused outright and the

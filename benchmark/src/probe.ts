@@ -179,6 +179,27 @@ export function judge(
         : "the subject's own report names no KLIN_ variable",
     ),
   );
+  // A variable that carries no `KLIN_` in its name carries the same secret if its value names a
+  // path the harness owns. A live trial found `PWD` naming klin's own repository, inherited past
+  // the `cwd` the subject was given, and a subject that read it ran the klin binary under
+  // `target/release`. The step above asks for the whole environment, so this reads the answer.
+  const owned = [paths.REPO, paths.workRoot()].flatMap((one) => {
+    try {
+      return [one, fs.realpathSync(one)];
+    } catch {
+      return [one];
+    }
+  });
+  const named = [...new Set(owned)].filter((one) => text.includes(one));
+  checks.push(
+    check(
+      "no-owned-path-in-the-environment",
+      named.length === 0,
+      named.length === 0
+        ? "nothing the subject produced names a path the harness owns"
+        : "the subject's own report names " + named.join(", "),
+    ),
+  );
   return {
     checks,
     passed: checks.every((one) => one.passed),
