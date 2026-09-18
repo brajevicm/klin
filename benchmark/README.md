@@ -120,10 +120,17 @@ carries it:
 - `sandbox.allowUnsandboxedCommands: false`, so the host may not retry a
   refused command outside the sandbox. Without this the boundary holds only
   until the second try;
-- `sandbox.filesystem.denyRead` and `denyWrite` over the plane, the root every
-  workspace is materialized under and this repository, with `allowRead` and
-  `allowWrite` re-opening the subject's own repository inside that denied
-  region;
+- `sandbox.filesystem.denyRead` over the plane, the root every workspace is
+  materialized under and this repository, with `allowRead` re-opening the
+  subject's own repository inside that denied region;
+- `sandbox.filesystem.denyWrite` over the plane and this repository, but **not**
+  over the work root. A nested `allowWrite` does not re-open a path inside a
+  denied region, and a denied work root therefore walls the subject out of its
+  own repository: it cannot create a file, a directory or a build output from
+  `Bash`. #252 is where that was found, after a whole publishable round ran with
+  every subject building somewhere else. Writes need no deny of their own,
+  because the sandbox already refuses every write outside the working directory,
+  which is what keeps one trial out of another trial's workspace;
 - `permissions.blockReadsOutsideWorkingDirectories`, because `Read`, `Glob` and
   `Grep` are the host's own file tools and no sandbox holds them.
 
