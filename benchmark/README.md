@@ -463,6 +463,10 @@ node benchmark/src/cli.ts run <family> <risk|control> <active|shadow>
 node benchmark/src/cli.ts calibrate --seed 1
 node benchmark/src/cli.ts verify  benchmark/runs/<stamp>
 node benchmark/src/cli.ts report  benchmark/runs/<stamp> --out docs/calibration-<date>.md
+node benchmark/src/cli.ts evidence-prepare benchmark/runs/<stamp> \
+  --into benchmark/evidence/<set> --archive /path/to/<set>-raw.tar.gz
+node benchmark/src/cli.ts evidence-verify benchmark/evidence/<set> \
+  --archive /path/to/<set>-raw.tar.gz
 ```
 
 `probe` costs one session and must pass before the rest are worth paying for:
@@ -504,7 +508,9 @@ benchmark/
   test/                  the harness's own tests
   fixtures/<family>/     base/, risk/, control/, each with prompt, overlay,
                          oracle, good and bad
-  runs/                  the control plane, and where records land
+  runs/                  ephemeral live control plane, and where records land
+  evidence/              committed slim evidence and its descriptors
+  external archive       full forensic evidence, bound by evidence.json
 ```
 
 `fixtures` is in klin's built-in skip set, so a fixture tree that carries debt
@@ -515,3 +521,24 @@ committed to this repository must not become klin's own source.
 The harness is TypeScript run by Node, with no build step and no dependency. It
 links no klin Rust module and speaks to klin only through the binary's command
 line, which is the seam `AGENTS.md` names.
+
+## Why raw evidence stays outside Git
+
+These sessions are paid observations of a stochastic hosted model at a
+specific host and model version. Re-running creates a new observation; it does
+not reproduce the same bytes. The slim evidence stays in Git so the mechanical
+scorecard and run accounting do not require a download. The full raw set is a
+single external immutable release asset, with its archive SHA-256 and
+per-file manifest committed beside the slim set.
+
+The benchmark is first-party evidence. Hashes and signatures make
+post-publication modification detectable; they do not prove that a maintainer
+did not fabricate or delete local observations before publication. The frozen
+protocol plus #211's write-once attempt and replacement rules make ordinary
+selective retry or omission auditable in the preserved dataset, but a malicious
+first-party operator could still destroy unpublished local evidence.
+
+After verification, the owner publishes the exact archive as an immutable
+GitHub release asset, signs it with Sigstore/cosign where available, and fills
+only the `release` and `sigstoreBundle` fields in `evidence.json`. CI does not
+hold signing credentials or publish benchmark evidence.

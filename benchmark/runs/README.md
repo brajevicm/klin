@@ -28,10 +28,20 @@ subject must not reach is in it.
 ```
 
 Nothing under here is committed except this note. A set is evidence for a
-published claim, not source, and one 36-run set is 36 megabytes across 6657
-files. The set is attached to the release or the issue that cites it, and every
-record states the harness commit and the klin source commit, so a reader can
-check out the tree that produced it.
+published claim, not source. After the benchmark verifier accepts a completed
+set, package it with:
+
+```sh
+node benchmark/src/cli.ts evidence-prepare benchmark/runs/<set> \
+  --into benchmark/evidence/<set> --archive /path/to/<set>-raw.tar.gz
+node benchmark/src/cli.ts evidence-verify benchmark/evidence/<set> \
+  --archive /path/to/<set>-raw.tar.gz
+```
+
+Commit only the slim evidence and `evidence.json`; publish the exact raw
+archive as an immutable release asset. Every record states the harness commit
+and the klin source commit, so a reader can check out the tree that produced
+it.
 
 `benchmark/test/live-record.json` is one real record kept in the repository,
 because two tests read a record and a hand-written one would drift from the

@@ -6,6 +6,7 @@ import * as selftest from "./selftest.ts";
 import * as calibrate from "./calibrate.ts";
 import * as probe from "./probe.ts";
 import * as report from "./report.ts";
+import * as evidence from "./evidence.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
@@ -16,6 +17,8 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
+  node benchmark/src/cli.ts evidence-prepare <runs-dir> --into DIR --archive FILE
+  node benchmark/src/cli.ts evidence-verify <evidence-dir> [--archive FILE]
 
 Environment:
   KLIN_BIN              the klin binary under test, default target/release/klin
@@ -112,6 +115,42 @@ function verify(directory: string): number {
   return problems.length === 0 ? 0 : 1;
 }
 
+function evidencePrepare(source: string, args: string[]): number {
+  const into = flag(args, "--into", "");
+  const archive = flag(args, "--archive", "");
+  if (source === "" || into === "" || archive === "") {
+    process.stdout.write("evidence-prepare needs a runs directory, --into DIR and --archive FILE\n\n" + USAGE);
+    return 2;
+  }
+  try {
+    const read = evidence.prepare(source, into, archive);
+    process.stdout.write(
+      "prepared " + read.kind + " evidence with " + String(read.attempts) + " attempts\n",
+    );
+    return 0;
+  } catch (why) {
+    process.stdout.write(String(why) + "\n");
+    return 2;
+  }
+}
+
+function evidenceVerify(directory: string, args: string[]): number {
+  if (directory === "") {
+    process.stdout.write("evidence-verify needs an evidence directory\n\n" + USAGE);
+    return 2;
+  }
+  const problems = evidence.verify(directory, flag(args, "--archive", ""));
+  for (const problem of problems) {
+    process.stdout.write(problem + "\n");
+  }
+  process.stdout.write(
+    problems.length === 0
+      ? "evidence is intact\n"
+      : String(problems.length) + (problems.length === 1 ? " problem\n" : " problems\n"),
+  );
+  return problems.length === 0 ? 0 : 1;
+}
+
 export function main(argv: string[]): number {
   const [command, ...args] = argv;
   if (!command || command === "--help" || command === "-h") {
@@ -164,6 +203,12 @@ export function main(argv: string[]): number {
       process.stdout.write(text);
     }
     return 0;
+  }
+  if (command === "evidence-prepare") {
+    return evidencePrepare(args[0] ?? "", args.slice(1));
+  }
+  if (command === "evidence-verify") {
+    return evidenceVerify(args[0] ?? "", args.slice(1));
   }
   process.stdout.write("unknown command " + command + "\n\n" + USAGE);
   return 2;
