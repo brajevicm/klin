@@ -333,9 +333,19 @@ export function identityDrift(was: Identity, now: Identity): string[] {
     );
 }
 
-/** Every way one round departs from the protocol committed before any outcome existed. */
+/**
+ * Every way one round departs from the protocol committed before any outcome existed.
+ *
+ * A file that does not parse, or that parses to something other than an object, is a departure
+ * and not a crash. A merge that left conflict markers behind, or a `--write` that was interrupted,
+ * must refuse the round in the words the operator is reading for, not in a stack trace.
+ */
 export function uncommitted(now: Identity): string[] {
-  const file = protocolFile();
+  return committedAt(protocolFile(), now);
+}
+
+/** The same reading, over a named file, so a test never writes over the committed one. */
+export function committedAt(file: string, now: Identity): string[] {
   if (!fs.existsSync(file)) {
     return [
       "no protocol is committed at " +
@@ -343,7 +353,16 @@ export function uncommitted(now: Identity): string[] {
         ". Write it with `node benchmark/src/cli.ts protocol --write`, review it and commit it before run 1.",
     ];
   }
-  return identityDrift(JSON.parse(fs.readFileSync(file, "utf8")) as Identity, now);
+  let held: Identity;
+  try {
+    held = JSON.parse(fs.readFileSync(file, "utf8")) as Identity;
+  } catch (why) {
+    return [file + " does not parse as a committed protocol: " + String(why)];
+  }
+  if (held === null || typeof held !== "object") {
+    return [file + " holds " + JSON.stringify(held) + " where a committed protocol is an object"];
+  }
+  return identityDrift(held, now);
 }
 
 /**
@@ -354,6 +373,10 @@ export function uncommitted(now: Identity): string[] {
  * against an edit that the history does not hold.
  */
 export function protocol(seed: number, write: boolean): number {
+  if (!Number.isInteger(seed)) {
+    process.stdout.write("--seed needs an integer, and it gave " + String(seed) + "\n");
+    return 2;
+  }
   const file = protocolFile();
   const now = identity(seed);
   if (write) {

@@ -11,7 +11,9 @@ import {
   FLOOR,
   crash,
   execute,
+  committedAt,
   identity,
+  protocol,
   manifestOf,
   manifestProblems,
   markdown,
@@ -484,4 +486,28 @@ test("another seed, or a changed prompt or fixture, is not the committed protoco
   const wider = identity(1);
   wider.design.floor = { runs: 5, families: 3 };
   assert.ok(uncommitted(wider).some((one) => one.startsWith("the design:")));
+});
+
+test("a committed protocol that does not parse, or is not an object, refuses and does not throw", () => {
+  const where = room();
+  const file = path.join(where, "protocol.json");
+  const now = identity(1);
+  assert.equal(committedAt(file, now).length, 1, "a missing file is one departure");
+  for (const spoiled of ["<<<<<<< HEAD\n{", "null", "42", "[]"]) {
+    fs.writeFileSync(file, spoiled);
+    const problems = committedAt(file, now);
+    assert.ok(problems.length > 0, spoiled + " raised nothing");
+    assert.ok(problems.every((one) => one.length > 0));
+  }
+  fs.writeFileSync(file, fs.readFileSync(protocolFile()));
+  assert.deepEqual(committedAt(file, now), []);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a seed that is not an integer writes no committed protocol", () => {
+  const before = fs.readFileSync(protocolFile());
+  const wrote = quiet(() => protocol(Number("x"), true));
+  assert.equal(wrote.value, 2);
+  assert.match(wrote.wrote, /--seed needs an integer/);
+  assert.deepEqual(fs.readFileSync(protocolFile()), before, "a bad seed leaves the committed file alone");
 });
