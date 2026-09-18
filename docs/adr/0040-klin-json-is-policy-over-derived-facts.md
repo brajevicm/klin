@@ -116,3 +116,23 @@ configuration.
   `klin gate --strict`, under its full configuration and the earlier binary,
   took 2,045 ms, and under the compact configuration and this binary 1,995 ms.
   No row moved by more than a third; the largest moves are within 4%.
+
+  Issue #181 was measured on 2026-09-18, macos/aarch64, release builds, with
+  the same #157 fixture and five samples per row. The parent binary was
+  `091a5e0`; the schema binary was `bc8dd41`. Both used `{"build": []}` and
+  the hook rows exclude the project's build command:
+
+  | Row | Before (ms) | After (ms) | Change |
+  |---|---:|---:|---:|
+  | 2k warm hook | 306 | 346 | +13.1% |
+  | 2k cold survey | 1,934 | 2,161 | +11.7% |
+  | 2k strict | 1,240 | 1,287 | +3.8% |
+  | 10k warm hook | 475 | 503 | +5.9% |
+  | 10k cold survey | 15,192 | 15,538 | +2.3% |
+  | 10k strict | 6,014 | 6,082 | +1.1% |
+  | guard, 1,000 events | 11,148 | 11,650 | +4.5% |
+
+  The schema path is not read by gate, hook or guard. The binary carries the
+  generator for the explicit `reference --schema` command, while the measured
+  runtime paths remain unchanged; no performance-specific implementation is
+  justified by these medians.

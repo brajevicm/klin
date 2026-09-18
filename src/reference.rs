@@ -34,7 +34,6 @@ pub enum SectionShape {
     DocumentMap,
     FalseOnly,
     Conventions,
-    Layering,
     Sarif,
 }
 
@@ -167,7 +166,6 @@ fn section(spec: &check::Row) -> Value {
         SectionShape::DocumentMap => disabled(document_map()),
         SectionShape::FalseOnly => json!({"const": false}),
         SectionShape::Conventions => disabled(conventions(spec)),
-        SectionShape::Layering => disabled(object(spec.keys, Some(spec), true)),
         SectionShape::Sarif => disabled(json!({
             "type": "array",
             "items": object(spec.keys, Some(spec), false)
@@ -294,8 +292,8 @@ fn shape(shape: Shape, row: Option<&check::Row>) -> Value {
                 "additionalProperties": {"type": "number"}
             }
         }),
-        Shape::Radius => object_fields([("lines", integer()), ("directories", integer())], false),
-        Shape::Journal => object_fields([("prompt", json!({"type": "boolean"}))], false),
+        Shape::Radius => object_fields([("lines", integer()), ("directories", integer())]),
+        Shape::Journal => object_fields([("prompt", json!({"type": "boolean"}))]),
         Shape::Layers => json!({
             "type": "object",
             "minProperties": 1,
@@ -312,24 +310,16 @@ fn shape(shape: Shape, row: Option<&check::Row>) -> Value {
     }
 }
 
-fn object_fields<const N: usize>(fields: [(&str, Value); N], required: bool) -> Value {
+fn object_fields<const N: usize>(fields: [(&str, Value); N]) -> Value {
     let properties = fields
         .into_iter()
         .map(|(name, value)| (name.to_string(), value))
         .collect::<Map<String, Value>>();
-    let required_names: Vec<Value> = properties
-        .keys()
-        .map(|name| Value::from(name.as_str()))
-        .collect();
-    let mut out = Map::from_iter([
+    Value::Object(Map::from_iter([
         ("type".into(), Value::from("object")),
         ("properties".into(), Value::Object(properties)),
         ("additionalProperties".into(), Value::Bool(false)),
-    ]);
-    if required {
-        out.insert("required".into(), Value::Array(required_names));
-    }
-    Value::Object(out)
+    ]))
 }
 
 fn integer() -> Value {
