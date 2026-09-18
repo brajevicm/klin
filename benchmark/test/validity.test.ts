@@ -396,6 +396,7 @@ test("a paired cell whose arms differ in host version, model or memory fails", (
     ],
     ["the harness", { harness: { commit: "abc", dirty: true, treeSha256: "beef" } }],
     ["the hook wiring", { agent: { wiringSha256: "another", wrapperSha256: "w2" } }],
+    ["the hook wrapper", { agent: { wiringSha256: "w1", wrapperSha256: "another" } }],
     [
       "the isolated-configuration status",
       { host: { ...(pair([{}])[0].host as object), isolatedConfiguration: true } },
