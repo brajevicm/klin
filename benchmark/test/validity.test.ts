@@ -230,10 +230,10 @@ test("a source commit is stated only where a provenance file names this binary",
   fs.rmSync(where, { recursive: true, force: true });
 });
 
-/** One set on disk, from the ad-hoc record kept as evidence, at today's protocol. */
+/** One set on disk, from the live record kept beside these tests, at today's protocol. */
 function setOf(where: string, runs: Record<string, unknown>[]): string {
   const held = JSON.parse(
-    fs.readFileSync(path.join(paths.RUNS, "ad-hoc", "0ce3ce1cb732", "record.json"), "utf8"),
+    fs.readFileSync(path.join(paths.BENCHMARK, "test", "live-record.json"), "utf8"),
   ) as Record<string, unknown>;
   runs.forEach((over, index) => {
     const into = path.join(where, "t" + String(index));

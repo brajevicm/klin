@@ -27,15 +27,15 @@ subject must not reach is in it.
 <stamp>/<trial>/fixtures/scoring/ the copy the hidden test ran over
 ```
 
-`fixtures/`, `hooks/` and `state/` are not committed. They are 34 of the 36
-megabytes a set writes, and everything a later reader needs from `hooks/` is
-already inside `record.json`: the tool, the paths, the arguments, the real
-status, stdout and stderr. What a commit keeps is the record, the manifest, the
-host's own result, the oracle's answer, the settings and the wrapper. The raw
-hook payloads stay on the machine that ran the set.
+Nothing under here is committed except this note. A set is evidence for a
+published claim, not source, and one 36-run set is 36 megabytes across 6657
+files. The set is attached to the release or the issue that cites it, and every
+record states the harness commit and the klin source commit, so a reader can
+check out the tree that produced it.
 
-`ad-hoc/0ce3ce1cb732` predates that rule and keeps its `hooks/`, because a test
-reads it.
+`benchmark/test/live-record.json` is one real record kept in the repository,
+because two tests read a record and a hand-written one would drift from the
+schema.
 
 The subject's own repository is not here. It sits under the system temporary
 directory, alone in its parent, so no relative path leads from it to this tree.
@@ -47,7 +47,7 @@ A calibration record says `publishable: false`, and `verify` refuses a set
 that says otherwise. Issue #115 excludes calibration from the product
 scorecard.
 
-`ad-hoc/0ce3ce1cb732` is one live trial from 2026-09-17, kept as raw evidence.
-It is a protocol 1 record, so it holds neither `infrastructure.terms` nor
-`isolation.outside`, and `verify` names it as a protocol mismatch. It is
-evidence of what ran, not a set to verify.
+`benchmark/test/live-record.json` is one live trial from 2026-09-17. It is a
+protocol 1 record, so it holds neither `infrastructure.terms` nor
+`isolation.outside`. The tests that read it write today's protocol over it. It
+is evidence of what ran, not a set to verify.

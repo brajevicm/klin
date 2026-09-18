@@ -174,7 +174,7 @@ test("an unknown --only family is rejected before any trial starts", () => {
 test("verify accepts the complete four-record inventory set", () => {
   const where = room();
   const base = JSON.parse(
-    fs.readFileSync(path.join(paths.RUNS, "ad-hoc", "0ce3ce1cb732", "record.json"), "utf8"),
+    fs.readFileSync(path.join(paths.BENCHMARK, "test", "live-record.json"), "utf8"),
   ) as Record<string, unknown>;
   const order = rowsFor("inventory");
   for (const row of order) {
@@ -211,7 +211,7 @@ test("a manifest that states no selected families fails", () => {
 test("a malformed pair is a schedule error and no frozen-variable difference", () => {
   const where = room();
   const base = JSON.parse(
-    fs.readFileSync(path.join(paths.RUNS, "ad-hoc", "0ce3ce1cb732", "record.json"), "utf8"),
+    fs.readFileSync(path.join(paths.BENCHMARK, "test", "live-record.json"), "utf8"),
   ) as Record<string, unknown>;
   const order = rowsFor("inventory");
   for (const row of order) {

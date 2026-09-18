@@ -5,7 +5,7 @@
 /canary-artifacts
 benchmark/**/sentinel.txt
 
-# Benchmark run evidence: keep the records, drop the bulk a run can rewrite.
-benchmark/runs/*/*/fixtures/
-benchmark/runs/*/*/hooks/
-benchmark/runs/*/*/state/
+# The benchmark control plane. A set is evidence for a published claim, not
+# source, so it is attached to the release that cites it. Only the note stays.
+benchmark/runs/*
+!benchmark/runs/README.md
