@@ -14,11 +14,11 @@ use crate::base;
 use crate::changed;
 use crate::check::{self, Context, Sink};
 use crate::config::{Config, Error};
-use crate::coverage::{self, Coverage};
+use crate::coverage::Coverage;
 use crate::files;
 use crate::git::Repo;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 
 pub const SECTION: &str = "doc_citations";
@@ -122,18 +122,21 @@ fn evaluate(
     }
     let commit = base::commit(&listing.root, at, out)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
-    let sites = ratchet::scoped(&now, at.only);
+    let sites = now.len();
     let accepted = match &listing.config {
         Some(config) => ratchet::accepted(config, at.gate, evaluator().metrics)?,
         None => Vec::new(),
     };
-    let said = covered(&listing, at).said(out);
+    let said = covered(&listing).said(out);
     Ok(evaluator().evaluate(
         now,
         before,
         accepted,
         at,
-        &format!("OK: {sites} citation(s) resolve nowhere, all held at the base{said}"),
+        Line {
+            state: &format!("{sites} citation(s) resolve nowhere"),
+            tail: &said,
+        },
         out,
     ))
 }
@@ -157,19 +160,15 @@ fn said(listing: &Listing, out: &mut Sink) {
 /// What this gate discovered: one document per entry, and the ones it read. A document the
 /// working tree no longer holds is found and not measured, because only the base holds its
 /// citations. Spec 8.6.
-fn covered(listing: &Listing, at: &Context) -> Coverage {
-    let only = at.only;
-    let named = |document: &Document| document.name.clone();
-    let listed: Vec<String> = listing.documents.iter().map(named).collect();
-    let read: Vec<String> = listing
+fn covered(listing: &Listing) -> Coverage {
+    let read = listing
         .documents
         .iter()
         .filter(|document| document.path.exists())
-        .map(named)
-        .collect();
+        .count();
     Coverage {
-        found: coverage::scoped(&listed, only),
-        measured: coverage::scoped(&read, only),
+        found: listing.documents.len(),
+        measured: read,
         not_measured: 0,
         excluded: 0,
         unreadable: 0,

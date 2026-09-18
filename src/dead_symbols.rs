@@ -17,7 +17,7 @@ use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
@@ -108,6 +108,9 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
+    let affected = affected_scope(at, &before, &after, &mut names);
+    let widened = at.scoped(affected.as_deref().or(at.only));
+    let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
     let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
     let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
@@ -136,9 +139,10 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
         at,
-        &format!(
-            "OK: {judged} declaration(s) judged, {dead} dead symbol(s), all held at the base{said}"
-        ),
+        Line {
+            state: &format!("{judged} declaration(s) judged, {dead} dead symbol(s)"),
+            tail: &said,
+        },
         out,
     );
     let code = coverage_result(code, at, &before, &after, out);
@@ -169,6 +173,77 @@ fn sweeps(
             structural::Unchanged::publish,
         );
     Ok((before, after))
+}
+
+/// The effective judgement scope of a changed, non-strict run: the physical scope the runner
+/// gave, plus every file declaring a name whose reference evidence this turn changed. A
+/// declaration that did not move can still change from referenced to dead when its last caller
+/// changed, so the physical scope alone is not the semantic impact scope. A name a changed file
+/// references on both sides cannot flip one, so only the names one side holds alone widen
+/// anything: no type, import or receiver resolution enters here, and a name with several
+/// declarations widens to all of them, which fails less. Issue #237, spec 8.4.
+fn affected_scope(
+    at: &Context,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
+    names: &mut structural::NameCost,
+) -> Option<Vec<String>> {
+    let only = at.only.filter(|_| at.changes.is_some() && !at.strict)?;
+    structural::timed(&mut names.before.index, || before.index());
+    structural::timed(&mut names.after.index, || after.index());
+    let mut affected = BTreeSet::new();
+    for change in at.changes? {
+        if !measured_after(after, &change.path) {
+            continue;
+        }
+        let now = reference_names(after.index().file(&change.path));
+        let was = change
+            .was
+            .as_ref()
+            .map(|was| reference_names(before.index().file(was)))
+            .unwrap_or_default();
+        affected.extend(now.symmetric_difference(&was).cloned());
+    }
+    let mut scope: BTreeSet<String> = only.iter().cloned().collect();
+    scope.extend(declaring_files(&affected, before, after));
+    Some(scope.into_iter().collect())
+}
+
+/// Every file that declares one of these names in either tree.
+fn declaring_files(
+    names: &BTreeSet<(syntax::LanguageId, structural::Name)>,
+    before: &structural::Measurement,
+    after: &structural::Measurement,
+) -> BTreeSet<String> {
+    let mut files = BTreeSet::new();
+    for (language, name) in names {
+        for index in [before.index(), after.index()] {
+            for declared in index.declarations(*language, name.as_str()) {
+                files.insert(declared.file.to_string());
+            }
+        }
+    }
+    files
+}
+
+fn reference_names(
+    file: Option<&structural::FileFacts>,
+) -> BTreeSet<(syntax::LanguageId, structural::Name)> {
+    let Some(file) = file else {
+        return BTreeSet::new();
+    };
+    file.references
+        .iter()
+        .map(|reference| (file.language, reference.name.clone()))
+        .collect()
+}
+
+/// Whether the working tree's structural evidence for this path is a measurement. A changed
+/// file the analyzer could not read is a coverage hole the run already reports, and its old
+/// reference names are not proof that the references went away, so nothing widens from it.
+fn measured_after(after: &structural::Measurement, path: &str) -> bool {
+    !after.unparsed.iter().any(|held| held.file == path)
+        && !after.unsupported.iter().any(|held| held.file == path)
 }
 
 fn judgement(

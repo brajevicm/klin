@@ -25,8 +25,17 @@ A gate failure blocks one stop per turn. The second stop reports the same
 failure and lets the turn end, so a turn that ends is not a turn that passed.
 The failure stands, and CI refuses it.
 
-A build failure is separate, and it blocks up to eight stops in one turn. No
-gate is measured until the tree builds, so fix the build first.
+A build failure is separate. It blocks a stop only after you changed the
+tree, up to eight in one turn, and a stop over an unchanged tree is reported
+and let through. No gate is measured until the tree builds, so fix the build
+first. The report opens with where the command came from: a derived build
+names its manifest, such as `tsc --noEmit from package.json beside
+tsconfig.json`.
+
+A build whose command the shell cannot find is not a build failure. klin
+leaves a NOTE, judges the source as it stands, and CI runs the build. The
+fix is to install the project's dependencies, not to remove the manifest or
+the script that derived the command.
 
 ## The routes to green that klin refuses
 

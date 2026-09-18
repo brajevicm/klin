@@ -41,6 +41,11 @@ pub const NOT_MEASURED: &str = "not-measured";
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
 pub const DERIVATION: &str = "derivation";
 
+/// The outcome of a build whose command the shell could not find. The tool is absent, so the
+/// tree is unmeasured rather than failing: the gates judge the source and the hook tells the
+/// note, because the one action left is an install. ADR 0048.
+pub const UNBUILT: &str = "unbuilt";
+
 /// The outcome of a dependency form a module resolver supports and could not resolve. A green
 /// layering run must not imply a resolution klin did not make. Spec 8.2.1, 8.6.
 pub const UNRESOLVED: &str = "unresolved";
@@ -79,9 +84,13 @@ pub struct Records {
     /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
     pub derived: Vec<Value>,
     pub derived_lines: Vec<String>,
-    /// The count the check's own `OK:` line prints as held at the base, which the runner puts
-    /// on the gate's row. `None` for a gate that never got that far. Spec 11.2.
+    /// The findings the ratchet passed, which the runner puts on the gate's row. `None` for a
+    /// gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
+    /// How many of `held` a person-authored accepted entry passed rather than a base site, which
+    /// is the one number the OK line's qualifier turns on. `None` for a gate that never got that
+    /// far, and 0 for a ratcheting gate no accepted entry matched. Spec 11.2.
+    pub accepted: Option<u64>,
     /// The structural facts the gate read over both trees: extracted by it, or shared from an
     /// earlier gate of the run. `None` for a gate that reads none. Spec 11.2.
     pub facts: Option<syntax::structural::ExtractionCost>,
@@ -194,6 +203,25 @@ impl Context<'_> {
     /// The configuration the run loaded, which every check reads its section from.
     pub fn config(&self) -> &Config {
         &self.project.config
+    }
+
+    /// The same run with another judgement scope, for a check that derives a narrower or wider
+    /// effective scope from evidence the runner does not read. Nothing else moves.
+    pub fn scoped<'b>(&self, only: Option<&'b [String]>) -> Context<'b>
+    where
+        Self: 'b,
+    {
+        Context {
+            only,
+            gate: self.gate,
+            project: self.project,
+            prior: self.prior,
+            base: self.base,
+            changes: self.changes,
+            caller: self.caller,
+            strict: self.strict,
+            quiet: self.quiet,
+        }
     }
 }
 
@@ -347,7 +375,7 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.facts().found.documents.is_empty(),
         run: doc_citations::gate,
         needs: Needs::TheTree,
-        takes_scope: true,
+        takes_scope: false,
         labels: Labels {
             one: "broken citation",
             many: "broken citations",
@@ -459,7 +487,7 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: reachability::gate,
         needs: Needs::TheTree,
-        takes_scope: true,
+        takes_scope: false,
         labels: Labels {
             one: "unreferenced file",
             many: "unreferenced files",

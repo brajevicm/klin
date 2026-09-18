@@ -21,7 +21,7 @@ use crate::check::{Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::coverage::Files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Selector};
 use crate::syntax::pattern::{self, Pattern};
@@ -367,7 +367,10 @@ fn judged(
         described(rule, &gate, before.take(name)),
         ratchet::accepted(config, &gate, METRICS)?,
         &Context { gate: &gate, ..*at },
-        &format!("OK: {name}: {sites} site(s), all held at the base"),
+        Line {
+            state: &format!("{name}: {sites} site(s)"),
+            tail: "",
+        },
         out,
     ))
 }

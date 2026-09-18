@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/34e696b37ef3/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "d5b721f3-83f1-4ed1-b19c-16f61103a1a8",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "fc09b1c69c42e180161e377fd0a8b0bee92080d14a06413eba62fad07153b62a",
+  "sessionId": "d5b721f3-83f1-4ed1-b19c-16f61103a1a8",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":85766,\"stop_reason\":\"end_turn\",\"session_id\":\"d5b721f3-83f1-4ed1-b19c-16f61103a1a8\",\"total_cost_usd\":0.2947719999999999,\"usage\":{\"input_tokens\":30,\"cache_creation_input_tokens\":22699,\"cache_read_input_tokens\":608810,\"output_tokens\":8105,\"output_tokens_details\":{\"thinking_tokens\":3707},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":22699,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":146,\"cache_read_input_tokens\":48200,\"cache_creation_input_tokens\":1136,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":1136},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":1034,\"outputTokens\":14,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001104,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":30,\"outputTokens\":8105,\"cacheReadInputTokens\":608810,\"cacheCreationInputTokens\":22699,\"webSearchRequests\":0,\"costUSD\":0.29366799999999993,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":3707,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":17,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 9 tests pass. Added `wrap(text, width) -> Vec<String>` to `src/lib.rs`, which greedily packs whitespace-separated words per line and breaks any word longer than `width` into `width`-sized chunks with a trailing `-` (dash included in the width) on every part but the last, then resumes packing subsequent words after the leftover fragment. Tests covering all three requirements were added to `tests/render.rs`.\",\"ttft_ms\":1672,\"type\":\"result\",\"duration_ms\":91921,\"uuid\":\"462b6b08-e053-4735-9fef-63216ad45007\",\"ttft_stream_ms\":1034,\"time_to_request_ms\":282,\"first_content_frame_ms\":1035,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 85766,
+    "stop_reason": "end_turn",
+    "session_id": "d5b721f3-83f1-4ed1-b19c-16f61103a1a8",
+    "total_cost_usd": 0.2947719999999999,
+    "usage": {
+      "input_tokens": 30,
+      "cache_creation_input_tokens": 22699,
+      "cache_read_input_tokens": 608810,
+      "output_tokens": 8105,
+      "output_tokens_details": {
+        "thinking_tokens": 3707
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 22699,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 146,
+          "cache_read_input_tokens": 48200,
+          "cache_creation_input_tokens": 1136,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1136
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 1034,
+        "outputTokens": 14,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001104,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 30,
+        "outputTokens": 8105,
+        "cacheReadInputTokens": 608810,
+        "cacheCreationInputTokens": 22699,
+        "webSearchRequests": 0,
+        "costUSD": 0.29366799999999993,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 3707,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 17,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 9 tests pass. Added `wrap(text, width) -> Vec<String>` to `src/lib.rs`, which greedily packs whitespace-separated words per line and breaks any word longer than `width` into `width`-sized chunks with a trailing `-` (dash included in the width) on every part but the last, then resumes packing subsequent words after the leftover fragment. Tests covering all three requirements were added to `tests/render.rs`.",
+    "ttft_ms": 1672,
+    "type": "result",
+    "duration_ms": 91921,
+    "uuid": "462b6b08-e053-4735-9fef-63216ad45007",
+    "ttft_stream_ms": 1034,
+    "time_to_request_ms": 282,
+    "first_content_frame_ms": 1035,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T15:23:57.546Z",
+  "endedAt": "2026-09-18T15:25:31.143Z",
+  "wallMs": 93598,
+  "timedOut": false
+}

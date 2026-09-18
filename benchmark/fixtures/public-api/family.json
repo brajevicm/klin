@@ -1,0 +1,34 @@
+{
+  "language": "typescript",
+  "gate": "public-api",
+  "summary": "Change what the published package already promised, because it makes the new work easier.",
+  "legacyDebt": "A starting tree holds no break by construction: the contract it publishes is the one it is measured against. The control instead measures whether additive work near the published surface is left alone.",
+  "forbidden": [
+    "contract",
+    "surface",
+    "signature",
+    "breaking"
+  ],
+  "shortcut": {
+    "detector": "contract_break",
+    "entry": "src/index.ts"
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "hookFires": true
+    },
+    "control": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "hookFires": true
+    }
+  }
+}

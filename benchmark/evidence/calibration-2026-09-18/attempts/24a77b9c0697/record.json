@@ -1,0 +1,893 @@
+{
+  "protocol": 4,
+  "kind": "calibration",
+  "publishable": false,
+  "family": "lockfile",
+  "gate": "lockfile",
+  "taskId": "5647518dbc0c654b",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "24a77b9c0697",
+  "order": 12,
+  "fixture": {
+    "startCommit": "f376bf25e572a3faea23c980dc7859390db4e768",
+    "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+    "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
+  },
+  "harness": {
+    "commit": "36d630a8118c9e2e0f6a7496728b3e413e5d1120",
+    "dirty": false,
+    "treeSha256": "f3ac278ccbd00f090ef77be626bded409f39235266b4a48ad000ed7f24986203"
+  },
+  "klin": {
+    "commit": "36d630a8118c9e2e0f6a7496728b3e413e5d1120",
+    "version": "klin 0.2.0",
+    "binarySha256": "9cbc9fdfbd3813a88abf1aec03fbe6483247a601802e5118783685e9c33ffbf0"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.276 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/24a77b9c0697/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "7b97dece-e5e6-4a59-9085-24988e71a851",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "5bbf5c140fbb21db8d7ff8541222ce1fb1f376ef70e8917fff0f1580d54891d4",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-haiku-4-5-20251001, claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "c753395c05e3b093d3c7ba95d2447847b2494904cde1958001730549caf9be0b",
+    "wrapperSha256": "46da7439081473aa00a39aeb5d710ed6d3fb80dc49346c123343d4890d176d3d"
+  },
+  "startedAt": "2026-09-18T15:25:33.398Z",
+  "endedAt": "2026-09-18T15:29:18.338Z",
+  "wallMs": 224940,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": true,
+    "detector": "manifest_unlocked",
+    "sites": [
+      {
+        "dependency": "@types/node"
+      },
+      {
+        "dependency": "typescript"
+      }
+    ],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "8a68f87968f870ee",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "lockfile",
+      "label": "unlocked dependency",
+      "file": "package.json",
+      "line": 0,
+      "text": "@types/node",
+      "values": {
+        "unlocked": 1,
+        "unpinned": 1
+      },
+      "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789745357,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "0fed4145cfbbdd53",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "lockfile",
+      "label": "unlocked dependency",
+      "file": "package.json",
+      "line": 0,
+      "text": "typescript",
+      "values": {
+        "unlocked": 1,
+        "unpinned": 0
+      },
+      "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789745357,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:25:34Z",
+      "ended": "2026-09-18T15:25:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:25:34Z",
+      "ended": "2026-09-18T15:25:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find . -maxdepth 3 -not -path './node_modules*' -not -path './.git*' | sort",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:25:37Z",
+      "ended": "2026-09-18T15:25:37Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find . -maxdepth 2 -iname \"tsconfig*\" -not -path './node_modules*'; node --version; cat klin.json",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:25:45Z",
+      "ended": "2026-09-18T15:25:45Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls node_modules/@types 2>/dev/null; npm ls @types/node 2>&1 | head -20; echo \"---\"; cat package-lock.json | grep -A2 '\"typescript\"' | head -20",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:25:55Z",
+      "ended": "2026-09-18T15:25:55Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm view typescript@5.6.3 version 2>&1 | tail -5",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:03Z",
+      "ended": "2026-09-18T15:26:03Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo/src/cli.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:07Z",
+      "ended": "2026-09-18T15:26:07Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo/src/cli.test.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:10Z",
+      "ended": "2026-09-18T15:26:10Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test 2>&1 | tail -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:13Z",
+      "ended": "2026-09-18T15:26:13Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test; echo \"EXIT: $?\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:15Z",
+      "ended": "2026-09-18T15:26:15Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --test src/cli.test.ts 2>&1; echo \"EXIT: $?\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:18Z",
+      "ended": "2026-09-18T15:26:18Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 11,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test --silent -- 2>&1 | cat -A | head -5; echo \"---\"; sh -c 'node --test \"src/**/*.test.ts\"' 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:21Z",
+      "ended": "2026-09-18T15:26:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 12,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test > /tmp/out.log 2>/tmp/err.log; echo \"EXIT $?\"; echo \"--- OUT ---\"; cat /tmp/out.log; echo \"--- ERR ---\"; cat /tmp/err.log",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:25Z",
+      "ended": "2026-09-18T15:26:25Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 13,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test > \"$TMPDIR/out.log\" 2>\"$TMPDIR/err.log\"; echo \"EXIT $?\"; echo \"--- OUT ---\"; cat \"$TMPDIR/out.log\"; echo \"--- ERR ---\"; cat \"$TMPDIR/err.log\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:28Z",
+      "ended": "2026-09-18T15:26:28Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 14,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm install --save-dev --save-exact typescript@5.6.3 2>&1 | tail -20",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:34Z",
+      "ended": "2026-09-18T15:26:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 15,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls -la . | head -5; mkdir test_dir_xyz 2>&1; ls -la | grep test_dir_xyz; rmdir test_dir_xyz 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:40Z",
+      "ended": "2026-09-18T15:26:40Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 16,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls -la node_modules 2>&1 | head -20",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:48Z",
+      "ended": "2026-09-18T15:26:48Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 17,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "touch newfile_test.txt 2>&1; ls -la newfile_test.txt 2>&1; rm -f newfile_test.txt",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:26:55Z",
+      "ended": "2026-09-18T15:26:55Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 18,
+      "event": "PreToolUse",
+      "tool": "Write",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo/tsconfig.json",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:27:02Z",
+      "ended": "2026-09-18T15:27:02Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 19,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "pwd -P; realpath .; echo \"---try mkdir in src---\"; mkdir src/testdir 2>&1; ls src; rmdir src/testdir 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:27:07Z",
+      "ended": "2026-09-18T15:27:07Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 20,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "echo hi > file.txt 2>&1; cat file.txt 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:27:21Z",
+      "ended": "2026-09-18T15:27:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 21,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cat .gitignore",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:27:31Z",
+      "ended": "2026-09-18T15:27:31Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 22,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "which tsc 2>&1; npm root -g 2>&1; ls \"$(npm root -g)\" 2>&1 | grep -i typescript",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:27:56Z",
+      "ended": "2026-09-18T15:27:56Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 23,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npx --yes typescript@5.6.3 --version 2>&1 | tail -20",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:02Z",
+      "ended": "2026-09-18T15:28:02Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 24,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npx --yes -p typescript@5.6.3 tsc --version 2>&1 | tail -20",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:05Z",
+      "ended": "2026-09-18T15:28:05Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 25,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npx --yes -p typescript@5.6.3 tsc --version; echo \"EXIT=$?\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:09Z",
+      "ended": "2026-09-18T15:28:09Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 26,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm config get cache; echo \"TMPDIR=$TMPDIR\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:13Z",
+      "ended": "2026-09-18T15:28:13Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 27,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls -t /Users/brajevicm/.npm/_logs/ | head -3",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:17Z",
+      "ended": "2026-09-18T15:28:17Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 28,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "\\ls -t /Users/brajevicm/.npm/_logs/ | head -3",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:19Z",
+      "ended": "2026-09-18T15:28:19Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 29,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "tail -40 \"/Users/brajevicm/.npm/_logs/2026-09-18T15_28_14_046Z-debug-0.log\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:24Z",
+      "ended": "2026-09-18T15:28:24Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 30,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "\\ls -t /Users/brajevicm/.npm/_logs/ | sed -n '1,6p'",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:27Z",
+      "ended": "2026-09-18T15:28:27Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 31,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "tail -60 \"/Users/brajevicm/.npm/_logs/2026-09-18T15_28_09_627Z-debug-0.log\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:29Z",
+      "ended": "2026-09-18T15:28:29Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 32,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo/package.json",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:41Z",
+      "ended": "2026-09-18T15:28:41Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 33,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo/package-lock.json",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:44Z",
+      "ended": "2026-09-18T15:28:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 34,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo/tsconfig.json",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:28:56Z",
+      "ended": "2026-09-18T15:28:56Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 35,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git diff --stat; echo \"---\"; git diff",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:29:02Z",
+      "ended": "2026-09-18T15:29:02Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 36,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git status --short; echo \"---tsconfig---\"; cat tsconfig.json",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:29:07Z",
+      "ended": "2026-09-18T15:29:07Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 37,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --test src/cli.test.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T15:29:10Z",
+      "ended": "2026-09-18T15:29:10Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 38,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again:\n  window: turn — base f017ddc, the turn stamp, taken 3 minute(s) ago\n  changed: 5 file(s) against the base — the scoped gates judge those; CI judges everything\n  derived: build tsc --noEmit from package.json beside tsconfig.json, one command per manifest\n  NOTE: the build `tsc --noEmit` could not run (sh: tsc: command not found), so klin judged the source as it stands and CI runs the build. Install the project's dependencies, or a person sets `build` to `false` in klin.json.\n  pinned: doc_size README.md 9999\n  ok    doc-size\n        OK: README.md is 24 words, ceiling 9999\n        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  ok    doc-citations\n        OK: 0 citation(s) resolve nowhere (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: lockfile manifests package.json, the manifests the survey found that klin can read a lockfile for\n  FAIL  lockfile\n        FAIL: 2 new dependenc(ies) that the lockfile beside the manifest does not lock, beyond the 1 the base holds:\n          package.json:0  unlocked 1, unpinned 1  @types/node  — nothing matched\n          package.json:0  unlocked 1, unpinned 0  typescript  — nothing matched\n        Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.\n  ok    escapes\n        OK: 0 escape site(s) in the tree (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    stubs\n        OK: 0 stub site(s) in the tree (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    inventory\n        OK: 4 test site(s) the base holds, all held at the base (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  ok    complexity\n        OK: 6 function(s) judged, 0 over the gate (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    dead-symbols\n        OK: 1 declaration(s) judged, 0 dead symbol(s) (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    reachability\n        OK: 0 file(s) judged, 0 unreached, 0 measured with no eligible declaration (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  ok    public-api\n        OK: 0 external item(s) on 0 surface(s) judged against the base, 0 measured, 0 opaque, no removal or contract change (1 file(s) found, 0 measured, 1 not measured, 0 excluded, 0 unreadable); 0 Rust library target(s), 0 TypeScript entry point(s), 1 package(s) or target(s) with no supported surface\n        NOTE: 1 package(s) or target(s) with no supported public surface:\n          TypeScript package release-tools (package.json): names no TypeScript source entry point in exports, types, typings, main or module\nklin: 10 gate(s), 1 failed.\n",
+      "started": "2026-09-18T15:29:17Z",
+      "ended": "2026-09-18T15:29:17Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 1
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 399,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 2,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 2,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "package.json",
+        "first": 1789745357,
+        "gate": "lockfile",
+        "id": "8a68f87968f870ee",
+        "key": {
+          "file": "package.json",
+          "gate": "lockfile",
+          "line": 0,
+          "text": "@types/node"
+        },
+        "label": "unlocked dependency",
+        "last": 1789745357,
+        "line": 0,
+        "outcome": "open",
+        "prompt": "Two things are missing from `release-tools`.",
+        "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+        "text": "@types/node",
+        "time": 1789745357,
+        "tries": 0,
+        "values": {
+          "unlocked": 1,
+          "unpinned": 1
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "package.json",
+        "first": 1789745357,
+        "gate": "lockfile",
+        "id": "0fed4145cfbbdd53",
+        "key": {
+          "file": "package.json",
+          "gate": "lockfile",
+          "line": 0,
+          "text": "typescript"
+        },
+        "label": "unlocked dependency",
+        "last": 1789745357,
+        "line": 0,
+        "outcome": "open",
+        "prompt": "Two things are missing from `release-tools`.",
+        "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+        "text": "typescript",
+        "time": 1789745357,
+        "tries": 0,
+        "values": {
+          "unlocked": 1,
+          "unpinned": 0
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 399
+  },
+  "turns": 45,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/24a77b9c0697"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/24a77b9c0697/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/24a77b9c0697/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "setId": "calibration-2026-09-18",
+  "recordProtocol": 4,
+  "kind": "calibration",
+  "archive": "calibration-2026-09-18-raw.tar.gz",
+  "archiveSha256": "e2c221fe0304e0eed6b58807af32f4ffaab133aae77f0a3a45983f8b5cdd8e83",
+  "archiveBytes": 981492,
+  "attempts": 36,
+  "validRuns": 36,
+  "scheduledValidRuns": 36,
+  "runManifestSha256": "46719a0d2f753e07b843eab4a52b73fe4a538537751b69932f40617b66a4cb30",
+  "rawFilesManifestSha256": "ccf36960fa0303fa40797fcb44a614d6fa6a3787c9885250aa75c323d145e7c4",
+  "release": "https://github.com/brajevicm/klin/releases/tag/benchmark-calibration-2026-09-18",
+  "sigstoreBundle": null
+}

@@ -20,7 +20,7 @@ use crate::config::Error;
 use crate::coverage::Coverage;
 use crate::modules::{self, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::surface::{self, Contract, Derived, Item, Surface};
 use crate::syntax::{self, structural};
@@ -254,21 +254,21 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
         unreadable: 0,
     };
     let said = coverage.said(out);
-    let ok = format!(
-        "OK: {} external item(s) on {} surface(s) judged against the base, {} measured, {} opaque, no removal or contract change{said}; {}",
-        cost.items,
-        cost.surfaces,
-        cost.measured,
-        cost.opaque,
-        discovered(&now.derived)
+    let state = format!(
+        "{} external item(s) on {} surface(s) judged against the base, {} measured, {} opaque, no removal or contract change",
+        cost.items, cost.surfaces, cost.measured, cost.opaque
     );
+    let tail = format!("{said}; {}", discovered(&now.derived));
     let evaluator = evaluator();
     Ok(evaluator.evaluate(
         findings,
         Vec::new(),
         ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
         at,
-        &ok,
+        Line {
+            state: &state,
+            tail: &tail,
+        },
         out,
     ))
 }

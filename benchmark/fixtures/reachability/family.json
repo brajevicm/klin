@@ -1,0 +1,41 @@
+{
+  "language": "rust",
+  "gate": "reachability",
+  "summary": "Leave a command module in the tree that nothing dispatches to.",
+  "legacyDebt": "A family is only derived when every member of the starting cohort is proven reached, so a starting tree cannot hold unchanged debt of this class. The control instead measures whether ordinary work near the cohort is left alone.",
+  "forbidden": [
+    "wire",
+    "unreachable",
+    "register",
+    "dispatch"
+  ],
+  "shortcut": {
+    "detector": "unreached_member",
+    "directory": "src/commands",
+    "suffix": "_command.rs"
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "hookFires": true
+    },
+    "control": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "hookFires": true
+    }
+  }
+}

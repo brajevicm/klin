@@ -380,3 +380,219 @@ fn a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge() {
     assert_eq!(few, 5, "the changed file's own declarations are judged");
     assert!(many_whole > few_whole, "{many_whole} then {few_whole}");
 }
+
+/// A changed run of `dead-symbols` alone, which is what the Stop hook scopes.
+fn changed(tree: &Tree) -> harness::Run {
+    tree.run(&["gate", "--changed", "--gate", "dead-symbols"])
+}
+
+#[test]
+fn removing_the_last_reference_in_a_changed_caller_worsens_an_unchanged_declaration() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.rs", "pub fn call() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+    assert!(run.says("lost reference in src/caller.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_changed_typescript_caller_worsens_an_unchanged_declaration_the_same_way() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.ts", "function helper() {}\n");
+    tree.write("src/caller.ts", "export function call() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.ts", "export function call() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/service.ts:1"), "{}", run.out);
+}
+
+#[test]
+fn a_reference_another_unchanged_caller_still_holds_is_no_regression() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.write("src/other.rs", "pub fn other() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.rs", "pub fn call() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_changed_caller_that_references_a_dead_declaration_is_an_improvement() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() {}\n");
+    tree.base();
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn deleting_the_only_caller_worsens_the_unchanged_declaration() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.remove("src/caller.rs");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+}
+
+#[test]
+fn every_declaration_of_an_affected_name_stays_conservatively_in_scope() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/twin.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.rs", "pub fn call() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+    assert!(run.says("src/twin.rs:1"), "{}", run.out);
+}
+
+/// Under the conservative name rule a declaration is dead only while no reference names it
+/// outside itself, so the one reachable shape of base-held debt under an affected name is the
+/// turn that adds the reference back. It must read as an improvement, never as a new finding.
+#[test]
+fn base_dead_debt_an_affected_name_reaches_is_never_new() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/debt.rs", "fn helper() {}\nfn stale() {}\n");
+    tree.write("src/caller.rs", "pub fn call() {}\n");
+    tree.base();
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("got worse"), "{}", run.out);
+}
+
+#[test]
+fn unrelated_historical_debt_outside_the_changed_scope_stays_silent() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    let mut debt = String::new();
+    for number in 0..40 {
+        assert!(writeln!(&mut debt, "fn stale_{number}() {{}}").is_ok());
+    }
+    tree.write("src/debt.rs", &debt);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.write(
+        "src/caller.rs",
+        "pub fn call() { helper(); }\npub fn more() {}\n",
+    );
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("src/debt.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_changed_caller_the_grammar_cannot_read_guesses_no_deadness() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.rs", "pub fn call( { helper(\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the grammar could not parse"), "{}", run.out);
+    assert!(!run.says("src/service.rs:1"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_caller_that_keeps_its_reference_is_no_regression() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.remove("src/caller.rs");
+    tree.write("src/renamed.rs", "pub fn call() { helper(); }\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_renamed_caller_that_drops_its_reference_worsens_the_declaration() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); }\n");
+    tree.base();
+    tree.remove("src/caller.rs");
+    tree.write("src/renamed.ts", "export function call() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+}
+
+#[test]
+fn unrelated_declarations_do_not_enter_a_changed_runs_judgement_state() {
+    let (few, _) = states(4, 1);
+    let (many, _) = states(4, 5);
+
+    assert_eq!(few, many, "an unaffected name grew the changed run's state");
+}
+
+#[test]
+fn a_changed_file_that_keeps_its_reference_names_widens_nothing() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn helper() {}\nfn spare() {}\n");
+    tree.write("src/caller.rs", "pub fn call() { helper(); spare(); }\n");
+    tree.base();
+    tree.write(
+        "src/caller.rs",
+        "pub fn call() { helper(); spare(); }\n// a comment\n",
+    );
+
+    let report = tree
+        .run(&["gate", "--json", "--changed", "--gate", "dead-symbols"])
+        .json();
+
+    assert_eq!(
+        report["gates"][0]["facts"]["states"], 0,
+        "the unchanged declarations were judged: {report}"
+    );
+}

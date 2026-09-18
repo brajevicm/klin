@@ -322,6 +322,27 @@ fn a_changed_run_shares_one_whole_base_between_structural_gates() {
 }
 
 #[test]
+fn a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction() {
+    let tree = commands("{}");
+    tree.base();
+    tree.write("src/main.rs", "fn main() { run_gamma(); }\n");
+
+    let report = judged(&tree, &["--changed"], &["dead-symbols", "reachability"]);
+
+    assert_eq!(row(&report, "reachability")["status"], "FAIL", "{report}");
+    assert_eq!(
+        found(&report, "reachability"),
+        [
+            r#""src/commands/alpha_command.rs":"file""#,
+            r#""src/commands/beta_command.rs":"file""#
+        ],
+        "{report}"
+    );
+    assert_eq!(extracted(&report, "reachability"), (0, 8), "{report}");
+    assert_eq!(measured(&report, "reachability"), 3, "{report}");
+}
+
+#[test]
 fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took() {
     let tree = commands("{}");
     tree.base();

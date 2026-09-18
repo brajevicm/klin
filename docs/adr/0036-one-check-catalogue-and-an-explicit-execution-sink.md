@@ -138,3 +138,33 @@ Klin's own `klin.json` now pins these boundaries with
 direct `Records` mutation and wildcard-success dispatch from returning; the
 layering section keeps the catalogue out of the runner. No accepted debt is
 needed.
+
+## Amendment: `takes_scope` is a judgement boundary, not a performance hint
+
+Issues #234 and #235 found the same gap twice. A changed run narrowed
+`reachability` and `doc-citations` to the files the turn edited, and both
+checks judge evidence that a turn can invalidate without touching it: the
+member a caller stopped referencing, and the document whose cited file moved.
+Under the old rule the Stop hook stayed silent and CI caught it a push later.
+
+The physical changed-file set stays the default judgement boundary. A check
+may own a broader bounded judgement unit instead. `takes_scope` false is how
+it says the changed-file list does not narrow it, which other rows say for
+their own reasons, so a check that owns a broader unit also documents that
+unit in its own contract in SPEC 8.2.1. Three do: `public-api` over the whole
+consumer-facing surface, `reachability` over every member of each derived
+family, and `doc-citations` over the derived root-document set. The row alone
+declares nothing; the contract does.
+
+The runner infers none of this. There is no reverse-dependency index, no
+affected-set computation and no propagation rule above the catalogue. A
+broader unit is legitimate only where it is bounded by construction and where
+the check already resolves against whole-tree facts, so the wider judgement
+costs a lookup and not a second extraction.
+
+The wider boundary raises no old debt, because the changed-file list was never
+what held it down. The ordinary two-tree ratchet is: a site red in both trees
+is held, and only a site the turn turned red fails. ADR 0014's turn window
+says which work belongs to the turn. It never said that a finding of that turn
+must sit on a line the turn edited, and any text that read it that way was
+wrong.

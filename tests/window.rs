@@ -280,3 +280,192 @@ fn a_stop_after_a_reset_compares_against_the_moved_stamp() {
     let run = stop(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
 }
+
+/// A repository whose turn stamp was taken over a branch tip the current checkout does not
+/// hold: a session opened on one branch, and the worktree moved to a divergent one. #238.
+fn left_behind() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree.write(
+        "tests/test_only_on_work.py",
+        "def test_only_on_work():\n    assert True\n",
+    );
+    tree.commit("the work the branch beside this one does not hold");
+    prompt(&tree);
+    tree.git(&["checkout", "-q", "main"]);
+    tree
+}
+
+/// The per-turn records a stop leaves on the stamp, so one test can prove the fallback drops
+/// every one of them rather than carrying them into the branch it judges instead.
+fn records(tree: &Tree) {
+    let text = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    let mut held: Value = serde_json::from_str(&text).unwrap_or_default();
+    held["asked"] = Value::from(vec!["src/lib.rs:1"]);
+    held["intervened"] = true.into();
+    held["followup"] = 7.into();
+    tree.write(".git/klin/turn", &held.to_string());
+}
+
+#[test]
+fn a_turn_the_checkout_left_behind_judges_the_current_branch() {
+    let tree = left_behind();
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+    assert!(!run.says("test_only_on_work"), "{}", run.out);
+    assert_eq!(tree.field("commit"), tree.revision("main"));
+    assert_eq!(tree.field("verdict"), "red");
+}
+
+#[test]
+fn the_stop_after_the_fallback_reports_nothing_the_branch_beside_it_held() {
+    let tree = left_behind();
+    tree.write("src/lib.rs", text::WRAPPED);
+    assert_eq!(stop(&tree).code, 2);
+
+    let run = stop(&tree);
+    assert!(run.says("window: turn"), "{}", run.out);
+    assert!(!run.says("test_only_on_work"), "{}", run.out);
+    assert!(!run.says("HEAD no longer holds"), "{}", run.out);
+}
+
+#[test]
+fn the_fallback_keeps_the_counter_and_drops_what_the_turn_it_left_held() {
+    let tree = left_behind();
+    records(&tree);
+    tree.write("src/lib.rs", "pub fn on_main() -> i32 {\n    1\n}\n");
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(tree.field("prompts"), "1");
+    assert_eq!(tree.field("asked"), "");
+    assert_eq!(tree.field("intervened"), "");
+    assert_eq!(tree.field("followup"), "");
+    assert_eq!(tree.field("mark"), "");
+    assert_eq!(tree.revision("refs/worktree/klin/mark"), "");
+}
+
+#[test]
+fn the_ref_cannot_bring_back_a_turn_the_checkout_left_behind() {
+    let tree = left_behind();
+    tree.write("src/lib.rs", text::WRAPPED);
+    assert_eq!(stop(&tree).code, 2);
+    assert_eq!(tree.revision("refs/worktree/klin/turn"), "");
+    tree.remove(".git/klin/turn");
+
+    let run = stop(&tree);
+    assert!(run.says("no turn stamp resolves"), "{}", run.out);
+    assert!(!run.says("test_only_on_work"), "{}", run.out);
+    assert_eq!(tree.field("commit"), tree.revision("main"));
+}
+
+/// A stamp restored from the ref reads its parent as `commit^`, which names the stamped HEAD
+/// for a synthetic stamp alone. A ref left pointing at an ordinary commit would name the commit
+/// before the base, so a branch that forked there would pass the lineage test while HEAD held
+/// no base at all. #238.
+#[test]
+fn a_branch_that_forked_before_the_base_cannot_restore_the_window_the_fallback_wrote() {
+    let tree = Tree::bare();
+    tree.repository();
+    tree.write("klin.json", CONFIG);
+    tree.write("src/lib.rs", CLEAN);
+    tree.commit("the base");
+    tree.write(
+        "src/only_on_main.rs",
+        "fn second(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+    tree.commit("a second commit on main");
+    tree.git(&["checkout", "-q", "-b", "work"]);
+    tree.write("src/work.rs", "fn third(a: i32) -> i32 {\n    a + 3\n}\n");
+    tree.commit("the work the branch beside this one does not hold");
+    prompt(&tree);
+    tree.git(&["checkout", "-q", "main"]);
+    assert_eq!(stop(&tree).code, 0);
+    tree.remove(".git/klin/turn");
+    tree.git(&["checkout", "-q", "-b", "older", "main~1"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no turn stamp resolves"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+}
+
+#[test]
+fn a_detached_head_outside_the_turn_history_judges_the_current_branch() {
+    let tree = stamped();
+    tree.git(&["checkout", "-q", "--detach", "main"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+}
+
+#[test]
+fn a_reset_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
+    let tree = stamped();
+    tree.git(&["reset", "-q", "--hard", "main"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+}
+
+#[test]
+fn a_rebase_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
+    let tree = stamped();
+    tree.git(&["config", "user.name", "klin"]);
+    tree.git(&["config", "user.email", "klin@example.com"]);
+    tree.git(&["checkout", "-q", "main"]);
+    tree.write(
+        "src/only_on_main.rs",
+        "fn other(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+    tree.commit("a commit the branch does not hold");
+    tree.git(&["checkout", "-q", "work"]);
+    tree.git(&["rebase", "-q", "main"]);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+}
+
+#[test]
+fn a_branch_made_at_the_same_head_keeps_the_turn_window() {
+    let tree = stamped();
+    tree.write("src/lib.rs", text::WRAPPED);
+    tree.git(&["checkout", "-q", "-b", "elsewhere"]);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("window: turn"), "{}", run.out);
+    assert_eq!(
+        tree.field("commit"),
+        tree.revision("refs/worktree/klin/turn")
+    );
+}
+
+#[test]
+fn a_branch_that_descends_from_the_turn_keeps_the_turn_window() {
+    let tree = stamped();
+    tree.write("src/lib.rs", text::WRAPPED);
+    tree.commit("the agent committed its own debt");
+    tree.git(&["checkout", "-q", "-b", "downstream"]);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("window: turn"), "{}", run.out);
+    assert!(run.says("src/lib.rs"), "{}", run.out);
+}

@@ -106,7 +106,7 @@ fn the_runner_prints_the_ok_line_of_every_gate_it_passed() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(
-        run.says("OK: 0 escape site(s) in the tree, all held at the base"),
+        run.says("OK: 0 escape site(s) in the tree ("),
         "{}",
         run.out
     );

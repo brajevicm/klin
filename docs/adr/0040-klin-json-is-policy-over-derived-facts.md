@@ -1,5 +1,8 @@
 # klin.json is policy over derived facts
 
+> ADR 0048 amends this: the derived build line names the manifest each
+> command came from, and the hook prints it when the build fails too.
+>
 > Amends ADR 0005, 0012 and 0016 where they have `init` write derived
 > sections, and completes ADR 0038 and 0039.
 

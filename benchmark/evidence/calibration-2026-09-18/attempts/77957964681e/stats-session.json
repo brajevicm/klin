@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 785,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 1,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/commands/list_command.rs",
+      "first": 1789746525,
+      "gate": "complexity",
+      "id": "3c194737f2859c80",
+      "key": {
+        "file": "src/commands/list_command.rs",
+        "gate": "complexity",
+        "line": 17,
+        "text": "fn escape_json(value: &str) -> String {"
+      },
+      "label": "tangled function",
+      "last": 1789746549,
+      "line": 17,
+      "outcome": "fixed-next",
+      "prompt": "The note keeper prints one name per line and a caller wants machine-readable",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "fn escape_json(value: &str) -> String {",
+      "time": 1789746525,
+      "tries": 1,
+      "values": {
+        "cc": 9,
+        "lines": 15
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

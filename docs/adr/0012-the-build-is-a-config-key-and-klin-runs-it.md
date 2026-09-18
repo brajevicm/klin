@@ -1,5 +1,8 @@
 # The build is a config key, and klin runs it
 
+> ADR 0048 amends this: a build block needs a tree that changed since the
+> last one, and a shell exit of 127 is an unmeasured build whose gates run.
+>
 > ADR 0040 amends this: absent, the hook derives the build from the standard
 > manifests and prints it, `init` writes no build, and `false` builds nothing.
 

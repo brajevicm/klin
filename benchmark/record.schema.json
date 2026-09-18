@@ -1,0 +1,662 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brajevicm/klin/benchmark/record.schema.json",
+  "title": "klin Shadow/Active benchmark run record, version 4",
+  "description": "One trial, completely enough for the later scorecard to be computed without reading terminal text. The record holds no hidden chain of thought.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "kind",
+    "publishable",
+    "family",
+    "gate",
+    "taskId",
+    "variant",
+    "arm",
+    "trialId",
+    "order",
+    "fixture",
+    "harness",
+    "klin",
+    "host",
+    "model",
+    "agent",
+    "startedAt",
+    "endedAt",
+    "wallMs",
+    "infrastructure",
+    "result",
+    "oracle",
+    "shortcut",
+    "signals",
+    "audit",
+    "hooks",
+    "friction",
+    "stats",
+    "activity",
+    "turns",
+    "isolation"
+  ],
+  "properties": {
+    "protocol": {
+      "const": 4,
+      "description": "The benchmark protocol version."
+    },
+    "kind": {
+      "enum": [
+        "calibration",
+        "publishable"
+      ]
+    },
+    "publishable": {
+      "type": "boolean",
+      "description": "False for every calibration record. Issue #115 excludes calibration from the scorecard."
+    },
+    "family": {
+      "type": "string",
+      "description": "One of the nine paired task families."
+    },
+    "gate": {
+      "type": "string",
+      "description": "The klin gate the family targets."
+    },
+    "taskId": {
+      "type": "string",
+      "description": "An opaque id over protocol, family, variant and prompt. It names no gate or failure mode."
+    },
+    "variant": {
+      "enum": [
+        "risk",
+        "control"
+      ]
+    },
+    "arm": {
+      "enum": [
+        "active",
+        "shadow"
+      ]
+    },
+    "trialId": {
+      "type": "string"
+    },
+    "order": {
+      "type": "integer",
+      "description": "The trial's place in the scheduled order."
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "startCommit",
+        "promptSha256",
+        "treeSha256"
+      ],
+      "properties": {
+        "startCommit": {
+          "type": "string"
+        },
+        "promptSha256": {
+          "type": "string"
+        },
+        "treeSha256": {
+          "type": "string"
+        }
+      }
+    },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "dirty",
+        "treeSha256"
+      ],
+      "properties": {
+        "commit": {
+          "type": "string",
+          "description": "The repository's HEAD when the trial ran. It says where the harness came from, not where the binary came from."
+        },
+        "treeSha256": {
+          "type": "string"
+        },
+        "dirty": {
+          "type": "boolean",
+          "description": "Whether the repository held uncommitted changes when the trial ran. True means the commit above does not describe what ran."
+        }
+      }
+    },
+    "klin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "version",
+        "binarySha256"
+      ],
+      "properties": {
+        "commit": {
+          "type": "string",
+          "description": "The source commit a build provenance file beside the binary ties to binarySha256, or empty where nothing proves one. Repository HEAD is not an answer, because a stale build carries an older commit's behaviour. binarySha256 is the authoritative identity."
+        },
+        "version": {
+          "type": "string"
+        },
+        "binarySha256": {
+          "type": "string"
+        }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "flags",
+        "flagsSha256",
+        "isolatedConfiguration",
+        "memory"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "flagsSha256": {
+          "type": "string"
+        },
+        "isolatedConfiguration": {
+          "type": "boolean",
+          "description": "Whether the trial ran under a host configuration directory of its own. False means it ran under the operator's, and only `memory` says what reached it."
+        },
+        "memory": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "bytes"
+          ],
+          "description": "The user memory that reached the session. Two arms of one cell must carry the same digest, or they did not run under one configuration.",
+          "properties": {
+            "sha256": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested",
+        "reported"
+      ],
+      "properties": {
+        "requested": {
+          "type": "string"
+        },
+        "reported": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Every model the host reports it ran, sorted and joined. The host lists its housekeeping model beside the one the session asked for."
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wiringSha256",
+        "wrapperSha256"
+      ],
+      "description": "The host wiring the trial ran under, by digest, in a form two arms of one cell must share.",
+      "properties": {
+        "wiringSha256": {
+          "type": "string",
+          "description": "The settings file with the plane path, the workspace path and the arm replaced by their names, so what is compared is the hook table, the matcher, the timeouts, the binary the wrapper runs and every sandbox and permission rule the subject ran under."
+        },
+        "wrapperSha256": {
+          "type": "string",
+          "description": "The hook wrapper's own bytes. One file serves both arms, so two arms of one cell must state one digest."
+        }
+      }
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "endedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "wallMs": {
+      "type": "integer"
+    },
+    "infrastructure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid",
+        "reason",
+        "terms"
+      ],
+      "description": "Whether the apparatus worked. A failed term names the harness's own failure, so the run is excluded rather than scored, and no field under `result`, `oracle` or `shortcut` is a fact about the agent.",
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "description": "True where every term passed."
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The names of the failed terms, or null where none failed."
+        },
+        "terms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "description": "Every term the trial was judged against, passed or failed, so a later reader sees which one excluded the run."
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome",
+        "evidence"
+      ],
+      "description": "Agent completion, give-up or person-required. Give-up is a product outcome only the host can report, through its own turn limit or budget. The harness timeout is a validity term and never an outcome.",
+      "properties": {
+        "outcome": {
+          "enum": [
+            "completed",
+            "gave-up",
+            "person-required",
+            "error"
+          ]
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
+    },
+    "oracle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "behaviourPassed",
+        "exit",
+        "reason"
+      ],
+      "description": "The external oracle's answer about the requested software behaviour.",
+      "properties": {
+        "behaviourPassed": {
+          "type": "boolean"
+        },
+        "exit": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "shortcut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "present",
+        "detector",
+        "sites",
+        "note",
+        "unread"
+      ],
+      "description": "Whether the family's target shortcut sits in the final tree. Null where the detector answered nothing, and `unread` then says which tree it could not read.",
+      "properties": {
+        "present": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "detector": {
+          "type": "string"
+        },
+        "sites": {
+          "type": "array"
+        },
+        "note": {
+          "type": "string"
+        },
+        "unread": {
+          "enum": [
+            "base",
+            "final",
+            null
+          ],
+          "description": "The tree a detector could not read. `base` is a fixture defect and invalidates the run. `final` is the agent's own doing, because an agent may rename, move or break what the family measures, so that run stays valid and `verify` names it."
+        }
+      }
+    },
+    "signals": {
+      "type": "array",
+      "description": "Every site of this trial a person may classify: each Regression episode, and each deleted test klin asked about once, which is review evidence for the same reading. Active records what was delivered. Shadow records what would have been delivered. The factual audit trail is not here.",
+      "items": {
+        "$ref": "#/$defs/signal"
+      }
+    },
+    "audit": {
+      "type": "array",
+      "description": "The factual audit trail klin kept beside the signals: a guard decision, a reset a person ran. No one classifies these, so a later blinded reading never sees one as a signal site. A deleted-test question belongs under `signals` and never here.",
+      "items": {
+        "$ref": "#/$defs/signal"
+      }
+    },
+    "hooks": {
+      "type": "array",
+      "description": "Every wrapped hook invocation, with the real exit status, stdout and stderr, whether or not the arm delivered them.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "event",
+          "tool",
+          "paths",
+          "arguments",
+          "status",
+          "delivered",
+          "stdinClosed"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer"
+          },
+          "event": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "string",
+            "description": "klin's own arguments, without the plane, the binary and the arm the wrapper takes first."
+          },
+          "status": {
+            "type": "integer"
+          },
+          "delivered": {
+            "type": "boolean"
+          },
+          "stdout": {
+            "type": "string"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "started": {
+            "type": "string"
+          },
+          "ended": {
+            "type": "string"
+          },
+          "stdinClosed": {
+            "type": "boolean",
+            "description": "The wrapper wrote the payload and closed the pipe, so klin's read reached end of input and the process exited."
+          },
+          "tool": {
+            "type": "string",
+            "description": "The tool the agent asked for, where the event carries one."
+          },
+          "paths": {
+            "type": "string",
+            "description": "The paths that tool's input held, space separated. Only the keys that name a path are kept, so a written file's content and an edit's replaced text are not here. The reach check is what reads it. It holds no reasoning."
+          }
+        }
+      }
+    },
+    "friction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockedStops",
+        "gateRuns",
+        "guardRefusals",
+        "tries",
+        "hostDenials"
+      ],
+      "properties": {
+        "blockedStops": {
+          "type": "integer"
+        },
+        "gateRuns": {
+          "type": "integer"
+        },
+        "guardRefusals": {
+          "type": "integer"
+        },
+        "tries": {
+          "type": "integer",
+          "description": "Measured tries over regression identities, so repeated blocked stops for one site stay friction rather than a second site."
+        },
+        "hostDenials": {
+          "type": "integer",
+          "description": "Tool calls the host's own permission system refused. A refusal the fixture did not intend changes the task the trial measured, so the count is a fact the calibration report has to show."
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "description": "The whole klin stats --json object, taken through the command line and never from a journal file."
+    },
+    "activity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "klinMs"
+      ],
+      "properties": {
+        "klinMs": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "turns": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Host turn count where the host reports one, and null where it does not."
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace",
+        "freshness",
+        "outside"
+      ],
+      "properties": {
+        "workspace": {
+          "$ref": "#/$defs/isolation"
+        },
+        "freshness": {
+          "$ref": "#/$defs/isolation"
+        },
+        "outside": {
+          "$ref": "#/$defs/check",
+          "description": "Whether the subject kept to its own repository. The sandbox refuses its shell every path outside the repository and the host's file tools refuse it the same paths, so a tool call that named one is a validity term and the run is excluded rather than scored."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "kind",
+        "auditKind",
+        "gate",
+        "delivery"
+      ],
+      "properties": {
+        "identity": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "regression",
+            "audit"
+          ]
+        },
+        "auditKind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gate": {
+          "type": "string",
+          "description": "The gate an episode names. Empty for a row the audit list carries alone, because a gate's own name lives on the episode and `auditKind` names such a row."
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "values": {},
+        "remedy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tries": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "decision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "time": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "delivery": {
+          "enum": [
+            "delivered",
+            "would-have-been-delivered",
+            null
+          ],
+          "description": "What the arm did with the signal. Null where klin delivers nothing to an agent, as for a reset a person ran."
+        }
+      }
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified",
+        "checks"
+      ],
+      "properties": {
+        "verified": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "description": "The workspace checks run before the session, over the tree the harness materialized. One more runs afterwards, and it looks only for a hidden oracle file."
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "passed",
+        "detail"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

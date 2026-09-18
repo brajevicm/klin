@@ -9,8 +9,8 @@ use crate::config::{self, Config, Error};
 
 /// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
 /// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
-/// `noted`, `scoped`, `identity`, and `Evaluator` with its `evaluate` call. Everything else here, the
-/// matcher and the reporter included, is private.
+/// `noted`, `scoped`, `identity`, `Line`, and `Evaluator` with its `evaluate` call. Everything
+/// else here, the matcher and the reporter included, is private.
 pub type Values = Map<String, Value>;
 
 /// The key a finding carries when it matched an accepted entry, which is a record field of spec
@@ -234,6 +234,39 @@ struct Comparison {
 impl Comparison {
     fn failed(&self) -> bool {
         !self.unmatched_findings.is_empty() || !self.rose.is_empty()
+    }
+
+    /// The held findings an accepted entry holds, and the ones a base site holds.
+    fn reasons(&self) -> (usize, usize) {
+        let accepted = self
+            .held
+            .iter()
+            .filter(|(_, entry)| is_accepted(entry))
+            .count();
+        (accepted, self.held.len() - accepted)
+    }
+}
+
+/// What a check says of the state it measured, and what follows the qualifier the ratchet adds.
+/// A check owns its own vocabulary and its counts. It never writes why its findings pass,
+/// because only the comparison knows that, so no check can claim a base comparison that did not
+/// happen. Spec 8.6.
+pub struct Line<'a> {
+    pub state: &'a str,
+    pub tail: &'a str,
+}
+
+/// Why every current finding passed, in the words the comparison proved. A run that judged no
+/// finding claims nothing: there was nothing for the base or the accepted list to hold.
+/// Spec 8.6.
+fn qualifier(comparison: &Comparison) -> String {
+    match comparison.reasons() {
+        (0, 0) => String::new(),
+        (0, _) => ", all held at the base".to_string(),
+        (_, 0) => ", all on the accepted list".to_string(),
+        (accepted, base) => {
+            format!(", {base} held at the base and {accepted} on the accepted list")
+        }
     }
 }
 
@@ -468,7 +501,7 @@ impl Evaluator<'_> {
         prior: Vec<Finding>,
         accepted: Vec<Values>,
         at: &Context,
-        ok_line: &str,
+        line: Line,
         out: &mut Sink,
     ) -> u8 {
         let entries: Vec<Values> = accepted
@@ -478,7 +511,7 @@ impl Evaluator<'_> {
         let (findings, entries) = restrict(findings, entries, at.only);
         let held = entries.len();
         let comparison = judge(findings, entries, self.metrics);
-        report(&comparison, self, held, ok_line, at, out)
+        report(&comparison, self, held, line, at, out)
     }
 }
 
@@ -524,12 +557,14 @@ fn report(
     comparison: &Comparison,
     evaluator: &Evaluator,
     held: usize,
-    ok_line: &str,
+    line: Line,
     at: &Context,
     out: &mut Sink,
 ) -> u8 {
+    let (accepted, _) = comparison.reasons();
     out.record(|records| {
         records.held = Some(records.held.unwrap_or(0) + comparison.held.len() as u64);
+        records.accepted = Some(records.accepted.unwrap_or(0) + accepted as u64);
         collect(comparison, evaluator, at.gate, records);
     });
     if comparison.failed() {
@@ -538,7 +573,13 @@ fn report(
         return 1;
     }
     if !at.quiet {
-        let _ = writeln!(out.text, "{ok_line}");
+        let _ = writeln!(
+            out.text,
+            "OK: {}{}{}",
+            line.state,
+            qualifier(comparison),
+            line.tail
+        );
     }
     notes(comparison, evaluator, at.gate, out.text);
     if at.strict && !comparison.unmatched_accepted.is_empty() {

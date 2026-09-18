@@ -8,8 +8,8 @@ use serde_json::{Map, Value, json};
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::{
-    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNPARSED,
-    UNRESOLVED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNBUILT,
+    UNPARSED, UNRESOLVED,
 };
 use crate::config::{self, Error};
 use crate::host::{self, Stop};
@@ -20,6 +20,8 @@ use crate::{build, coverage, journal, state, stats, turn, write};
 /// build blocks are left and whether the turn's gate block is still unspent. In the state
 /// directory, which an agent does not empty. ADR 0019, ADR 0022.
 const BUILD_BLOCKED: &str = "build-blocked";
+/// The index the build stamp hashes the tree through, apart from the turn stamp's own.
+const BUILD_INDEX: &str = "build-index";
 /// How many stops one prompt's build failures may block. klin bounds this itself, because the
 /// host documents no cap of its own. ADR 0022, spec 9.3.
 const BLOCKS: u64 = 8;
@@ -105,7 +107,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let loaded = Project::load(args.config.as_deref(), start);
     if !args.hook {
-        let judged = loaded.and_then(|project| judge(args, &project, None, &[], out));
+        let judged = loaded.and_then(|project| judge(args, &project, None, &[], None, out));
         return refused(args, judged, out).map(|tally| code(&tally));
     }
     match loaded {
@@ -283,10 +285,17 @@ fn ran(
 ) -> (u8, bool, Option<Vec<String>>, Option<String>) {
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
-    match outcome {
-        Ok((Some(failure), said)) => {
-            let code = does_not_build(args, project.root(), &failure, &said, window, log, out);
-            let text = format!("klin: {}:\n{failure}", does_not_build_said());
+    let (failure, said, unbuilt) = match outcome {
+        Ok(outcome) => sorted(outcome),
+        Err(problem) => {
+            let (code, note) = handed(args, project, Err(problem), event, log, out);
+            return (code, false, None, note);
+        }
+    };
+    match failure {
+        Some(failure) => {
+            let (code, text) =
+                does_not_build(args, project.root(), &failure, &said, window, log, out);
             (
                 blocked_build(project.root(), event, text, code),
                 false,
@@ -294,12 +303,11 @@ fn ran(
                 None,
             )
         }
-        Err(problem) => {
-            let (code, note) = handed(args, project, Err(problem), event, log, out);
-            (code, false, None, note)
-        }
-        Ok((None, said)) => {
-            let judged = judge(args, project, window, &said, out);
+        None => {
+            let judged = judge(args, project, window, &said, unbuilt.as_deref(), out);
+            if let (Err(_), Some(note)) = (&judged, &unbuilt) {
+                eprintln!("klin: {note}");
+            }
             let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
             let reported = judged
                 .as_ref()
@@ -309,6 +317,20 @@ fn ran(
             let asked = (code == 2).then_some(reported);
             (code, green, asked, note)
         }
+    }
+}
+
+/// A finished build sorted into what blocks and what is told: the failure text of a build that
+/// ran and failed, the provenance lines, and the note for a command the shell could not find.
+fn sorted(
+    (failure, said): (Option<build::Failure>, Vec<check::Said>),
+) -> (Option<String>, Vec<check::Said>, Option<String>) {
+    match failure {
+        Some(build::Failure::Failed(failure)) => (Some(failure), said, None),
+        Some(build::Failure::Missing { run, output }) => {
+            (None, said, Some(unbuilt_said(&run, &output)))
+        }
+        None => (None, said, None),
     }
 }
 
@@ -365,19 +387,37 @@ struct Tally {
     record: Option<Value>,
 }
 
-/// What the hook says about a tree that does not build. Both messages name the bound from
-/// `BLOCKS`, so the cap and the words for it cannot drift apart.
-fn does_not_build_said() -> String {
-    format!(
-        "the tree does not build, so no gate ran (each stop blocks until it does, up to \
-         {BLOCKS} in one turn)"
-    )
+/// What the hook says about a tree that does not build. The messages name the bound from
+/// `BLOCKS`, so the cap and the words for it cannot drift apart, and the block this stop spends,
+/// so the agent reads how many are left. Spec 9.3.
+fn does_not_build_said(block: Option<u64>) -> String {
+    match block {
+        Some(block) => format!(
+            "the tree does not build, so no gate ran (a stop that changed the tree blocks until \
+             it does, block {block} of {BLOCKS} in this turn)"
+        ),
+        None => "the tree does not build, so no gate ran".to_string(),
+    }
 }
 
 fn stopped_blocking() -> String {
     format!(
         "the build has blocked {BLOCKS} stops under this prompt, so klin stops blocking; the \
          failure stands and CI will refuse it."
+    )
+}
+
+const UNCHANGED: &str = "the tree did not change since the stop klin last blocked, so klin does \
+    not block again; the failure stands and CI will refuse it.";
+
+/// The note for a build whose command the shell could not find. It names the command, quotes
+/// the shell, and says the one action left, because the failing output alone told the agent
+/// nothing it could act on. ADR 0048.
+fn unbuilt_said(run: &str, output: &str) -> String {
+    format!(
+        "NOTE: the build `{run}` could not run ({output}), so klin judged the source as it \
+         stands and CI runs the build. Install the project's dependencies, or a person sets \
+         `build` to `false` in klin.json."
     )
 }
 
@@ -389,6 +429,9 @@ struct Count {
     prompt: u64,
     builds: u64,
     gate_spent: bool,
+    /// The working tree the last build block was taken over, so a stop that changed nothing
+    /// since is reported and not blocked again. ADR 0048.
+    tree: Option<String>,
 }
 
 fn count(at: &Path) -> Count {
@@ -407,6 +450,10 @@ fn count(at: &Path) -> Count {
             .as_ref()
             .and_then(|held| held.get("gate_spent")?.as_bool())
             .unwrap_or_default(),
+        tree: held
+            .as_ref()
+            .and_then(|held| held.get("tree")?.as_str())
+            .map(str::to_string),
     }
 }
 
@@ -417,6 +464,7 @@ fn counted(at: &Path, count: &Count) -> bool {
         "prompt": count.prompt,
         "builds": count.builds,
         "gate_spent": count.gate_spent,
+        "tree": count.tree,
     })
     .to_string()
         + "\n";
@@ -441,15 +489,33 @@ fn does_not_build(
     window: Option<&Window>,
     log: &mut journal::Stop,
     out: &mut String,
-) -> u8 {
-    let builds = raised(root, log);
-    let stopped = builds.is_some_and(|builds| builds > BLOCKS);
-    let code = match builds {
-        Some(builds) if builds <= BLOCKS => 2,
-        _ => 0,
-    };
-    log.report = Some(reported(args, failure, said, window, stopped, code, out));
-    code
+) -> (u8, String) {
+    let blocks = raised(root, log);
+    let (code, report, text) = reported(args, failure, said, window, &blocks, out);
+    log.report = Some(report);
+    (code, text)
+}
+
+/// What a build failure at this stop spends: the block it took and its number in this turn, no
+/// block because the tree did not change since the last one, or no block because klin could
+/// not record one.
+enum Blocks {
+    Spent(u64),
+    Unchanged,
+    Unbounded,
+}
+
+impl Blocks {
+    /// The exit code, the block's number when the stop blocks, and the note that says why it
+    /// does not.
+    fn outcome(&self) -> (u8, Option<u64>, Option<String>) {
+        match self {
+            Blocks::Spent(builds) if *builds <= BLOCKS => (2, Some(*builds), None),
+            Blocks::Spent(_) => (0, None, Some(stopped_blocking())),
+            Blocks::Unchanged => (0, None, Some(UNCHANGED.to_string())),
+            Blocks::Unbounded => (0, None, None),
+        }
+    }
 }
 
 /// A host that cannot read stderr still has to show the build failure. An adapter whose stop
@@ -461,22 +527,28 @@ fn blocked_build(root: &Path, event: Option<&host::Event>, text: String, code: u
     }
 }
 
-/// The block this build failure spends, or `None` when klin could not record it, either
-/// because the state directory is gone or because the record itself would not write. Neither
-/// count could bound the blocks, so the NOTE names the write that failed and the stop is not
-/// blocked. Spec 14.
-fn raised(root: &Path, log: &mut journal::Stop) -> Option<u64> {
+/// The block this build failure spends. `Unchanged` when the working tree is the one the last
+/// block was taken over, because blocking again on a tree the agent did not touch teaches it
+/// nothing. `Unbounded` when klin could not record the block, either because the state
+/// directory is gone or because the record itself would not write: neither count could bound
+/// the blocks, so the NOTE names the write that failed and the stop is not blocked. Spec 14.
+fn raised(root: &Path, log: &mut journal::Stop) -> Blocks {
     let at = match state::ready(root) {
         Ok(at) => at,
         Err(why) => return unbounded(&why, log),
     };
     let held = count(&at);
+    let tree = turn::tree_through(root, &at.join(BUILD_INDEX));
+    if held.builds > 0 && tree.is_some() && tree == held.tree {
+        return Blocks::Unchanged;
+    }
     let count = Count {
         builds: held.builds + 1,
+        tree,
         ..held
     };
     match counted(&at, &count) {
-        true => Some(count.builds),
+        true => Blocks::Spent(count.builds),
         false => unbounded(
             &format!("{} could not be written", at.join(BUILD_BLOCKED).display()),
             log,
@@ -484,27 +556,29 @@ fn raised(root: &Path, log: &mut journal::Stop) -> Option<u64> {
     }
 }
 
-fn unbounded(why: &str, log: &mut journal::Stop) -> Option<u64> {
+fn unbounded(why: &str, log: &mut journal::Stop) -> Blocks {
     log.flags.push("count-unwritable");
     eprintln!(
         "klin: NOTE: {why} — so no count could bound the build blocks, and this build failure \
          blocks nothing."
     );
-    None
+    Blocks::Unbounded
 }
 
-/// The build failure as a person and an agent read it, and as `--json` records it. The note
-/// says that klin stopped blocking, because the exit code alone no longer says it. Spec 11.
+/// The build failure as a person and an agent read it, and as `--json` records it. The text
+/// opens with where each command came from, so a derived build is never a command with no
+/// origin, and the note says why klin did not block, because the exit code alone no longer
+/// says it. Spec 11, ADR 0040.
 fn reported(
     args: &Args,
     failure: &str,
     built: &[check::Said],
     window: Option<&Window>,
-    stopped: bool,
-    code: u8,
+    blocks: &Blocks,
     out: &mut String,
-) -> Value {
-    let said = does_not_build_said();
+) -> (u8, Value, String) {
+    let (code, block, note) = blocks.outcome();
+    let said = does_not_build_said(block);
     let mut records = Records {
         derived: built
             .iter()
@@ -515,21 +589,26 @@ fn reported(
     records
         .findings
         .push(record("error", &format!("{said}:\n{failure}")));
-    if stopped {
-        records.notes.push(record("note", &stopped_blocking()));
+    if let Some(note) = &note {
+        records.notes.push(record("note", note));
     }
     let object = as_json(ERROR, code, &format!("klin: {said}."), records, window);
+    let mut text = String::new();
+    for (line, _) in built {
+        let _ = writeln!(text, "klin: {line}");
+    }
+    let _ = writeln!(text, "klin: {said}:");
+    text.push_str(failure);
+    if let Some(note) = &note {
+        let _ = writeln!(text, "klin: {note}");
+    }
     if !args.json {
-        eprintln!("klin: {said}:");
-        eprint!("{failure}");
-        if stopped {
-            eprintln!("klin: {}", stopped_blocking());
-        }
-        return object;
+        eprint!("{text}");
+        return (code, object, text);
     }
     out.clear();
     let _ = writeln!(out, "{object}");
-    object
+    (code, object, text)
 }
 
 /// The build a person chose or the one the manifests derive, run before any gate judges the
@@ -539,7 +618,7 @@ fn built(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
-) -> Result<(Option<String>, Vec<check::Said>), Error> {
+) -> Result<(Option<build::Failure>, Vec<check::Said>), Error> {
     let plan = build::plan(project)?;
     if plan.entries.is_empty() {
         return Ok((None, plan.said));
@@ -571,6 +650,7 @@ fn judge(
     project: &Project,
     window: Option<&Window>,
     built: &[check::Said],
+    unbuilt: Option<&str>,
     out: &mut String,
 ) -> Result<Tally, Error> {
     let plan = plan(project)?;
@@ -580,9 +660,16 @@ fn judge(
     let wanted = select(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window, out)?;
     said(args, built, out);
+    if let (Some(unbuilt), false) = (unbuilt, args.json) {
+        let _ = writeln!(out, "  {unbuilt}");
+    }
     let rootless = no_source_root(args, &plan, project, out)?;
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     records.notes.extend(rootless);
+    if let Some(unbuilt) = unbuilt {
+        records.notes.push(record(UNBUILT, unbuilt));
+        tally.told += 1;
+    }
     let derived = built.iter().filter_map(|(_, entry)| entry.clone());
     records.derived.splice(0..0, derived);
     tally.record = Some(finish(
@@ -1217,6 +1304,10 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
     );
     out.insert("ms".into(), ms.into());
     out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
+    out.insert(
+        "accepted".into(),
+        records.accepted.map_or(Value::Null, Value::from),
+    );
     out.insert("facts".into(), facts(records));
     out.insert(
         "names".into(),
@@ -1229,6 +1320,12 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
         "footprint".into(),
         records.footprint.as_ref().map_or(Value::Null, footprint),
     );
+    costs(&mut out, records);
+    Value::Object(out)
+}
+
+/// The content, module-graph and public-surface work of one gate's row. Spec 11.2.
+fn costs(out: &mut Map<String, Value>, records: &Records) {
     out.insert(
         "work".into(),
         records.work.map_or(Value::Null, |work| {
@@ -1261,7 +1358,6 @@ fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
             })
         }),
     );
-    Value::Object(out)
 }
 
 /// A note the hook tells a person even when nothing blocks the stop: a file the run could not
@@ -1270,7 +1366,7 @@ fn told(note: &Value) -> bool {
     let outcome = note.get("outcome").and_then(Value::as_str);
     matches!(
         outcome,
-        Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION | UNRESOLVED)
+        Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION | UNRESOLVED | UNBUILT)
     ) || coverage::is_lost(note)
 }
 

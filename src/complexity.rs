@@ -13,7 +13,7 @@ use crate::config::Error;
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
@@ -345,10 +345,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(&project.config, at.gate, evaluator(&spec).metrics)?,
         at,
-        &format!(
-            "OK: {judged} function(s) judged, {count} over the gate{}, all held at the base{said}",
-            ceiling::in_force(&[("cc", &spec.ceilings.cc), ("lines", &spec.ceilings.lines)])
-        ),
+        Line {
+            state: &format!(
+                "{judged} function(s) judged, {count} over the gate{}",
+                ceiling::in_force(&[("cc", &spec.ceilings.cc), ("lines", &spec.ceilings.lines)])
+            ),
+            tail: &said,
+        },
         out,
     );
     let code = coverage::lost_said(&lost, at, code, out);

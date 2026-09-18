@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a plain row needs no wrapping (0.51325ms)\n✔ a field holding a comma is wrapped (0.078ms)\n✔ a quote inside a wrapped field is written twice (0.064667ms)\n✔ a field holding a newline is wrapped (0.054375ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 77.25475\n",
+  "stderr": "",
+  "reason": ""
+}

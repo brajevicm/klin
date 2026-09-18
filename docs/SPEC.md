@@ -379,7 +379,22 @@ configured or derived instance of a check. A check declares:
   kind `--strict` reaches, because it has a comparison or an accepted list to
   judge. `sarif` needs the commit and not the tree: it reads which lines the
   window changed and runs the scanner once, over the working tree only (8.3).
-- `takes_scope`, whether a changed-file list narrows it
+- `takes_scope`, whether a changed-file list narrows it. False says only that
+  it does not, and a check sets it false for its own reason: `doc-size` and
+  `lockfile` judge a set small enough that narrowing it buys nothing,
+  `layering` and `sarif` read the whole tree by construction (8.3). The
+  physical changed-file set is the default judgement boundary, and one of
+  those reasons is that a check owns a broader bounded judgement unit
+  instead, because a change elsewhere in the repository deterministically
+  changes the meaning of evidence in a file the window did not touch.
+  `public-api` judges the whole consumer-facing surface, `reachability` judges
+  every member of each family, and `doc-citations` judges the whole derived
+  root-document set. A check that owns such a unit MUST name it in its own
+  contract in 8.2.1, and the runner never infers one: there is no dependency
+  graph and no propagation rule above the catalogue. The turn window of ADR
+  0014 says which work belongs to the turn. It does not require every finding
+  of that turn to sit on a line the turn edited, and the two-tree ratchet, not
+  the changed-file list, is what keeps old debt quiet.
 - `gate_per_entry`, whether the section is a list of entries a person writes,
   each its own gate under its own `name`, rather than one section the whole
   check runs under. Only `sarif` sets it (8.3).
@@ -562,6 +577,7 @@ Each check documents its rule. The rules for the shipped checks:
   its pinned ceiling instead, and is judged wherever it sits.
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
   each read against the whole tree with the built-in extension list of 8.2.1.
+  This set is the check's judgement unit on a changed run too (8.2.1).
 - `inventory`: every file under a test root the survey finds, which is a
   source root a test directory segment names or one whose every source file
   carries a test affix, and every source file a test directory segment or a
@@ -610,7 +626,10 @@ Each check documents its rule. The rules for the shipped checks:
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
 - `build`: one entry per manifest, per ADR 0012, derived only by a hook run
-  that builds. Manifests are a path set. A manifest the derivation commit
+  that runs the build. The `derived:` line names each command and the
+  manifest it came from, and the hook prints it whether the build passes or
+  fails, so a derived command never reaches the agent with no origin (ADR
+  0040, ADR 0048). Manifests are a path set. A manifest the derivation commit
   lacks gets its entry from the fixed table on the turn that adds it.
 
 A derived ceiling is not monotone. A percentile falls when simple functions
@@ -753,6 +772,45 @@ stamp to the current working tree and prints that a person moved it. The guard
 denies the command by name from an agent, the way it denies `init`. Without
 this command a red window that nobody acts on degrades into a report that
 everyone learns to ignore.
+
+A stamp describes the current turn only while current HEAD history still holds
+the commit it was taken over. That commit is the stamp's parent, HEAD at
+stamping time, and not the stamp itself: the stamp is a synthetic sibling of
+its parent and is never an ancestor of a later commit. So the rule is keyed to
+commit history and not to branch names.
+
+> A red stamp stays while the HEAD it was taken over remains in current HEAD
+> history. Where current HEAD no longer holds that commit, the stamp cannot
+> describe the current turn.
+
+A commit made inside the turn keeps the parent an ancestor of HEAD, so the
+turn window stays, and so does `git checkout -b` at the same HEAD and any
+branch that descends from the parent. A switch to divergent history, a
+detached checkout of an unrelated commit, a hard reset, and a rebase that
+drops the parent each take the parent out of HEAD history. The stop then
+prints a NOTE that names the reason, judges a branch window from the base of
+6.3 for the current checkout, and writes that base as the stamp, red, keeping
+the prompt counter and dropping the `asked` record of 8.2, `intervened` and
+the follow-up hash, because all three belong to the turn the checkout left.
+The journal records the stop as `branch-fallback` (11.4).
+
+The recovery copies go with it. The stop deletes `refs/worktree/klin/turn`
+and `refs/worktree/klin/mark`, because both are copies of a turn the checkout
+left and a copy of that turn is the one thing a later stop must not read. A
+stop that loses the `turn` file after this widens to the branch window, which
+is the window the fallback already judged, so the deletion forgives nothing.
+The ref MUST NOT instead be moved to the base: a stamp restored from the ref
+reads its parent as `<commit>^`, which names the stamped HEAD for a synthetic
+stamp and the commit before the base for an ordinary one, so a moved ref would
+name a parent no stop ever took and would pass this section's test on history
+that holds no base at all.
+
+klin MUST tell a proven "not an ancestor" apart from a question git could not
+answer. `git merge-base --is-ancestor <parent> HEAD` exits 0 for an ancestor,
+1 for a proven divergence, and other codes when git refused the question. Only
+the proven divergence takes the fallback above. A stamp that names no parent,
+which is the shape a stamp taken over an unborn HEAD has, keeps the turn
+window.
 
 A stamp is missing when the state directory exists and holds no `turn` file.
 A `turn` file that is gone while the ref of 6.5 remains is restored from the
@@ -1062,8 +1120,10 @@ and printed with the NOTE.
 `lockfile` proves one thing: every dependency the manifest names has an entry
 in the lockfile beside it, and no pin the base held is gone. It cannot prove
 that a package exists in a registry, because it runs offline. A dependency
-that does not exist fails the project's own install, which the `build` step
-runs. Workspace members, path dependencies and optional dependencies are
+that does not exist fails the project's own install, when the `build` step
+runs one. A derived build runs no install, so a declared dependency that was
+never installed leaves the build's tool absent, and 9.3 makes that a NOTE
+that lets this gate speak. Workspace members, path dependencies and optional dependencies are
 implementation-defined and MUST be documented per manifest format, which
 8.2.1 does for the five formats that ship.
 
@@ -1207,8 +1267,23 @@ after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
 complete current dead-symbol list. A changed run that is not strict builds
-declaration state only for the files it judges, over both trees and under the
-base's own path and rename semantics (6.5). Its evidence stays whole: both
+declaration state only for the files in its effective judgement scope, over
+both trees and under the base's own path and rename semantics (6.5). That
+scope is the run's physical scope plus the files that declare a name a changed
+file references on one semantic side and not the other. A declaration that did not
+move can still turn from referenced to dead when its last caller changed, so
+the physical scope alone is not the semantic impact scope. A name a changed file references on both sides cannot flip
+one, so it widens nothing. The names come from the same structural facts the
+index is built from, never from a textual diff,
+and a name with several declarations widens to all of them, which keeps the
+ambiguity rule of ADR 0035: fail less, never more. A changed file whose
+working-tree text the grammar could not read widens nothing from its base
+reference names: that hole is reported as a hole, and missing evidence never
+becomes proven deadness. One effective scope drives the state of both trees,
+the ratchet, the base and accepted matching, `lost_reference`, the notes, the
+counts and the coverage line, so no run reports a finding at a site it says it
+did not judge. `Context.only` keeps its runner meaning: the check derives this
+scope locally. Its evidence stays whole: both
 trees keep the complete index of 8.4, so a judged declaration is alive on a
 reference from any measured file, changed or not, and a lost reference in an
 unchanged file still explains a worsened finding. A whole run, a strict run
@@ -1220,7 +1295,15 @@ and the check by hand build state for every eligible declaration. Pinned by
 `tests/dead_symbols.rs`; the report cap is covered by
 `report_lists_every_current_dead_symbol_without_the_note_cap`, and the
 judgement scope by
-`a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge`.
+`a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge` and
+`unrelated_historical_debt_outside_the_changed_scope_stays_silent`, and the
+semantic impact scope by
+`removing_the_last_reference_in_a_changed_caller_worsens_an_unchanged_declaration`,
+`a_reference_another_unchanged_caller_still_holds_is_no_regression`,
+`deleting_the_only_caller_worsens_the_unchanged_declaration`,
+`every_declaration_of_an_affected_name_stays_conservatively_in_scope`,
+`a_changed_file_that_keeps_its_reference_names_widens_nothing` and
+`a_changed_caller_the_grammar_cannot_read_guesses_no_deadness`.
 
 In a changed run that is not strict, which includes the hook, the two trees
 `dead-symbols` and `reachability` compare share one base extraction. The run's
@@ -1341,8 +1424,18 @@ that declares one. Exported declarations are eligible, unlike in
 repository. A reference from the file itself reaches nothing. Resolution is
 the structural index's name-only rule, so a name several files declare
 reaches every one of them: ambiguity makes a file look reached and never
-unreached. The index covers the whole tree in each family's language partition, so a
-scoped run still resolves against unchanged callers. Identity is the
+unreached. The index covers the whole tree in each family's language partition, so
+every run resolves against unchanged callers. The check takes no
+scope: a changed run judges every member of both trees, because the edit that
+strands a member is an edit to its caller and not to the member, so a run
+narrowed to the changed files would judge no member at all and report every
+site as held at the base. A derived family is small by construction, and the
+index is built over the whole partition either way, so the whole judgement
+costs a lookup per member, and the check reads no second extraction of its
+own. The physical changed-file set is therefore not this check's judgement
+boundary, and the wider boundary raises no old debt: a member unreached in
+both trees stays one NOTE under the ordinary two-tree ratchet, and never
+fails because a run re-judged it. Identity is the
 repository-relative path, so a file two families match is judged once,
 under the first family in the list, and an accepted entry names the path. A
 measured member with no eligible declaration is measured and not judged,
@@ -1361,9 +1454,15 @@ by `a_new_command_file_nothing_references_fails_as_new`,
 `losing_the_last_external_reference_is_worsened`,
 `one_ambiguous_reference_reaches_every_file_that_declares_the_name`,
 `a_file_with_only_entry_points_or_methods_is_measured_and_not_judged`,
-`the_remedy_names_a_proven_sibling_and_not_one_reached_by_ambiguity` and
-`a_family_the_base_proves_is_derived_and_judges_a_new_working_tree_member`
-in `tests/reachability.rs`.
+`the_remedy_names_a_proven_sibling_and_not_one_reached_by_ambiguity`,
+`a_family_the_base_proves_is_derived_and_judges_a_new_working_tree_member`,
+`a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing`,
+`the_stop_hook_blocks_a_turn_that_left_a_member_unreached`,
+`a_changed_run_reports_one_surface_the_whole_run_reports_too` and
+`legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`
+in `tests/reachability.rs`, and by
+`a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction` in
+`tests/structural.rs`.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens
@@ -1387,6 +1486,28 @@ same string moved to another line is held. Pinned by
 `the_same_stale_string_cited_once_more_is_worsened_with_the_count` in
 `tests/doc_citations.rs`. Known limit: a citation split across two lines, a
 path in a Markdown link, and a path with a space are never read.
+
+The check takes no scope: a changed run judges every derived root document of
+both trees, because the edit that breaks a citation is a move, a rename or a
+new basename clash in the source, and not an edit to the document that cites
+it, so a run narrowed to the changed files would judge no document at all.
+The derived root-document set is bounded by 5.2, and each document already
+resolves against whole-tree path facts, so the whole judgement costs one
+resolution per citation. The physical changed-file set is therefore not this
+check's judgement boundary, and the wider boundary raises no old debt: a
+citation broken in both trees stays held under the ordinary two-tree ratchet,
+and never fails because a run re-judged it. One root-document set drives the
+findings, the base and accepted matching, the coverage counts and the
+moved-target remedy alike, so a changed run never reports a document that its
+coverage says it did not measure. `--file` and `--root` by hand are
+unchanged: a person naming a document still judges that document only. Pinned
+by `under_changed_a_move_breaks_the_citation_of_a_document_the_window_did_not_touch`,
+`the_stop_hook_blocks_on_a_move_that_breaks_an_untouched_documents_citation`,
+`under_changed_a_stale_citation_of_an_untouched_document_stays_held`,
+`under_changed_a_new_basename_clash_makes_an_untouched_citation_ambiguous`,
+`under_changed_removing_a_basename_clash_leaves_an_untouched_citation_silent`
+and `file_and_root_by_hand_judge_that_document_against_the_base` in
+`tests/doc_citations.rs`.
 
 **`complexity` measures each function on its own.** The unit is a function
 node of the language's grammar, and an accessor or initializer body counts
@@ -2026,7 +2147,21 @@ Every check MUST:
   says the value the base holds it at, for the same reason. Section 11.1
   fixes those line shapes.
 - print one `OK:` line with what it judged on success, plus any `NOTE:`
-  lines, and nothing else. What it judged includes the coverage: how many
+  lines, and nothing else. A ratcheting check writes the state it measured in
+  its own vocabulary and its own counts, and the ratchet writes why those
+  findings do not fail, because only the comparison knows that. The reasons
+  are distinct and a green line MUST NOT claim more than the comparison
+  proved, on the one line the ratchet writes for the whole gate:
+  `, all held at the base` when a base site holds every finding,
+  `, all on the accepted list` when a person-authored entry holds every one,
+  `, N held at the base and M on the accepted list` when both hold some, and
+  nothing at all when the run judged no finding. A run that measured no file
+  judges no finding, so it claims no comparison either, and its coverage says
+  what it measured. No check composes that qualifier for itself. A check that
+  judges documents one by one and holds them against the base itself, which is
+  `doc_size` alone, still says per document what the base holds that document
+  at, because that line names a value and not the gate's pass reason.
+  What it judged includes the coverage: how many
   files it found, measured, not measured, excluded and could not read, so a
   green run over an unexpectedly small scope is visible on its one line.
   Section 11.1 writes the boundary between those five counts down once, and
@@ -2182,7 +2317,7 @@ that reads a host's JSON.
 | session start | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
 | pre-tool | `klin guard` | deny or ask | nothing |
 | prompt submitted | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
-| stop | `klin gate --hook --changed` | each stop while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
+| stop | `klin gate --hook --changed` | each stop that changed the tree while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
 
 The shared hook lines call `klin` from PATH:
 
@@ -2213,13 +2348,33 @@ delivery; the matching prompt consumes it without opening another turn. A
 deleted test is the one gate failure that does not stay red: the stop that blocks on it records the
 question beside the stamp, and the next stop lets it through as a NOTE and
 ends green (8.2, ADR 0031). A build failure blocks at each
-stop until the tree builds, up to eight in one turn, and then the hook
-reports, says that it stopped blocking, and lets the turn end. The build
-stamp holds the count and the prompt counter of 6.2 the count was taken
-under. A count taken under an earlier prompt reads as zero, so every turn
+stop that changed the tree since the last build block, until the tree
+builds, up to eight in one turn, and then the hook reports, says that it
+stopped blocking, and lets the turn end. A stop over a tree the last build
+block already saw spends no block: the hook reports the failure, says the
+tree did not change, and lets the turn end, because a block over a tree the
+agent did not touch teaches it nothing (ADR 0048). The build
+stamp holds the count, the prompt counter of 6.2 the count was taken
+under, and the tree of 6.5 the last block was taken over. A count taken
+under an earlier prompt reads as zero, so every turn
 has eight blocks and only the stop writes the build stamp. A build-failure
 stop writes a RED verdict before it blocks, so the next prompt does not move
-the turn stamp over a tree that does not build.
+the turn stamp over a tree that does not build. Each block names its number
+in the turn, and a failing build's report opens with the `derived:` line of
+5.4 when the command was derived.
+
+A build whose shell exits 127 is not a build failure. The shell could not
+find the command, so the tool is absent and the code is unjudged. The hook
+records the build as unmeasured: one NOTE names the command, quotes the
+shell, and says that klin judged the source as it stands, that CI runs the
+build, and that the action left is to install the project's dependencies or
+for a person to set `build` to `false`. The gates then run over the tree,
+so a `lockfile` finding for the dependency that was declared and never
+installed reaches the agent, and the NOTE is told at a stop nothing blocks.
+The exit code is the whole test: klin reads no shell message and guesses no
+tool name. An absent tool skips its own entry and no other, so a later entry
+that fails still blocks, and the NOTE stands only for a build in which every
+entry that ran passed (ADR 0048).
 
 Two facts in ADR 0014 about where hook output goes on exit 0 need one more
 check against the current documentation before #91 lands. The documentation
@@ -2473,9 +2628,12 @@ One object on stdout. Fields:
   gate's own measure and judge took, and `held` counts the findings the run
   let through because a base site or an accepted entry carried them, which is
   one quantity and not two: a gate that also drops sites its window never
-  reached counts those in its `coverage` and never in `held`. On a passing run
-  it is the count the gate's `OK:` line of 11.1 prints as held at the base, and
-  it is null for a gate that never got that far. `facts` is
+  reached counts those in its `coverage` and never in `held`. `accepted`
+  counts how many of `held` a person-authored entry carried rather than a base
+  site, which is the one number the `OK:` line's qualifier of 8.6 turns on, so
+  the text and the JSON read the same comparison. `held` less `accepted` is
+  what the base held. Both are null for a gate that never got that far, and
+  `accepted` is 0 for a ratcheting gate no accepted entry matched. `facts` is
   `{reads, parses, extracted, shared, cached, ms, cache_read_ms,
   cache_write_ms}`, with `states` beside them for `dead-symbols`, for a gate
   that reads structural
@@ -2654,9 +2812,10 @@ failure, or an error alike — plus what only the hook knew:
   them (8.2).
 - `flags`, the unusual paths this stop took, empty on a clean stop:
   `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
-  window because no stamp resolved), `count-unwritable` (a build stamp that
-  would not write, 14), `no-prompt-event` (16.3, a spent gate block found no
-  prompt line for the stop's session).
+  window because no stamp resolved, or because the commit the stamp was taken
+  over is outside current HEAD history, 6.2), `count-unwritable` (a build
+  stamp that would not write, 14), `no-prompt-event` (16.3, a spent gate block
+  found no prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
   empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
   (9.5). A reader finds the last weekly line from it.
@@ -3182,6 +3341,8 @@ same in all three.
 | No base resolves outside the hook | exit 2 naming what was tried |
 | `turn` file missing in the hook, ref present | restored from the ref with a RED verdict, and a NOTE says so |
 | `turn` file and ref both missing in the hook | a branch window from the base of 6.3, or from HEAD when none resolves, a NOTE names the missing stamp, and the stop writes that base as the stamp |
+| The commit the stamp was taken over is outside current HEAD history in the hook | a branch window from the base of 6.3 for the current checkout, a NOTE names the commit HEAD no longer holds, and the stop writes that base as the stamp, red, keeping the prompt counter, dropping `asked`, `intervened` and the follow-up hash, and deleting both `refs/worktree/klin/turn` and `refs/worktree/klin/mark` (6.2) |
+| Git cannot answer whether HEAD history holds that commit | the turn window stays, because only a proven divergence is a turn the checkout left (6.2) |
 | A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE, told to the person through `systemMessage` on a stop that ends (9.1). |
 | A deleted test (8.2) | Hook: blocks the first stop that finds it, once. The next stop lets it through as a NOTE, tells the person, and ends green. Outside the hook: a NOTE, `--strict` included. |
 | The build fails in the hook | block with the build output, no gate runs. Outside the hook the build step does not run (ADR 0012). |
@@ -3247,17 +3408,39 @@ read_stamp():
   if commit is None: return None
   note("turn file missing, restored from the ref")
   stamp = Stamp(commit, parent=parent(commit), time=None, last_verdict=RED)
+  # parent(commit) is commit^, which names the stamped HEAD only because the ref holds a
+  # synthetic stamp. 6.2 is why no other commit may be written to that ref.
   write_atomic(state/turn, stamp)
   return stamp
 
+holds_head(commit):                    # 6.2, the three answers stay apart
+  status = run("git merge-base --is-ancestor " + commit + " HEAD")
+  if status == 0: return True                              # ancestor of HEAD, or HEAD
+  if status == 1: return False                             # proven divergent
+  return None                                              # git could not answer
+
+left_behind(stamp):
+  return stamp.parent is not None and holds_head(stamp.parent) is False
+
 hook_window():
   stamp = read_stamp()
+  if stamp is not None and left_behind(stamp):
+    note("the turn started from a commit HEAD no longer holds, judging the branch")
+    delete_ref("refs/worktree/klin/turn")                  # no restore of what HEAD left
+    delete_ref("refs/worktree/klin/mark")                  # 6.2.1
+    before = branch_stamp(stamp, mark=None)
+    return Window(BRANCH, before, WORKING, "the turn HEAD left behind")
   if stamp is None:
     note("stamp deleted, judging the branch")
-    before = choose_window(strict=False).before or HEAD     # 16.2
-    write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED)
-    return Window(BRANCH, before, WORKING, "stamp missing")
+    return Window(BRANCH, branch_stamp(stamp, mark=mark_of(stamp)), WORKING, "stamp missing")
   return Window(TURN, stamp.commit, WORKING, "since " + stamp.time)
+
+branch_stamp(stamp, mark):             # the base this stop judges, written back red
+  before = choose_window(strict=False).before or HEAD      # 16.2
+  write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED,
+               prompt=prompt_of(stamp), mark=mark,
+               asked=[], intervened=False, followup=None)
+  return before
 
 on_session_start_or_prompt():          # one rule for both events
   stamp = read_stamp()
@@ -3325,12 +3508,17 @@ hook(event):
   if count is None or count.prompt != turn.prompt:
     count = Count(prompt=turn.prompt, builds=0, gate_spent=False)   # a new turn
   failure = build(config_or(survey), changed_files(window))
+  unbuilt = None
+  if failure and failure.exit == 127:
+    unbuilt = note("unbuilt", failure.command, failure.shell_said); failure = None
   if failure:
-    count.builds += 1; write_atomic(state/build-blocked, count)
     write_verdict_atomic(state/turn, RED)
+    tree = tree_of(working_directory)
+    if count.builds > 0 and tree == count.tree: report(failure, "the tree did not change"); return 0
+    count.builds += 1; count.tree = tree; write_atomic(state/build-blocked, count)
     if count.builds > 8: report(failure, "stopped blocking after eight"); return 0
-    block(failure)
-  (failed, errored, reported, told) = run_gates(config_or(survey), window, scope=changed)
+    block(derived_lines + failure + "block N of 8")
+  (failed, errored, reported, told) = run_gates(config_or(survey), window, scope=changed, unbuilt)
   if failed == 0 and errored == 0:
     write_verdict_atomic(state/turn, GREEN)
     if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
@@ -3356,10 +3544,15 @@ agent never saw is asked again at the next stop that blocks. `inventory`
 reads `asked` under `--hook` (8.2).
 
 The build stamp is one record per prompt: the prompt counter it belongs to,
-the number of build blocks, and whether the turn's one gate block is spent.
+the number of build blocks, the tree the last build block was taken over,
+and whether the turn's one gate block is spent.
 A passing build does not reset the build count, so a tree that builds, breaks
 and builds again inside one turn still gets eight blocks in that turn and no
-more. The host's `blocked_before` flag is a second opinion for the first gate
+more. The tree is the one 6.5 hashes for the stamp, read through an index of
+the build stamp's own, `build-index`, so a build block costs one hash of the
+working tree and leaves the turn stamp's first-session marker alone. `unbuilt` is one
+note the runner adds to the run's notes and counts as told, so a stop nothing
+blocks still tells it. The host's `blocked_before` flag is a second opinion for the first gate
 block only, because after a build block that flag is true while the gate
 block is still unspent (ADR 0004).
 
@@ -3624,7 +3817,10 @@ green, because deterministic detection is not correct judgement:
   beats FAIL in the exit code, `--gate` on an excluded gate, `--list` shows
   derived and pinned, no source root is exit 2 under `--strict` and a NOTE in
   the hook.
-- Hook: build failure blocks every stop and stops after eight, a new prompt
+- Hook: build failure blocks every stop that changed the tree and stops
+  after eight, an unchanged tree is reported and not blocked again, a
+  command the shell cannot find is a NOTE and the gates run, a derived
+  build's failure names its command and its manifest, a new prompt
   restores the eight, a build failure writes a red verdict and the next
   prompt does not move the stamp, gate failure blocks once, the stamp hands
   the second stop an unspent block, a second session's prompt in the same

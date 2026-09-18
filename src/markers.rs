@@ -12,7 +12,7 @@ use crate::config::{Config, Error};
 use crate::coverage::{self, Files};
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::{self, Key};
 use crate::scope::Scope;
 use crate::syntax;
@@ -188,7 +188,10 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
         at,
-        &format!("OK: {sites} {unit} in the tree, all held at the base{aside}{said}"),
+        Line {
+            state: &format!("{sites} {unit} in the tree"),
+            tail: &format!("{aside}{said}"),
+        },
         out,
     );
     Ok(coverage::lost_said(&lost, at, code, out))

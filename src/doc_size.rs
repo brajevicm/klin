@@ -107,7 +107,10 @@ fn evaluate(
 ) -> Result<u8, Error> {
     let documents = documents(at, named, ceiling, out)?;
     let against = against(at, &documents, out)?;
-    out.record(|records| records.held = Some(0));
+    out.record(|records| {
+        records.held = Some(0);
+        records.accepted = Some(0);
+    });
     let over = judged(&documents, &against, at, out)?;
     let measured = documents.len();
     let said = Coverage::whole(measured).said(out);

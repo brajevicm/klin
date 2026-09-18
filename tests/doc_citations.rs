@@ -2,6 +2,9 @@ mod harness;
 
 use harness::Tree;
 
+const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
+const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
+
 #[test]
 fn citations_that_resolve_pass_counting_them() {
     let tree = Tree::new();
@@ -23,7 +26,7 @@ fn citations_that_resolve_pass_counting_them() {
     ]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("OK: 0 citation(s) resolve nowhere, all held at the base"),
+        run.says("OK: 0 citation(s) resolve nowhere ("),
         "{}",
         run.out
     );
@@ -320,17 +323,79 @@ fn a_stale_citation_fixed_in_the_working_tree_prints_nothing() {
 }
 
 #[test]
-fn under_changed_a_document_the_window_did_not_touch_is_out_of_scope() {
+fn under_changed_a_move_breaks_the_citation_of_a_document_the_window_did_not_touch() {
     let tree = Tree::new();
-    tree.write("HELD.md", "The store is `src/store.py`.\n");
-    tree.write("EDITED.md", "Nothing here.\n");
+    tree.write("src/client.py", "x = 1\n");
+    tree.write("src/index.py", "y = 1\n");
+    tree.write("README.md", "The client is `src/client.py`.\n");
     tree.base();
-    tree.write("EDITED.md", "Nothing here.\nNow `src/gone.py`.\n");
+    tree.remove("src/client.py");
+    tree.write("src/transport/client.py", "x = 1\n");
+    tree.write("src/index.py", "y = 2\n");
 
     let run = tree.run(&["gate", "--changed"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("EDITED.md:2"), "{}", run.out);
-    assert!(!run.says("HELD.md:"), "{}", run.out);
+    assert!(run.says("README.md:1"), "{}", run.out);
+    assert!(run.says("likely src/transport/client.py"), "{}", run.out);
+}
+
+#[test]
+fn the_stop_hook_blocks_on_a_move_that_breaks_an_untouched_documents_citation() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    tree.write("src/client.py", "x = 1\n");
+    tree.write("src/index.py", "y = 1\n");
+    tree.write("README.md", "The client is `src/client.py`.\n");
+    tree.base();
+    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    assert_eq!(prompt.code, 0, "{}", prompt.out);
+    tree.remove("src/client.py");
+    tree.write("src/transport/client.py", "x = 1\n");
+    tree.write("src/index.py", "y = 2\n");
+
+    let run = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("README.md:1"), "{}", run.out);
+}
+
+#[test]
+fn under_changed_a_stale_citation_of_an_untouched_document_stays_held() {
+    let tree = Tree::new();
+    tree.write("src/index.py", "y = 1\n");
+    tree.write("README.md", "The store is `src/store.py`.\n");
+    tree.base();
+    tree.write("src/index.py", "y = 2\n");
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("README.md:"), "{}", run.out);
+}
+
+#[test]
+fn under_changed_a_new_basename_clash_makes_an_untouched_citation_ambiguous() {
+    let tree = Tree::new();
+    tree.write("src/client.py", "x = 1\n");
+    tree.write("README.md", "The client is `client.py`.\n");
+    tree.base();
+    tree.write("src/other/client.py", "x = 2\n");
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("README.md:1"), "{}", run.out);
+}
+
+#[test]
+fn under_changed_removing_a_basename_clash_leaves_an_untouched_citation_silent() {
+    let tree = Tree::new();
+    tree.write("src/client.py", "x = 1\n");
+    tree.write("src/other/client.py", "x = 2\n");
+    tree.write("README.md", "The client is `client.py`.\n");
+    tree.base();
+    tree.remove("src/other/client.py");
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("README.md:"), "{}", run.out);
 }
 
 #[test]

@@ -424,32 +424,81 @@ pub fn window(
 ) -> Result<Window, Error> {
     let Ok(at) = state::ready(root) else {
         return match kept(root) {
+            Some(stamp) if abandoned(root, &stamp) => {
+                note(out, LEFT_BEHIND);
+                branch(root, out)
+            }
             Some(stamp) => Ok(turn(&stamp)),
             None => branch(root, out),
         };
     };
     let held = held(root, &at, flags, out);
     if let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) {
-        return Ok(turn(stamp));
+        if !abandoned(root, stamp) {
+            return Ok(turn(stamp));
+        }
+        note(out, LEFT_BEHIND);
+        reanchored(root);
+        let base = branch(root, out)?;
+        return Ok(replaced(&at, held.as_ref(), None, base, out));
     }
     note(out, GONE_ON_A_STOP);
+    let mark = held.as_ref().and_then(|held| held.mark.clone());
     let base = branch(root, out)?;
+    Ok(replaced(&at, held.as_ref(), mark, base, out))
+}
+
+/// Whether the commit the stamp was taken over has left current HEAD history, which is what a
+/// checkout of divergent history, a reset or a rebase does to a stamp. The stamp is a synthetic
+/// sibling of that commit and never an ancestor of HEAD itself, so the parent is what carries
+/// the lineage. Only git's proven no abandons a turn: a git that could not answer, and a stamp
+/// that names no parent, leave the turn where it is. Spec 6.2.
+fn abandoned(root: &Path, stamp: &Stamp) -> bool {
+    stamp
+        .parent
+        .as_deref()
+        .and_then(|parent| Repo::at(root).contains(parent))
+        == Some(false)
+}
+
+/// The stamp a stop writes in place of one it could not use: the base it judged instead, red,
+/// keeping the prompt counter and dropping every per-turn record of the turn it left, so the
+/// next stop judges from here and not from the window that widened. Spec 6.2, 16.1.
+fn replaced(
+    at: &Path,
+    held: Option<&Stamp>,
+    mark: Option<String>,
+    base: Window,
+    out: &mut String,
+) -> Window {
     write(
-        &at,
+        at,
         &Stamp {
             commit: Some(base.before.clone()),
             parent: Some(base.before.clone()),
-            mark: held.as_ref().and_then(|held| held.mark.clone()),
+            mark,
             time: now(),
             green: false,
-            prompts: held.as_ref().map_or(0, |held| held.prompts),
+            prompts: held.map_or(0, |held| held.prompts),
             asked: Vec::new(),
             intervened: false,
             followup: None,
         },
         out,
     );
-    Ok(base)
+    base
+}
+
+/// The two refs that outlive an abandoned turn, both deleted. They are recovery copies of a
+/// stamp this checkout left, and a copy of it is the one thing a later stop must not read. A
+/// stop that loses the `turn` file after this widens to the branch window, which is the window
+/// this stop already judged, so the deletion forgives nothing. The ref cannot instead move to
+/// the base: `kept` reads a stamp's parent as `commit^`, which holds for a synthetic stamp and
+/// not for an ordinary commit, so a moved ref would name a parent the stop never took and pass
+/// the lineage test on history that holds no base at all. Spec 6.2, 6.2.1.
+fn reanchored(root: &Path) {
+    let _ = git(root, None, &["update-ref", "-d", REFERENCE]);
+    let _ = git(root, None, &["update-ref", "-d", MARK]);
 }
 
 /// The window the stamp itself is, once a stop has one to read.
@@ -533,6 +582,9 @@ const GONE: &str = "the turn stamp and its ref are both gone, so klin wrote no f
 const GONE_ON_A_STOP: &str = "no turn stamp resolves, in the turn file or in the ref, so this \
                               stop judges the whole branch and writes the base it judged \
                               against as the stamp";
+const LEFT_BEHIND: &str = "this turn started from a commit HEAD no longer holds, so the turn \
+                           stamp cannot describe this turn and this stop judges the whole \
+                           branch instead";
 
 /// The stamp: a commit over a tree of everything `.gitignore` does not exclude, with HEAD as
 /// its parent, held under a ref so `git gc` does not prune it. Spec 6.5. The index starts
@@ -553,10 +605,15 @@ fn stamped(root: &Path, tree: &str, reference: &str) -> Option<(String, Option<S
 /// A tree of the working directory, everything `.gitignore` does not exclude, written through
 /// an index of klin's own. Both the stamp and the spread report read the turn from it.
 pub fn tree(root: &Path, at: &Path) -> Option<String> {
-    let index = at.join(INDEX);
-    let _ = std::fs::remove_file(&index);
-    git(root, Some(&index), &["add", "-A"])?;
-    git(root, Some(&index), &["write-tree"])
+    tree_through(root, &at.join(INDEX))
+}
+
+/// The same tree through an index the caller names, for a reader that must not leave the
+/// stamp's own index behind, because `run` reads that file's absence as a first session.
+pub fn tree_through(root: &Path, index: &Path) -> Option<String> {
+    let _ = std::fs::remove_file(index);
+    git(root, Some(index), &["add", "-A"])?;
+    git(root, Some(index), &["write-tree"])
 }
 
 fn resolve(root: &Path, reference: &str) -> Option<String> {

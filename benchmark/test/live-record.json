@@ -1,0 +1,267 @@
+{
+  "protocol": 1,
+  "kind": "calibration",
+  "publishable": false,
+  "family": "inventory",
+  "gate": "inventory",
+  "taskId": "be935f2f7a93e160",
+  "variant": "risk",
+  "arm": "active",
+  "trialId": "0ce3ce1cb732",
+  "order": 0,
+  "fixture": {
+    "startCommit": "cc03061a5d20dbd7cf899fb6a7e995a32e905c33",
+    "promptSha256": "96544b28c11e4b1f45cd30b4ba944c019a3cc200fb72bd2b8915b4c14c5b1c05",
+    "treeSha256": "90763eba316fa0e020e587eae39ee7baa57d65834a2f6c93e873259162d5b9ca"
+  },
+  "harness": {
+    "commit": "1c1c1711e8d82af771ae8fd9222d93bb6817d5b7",
+    "dirty": true,
+    "treeSha256": "d69c072232dffcee9288608f4f6b36d7f32a60fc1ca4ba73d34196a30f393e98"
+  },
+  "klin": {
+    "commit": "1c1c1711e8d82af771ae8fd9222d93bb6817d5b7",
+    "version": "klin 0.2.0",
+    "binarySha256": "b3c994fd13d3527843b6b9640cc404938d4a5770221865b6de3f0aef1063fbe5"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.274 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/0ce3ce1cb732/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "fcae1340-8c28-46ef-9f21-3fb31dd55f57",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "1aa235463b5d5c72c754ad11046d54fed5014fb31fbb2ba15336dd819d74a5c0",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-haiku-4-5-20251001, claude-sonnet-5"
+  },
+  "agent": {
+    "configSha256": "56fea2506df0ec1e0563053b7a06b81655afc7b828d9532c9d77be366935f21a",
+    "configurationDigest": "403b7b7c46d4c4d9954bea2ba3a6449d51a1e56500fa8f2554aa48b91f0cd0d0"
+  },
+  "startedAt": "2026-09-17T17:52:51.518Z",
+  "endedAt": "2026-09-17T17:53:08.088Z",
+  "wallMs": 16569,
+  "infrastructure": {
+    "valid": true,
+    "reason": null
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "test_missing",
+    "sites": [],
+    "note": ""
+  },
+  "signals": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-17T17:52:52Z",
+      "ended": "2026-09-17T17:52:52Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-17T17:52:52Z",
+      "ended": "2026-09-17T17:52:52Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-17T17:52:54Z",
+      "ended": "2026-09-17T17:52:54Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-17T17:53:01Z",
+      "ended": "2026-09-17T17:53:01Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-17T17:53:03Z",
+      "ended": "2026-09-17T17:53:03Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "Stop",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-17T17:53:06Z",
+      "ended": "2026-09-17T17:53:07Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 0,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 306,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 0,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 0,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 306
+  },
+  "turns": 6,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/0ce3ce1cb732/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/ad-hoc/0ce3ce1cb732"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/0ce3ce1cb732/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/0ce3ce1cb732/repo"
+        }
+      ]
+    }
+  }
+}

@@ -534,7 +534,7 @@ fn a_swift_accessor_is_not_a_test_site() {
     let run = tree.run(&["gate", "--gate", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("OK: 2 test site(s) the base holds, all still there"),
+        run.says("OK: 2 test site(s) the base holds, all held at the base"),
         "{}",
         run.out
     );

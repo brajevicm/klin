@@ -1,0 +1,275 @@
+{
+  "protocol": 4,
+  "kind": "calibration",
+  "publishable": false,
+  "seed": 1,
+  "startedAt": "2026-09-18T15:12:58.854Z",
+  "model": "sonnet",
+  "klinVersion": "klin 0.2.0",
+  "hostVersion": "2.1.276 (Claude Code)",
+  "selectedFamilies": [
+    "complexity",
+    "dead-symbols",
+    "doc-citations",
+    "escapes",
+    "inventory",
+    "lockfile",
+    "public-api",
+    "reachability",
+    "stubs"
+  ],
+  "order": [
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 0,
+      "trialId": "204dafeebde0"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "control",
+      "arm": "active",
+      "order": 1,
+      "trialId": "3c964e54cbbb"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "control",
+      "arm": "active",
+      "order": 2,
+      "trialId": "ee674502d8af"
+    },
+    {
+      "family": "inventory",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 3,
+      "trialId": "d38c58826cda"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "arm": "active",
+      "order": 4,
+      "trialId": "4a553864dbd4"
+    },
+    {
+      "family": "escapes",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 5,
+      "trialId": "f2ea5eed4900"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "arm": "active",
+      "order": 6,
+      "trialId": "1e902384e51e"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "arm": "active",
+      "order": 7,
+      "trialId": "7d90d25eb418"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 8,
+      "trialId": "e07f90edd038"
+    },
+    {
+      "family": "escapes",
+      "variant": "control",
+      "arm": "active",
+      "order": 9,
+      "trialId": "f8a7d6424184"
+    },
+    {
+      "family": "reachability",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 10,
+      "trialId": "f5cfbb893f67"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 11,
+      "trialId": "34e696b37ef3"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 12,
+      "trialId": "24a77b9c0697"
+    },
+    {
+      "family": "stubs",
+      "variant": "control",
+      "arm": "active",
+      "order": 13,
+      "trialId": "9f539d81b6dc"
+    },
+    {
+      "family": "complexity",
+      "variant": "control",
+      "arm": "active",
+      "order": 14,
+      "trialId": "f5d65a47bbad"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "arm": "active",
+      "order": 15,
+      "trialId": "36932ee4abcc"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 16,
+      "trialId": "dd332d6e80fa"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 17,
+      "trialId": "4cecffe13556"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 18,
+      "trialId": "da2615311f92"
+    },
+    {
+      "family": "stubs",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 19,
+      "trialId": "ee68df333a17"
+    },
+    {
+      "family": "lockfile",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 20,
+      "trialId": "3a079e246fb3"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 21,
+      "trialId": "6a82d3514e7f"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 22,
+      "trialId": "2eabaca409d1"
+    },
+    {
+      "family": "complexity",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 23,
+      "trialId": "adabc990ceeb"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "arm": "active",
+      "order": 24,
+      "trialId": "b7f293ef10cd"
+    },
+    {
+      "family": "public-api",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 25,
+      "trialId": "45d65ad48114"
+    },
+    {
+      "family": "public-api",
+      "variant": "control",
+      "arm": "active",
+      "order": 26,
+      "trialId": "767ebcb64476"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "control",
+      "arm": "shadow",
+      "order": 27,
+      "trialId": "012ed1f63e39"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "arm": "active",
+      "order": 28,
+      "trialId": "d6a8003d6f93"
+    },
+    {
+      "family": "inventory",
+      "variant": "control",
+      "arm": "active",
+      "order": 29,
+      "trialId": "6e0fccd68077"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "arm": "active",
+      "order": 30,
+      "trialId": "ffb819369bbc"
+    },
+    {
+      "family": "reachability",
+      "variant": "control",
+      "arm": "active",
+      "order": 31,
+      "trialId": "77957964681e"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "arm": "active",
+      "order": 32,
+      "trialId": "9e95e38438f5"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "arm": "shadow",
+      "order": 33,
+      "trialId": "45f69a8fb3e6"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "arm": "active",
+      "order": 34,
+      "trialId": "50a25787fb6b"
+    },
+    {
+      "family": "lockfile",
+      "variant": "control",
+      "arm": "active",
+      "order": 35,
+      "trialId": "4a475a20db09"
+    }
+  ]
+}

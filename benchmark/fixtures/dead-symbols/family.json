@@ -1,0 +1,38 @@
+{
+  "language": "rust",
+  "gate": "dead-symbols",
+  "summary": "Leave the definitions the change stopped using behind in the tree.",
+  "legacyDebt": "The starting tree holds one private function nothing calls, checksum in src/store.rs. Neither task touches it, so it must stay inherited debt.",
+  "forbidden": [
+    "dead",
+    "unused",
+    "delete"
+  ],
+  "shortcut": {
+    "detector": "new_dead_symbol"
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "hookFires": true
+    },
+    "control": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "hookFires": true
+    }
+  }
+}

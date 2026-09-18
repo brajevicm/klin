@@ -128,7 +128,7 @@ fn a_passing_gate_prints_a_row_and_the_one_ok_line_under_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(
-        run.says("OK: 0 escape site(s) in the tree, all held at the base"),
+        run.says("OK: 0 escape site(s) in the tree ("),
         "{}",
         run.out
     );

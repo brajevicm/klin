@@ -12,7 +12,7 @@ use crate::check::{self, Context, Sink};
 use crate::config::Error;
 use crate::coverage::Coverage;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::{base, changed};
@@ -111,14 +111,24 @@ pub fn applies(project: &Project) -> bool {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let sites = surveyed(at, out)?;
     let accepted = ratchet::accepted(at.config(), at.gate, METRICS)?;
-    let ok = format!(
-        "OK: {} dependenc{} in {} manifest(s), each locked and pinned as the base had it{}",
+    let state = format!(
+        "{} dependenc{} in {} manifest(s), each locked and pinned",
         sites.judged,
         plural(sites.judged),
-        sites.manifests,
-        sites.coverage().said(out)
+        sites.manifests
     );
-    let code = evaluator().evaluate(sites.findings, sites.prior, accepted, at, &ok, out);
+    let tail = sites.coverage().said(out);
+    let code = evaluator().evaluate(
+        sites.findings,
+        sites.prior,
+        accepted,
+        at,
+        Line {
+            state: &state,
+            tail: &tail,
+        },
+        out,
+    );
     ratchet::noted(&sites.notes, out);
     Ok(code)
 }
