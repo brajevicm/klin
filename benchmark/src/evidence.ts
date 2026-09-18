@@ -29,6 +29,7 @@ interface RecordShape {
   kind?: unknown;
   publishable?: unknown;
   trialId?: unknown;
+  replaces?: unknown;
   infrastructure?: { valid?: unknown };
 }
 
@@ -239,6 +240,28 @@ function copySlim(
   return { attempts: found };
 }
 
+function reachesScheduled(
+  record: RecordShape,
+  held: { record: RecordShape }[],
+  scheduled: Set<string>,
+): boolean {
+  const byId = new Map(held.map((one) => [String(one.record.trialId ?? ""), one.record] as const));
+  const seen = new Set<string>();
+  let at: RecordShape | undefined = record;
+  while (at) {
+    const id = String(at.trialId ?? "");
+    if (scheduled.has(id)) {
+      return true;
+    }
+    if (typeof at.replaces !== "string" || at.replaces === "" || seen.has(id)) {
+      return false;
+    }
+    seen.add(id);
+    at = byId.get(at.replaces);
+  }
+  return false;
+}
+
 function runCounts(
   read: { attempts: { id: string; record: RecordShape }[] },
   order: Manifest["order"] = [],
@@ -256,10 +279,12 @@ function runCounts(
   return {
     attempts: read.attempts.length,
     validRuns: valid.length,
+    // A replacement carries an id the schedule could not know, so it counts when its chain of
+    // `replaces` reaches a scheduled record. `round.verify` holds the chain itself; this only counts.
     scheduledValidRuns:
       scheduled.size === 0
         ? valid.length
-        : valid.filter((one) => scheduled.has(String(one.record.trialId ?? ""))).length,
+        : valid.filter((one) => reachesScheduled(one.record, read.attempts, scheduled)).length,
   };
 }
 

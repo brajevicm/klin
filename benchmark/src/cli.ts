@@ -7,6 +7,7 @@ import * as calibrate from "./calibrate.ts";
 import * as probe from "./probe.ts";
 import * as report from "./report.ts";
 import * as evidence from "./evidence.ts";
+import * as round from "./round.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
@@ -15,8 +16,11 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family] [--into DIR]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
+  node benchmark/src/cli.ts plan [--into DIR] [--seed N]
+  node benchmark/src/cli.ts execute <round-dir>
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
+  node benchmark/src/cli.ts scorecard <round-dir> [--out FILE]
   node benchmark/src/cli.ts evidence-prepare <runs-dir> --into DIR --archive FILE
   node benchmark/src/cli.ts evidence-verify <evidence-dir> [--archive FILE]
 
@@ -102,8 +106,16 @@ function runSelftest(only: string[]): number {
   return failed === 0 ? 0 : 1;
 }
 
+function kindOf(directory: string): string {
+  const file = path.join(directory, "manifest.json");
+  if (!fs.existsSync(file)) {
+    return "calibration";
+  }
+  return String((JSON.parse(fs.readFileSync(file, "utf8")) as { kind?: string }).kind ?? "calibration");
+}
+
 function verify(directory: string): number {
-  const problems = calibrate.verify(directory);
+  const problems = kindOf(directory) === "publishable" ? round.verify(directory) : calibrate.verify(directory);
   for (const line of problems) {
     process.stdout.write(line + "\n");
   }
@@ -191,8 +203,40 @@ export function main(argv: string[]): number {
       seed: Number(flag(args, "--seed", "1")),
     });
   }
+  if (command === "plan") {
+    return round.plan(flag(args, "--into", round.roundDirectory()), Number(flag(args, "--seed", "1")));
+  }
+  if (command === "execute") {
+    if (!args[0]) {
+      process.stdout.write("execute needs a planned round directory\n\n" + USAGE);
+      return 2;
+    }
+    return round.execute(args[0]);
+  }
   if (command === "verify") {
     return verify(args[0] ?? "");
+  }
+  if (command === "scorecard") {
+    if (!args[0] || kindOf(args[0]) !== "publishable") {
+      process.stdout.write("scorecard needs a publishable round directory\n\n" + USAGE);
+      return 2;
+    }
+    let card: round.Scorecard;
+    try {
+      card = round.scorecard(args[0]);
+    } catch (why) {
+      process.stdout.write(String(why) + "\n");
+      return 2;
+    }
+    fs.writeFileSync(path.join(args[0], "scorecard.json"), JSON.stringify(card, null, 2) + "\n");
+    const text = round.markdown(card);
+    const out = flag(args, "--out", "");
+    if (out) {
+      fs.writeFileSync(out, text);
+    } else {
+      process.stdout.write(text);
+    }
+    return card.verification.length === 0 ? 0 : 1;
   }
   if (command === "report") {
     const text = report.write(args[0] ?? "");

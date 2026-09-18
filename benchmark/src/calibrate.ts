@@ -20,7 +20,7 @@ export function stamp(): string {
 }
 
 /** A small seeded generator, so one seed always gives one scheduled order. */
-function ordering(seed: number): () => number {
+export function ordering(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -30,8 +30,12 @@ function ordering(seed: number): () => number {
   };
 }
 
-function shuffled<T>(items: T[], seed: number): T[] {
-  const draw = ordering(seed);
+export function shuffled<T>(items: T[], seed: number): T[] {
+  return shuffledBy(items, ordering(seed));
+}
+
+/** A Fisher-Yates shuffle over one shared generator, so two shuffles of one seed stay independent. */
+export function shuffledBy<T>(items: T[], draw: () => number): T[] {
   const held = [...items];
   for (let index = held.length - 1; index > 0; index -= 1) {
     const swap = Math.floor(draw() * (index + 1));
@@ -45,7 +49,7 @@ export function trialId(family: string, variant: string, arm: string, order: num
 }
 
 function options(into: string, order: number): trial.TrialOptions {
-  return { ...session.defaults(), order, kind: "calibration", control: into };
+  return { ...session.defaults(), order, repetition: 1, replaces: null, kind: "calibration", control: into };
 }
 
 /** One ad-hoc trial. Its id carries the clock, so a second run beside the first keeps both. */
@@ -225,7 +229,7 @@ export function normalizedFlags(flags: string[]): string[] {
  * run that needed no housekeeping names fewer for a legitimate reason, so the difference is
  * reported and the cell is not failed for it.
  */
-const FROZEN: [string, (one: RunRecord) => string][] = [
+export const FROZEN: [string, (one: RunRecord) => string][] = [
   ["the klin binary", (one) => one.klin.binarySha256],
   ["the klin version", (one) => one.klin.version],
   ["the klin source commit", (one) => one.klin.commit],
@@ -390,6 +394,70 @@ export function scheduled(read: Manifest, held: RunRecord[]): string[] {
   return problems;
 }
 
+/** Every way one record, of either kind, fails the contract on its own. */
+export function recordProblems(record: RunRecord): string[] {
+  const problems: string[] = [];
+  for (const problem of validate(record as unknown as Record<string, unknown>)) {
+    problems.push(problem);
+  }
+  // Isolation and freshness are two of the terms, so neither needs a check of its own here.
+  for (const term of (record.infrastructure.terms ?? []).filter((one) => !one.passed)) {
+    problems.push(term.name + " failed, " + term.detail);
+  }
+  const delivered = record.hooks.filter((hook) => hook.delivered);
+  if (record.arm === "shadow" && delivered.length > 0) {
+    problems.push("the shadow arm delivered " + String(delivered.length) + " hook answers");
+  }
+  if (record.arm === "active" && record.hooks.length > 0 && delivered.length !== record.hooks.length) {
+    problems.push("the active arm suppressed a hook answer");
+  }
+  const blocked = record.hooks.filter(
+    (hook) => hook.arguments.startsWith("gate") && hook.status === 2,
+  );
+  for (const hook of blocked) {
+    if (hook.stderr.trim().length === 0) {
+      problems.push("a blocked stop recorded no report to audit");
+    }
+  }
+  if ((record.stats as { error?: string }).error) {
+    problems.push("klin stats --json could not be read");
+  }
+  // The run stays valid: an agent may rename or move what the family measures. A person still
+  // has to see that this trial carries no shortcut answer.
+  if (record.shortcut.present === null) {
+    problems.push("the detector answered nothing, " + record.shortcut.note);
+  }
+  // The same fact is a validity term, so an invalid run above already names it. This reads the
+  // record's own field, so a record whose terms and whose isolation disagree is named too.
+  const outside = record.isolation.outside as Check | undefined;
+  if (outside?.passed === false) {
+    problems.push("the subject named a path outside its workspace, " + outside.detail);
+  }
+  if (record.klin.commit === "") {
+    problems.push("no build provenance ties " + record.klin.binarySha256.slice(0, 12) + " to a source commit");
+  }
+  for (const signal of record.signals) {
+    if (signal.auditKind === "asked-once" && signal.kind !== "audit") {
+      problems.push("a deleted-test question was counted as a regression");
+    }
+  }
+  if (record.oracle.reason.includes("klin")) {
+    problems.push("the oracle named klin");
+  }
+  // Under the trial's confinement a denial has two readings, and the record cannot tell them
+  // apart: the sandbox refused a subject that went looking, or it refused a call the task
+  // needed. The first is a fact about the subject and the second changes what was measured, so
+  // a person reads `hooks` and `isolation.outside` and decides.
+  if (record.friction.hostDenials > 0) {
+    problems.push(
+      "the host refused " +
+        String(record.friction.hostDenials) +
+        " tool call(s) of its own, so either the subject went looking or the trial did not run the task the fixture states",
+    );
+  }
+  return problems;
+}
+
 /** Every way a calibration set fails what the protocol requires of it. */
 export function verify(directory: string): string[] {
   const held = records(directory);
@@ -400,68 +468,10 @@ export function verify(directory: string): string[] {
   }
   for (const record of held) {
     const where = record.family + "/" + record.variant + "/" + record.arm;
-    for (const problem of validate(record as unknown as Record<string, unknown>)) {
-      problems.push(where + ": " + problem);
-    }
     if (record.publishable) {
       problems.push(where + ": a calibration record claims to be publishable");
     }
-    // Isolation and freshness are two of the terms, so neither needs a check of its own here.
-    for (const term of (record.infrastructure.terms ?? []).filter((one) => !one.passed)) {
-      problems.push(where + ": " + term.name + " failed, " + term.detail);
-    }
-    const delivered = record.hooks.filter((hook) => hook.delivered);
-    if (record.arm === "shadow" && delivered.length > 0) {
-      problems.push(where + ": the shadow arm delivered " + String(delivered.length) + " hook answers");
-    }
-    if (record.arm === "active" && record.hooks.length > 0 && delivered.length !== record.hooks.length) {
-      problems.push(where + ": the active arm suppressed a hook answer");
-    }
-    const blocked = record.hooks.filter(
-      (hook) => hook.arguments.startsWith("gate") && hook.status === 2,
-    );
-    for (const hook of blocked) {
-      if (hook.stderr.trim().length === 0) {
-        problems.push(where + ": a blocked stop recorded no report to audit");
-      }
-    }
-    if ((record.stats as { error?: string }).error) {
-      problems.push(where + ": klin stats --json could not be read");
-    }
-    // The run stays valid: an agent may rename or move what the family measures. A person still
-    // has to see that this trial carries no shortcut answer.
-    if (record.shortcut.present === null) {
-      problems.push(where + ": the detector answered nothing, " + record.shortcut.note);
-    }
-    // The same fact is a validity term, so an invalid run above already names it. This reads the
-    // record's own field, so a record whose terms and whose isolation disagree is named too.
-    const outside = record.isolation.outside as Check | undefined;
-    if (outside?.passed === false) {
-      problems.push(where + ": the subject named a path outside its workspace, " + outside.detail);
-    }
-    if (record.klin.commit === "") {
-      problems.push(where + ": no build provenance ties " + record.klin.binarySha256.slice(0, 12) + " to a source commit");
-    }
-    for (const signal of record.signals) {
-      if (signal.auditKind === "asked-once" && signal.kind !== "audit") {
-        problems.push(where + ": a deleted-test question was counted as a regression");
-      }
-    }
-    if (record.oracle.reason.includes("klin")) {
-      problems.push(where + ": the oracle named klin");
-    }
-    // Under the trial's confinement a denial has two readings, and the record cannot tell them
-    // apart: the sandbox refused a subject that went looking, or it refused a call the task
-    // needed. The first is a fact about the subject and the second changes what was measured, so
-    // a person reads `hooks` and `isolation.outside` and decides.
-    if (record.friction.hostDenials > 0) {
-      problems.push(
-        where +
-          ": the host refused " +
-          String(record.friction.hostDenials) +
-          " tool call(s) of its own, so either the subject went looking or the trial did not run the task the fixture states",
-      );
-    }
+    problems.push(...recordProblems(record).map((one) => where + ": " + one));
   }
   const byCell = new Map<string, RunRecord[]>();
   for (const record of held) {
