@@ -10,6 +10,6 @@
   "scheduledValidRuns": 36,
   "runManifestSha256": "46719a0d2f753e07b843eab4a52b73fe4a538537751b69932f40617b66a4cb30",
   "rawFilesManifestSha256": "ccf36960fa0303fa40797fcb44a614d6fa6a3787c9885250aa75c323d145e7c4",
-  "release": null,
+  "release": "https://github.com/brajevicm/klin/releases/tag/benchmark-calibration-2026-09-18",
   "sigstoreBundle": null
 }
