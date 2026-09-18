@@ -194,6 +194,28 @@ local provenance reference if controlled measurements isolate a real cost.
 This decision does not justify repository-wide `FileId`, path interning,
 persistent graph/SCC state, parallel resolution or a resident service.
 
+## Implementation (#220)
+
+- `Module.sources` is a sorted, duplicate-free, non-empty `Vec<String>`. Rust
+  and TypeScript modules hold one file. Module identity stays the resolver's
+  `name`; `ModuleGraph::identity` maps only a leading source path through a
+  rename.
+- `Dependency.source` is a `u32` position in the writing module's `sources`,
+  so a site names its exact file with no owned path per edge.
+  `ModuleGraph::source` resolves it and `reached_at` takes the file.
+- `layering` places each physical file once, folds each module once into
+  `All` or `Mixed` for scope and layer, and judges a site by lookup. A site on
+  a mixed destination is reported with the unresolved dependency forms and
+  gets no verdict.
+- `ModuleGraph::cycles` takes a per-site predicate, deduplicates the selected
+  `(from, to)` pairs, and runs SCCs over the modules those pairs join.
+- The semantic bridge is the ratchet's existing cross-file pass: a layering
+  finding carries a body hash of the writing module's identity and the key
+  text. Accepted entries carry no body hash, so they never follow a move.
+- The graph cost counts modules, source memberships, dependency sites,
+  distinct semantic edges and resolver dispatches by language. The surface
+  cost counts surface dispatches by language.
+
 ## Language probes
 
 The design was challenged against Rust, TypeScript, Go, Python, Java, C#,

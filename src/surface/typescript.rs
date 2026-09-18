@@ -25,7 +25,7 @@ pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Derived
         .iter()
         .enumerate()
         .filter(|(_, module)| module.target.is_none() && module.nesting.is_empty())
-        .map(|(at, module)| (module.file.as_str(), at))
+        .flat_map(|(at, module)| module.sources.iter().map(move |file| (file.as_str(), at)))
         .collect();
     let mut derivation = Derivation {
         topology,
@@ -136,7 +136,7 @@ impl<'a> Derivation<'a> {
         let mut reached = Vec::new();
         self.reached(module, &mut reached);
         for at in reached {
-            surface.files.push(self.graph.modules[at].file.clone());
+            surface.files.push(self.file(at).to_string());
             surface
                 .holes
                 .extend(self.holes.get(&at).into_iter().flatten().cloned());
@@ -155,7 +155,7 @@ impl<'a> Derivation<'a> {
         };
         for export in &facts.exports {
             if export.source.is_some() {
-                for to in self.graph.reached_at(at, export.line) {
+                for to in self.graph.reached_at(at, self.file(at), export.line) {
                     self.reached(to, out);
                 }
             }
@@ -163,7 +163,12 @@ impl<'a> Derivation<'a> {
     }
 
     fn facts(&self, at: usize) -> Option<&'a FileFacts> {
-        self.topology.facts(&self.graph.modules[at].file)
+        self.topology.facts(self.file(at))
+    }
+
+    /// The file a TypeScript module is: its one source.
+    fn file(&self, at: usize) -> &'a str {
+        &self.graph.modules[at].sources[0]
     }
 
     /// The package name and every entry its metadata names, and `None` for a manifest that is
@@ -285,7 +290,7 @@ impl<'a> Derivation<'a> {
     }
 
     fn derive_module(&mut self, at: usize) -> (Vec<Item>, Vec<Hole>) {
-        let file = self.graph.modules[at].file.clone();
+        let file = self.file(at).to_string();
         let Some(facts) = self.facts(at) else {
             let hole = Hole {
                 file,
@@ -356,7 +361,12 @@ impl<'a> Derivation<'a> {
     /// A clause with a source: through the module graph's edge for its line, or as an external
     /// package where the graph has none and the specifier is not relative.
     fn re_export(&mut self, at: usize, export: &Export, specifier: &str, into: &mut Exposing) {
-        let Some(target) = self.graph.reached_at(at, export.line).first().copied() else {
+        let Some(target) = self
+            .graph
+            .reached_at(at, self.file(at), export.line)
+            .first()
+            .copied()
+        else {
             match relative(specifier) {
                 true => into.holes.push(Hole {
                     file: into.file.clone(),

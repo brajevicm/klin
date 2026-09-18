@@ -16,12 +16,27 @@ use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 
 use crate::syntax::structural::FileFacts;
+use crate::syntax::{self, LanguageId};
 
 mod rust;
 mod typescript;
 
-/// One resolver per structural language. A new language is a resolver file and one entry here.
-const RESOLVERS: &[fn(&mut Builder)] = &[rust::resolve, typescript::resolve];
+type Resolve = fn(&mut Builder);
+
+/// One resolver per structural language, run only over a tree that lists a path of that
+/// language. A new language is a resolver file and one entry here.
+const RESOLVERS: &[(LanguageId, Resolve)] = &[
+    (LanguageId::Rust, rust::resolve),
+    (LanguageId::TypeScript, typescript::resolve),
+];
+
+/// The manifests that make a language present in a tree with no source of it, because its
+/// resolver or surface reads them: a Cargo manifest names Rust targets, a package manifest
+/// names TypeScript entry points.
+const MANIFESTS: &[(&str, LanguageId)] = &[
+    ("Cargo.toml", LanguageId::Rust),
+    ("package.json", LanguageId::TypeScript),
+];
 
 /// One tree as the graph reads it: every file under the path its topology gives it, the facts of
 /// its structural files, and where each path's bytes sit. The base tree names a renamed file by
@@ -31,6 +46,7 @@ pub struct Topology<'a> {
     files: Vec<String>,
     physical: HashMap<String, String>,
     facts: HashMap<String, Rc<FileFacts>>,
+    present: Vec<LanguageId>,
 }
 
 impl<'a> Topology<'a> {
@@ -48,6 +64,7 @@ impl<'a> Topology<'a> {
         listed.dedup();
         Topology {
             root,
+            present: present(&listed),
             files: listed,
             physical: named
                 .iter()
@@ -58,6 +75,13 @@ impl<'a> Topology<'a> {
                 .map(|held| (topology(&held.file), Rc::clone(held)))
                 .collect(),
         }
+    }
+
+    /// Whether the tree lists a source or manifest path of this language, which is what decides
+    /// whether a resolver or a surface derivation of it runs. A source whose grammar refused it
+    /// still counts, because a resolver still places it.
+    pub fn present(&self, language: LanguageId) -> bool {
+        self.present.contains(&language)
     }
 
     /// Whether the tree lists a file at this path.
@@ -107,22 +131,70 @@ impl<'a> Topology<'a> {
     }
 }
 
-/// What building the graphs of a gate's trees cost: their modules, their dependencies, and the
-/// time resolution and cycle finding took. Spec 11.2, 13.
+/// The languages of the resolvers a tree lists a path for, from the file list it already holds.
+/// The scan stops once every registered language is found.
+fn present(files: &[String]) -> Vec<LanguageId> {
+    let mut out: Vec<LanguageId> = Vec::new();
+    for file in files {
+        if out.len() == RESOLVERS.len() {
+            break;
+        }
+        let name = file.rsplit('/').next().unwrap_or(file);
+        let language = syntax::language_of(file)
+            .map(|language| language.id)
+            .or_else(|| {
+                MANIFESTS
+                    .iter()
+                    .find(|(held, _)| *held == name)
+                    .map(|(_, id)| *id)
+            });
+        if let Some(id) = language.filter(|id| RESOLVERS.iter().any(|(held, _)| held == id))
+            && !out.contains(&id)
+        {
+            out.push(id);
+        }
+    }
+    out
+}
+
+/// What building the graphs of a gate's trees cost: their modules, the physical sources those
+/// modules hold, their dependency sites, the distinct module pairs those sites join, the
+/// resolvers each language dispatched, and the time resolution and cycle finding took. Spec
+/// 11.2, 13.
 #[derive(Default, Clone, Copy)]
 pub struct GraphCost {
     pub modules: usize,
+    pub sources: usize,
     pub dependencies: usize,
+    pub edges: usize,
+    pub dispatches: [usize; RESOLVERS.len()],
     pub time: Duration,
+}
+
+impl GraphCost {
+    /// Each registered resolver's language with how many times it ran.
+    pub fn dispatched(&self) -> impl Iterator<Item = (LanguageId, usize)> + '_ {
+        RESOLVERS
+            .iter()
+            .zip(self.dispatches)
+            .map(|((language, _), count)| (*language, count))
+    }
 }
 
 impl std::ops::Add for GraphCost {
     type Output = GraphCost;
 
     fn add(self, other: GraphCost) -> GraphCost {
+        let mut dispatches = self.dispatches;
+        for (held, more) in dispatches.iter_mut().zip(other.dispatches) {
+            *held += more;
+        }
         GraphCost {
             modules: self.modules + other.modules,
+            sources: self.sources + other.sources,
             dependencies: self.dependencies + other.dependencies,
+            edges: self.edges + other.edges,
+            dispatches,
             time: self.time + other.time,
         }
     }
@@ -157,12 +229,15 @@ pub struct Target {
     pub module: usize,
 }
 
-/// One module: the name a report prints and the file that holds it. One file may hold several
-/// modules, and one file under two targets is a module under each. A Rust module also knows
-/// its place in its target's tree; a TypeScript module is a file and stands alone.
+/// One module: the name a report prints, which is its resolver's identity for it, and the
+/// physical files that hold it. A module holds at least one file, in path order, each once, and
+/// the order means nothing. One file may hold several modules, and one file under two targets is
+/// a module under each. A Rust module is one file or inline in one, and a TypeScript module is
+/// one file; a resolver for another language may group several files into one module. A Rust
+/// module also knows its place in its target's tree; a TypeScript module stands alone. ADR 0047.
 pub struct Module {
     pub name: String,
-    pub file: String,
+    pub sources: Vec<String>,
     /// The inline modules between the file and this module, outermost first.
     pub nesting: Vec<String>,
     /// The target this module belongs to, and `None` for a module no target owns.
@@ -189,10 +264,13 @@ pub enum Resolved {
     Unresolved,
 }
 
-/// One resolved dependency of one module on another, at the line that writes it.
+/// One resolved dependency of one module on another, at the physical site that writes it: the
+/// position of that file among the writing module's sources, and the line. `ModuleGraph::source`
+/// names the file.
 pub struct Dependency {
     pub from: usize,
     pub to: usize,
+    pub source: u32,
     pub line: u64,
 }
 
@@ -215,6 +293,7 @@ pub struct ModuleGraph {
     pub attached: BTreeMap<String, Attachment>,
     /// The structural files no resolver made a module of, such as a Rust file no target reaches.
     pub unattached: Vec<String>,
+    pub dispatches: [usize; RESOLVERS.len()],
     pub time: Duration,
 }
 
@@ -225,16 +304,23 @@ pub(crate) struct Builder<'a> {
 }
 
 impl Builder<'_> {
-    fn module(&mut self, name: String, file: &str, attachment: Attachment) -> usize {
-        let held = self
-            .graph
-            .attached
-            .entry(file.to_string())
-            .or_insert(attachment);
-        *held = (*held).min(attachment);
+    /// A module of these files, each of which counts as attached on its own.
+    fn module(&mut self, name: String, files: &[&str], attachment: Attachment) -> usize {
+        let mut sources: Vec<String> = files.iter().map(|file| file.to_string()).collect();
+        sources.sort_unstable();
+        sources.dedup();
+        assert!(!sources.is_empty(), "a module holds at least one file");
+        for file in &sources {
+            let held = self
+                .graph
+                .attached
+                .entry(file.clone())
+                .or_insert(attachment);
+            *held = (*held).min(attachment);
+        }
         self.graph.modules.push(Module {
             name,
-            file: file.to_string(),
+            sources,
             nesting: Vec::new(),
             target: None,
             parent: None,
@@ -244,8 +330,18 @@ impl Builder<'_> {
         self.graph.modules.len() - 1
     }
 
-    fn depend(&mut self, from: usize, to: usize, line: u64) {
-        self.graph.dependencies.push(Dependency { from, to, line });
+    /// A dependency written in `file`, which is one of the writing module's own sources.
+    fn depend(&mut self, from: usize, to: usize, file: &str, line: u64) {
+        let source = self.graph.modules[from]
+            .sources
+            .binary_search_by(|held| held.as_str().cmp(file))
+            .expect("a dependency is written in a source of its module");
+        self.graph.dependencies.push(Dependency {
+            from,
+            to,
+            source: source as u32,
+            line,
+        });
     }
 
     fn hole(&mut self, file: &str, line: u64, text: &str, why: String) {
@@ -258,23 +354,23 @@ impl Builder<'_> {
     }
 }
 
-/// The graph of one tree, every resolver run over it once.
+/// The graph of one tree, each resolver whose language the tree holds run over it once.
 pub fn build(topology: &Topology) -> ModuleGraph {
     let started = Instant::now();
     let mut builder = Builder {
         topology,
         graph: ModuleGraph::default(),
     };
-    for resolve in RESOLVERS {
-        resolve(&mut builder);
+    for (at, (language, resolve)) in RESOLVERS.iter().enumerate() {
+        if topology.present(*language) {
+            builder.graph.dispatches[at] += 1;
+            resolve(&mut builder);
+        }
     }
     let mut graph = builder.graph;
-    graph
-        .dependencies
-        .sort_unstable_by_key(|held| (held.from, held.to, held.line));
-    graph
-        .dependencies
-        .dedup_by_key(|held| (held.from, held.to, held.line));
+    let site = |held: &Dependency| (held.from, held.to, held.source, held.line);
+    graph.dependencies.sort_unstable_by_key(site);
+    graph.dependencies.dedup_by_key(|held| site(held));
     graph.holes.sort_by(|a, b| {
         (&a.file, a.line, &a.text, &a.why).cmp(&(&b.file, b.line, &b.text, &b.why))
     });
@@ -293,33 +389,52 @@ pub fn build(topology: &Topology) -> ModuleGraph {
     graph
 }
 
-/// The cycles among the modules one selection keeps: which dependencies close one, and one
-/// path that shows it.
+/// The cycles among the dependencies one selection keeps: which dependencies close one, one
+/// path that shows it, and how many distinct module pairs the components were found over.
 pub struct Cycles<'g> {
     graph: &'g ModuleGraph,
     component: Vec<Option<usize>>,
     next: Vec<Vec<usize>>,
+    edges: usize,
 }
 
 impl ModuleGraph {
     /// What building this graph cost.
     pub fn cost(&self) -> GraphCost {
+        let edges = self
+            .dependencies
+            .windows(2)
+            .filter(|pair| (pair[0].from, pair[0].to) != (pair[1].from, pair[1].to))
+            .count()
+            + usize::from(!self.dependencies.is_empty());
         GraphCost {
             modules: self.modules.len(),
+            sources: self.modules.iter().map(|module| module.sources.len()).sum(),
             dependencies: self.dependencies.len(),
+            edges,
+            dispatches: self.dispatches,
             time: self.time,
         }
     }
 
-    /// The name that identifies a module under current paths: its file under `current`, with the
-    /// inline modules its name adds after that file.
+    /// The physical file that writes a dependency.
+    pub fn source(&self, dependency: &Dependency) -> &str {
+        &self.modules[dependency.from].sources[dependency.source as usize]
+    }
+
+    /// The name that identifies a module under current paths: its resolver's name, with the
+    /// source path it starts with, if any, under `current`. A renamed file keeps the identity of
+    /// the modules it holds.
     pub fn identity(&self, module: usize, current: impl Fn(&str) -> String) -> String {
         let held = &self.modules[module];
-        let inline = held
-            .name
-            .strip_prefix(held.file.as_str())
-            .unwrap_or_default();
-        format!("{}{inline}", current(&held.file))
+        held.sources
+            .iter()
+            .find_map(|file| Some((file, held.name.strip_prefix(file.as_str())?)))
+            .filter(|(_, rest)| rest.is_empty() || rest.starts_with("::"))
+            .map_or_else(
+                || held.name.clone(),
+                |(file, rest)| format!("{}{rest}", current(file)),
+            )
     }
 
     /// The module a path names from this module, and the segments left after it. `crate` starts
@@ -388,34 +503,39 @@ impl ModuleGraph {
         Resolved::Module { module: at, rest }
     }
 
-    /// Every module the dependencies one line of a module writes resolve to.
-    pub fn reached_at(&self, from: usize, line: u64) -> Vec<usize> {
+    /// Every module the dependencies one line of one file of a module writes resolve to.
+    pub fn reached_at(&self, from: usize, file: &str, line: u64) -> Vec<usize> {
         self.dependencies
             .iter()
             .filter(|dependency| dependency.from == from && dependency.line == line)
+            .filter(|dependency| self.source(dependency) == file)
             .map(|dependency| dependency.to)
             .collect()
     }
 
-    /// The strongly connected components of the dependencies between the modules `keep` selects.
-    pub fn cycles(&self, keep: impl Fn(&Module) -> bool) -> Cycles<'_> {
-        let mut graph: DiGraph<usize, ()> = DiGraph::new();
-        let nodes: Vec<Option<NodeIndex>> = self
-            .modules
+    /// The strongly connected components of the modules the dependency sites `keep` selects
+    /// join. The sites are physical, so a scope judges each file that writes one; the components
+    /// are over modules, and every selected pair of modules is one edge however many sites
+    /// write it.
+    pub fn cycles(&self, keep: impl Fn(&Dependency) -> bool) -> Cycles<'_> {
+        let mut pairs: Vec<(usize, usize)> = self
+            .dependencies
             .iter()
-            .enumerate()
-            .map(|(at, module)| keep(module).then(|| graph.add_node(at)))
+            .filter(|dependency| keep(dependency))
+            .map(|dependency| (dependency.from, dependency.to))
             .collect();
+        pairs.dedup();
+        let mut graph: DiGraph<usize, ()> = DiGraph::new();
+        let mut nodes: Vec<Option<NodeIndex>> = vec![None; self.modules.len()];
         let mut next = vec![Vec::new(); self.modules.len()];
-        for dependency in &self.dependencies {
-            if let (Some(from), Some(to)) = (nodes[dependency.from], nodes[dependency.to]) {
-                graph.add_edge(from, to, ());
-                next[dependency.from].push(dependency.to);
-            }
+        for (from, to) in &pairs {
+            let mut node = |at: usize| *nodes[at].get_or_insert_with(|| graph.add_node(at));
+            let (a, b) = (node(*from), node(*to));
+            graph.add_edge(a, b, ());
+            next[*from].push(*to);
         }
         for targets in &mut next {
             targets.sort_by(|a, b| self.modules[*a].name.cmp(&self.modules[*b].name));
-            targets.dedup();
         }
         let mut component = vec![None; self.modules.len()];
         for (id, members) in tarjan_scc(&graph).into_iter().enumerate() {
@@ -427,11 +547,18 @@ impl ModuleGraph {
             graph: self,
             component,
             next,
+            edges: pairs.len(),
         }
     }
 }
 
 impl Cycles<'_> {
+    /// How many distinct module pairs the components were found over.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn edges(&self) -> usize {
+        self.edges
+    }
+
     /// Whether this dependency joins two modules of one component, which is a cycle, and a
     /// dependency of a module on itself is one.
     pub fn closes(&self, dependency: &Dependency) -> bool {

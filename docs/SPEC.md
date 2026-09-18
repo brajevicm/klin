@@ -1685,10 +1685,36 @@ bare specifier, an alias and a relative specifier that names a file of another
 kind are counted as external. A `mod` declaration is containment and never a
 dependency.
 
-For every dependency between two files the shared scope selects, where both
-files sit in layers and the source layer may not use the target layer, the
-edge is forbidden. With `acyclic` true, a dependency whose two modules share a
-strongly connected component is cyclic, and a module that imports itself is
+A module is its resolver's identity and holds one or more physical files, each
+once and in no meaningful order (ADR 0047). A Rust or a TypeScript module holds
+one; a resolver for a later language may group several. Structural facts stay
+per file. Each file a resolver attaches counts on its own in the coverage
+line, so a module of ten files is ten attached files. A dependency is a
+*site*: the module that writes it, the module it reaches, and the exact file
+and line that write it. A resolver or a surface derivation runs only over a
+tree whose file list holds a path of its language: a Rust source or a
+`Cargo.toml` for Rust, a TypeScript source or a `package.json` for
+TypeScript. A source the grammar refuses still counts, so the resolver still
+places it. The file list is scanned once while the topology is built.
+
+Path policy is physical. Each file of a tree is placed once: whether the scope
+selects it and which layer holds it. Each module is then folded once over its
+files: its scope is inside where the scope selects every file, outside where it
+selects none, and mixed otherwise; its layer is a layer where every file sits
+in that one layer, none where no file sits in a layer, and mixed otherwise. A
+dependency is judged where the scope selects the file that writes it and the
+module it reaches is inside, by the layer of that file and the folded layer of
+that module. A module that is mixed is never placed by one of its files: a
+dependency on a module whose files straddle the scope, or on a module whose
+files straddle the layers from a file in a layer, is unresolved as below and
+gets no verdict.
+
+For every dependency the section judges, where the file that writes it and
+the module it reaches sit in layers and the source layer may not use the
+target layer, the edge is forbidden. With `acyclic` true, the strongly
+connected components are found over modules, with every judged pair of
+modules one edge however many sites write it. A judged dependency whose two
+modules share a component is cyclic, and a module that imports itself is
 cyclic. A forbidden edge is keyed by the file that writes it, the two layers
 and the module it reaches, named by its file and the inline modules after it,
 and a cyclic edge by the file and the module. Both carry `edge` at 1, so a base
@@ -1699,7 +1725,11 @@ shared checkout, so a changed run lays out no partial tree for it. A new cyclic 
 which explains the finding and is no part of its key. Today's policy judges
 both trees. The base places a file the window renamed under the path it had at
 the base, and its finding names the current path, so a move into another layer
-is new debt and a move inside a layer is held.
+is new debt and a move inside a layer is held. An edge that moves to another
+file of the module that writes it, with the same key text, is held: its
+finding carries the writing module's identity and the key text as the body
+hash of 4.4, so the cross-file pass pairs it. An accepted entry carries no body
+hash and never follows such a move.
 
 A module that two files answer, a module no file answers, a path above the
 crate root, and a TypeScript specifier with no candidate or with two are
@@ -1737,9 +1767,17 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_file_renamed_into_another_layer_is_placed_in_its_base_layer_at_the_base`,
 `a_changed_run_beside_a_gate_that_lays_out_changed_files_judges_the_whole_base`,
 `a_cached_changed_run_reads_and_parses_only_the_changed_file`,
-`an_accepted_forbidden_edge_is_held` and
-`without_a_section_the_gate_needs_one_a_person_writes` in
-`tests/layering.rs`. Known limit: a path inside a macro's tokens, a bare Rust
+`an_accepted_forbidden_edge_is_held`,
+`a_tree_with_no_typescript_path_dispatches_only_the_rust_resolver`,
+`rust_source_the_grammar_rejects_still_dispatches_the_rust_resolver`,
+`typescript_source_the_grammar_rejects_still_dispatches_the_typescript_resolver`
+and `without_a_section_the_gate_needs_one_a_person_writes` in
+`tests/layering.rs`. A module of several files has no resolver yet, so the
+unit tests `multi_source_work_is_linear_in_files_and_unique_edges`,
+`a_straddled_destination_is_ambiguous_and_never_judged`,
+`a_site_is_its_file_and_line` and
+`an_edge_that_moves_within_its_module_is_held_and_acceptance_stays_put` in
+`src/layering.rs` pin it over a graph built in memory. Known limit: a path inside a macro's tokens, a bare Rust
 path, a TypeScript `import()` or `require()`, `tsconfig` paths and package
 exports are not dependencies in V1.
 
@@ -1819,7 +1857,9 @@ entry points found, and the packages or targets with no supported surface.
 `klin public-api --report` prints the working tree's derived contract without
 judging it: each surface with its discovery source, each item with its
 identity, kind, origin, measured or opaque status and canonical signature,
-each hole, and each package or target not applicable. Pinned by every test in
+each hole, and each package or target not applicable. A language's surface
+derivation runs only over a tree that holds a path of that language, by the
+same rule as its resolver in `layering`. Pinned by every test in
 `tests/public_api.rs`. Known limits: a module bound by `use` and then
 re-exported by its bare name, a macro, a trait implementation's semantics,
 `cfg` evaluation, `typesVersions`, conditional exports that do not reduce to
@@ -2719,15 +2759,18 @@ One object on stdout. Fields:
   `work` is `{reads, parses}` for the file-local gates
   `complexity`, `escapes` and `stubs`, counting source contents read and parsed
   over the current and base trees; it is null for other gates or for a gate
-  that never got that far. `graph` is `{modules, dependencies, ms}` for
-  `layering` and `public-api`: the modules and resolved dependencies of both
-  trees' module graphs, and the part of the gate's `ms` spent resolving them
-  and, for `layering`, finding their cycles. It is null for other gates or for
-  a gate that never got that far. `surface` is `{surfaces, items, measured,
-  opaque, holes, ms}` for `public-api`: the surfaces and items derived over
-  both trees, how many items are measured and opaque, the holes inside the
-  surfaces, and the part of the gate's `ms` spent deriving them. It is null
-  for other gates or for a gate that never got that far.
+  that never got that far. `graph` is `{modules, sources, dependencies, edges,
+  dispatches, ms}` for `layering` and `public-api`: the modules of both
+  trees' module graphs, the files those modules hold, the dependency sites,
+  the distinct pairs of modules those sites join, how many times each
+  structural language's resolver ran, by language name, and the part of the
+  gate's `ms` spent resolving them and, for `layering`, finding their cycles.
+  It is null for other gates or for a gate that never got that far. `surface`
+  is `{surfaces, items, measured, opaque, holes, dispatches, ms}` for
+  `public-api`: the surfaces and items derived over both trees, how many items
+  are measured and opaque, the holes inside the surfaces, how many times each
+  language's derivation ran, and the part of the gate's `ms` spent deriving
+  them. It is null for other gates or for a gate that never got that far.
 - `findings` entries per 4.5 with `id`, `condition`, `fix_advice`,
   `ceiling`, and `matched`, which is the `before` site or accepted entry as
   `{file, line, text, accepted, values}`, or null for a `new` finding. The

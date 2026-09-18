@@ -623,3 +623,63 @@ fn without_a_section_the_gate_needs_one_a_person_writes() {
         run.out
     );
 }
+
+#[test]
+fn a_tree_with_no_typescript_path_dispatches_only_the_rust_resolver() {
+    let tree = Tree::new();
+    two_layers(&tree, "use crate::ui::show;\npub fn rule() { show(); }\n");
+
+    let report = tree.run(&["gate", "--json", "--gate", "layering"]).json();
+    let graph = &report["gates"][0]["graph"];
+
+    assert_eq!(
+        graph["dispatches"],
+        serde_json::json!({"rust": 1, "typescript": 0}),
+        "{report}"
+    );
+    assert_eq!(graph["sources"], graph["modules"], "{report}");
+    assert_eq!(graph["edges"], 1, "{report}");
+}
+
+#[test]
+fn rust_source_the_grammar_rejects_still_dispatches_the_rust_resolver() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"core":{"in":"src"}}}}"#,
+    );
+    tree.write("src/lib.rs", "fn broken( {\n");
+
+    let run = tree.run(&["gate", "--json", "--gate", "layering"]);
+    let report = run.json();
+
+    assert_eq!(
+        report["gates"][0]["graph"]["dispatches"]["rust"], 1,
+        "{report}"
+    );
+    assert_eq!(report["gates"][0]["graph"]["modules"], 1, "{report}");
+    assert!(
+        tree.run(&["layering"])
+            .says("1 file(s) attached, 0 by a Cargo manifest and 1 by a conventional root"),
+        "{report}"
+    );
+}
+
+#[test]
+fn typescript_source_the_grammar_rejects_still_dispatches_the_typescript_resolver() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"web":{"in":"web"}}}}"#,
+    );
+    tree.write("web/a.ts", "export function broken( {\n");
+
+    let report = tree.run(&["gate", "--json", "--gate", "layering"]).json();
+
+    assert_eq!(
+        report["gates"][0]["graph"]["dispatches"],
+        serde_json::json!({"rust": 0, "typescript": 1}),
+        "{report}"
+    );
+    assert_eq!(report["gates"][0]["graph"]["modules"], 1, "{report}");
+}

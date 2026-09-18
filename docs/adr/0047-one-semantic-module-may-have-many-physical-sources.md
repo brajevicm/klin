@@ -107,10 +107,14 @@ unchanged.
 
 ### Resolver and surface dispatch become capability-aware
 
-`Topology` already receives measured `FileFacts`. The graph derives the set of
-present structural `LanguageId`s from those facts and a static resolver
-registry dispatches only capabilities that are present. Surface derivation uses
-the same rule.
+`Topology` already normalizes the tree's file list. It collects the present
+logical `LanguageId`s in that same pass, from the source paths and from the
+manifests an adapter reads (`Cargo.toml` for Rust, `package.json` for
+TypeScript), and a static resolver registry dispatches only capabilities that
+are present. Surface derivation uses the same rule. Presence does not come from
+successful `FileFacts`: a source the grammar refused is still present, so the
+resolver still places it and today's topology, hole and coverage behavior does
+not change.
 
 Adding future adapters therefore costs only a cheap scan of registered
 capabilities when their language is absent. It causes no extra repository walk,

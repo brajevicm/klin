@@ -306,7 +306,7 @@ impl Crate<'_> {
             true => file.to_string(),
             false => format!("{file}::{}", nesting.join("::")),
         };
-        let index = builder.module(name, file, self.target.attachment);
+        let index = builder.module(name, &[file], self.target.attachment);
         let id = self.nodes.len();
         self.nodes.push(Node {
             index,
@@ -485,12 +485,12 @@ impl Crate<'_> {
                     .into_iter()
                     .flat_map(|from| import.paths.iter().map(move |path| (*from, path)))
                 {
-                    self.dependency(builder, path, import.line, &import.text);
+                    self.dependency(builder, path, (file, import.line), &import.text);
                 }
             }
             for path in &facts.paths {
                 if let Some(from) = nestings.get(&path.nesting) {
-                    self.dependency(builder, (*from, &path.path), path.line, &path.path);
+                    self.dependency(builder, (*from, &path.path), (file, path.line), &path.path);
                 }
             }
         }
@@ -500,12 +500,12 @@ impl Crate<'_> {
         &self,
         builder: &mut Builder,
         (from, path): (usize, &String),
-        line: u64,
+        (file, line): (&str, u64),
         text: &str,
     ) {
         match self.target_of(from, path) {
             Reached::Module(to) if to != from => {
-                builder.depend(self.nodes[from].index, self.nodes[to].index, line);
+                builder.depend(self.nodes[from].index, self.nodes[to].index, file, line);
             }
             Reached::External => builder.graph.external += 1,
             Reached::Above => builder.hole(

@@ -25,7 +25,7 @@ pub(super) fn resolve(builder: &mut Builder) {
     let topology = builder.topology;
     let mut modules: BTreeMap<&str, usize> = BTreeMap::new();
     for file in topology.files.iter().filter(|file| source(file)) {
-        let index = builder.module(file.clone(), file, Attachment::File);
+        let index = builder.module(file.clone(), &[file], Attachment::File);
         modules.insert(file, index);
     }
     for (file, from) in &modules {
@@ -68,7 +68,7 @@ fn resolved(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site,
         .filter(|file| modules.contains_key(file.as_str()))
         .collect();
     match held.as_slice() {
-        [target] => builder.depend(site.from, modules[target.as_str()], site.line),
+        [target] => builder.depend(site.from, modules[target.as_str()], site.file, site.line),
         [] if another_kind(topology, &base, &candidates) => builder.graph.external += 1,
         [] => builder.hole(
             site.file,

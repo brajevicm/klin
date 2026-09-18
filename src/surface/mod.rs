@@ -11,10 +11,20 @@ use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use crate::modules::{ModuleGraph, Topology};
+use crate::syntax::LanguageId;
 use crate::syntax::structural::{Declaration, DeclarationKind};
 
 mod rust;
 mod typescript;
+
+type Derive = fn(&Topology, &ModuleGraph, &mut Derived);
+
+/// One surface derivation per structural language, run only over a tree that lists a path of
+/// that language, as its resolver is.
+const DERIVATIONS: &[(LanguageId, Derive)] = &[
+    (LanguageId::Rust, rust::derive),
+    (LanguageId::TypeScript, typescript::derive),
+];
 
 /// The words a report prints for what an item is.
 pub const FUNCTION: &str = "function";
@@ -84,6 +94,7 @@ pub struct Inapplicable {
 pub struct Derived {
     pub surfaces: Vec<Surface>,
     pub inapplicable: Vec<Inapplicable>,
+    pub dispatches: [usize; DERIVATIONS.len()],
     pub time: Duration,
 }
 
@@ -95,14 +106,30 @@ pub struct SurfaceCost {
     pub measured: usize,
     pub opaque: usize,
     pub holes: usize,
+    pub dispatches: [usize; DERIVATIONS.len()],
     pub time: Duration,
+}
+
+impl SurfaceCost {
+    /// Each registered derivation's language with how many times it ran.
+    pub fn dispatched(&self) -> impl Iterator<Item = (LanguageId, usize)> + '_ {
+        DERIVATIONS
+            .iter()
+            .zip(self.dispatches)
+            .map(|((language, _), count)| (*language, count))
+    }
 }
 
 impl std::ops::Add for SurfaceCost {
     type Output = SurfaceCost;
 
     fn add(self, other: SurfaceCost) -> SurfaceCost {
+        let mut dispatches = self.dispatches;
+        for (held, more) in dispatches.iter_mut().zip(other.dispatches) {
+            *held += more;
+        }
         SurfaceCost {
+            dispatches,
             surfaces: self.surfaces + other.surfaces,
             items: self.items + other.items,
             measured: self.measured + other.measured,
@@ -113,12 +140,16 @@ impl std::ops::Add for SurfaceCost {
     }
 }
 
-/// The surfaces of one tree, every language's derivation run over it once.
+/// The surfaces of one tree, each derivation whose language the tree holds run over it once.
 pub fn derive(topology: &Topology, graph: &ModuleGraph) -> Derived {
     let started = Instant::now();
     let mut out = Derived::default();
-    rust::derive(topology, graph, &mut out);
-    typescript::derive(topology, graph, &mut out);
+    for (at, (language, derive)) in DERIVATIONS.iter().enumerate() {
+        if topology.present(*language) {
+            out.dispatches[at] += 1;
+            derive(topology, graph, &mut out);
+        }
+    }
     for surface in &mut out.surfaces {
         surface.items = merged(std::mem::take(&mut surface.items));
         surface.holes.sort_by(|a, b| {
@@ -152,6 +183,7 @@ impl Derived {
                 .iter()
                 .map(|surface| surface.holes.len())
                 .sum(),
+            dispatches: self.dispatches,
             time: self.time,
         }
     }

@@ -116,13 +116,18 @@ impl<'a> Derivation<'a> {
         &self.graph.modules[at]
     }
 
+    /// The file a Rust module is, or is inline in: its one source.
+    fn file(&self, at: usize) -> &'a str {
+        &self.module(at).sources[0]
+    }
+
     /// The declarations written directly in one module: those of its file under its nesting.
     /// The iterator borrows the tree and the graph alone, never the derivation.
     fn declarations(&self, at: usize) -> impl Iterator<Item = &'a Declaration> + use<'a> {
         let module = self.module(at);
         let topology: &'a Topology<'a> = self.topology;
         topology
-            .facts(&module.file)
+            .facts(self.file(at))
             .into_iter()
             .flat_map(|facts| &facts.declarations)
             .filter(move |declaration| declaration.nesting == module.nesting)
@@ -132,7 +137,7 @@ impl<'a> Derivation<'a> {
         let module = self.module(at);
         let topology: &'a Topology<'a> = self.topology;
         topology
-            .facts(&module.file)
+            .facts(self.file(at))
             .into_iter()
             .flat_map(|facts| &facts.exports)
             .filter(move |export| export.nesting == module.nesting)
@@ -142,7 +147,7 @@ impl<'a> Derivation<'a> {
     fn public_children(&self, at: usize) -> Vec<(String, usize)> {
         let module = self.module(at);
         self.topology
-            .facts(&module.file)
+            .facts(self.file(at))
             .into_iter()
             .flat_map(|facts| &facts.module_declarations)
             .filter(|held| held.nesting == module.nesting && held.visibility == Visibility::Public)
@@ -177,8 +182,7 @@ impl<'a> Derivation<'a> {
         if !self.walked.insert((at, prefix.to_string())) {
             return;
         }
-        let module = self.module(at);
-        self.surface.files.push(module.file.clone());
+        self.surface.files.push(self.file(at).to_string());
         for declaration in self.public_declarations(at) {
             self.expose(at, declaration, join(prefix, &declaration.name));
         }
@@ -219,11 +223,10 @@ impl<'a> Derivation<'a> {
 
     /// One public module as an item, and everything under it.
     fn module_item(&mut self, at: usize, path: &str) {
-        let module = self.module(at);
         self.surface.items.push(Item {
             path: path.to_string(),
             kind: MODULE,
-            origin: Some((module.file.clone(), 1)),
+            origin: Some((self.file(at).to_string(), 1)),
             contract: super::Contract::Opaque(None),
         });
         self.walk(at, path);
@@ -233,10 +236,10 @@ impl<'a> Derivation<'a> {
     /// under it. A method whose `impl` sits in another module attaches where the target
     /// declares exactly one type of that name, and is a hole otherwise.
     fn expose(&mut self, at: usize, declaration: &'a Declaration, path: String) {
-        let file = self.module(at).file.clone();
+        let file = self.file(at);
         self.surface
             .items
-            .push(declared(path.clone(), &file, declaration));
+            .push(declared(path.clone(), file, declaration));
         if declaration.kind != DeclarationKind::Type {
             return;
         }
@@ -250,14 +253,14 @@ impl<'a> Derivation<'a> {
             .get(&declaration.name)
             .map_or(0, |modules| modules.len());
         for (holder, method) in methods {
-            let holder_file = self.module(holder).file.clone();
+            let holder_file = self.file(holder);
             if holder == at || declared_in == 1 {
                 self.surface
                     .items
-                    .push(declared(join(&path, &method.name), &holder_file, method));
+                    .push(declared(join(&path, &method.name), holder_file, method));
             } else {
                 self.surface.holes.push(Hole {
-                    file: holder_file,
+                    file: holder_file.to_string(),
                     line: method.line,
                     text: method.text.clone(),
                     why: format!(
@@ -273,7 +276,7 @@ impl<'a> Derivation<'a> {
     /// declaration of the module the path reaches, a re-export that module makes under the
     /// name, or an opaque item where klin proves the name is exposed and no more.
     fn named(&mut self, from: usize, export: &'a Export, leaf: &'a ExportLeaf, path: String) {
-        let file = self.module(from).file.clone();
+        let file = self.file(from);
         match self.graph.resolve(from, &leaf.path) {
             Resolved::Module { module, rest } if rest.is_empty() => self.module_item(module, &path),
             Resolved::Module { module, rest } if rest.len() == 1 => {
@@ -281,7 +284,7 @@ impl<'a> Derivation<'a> {
                     self.surface.items.push(opaque(
                         path,
                         ITEM,
-                        &file,
+                        file,
                         export.line,
                         leaf.path.clone(),
                     ));
@@ -290,10 +293,10 @@ impl<'a> Derivation<'a> {
             Resolved::Module { .. } | Resolved::External => {
                 self.surface
                     .items
-                    .push(opaque(path, ITEM, &file, export.line, leaf.path.clone()));
+                    .push(opaque(path, ITEM, file, export.line, leaf.path.clone()));
             }
             Resolved::Unresolved => self.surface.holes.push(Hole {
-                file,
+                file: file.to_string(),
                 line: export.line,
                 text: export.text.clone(),
                 why: unresolved(&leaf.path),
@@ -348,7 +351,7 @@ impl<'a> Derivation<'a> {
                 self.glob(reached, held, inner, prefix, &inner_shadow);
             }
         }
-        let site = (self.module(from).file.clone(), export.line);
+        let site = (self.file(from).to_string(), export.line);
         for (name, exposure) in self.provided(reached) {
             if !shadow.contains(&name) {
                 self.provide(reached, export, &site, join(prefix, &name), exposure);
@@ -404,7 +407,7 @@ impl<'a> Derivation<'a> {
             Resolved::Unresolved => unresolved(&leaf.path),
         };
         self.surface.holes.push(Hole {
-            file: self.module(from).file.clone(),
+            file: self.file(from).to_string(),
             line: export.line,
             text: export.text.clone(),
             why,

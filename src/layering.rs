@@ -9,8 +9,10 @@
 //! person's policy and nothing derives it: with no section the gate does not run. Spec 8.2.1,
 //! ADR 0043.
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -19,7 +21,9 @@ use serde_json::{Map, Value};
 use crate::changed;
 use crate::check::{self, Context, Sink};
 use crate::config::{self, Config, Error};
-use crate::modules::{self, Attachment, Cycles, GraphCost, Hole, ModuleGraph, Topology};
+use crate::modules::{
+    self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
+};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
@@ -107,11 +111,53 @@ impl Kind {
     }
 }
 
-/// One judged edge: its kind, the lines that write it, and the first dependency that does.
+/// One judged edge: its kind, the lines that write it, the first dependency that does, and the
+/// identity of the module that writes it.
 struct Edge {
     kind: Kind,
     lines: BTreeSet<u64>,
     first: usize,
+    module: String,
+}
+
+/// Where path policy puts one physical file: whether the section's scope selects it, and the
+/// layer that holds it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Place {
+    selected: bool,
+    layer: Option<usize>,
+}
+
+/// One policy fact folded over a module's files: the same for every file, or not. ADR 0047.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Folded<T> {
+    All(T),
+    Mixed,
+}
+
+impl<T: Copy + PartialEq> Folded<T> {
+    fn with(self, next: T) -> Folded<T> {
+        match self {
+            Folded::All(held) if held == next => self,
+            _ => Folded::Mixed,
+        }
+    }
+}
+
+/// Path policy over one side's graph: each physical source placed once, and each module's
+/// scope and layer folded once over its sources, so a dependency is judged by lookup.
+struct Placed<'g> {
+    files: HashMap<&'g str, Place>,
+    modules: Vec<(Folded<bool>, Folded<Option<usize>>)>,
+}
+
+impl Placed<'_> {
+    /// Whether the section judges a dependency: the file that writes it is selected, and every
+    /// file of the module it reaches is.
+    fn judges(&self, graph: &ModuleGraph, dependency: &Dependency) -> bool {
+        self.files[graph.source(dependency)].selected
+            && self.modules[dependency.to].0 == Folded::All(true)
+    }
 }
 
 type Edges = BTreeMap<(String, String), Edge>;
@@ -132,9 +178,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let (was, now) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
     let started = Instant::now();
-    let (was_cycles, now_cycles) = (policy.cycles(&was), policy.cycles(&now));
-    let was_edges = edges(&policy, &was, was_cycles.as_ref());
-    let now_edges = edges(&policy, &now, now_cycles.as_ref());
+    let was_placed = placed(&was.graph, |file| policy.place(file));
+    let now_placed = placed(&now.graph, |file| policy.place(file));
+    let was_cycles = policy.cycles(&was, &was_placed);
+    let now_cycles = policy.cycles(&now, &now_placed);
+    let (was_edges, _) = edges(&policy, (&was, &was_placed), was_cycles.as_ref());
+    let (now_edges, ambiguous) = edges(&policy, (&now, &now_placed), now_cycles.as_ref());
     let time = started.elapsed();
     out.record(|records| {
         records.graph = Some(
@@ -147,7 +196,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         );
     });
     let findings = findings(&now_edges, &now.graph, now_cycles.as_ref(), &was_edges);
-    let code = judged(at, (&policy, &now), findings, &was_edges, out)?;
+    let code = judged(at, (&policy, &now, &now_placed), findings, &was_edges, out)?;
     let code = coverage::lost_said(
         &now.covered(&policy)
             .lost(&was.covered(&policy), at.project, None),
@@ -155,7 +204,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         code,
         out,
     );
-    let code = holes_said(&now, &policy, at, code, out);
+    let code = holes_said(&now, &policy, &ambiguous, (at, code), out);
     let unparsed: Vec<syntax::Unparsed> = now
         .unparsed
         .iter()
@@ -382,23 +431,50 @@ fn refused(config: &Config, why: &str) -> Error {
     Error(format!("{}: \"{SECTION}\" {why}", config.file.display()))
 }
 
+/// Every physical source of a graph placed once, and every module folded once over its sources.
+fn placed<'g>(graph: &'g ModuleGraph, mut place: impl FnMut(&str) -> Place) -> Placed<'g> {
+    let mut files: HashMap<&str, Place> = HashMap::new();
+    let modules = graph
+        .modules
+        .iter()
+        .map(|module| {
+            let mut places = module
+                .sources
+                .iter()
+                .map(|file| *files.entry(file.as_str()).or_insert_with(|| place(file)));
+            let first = places.next().expect("a module holds at least one file");
+            places.fold(
+                (Folded::All(first.selected), Folded::All(first.layer)),
+                |(selected, layer), place| (selected.with(place.selected), layer.with(place.layer)),
+            )
+        })
+        .collect();
+    Placed { files, modules }
+}
+
 impl Policy {
-    /// The cycles among the side's modules the section's scope selects, where `acyclic` asks.
-    fn cycles<'s>(&self, side: &'s Side) -> Option<Cycles<'s>> {
-        self.acyclic
-            .then(|| side.graph.cycles(|module| self.scope.selects(&module.file)))
+    fn place(&self, file: &str) -> Place {
+        Place {
+            selected: self.scope.selects(file),
+            layer: self
+                .layers
+                .iter()
+                .position(|layer| scope::any_holds(&layer.within, file)),
+        }
     }
 
-    fn layer(&self, file: &str) -> Option<&Layer> {
-        self.layers
-            .iter()
-            .find(|layer| scope::any_holds(&layer.within, file))
+    /// The cycles among the dependencies the section judges on one side, where `acyclic` asks.
+    fn cycles<'s>(&self, side: &'s Side, placed: &Placed) -> Option<Cycles<'s>> {
+        self.acyclic.then(|| {
+            side.graph
+                .cycles(|dependency| placed.judges(&side.graph, dependency))
+        })
     }
 
-    /// The two layers a dependency between these files crosses, where the source layer may not
-    /// use the target layer, and `None` where it may or where either file is in no layer.
-    fn forbidden(&self, from: &str, to: &str) -> Option<String> {
-        let (source, target) = (self.layer(from)?, self.layer(to)?);
+    /// The two layers a dependency crosses, where the source layer may not use the target
+    /// layer, and `None` where it may or where either side is in no layer.
+    fn forbidden(&self, from: Option<usize>, to: Option<usize>) -> Option<String> {
+        let (source, target) = (&self.layers[from?], &self.layers[to?]);
         let allowed = source.name == target.name
             || source
                 .can_use
@@ -454,36 +530,72 @@ impl Policy {
     }
 }
 
-/// Every forbidden and cyclic edge between two files the section's scope selects, keyed under
-/// current paths.
-fn edges(policy: &Policy, side: &Side, cycles: Option<&Cycles>) -> Edges {
+/// Every forbidden and cyclic edge the section judges, keyed by the file that writes it under
+/// current paths, and every dependency the section cannot judge because the files of the module
+/// it reaches straddle the scope or the layers. A straddled module is never placed by one of
+/// its files. ADR 0047.
+fn edges(
+    policy: &Policy,
+    (side, placed): (&Side, &Placed),
+    cycles: Option<&Cycles>,
+) -> (Edges, Vec<Hole>) {
     let mut out = Edges::new();
+    let mut ambiguous = Vec::new();
     let graph = &side.graph;
     for (at, dependency) in graph.dependencies.iter().enumerate() {
-        let from = &graph.modules[dependency.from].file;
-        let to = &graph.modules[dependency.to].file;
-        if !policy.scope.selects(from) || !policy.scope.selects(to) {
+        let file = graph.source(dependency);
+        let from = placed.files[file];
+        let (scope, layer) = placed.modules[dependency.to];
+        if !from.selected || scope == Folded::All(false) {
             continue;
         }
         let target = graph.identity(dependency.to, |file| side.current(file));
+        let mut straddled = |what: &str| {
+            ambiguous.push(Hole {
+                file: side.current(file),
+                line: dependency.line,
+                text: target.clone(),
+                why: format!("reaches a module whose files lie across {what}"),
+            });
+        };
+        if scope == Folded::Mixed {
+            straddled("the section's scope");
+            continue;
+        }
+        if layer == Folded::Mixed && from.layer.is_some() {
+            straddled("more than one layer, or a layer and none");
+        }
         let mut add = |kind, text: String| {
             let edge = out
-                .entry((side.current(from), text))
+                .entry((side.current(file), text))
                 .or_insert_with(|| Edge {
                     kind,
                     lines: BTreeSet::new(),
                     first: at,
+                    module: graph.identity(dependency.from, |file| side.current(file)),
                 });
             edge.lines.insert(dependency.line);
         };
-        if let Some(layers) = policy.forbidden(from, to) {
+        if let Some(layers) = match layer {
+            Folded::All(to) => policy.forbidden(from.layer, to),
+            Folded::Mixed => None,
+        } {
             add(Kind::Forbidden, format!("{layers}: {target}"));
         }
         if cycles.is_some_and(|cycles| cycles.closes(dependency)) {
             add(Kind::Cycle, format!("{CYCLE}: {target}"));
         }
     }
-    out
+    (out, ambiguous)
+}
+
+/// The key the ratchet's cross-file pass pairs an edge by: the module that writes it and what it
+/// is, so an edge that moves between files of one module is held and never new. An accepted
+/// entry carries no such key, so it never follows a move. ADR 0047.
+fn semantic(edge: &Edge, text: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    (&edge.module, text).hash(&mut hasher);
+    hasher.finish()
 }
 
 /// The working tree's edges as findings, each new cyclic edge with one cycle that explains it.
@@ -510,7 +622,7 @@ fn findings(
                 line: edge.lines.first().copied().unwrap_or_default(),
                 text: text.clone(),
                 values,
-                body: None,
+                body: Some(semantic(edge, text)),
             }
         })
         .collect();
@@ -520,21 +632,12 @@ fn findings(
 
 fn judged(
     at: &Context,
-    (policy, now): (&Policy, &Side),
+    (policy, now, placed): (&Policy, &Side, &Placed),
     findings: Vec<Finding>,
     was_edges: &Edges,
     out: &mut Sink,
 ) -> Result<u8, Error> {
-    let prior = was_edges
-        .iter()
-        .map(|((file, text), edge)| Finding {
-            file: file.clone(),
-            line: edge.lines.first().copied().unwrap_or_default(),
-            text: text.clone(),
-            values: Values::from_iter([(EDGE.to_string(), Value::from(1))]),
-            body: None,
-        })
-        .collect();
+    let prior = prior(was_edges);
     let kinds = |kind: Kind| {
         findings
             .iter()
@@ -545,7 +648,11 @@ fn judged(
     let said = now.covered(policy).coverage(None).said(out);
     let state = format!(
         "{} dependency edge(s) judged, {forbidden} forbidden, {cyclic} cyclic",
-        selected_dependencies(policy, &now.graph)
+        now.graph
+            .dependencies
+            .iter()
+            .filter(|dependency| placed.judges(&now.graph, dependency))
+            .count()
     );
     let tail = format!("{said}; {}", attachment(&now.graph));
     let evaluator = evaluator();
@@ -562,15 +669,18 @@ fn judged(
     ))
 }
 
-fn selected_dependencies(policy: &Policy, graph: &ModuleGraph) -> usize {
-    graph
-        .dependencies
+/// The base's edges as the sites the ratchet holds.
+fn prior(was_edges: &Edges) -> Vec<Finding> {
+    was_edges
         .iter()
-        .filter(|dependency| {
-            policy.scope.selects(&graph.modules[dependency.from].file)
-                && policy.scope.selects(&graph.modules[dependency.to].file)
+        .map(|((file, text), edge)| Finding {
+            file: file.clone(),
+            line: edge.lines.first().copied().unwrap_or_default(),
+            text: text.clone(),
+            values: Values::from_iter([(EDGE.to_string(), Value::from(1))]),
+            body: Some(semantic(edge, text)),
         })
-        .count()
+        .collect()
 }
 
 /// How the working tree's files came to be modules, and how many dependencies V1 left alone.
@@ -633,8 +743,15 @@ impl Side {
 /// The dependency forms the working tree's resolvers support and could not resolve: a NOTE in
 /// the hook, and exit 2 elsewhere, because a green run must not imply a resolution klin did not
 /// make. ADR 0021, spec 8.6.
-fn holes_said(now: &Side, policy: &Policy, at: &Context, code: u8, out: &mut Sink) -> u8 {
-    let named = now.holes(policy);
+fn holes_said(
+    now: &Side,
+    policy: &Policy,
+    ambiguous: &[Hole],
+    (at, code): (&Context, u8),
+    out: &mut Sink,
+) -> u8 {
+    let mut named = now.holes(policy);
+    named.extend(ambiguous);
     if named.is_empty() {
         return code;
     }
@@ -688,4 +805,198 @@ fn held_note(now: &Edges, was: &Edges, out: &mut Sink) {
         let _ = write!(note, "\n  … and {} more", held.len() - 20);
     }
     ratchet::noted(&[(String::new(), note)], out);
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+
+    use super::*;
+    use crate::modules::Module;
+    use crate::scope::Selector;
+
+    fn module(name: &str, sources: &[&str]) -> Module {
+        Module {
+            name: name.to_string(),
+            sources: sources.iter().map(|file| file.to_string()).collect(),
+            nesting: Vec::new(),
+            target: None,
+            parent: None,
+            children: BTreeMap::new(),
+            unresolved: BTreeSet::new(),
+        }
+    }
+
+    fn site(from: usize, to: usize, source: u32, line: u64) -> Dependency {
+        Dependency {
+            from,
+            to,
+            source,
+            line,
+        }
+    }
+
+    fn policy(except: &[&str]) -> Policy {
+        let layer = |name: &str| Layer {
+            name: name.to_string(),
+            within: vec![Selector::parse(scope::IN, name).unwrap()],
+            can_use: Some(Vec::new()),
+        };
+        let fields = match except {
+            [] => serde_json::json!({}),
+            _ => serde_json::json!({ "except": except }),
+        };
+        Policy {
+            scope: Scope::from_fields(fields.as_object().unwrap()).unwrap(),
+            acyclic: true,
+            layers: vec![layer("a"), layer("b")],
+        }
+    }
+
+    fn side(modules: Vec<Module>, dependencies: Vec<Dependency>) -> Side {
+        Side {
+            files: Vec::new(),
+            unparsed: Vec::new(),
+            graph: ModuleGraph {
+                modules,
+                dependencies,
+                ..ModuleGraph::default()
+            },
+            current: HashMap::new(),
+        }
+    }
+
+    /// Many modules of many files, each file writing repeated sites to the same two modules:
+    /// each file is placed once, and the components are found over each module pair once.
+    #[test]
+    fn multi_source_work_is_linear_in_files_and_unique_edges() {
+        let (count, files, lines) = (100, 10, 5);
+        let names: Vec<Vec<String>> = (0..count)
+            .map(|at| {
+                let layer = if at < count / 2 { "a" } else { "b" };
+                (0..files)
+                    .map(|file| format!("{layer}/m{at:03}/f{file:02}.go"))
+                    .collect()
+            })
+            .collect();
+        let modules = names
+            .iter()
+            .enumerate()
+            .map(|(at, sources)| {
+                let sources: Vec<&str> = sources.iter().map(String::as_str).collect();
+                module(&format!("m{at:03}"), &sources)
+            })
+            .collect();
+        let mut dependencies = Vec::new();
+        for from in 0..count {
+            let mut targets = [(from + 1) % count, (from + 2) % count];
+            targets.sort_unstable();
+            for to in targets {
+                for source in 0..files as u32 {
+                    for line in 1..=lines {
+                        dependencies.push(site(from, to, source, line));
+                    }
+                }
+            }
+        }
+        let side = side(modules, dependencies);
+        let policy = policy(&[]);
+        let calls = Cell::new(0);
+        let placed = placed(&side.graph, |file| {
+            calls.set(calls.get() + 1);
+            policy.place(file)
+        });
+        assert_eq!(calls.get(), count * files);
+        assert_eq!(placed.modules.len(), count);
+        let cycles = policy.cycles(&side, &placed).unwrap();
+        assert_eq!(
+            side.graph.dependencies.len(),
+            count * 2 * files * lines as usize
+        );
+        assert_eq!(cycles.edges(), count * 2);
+        assert_eq!(side.graph.cost().edges, count * 2);
+        let (edges, ambiguous) = edges(&policy, (&side, &placed), Some(&cycles));
+        let forbidden = edges.values().filter(|edge| edge.kind == Kind::Forbidden);
+        assert_eq!(forbidden.count(), 6 * files);
+        assert_eq!(edges.len(), 6 * files + count * 2 * files);
+        assert!(ambiguous.is_empty());
+    }
+
+    /// A module whose files straddle two layers, or the scope, is never placed by one of them:
+    /// a dependency on it is a visible ambiguity and no verdict, and never enters a cycle.
+    #[test]
+    fn a_straddled_destination_is_ambiguous_and_never_judged() {
+        let modules = vec![
+            module("x", &["a/x.go", "b/x.go"]),
+            module("y", &["a/y1.go", "b/y2.go"]),
+        ];
+        let dependencies = vec![site(0, 1, 0, 3), site(1, 0, 0, 3), site(1, 0, 1, 3)];
+        let side = side(modules, dependencies);
+        let across_layers = policy(&[]);
+        let placed_layers = placed(&side.graph, |file| across_layers.place(file));
+        let (edges, ambiguous) = edges(&across_layers, (&side, &placed_layers), None);
+        assert!(edges.is_empty());
+        let why: Vec<&str> = ambiguous.iter().map(|hole| hole.why.as_str()).collect();
+        assert_eq!(why.len(), 3);
+        assert!(why.iter().all(|why| why.contains("more than one layer")));
+        let across_scope = policy(&["b"]);
+        let placed_scope = placed(&side.graph, |file| across_scope.place(file));
+        let cycles = across_scope.cycles(&side, &placed_scope).unwrap();
+        assert_eq!(cycles.edges(), 0);
+        let (edges, ambiguous) = super::edges(&across_scope, (&side, &placed_scope), Some(&cycles));
+        assert!(edges.is_empty());
+        let sites: Vec<(&str, u64)> = ambiguous
+            .iter()
+            .map(|hole| (hole.file.as_str(), hole.line))
+            .collect();
+        assert_eq!(sites, [("a/x.go", 3), ("a/y1.go", 3)]);
+        assert!(ambiguous[0].why.contains("the section's scope"));
+    }
+
+    /// Two files of one module that write a dependency on the same line are two sites.
+    #[test]
+    fn a_site_is_its_file_and_line() {
+        let modules = vec![
+            module("x", &["a/x1.go", "a/x2.go"]),
+            module("y", &["a/y.go"]),
+            module("z", &["a/z.go"]),
+        ];
+        let side = side(modules, vec![site(0, 1, 0, 7), site(0, 2, 1, 7)]);
+        assert_eq!(side.graph.reached_at(0, "a/x1.go", 7), [1]);
+        assert_eq!(side.graph.reached_at(0, "a/x2.go", 7), [2]);
+    }
+
+    /// An edge that moves to another file of the module that writes it is held by the base, and
+    /// an accepted entry a person wrote at the old file does not follow it.
+    #[test]
+    fn an_edge_that_moves_within_its_module_is_held_and_acceptance_stays_put() {
+        let modules = || {
+            vec![
+                module("p", &["b/p1.go", "b/p2.go"]),
+                module("q", &["a/q.go"]),
+            ]
+        };
+        let policy = policy(&[]);
+        let judged = |side: &Side| {
+            let placed = placed(&side.graph, |file| policy.place(file));
+            edges(&policy, (side, &placed), None).0
+        };
+        let was = judged(&side(modules(), vec![site(0, 1, 0, 5)]));
+        let now_side = side(modules(), vec![site(0, 1, 1, 9)]);
+        let now = judged(&now_side);
+        let found = || findings(&now, &now_side.graph, None, &was);
+        assert_eq!(found()[0].file, "b/p2.go");
+        let held = ratchet::outcomes(found(), prior(&was), Vec::new(), &[EDGE]);
+        assert_eq!(held[0].1, "held");
+        let accepted = serde_json::json!({
+            "gate": SECTION,
+            "file": "b/p1.go",
+            "text": found()[0].text,
+            "edge": 1,
+            "accepted": true,
+        });
+        let entries = vec![accepted.as_object().unwrap().clone()];
+        let judged = ratchet::outcomes(found(), Vec::new(), entries, &[EDGE]);
+        assert_eq!(judged[0].1, "new");
+    }
 }
