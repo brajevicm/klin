@@ -267,13 +267,29 @@ export function run(familyName: string, into: string): number {
     plant(paths.RUNS, "harness-records"),
   ];
 
+  // One probe is one live session and it takes minutes. Without these an operator watching the
+  // terminal cannot tell a running probe from a hung one.
+  process.stdout.write("probe " + trialId + ", family " + familyName + ", one live session\n");
+  process.stdout.write("  plane     " + plane + "\n");
+  process.stdout.write("  workspace " + place.repo + "\n");
+  process.stdout.write("  host      " + session.hostVersion() + "\n");
+  process.stdout.write("  waiting for the session to end\n");
+
   let held: ProbeResult;
   try {
+    const began = Date.now();
     const ran = session.run(
       place,
       prompt({ plane, work: paths.workRoot(), records: paths.RUNS }),
       options,
       session.configFor(options, trialId),
+    );
+    process.stdout.write(
+      "  session ended after " +
+        String(Math.round((Date.now() - began) / 1000)) +
+        "s, exit " +
+        String(ran.exit) +
+        "\n\n",
     );
     const hooks: HookInvocation[] = session.hookEvidence(place.hooks);
     held = judge(transcript(ran, place.repo), planted, hooks, shellOutput(place.repo), ownedPaths(), [

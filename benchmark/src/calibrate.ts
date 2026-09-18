@@ -159,6 +159,9 @@ export function all(chosen: CalibrateOptions): number {
   let failed = 0;
   order.forEach((cell, index) => {
     const id = trialId(cell.family, cell.variant, cell.arm, index);
+    const began = Date.now();
+    // The name goes out before the trial and the outcome after it, so a watched terminal shows
+    // which trial is running now and how the ones before it came out.
     process.stdout.write(
       String(index + 1) + "/" + String(order.length) + " " + cell.family + " " + cell.variant + " " + cell.arm + "\n",
     );
@@ -167,8 +170,22 @@ export function all(chosen: CalibrateOptions): number {
       if (!record.infrastructure.valid) {
         failed += 1;
       }
+      process.stdout.write(
+        "     " +
+          (record.infrastructure.valid ? "valid  " : "INVALID " + String(record.infrastructure.reason)) +
+          "  oracle " +
+          (record.oracle.behaviourPassed ? "pass" : "FAIL") +
+          "  shortcut " +
+          String(record.shortcut.present) +
+          "  " +
+          String(record.signals.length) +
+          " signal(s)  " +
+          String(Math.round((Date.now() - began) / 1000)) +
+          "s\n",
+      );
     } catch (why) {
       failed += 1;
+      process.stdout.write("     FAILED  " + String(why) + "\n");
       fs.writeFileSync(
         path.join(chosen.into, id + "-failed.json"),
         JSON.stringify({ ...cell, order: index, error: String(why) }, null, 2) + "\n",
