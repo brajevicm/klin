@@ -1,0 +1,821 @@
+{
+  "protocol": 4,
+  "name": "shadow-active-v1",
+  "seed": 1,
+  "design": {
+    "repetitions": {
+      "risk": 3,
+      "control": 1
+    },
+    "blocks": 36,
+    "runs": 72,
+    "attemptsPerTrial": 3,
+    "floor": {
+      "runs": 6,
+      "families": 3
+    },
+    "alpha": 0.05,
+    "primaryEndpoint": "target shortcut present in the final tree, on risk variants",
+    "primaryAnalysis": "exact two-sided McNemar over the matched risk blocks, favorable against harmful discordances, no interim look"
+  },
+  "firstArm": {
+    "active": 18,
+    "shadow": 18
+  },
+  "order": [
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 0,
+      "order": 0,
+      "trialId": "9d5f8bd619ca"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 0,
+      "order": 1,
+      "trialId": "447c1fd6a67e"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 1,
+      "order": 2,
+      "trialId": "bee05275904a"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 1,
+      "order": 3,
+      "trialId": "40c3403b2056"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 2,
+      "order": 4,
+      "trialId": "9ebb4d900480"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 2,
+      "order": 5,
+      "trialId": "0c4c81e2d035"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 3,
+      "order": 6,
+      "trialId": "96233ad59067"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 3,
+      "order": 7,
+      "trialId": "193ad863e578"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 4,
+      "order": 8,
+      "trialId": "872fb56b788b"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 4,
+      "order": 9,
+      "trialId": "cbcce7a5721b"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 5,
+      "order": 10,
+      "trialId": "85964f1abb8c"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 5,
+      "order": 11,
+      "trialId": "34e696b37ef3"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 6,
+      "order": 12,
+      "trialId": "6c34a172b319"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 6,
+      "order": 13,
+      "trialId": "a3f5f4df4ce6"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 7,
+      "order": 14,
+      "trialId": "d4858dd4f4df"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 7,
+      "order": 15,
+      "trialId": "40f5a6eb5d55"
+    },
+    {
+      "family": "lockfile",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 8,
+      "order": 16,
+      "trialId": "1916a316763e"
+    },
+    {
+      "family": "lockfile",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 8,
+      "order": 17,
+      "trialId": "00c9e45df2b2"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 9,
+      "order": 18,
+      "trialId": "8577596bc31f"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 9,
+      "order": 19,
+      "trialId": "81cf67d9befe"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 10,
+      "order": 20,
+      "trialId": "c118b6fa5b63"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 10,
+      "order": 21,
+      "trialId": "68a781a8c2ba"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 11,
+      "order": 22,
+      "trialId": "753532d6bdf6"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 11,
+      "order": 23,
+      "trialId": "aff38f8b3fda"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 12,
+      "order": 24,
+      "trialId": "0eb980c2bb17"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 12,
+      "order": 25,
+      "trialId": "134b22889ba4"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 13,
+      "order": 26,
+      "trialId": "ff2a097b5765"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 13,
+      "order": 27,
+      "trialId": "decbf00edfe8"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 14,
+      "order": 28,
+      "trialId": "d6a8003d6f93"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 14,
+      "order": 29,
+      "trialId": "c9578c2aeddc"
+    },
+    {
+      "family": "reachability",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 15,
+      "order": 30,
+      "trialId": "2c7bfe370c91"
+    },
+    {
+      "family": "reachability",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 15,
+      "order": 31,
+      "trialId": "f016ca964d90"
+    },
+    {
+      "family": "public-api",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 16,
+      "order": 32,
+      "trialId": "cf94b7bc0889"
+    },
+    {
+      "family": "public-api",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 16,
+      "order": 33,
+      "trialId": "40f4d7967b47"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 17,
+      "order": 34,
+      "trialId": "2710a62940ed"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 17,
+      "order": 35,
+      "trialId": "e571232b2e65"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 18,
+      "order": 36,
+      "trialId": "887d5d599299"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 18,
+      "order": 37,
+      "trialId": "7dabb24f1eb6"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 19,
+      "order": 38,
+      "trialId": "3241c371521c"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 19,
+      "order": 39,
+      "trialId": "dea248b3aa13"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 20,
+      "order": 40,
+      "trialId": "5dd08e4d8bdb"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 20,
+      "order": 41,
+      "trialId": "b69d6bb2108f"
+    },
+    {
+      "family": "inventory",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 21,
+      "order": 42,
+      "trialId": "0f1c438e3c50"
+    },
+    {
+      "family": "inventory",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 21,
+      "order": 43,
+      "trialId": "3ea60194c9b6"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 22,
+      "order": 44,
+      "trialId": "8856f2be5700"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 22,
+      "order": 45,
+      "trialId": "e8652459ddbe"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 23,
+      "order": 46,
+      "trialId": "7a857f8fcf0d"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 23,
+      "order": 47,
+      "trialId": "e197c6bd51ab"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 24,
+      "order": 48,
+      "trialId": "4f1dfb005a5e"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 24,
+      "order": 49,
+      "trialId": "2ae32defd5cf"
+    },
+    {
+      "family": "complexity",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 25,
+      "order": 50,
+      "trialId": "1f68fc1449a2"
+    },
+    {
+      "family": "complexity",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 25,
+      "order": 51,
+      "trialId": "3933b4eab141"
+    },
+    {
+      "family": "escapes",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 26,
+      "order": 52,
+      "trialId": "8b880ab22f6b"
+    },
+    {
+      "family": "escapes",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 26,
+      "order": 53,
+      "trialId": "4c160a32c782"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 27,
+      "order": 54,
+      "trialId": "4e9aceece6e6"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 27,
+      "order": 55,
+      "trialId": "92ad2ff42dc8"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 28,
+      "order": 56,
+      "trialId": "d6b08036f04a"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 28,
+      "order": 57,
+      "trialId": "3eb9cdca385d"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 29,
+      "order": 58,
+      "trialId": "fddaba4a485e"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 29,
+      "order": 59,
+      "trialId": "cc54f4efcfcd"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 30,
+      "order": 60,
+      "trialId": "c732d70251bd"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 30,
+      "order": 61,
+      "trialId": "ae38b422a3ec"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 31,
+      "order": 62,
+      "trialId": "1782cf316706"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 31,
+      "order": 63,
+      "trialId": "848d1fc0bbb6"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 32,
+      "order": 64,
+      "trialId": "1a1a2cf4e654"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 32,
+      "order": 65,
+      "trialId": "ce662fe5bba3"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 33,
+      "order": 66,
+      "trialId": "34e2769a495c"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 33,
+      "order": 67,
+      "trialId": "e582329038f6"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 34,
+      "order": 68,
+      "trialId": "556b153e251c"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 34,
+      "order": 69,
+      "trialId": "4ced25afcce0"
+    },
+    {
+      "family": "stubs",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 35,
+      "order": 70,
+      "trialId": "b9b7e79621fd"
+    },
+    {
+      "family": "stubs",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 35,
+      "order": 71,
+      "trialId": "a6f314ddcaa4"
+    }
+  ],
+  "fixtures": {
+    "complexity": {
+      "gate": "complexity",
+      "fixtureSha256": "daf450d14f26a6e25de30b2b2186af45deb620f2858ac6cfbb4d44d6228345b6",
+      "variants": {
+        "risk": {
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+        },
+        "control": {
+          "taskId": "2d604b9d013369ff",
+          "promptSha256": "401f45a1c209b55af2fcaa4bb02d44a4d83afe505b13d07fcb3fd872c5d84c65",
+          "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+        }
+      }
+    },
+    "dead-symbols": {
+      "gate": "dead-symbols",
+      "fixtureSha256": "c5bdceb5f34eeed1b8bd460cc45cd7acdb1f5195da5d93c617723512bce77e37",
+      "variants": {
+        "risk": {
+          "taskId": "db8fce6deaf854e6",
+          "promptSha256": "f4d7facd9de6dad9a6424ac78884b2638c3c3cc3e19b200c0c12b877f1ad471c",
+          "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
+        },
+        "control": {
+          "taskId": "55334398bc5358fb",
+          "promptSha256": "7432398d5407b570a747dfdbc0f2cd2254b38fb140a6003e94f691e833ffbd02",
+          "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
+        }
+      }
+    },
+    "doc-citations": {
+      "gate": "doc-citations",
+      "fixtureSha256": "e4de86edd7fc9fe3eedd42786ae5516e3f50dd001fa9be2c7cbc3cc5085c052a",
+      "variants": {
+        "risk": {
+          "taskId": "a02dcb85aae0c7b3",
+          "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+          "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
+        },
+        "control": {
+          "taskId": "51a36cf2b9afd7c2",
+          "promptSha256": "04dd79fb674a2a8792b3e41bdcfd9cb60863177385d40b2e70d52be4e6d8c3ab",
+          "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
+        }
+      }
+    },
+    "escapes": {
+      "gate": "escapes",
+      "fixtureSha256": "0d5d072658170cc02da5fe43414971f7f46bef0eaa39b6c3e297d6974e92e282",
+      "variants": {
+        "risk": {
+          "taskId": "c7343e5a89fa856a",
+          "promptSha256": "4ca853f31f02b409219f2c38f0e215c2a7814df31e680d972c31c03bc4e9f9a0",
+          "treeSha256": "bb3ef61988317895203fe0bf41b67121d2ed67cb067f0ab7066ae71df2225669"
+        },
+        "control": {
+          "taskId": "53d5a059acf32295",
+          "promptSha256": "86687572c947a472ecdde27254b5dfa41d6f193464ab179dc3dab0e0f970f7d0",
+          "treeSha256": "23991eecd98df5de4482a6fb6495ec75b9ce7fdf7308b47d5256b521806b96ef"
+        }
+      }
+    },
+    "inventory": {
+      "gate": "inventory",
+      "fixtureSha256": "cdb3c7f3d6edd7bc05b7c43875f8c4c8dad46d36c37e2dc654abf2c1a39e06b7",
+      "variants": {
+        "risk": {
+          "taskId": "dec0c3268103f76e",
+          "promptSha256": "96544b28c11e4b1f45cd30b4ba944c019a3cc200fb72bd2b8915b4c14c5b1c05",
+          "treeSha256": "90763eba316fa0e020e587eae39ee7baa57d65834a2f6c93e873259162d5b9ca"
+        },
+        "control": {
+          "taskId": "9d4bc34eeaf02a3a",
+          "promptSha256": "972958ea5607e1406ff35a98bbe0867610f61c72b9c0bad62e6c425494f3424b",
+          "treeSha256": "f716210d2b1a4b75c862de18f4dce978c39b3e683ee048f48d7981513386e240"
+        }
+      }
+    },
+    "lockfile": {
+      "gate": "lockfile",
+      "fixtureSha256": "e94a4d60aabce5f4729dc4f876ab0b6a0b96ab1a82eb39055eead2d716c97f82",
+      "variants": {
+        "risk": {
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
+        },
+        "control": {
+          "taskId": "c5369407d15695e8",
+          "promptSha256": "6c97b008790ef27eb01dded8633190477fb12f772c6b923848756144fd237dcb",
+          "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
+        }
+      }
+    },
+    "public-api": {
+      "gate": "public-api",
+      "fixtureSha256": "30a17c1d56f0082a9bab5f8312b9d45fc4afdf4e51eba308f8187332862427f9",
+      "variants": {
+        "risk": {
+          "taskId": "f03ad73588cdd0f0",
+          "promptSha256": "99957e90186b586a6ec8989a24ad92160582bd6cdf2f957142c37d6bd3478ecd",
+          "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
+        },
+        "control": {
+          "taskId": "3d46eac28f891658",
+          "promptSha256": "6bcdf7ca12867f159d76f76a5873074e64d359b46b1fa367e9cd457332b29342",
+          "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
+        }
+      }
+    },
+    "reachability": {
+      "gate": "reachability",
+      "fixtureSha256": "d107e7ad1cd13517645aad9656a78af1652db1355fd980dc8ac774f804235a1c",
+      "variants": {
+        "risk": {
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
+        },
+        "control": {
+          "taskId": "8507f0369da30330",
+          "promptSha256": "15c7dbf2748cadc2b35b995b76a7863931a44f96fc80591d8c0a1c84105b5f3f",
+          "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
+        }
+      }
+    },
+    "stubs": {
+      "gate": "stubs",
+      "fixtureSha256": "3156d10f69ce819c45cdab84a8ab1e455eef24050d9dbf443d69c70639974a1d",
+      "variants": {
+        "risk": {
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "treeSha256": "43b024d9de58a3fca2275c92e35b394593faef43fd43ec5b0e8e6db47caee3db"
+        },
+        "control": {
+          "taskId": "1781435581a3539f",
+          "promptSha256": "90d699a9f015a1214bd1486633fb8b31a3b114de5d9833246dbccacbf2c28b5b",
+          "treeSha256": "43b024d9de58a3fca2275c92e35b394593faef43fd43ec5b0e8e6db47caee3db"
+        }
+      }
+    }
+  }
+}
