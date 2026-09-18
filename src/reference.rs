@@ -245,18 +245,18 @@ fn shape(shape: Shape, row: Option<&check::Row>) -> Value {
         Shape::StringOrList => string_or_list(),
         Shape::Language => {
             let mut out = json!({"type": "string"});
-            if let Some(languages) = row.and_then(|row| row.languages) {
-                if let Value::Object(fields) = &mut out {
-                    fields.insert(
-                        "enum".into(),
-                        Value::Array(
-                            languages()
-                                .into_iter()
-                                .map(|(name, _)| Value::from(name))
-                                .collect(),
-                        ),
-                    );
-                }
+            if let Some(languages) = row.and_then(|row| row.languages)
+                && let Value::Object(fields) = &mut out
+            {
+                fields.insert(
+                    "enum".into(),
+                    Value::Array(
+                        languages()
+                            .into_iter()
+                            .map(|(name, _)| Value::from(name))
+                            .collect(),
+                    ),
+                );
             }
             out
         }
