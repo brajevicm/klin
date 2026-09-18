@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 
 const SLIM = ["record.json", "agent.json", "behaviour.json", "stats-session.json", "settings.json", "hook"];
+/** An attempt that crashed before a record existed holds this and no forensic tree. */
+const CRASH = "crash.json";
 const FORENSIC_DIRS = ["state", "hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"];
 const KINDS = new Set(["calibration", "publishable"]);
 
@@ -31,6 +33,17 @@ interface RecordShape {
   trialId?: unknown;
   replaces?: unknown;
   infrastructure?: { valid?: unknown };
+}
+
+/** One attempt directory: a record, or a crash that left none. */
+interface Attempt {
+  id: string;
+  record: RecordShape | null;
+  crash: RecordShape | null;
+}
+
+function attemptId(one: Attempt): string {
+  return String((one.record ?? one.crash)?.trialId ?? "");
 }
 
 export interface EvidenceDescriptor {
@@ -157,16 +170,20 @@ function isDirectory(file: string): boolean {
   }
 }
 
-function recordsAt(root: string, requireForensic: boolean): { id: string; record: RecordShape }[] {
+function recordsAt(root: string, requireForensic: boolean): Attempt[] {
   const entries = fs.readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory());
   if (entries.length === 0) {
     fail("no attempt directory was found under " + root);
   }
   return entries
-    .map((entry) => {
+    .map((entry): Attempt => {
       const source = path.join(root, entry.name);
       const recordFile = path.join(source, "record.json");
+      const crashFile = path.join(source, CRASH);
       if (!regular(recordFile)) {
+        if (regular(crashFile)) {
+          return { id: entry.name, record: null, crash: json<RecordShape>(crashFile) };
+        }
         fail(entry.name + " has no record.json");
       }
       if (requireForensic) {
@@ -176,19 +193,16 @@ function recordsAt(root: string, requireForensic: boolean): { id: string; record
           }
         }
       }
-      return { id: entry.name, record: json<RecordShape>(recordFile) };
+      return { id: entry.name, record: json<RecordShape>(recordFile), crash: null };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-function attempts(root: string): { id: string; source: string; record: RecordShape }[] {
+function attempts(root: string): (Attempt & { source: string })[] {
   return recordsAt(root, true).map((one) => ({ ...one, source: path.join(root, one.id) }));
 }
 
-function scheduledProblems(
-  order: Manifest["order"],
-  held: { id: string; record: RecordShape }[],
-): string[] {
+function scheduledProblems(order: Manifest["order"], held: Attempt[]): string[] {
   const problems: string[] = [];
   for (const row of Array.isArray(order) ? order : []) {
     if (row === null || typeof row !== "object") {
@@ -200,7 +214,7 @@ function scheduledProblems(
       problems.push("the manifest has a run-order row with no trial id");
       continue;
     }
-    const found = held.filter((one) => String(one.record.trialId ?? "") === trialId);
+    const found = held.filter((one) => attemptId(one) === trialId);
     if (found.length === 0) {
       problems.push("the scheduled trial " + trialId + " left no record");
     }
@@ -220,6 +234,12 @@ function copySlim(
   const target = path.join(into, "attempts");
   fs.mkdirSync(target, { recursive: true });
   for (const attempt of found) {
+    const destination = path.join(target, attempt.id);
+    fs.mkdirSync(destination, { recursive: true });
+    if (attempt.record === null) {
+      fs.copyFileSync(path.join(attempt.source, CRASH), path.join(destination, CRASH));
+      continue;
+    }
     if (
       attempt.record.protocol !== manifest.protocol ||
       attempt.record.kind !== manifest.kind ||
@@ -227,8 +247,6 @@ function copySlim(
     ) {
       fail(attempt.id + " disagrees with the evidence manifest");
     }
-    const destination = path.join(target, attempt.id);
-    fs.mkdirSync(destination, { recursive: true });
     for (const name of SLIM) {
       const file = path.join(attempt.source, name);
       if (!fs.existsSync(file) || !regular(file)) {
@@ -240,12 +258,8 @@ function copySlim(
   return { attempts: found };
 }
 
-function reachesScheduled(
-  record: RecordShape,
-  held: { record: RecordShape }[],
-  scheduled: Set<string>,
-): boolean {
-  const byId = new Map(held.map((one) => [String(one.record.trialId ?? ""), one.record] as const));
+function reachesScheduled(record: RecordShape, held: Attempt[], scheduled: Set<string>): boolean {
+  const byId = new Map(held.map((one) => [attemptId(one), one.record ?? one.crash ?? {}] as const));
   const seen = new Set<string>();
   let at: RecordShape | undefined = record;
   while (at) {
@@ -263,14 +277,14 @@ function reachesScheduled(
 }
 
 function runCounts(
-  read: { attempts: { id: string; record: RecordShape }[] },
+  read: { attempts: Attempt[] },
   order: Manifest["order"] = [],
 ): {
   attempts: number;
   validRuns: number;
   scheduledValidRuns: number;
 } {
-  const valid = read.attempts.filter((one) => one.record.infrastructure?.valid === true);
+  const valid = read.attempts.filter((one) => one.record?.infrastructure?.valid === true);
   const scheduled = new Set(
     (Array.isArray(order) ? order : [])
       .filter((one) => one !== null && typeof one === "object")
@@ -284,7 +298,7 @@ function runCounts(
     scheduledValidRuns:
       scheduled.size === 0
         ? valid.length
-        : valid.filter((one) => reachesScheduled(one.record, read.attempts, scheduled)).length,
+        : valid.filter((one) => reachesScheduled(one.record as RecordShape, read.attempts, scheduled)).length,
   };
 }
 
@@ -338,7 +352,7 @@ function descriptor(read: {
   archive: string;
   archiveHash: Hash;
   rawManifest: string;
-  records: { id: string; record: RecordShape }[];
+  records: Attempt[];
 }): EvidenceDescriptor {
   const kind = kindOf(read.manifest, path.join(read.directory, "manifest.json"));
   const counts = runCounts({ attempts: read.records }, read.manifest.order);
@@ -421,7 +435,7 @@ export function prepare(source: string, into: string, archiveFile: string): Evid
     archive: archivePath,
     archiveHash,
     rawManifest,
-    records: copied.attempts.map((one) => ({ id: one.id, record: one.record })),
+    records: copied.attempts.map((one) => ({ id: one.id, record: one.record, crash: one.crash })),
   });
   fs.writeFileSync(path.join(evidenceRoot, "evidence.json"), JSON.stringify(read, null, 2) + "\n");
   return read;
@@ -515,11 +529,16 @@ function slimFiles(directory: string): Map<string, string> {
     if (!entry.isDirectory()) {
       continue;
     }
-    for (const name of SLIM) {
+    for (const name of slimNamesOf(path.join(attemptsRoot, entry.name))) {
       expected.set(entry.name + "/" + name, path.join(attemptsRoot, entry.name, name));
     }
   }
   return expected;
+}
+
+/** The slim files one attempt directory owes: a crash owes its crash file and nothing else. */
+function slimNamesOf(directory: string): string[] {
+  return regular(path.join(directory, CRASH)) && !regular(path.join(directory, "record.json")) ? [CRASH] : SLIM;
 }
 
 function slimProblems(directory: string): string[] {
@@ -531,14 +550,14 @@ function slimProblems(directory: string): string[] {
     fs
       .readdirSync(attemptsRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .flatMap((entry) => SLIM.map((name) => entry.name + "/" + name)),
+      .flatMap((entry) => slimNamesOf(path.join(attemptsRoot, entry.name)).map((name) => entry.name + "/" + name)),
   );
   return walk(attemptsRoot)
     .filter((name) => !allowed.has(name))
     .map((name) => "slim evidence has an unlisted file " + name);
 }
 
-function recordsIn(directory: string): { id: string; record: RecordShape }[] {
+function recordsIn(directory: string): Attempt[] {
   const attemptsRoot = fs.existsSync(path.join(directory, "attempts"))
     ? path.join(directory, "attempts")
     : directory;
@@ -548,11 +567,7 @@ function recordsIn(directory: string): { id: string; record: RecordShape }[] {
   return recordsAt(attemptsRoot, attemptsRoot === directory);
 }
 
-function countProblems(
-  read: EvidenceDescriptor,
-  records: { id: string; record: RecordShape }[],
-  order: Manifest["order"],
-): string[] {
+function countProblems(read: EvidenceDescriptor, records: Attempt[], order: Manifest["order"]): string[] {
   const counts = runCounts({ attempts: records }, order);
   return Object.entries(counts)
     .filter(([name, value]) => read[name as keyof typeof counts] !== value)
@@ -667,7 +682,7 @@ export function verify(directory: string, archiveFile = ""): string[] {
       problems.push("slim " + rawName + " differs from files.sha256");
     }
   }
-  let records: { id: string; record: RecordShape }[] = [];
+  let records: Attempt[] = [];
   try {
     records = recordsIn(directory);
     problems.push(...scheduledProblems(manifest.order, records));

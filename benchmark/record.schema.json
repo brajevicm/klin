@@ -5,6 +5,19 @@
   "description": "One trial, completely enough for the later scorecard to be computed without reading terminal text. The record holds no hidden chain of thought.",
   "type": "object",
   "additionalProperties": false,
+  "if": {
+    "properties": {
+      "kind": {
+        "const": "publishable"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "repetition",
+      "replaces"
+    ]
+  },
   "required": [
     "protocol",
     "kind",

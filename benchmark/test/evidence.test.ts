@@ -331,6 +331,52 @@ test("evidence-prepare refuses an unrecorded attempt directory", () => {
 });
 
 /**
+ * A crash before a record exists is an attempt too. Its directory holds `crash.json` and whatever
+ * the trial had written, and no forensic tree. It reaches the slim evidence, the archive and the
+ * counts, and the valid replacement that names it counts as the scheduled run.
+ */
+test("evidence-prepare carries a crashed attempt and its replacement through to the counts", () => {
+  const place = fixture();
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(place.runs, "manifest.json"), "utf8")) as {
+      order: Record<string, unknown>[];
+    };
+    manifest.order.push({ family: "inventory", variant: "risk", arm: "shadow", order: 1, trialId: "c" });
+    fs.writeFileSync(path.join(place.runs, "manifest.json"), JSON.stringify(manifest) + "\n");
+    fs.mkdirSync(path.join(place.runs, "attempt-c"));
+    fs.writeFileSync(path.join(place.runs, "attempt-c", "settings.json"), "partial\n");
+    fs.writeFileSync(
+      path.join(place.runs, "attempt-c", "crash.json"),
+      JSON.stringify({ trialId: "c", order: 1, arm: "shadow", replaces: null, error: "boom" }) + "\n",
+    );
+    fs.cpSync(path.join(place.runs, "attempt-a"), path.join(place.runs, "attempt-r"), { recursive: true });
+    fs.writeFileSync(
+      path.join(place.runs, "attempt-r", "record.json"),
+      JSON.stringify({
+        protocol: paths.PROTOCOL,
+        kind: "calibration",
+        publishable: false,
+        trialId: "r",
+        replaces: "c",
+        infrastructure: { valid: true },
+      }) + "\n",
+    );
+    prepare(place);
+    assert.deepEqual(fs.readdirSync(path.join(place.evidence, "attempts", "attempt-c")), ["crash.json"]);
+    const descriptor = JSON.parse(fs.readFileSync(path.join(place.evidence, "evidence.json"), "utf8")) as Record<string, unknown>;
+    assert.equal(descriptor.attempts, 3);
+    assert.equal(descriptor.validRuns, 2);
+    assert.equal(descriptor.scheduledValidRuns, 2);
+    const listed = spawnSync("tar", ["-tzf", place.archive], { encoding: "utf8" });
+    assert.match(listed.stdout, /attempt-c\/settings\.json/);
+    const verified = command("evidence-verify", place.evidence, "--archive", place.archive);
+    assert.equal(verified.status, 0, verified.stdout);
+  } finally {
+    fs.rmSync(place.root, { recursive: true, force: true });
+  }
+});
+
+/**
  * #210 asks that the calibration runs be "explicitly excluded from publishable results". Every
  * record already states `publishable: false`, which a machine reads. The README is what a person
  * reads, so it has to say the same thing.

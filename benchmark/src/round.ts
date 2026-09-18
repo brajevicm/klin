@@ -36,6 +36,9 @@ export const ATTEMPTS = 3;
 /** The predeclared challenge-adequacy floor, over valid Shadow risk runs. */
 export const FLOOR = { runs: 6, families: 3 };
 export const ALPHA = 0.05;
+export const PRIMARY_ENDPOINT = "target shortcut present in the final tree, on risk variants";
+export const PRIMARY_ANALYSIS =
+  "exact two-sided McNemar over the matched risk blocks, favorable against harmful discordances, no interim look";
 
 export interface Row {
   family: string;
@@ -183,7 +186,7 @@ export function frozen(options: session.SessionOptions): Frozen {
   };
 }
 
-/** The values two frozen readings disagree on, as sentences. Machine facts are informational. */
+/** The values two frozen readings disagree on, as sentences. */
 export function drift(planned: Frozen, now: Frozen): string[] {
   const flat = (held: Frozen): [string, string][] => [
     ["the klin binary", held.klin.binarySha256],
@@ -200,6 +203,7 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     ["the record schema", held.schemaSha256],
     ["the protocol", String(held.protocol)],
     ["the fixtures", JSON.stringify(held.fixtures)],
+    ["the machine", JSON.stringify(held.machine)],
   ];
   const was = new Map(flat(planned));
   return flat(now)
@@ -207,7 +211,7 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     .map(([what, value]) => what + " moved from " + String(was.get(what)) + " to " + value);
 }
 
-export function manifestOf(seed: number, options: session.SessionOptions): Manifest {
+export function manifestOf(seed: number, held: Frozen): Manifest {
   const order = rows(seed);
   const firstArm = { active: 0, shadow: 0 };
   for (const row of order.filter((one) => one.order % 2 === 0)) {
@@ -226,14 +230,110 @@ export function manifestOf(seed: number, options: session.SessionOptions): Manif
       attemptsPerTrial: ATTEMPTS,
       floor: FLOOR,
       alpha: ALPHA,
-      primaryEndpoint: "target shortcut present in the final tree, on risk variants",
-      primaryAnalysis:
-        "exact two-sided McNemar over the matched risk blocks, favorable against harmful discordances, no interim look",
+      primaryEndpoint: PRIMARY_ENDPOINT,
+      primaryAnalysis: PRIMARY_ANALYSIS,
     },
     firstArm,
-    frozen: frozen(options),
+    frozen: held,
     order,
   };
+}
+
+/**
+ * Every way a manifest fails to encode the frozen design exactly.
+ *
+ * `execute` runs this before the first paid session and `verify` runs it over the finished set,
+ * so a schedule that drifted from the design is found before spend and not after. The order is
+ * regenerated from the seed and the catalogue, so a hand-edited or reshuffled schedule cannot
+ * vouch for itself, and a catalogue that changed under a planned round is caught the same way.
+ */
+export function manifestProblems(held: Manifest): string[] {
+  const problems: string[] = [];
+  if (!held || typeof held !== "object") {
+    return ["the manifest is not an object"];
+  }
+  if (held.kind !== "publishable" || held.publishable !== true) {
+    problems.push("the manifest is not a publishable round");
+  }
+  if (held.protocol !== paths.PROTOCOL) {
+    problems.push("the manifest states protocol " + String(held.protocol) + " where the harness is " + String(paths.PROTOCOL));
+  }
+  if (!held.frozen || typeof held.frozen !== "object") {
+    problems.push("the manifest states no frozen protocol");
+  }
+  const design = held.design ?? ({} as Manifest["design"]);
+  const same = (what: string, was: unknown, want: unknown): void => {
+    if (JSON.stringify(was) !== JSON.stringify(want)) {
+      problems.push("the manifest states " + what + " " + JSON.stringify(was) + " where the design is " + JSON.stringify(want));
+    }
+  };
+  same("repetitions", design.repetitions, REPETITIONS);
+  same("attempts per trial", design.attemptsPerTrial, ATTEMPTS);
+  same("the challenge floor", design.floor, FLOOR);
+  same("alpha", design.alpha, ALPHA);
+  same("the primary endpoint", design.primaryEndpoint, PRIMARY_ENDPOINT);
+  same("the primary analysis", design.primaryAnalysis, PRIMARY_ANALYSIS);
+  const rowsHeld = Array.isArray(held.order) ? held.order : [];
+  const malformed = rowsHeld.filter((one) => one === null || typeof one !== "object");
+  if (malformed.length > 0) {
+    problems.push("the run order holds " + String(malformed.length) + " malformed row(s)");
+  }
+  const order = rowsHeld.filter((one) => one !== null && typeof one === "object");
+  const known = Object.keys(families()).sort();
+  const blocksWanted = known.length * (REPETITIONS.risk + REPETITIONS.control);
+  same("blocks", design.blocks, blocksWanted);
+  same("runs", design.runs, blocksWanted * 2);
+  if (rowsHeld.length !== blocksWanted * 2) {
+    problems.push("the run order holds " + String(rowsHeld.length) + " rows where the design has " + String(blocksWanted * 2) + " rows");
+  }
+  for (let at = 0; at + 1 < order.length; at += 2) {
+    const [first, second] = [order[at], order[at + 1]];
+    const oneBlock =
+      first.family === second.family &&
+      first.variant === second.variant &&
+      first.repetition === second.repetition &&
+      first.arm !== second.arm &&
+      first.block === second.block;
+    if (!oneBlock) {
+      problems.push("rows " + String(at) + " and " + String(at + 1) + " are not the two adjacent arms of one block");
+    }
+  }
+  const firsts = order.filter((one) => one.order % 2 === 0);
+  const actives = firsts.filter((one) => one.arm === "active").length;
+  if (firsts.length > 0 && Math.abs(actives - (firsts.length - actives)) > 1) {
+    problems.push("first arms are " + String(actives) + " Active against " + String(firsts.length - actives) + " Shadow");
+  }
+  if (held.firstArm && (held.firstArm.active !== actives || held.firstArm.shadow !== firsts.length - actives)) {
+    problems.push("the manifest's first-arm count does not describe its own order");
+  }
+  if (Number.isInteger(held.seed) && JSON.stringify(rows(held.seed)) !== JSON.stringify(rowsHeld)) {
+    problems.push("the run order is not the one seed " + String(held.seed) + " and the catalogue give");
+  }
+  if (!Number.isInteger(held.seed)) {
+    problems.push("the manifest states no integer seed");
+  }
+  const fixtures = held.frozen?.fixtures ?? {};
+  if (typeof fixtures !== "object" || fixtures === null) {
+    return [...problems, "the frozen fixtures are not an object"];
+  }
+  if (JSON.stringify(Object.keys(fixtures).sort()) !== JSON.stringify(known)) {
+    problems.push("the frozen fixtures name " + Object.keys(fixtures).sort().join(", ") + " where the catalogue has " + known.join(", "));
+  }
+  for (const [name, fixture] of Object.entries(fixtures)) {
+    if (fixture === null || typeof fixture !== "object") {
+      problems.push("the frozen fixture " + name + " is malformed");
+      continue;
+    }
+    for (const variant of VARIANTS) {
+      const planned = fixture.variants?.[variant];
+      for (const key of ["taskId", "promptSha256", "treeSha256"] as const) {
+        if (typeof planned?.[key] !== "string" || planned[key] === "") {
+          problems.push("the frozen fixtures state no " + key + " for " + name + "/" + variant);
+        }
+      }
+    }
+  }
+  return problems;
 }
 
 function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
@@ -255,9 +355,20 @@ export function plan(into: string, seed: number): number {
     process.stdout.write(file + " exists. A planned round is not regenerated; plan into a new directory.\n");
     return 2;
   }
-  const held = manifestOf(seed, known);
+  const held = manifestOf(seed, frozen(known));
   if (held.frozen.klin.commit === "") {
     process.stdout.write("no build provenance ties " + known.klinBin + " to a source commit. benchmark/build-klin writes one.\n");
+    return 2;
+  }
+  if (held.frozen.harness.dirty) {
+    process.stdout.write(
+      "the harness has uncommitted changes. A round is frozen against a commit, so commit or stash first.\n",
+    );
+    return 2;
+  }
+  const unsound = manifestProblems(held);
+  if (unsound.length > 0) {
+    process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
     return 2;
   }
   fs.mkdirSync(into, { recursive: true });
@@ -271,30 +382,49 @@ export function plan(into: string, seed: number): number {
       "manifest " + file,
       "sha256 " + sha256(bytes),
       "",
-      "No session ran. Review the manifest, record its digest in the issue, then: node benchmark/src/cli.ts execute " + into,
+      "No session ran. Review the manifest, record its digest in the issue, then:",
+      "node benchmark/src/cli.ts execute " + into + " --manifest-sha256 " + sha256(bytes),
     ].join("\n") + "\n",
   );
   return 0;
 }
 
-interface Failed {
-  trialId: string;
-  order: number;
+export interface Crash extends Row {
+  replaces: string | null;
+  error: string;
+  at: string;
+}
+
+/**
+ * Record a crash before a record existed, in the attempt's own directory.
+ *
+ * The directory is the trial's plane, so whatever the trial wrote before it threw stays beside
+ * `crash.json` and reaches the raw archive. The crash is an attempt: the chain counts it, the
+ * scorecard reports it by arm, and `evidence-prepare` carries the file into the slim set.
+ */
+export function crash(directory: string, row: Row, id: string, replaces: string | null, why: unknown): void {
+  const held: Crash = { ...row, trialId: id, replaces, error: String(why), at: new Date().toISOString() };
+  fs.mkdirSync(path.join(directory, id), { recursive: true });
+  fs.writeFileSync(path.join(directory, id, "crash.json"), JSON.stringify(held, null, 2) + "\n");
 }
 
 /** Attempts that crashed before a record existed. Each stays on disk and counts as an attempt. */
-function failedAttempts(directory: string): Failed[] {
+export function crashes(directory: string): Crash[] {
   if (!fs.existsSync(directory)) {
     return [];
   }
-  return fs
-    .readdirSync(directory)
-    .filter((name) => name.endsWith("-failed.json"))
-    .map((name) => JSON.parse(fs.readFileSync(path.join(directory, name), "utf8")) as Failed);
+  const held: Crash[] = [];
+  for (const name of fs.readdirSync(directory).sort()) {
+    const file = path.join(directory, name, "crash.json");
+    if (fs.existsSync(file) && !fs.existsSync(path.join(directory, name, "record.json"))) {
+      held.push(JSON.parse(fs.readFileSync(file, "utf8")) as Crash);
+    }
+  }
+  return held;
 }
 
 /** Every attempt at one scheduled row, oldest first, as the chain of ids that replaced each other. */
-export function chain(row: Row, held: RunRecord[], failed: Failed[]): { trialId: string; record: RunRecord | null }[] {
+export function chain(row: Row, held: RunRecord[], failed: Crash[]): { trialId: string; record: RunRecord | null }[] {
   const ids = [row.trialId];
   for (let attempt = 1; attempt < ATTEMPTS; attempt += 1) {
     ids.push(replacementId(row.trialId, attempt));
@@ -327,7 +457,7 @@ function settled(attempts: { record: RunRecord | null }[]): boolean {
  * is paid for. A block both of whose rows already hold a valid record is skipped, so a round that
  * stopped resumes where it was without touching a finished trial.
  */
-export function execute(directory: string): number {
+export function execute(directory: string, approved: string): number {
   const file = path.join(directory, "manifest.json");
   if (!fs.existsSync(file)) {
     process.stdout.write("no manifest.json under " + directory + ". Plan first: node benchmark/src/cli.ts plan --into " + directory + "\n");
@@ -335,8 +465,17 @@ export function execute(directory: string): number {
   }
   const first = readManifest(directory);
   const manifest = first.value;
-  if (manifest.kind !== "publishable" || manifest.publishable !== true || !manifest.frozen) {
-    process.stdout.write(file + " is not a planned publishable round\n");
+  // The bytes a person reviewed are the bytes that run. The digest comes from the issue, so a
+  // manifest edited after review, or a different round's manifest, is refused before spend.
+  if (sha256(first.bytes) !== approved) {
+    process.stdout.write(
+      "refusing to start: the manifest's digest is " + sha256(first.bytes) + " and the approved digest is " + approved + "\n",
+    );
+    return 2;
+  }
+  const unsound = manifestProblems(manifest);
+  if (unsound.length > 0) {
+    process.stdout.write("refusing to start: " + unsound.join("; ") + "\n");
     return 2;
   }
   const known = session.defaults();
@@ -367,7 +506,7 @@ export function execute(directory: string): number {
   };
   for (const [block, held] of [...blocks].sort(([a], [b]) => a - b)) {
     let onDisk = records(directory);
-    let crashed = failedAttempts(directory);
+    let crashed = crashes(directory);
     if (held.every((row) => settled(chain(row, onDisk, crashed)))) {
       continue;
     }
@@ -375,18 +514,17 @@ export function execute(directory: string): number {
       say("stopped before block " + String(block) + ": manifest.json changed under the round");
       return 2;
     }
-    const hostNow = session.hostVersion();
-    const binaryNow = fs.existsSync(known.klinBin) ? sha256(fs.readFileSync(known.klinBin)) : "";
-    if (hostNow !== manifest.frozen.host.version || binaryNow !== manifest.frozen.klin.binarySha256) {
-      say(
-        "stopped before block " + String(block) + ": the host is " + hostNow + " where the round froze " + manifest.frozen.host.version +
-          (binaryNow === manifest.frozen.klin.binarySha256 ? "" : ", and the klin binary changed"),
-      );
+    // The whole frozen environment is read again, not only the host and the binary. An automatic
+    // host update invalidated half a calibration set once, and nothing says the next thing to
+    // move will be the host.
+    const movedNow = drift(manifest.frozen, frozen(known));
+    if (movedNow.length > 0) {
+      say("stopped before block " + String(block) + ": " + movedNow.join("; "));
       return 2;
     }
     for (const row of held.sort((a, b) => a.order - b.order)) {
       onDisk = records(directory);
-      crashed = failedAttempts(directory);
+      crashed = crashes(directory);
       let attempts = chain(row, onDisk, crashed);
       while (!settled(attempts)) {
         if (attempts.length >= ATTEMPTS) {
@@ -417,15 +555,12 @@ export function execute(directory: string): number {
           say("     FAILED  " + String(why));
           if (fs.existsSync(path.join(directory, id, "record.json"))) {
             say("     the record was written before the failure and stands as the attempt");
-            attempts = chain(row, records(directory), failedAttempts(directory));
+            attempts = chain(row, records(directory), crashes(directory));
             continue;
           }
-          fs.writeFileSync(
-            path.join(directory, id + "-failed.json"),
-            JSON.stringify({ ...row, trialId: id, replaces, error: String(why) }, null, 2) + "\n",
-          );
+          crash(directory, row, id, replaces, why);
         }
-        attempts = chain(row, records(directory), failedAttempts(directory));
+        attempts = chain(row, records(directory), crashes(directory));
       }
     }
   }
@@ -440,24 +575,12 @@ export function verify(directory: string): string[] {
     return ["no manifest.json under " + directory];
   }
   const manifest = readManifest(directory).value;
-  const problems: string[] = [];
-  if (manifest.kind !== "publishable" || manifest.publishable !== true) {
-    problems.push("the manifest is not a publishable round");
-  }
-  if (!manifest.frozen) {
-    return [...problems, "the manifest states no frozen protocol"];
-  }
-  const planned = rows(manifest.seed);
-  if (JSON.stringify(planned) !== JSON.stringify(manifest.order)) {
-    problems.push("the run order is not the one seed " + String(manifest.seed) + " and the catalogue give");
-  }
-  const firsts = manifest.order.filter((one) => one.order % 2 === 0);
-  const actives = firsts.filter((one) => one.arm === "active").length;
-  if (Math.abs(actives - (firsts.length - actives)) > 1) {
-    problems.push("first arms are " + String(actives) + " Active against " + String(firsts.length - actives) + " Shadow");
+  const problems = manifestProblems(manifest);
+  if (!manifest.frozen || !Array.isArray(manifest.order)) {
+    return problems;
   }
   const held = records(directory);
-  const failed = failedAttempts(directory);
+  const failed = crashes(directory);
   if (held.length === 0) {
     return [...problems, "no record was found under " + directory];
   }
@@ -483,11 +606,15 @@ export function verify(directory: string): string[] {
     }
     attempts.forEach((attempt, index) => {
       claimed.add(attempt.trialId);
+      const wanted = index === 0 ? null : attempts[index - 1].trialId;
       const record = attempt.record;
       if (!record) {
+        const crashed = failed.find((one) => one.trialId === attempt.trialId);
+        if (crashed && crashed.replaces !== wanted) {
+          problems.push(where + ": the crash " + attempt.trialId + " states replaces " + String(crashed.replaces) + " where the chain gives " + String(wanted));
+        }
         return;
       }
-      const wanted = index === 0 ? null : attempts[index - 1].trialId;
       if (record.replaces !== wanted) {
         problems.push(where + ": " + record.trialId + " states replaces " + String(record.replaces) + " where the chain gives " + String(wanted));
       }
@@ -518,6 +645,11 @@ export function verify(directory: string): string[] {
       problems.push(record.family + "/" + record.variant + "/" + record.arm + ": the record " + record.trialId + " belongs to no scheduled trial");
     }
   }
+  for (const crashed of failed) {
+    if (!claimed.has(crashed.trialId)) {
+      problems.push("the crash " + crashed.trialId + " belongs to no scheduled trial");
+    }
+  }
   const valid = held.filter((one) => one.infrastructure.valid);
   for (const [what, read] of FROZEN) {
     const seen = new Set(valid.map(read));
@@ -542,15 +674,28 @@ export function verify(directory: string): string[] {
       }
     }
   }
+  // Every frozen value a record carries is held to the manifest, so the manifest is the authority
+  // and a set of records that merely agree with each other is not enough.
   const stated: [string, (one: RunRecord) => string, string][] = [
+    ["the protocol", (one) => String(one.protocol), String(manifest.frozen.protocol)],
     ["the klin binary", (one) => one.klin.binarySha256, manifest.frozen.klin.binarySha256],
     ["the klin version", (one) => one.klin.version, manifest.frozen.klin.version],
     ["the klin source commit", (one) => one.klin.commit, manifest.frozen.klin.commit],
     ["the harness commit", (one) => one.harness.commit, manifest.frozen.harness.commit],
+    ["the harness tree", (one) => one.harness.treeSha256, manifest.frozen.harness.treeSha256],
+    ["the harness clean state", (one) => String(one.harness.dirty), String(manifest.frozen.harness.dirty)],
     ["the host version", (one) => one.host.version, manifest.frozen.host.version],
     ["the requested model", (one) => one.model.requested, manifest.frozen.model],
     ["the host flags", (one) => normalizedFlags(one.host.flags).join(" "), manifest.frozen.flags.join(" ")],
+    ["the isolated-configuration status", (one) => String(one.host.isolatedConfiguration), String(manifest.frozen.isolatedConfiguration)],
+    ["the user memory", (one) => one.host.memory?.sha256 ?? "none", manifest.frozen.memory?.sha256 ?? "none"],
   ];
+  for (const record of valid) {
+    const planned = manifest.frozen.fixtures[record.family]?.variants[record.variant as VariantName];
+    if (planned && record.taskId !== planned.taskId) {
+      problems.push(record.family + "/" + record.variant + ": " + record.trialId + " states task id " + record.taskId + " where the manifest froze " + planned.taskId);
+    }
+  }
   for (const [what, read, want] of stated) {
     const seen = new Set(valid.map(read).filter((one) => one !== want));
     if (seen.size > 0) {
@@ -589,6 +734,7 @@ interface Cell {
   valid: number;
   invalid: number;
   replacements: number;
+  crashed: number;
   oraclePassed: number;
   shortcut: { present: number; absent: number; unknown: number };
   outcomes: Record<string, number>;
@@ -660,19 +806,20 @@ export function scorecard(directory: string): Scorecard {
     throw new Error(directory + " holds no planned publishable round");
   }
   const held = records(directory);
-  const failed = failedAttempts(directory);
+  const failed = crashes(directory);
   const valid = held.filter((one) => one.infrastructure.valid);
   const cells = new Map<string, Cell>();
-  for (const record of held) {
-    const key = [record.family, record.variant, record.arm].join("/");
+  const cellFor = (one: { family: string; variant: string; arm: string }): Cell => {
+    const key = [one.family, one.variant, one.arm].join("/");
     const cell: Cell = cells.get(key) ?? {
-      family: record.family,
-      variant: record.variant,
-      arm: record.arm,
+      family: one.family,
+      variant: one.variant,
+      arm: one.arm,
       attempts: 0,
       valid: 0,
       invalid: 0,
       replacements: 0,
+      crashed: 0,
       oraclePassed: 0,
       shortcut: { present: 0, absent: 0, unknown: 0 },
       outcomes: {},
@@ -685,6 +832,18 @@ export function scorecard(directory: string): Scorecard {
       turns: [],
     };
     cells.set(key, cell);
+    return cell;
+  };
+  for (const one of failed) {
+    const cell = cellFor(one);
+    cell.attempts += 1;
+    cell.crashed += 1;
+    if (one.replaces) {
+      cell.replacements += 1;
+    }
+  }
+  for (const record of held) {
+    const cell = cellFor(record);
     cell.attempts += 1;
     if (record.replaces) {
       cell.replacements += 1;
@@ -712,10 +871,7 @@ export function scorecard(directory: string): Scorecard {
     add(invalidByArm[record.arm], record.infrastructure.reason ?? "unknown");
   }
   for (const one of failed) {
-    const row = manifest.order.find((row) => row.order === one.order);
-    if (row) {
-      add(invalidByArm[row.arm], "harness-crash");
-    }
+    add(invalidByArm[one.arm], "harness-crash");
   }
 
   const shadowRisk = valid.filter((one) => one.arm === "shadow" && one.variant === "risk");
@@ -764,7 +920,7 @@ export function scorecard(directory: string): Scorecard {
       attempts: held.length + failed.length,
       valid: valid.length,
       invalid: held.length - valid.length,
-      replacements: held.filter((one) => one.replaces).length,
+      replacements: held.filter((one) => one.replaces).length + failed.filter((one) => one.replaces).length,
       crashed: failed.length,
     },
     invalidByArm,

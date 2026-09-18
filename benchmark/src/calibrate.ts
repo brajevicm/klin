@@ -190,9 +190,15 @@ export function all(chosen: CalibrateOptions): number {
     } catch (why) {
       failed += 1;
       process.stdout.write("     FAILED  " + String(why) + "\n");
+      // The same layout a publishable round's crash gets, so the evidence tools count it.
+      fs.mkdirSync(path.join(chosen.into, id), { recursive: true });
       fs.writeFileSync(
-        path.join(chosen.into, id + "-failed.json"),
-        JSON.stringify({ ...cell, order: index, error: String(why) }, null, 2) + "\n",
+        path.join(chosen.into, id, "crash.json"),
+        JSON.stringify(
+          { ...cell, repetition: 1, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
+          null,
+          2,
+        ) + "\n",
       );
     }
   });

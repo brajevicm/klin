@@ -17,7 +17,8 @@ subject must not reach is in it.
 <stamp>/manifest.json          the protocol, the seed and the scheduled order; for a
                                publishable round, every round-wide frozen value too
 <stamp>/scorecard.json         the unclassified mechanical package of a publishable round
-<stamp>/<id>-failed.json       an attempt that crashed before a record existed
+<stamp>/<id>/crash.json        an attempt that crashed before a record existed, beside
+                               whatever the trial had written
 <stamp>/<trial>/record.json    the machine run record, against record.schema.json
 <stamp>/<trial>/agent.json     the host's own result, with no hidden reasoning
 <stamp>/<trial>/behaviour.json the hidden oracle's answer and its output

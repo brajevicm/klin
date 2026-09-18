@@ -9,7 +9,10 @@ import { sha256 } from "../src/trees.ts";
 import {
   ATTEMPTS,
   FLOOR,
+  crash,
   execute,
+  manifestOf,
+  manifestProblems,
   markdown,
   mcnemar,
   plan,
@@ -18,8 +21,10 @@ import {
   scorecard,
   verify,
   type Frozen,
+  type Manifest,
   type Row,
 } from "../src/round.ts";
+import { execFileSync } from "node:child_process";
 import type { RunRecord } from "../src/record.ts";
 
 /**
@@ -130,6 +135,7 @@ function recordFor(row: Row, trialId: string, replaces: string | null, valid: bo
     family: row.family,
     variant: row.variant,
     arm: row.arm,
+    taskId: "t",
     order: row.order,
     repetition: row.repetition,
     trialId,
@@ -166,14 +172,16 @@ function write(where: string, record: RunRecord): void {
   fs.writeFileSync(path.join(where, record.trialId, "record.json"), JSON.stringify(record) + "\n");
 }
 
+/** The manifest `plan` would write for a seed, with the test's frozen values in place of the machine's. */
+function manifestFor(seed: number): Manifest {
+  return { ...manifestOf(seed, frozenFor()), frozen: frozenFor() };
+}
+
 /** A complete valid round on disk, every scheduled trial answered on its first attempt. */
 function roundOnDisk(shape: Shape = {}): { where: string; order: Row[] } {
   const where = room();
   const order = rows(1);
-  fs.writeFileSync(
-    path.join(where, "manifest.json"),
-    JSON.stringify({ protocol: paths.PROTOCOL, kind: "publishable", publishable: true, seed: 1, frozen: frozenFor(), order }) + "\n",
-  );
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifestFor(1)) + "\n");
   for (const row of order) {
     write(where, recordFor(row, row.trialId, null, true, shape));
   }
@@ -302,6 +310,67 @@ test("one exposing family is challenge-limited even at three exposures", () => {
   fs.rmSync(where, { recursive: true, force: true });
 });
 
+test("a crash before a record, then a valid replacement, verifies and is counted in its cell", () => {
+  const { where, order } = roundOnDisk();
+  const row = order[3];
+  fs.rmSync(path.join(where, row.trialId), { recursive: true });
+  crash(where, row, row.trialId, null, new Error("the host never started"));
+  assert.deepEqual(fs.readdirSync(path.join(where, row.trialId)), ["crash.json"]);
+  write(where, recordFor(row, replacementId(row.trialId, 1), row.trialId, true, {}));
+  assert.deepEqual(verify(where), []);
+  const card = scorecard(where);
+  assert.equal(card.runs.attempts, 73);
+  assert.equal(card.runs.crashed, 1);
+  assert.equal(card.runs.replacements, 1);
+  assert.deepEqual(card.invalidByArm[row.arm], { "harness-crash": 1 });
+  const cell = card.cells.find((one) => one.family === row.family && one.variant === row.variant && one.arm === row.arm);
+  assert.equal(cell?.attempts, 4);
+  assert.equal(cell?.crashed, 1);
+  assert.equal(cell?.replacements, 1);
+  assert.equal(cell?.valid, 3);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a stray crash, or a crash whose replaces breaks the chain, is named and not thrown over", () => {
+  const { where, order } = roundOnDisk();
+  const row = order[7];
+  fs.rmSync(path.join(where, row.trialId), { recursive: true });
+  crash(where, row, row.trialId, "not-the-chain", new Error("x"));
+  write(where, recordFor(row, replacementId(row.trialId, 1), row.trialId, true, {}));
+  crash(where, order[9], "deadbeef0000", null, new Error("copied from elsewhere"));
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("the crash " + row.trialId + " states replaces not-the-chain")), problems.join(" / "));
+  assert.ok(problems.some((one) => one.includes("the crash deadbeef0000 belongs to no scheduled trial")), problems.join(" / "));
+  const held = JSON.parse(fs.readFileSync(path.join(where, "manifest.json"), "utf8")) as Manifest;
+  (held.order as unknown[])[4] = null;
+  (held.frozen.fixtures as Record<string, unknown>).stubs = null;
+  assert.ok(manifestProblems(held).some((one) => one.includes("malformed")));
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a manifest that does not encode the frozen design exactly is refused before spend", () => {
+  const sound = manifestFor(1);
+  assert.deepEqual(manifestProblems(sound), []);
+  const cases: [string, (held: Manifest) => void, RegExp][] = [
+    ["floor", (held) => { held.design.floor = { runs: 5, families: 3 }; }, /floor/],
+    ["alpha", (held) => { held.design.alpha = 0.1; }, /alpha/],
+    ["analysis", (held) => { held.design.primaryAnalysis = "one-sided"; }, /primary analysis/],
+    ["repetitions", (held) => { held.design.repetitions = { risk: 2, control: 1 }; }, /repetitions/],
+    ["order", (held) => { [held.order[0], held.order[2]] = [held.order[2], held.order[0]]; }, /run order is not the one seed/],
+    ["a dropped row", (held) => { held.order.pop(); }, /72 rows/],
+    ["balance", (held) => { held.order[0].arm = held.order[1].arm; }, /adjacent|first arm/],
+    ["a missing family", (held) => { delete held.frozen.fixtures.stubs; }, /fixtures/],
+    ["kind", (held) => { (held as { kind: string }).kind = "calibration"; }, /publishable/],
+    ["protocol", (held) => { held.protocol = 99; }, /protocol/],
+  ];
+  for (const [what, spoil, expected] of cases) {
+    const held = manifestFor(1);
+    spoil(held);
+    const problems = manifestProblems(held);
+    assert.ok(problems.some((one) => expected.test(one)), what + ": " + problems.join(" / "));
+  }
+});
+
 /** A klin stand-in that answers --version, with the provenance file the build writes beside it. */
 function stubKlin(): string {
   const where = room();
@@ -322,6 +391,12 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
   const where = path.join(room(), "round");
   try {
     const first = quiet(() => plan(where, 7));
+    if (execFileSync("git", ["status", "--porcelain"], { cwd: paths.REPO, encoding: "utf8" }).trim() !== "") {
+      assert.equal(first.value, 2, first.wrote);
+      assert.match(first.wrote, /uncommitted/);
+      assert.equal(fs.existsSync(path.join(where, "manifest.json")), false, "a dirty harness plans nothing");
+      return;
+    }
     assert.equal(first.value, 0, first.wrote);
     assert.match(first.wrote, /No session ran/);
     const held = JSON.parse(fs.readFileSync(path.join(where, "manifest.json"), "utf8")) as {
@@ -361,13 +436,16 @@ test("execute refuses a round whose frozen values moved, before any record exist
   process.env.KLIN_BIN = binary;
   const where = room();
   try {
-    const manifest = { protocol: paths.PROTOCOL, kind: "publishable", publishable: true, seed: 1, frozen: frozenFor(), order: rows(1) };
-    fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
-    const ran = quiet(() => execute(where));
+    const bytes = JSON.stringify(manifestFor(1)) + "\n";
+    fs.writeFileSync(path.join(where, "manifest.json"), bytes);
+    const unapproved = quiet(() => execute(where, "0000"));
+    assert.equal(unapproved.value, 2);
+    assert.match(unapproved.wrote, /digest/);
+    const ran = quiet(() => execute(where, sha256(bytes)));
     assert.equal(ran.value, 2);
     assert.match(ran.wrote, /refusing to start: .*moved from/);
     assert.deepEqual(fs.readdirSync(where), ["manifest.json"]);
-    const missing = quiet(() => execute(path.join(where, "nowhere")));
+    const missing = quiet(() => execute(path.join(where, "nowhere"), "0000"));
     assert.equal(missing.value, 2);
     assert.match(missing.wrote, /no manifest\.json/);
   } finally {

@@ -17,7 +17,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts probe [family] [--into DIR]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N]
-  node benchmark/src/cli.ts execute <round-dir>
+  node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
   node benchmark/src/cli.ts scorecard <round-dir> [--out FILE]
@@ -207,11 +207,14 @@ export function main(argv: string[]): number {
     return round.plan(flag(args, "--into", round.roundDirectory()), Number(flag(args, "--seed", "1")));
   }
   if (command === "execute") {
-    if (!args[0]) {
-      process.stdout.write("execute needs a planned round directory\n\n" + USAGE);
+    const approved = flag(args, "--manifest-sha256", "");
+    if (!args[0] || args[0].startsWith("-") || approved === "") {
+      process.stdout.write(
+        "execute needs a planned round directory and --manifest-sha256, the digest the owner approved\n\n" + USAGE,
+      );
       return 2;
     }
-    return round.execute(args[0]);
+    return round.execute(args[0], approved);
   }
   if (command === "verify") {
     return verify(args[0] ?? "");
