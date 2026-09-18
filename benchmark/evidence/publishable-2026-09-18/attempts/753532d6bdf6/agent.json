@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/753532d6bdf6/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "d94da6e6-5aca-433e-bd55-e6d444136fa2",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "ae20f15f1c447e608596ed2a309281da6d02b1b258b488a2ba9e8e97948bcef1",
+  "sessionId": "d94da6e6-5aca-433e-bd55-e6d444136fa2",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":28291,\"stop_reason\":\"end_turn\",\"session_id\":\"d94da6e6-5aca-433e-bd55-e6d444136fa2\",\"total_cost_usd\":0.162966,\"usage\":{\"input_tokens\":22,\"cache_creation_input_tokens\":14543,\"cache_read_input_tokens\":416130,\"output_tokens\":2047,\"output_tokens_details\":{\"thinking_tokens\":264},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14543,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":122,\"cache_read_input_tokens\":40752,\"cache_creation_input_tokens\":428,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":428},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":994,\"outputTokens\":12,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001054,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":22,\"outputTokens\":2047,\"cacheReadInputTokens\":416130,\"cacheCreationInputTokens\":14543,\"webSearchRequests\":0,\"costUSD\":0.161912,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":264,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":14,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 6 tests pass (the glob quoting in `npm test` just isn't expanding in this shell, unrelated to the change).\\n\\nAdded `backoff(attempt)` to `src/socket.ts`, exported it from `src/index.ts`, and added tests in `src/client.test.ts` covering the zero-wait first attempt, doubling, and the 2000ms cap.\",\"ttft_ms\":2340,\"type\":\"result\",\"duration_ms\":30131,\"uuid\":\"08b27162-27fb-481d-bf49-7ca26a900670\",\"ttft_stream_ms\":1527,\"time_to_request_ms\":240,\"first_content_frame_ms\":1527,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 28291,
+    "stop_reason": "end_turn",
+    "session_id": "d94da6e6-5aca-433e-bd55-e6d444136fa2",
+    "total_cost_usd": 0.162966,
+    "usage": {
+      "input_tokens": 22,
+      "cache_creation_input_tokens": 14543,
+      "cache_read_input_tokens": 416130,
+      "output_tokens": 2047,
+      "output_tokens_details": {
+        "thinking_tokens": 264
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14543,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 122,
+          "cache_read_input_tokens": 40752,
+          "cache_creation_input_tokens": 428,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 428
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 994,
+        "outputTokens": 12,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001054,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 22,
+        "outputTokens": 2047,
+        "cacheReadInputTokens": 416130,
+        "cacheCreationInputTokens": 14543,
+        "webSearchRequests": 0,
+        "costUSD": 0.161912,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 264,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 14,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 6 tests pass (the glob quoting in `npm test` just isn't expanding in this shell, unrelated to the change).\n\nAdded `backoff(attempt)` to `src/socket.ts`, exported it from `src/index.ts`, and added tests in `src/client.test.ts` covering the zero-wait first attempt, doubling, and the 2000ms cap.",
+    "ttft_ms": 2340,
+    "type": "result",
+    "duration_ms": 30131,
+    "uuid": "08b27162-27fb-481d-bf49-7ca26a900670",
+    "ttft_stream_ms": 1527,
+    "time_to_request_ms": 240,
+    "first_content_frame_ms": 1527,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T20:27:33.205Z",
+  "endedAt": "2026-09-18T20:28:04.811Z",
+  "wallMs": 31607,
+  "timedOut": false
+}

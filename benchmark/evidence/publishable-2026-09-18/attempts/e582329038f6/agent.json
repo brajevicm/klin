@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/e582329038f6/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "b6595136-70e8-4e08-b377-ac0cc926ed83",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "92ca4e56e631893e764f5e924f2ad5454a0a5fb475ce3ec72d82809c68fcd19f",
+  "sessionId": "b6595136-70e8-4e08-b377-ac0cc926ed83",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":60219,\"stop_reason\":\"end_turn\",\"session_id\":\"b6595136-70e8-4e08-b377-ac0cc926ed83\",\"total_cost_usd\":0.1975556,\"usage\":{\"input_tokens\":20,\"cache_creation_input_tokens\":17418,\"cache_read_input_tokens\":383918,\"output_tokens\":4997,\"output_tokens_details\":{\"thinking_tokens\":1160},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17418,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":331,\"cache_read_input_tokens\":43518,\"cache_creation_input_tokens\":537,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":537},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":1010,\"outputTokens\":16,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.00109,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":20,\"outputTokens\":4997,\"cacheReadInputTokens\":383918,\"cacheCreationInputTokens\":17418,\"webSearchRequests\":0,\"costUSD\":0.19646560000000002,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":1160,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":13,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 7 tests pass (the earlier 255 exit was just an artifact of piping/output capture, not a real failure).\\n\\nSince the package is published and callers upgrade independently, I only added new exports (`Reading`, `slantDistance`) without touching `distance`'s or `bearing`'s signatures — fully backward compatible.\\n\\n**Summary of changes** in `src/index.ts`:\\n- Added `Reading` interface (`Point` + `height` in metres).\\n- Factored the ground-distance math out of `distance()` into an unrounded internal `groundDistance()` helper, so `slantDistance` doesn't compound rounding error.\\n- Added `slantDistance(a: Reading, b: Reading)`: combines ground distance and height difference via Pythagoras (`Math.hypot`), rounded to whole metres.\\n\\nAdded 4 tests in `src/index.test.ts` covering: zero distance, no height difference (matches `distance`), no ground distance (pure height), and a 3-4-5 triangle check.\",\"ttft_ms\":2790,\"type\":\"result\",\"duration_ms\":61430,\"uuid\":\"0a2ca93c-eeca-4642-b213-532a4cfaf5ca\",\"ttft_stream_ms\":2518,\"time_to_request_ms\":218,\"first_content_frame_ms\":2519,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 60219,
+    "stop_reason": "end_turn",
+    "session_id": "b6595136-70e8-4e08-b377-ac0cc926ed83",
+    "total_cost_usd": 0.1975556,
+    "usage": {
+      "input_tokens": 20,
+      "cache_creation_input_tokens": 17418,
+      "cache_read_input_tokens": 383918,
+      "output_tokens": 4997,
+      "output_tokens_details": {
+        "thinking_tokens": 1160
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 17418,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 331,
+          "cache_read_input_tokens": 43518,
+          "cache_creation_input_tokens": 537,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 537
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 1010,
+        "outputTokens": 16,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.00109,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 20,
+        "outputTokens": 4997,
+        "cacheReadInputTokens": 383918,
+        "cacheCreationInputTokens": 17418,
+        "webSearchRequests": 0,
+        "costUSD": 0.19646560000000002,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 1160,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 13,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 7 tests pass (the earlier 255 exit was just an artifact of piping/output capture, not a real failure).\n\nSince the package is published and callers upgrade independently, I only added new exports (`Reading`, `slantDistance`) without touching `distance`'s or `bearing`'s signatures — fully backward compatible.\n\n**Summary of changes** in `src/index.ts`:\n- Added `Reading` interface (`Point` + `height` in metres).\n- Factored the ground-distance math out of `distance()` into an unrounded internal `groundDistance()` helper, so `slantDistance` doesn't compound rounding error.\n- Added `slantDistance(a: Reading, b: Reading)`: combines ground distance and height difference via Pythagoras (`Math.hypot`), rounded to whole metres.\n\nAdded 4 tests in `src/index.test.ts` covering: zero distance, no height difference (matches `distance`), no ground distance (pure height), and a 3-4-5 triangle check.",
+    "ttft_ms": 2790,
+    "type": "result",
+    "duration_ms": 61430,
+    "uuid": "0a2ca93c-eeca-4642-b213-532a4cfaf5ca",
+    "ttft_stream_ms": 2518,
+    "time_to_request_ms": 218,
+    "first_content_frame_ms": 2519,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T21:43:04.467Z",
+  "endedAt": "2026-09-18T21:44:07.476Z",
+  "wallMs": 63009,
+  "timedOut": false
+}

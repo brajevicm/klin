@@ -1,0 +1,194 @@
+{
+  "activity": {
+    "klin_ms": 328,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 6,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 6,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "tests/cli.rs",
+      "first": 1789765093,
+      "gate": "inventory",
+      "id": "0857022eb88e99a2",
+      "key": {
+        "file": "tests/cli.rs",
+        "gate": "inventory",
+        "line": 10,
+        "text": "fn a_note_can_be_added_and_listed() {"
+      },
+      "label": "missing test",
+      "last": 1789765093,
+      "line": 10,
+      "outcome": "open",
+      "prompt": "The `add` and `remove` commands should become one command.",
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+      "text": "fn a_note_can_be_added_and_listed() {",
+      "time": 1789765093,
+      "tries": 0,
+      "values": {
+        "missing": 1
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "tests/cli.rs",
+      "first": 1789765093,
+      "gate": "inventory",
+      "id": "834523b9ac5bf73e",
+      "key": {
+        "file": "tests/cli.rs",
+        "gate": "inventory",
+        "line": 17,
+        "text": "fn a_note_can_be_removed() {"
+      },
+      "label": "missing test",
+      "last": 1789765093,
+      "line": 17,
+      "outcome": "open",
+      "prompt": "The `add` and `remove` commands should become one command.",
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+      "text": "fn a_note_can_be_removed() {",
+      "time": 1789765093,
+      "tries": 0,
+      "values": {
+        "missing": 1
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "notes",
+      "first": 1789765093,
+      "gate": "public-api",
+      "id": "ba1036eb4ba52a0e",
+      "key": {
+        "file": "notes",
+        "gate": "public-api",
+        "line": 1,
+        "text": "commands::add_command (module)"
+      },
+      "label": "broken public contract",
+      "last": 1789765093,
+      "line": 1,
+      "outcome": "open",
+      "prompt": "The `add` and `remove` commands should become one command.",
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "text": "commands::add_command (module)",
+      "time": 1789765093,
+      "tries": 0,
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/add_command.rs:1"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "notes",
+      "first": 1789765093,
+      "gate": "public-api",
+      "id": "31fee13ffdb54c2f",
+      "key": {
+        "file": "notes",
+        "gate": "public-api",
+        "line": 1,
+        "text": "commands::remove_command (module)"
+      },
+      "label": "broken public contract",
+      "last": 1789765093,
+      "line": 1,
+      "outcome": "open",
+      "prompt": "The `add` and `remove` commands should become one command.",
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "text": "commands::remove_command (module)",
+      "time": 1789765093,
+      "tries": 0,
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/remove_command.rs:1"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "notes",
+      "first": 1789765093,
+      "gate": "public-api",
+      "id": "86e57edb83f72b1f",
+      "key": {
+        "file": "notes",
+        "gate": "public-api",
+        "line": 4,
+        "text": "commands::add_command::run_add (function)"
+      },
+      "label": "broken public contract",
+      "last": 1789765093,
+      "line": 4,
+      "outcome": "open",
+      "prompt": "The `add` and `remove` commands should become one command.",
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "text": "commands::add_command::run_add (function)",
+      "time": 1789765093,
+      "tries": 0,
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/add_command.rs:4"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "notes",
+      "first": 1789765093,
+      "gate": "public-api",
+      "id": "297800cce4592d25",
+      "key": {
+        "file": "notes",
+        "gate": "public-api",
+        "line": 4,
+        "text": "commands::remove_command::run_remove (function)"
+      },
+      "label": "broken public contract",
+      "last": 1789765093,
+      "line": 4,
+      "outcome": "open",
+      "prompt": "The `add` and `remove` commands should become one command.",
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "text": "commands::remove_command::run_remove (function)",
+      "time": 1789765093,
+      "tries": 0,
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/remove_command.rs:4"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

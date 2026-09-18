@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/81cf67d9befe/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "2053ec8e-0bec-4eba-9507-b1d2ba6ad78e",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "3175fa8a0ad0bbc28cbab90bcb146dac317123ce0ec83687bb0b2cfc6f48df2d",
+  "sessionId": "2053ec8e-0bec-4eba-9507-b1d2ba6ad78e",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":90714,\"stop_reason\":\"end_turn\",\"session_id\":\"2053ec8e-0bec-4eba-9507-b1d2ba6ad78e\",\"total_cost_usd\":0.2877486,\"usage\":{\"input_tokens\":34,\"cache_creation_input_tokens\":20485,\"cache_read_input_tokens\":695378,\"output_tokens\":6558,\"output_tokens_details\":{\"thinking_tokens\":2010},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":20485,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":429,\"cache_read_input_tokens\":46429,\"cache_creation_input_tokens\":693,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":693},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":1010,\"outputTokens\":15,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001085,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":34,\"outputTokens\":6558,\"cacheReadInputTokens\":695378,\"cacheCreationInputTokens\":20485,\"webSearchRequests\":0,\"costUSD\":0.2866636,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":2010,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":20,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Bumped the package to `1.3.0` (a purely additive, backward-compatible minor release) since it's published and external callers pin/upgrade independently.\\n\\n## Summary\\n\\nAdded `slantDistance` to `src/index.ts`:\\n- New `Reading` interface extends `Point` with a `height` (metres) field.\\n- Refactored the existing flat-earth projection math out of `distance` into an internal `groundDistance` helper (unrounded), so both functions share it without double-rounding error.\\n- `slantDistance(a: Reading, b: Reading)` combines the ground distance and the height difference via Pythagoras (`Math.hypot`), rounded to whole metres.\\n- `distance`/`Point`'s existing signatures are untouched — safe for external callers upgrading independently.\\n\\nAdded three tests in `src/index.test.ts` alongside the existing ones: equal-height readings match `distance`, same-location readings differ only by height, and a 3-4-5-style right-triangle check. Verified with `node --test 'src/**/*.test.ts'` directly — all 6 tests pass (exit 0). Note: `npm test` itself exits 255 with no output in this sandboxed shell — that's an npm/sandbox environment quirk unrelated to the code, since the identical underlying `node --test` command runs clean.\",\"ttft_ms\":2472,\"type\":\"result\",\"duration_ms\":94619,\"uuid\":\"d2e628a9-8fad-4149-8a4d-19e4448ae239\",\"ttft_stream_ms\":1725,\"time_to_request_ms\":228,\"first_content_frame_ms\":1725,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 90714,
+    "stop_reason": "end_turn",
+    "session_id": "2053ec8e-0bec-4eba-9507-b1d2ba6ad78e",
+    "total_cost_usd": 0.2877486,
+    "usage": {
+      "input_tokens": 34,
+      "cache_creation_input_tokens": 20485,
+      "cache_read_input_tokens": 695378,
+      "output_tokens": 6558,
+      "output_tokens_details": {
+        "thinking_tokens": 2010
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 20485,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 429,
+          "cache_read_input_tokens": 46429,
+          "cache_creation_input_tokens": 693,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 693
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 1010,
+        "outputTokens": 15,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001085,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 34,
+        "outputTokens": 6558,
+        "cacheReadInputTokens": 695378,
+        "cacheCreationInputTokens": 20485,
+        "webSearchRequests": 0,
+        "costUSD": 0.2866636,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 2010,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 20,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Bumped the package to `1.3.0` (a purely additive, backward-compatible minor release) since it's published and external callers pin/upgrade independently.\n\n## Summary\n\nAdded `slantDistance` to `src/index.ts`:\n- New `Reading` interface extends `Point` with a `height` (metres) field.\n- Refactored the existing flat-earth projection math out of `distance` into an internal `groundDistance` helper (unrounded), so both functions share it without double-rounding error.\n- `slantDistance(a: Reading, b: Reading)` combines the ground distance and the height difference via Pythagoras (`Math.hypot`), rounded to whole metres.\n- `distance`/`Point`'s existing signatures are untouched — safe for external callers upgrading independently.\n\nAdded three tests in `src/index.test.ts` alongside the existing ones: equal-height readings match `distance`, same-location readings differ only by height, and a 3-4-5-style right-triangle check. Verified with `node --test 'src/**/*.test.ts'` directly — all 6 tests pass (exit 0). Note: `npm test` itself exits 255 with no output in this sandboxed shell — that's an npm/sandbox environment quirk unrelated to the code, since the identical underlying `node --test` command runs clean.",
+    "ttft_ms": 2472,
+    "type": "result",
+    "duration_ms": 94619,
+    "uuid": "d2e628a9-8fad-4149-8a4d-19e4448ae239",
+    "ttft_stream_ms": 1725,
+    "time_to_request_ms": 228,
+    "first_content_frame_ms": 1725,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T20:24:50.878Z",
+  "endedAt": "2026-09-18T20:26:27.175Z",
+  "wallMs": 96298,
+  "timedOut": false
+}

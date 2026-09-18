@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/f016ca964d90/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "57db4304-dedc-4d24-8d94-90755a04dbf1",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "403d3590461902113a0e69a0db8eed98ebfc0ad3e32329d7b5f449f434b07464",
+  "sessionId": "57db4304-dedc-4d24-8d94-90755a04dbf1",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":27755,\"stop_reason\":\"end_turn\",\"session_id\":\"57db4304-dedc-4d24-8d94-90755a04dbf1\",\"total_cost_usd\":0.1668538,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":16788,\"cache_read_input_tokens\":346784,\"output_tokens\":2923,\"output_tokens_details\":{\"thinking_tokens\":801},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16788,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":56,\"cache_read_input_tokens\":42497,\"cache_creation_input_tokens\":928,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":928},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":1009,\"outputTokens\":14,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.0010789999999999999,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":2923,\"cacheReadInputTokens\":346784,\"cacheCreationInputTokens\":16788,\"webSearchRequests\":0,\"costUSD\":0.1657748,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":801,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":17,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 6 tests pass. Added `list --json` support (empty-array, name list, and quote/backslash escaping cases) with tests in `tests/cli.rs`.\",\"ttft_ms\":1269,\"type\":\"result\",\"duration_ms\":31222,\"uuid\":\"ec2719fd-7481-4196-8c56-d77321a13d71\",\"ttft_stream_ms\":889,\"time_to_request_ms\":202,\"first_content_frame_ms\":889,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 27755,
+    "stop_reason": "end_turn",
+    "session_id": "57db4304-dedc-4d24-8d94-90755a04dbf1",
+    "total_cost_usd": 0.1668538,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 16788,
+      "cache_read_input_tokens": 346784,
+      "output_tokens": 2923,
+      "output_tokens_details": {
+        "thinking_tokens": 801
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16788,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 56,
+          "cache_read_input_tokens": 42497,
+          "cache_creation_input_tokens": 928,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 928
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 1009,
+        "outputTokens": 14,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.0010789999999999999,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 2923,
+        "cacheReadInputTokens": 346784,
+        "cacheCreationInputTokens": 16788,
+        "webSearchRequests": 0,
+        "costUSD": 0.1657748,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 801,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 17,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 6 tests pass. Added `list --json` support (empty-array, name list, and quote/backslash escaping cases) with tests in `tests/cli.rs`.",
+    "ttft_ms": 1269,
+    "type": "result",
+    "duration_ms": 31222,
+    "uuid": "ec2719fd-7481-4196-8c56-d77321a13d71",
+    "ttft_stream_ms": 889,
+    "time_to_request_ms": 202,
+    "first_content_frame_ms": 889,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T20:51:25.622Z",
+  "endedAt": "2026-09-18T20:51:58.412Z",
+  "wallMs": 32790,
+  "timedOut": false
+}

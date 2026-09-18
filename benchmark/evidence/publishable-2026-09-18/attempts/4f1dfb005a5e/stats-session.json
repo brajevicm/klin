@@ -1,0 +1,35 @@
+{
+  "activity": {
+    "klin_ms": 301,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 0,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

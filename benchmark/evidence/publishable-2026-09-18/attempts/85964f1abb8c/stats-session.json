@@ -1,0 +1,114 @@
+{
+  "activity": {
+    "klin_ms": 693,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 3,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 3,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "tests/render.rs",
+      "first": 1789762435,
+      "gate": "escapes",
+      "id": "8b4ca05ea73d6baf",
+      "key": {
+        "file": "tests/render.rs",
+        "gate": "escapes",
+        "line": 60,
+        "text": "assert_eq!(lines.last().unwrap(), \"gh\");"
+      },
+      "label": "escape hatch",
+      "last": 1789762490,
+      "line": 60,
+      "outcome": "fixed-next",
+      "prompt": "The `fmtx` crate lays text out and cannot break a paragraph to a width.",
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "assert_eq!(lines.last().unwrap(), \"gh\");",
+      "time": 1789762435,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "escape": "unwrap"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "tests/render.rs",
+      "first": 1789762435,
+      "gate": "escapes",
+      "id": "872010266fe52e6f",
+      "key": {
+        "file": "tests/render.rs",
+        "gate": "escapes",
+        "line": 61,
+        "text": "assert!(!lines.last().unwrap().ends_with('-'));"
+      },
+      "label": "escape hatch",
+      "last": 1789762490,
+      "line": 61,
+      "outcome": "fixed-next",
+      "prompt": "The `fmtx` crate lays text out and cannot break a paragraph to a width.",
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "assert!(!lines.last().unwrap().ends_with('-'));",
+      "time": 1789762435,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "escape": "unwrap"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1789762435,
+      "gate": "complexity",
+      "id": "0d8fc10b292a64d5",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "complexity",
+        "line": 25,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "label": "tangled function",
+      "last": 1789762490,
+      "line": 25,
+      "outcome": "fixed-next",
+      "prompt": "The `fmtx` crate lays text out and cannot break a paragraph to a width.",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+      "time": 1789762435,
+      "tries": 1,
+      "values": {
+        "cc": 9,
+        "lines": 38
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}
