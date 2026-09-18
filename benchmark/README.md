@@ -516,11 +516,23 @@ The publishable round of #211 has its own two steps, and a person stands between
 them:
 
 ```sh
+node benchmark/src/cli.ts protocol                        # is the committed design still the catalogue's?
 node benchmark/src/cli.ts plan --seed 1                   # writes the frozen manifest, runs nothing
 node benchmark/src/cli.ts execute benchmark/runs/publishable-<stamp> --manifest-sha256 <digest>
 node benchmark/src/cli.ts verify    benchmark/runs/publishable-<stamp>
 node benchmark/src/cli.ts scorecard benchmark/runs/publishable-<stamp> --out docs/round-<date>.md
 ```
+
+`protocols/shadow-active-v1/protocol.json` is the treatment-independent design,
+committed before run 1: the protocol number, the frozen seed, the sample plan,
+the predeclared analysis, the fixture identities and the whole run order. It
+holds nothing of the machine, so it is a function of the fixtures and the seed
+and any checkout gives it again. `protocol --write` writes it and `protocol`
+alone says whether the catalogue still gives it. Both `plan` and `execute`
+refuse a round that departs from it, so a changed prompt, fixture, seed, sample
+plan or schedule stops the round before a session is paid for. The point of the
+commit is that the run directory is ephemeral and the operator who writes it
+also reads the outcomes, while the history dates this file.
 
 `plan` reads every round-wide frozen value the harness can read before a
 session exists, the klin binary and its source commit, the harness commit and
@@ -592,6 +604,7 @@ protocol.
 benchmark/
   host/hook              the wrapper both arms run
   record.schema.json     the run record contract
+  protocols/<name>/      the treatment-independent design, committed before run 1
   src/                   the harness
   test/                  the harness's own tests
   fixtures/<family>/     base/, risk/, control/, each with prompt, overlay,

@@ -11,14 +11,19 @@ import {
   FLOOR,
   crash,
   execute,
+  committedAt,
+  identity,
+  protocol,
   manifestOf,
   manifestProblems,
   markdown,
   mcnemar,
   plan,
+  protocolFile,
   replacementId,
   rows,
   scorecard,
+  uncommitted,
   verify,
   type Frozen,
   type Manifest,
@@ -390,7 +395,7 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
   process.env.KLIN_BIN = binary;
   const where = path.join(room(), "round");
   try {
-    const first = quiet(() => plan(where, 7));
+    const first = quiet(() => plan(where, 1));
     if (execFileSync("git", ["status", "--porcelain"], { cwd: paths.REPO, encoding: "utf8" }).trim() !== "") {
       assert.equal(first.value, 2, first.wrote);
       assert.match(first.wrote, /uncommitted/);
@@ -409,16 +414,19 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     };
     assert.equal(held.kind, "publishable");
     assert.equal(held.publishable, true);
-    assert.equal(held.seed, 7);
-    assert.deepEqual(held.order, rows(7));
+    assert.equal(held.seed, 1);
+    assert.deepEqual(held.order, rows(1));
     assert.deepEqual(held.firstArm, { active: 18, shadow: 18 });
     assert.equal(held.frozen.klin.commit, "stubcommit");
     assert.equal(held.frozen.klin.version, "klin 0.0-test");
     assert.equal(Object.keys(held.frozen.fixtures).length, 9);
     assert.equal(fs.readdirSync(where).length, 1, "the manifest is the only thing a plan writes");
-    const again = quiet(() => plan(where, 7));
+    const again = quiet(() => plan(where, 1));
     assert.equal(again.value, 2);
     assert.match(again.wrote, /not regenerated/);
+    const other = quiet(() => plan(path.join(path.dirname(where), "other"), 2));
+    assert.equal(other.value, 2, other.wrote);
+    assert.match(other.wrote, /not the committed protocol: the seed/);
   } finally {
     if (kept === undefined) {
       delete process.env.KLIN_BIN;
@@ -457,4 +465,49 @@ test("execute refuses a round whose frozen values moved, before any record exist
     fs.rmSync(where, { recursive: true, force: true });
     fs.rmSync(path.dirname(binary), { recursive: true, force: true });
   }
+});
+
+test("the committed protocol is the design the catalogue and the frozen seed still give", () => {
+  assert.ok(fs.existsSync(protocolFile()), protocolFile() + " is the design as it stood before run 1");
+  assert.deepEqual(uncommitted(identity(1)), []);
+});
+
+test("another seed, or a changed prompt or fixture, is not the committed protocol", () => {
+  assert.ok(
+    uncommitted(identity(2)).some((one) => one.startsWith("the seed:")),
+    "the seed is frozen at 1, so another seed is another design",
+  );
+  const moved = identity(1);
+  moved.fixtures.stubs.variants.risk.promptSha256 = "changed";
+  assert.ok(uncommitted(moved).some((one) => one.startsWith("the fixture stubs:")));
+  const shorter = identity(1);
+  shorter.order.pop();
+  assert.ok(uncommitted(shorter).some((one) => one.startsWith("the run order:")));
+  const wider = identity(1);
+  wider.design.floor = { runs: 5, families: 3 };
+  assert.ok(uncommitted(wider).some((one) => one.startsWith("the design:")));
+});
+
+test("a committed protocol that does not parse, or is not an object, refuses and does not throw", () => {
+  const where = room();
+  const file = path.join(where, "protocol.json");
+  const now = identity(1);
+  assert.equal(committedAt(file, now).length, 1, "a missing file is one departure");
+  for (const spoiled of ["<<<<<<< HEAD\n{", "null", "42", "[]"]) {
+    fs.writeFileSync(file, spoiled);
+    const problems = committedAt(file, now);
+    assert.ok(problems.length > 0, spoiled + " raised nothing");
+    assert.ok(problems.every((one) => one.length > 0));
+  }
+  fs.writeFileSync(file, fs.readFileSync(protocolFile()));
+  assert.deepEqual(committedAt(file, now), []);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a seed that is not an integer writes no committed protocol", () => {
+  const before = fs.readFileSync(protocolFile());
+  const wrote = quiet(() => protocol(Number("x"), true));
+  assert.equal(wrote.value, 2);
+  assert.match(wrote.wrote, /--seed needs an integer/);
+  assert.deepEqual(fs.readFileSync(protocolFile()), before, "a bad seed leaves the committed file alone");
 });

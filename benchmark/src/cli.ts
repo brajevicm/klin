@@ -16,6 +16,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family] [--into DIR]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
+  node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N]
   node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
   node benchmark/src/cli.ts verify <records-dir>
@@ -202,6 +203,9 @@ export function main(argv: string[]): number {
         .filter((one) => one.length > 0),
       seed: Number(flag(args, "--seed", "1")),
     });
+  }
+  if (command === "protocol") {
+    return round.protocol(Number(flag(args, "--seed", "1")), args.includes("--write"));
   }
   if (command === "plan") {
     return round.plan(flag(args, "--into", round.roundDirectory()), Number(flag(args, "--seed", "1")));

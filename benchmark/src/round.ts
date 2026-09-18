@@ -142,10 +142,15 @@ export function replacementId(scheduled: string, attempt: number): string {
   return sha256(scheduled + ":replacement:" + String(attempt)).slice(0, 12);
 }
 
-/** Every round-wide frozen value the harness can read before the first session. */
-export function frozen(options: session.SessionOptions): Frozen {
-  const binary = fs.existsSync(options.klinBin) ? sha256(fs.readFileSync(options.klinBin)) : "";
-  const fixtures: Frozen["fixtures"] = {};
+/**
+ * Every fixture identity the catalogue gives.
+ *
+ * Nothing here reads the machine. A starting tree is a family's `base/` under its variant's
+ * overlay, and a digest is relative paths and bytes, so the same catalogue gives the same
+ * identities anywhere. That is what lets a committed copy of them bind a later round.
+ */
+export function fixtures(): Frozen["fixtures"] {
+  const held: Frozen["fixtures"] = {};
   const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-plan-"));
   try {
     for (const [name, family] of Object.entries(families())) {
@@ -158,11 +163,17 @@ export function frozen(options: session.SessionOptions): Frozen {
           treeSha256: digest(laid),
         };
       }
-      fixtures[name] = { gate: family.spec.gate, fixtureSha256: digest(family.root), variants };
+      held[name] = { gate: family.spec.gate, fixtureSha256: digest(family.root), variants };
     }
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
   }
+  return held;
+}
+
+/** Every round-wide frozen value the harness can read before the first session. */
+export function frozen(options: session.SessionOptions): Frozen {
+  const binary = fs.existsSync(options.klinBin) ? sha256(fs.readFileSync(options.klinBin)) : "";
   return {
     protocol: paths.PROTOCOL,
     schemaSha256: sha256(fs.readFileSync(paths.SCHEMA)),
@@ -182,7 +193,7 @@ export function frozen(options: session.SessionOptions): Frozen {
     isolatedConfiguration: options.configRoot !== "",
     memory: options.configRoot === "" ? session.memory("") : null,
     machine: { platform: os.platform(), release: os.release(), arch: os.arch(), node: process.version },
-    fixtures,
+    fixtures: fixtures(),
   };
 }
 
@@ -211,18 +222,22 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     .map(([what, value]) => what + " moved from " + String(was.get(what)) + " to " + value);
 }
 
-export function manifestOf(seed: number, held: Frozen): Manifest {
+export interface Schedule {
+  seed: number;
+  design: Manifest["design"];
+  firstArm: Record<ArmName, number>;
+  order: Row[];
+}
+
+/** The sample plan, the analysis and the run order one seed gives. No fixture is laid here. */
+export function schedule(seed: number): Schedule {
   const order = rows(seed);
   const firstArm = { active: 0, shadow: 0 };
   for (const row of order.filter((one) => one.order % 2 === 0)) {
     firstArm[row.arm] += 1;
   }
   return {
-    protocol: paths.PROTOCOL,
-    kind: "publishable",
-    publishable: true,
     seed,
-    plannedAt: new Date().toISOString(),
     design: {
       repetitions: REPETITIONS,
       blocks: order.length / 2,
@@ -234,9 +249,159 @@ export function manifestOf(seed: number, held: Frozen): Manifest {
       primaryAnalysis: PRIMARY_ANALYSIS,
     },
     firstArm,
-    frozen: held,
     order,
   };
+}
+
+export function manifestOf(seed: number, held: Frozen): Manifest {
+  const planned = schedule(seed);
+  return {
+    protocol: paths.PROTOCOL,
+    kind: "publishable",
+    publishable: true,
+    seed,
+    plannedAt: new Date().toISOString(),
+    design: planned.design,
+    firstArm: planned.firstArm,
+    frozen: held,
+    order: planned.order,
+  };
+}
+
+/** The name benchmark v1's design is committed under. The directory holds no other round. */
+export const PROTOCOL_NAME = "shadow-active-v1";
+
+export interface Identity extends Schedule {
+  protocol: number;
+  name: string;
+  fixtures: Frozen["fixtures"];
+}
+
+export function protocolFile(): string {
+  return path.join(paths.BENCHMARK, "protocols", PROTOCOL_NAME, "protocol.json");
+}
+
+/**
+ * The treatment-independent design: the protocol, the seed, the sample plan, the analysis, the
+ * fixtures and the whole run order.
+ *
+ * Nothing of the machine, the binary or the host is here, so this much is committed before run 1
+ * and a round is held to the committed copy. The run directory is ephemeral and is written by the
+ * same operator who reads the outcomes; the committed file is dated by the history instead.
+ */
+export function identity(seed: number): Identity {
+  return { protocol: paths.PROTOCOL, name: PROTOCOL_NAME, ...schedule(seed), fixtures: fixtures() };
+}
+
+/** The identity a planned manifest carries. */
+export function identityOf(held: Manifest): Identity {
+  return {
+    protocol: held.protocol,
+    name: PROTOCOL_NAME,
+    seed: held.seed,
+    design: held.design,
+    firstArm: held.firstArm,
+    fixtures: held.frozen?.fixtures ?? {},
+    order: held.order,
+  };
+}
+
+/** The values a committed protocol and a round's own identity disagree on, as sentences. */
+export function identityDrift(was: Identity, now: Identity): string[] {
+  const flat = (held: Identity): [string, string][] => [
+    ["the protocol", String(held.protocol)],
+    ["the name", String(held.name)],
+    ["the seed", String(held.seed)],
+    ["the design", JSON.stringify(held.design)],
+    ["the first-arm balance", JSON.stringify(held.firstArm)],
+    ["the run order", sha256(JSON.stringify(held.order ?? null)).slice(0, 12)],
+    ...Object.entries(held.fixtures ?? {}).map(
+      ([name, one]) => ["the fixture " + name, JSON.stringify(one)] as [string, string],
+    ),
+  ];
+  const committed = new Map(flat(was));
+  const round = new Map(flat(now));
+  return [...new Set([...committed.keys(), ...round.keys()])]
+    .filter((what) => committed.get(what) !== round.get(what))
+    .map(
+      (what) =>
+        what +
+        ": the committed protocol states " +
+        String(committed.get(what) ?? "nothing") +
+        " and this round " +
+        String(round.get(what) ?? "nothing"),
+    );
+}
+
+/**
+ * Every way one round departs from the protocol committed before any outcome existed.
+ *
+ * A file that does not parse, or that parses to something other than an object, is a departure
+ * and not a crash. A merge that left conflict markers behind, or a `--write` that was interrupted,
+ * must refuse the round in the words the operator is reading for, not in a stack trace.
+ */
+export function uncommitted(now: Identity): string[] {
+  return committedAt(protocolFile(), now);
+}
+
+/** The same reading, over a named file, so a test never writes over the committed one. */
+export function committedAt(file: string, now: Identity): string[] {
+  if (!fs.existsSync(file)) {
+    return [
+      "no protocol is committed at " +
+        file +
+        ". Write it with `node benchmark/src/cli.ts protocol --write`, review it and commit it before run 1.",
+    ];
+  }
+  let held: Identity;
+  try {
+    held = JSON.parse(fs.readFileSync(file, "utf8")) as Identity;
+  } catch (why) {
+    return [file + " does not parse as a committed protocol: " + String(why)];
+  }
+  if (held === null || typeof held !== "object") {
+    return [file + " holds " + JSON.stringify(held) + " where a committed protocol is an object"];
+  }
+  return identityDrift(held, now);
+}
+
+/**
+ * Print how the committed protocol stands against the catalogue, or write it.
+ *
+ * Writing overwrites, because Git is the audit trail this file lives in: the commit that changed
+ * it is dated and reviewed, and `plan` refuses a harness whose tree is not clean, so no round runs
+ * against an edit that the history does not hold.
+ */
+export function protocol(seed: number, write: boolean): number {
+  if (!Number.isInteger(seed)) {
+    process.stdout.write("--seed needs an integer, and it gave " + String(seed) + "\n");
+    return 2;
+  }
+  const file = protocolFile();
+  const now = identity(seed);
+  if (write) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(now, null, 2) + "\n");
+    process.stdout.write("wrote " + file + "\nReview it and commit it. A round is refused while it differs.\n");
+    return 0;
+  }
+  const departures = uncommitted(now);
+  for (const one of departures) {
+    process.stdout.write(one + "\n");
+  }
+  if (departures.length > 0) {
+    process.stdout.write(String(departures.length) + " departure(s) from the committed protocol\n");
+    return 1;
+  }
+  process.stdout.write(
+    [
+      file,
+      String(now.design.blocks) + " blocks, " + String(now.design.runs) + " runs, seed " + String(now.seed),
+      "first arm: " + String(now.firstArm.active) + " Active, " + String(now.firstArm.shadow) + " Shadow",
+      "the catalogue and this seed still give the committed design",
+    ].join("\n") + "\n",
+  );
+  return 0;
 }
 
 /**
@@ -371,6 +536,11 @@ export function plan(into: string, seed: number): number {
     process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
     return 2;
   }
+  const departures = uncommitted(identityOf(held));
+  if (departures.length > 0) {
+    process.stdout.write("the plan is not the committed protocol: " + departures.join("; ") + "\n");
+    return 2;
+  }
   fs.mkdirSync(into, { recursive: true });
   const bytes = JSON.stringify(held, null, 2) + "\n";
   fs.writeFileSync(file, bytes);
@@ -484,7 +654,7 @@ export function execute(directory: string, approved: string): number {
     process.stdout.write(blocked + "\n");
     return 2;
   }
-  const moved = drift(manifest.frozen, frozen(known));
+  const moved = [...drift(manifest.frozen, frozen(known)), ...uncommitted(identityOf(manifest))];
   if (moved.length > 0) {
     process.stdout.write("refusing to start: " + moved.join("; ") + "\n");
     return 2;
