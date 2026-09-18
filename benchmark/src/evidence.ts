@@ -340,6 +340,14 @@ function setReadme(directory: string, read: Manifest, archiveName: string): void
       "",
       "This is committed slim " + String(read.kind) + " evidence.",
       "",
+      ...(read.publishable === false
+        ? [
+            "**This set is not publishable.** It was collected to validate the apparatus, not to",
+            "measure the product, and it is excluded from #115's scorecard. Every record in it",
+            "states `publishable: false`. Do not read a product conclusion from these runs.",
+            "",
+          ]
+        : []),
       "The complete forensic run set is the external archive `" + archiveName + "`, bound by `evidence.json` and `files.sha256`.",
       "Run the benchmark verifier before packaging; this evidence tool preserves and checks bytes only.",
       "",

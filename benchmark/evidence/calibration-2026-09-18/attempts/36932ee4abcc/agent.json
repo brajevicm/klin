@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/36932ee4abcc/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "a116a562-0711-49d6-b680-73b66c2f31cf",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "86b6b76aacd1a26bb46e991efbc5fc583fe9c2cd9e919590d9b32a81af13d1d3",
+  "sessionId": "a116a562-0711-49d6-b680-73b66c2f31cf",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":35385,\"stop_reason\":\"end_turn\",\"session_id\":\"a116a562-0711-49d6-b680-73b66c2f31cf\",\"total_cost_usd\":0.17578860000000002,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":17016,\"cache_read_input_tokens\":343608,\"output_tokens\":3793,\"output_tokens_details\":{\"thinking_tokens\":650},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17016,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":169,\"cache_read_input_tokens\":42537,\"cache_creation_input_tokens\":1116,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":1116},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":972,\"outputTokens\":13,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001037,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":3793,\"cacheReadInputTokens\":343608,\"cacheCreationInputTokens\":17016,\"webSearchRequests\":0,\"costUSD\":0.1747516,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":650,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":10,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 6 tests pass. There's a pre-existing unused `checksum` function warning unrelated to this change — leaving it as is.\\n\\nEviction in `src/store.rs` now tracks insertion order (`written`) instead of last-access time: `get` no longer mutates state, and `insert` on an existing key only updates the value, leaving `written` untouched, so a full store always evicts whichever key was written longest ago. Added two tests in `tests/store.rs` covering that reads and overwrites don't affect eviction order.\",\"ttft_ms\":2389,\"type\":\"result\",\"duration_ms\":39318,\"uuid\":\"e4ae36b4-8c2f-4eff-bf27-1d527925a6b4\",\"ttft_stream_ms\":1476,\"time_to_request_ms\":243,\"first_content_frame_ms\":1477,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 35385,
+    "stop_reason": "end_turn",
+    "session_id": "a116a562-0711-49d6-b680-73b66c2f31cf",
+    "total_cost_usd": 0.17578860000000002,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 17016,
+      "cache_read_input_tokens": 343608,
+      "output_tokens": 3793,
+      "output_tokens_details": {
+        "thinking_tokens": 650
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 17016,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 169,
+          "cache_read_input_tokens": 42537,
+          "cache_creation_input_tokens": 1116,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 1116
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 972,
+        "outputTokens": 13,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001037,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 3793,
+        "cacheReadInputTokens": 343608,
+        "cacheCreationInputTokens": 17016,
+        "webSearchRequests": 0,
+        "costUSD": 0.1747516,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 650,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 10,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 6 tests pass. There's a pre-existing unused `checksum` function warning unrelated to this change — leaving it as is.\n\nEviction in `src/store.rs` now tracks insertion order (`written`) instead of last-access time: `get` no longer mutates state, and `insert` on an existing key only updates the value, leaving `written` untouched, so a full store always evicts whichever key was written longest ago. Added two tests in `tests/store.rs` covering that reads and overwrites don't affect eviction order.",
+    "ttft_ms": 2389,
+    "type": "result",
+    "duration_ms": 39318,
+    "uuid": "e4ae36b4-8c2f-4eff-bf27-1d527925a6b4",
+    "ttft_stream_ms": 1476,
+    "time_to_request_ms": 243,
+    "first_content_frame_ms": 1477,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T15:30:32.983Z",
+  "endedAt": "2026-09-18T15:31:14.100Z",
+  "wallMs": 41117,
+  "timedOut": false
+}

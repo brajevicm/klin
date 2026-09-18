@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the first attempt waits nothing and the next ones double (0.407833ms)\n✔ no attempt waits more than two seconds (0.102ms)\n✔ the behaviour that was already there is unchanged (0.430458ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 74.913416\n",
+  "stderr": "",
+  "reason": ""
+}

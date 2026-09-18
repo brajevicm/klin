@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/3a079e246fb3/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "fb638408-8830-43c0-b91c-1c835cd88b96",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "a30eb965f9447e4b3e0fe6e80fb4474a652127e33249c97fec0e329b90d71353",
+  "sessionId": "fb638408-8830-43c0-b91c-1c835cd88b96",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":38685,\"stop_reason\":\"end_turn\",\"session_id\":\"fb638408-8830-43c0-b91c-1c835cd88b96\",\"total_cost_usd\":0.19742900000000002,\"usage\":{\"input_tokens\":24,\"cache_creation_input_tokens\":16627,\"cache_read_input_tokens\":466420,\"output_tokens\":3655,\"output_tokens_details\":{\"thinking_tokens\":827},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16627,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":145,\"cache_read_input_tokens\":42940,\"cache_creation_input_tokens\":324,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":324},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":969,\"outputTokens\":14,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001039,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":24,\"outputTokens\":3655,\"cacheReadInputTokens\":466420,\"cacheCreationInputTokens\":16627,\"webSearchRequests\":0,\"costUSD\":0.19639,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":827,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"That's pre-existing (README notes the linter isn't wired in yet / likely no config), unrelated to this change. The tests all pass via `node --test`, which is what matters here.\\n\\nAdded `run([\\\"--list\\\"])` to `src/cli.ts`, backed by a new `scriptNames()` helper that sorts and joins a manifest's script keys with `\\\\n` (empty for no scripts), and covered it with tests in `src/cli.test.ts`.\",\"ttft_ms\":2113,\"type\":\"result\",\"duration_ms\":42228,\"uuid\":\"2ffefb02-81c0-4bc8-974f-24fedc3908c5\",\"ttft_stream_ms\":1388,\"time_to_request_ms\":351,\"first_content_frame_ms\":1389,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 38685,
+    "stop_reason": "end_turn",
+    "session_id": "fb638408-8830-43c0-b91c-1c835cd88b96",
+    "total_cost_usd": 0.19742900000000002,
+    "usage": {
+      "input_tokens": 24,
+      "cache_creation_input_tokens": 16627,
+      "cache_read_input_tokens": 466420,
+      "output_tokens": 3655,
+      "output_tokens_details": {
+        "thinking_tokens": 827
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16627,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 145,
+          "cache_read_input_tokens": 42940,
+          "cache_creation_input_tokens": 324,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 324
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 969,
+        "outputTokens": 14,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001039,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 24,
+        "outputTokens": 3655,
+        "cacheReadInputTokens": 466420,
+        "cacheCreationInputTokens": 16627,
+        "webSearchRequests": 0,
+        "costUSD": 0.19639,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 827,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "That's pre-existing (README notes the linter isn't wired in yet / likely no config), unrelated to this change. The tests all pass via `node --test`, which is what matters here.\n\nAdded `run([\"--list\"])` to `src/cli.ts`, backed by a new `scriptNames()` helper that sorts and joins a manifest's script keys with `\\n` (empty for no scripts), and covered it with tests in `src/cli.test.ts`.",
+    "ttft_ms": 2113,
+    "type": "result",
+    "duration_ms": 42228,
+    "uuid": "2ffefb02-81c0-4bc8-974f-24fedc3908c5",
+    "ttft_stream_ms": 1388,
+    "time_to_request_ms": 351,
+    "first_content_frame_ms": 1389,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T15:33:54.381Z",
+  "endedAt": "2026-09-18T15:34:38.480Z",
+  "wallMs": 44100,
+  "timedOut": false
+}

@@ -1,0 +1,81 @@
+#!/bin/sh
+# The benchmark's host hook, as a template. `workspace.materialize` writes one copy per trial with
+# the three values below substituted, under a name of random bytes inside that trial's plane.
+#
+# The values are baked in rather than passed as arguments because the host shows the agent the
+# whole hook command line when a Stop hook blocks, under "Stop hook feedback:". A live set found
+# that echo handing four Active subjects the wrapper path, the plane, the klin binary and the arm
+# digit, and two of them then ran klin against their own tree. Nothing in the command line may
+# name any of those, so nothing does: the line is the wrapper and klin's own event arguments.
+#
+# The random name is the second half. The host prints its sandbox deny rules into the subject's
+# system prompt, so every subject is told where the plane is. A wrapper called `hook` there is one
+# guess away. A subject that cannot read the directory cannot list the name, and a subject that
+# names the plane at all fails `no-tool-call-outside-the-workspace` and invalidates its own trial.
+#
+# Usage: <this file> <klin arguments...>
+#
+# The plane holds klin's state, so KLIN_STATE_DIR is exported here and not by the harness. The
+# host would otherwise carry it into the subject shell, which would then read klin's journal and
+# find, in the Shadow arm, every finding the treatment withholds.
+set -u
+
+plane='/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/9f539d81b6dc'
+klin='/Users/brajevicm/Workspace/klin/target/release/klin'
+deliver=1
+
+# A plane that is not an absolute path means the substitution did not happen, or happened wrong.
+# Writing evidence under a relative path would scatter a directory wherever the host happened to
+# be, so this stops instead.
+case "$plane" in
+    /*) ;;
+    *)
+        printf 'hook: the plane must be an absolute path, and it is "%s"\n' "$plane" >&2
+        exit 64
+        ;;
+esac
+
+# Anything but 0 or 1 would run as Shadow and exit 0, so an Active trial would silently deliver
+# nothing and the run would be paid for before `verify` said so.
+case "$deliver" in
+    0 | 1) ;;
+    *)
+        printf 'hook: deliver must be 0 or 1, and it is "%s"\n' "$deliver" >&2
+        exit 64
+        ;;
+esac
+
+export KLIN_STATE_DIR="$plane/state"
+hooks=$plane/hooks
+
+payload=$(cat)
+
+out=$(mktemp)
+err=$(mktemp)
+started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '%s' "$payload" | "$klin" "$@" >"$out" 2>"$err"
+status=$?
+ended=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+mkdir -p "$hooks"
+seq=$(find "$hooks" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+# The pid keeps two calls apart if the host ever runs a hook beside another one.
+kept="$hooks/$(printf '%04d' "$seq")-$$"
+mkdir -p "$kept"
+printf '%s' "$payload" >"$kept/payload.json"
+printf '%s\n' "$*" >"$kept/arguments"
+printf '%s\n' "$status" >"$kept/status"
+printf '%s\n' "$deliver" >"$kept/deliver"
+printf '%s\n' "$started" >"$kept/started"
+printf '%s\n' "$ended" >"$kept/ended"
+cp "$out" "$kept/stdout"
+cp "$err" "$kept/stderr"
+
+if [ "$deliver" = "1" ]; then
+    cat "$out"
+    cat "$err" >&2
+    rm -f "$out" "$err"
+    exit "$status"
+fi
+rm -f "$out" "$err"
+exit 0

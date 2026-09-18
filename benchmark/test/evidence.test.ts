@@ -329,3 +329,18 @@ test("evidence-prepare refuses an unrecorded attempt directory", () => {
     fs.rmSync(place.root, { recursive: true, force: true });
   }
 });
+
+/**
+ * #210 asks that the calibration runs be "explicitly excluded from publishable results". Every
+ * record already states `publishable: false`, which a machine reads. The README is what a person
+ * reads, so it has to say the same thing.
+ */
+test("calibration evidence says in its README that it is not publishable", () => {
+  const { root, runs, evidence, archive } = fixture();
+  const ran = command("evidence-prepare", runs, "--into", evidence, "--archive", archive);
+  assert.equal(ran.status, 0, ran.stdout + ran.stderr);
+  const readme = fs.readFileSync(path.join(evidence, "README.md"), "utf8");
+  assert.match(readme, /\*\*This set is not publishable\.\*\*/);
+  assert.match(readme, /publishable: false/);
+  fs.rmSync(root, { recursive: true, force: true });
+});

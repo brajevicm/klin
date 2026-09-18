@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/ee674502d8af/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "225ff004-37c6-4326-a965-db727b6a0619",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "2901528dc8978f54698788f4b4782ec371056a10b57a3ae7e3fab7a2fbbaf244",
+  "sessionId": "225ff004-37c6-4326-a965-db727b6a0619",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":36073,\"stop_reason\":\"end_turn\",\"session_id\":\"225ff004-37c6-4326-a965-db727b6a0619\",\"total_cost_usd\":0.1411636,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":15200,\"cache_read_input_tokens\":258108,\"output_tokens\":2766,\"output_tokens_details\":{\"thinking_tokens\":622},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":15200,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":93,\"cache_read_input_tokens\":41288,\"cache_creation_input_tokens\":549,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":549},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":994,\"outputTokens\":12,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001054,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":2766,\"cacheReadInputTokens\":258108,\"cacheCreationInputTokens\":15200,\"webSearchRequests\":0,\"costUSD\":0.1401096,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":622,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 7 tests pass. Added `backoff(attempt)` in `src/socket.ts`, exported it from `src/index.ts`, and added tests in `src/client.test.ts` covering the zero-wait first attempt, base delay, doubling, and the 2000ms cap.\",\"ttft_ms\":2196,\"type\":\"result\",\"duration_ms\":37083,\"uuid\":\"414a14b4-f663-487f-8688-368ae67917d4\",\"ttft_stream_ms\":1633,\"time_to_request_ms\":208,\"first_content_frame_ms\":1634,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 36073,
+    "stop_reason": "end_turn",
+    "session_id": "225ff004-37c6-4326-a965-db727b6a0619",
+    "total_cost_usd": 0.1411636,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 15200,
+      "cache_read_input_tokens": 258108,
+      "output_tokens": 2766,
+      "output_tokens_details": {
+        "thinking_tokens": 622
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15200,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 93,
+          "cache_read_input_tokens": 41288,
+          "cache_creation_input_tokens": 549,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 549
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 994,
+        "outputTokens": 12,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001054,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 2766,
+        "cacheReadInputTokens": 258108,
+        "cacheCreationInputTokens": 15200,
+        "webSearchRequests": 0,
+        "costUSD": 0.1401096,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 622,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 7 tests pass. Added `backoff(attempt)` in `src/socket.ts`, exported it from `src/index.ts`, and added tests in `src/client.test.ts` covering the zero-wait first attempt, base delay, doubling, and the 2000ms cap.",
+    "ttft_ms": 2196,
+    "type": "result",
+    "duration_ms": 37083,
+    "uuid": "414a14b4-f663-487f-8688-368ae67917d4",
+    "ttft_stream_ms": 1633,
+    "time_to_request_ms": 208,
+    "first_content_frame_ms": 1634,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T15:14:54.835Z",
+  "endedAt": "2026-09-18T15:15:33.438Z",
+  "wallMs": 38604,
+  "timedOut": false
+}

@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/2026-09-18T15-12-58/d6a8003d6f93/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "24cfb20c-39e8-42e7-a078-81d59dfa99ac",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "6c311693473e570c6bd4f5fa71dda5d7dc9cbabb8f6c48aae1873eb09ed5f4ab",
+  "sessionId": "24cfb20c-39e8-42e7-a078-81d59dfa99ac",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":150250,\"stop_reason\":\"end_turn\",\"session_id\":\"24cfb20c-39e8-42e7-a078-81d59dfa99ac\",\"total_cost_usd\":0.49280099999999993,\"usage\":{\"input_tokens\":53,\"cache_creation_input_tokens\":31401,\"cache_read_input_tokens\":1231570,\"output_tokens\":11970,\"output_tokens_details\":{\"thinking_tokens\":6007},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":31401,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":148,\"cache_read_input_tokens\":57616,\"cache_creation_input_tokens\":422,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":422},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":992,\"outputTokens\":17,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001077,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":53,\"outputTokens\":11970,\"cacheReadInputTokens\":1231570,\"cacheCreationInputTokens\":31401,\"webSearchRequests\":0,\"costUSD\":0.49172399999999994,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":6007,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":30,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"The lockfile is valid JSON with the `typescript` dependency properly resolved. Summary of the fix for the failed gate: `package-lock.json` now includes a `node_modules/typescript` entry with `resolved`, `integrity`, `license`, `bin`, and `engines` fields sourced from the real npm registry metadata for `typescript@5.6.3`, so the new dependency is genuinely locked rather than just declared in `package.json`.\",\"ttft_ms\":2115,\"type\":\"result\",\"duration_ms\":159870,\"uuid\":\"f0612b45-7eaa-42f2-8316-4bb802a60825\",\"ttft_stream_ms\":1567,\"time_to_request_ms\":245,\"first_content_frame_ms\":1567,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 150250,
+    "stop_reason": "end_turn",
+    "session_id": "24cfb20c-39e8-42e7-a078-81d59dfa99ac",
+    "total_cost_usd": 0.49280099999999993,
+    "usage": {
+      "input_tokens": 53,
+      "cache_creation_input_tokens": 31401,
+      "cache_read_input_tokens": 1231570,
+      "output_tokens": 11970,
+      "output_tokens_details": {
+        "thinking_tokens": 6007
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 31401,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 148,
+          "cache_read_input_tokens": 57616,
+          "cache_creation_input_tokens": 422,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 422
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 992,
+        "outputTokens": 17,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001077,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 53,
+        "outputTokens": 11970,
+        "cacheReadInputTokens": 1231570,
+        "cacheCreationInputTokens": 31401,
+        "webSearchRequests": 0,
+        "costUSD": 0.49172399999999994,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 6007,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 30,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "The lockfile is valid JSON with the `typescript` dependency properly resolved. Summary of the fix for the failed gate: `package-lock.json` now includes a `node_modules/typescript` entry with `resolved`, `integrity`, `license`, `bin`, and `engines` fields sourced from the real npm registry metadata for `typescript@5.6.3`, so the new dependency is genuinely locked rather than just declared in `package.json`.",
+    "ttft_ms": 2115,
+    "type": "result",
+    "duration_ms": 159870,
+    "uuid": "f0612b45-7eaa-42f2-8316-4bb802a60825",
+    "ttft_stream_ms": 1567,
+    "time_to_request_ms": 245,
+    "first_content_frame_ms": 1567,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T15:41:52.487Z",
+  "endedAt": "2026-09-18T15:44:34.196Z",
+  "wallMs": 161710,
+  "timedOut": false
+}
