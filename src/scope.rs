@@ -17,6 +17,7 @@ pub const IN: Key = Key {
     required: false,
     rule: None,
     default: "the whole repository",
+    shape: crate::reference::Shape::StringOrList,
 };
 
 pub const EXCEPT: Key = Key {
@@ -25,6 +26,7 @@ pub const EXCEPT: Key = Key {
     required: false,
     rule: None,
     default: "nothing is taken out",
+    shape: crate::reference::Shape::StringOrList,
 };
 
 #[derive(Clone, Default, PartialEq, Eq)]

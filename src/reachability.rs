@@ -42,6 +42,7 @@ pub const NAME: Key = Key {
     required: true,
     rule: Some("the root and the pattern, as `src/commands/*_command.rs`"),
     default: "",
+    shape: crate::reference::Shape::String,
 };
 
 pub const PATTERN: Key = Key {
@@ -53,6 +54,7 @@ pub const PATTERN: Key = Key {
          least three files of one directory that the derivation commit proves reached",
     ),
     default: "",
+    shape: crate::reference::Shape::String,
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];

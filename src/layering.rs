@@ -35,6 +35,7 @@ const ACYCLIC: Key = Key {
     required: false,
     rule: None,
     default: "`false`",
+    shape: crate::reference::Shape::Boolean,
 };
 
 const LAYERS: Key = Key {
@@ -43,6 +44,7 @@ const LAYERS: Key = Key {
     required: true,
     rule: None,
     default: "",
+    shape: crate::reference::Shape::Layers,
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, ACYCLIC, LAYERS];

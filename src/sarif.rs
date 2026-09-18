@@ -32,6 +32,7 @@ const REPORT: Key = Key {
     required: true,
     rule: None,
     default: "",
+    shape: crate::reference::Shape::String,
 };
 
 const RUN: Key = Key {
@@ -40,6 +41,7 @@ const RUN: Key = Key {
     required: false,
     rule: None,
     default: "klin reads the report as it finds it and refuses one that predates the change",
+    shape: crate::reference::Shape::String,
 };
 
 const DIFFERENTIAL: Key = Key {
@@ -48,6 +50,7 @@ const DIFFERENTIAL: Key = Key {
     required: false,
     rule: None,
     default: "`false`",
+    shape: crate::reference::Shape::Boolean,
 };
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];

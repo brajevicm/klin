@@ -33,6 +33,7 @@ pub const DOCUMENT: Key = Key {
         "every Markdown file at the tree root that the derivation commit holds: its word count there, rounded up to the next 50 and never below 50",
     ),
     default: "",
+    shape: crate::reference::Shape::Ceiling,
 };
 
 const CEILING_STEP: u64 = 50;

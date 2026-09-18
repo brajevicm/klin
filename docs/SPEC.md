@@ -713,6 +713,13 @@ The sections the reference prints, and the built-in language coverage it
 prints beside them, come off the same table of checks a run gates from, so a
 check cannot be gated and left out of the reference.
 
+`schemas/klin.json` is generated from those same declarations by `klin
+reference --schema`. SchemaStore registers the exact filename `klin.json`, so
+editors can discover completion, hover text and structural validation without
+an inline `$schema`, editor setting or extension. The schema is editor
+guidance only: `klin` remains the authority for semantic validation, and
+normal commands never read or validate against the schema artifact.
+
 The reference MUST also state what the key tables alone do not say:
 
 - the built-in source extensions each check discovers, printed from the

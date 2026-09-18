@@ -29,6 +29,7 @@ pub const BUILD: Key = Key {
     required: false,
     rule: Some("one command per standard manifest, from the fixed table of ADR 0012"),
     default: "",
+    shape: crate::reference::Shape::Build,
 };
 
 pub const ACCEPTED: Key = Key {
@@ -37,6 +38,7 @@ pub const ACCEPTED: Key = Key {
     required: false,
     rule: None,
     default: "nothing is accepted",
+    shape: crate::reference::Shape::Accepted,
 };
 
 pub const RADIUS: Key = Key {
@@ -47,6 +49,7 @@ pub const RADIUS: Key = Key {
         "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
     ),
     default: "",
+    shape: crate::reference::Shape::Radius,
 };
 
 pub const JOURNAL: Key = Key {
@@ -55,6 +58,7 @@ pub const JOURNAL: Key = Key {
     required: false,
     rule: None,
     default: "the prompt excerpt is recorded",
+    shape: crate::reference::Shape::Journal,
 };
 
 #[derive(Debug)]
