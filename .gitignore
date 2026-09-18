@@ -5,6 +5,11 @@
 /canary-artifacts
 benchmark/**/sentinel.txt
 
+# A worktree an agent opens inside the clone. The benchmark freezes a round
+# against a commit and a clean tree, and an untracked worktree here reads as
+# dirty, so it refuses to start a round that nothing about it affects.
+/.worktrees
+
 # The benchmark control plane. A set is evidence for a published claim, not
 # source, so it is attached to the release that cites it. Only the note stays.
 benchmark/runs/*
