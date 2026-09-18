@@ -1704,10 +1704,11 @@ selects none, and mixed otherwise; its layer is a layer where every file sits
 in that one layer, none where no file sits in a layer, and mixed otherwise. A
 dependency is judged where the scope selects the file that writes it and the
 module it reaches is inside, by the layer of that file and the folded layer of
-that module. A module that is mixed is never placed by one of its files: a
-dependency on a module whose files straddle the scope, or on a module whose
-files straddle the layers from a file in a layer, is unresolved as below and
-gets no verdict.
+that module. A module that is mixed is never placed by one of its files. A
+dependency on a module whose files straddle the scope is unresolved as below
+and gets no verdict. A dependency from a file in a layer on a module whose
+files straddle the layers is unresolved as below and gets no layer verdict,
+but it is still judged for cycles, because only the scope decides that.
 
 For every dependency the section judges, where the file that writes it and
 the module it reaches sit in layers and the source layer may not use the
@@ -1777,9 +1778,9 @@ unit tests `multi_source_work_is_linear_in_files_and_unique_edges`,
 `a_straddled_destination_is_ambiguous_and_never_judged`,
 `a_site_is_its_file_and_line` and
 `an_edge_that_moves_within_its_module_is_held_and_acceptance_stays_put` in
-`src/layering.rs` pin it over a graph built in memory. Known limit: a path inside a macro's tokens, a bare Rust
-path, a TypeScript `import()` or `require()`, `tsconfig` paths and package
-exports are not dependencies in V1.
+`src/layering.rs` pin it over a graph built in memory. Known limit: a path
+inside a macro's tokens, a bare Rust path, a TypeScript `import()` or
+`require()`, `tsconfig` paths and package exports are not dependencies in V1.
 
 **`public-api` judges the consumer-facing contract a library or package
 exposes.** Klin derives public API from standard Rust library and TypeScript

@@ -429,8 +429,10 @@ impl ModuleGraph {
         let held = &self.modules[module];
         held.sources
             .iter()
-            .find_map(|file| Some((file, held.name.strip_prefix(file.as_str())?)))
-            .filter(|(_, rest)| rest.is_empty() || rest.starts_with("::"))
+            .find_map(|file| {
+                let rest = held.name.strip_prefix(file.as_str())?;
+                (rest.is_empty() || rest.starts_with("::")).then_some((file, rest))
+            })
             .map_or_else(
                 || held.name.clone(),
                 |(file, rest)| format!("{}{rest}", current(file)),
@@ -616,4 +618,29 @@ pub(crate) fn joined(directory: &str, relative: &str) -> Option<String> {
 /// The directory a path sits in, and the empty name for the tree root.
 pub(crate) fn directory(path: &str) -> &str {
     path.rsplit_once('/').map_or("", |(at, _)| at)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_module_of_many_files_attaches_each_file_and_names_each_site() {
+        let files = ["b.go".to_string(), "a.go".to_string()];
+        let topology = Topology::new(Path::new("."), &files, &[], &HashMap::new());
+        let mut builder = Builder {
+            topology: &topology,
+            graph: ModuleGraph::default(),
+        };
+        let from = builder.module("p".into(), &["b.go", "a.go", "b.go"], Attachment::File);
+        let to = builder.module("q".into(), &["c.go"], Attachment::File);
+        builder.depend(from, to, "b.go", 3);
+        builder.depend(from, to, "a.go", 3);
+        let graph = builder.graph;
+        assert_eq!(graph.modules[from].sources, ["a.go", "b.go"]);
+        assert_eq!(graph.attached.len(), 3);
+        assert_eq!(graph.source(&graph.dependencies[0]), "b.go");
+        assert_eq!(graph.reached_at(from, "a.go", 3), [to]);
+        assert_eq!(graph.cost().sources, 3);
+    }
 }
