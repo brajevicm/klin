@@ -4,3 +4,8 @@
 .DS_Store
 /canary-artifacts
 benchmark/**/sentinel.txt
+
+# Benchmark run evidence: keep the records, drop the bulk a run can rewrite.
+benchmark/runs/*/*/fixtures/
+benchmark/runs/*/*/hooks/
+benchmark/runs/*/*/state/

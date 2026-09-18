@@ -27,6 +27,16 @@ subject must not reach is in it.
 <stamp>/<trial>/fixtures/scoring/ the copy the hidden test ran over
 ```
 
+`fixtures/`, `hooks/` and `state/` are not committed. They are 34 of the 36
+megabytes a set writes, and everything a later reader needs from `hooks/` is
+already inside `record.json`: the tool, the paths, the arguments, the real
+status, stdout and stderr. What a commit keeps is the record, the manifest, the
+host's own result, the oracle's answer, the settings and the wrapper. The raw
+hook payloads stay on the machine that ran the set.
+
+`ad-hoc/0ce3ce1cb732` predates that rule and keeps its `hooks/`, because a test
+reads it.
+
 The subject's own repository is not here. It sits under the system temporary
 directory, alone in its parent, so no relative path leads from it to this tree.
 
