@@ -10,6 +10,6 @@
   "scheduledValidRuns": 72,
   "runManifestSha256": "b2c13fbbe2fc10f71c46ff8455091230fdf73b2c7de292d8c68e1d3b5a908749",
   "rawFilesManifestSha256": "6ead2a735831d08d3d6242baa3966d16d9aacc4e5f9ac83320f90fe47383a152",
-  "release": null,
-  "sigstoreBundle": null
+  "release": "https://github.com/brajevicm/klin/releases/tag/benchmark-publishable-2026-09-18",
+  "sigstoreBundle": "https://github.com/brajevicm/klin/releases/download/benchmark-publishable-2026-09-18/publishable-2026-09-18-raw.tar.gz.sigstore.json"
 }
