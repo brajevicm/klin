@@ -86,6 +86,10 @@ export interface RunRecord {
   arm: string;
   trialId: string;
   order: number;
+  /** Which repetition of the family and variant this is. Calibration runs each once. */
+  repetition: number;
+  /** The trial id of the infrastructure-invalid attempt this run replaces, or null. */
+  replaces: string | null;
   fixture: { startCommit: string; promptSha256: string; treeSha256: string };
   harness: { commit: string; dirty: boolean; treeSha256: string };
   klin: { commit: string; version: string; binarySha256: string };
@@ -181,6 +185,18 @@ export function validate(record: Record<string, unknown>): string[] {
   }
   if (record.kind === "calibration" && record.publishable !== false) {
     problems.push("a calibration record must state publishable false");
+  }
+  if (record.kind === "publishable" && record.publishable !== true) {
+    problems.push("a publishable record must state publishable true");
+  }
+  // Calibration records written before the round existed state neither, and stay valid.
+  if (record.kind === "publishable") {
+    for (const key of ["repetition", "replaces"].filter((one) => !(one in record))) {
+      problems.push("a publishable record states no " + key);
+    }
+  }
+  if (record.replaces === record.trialId) {
+    problems.push("a record claims to replace itself");
   }
   const result = record.result as { outcome?: string } | undefined;
   if (result && !OUTCOMES.includes(String(result.outcome))) {

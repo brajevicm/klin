@@ -5,6 +5,19 @@
   "description": "One trial, completely enough for the later scorecard to be computed without reading terminal text. The record holds no hidden chain of thought.",
   "type": "object",
   "additionalProperties": false,
+  "if": {
+    "properties": {
+      "kind": {
+        "const": "publishable"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "repetition",
+      "replaces"
+    ]
+  },
   "required": [
     "protocol",
     "kind",
@@ -83,6 +96,18 @@
     "order": {
       "type": "integer",
       "description": "The trial's place in the scheduled order."
+    },
+    "repetition": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Which repetition of the family and variant this is. Required on a publishable record; a publishable round runs risk three times and control once."
+    },
+    "replaces": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The trial id of the infrastructure-invalid attempt this run replaces. The original record is never deleted."
     },
     "fixture": {
       "type": "object",

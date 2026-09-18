@@ -512,6 +512,59 @@ families, and `verify` rebuilds the expected family x variant x arm cells from
 the catalogue and holds the set to them exactly: one record per scheduled row,
 one row per record, and one Active beside one Shadow in every cell.
 
+The publishable round of #211 has its own two steps, and a person stands between
+them:
+
+```sh
+node benchmark/src/cli.ts plan --seed 1                   # writes the frozen manifest, runs nothing
+node benchmark/src/cli.ts execute benchmark/runs/publishable-<stamp> --manifest-sha256 <digest>
+node benchmark/src/cli.ts verify    benchmark/runs/publishable-<stamp>
+node benchmark/src/cli.ts scorecard benchmark/runs/publishable-<stamp> --out docs/round-<date>.md
+```
+
+`plan` reads every round-wide frozen value the harness can read before a
+session exists, the klin binary and its source commit, the harness commit and
+its clean state, the host version, the model, the normalized host flags, the
+record schema, and every fixture's tree, prompt and task id, and writes them
+with the whole run order into `manifest.json`. It prints the file's digest and
+exits. It refuses a harness with uncommitted changes, because a round is frozen
+against a commit. The owner reviews the file, records the digest in the issue
+and changes the label. Nothing has been paid for yet.
+
+The order is 36 matched blocks, 72 runs: three risk repetitions and one control
+repetition per family, each block run once in each arm, adjacently. The first
+arm of every block is drawn before execution from a list holding exactly 18 of
+each, and the blocks are shuffled over the same seeded generator. `verify`
+regenerates the order from the seed and the catalogue and refuses a manifest
+that differs, so a reordered or edited schedule cannot vouch for itself.
+
+`execute` consumes that file and nothing else, and only under the digest the
+owner approved: `--manifest-sha256` must equal the digest of the bytes on disk,
+so the bytes a person reviewed are the bytes that run. Before the first session
+it holds the manifest to the design exactly, nine families, three risk and one
+control repetition, 36 blocks of adjacent arms balanced 18 and 18, the seed's
+own order, the floor, alpha and the test named, and the frozen fixture
+identities. Before every block it reads the whole frozen environment again and
+stops before spend if any value moved. A block whose two rows already hold a
+valid record is skipped, so a stopped round resumes without touching a finished
+trial. An infrastructure-invalid attempt keeps its record, and a replacement
+runs at once under a new id that states which attempt it replaces. Three invalid
+attempts at one trial stop the round for a person. A harness crash before a
+record exists leaves `crash.json` in the attempt's own directory and counts as
+an attempt; the slim evidence and the archive carry it. Nothing valid is ever
+rerun: a valid record followed by another attempt at the same trial fails
+`verify`.
+
+`verify` on a publishable set runs the same manifest check, holds every attempt
+to its chain, holds every frozen value a record carries to the manifest, and
+holds every round-wide frozen variable to one value across all valid records. `scorecard` writes `scorecard.json` beside the
+records and prints the Markdown view: counts, oracle, shortcut, completion,
+signal sites, friction and timing by family, variant and arm; invalid attempts
+by arm and reason; the challenge floor of 6 of 27 Shadow risk exposures and 3 of
+9 families; and the exact two-sided McNemar table over the 27 risk blocks with
+its family breakdown. It labels no signal and computes no rate that would need
+a label. That is #115's.
+
 | variable | what it sets |
 | --- | --- |
 | `KLIN_BIN` | the binary under test, default `target/release/klin` |

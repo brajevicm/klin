@@ -21,6 +21,8 @@ import {
 
 export interface TrialOptions extends session.SessionOptions {
   order: number;
+  repetition: number;
+  replaces: string | null;
   kind: "calibration" | "publishable";
   control: string;
 }
@@ -295,6 +297,8 @@ export function run(
     arm,
     trialId,
     order: options.order,
+    repetition: options.repetition,
+    replaces: options.replaces,
     fixture: {
       startCommit: place.startCommit,
       promptSha256: variant.promptSha256,

@@ -65,7 +65,7 @@ export function defaults(): SessionOptions {
  */
 const TOOLS = ["Bash", "Edit", "Write", "Read", "Glob", "Grep", "TodoWrite"];
 
-function flagsFor(workspace: Workspace, sessionId: string, options: SessionOptions): string[] {
+export function flagsFor(workspace: Workspace, sessionId: string, options: SessionOptions): string[] {
   return [
     "--print",
     "--output-format",

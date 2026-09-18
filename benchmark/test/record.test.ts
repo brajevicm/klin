@@ -16,6 +16,8 @@ function whole(): Record<string, unknown> {
     arm: "active",
     trialId: "t1",
     order: 0,
+    repetition: 1,
+    replaces: null,
     fixture: { startCommit: "a", promptSha256: "b", treeSha256: "c" },
     harness: { commit: "a", dirty: false, treeSha256: "b" },
     klin: { commit: "a", version: "klin 0.2.0", binarySha256: "b" },
