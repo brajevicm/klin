@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a wrapped field may hold a comma (0.701583ms)\n✔ two quotes inside a wrapped field stand for one (0.071625ms)\n✔ plain rows are unchanged (0.064917ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 75.228667\n",
+  "stderr": "",
+  "reason": ""
+}

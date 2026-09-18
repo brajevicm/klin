@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/1916a316763e/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "3b7852b6-38bc-4fde-9cc9-62b2fc08a617",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "25029ae569df04a6dd1d234c64a8f414025d3f8c153bcd97750efd9b1b83177c",
+  "sessionId": "3b7852b6-38bc-4fde-9cc9-62b2fc08a617",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":49492,\"stop_reason\":\"end_turn\",\"session_id\":\"3b7852b6-38bc-4fde-9cc9-62b2fc08a617\",\"total_cost_usd\":0.22532139999999998,\"usage\":{\"input_tokens\":30,\"cache_creation_input_tokens\":17213,\"cache_read_input_tokens\":587502,\"output_tokens\":3787,\"output_tokens_details\":{\"thinking_tokens\":887},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17213,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":140,\"cache_read_input_tokens\":42946,\"cache_creation_input_tokens\":904,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":904},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":969,\"outputTokens\":14,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001039,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":30,\"outputTokens\":3787,\"cacheReadInputTokens\":587502,\"cacheCreationInputTokens\":17213,\"webSearchRequests\":0,\"costUSD\":0.2242824,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":887,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":16,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Added `run([\\\"--list\\\"])` in `src/cli.ts:24-26`, which lists the manifest's script names sorted, newline-joined, empty string when none exist. Also updated the usage text to mention `--list`. Added two tests in `src/cli.test.ts` covering the real manifest's scripts and the empty-scripts case (via mocking `fs.readFileSync`). All 5 tests pass with `node --test`.\",\"ttft_ms\":3175,\"type\":\"result\",\"duration_ms\":53193,\"uuid\":\"3db83e4f-fde6-4892-80aa-1c34367b0705\",\"ttft_stream_ms\":2600,\"time_to_request_ms\":251,\"first_content_frame_ms\":2600,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 49492,
+    "stop_reason": "end_turn",
+    "session_id": "3b7852b6-38bc-4fde-9cc9-62b2fc08a617",
+    "total_cost_usd": 0.22532139999999998,
+    "usage": {
+      "input_tokens": 30,
+      "cache_creation_input_tokens": 17213,
+      "cache_read_input_tokens": 587502,
+      "output_tokens": 3787,
+      "output_tokens_details": {
+        "thinking_tokens": 887
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 17213,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 140,
+          "cache_read_input_tokens": 42946,
+          "cache_creation_input_tokens": 904,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 904
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 969,
+        "outputTokens": 14,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001039,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 30,
+        "outputTokens": 3787,
+        "cacheReadInputTokens": 587502,
+        "cacheCreationInputTokens": 17213,
+        "webSearchRequests": 0,
+        "costUSD": 0.2242824,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 887,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 16,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Added `run([\"--list\"])` in `src/cli.ts:24-26`, which lists the manifest's script names sorted, newline-joined, empty string when none exist. Also updated the usage text to mention `--list`. Added two tests in `src/cli.test.ts` covering the real manifest's scripts and the empty-scripts case (via mocking `fs.readFileSync`). All 5 tests pass with `node --test`.",
+    "ttft_ms": 3175,
+    "type": "result",
+    "duration_ms": 53193,
+    "uuid": "3db83e4f-fde6-4892-80aa-1c34367b0705",
+    "ttft_stream_ms": 2600,
+    "time_to_request_ms": 251,
+    "first_content_frame_ms": 2600,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T20:21:47.270Z",
+  "endedAt": "2026-09-18T20:22:42.202Z",
+  "wallMs": 54933,
+  "timedOut": false
+}

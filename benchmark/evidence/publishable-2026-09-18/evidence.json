@@ -1,0 +1,15 @@
+{
+  "setId": "publishable-2026-09-18",
+  "recordProtocol": 4,
+  "kind": "publishable",
+  "archive": "publishable-2026-09-18-raw.tar.gz",
+  "archiveSha256": "1c6bb433660d538a0daa46f94d2a71c5497458b3f2d8155dca13fb9489ea9d30",
+  "archiveBytes": 2196889,
+  "attempts": 73,
+  "validRuns": 72,
+  "scheduledValidRuns": 72,
+  "runManifestSha256": "b2c13fbbe2fc10f71c46ff8455091230fdf73b2c7de292d8c68e1d3b5a908749",
+  "rawFilesManifestSha256": "6ead2a735831d08d3d6242baa3966d16d9aacc4e5f9ac83320f90fe47383a152",
+  "release": null,
+  "sigstoreBundle": null
+}

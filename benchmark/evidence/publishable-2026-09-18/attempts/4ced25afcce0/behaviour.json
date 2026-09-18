@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the entry still sends a request (0.69775ms)\n✔ the entry still retries a busy server (0.087666ms)\n✔ the entry still builds a frame (0.066792ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 74.767125\n",
+  "stderr": "",
+  "reason": ""
+}

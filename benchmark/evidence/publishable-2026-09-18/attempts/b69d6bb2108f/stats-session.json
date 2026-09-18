@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 644,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 1,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1789765757,
+      "gate": "complexity",
+      "id": "0d8fc10b292a64d5",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "complexity",
+        "line": 27,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "label": "tangled function",
+      "last": 1789765794,
+      "line": 27,
+      "outcome": "fixed-next",
+      "prompt": "The `fmtx` crate lays text out and cannot break a paragraph to a width.",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+      "time": 1789765757,
+      "tries": 1,
+      "values": {
+        "cc": 9,
+        "lines": 40
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

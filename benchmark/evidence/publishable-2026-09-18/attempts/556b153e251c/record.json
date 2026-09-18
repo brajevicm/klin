@@ -1,0 +1,624 @@
+{
+  "protocol": 4,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "doc-citations",
+  "gate": "doc-citations",
+  "taskId": "a02dcb85aae0c7b3",
+  "variant": "risk",
+  "arm": "active",
+  "trialId": "556b153e251c",
+  "order": 68,
+  "repetition": 1,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "1348bba0e7d7db10388979099592aa23bbde66b0",
+    "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+    "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
+  },
+  "harness": {
+    "commit": "381dc6b1269e6555aa8604ff5228f40c6ddc7cd9",
+    "dirty": false,
+    "treeSha256": "45350034919792712653b0e5dcb7de2886787fd156ce761a1191bfddd541b352"
+  },
+  "klin": {
+    "commit": "381dc6b1269e6555aa8604ff5228f40c6ddc7cd9",
+    "version": "klin 0.2.1",
+    "binarySha256": "e88bcdeaf159c0ba4a58a64e211e7474b03d59ff856a4c54de3c8283781bd4b2"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.276 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/556b153e251c/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "109f7c5c-8600-4f21-aaa5-a407489341f4",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "d42a51f6b0bf85021163d25f928562307cb9c23ccb8456a998d0b348e77ee9c4",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-haiku-4-5-20251001, claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "c753395c05e3b093d3c7ba95d2447847b2494904cde1958001730549caf9be0b",
+    "wrapperSha256": "46da7439081473aa00a39aeb5d710ed6d3fb80dc49346c123343d4890d176d3d"
+  },
+  "startedAt": "2026-09-18T21:44:07.952Z",
+  "endedAt": "2026-09-18T21:46:52.006Z",
+  "wallMs": 164056,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "broken_citation",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:08Z",
+      "ended": "2026-09-18T21:44:08Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:09Z",
+      "ended": "2026-09-18T21:44:09Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find src -type f | sort",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:10Z",
+      "ended": "2026-09-18T21:44:10Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -rn \"client\\.ts\\|socket\\.ts\\|src/client\\|src/socket\" --include=\"*.json\" --include=\"*.ts\" -l . 2>/dev/null | grep -v node_modules",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:18Z",
+      "ended": "2026-09-18T21:44:18Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "mkdir -p src/transport && git mv src/client.ts src/transport/client.ts && git mv src/socket.ts src/transport/socket.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:20Z",
+      "ended": "2026-09-18T21:44:20Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Write",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/transport/client.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:23Z",
+      "ended": "2026-09-18T21:44:23Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Write",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/transport/socket.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:25Z",
+      "ended": "2026-09-18T21:44:25Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git rm src/client.ts src/socket.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:26Z",
+      "ended": "2026-09-18T21:44:26Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:27Z",
+      "ended": "2026-09-18T21:44:27Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "rm src/client.ts src/socket.ts && ls src && ls src/transport",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:30Z",
+      "ended": "2026-09-18T21:44:30Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "pwd; ls -la src",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:33Z",
+      "ended": "2026-09-18T21:44:33Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 11,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "rm /private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/client.ts /private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/socket.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:36Z",
+      "ended": "2026-09-18T21:44:36Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 12,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:42Z",
+      "ended": "2026-09-18T21:44:43Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 13,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git add src/transport/ 2>&1; echo \"---\"; git diff --stat 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:44Z",
+      "ended": "2026-09-18T21:44:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 14,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "rm src/client.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:49Z",
+      "ended": "2026-09-18T21:44:49Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 15,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls -lO src/client.ts src/socket.ts; xattr -l src/client.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:51Z",
+      "ended": "2026-09-18T21:44:51Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 16,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": ": > src/client.ts && echo \"truncate ok\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:44:56Z",
+      "ended": "2026-09-18T21:44:56Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 17,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls -la .git | head -5; stat -f \"%Su %Sp %f\" .git; stat -f \"%Su %Sp %f\" src/client.ts; id",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:45:08Z",
+      "ended": "2026-09-18T21:45:08Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 18,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "touch .git/testfile 2>&1; echo \"exit:$?\"; touch src/newfile.txt 2>&1; echo \"exit2:$?\"; ls src/newfile.txt 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:45:17Z",
+      "ended": "2026-09-18T21:45:17Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 19,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls -le src/client.ts 2>&1; echo \"---\"; touch $TMPDIR/testwrite.txt 2>&1 && echo \"tmpdir write ok\" && rm $TMPDIR/testwrite.txt 2>&1 && echo \"tmpdir rm ok\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:45:44Z",
+      "ended": "2026-09-18T21:45:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 20,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "touch ./probe.txt 2>&1; echo \"exit:$?\"; ls probe.txt 2>&1",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:45:51Z",
+      "ended": "2026-09-18T21:45:51Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 21,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "python3 -c \"\nimport os\ntry:\n    os.remove('src/client.ts')\n    print('removed client.ts')\nexcept Exception as e:\n    print('err client', e)\ntry:\n    os.remove('src/socket.ts')\n    print('removed socket.ts')\nexcept Exception as e:\n    print('err socket', e)\n\"\n",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:46:04Z",
+      "ended": "2026-09-18T21:46:04Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 22,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --experimental-strip-types --test src/*.test.ts 2>&1 | tail -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:46:26Z",
+      "ended": "2026-09-18T21:46:26Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 23,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/client.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:46:40Z",
+      "ended": "2026-09-18T21:46:40Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 24,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo/src/socket.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:46:43Z",
+      "ended": "2026-09-18T21:46:43Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 25,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --experimental-strip-types --test src/*.test.ts 2>&1 | tail -15 && echo \"---status---\" && git status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:46:46Z",
+      "ended": "2026-09-18T21:46:46Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 26,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:46:51Z",
+      "ended": "2026-09-18T21:46:51Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 0,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 342,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 0,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 0,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 342
+  },
+  "turns": 30,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/556b153e251c"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/556b153e251c/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/556b153e251c/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    }
+  }
+}

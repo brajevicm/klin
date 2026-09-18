@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/193ad863e578/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "22fcf8c2-634b-4833-bf2f-ef58de401fe9",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "2c96889969f0bb947feb3a633cbebbd536fbda6f25f4a190fb07b448d8ad90ef",
+  "sessionId": "22fcf8c2-634b-4833-bf2f-ef58de401fe9",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":52796,\"stop_reason\":\"end_turn\",\"session_id\":\"22fcf8c2-634b-4833-bf2f-ef58de401fe9\",\"total_cost_usd\":0.19733599999999998,\"usage\":{\"input_tokens\":21,\"cache_creation_input_tokens\":18354,\"cache_read_input_tokens\":427440,\"output_tokens\":3735,\"output_tokens_details\":{\"thinking_tokens\":764},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":18354,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":127,\"cache_read_input_tokens\":44521,\"cache_creation_input_tokens\":470,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":470},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":985,\"outputTokens\":11,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.00104,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":21,\"outputTokens\":3735,\"cacheReadInputTokens\":427440,\"cacheCreationInputTokens\":18354,\"webSearchRequests\":0,\"costUSD\":0.196296,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":764,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":13,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Tests still pass. Refactored `computeQuote` in `src/quote.ts` by splitting the discount logic into `sizeDiscount`, `customerDiscount`, `regionDiscount`, and `totalDiscount` helpers, which lowers `computeQuote`'s own complexity so the quality gate's complexity ratchet is satisfied while preserving identical behavior.\",\"ttft_ms\":2490,\"type\":\"result\",\"duration_ms\":54891,\"uuid\":\"2900609a-0b79-429b-8365-a62cb8d152c1\",\"ttft_stream_ms\":1844,\"time_to_request_ms\":311,\"first_content_frame_ms\":1844,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 52796,
+    "stop_reason": "end_turn",
+    "session_id": "22fcf8c2-634b-4833-bf2f-ef58de401fe9",
+    "total_cost_usd": 0.19733599999999998,
+    "usage": {
+      "input_tokens": 21,
+      "cache_creation_input_tokens": 18354,
+      "cache_read_input_tokens": 427440,
+      "output_tokens": 3735,
+      "output_tokens_details": {
+        "thinking_tokens": 764
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 18354,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 127,
+          "cache_read_input_tokens": 44521,
+          "cache_creation_input_tokens": 470,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 470
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 985,
+        "outputTokens": 11,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.00104,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 21,
+        "outputTokens": 3735,
+        "cacheReadInputTokens": 427440,
+        "cacheCreationInputTokens": 18354,
+        "webSearchRequests": 0,
+        "costUSD": 0.196296,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 764,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 13,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Tests still pass. Refactored `computeQuote` in `src/quote.ts` by splitting the discount logic into `sizeDiscount`, `customerDiscount`, `regionDiscount`, and `totalDiscount` helpers, which lowers `computeQuote`'s own complexity so the quality gate's complexity ratchet is satisfied while preserving identical behavior.",
+    "ttft_ms": 2490,
+    "type": "result",
+    "duration_ms": 54891,
+    "uuid": "2900609a-0b79-429b-8365-a62cb8d152c1",
+    "ttft_stream_ms": 1844,
+    "time_to_request_ms": 311,
+    "first_content_frame_ms": 1844,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T20:07:23.200Z",
+  "endedAt": "2026-09-18T20:08:19.857Z",
+  "wallMs": 56657,
+  "timedOut": false
+}

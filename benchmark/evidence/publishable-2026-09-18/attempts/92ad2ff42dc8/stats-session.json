@@ -1,0 +1,88 @@
+{
+  "activity": {
+    "klin_ms": 337,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 2,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 2,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "package.json",
+      "first": 1789767083,
+      "gate": "lockfile",
+      "id": "8a68f87968f870ee",
+      "key": {
+        "file": "package.json",
+        "gate": "lockfile",
+        "line": 0,
+        "text": "@types/node"
+      },
+      "label": "unlocked dependency",
+      "last": 1789767083,
+      "line": 0,
+      "outcome": "open",
+      "prompt": "Two things are missing from `release-tools`.",
+      "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+      "text": "@types/node",
+      "time": 1789767083,
+      "tries": 0,
+      "values": {
+        "unlocked": 1,
+        "unpinned": 1
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "package.json",
+      "first": 1789767083,
+      "gate": "lockfile",
+      "id": "0fed4145cfbbdd53",
+      "key": {
+        "file": "package.json",
+        "gate": "lockfile",
+        "line": 0,
+        "text": "typescript"
+      },
+      "label": "unlocked dependency",
+      "last": 1789767083,
+      "line": 0,
+      "outcome": "open",
+      "prompt": "Two things are missing from `release-tools`.",
+      "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+      "text": "typescript",
+      "time": 1789767083,
+      "tries": 0,
+      "values": {
+        "unlocked": 1,
+        "unpinned": 0
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

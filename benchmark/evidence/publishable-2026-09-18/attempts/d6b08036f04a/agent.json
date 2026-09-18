@@ -1,0 +1,143 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/d6b08036f04a/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "f3259ed8-7a14-4377-8153-a3d4dd340213",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "7720f1d8ad192bca5cdd8e3867a3ac76613718be2f7db4df69a9752da250ca07",
+  "sessionId": "f3259ed8-7a14-4377-8153-a3d4dd340213",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":35407,\"stop_reason\":\"end_turn\",\"session_id\":\"f3259ed8-7a14-4377-8153-a3d4dd340213\",\"total_cost_usd\":0.1721162,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":16581,\"cache_read_input_tokens\":342071,\"output_tokens\":3631,\"output_tokens_details\":{\"thinking_tokens\":678},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16581,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":199,\"cache_read_input_tokens\":42279,\"cache_creation_input_tokens\":939,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":939},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":972,\"outputTokens\":12,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.001032,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"thinkingTokens\":0,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"},\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":3631,\"cacheReadInputTokens\":342071,\"cacheCreationInputTokens\":16581,\"webSearchRequests\":0,\"costUSD\":0.1710842,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":678,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":9,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 6 tests pass (the `checksum` dead-code warning is pre-existing, unrelated to this change).\\n\\nChanged `src/store.rs` from LRU to FIFO eviction: entries now track `written` (set once, at insert time) instead of `used` (touched on every read/write). Eviction picks the entry with the smallest `written` value; `get` no longer mutates state, and rewriting an existing key updates its value in place without touching `written`. Added two tests in `tests/store.rs` covering the new rule: a recently-read entry still gets evicted, and rewriting a key doesn't move it in write order.\",\"ttft_ms\":1510,\"type\":\"result\",\"duration_ms\":38534,\"uuid\":\"7ddffd27-dbbd-4e01-a77e-89dfcb91ffac\",\"ttft_stream_ms\":1021,\"time_to_request_ms\":216,\"first_content_frame_ms\":1021,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 35407,
+    "stop_reason": "end_turn",
+    "session_id": "f3259ed8-7a14-4377-8153-a3d4dd340213",
+    "total_cost_usd": 0.1721162,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 16581,
+      "cache_read_input_tokens": 342071,
+      "output_tokens": 3631,
+      "output_tokens_details": {
+        "thinking_tokens": 678
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16581,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 199,
+          "cache_read_input_tokens": 42279,
+          "cache_creation_input_tokens": 939,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 939
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 972,
+        "outputTokens": 12,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.001032,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 3631,
+        "cacheReadInputTokens": 342071,
+        "cacheCreationInputTokens": 16581,
+        "webSearchRequests": 0,
+        "costUSD": 0.1710842,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 678,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 9,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 6 tests pass (the `checksum` dead-code warning is pre-existing, unrelated to this change).\n\nChanged `src/store.rs` from LRU to FIFO eviction: entries now track `written` (set once, at insert time) instead of `used` (touched on every read/write). Eviction picks the entry with the smallest `written` value; `get` no longer mutates state, and rewriting an existing key updates its value in place without touching `written`. Added two tests in `tests/store.rs` covering the new rule: a recently-read entry still gets evicted, and rewriting a key doesn't move it in write order.",
+    "ttft_ms": 1510,
+    "type": "result",
+    "duration_ms": 38534,
+    "uuid": "7ddffd27-dbbd-4e01-a77e-89dfcb91ffac",
+    "ttft_stream_ms": 1021,
+    "time_to_request_ms": 216,
+    "first_content_frame_ms": 1021,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-18T21:31:24.327Z",
+  "endedAt": "2026-09-18T21:32:04.517Z",
+  "wallMs": 40190,
+  "timedOut": false
+}

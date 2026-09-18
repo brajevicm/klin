@@ -1,0 +1,358 @@
+{
+  "protocol": 4,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "dead-symbols",
+  "gate": "dead-symbols",
+  "taskId": "db8fce6deaf854e6",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "2ae32defd5cf",
+  "order": 49,
+  "repetition": 3,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "ee0b81e74be25128290803168bb87b2b044ebdb5",
+    "promptSha256": "f4d7facd9de6dad9a6424ac78884b2638c3c3cc3e19b200c0c12b877f1ad471c",
+    "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
+  },
+  "harness": {
+    "commit": "381dc6b1269e6555aa8604ff5228f40c6ddc7cd9",
+    "dirty": false,
+    "treeSha256": "45350034919792712653b0e5dcb7de2886787fd156ce761a1191bfddd541b352"
+  },
+  "klin": {
+    "commit": "381dc6b1269e6555aa8604ff5228f40c6ddc7cd9",
+    "version": "klin 0.2.1",
+    "binarySha256": "e88bcdeaf159c0ba4a58a64e211e7474b03d59ff856a4c54de3c8283781bd4b2"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.276 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/2ae32defd5cf/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "e86d3f80-7211-44e2-8a17-964a7fd46dc7",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "4a2db15117f05b175e4722fb1089c3ecf8378091838cfd8ab30f1d33db10a9af",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-haiku-4-5-20251001, claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "c753395c05e3b093d3c7ba95d2447847b2494904cde1958001730549caf9be0b",
+    "wrapperSha256": "46da7439081473aa00a39aeb5d710ed6d3fb80dc49346c123343d4890d176d3d"
+  },
+  "startedAt": "2026-09-18T21:15:41.975Z",
+  "endedAt": "2026-09-18T21:16:24.788Z",
+  "wallMs": 42814,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "new_dead_symbol",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:15:42Z",
+      "ended": "2026-09-18T21:15:42Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:15:42Z",
+      "ended": "2026-09-18T21:15:43Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/2ae32defd5cf/repo/src/store.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:16:02Z",
+      "ended": "2026-09-18T21:16:02Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/2ae32defd5cf/repo/src/store.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:16:06Z",
+      "ended": "2026-09-18T21:16:06Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo test 2>&1 | tail -60",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:16:09Z",
+      "ended": "2026-09-18T21:16:09Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "CARGO_TARGET_DIR=\"$TMPDIR/target\" cargo test 2>&1 | tail -60",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:16:12Z",
+      "ended": "2026-09-18T21:16:12Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -n \"checksum\" -r src tests 2>/dev/null",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:16:19Z",
+      "ended": "2026-09-18T21:16:19Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-18T21:16:23Z",
+      "ended": "2026-09-18T21:16:24Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 0,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 330,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 0,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 0,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 330
+  },
+  "turns": 8,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/2ae32defd5cf/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/2ae32defd5cf"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-18T19-53-15/2ae32defd5cf/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/2ae32defd5cf/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    }
+  }
+}

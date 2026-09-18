@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 365,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "tests/render.rs",
+      "first": 1789762011,
+      "gate": "escapes",
+      "id": "0f3c3a948d3b11f6",
+      "key": {
+        "file": "tests/render.rs",
+        "gate": "escapes",
+        "line": 60,
+        "text": "assert_eq!(lines.last().unwrap(), \"ghij\");"
+      },
+      "label": "escape hatch",
+      "last": 1789762011,
+      "line": 60,
+      "outcome": "open",
+      "prompt": "The `fmtx` crate lays text out and cannot break a paragraph to a width.",
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "assert_eq!(lines.last().unwrap(), \"ghij\");",
+      "time": 1789762011,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "escape": "unwrap"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}
