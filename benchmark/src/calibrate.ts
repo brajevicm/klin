@@ -273,22 +273,15 @@ function paired(group: RunRecord[]): boolean {
  * row must have one record, every record must have one row, and the two must agree on family,
  * variant, arm, order and the deterministic trial id.
  *
- * A set whose manifest names no selected families is older than this contract. It keeps the
- * count check alone, which is what it was written against.
+ * A set whose manifest names no selected families cannot be held to any of this, so it fails. A
+ * record count is no evidence of the experiment, and a set written before this contract is not a
+ * calibration set under it.
  */
 export function scheduled(read: Manifest, held: RunRecord[]): string[] {
   const problems: string[] = [];
   const rows = read.order ?? [];
   if (!Array.isArray(read.selectedFamilies)) {
-    const expected = rows.length || Object.keys(families()).length * 4;
-    return held.length === expected
-      ? []
-      : [
-          "the set holds " +
-            String(held.length) +
-            " records where it should hold " +
-            String(expected),
-        ];
+    return ["the calibration manifest states no selected families"];
   }
   const known = Object.keys(families());
   for (const one of read.selectedFamilies.filter((name) => !known.includes(name))) {
@@ -459,6 +452,11 @@ export function verify(directory: string): string[] {
     byCell.set(key, [...(byCell.get(key) ?? []), record]);
   }
   for (const [key, group] of byCell) {
+    // `scheduled` names the cell that is not one Active and one Shadow. Until it is, the group is
+    // an arbitrary set of records and the frozen variables say nothing about a treatment.
+    if (!paired(group)) {
+      continue;
+    }
     const trees = new Set(group.map((one) => one.fixture.treeSha256));
     const prompts = new Set(group.map((one) => one.fixture.promptSha256));
     if (trees.size > 1) {

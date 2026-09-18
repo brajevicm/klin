@@ -199,3 +199,49 @@ test("verify accepts the complete four-record inventory set", () => {
   assert.deepEqual(problems, [], verify(where).join(" / "));
   fs.rmSync(where, { recursive: true, force: true });
 });
+
+test("a manifest that states no selected families fails", () => {
+  const { held } = complete();
+  assert.deepEqual(scheduled({ order: [] }, held), [
+    "the calibration manifest states no selected families",
+  ]);
+});
+
+/** An arbitrary group of records says nothing about a treatment, so nothing is read from it. */
+test("a malformed pair is a schedule error and no frozen-variable difference", () => {
+  const where = room();
+  const base = JSON.parse(
+    fs.readFileSync(path.join(paths.RUNS, "ad-hoc", "0ce3ce1cb732", "record.json"), "utf8"),
+  ) as Record<string, unknown>;
+  const order = rowsFor("inventory");
+  for (const row of order) {
+    const into = path.join(where, row.trialId);
+    fs.mkdirSync(into, { recursive: true });
+    fs.writeFileSync(
+      path.join(into, "record.json"),
+      JSON.stringify({
+        ...base,
+        protocol: paths.PROTOCOL,
+        audit: [],
+        ...row,
+        arm: "active",
+        klin: { commit: "abc", version: "klin 0.2.0", binarySha256: row.trialId },
+      }) + "\n",
+    );
+  }
+  fs.writeFileSync(
+    path.join(where, "manifest.json"),
+    JSON.stringify({ selectedFamilies: ["inventory"], order }) + "\n",
+  );
+  const problems = verify(where);
+  assert.ok(
+    problems.some((one) => one.includes("one Active and one Shadow")),
+    problems.join(" / "),
+  );
+  assert.deepEqual(
+    problems.filter((one) => one.includes("did not share")),
+    [],
+    "the frozen variables of an unpaired cell are read only once it is a pair",
+  );
+  fs.rmSync(where, { recursive: true, force: true });
+});
