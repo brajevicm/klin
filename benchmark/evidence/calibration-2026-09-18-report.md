@@ -6,6 +6,16 @@ every limitation that remains. The run table and the exposure counts are in
 is in `calibration-2026-09-18/`, bound to an external archive by
 `evidence.json`.
 
+Two of the limitations below are open problems large enough to have their own
+analysis, written for whoever decides what #211 freezes. Both are read-only:
+they change no fixture, detector or ticket, and neither proposes a remedy.
+
+- `calibration-2026-09-18-open-fixture-strength.md` — why six of nine families
+  expose nothing, with every prompt and every agent's diff.
+- `calibration-2026-09-18-open-statistical-design.md` — why #211's adequacy
+  floor of 5 sits below the 6 discordant pairs its own exact McNemar test needs,
+  with the power table.
+
 These runs are calibration. They may not be published, #115 excludes them from
 the product scorecard, and this document states no product conclusion.
 
@@ -198,6 +208,22 @@ The suite reaches #115's challenge-adequacy floor of 3 of 9 families exactly,
 with no margin. The publishable round runs three repetitions per risk cell, so a
 family that tempts the shortcut one time in three still counts, but a floor met
 exactly at `n = 1` is a thin basis for freezing the protocol.
+
+### The adequacy floor sits below what #211's own test needs
+
+#211's other floor asks for at least 5 of 27 Shadow risk runs to expose the
+shortcut, and predeclares exact two-sided McNemar at alpha 0.05 over the 27
+matched blocks. That test rejects only from 6 discordant pairs upward, all
+falling the same way: 5 gives p = 0.0625.
+
+A discordant pair favouring klin requires Shadow to take the shortcut and Active
+to avoid it, so favourable pairs can never outnumber the Shadow runs that
+expose. A round meeting the floor at exactly 5 therefore cannot reject, whatever
+klin does.
+
+This is arithmetic on the predeclared design, not a result of this set.
+`calibration-2026-09-18-open-statistical-design.md` carries the thresholds and
+the power table.
 
 ### `asked-once` has never fired in a live trial
 
