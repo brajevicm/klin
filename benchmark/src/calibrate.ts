@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { cells, families, type ArmName, type VariantName } from "./catalogue.ts";
+import { ARMS, VARIANTS, cells, families, type ArmName, type VariantName } from "./catalogue.ts";
 import { sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
@@ -40,7 +40,7 @@ function shuffled<T>(items: T[], seed: number): T[] {
   return held;
 }
 
-function trialId(family: string, variant: string, arm: string, order: number): string {
+export function trialId(family: string, variant: string, arm: string, order: number): string {
   return sha256([family, variant, arm, order].join(":")).slice(0, 12);
 }
 
@@ -96,6 +96,12 @@ export function preflight(binary: string): string {
   return named === "" ? "the binary at " + binary + " did not answer --version" : "";
 }
 
+/** The family set a calibration covers: every family, or the deduplicated `--only` subset. */
+export function selected(only: string[]): string[] {
+  const named = Object.keys(families()).sort();
+  return only.length === 0 ? named : named.filter((one) => only.includes(one));
+}
+
 export interface CalibrateOptions {
   into: string;
   only: string[];
@@ -103,6 +109,12 @@ export interface CalibrateOptions {
 }
 
 export function all(chosen: CalibrateOptions): number {
+  const catalogued = Object.keys(families());
+  const unknown = chosen.only.filter((one) => !catalogued.includes(one));
+  if (unknown.length > 0) {
+    process.stdout.write("no family named " + unknown.join(", ") + "\n");
+    return 2;
+  }
   const known = session.defaults();
   const blocked = preflight(known.klinBin);
   if (blocked !== "") {
@@ -116,9 +128,8 @@ export function all(chosen: CalibrateOptions): number {
         ". Every record will state no klin source commit. benchmark/build-klin writes one.\n",
     );
   }
-  const wanted = cells().filter(
-    (cell) => chosen.only.length === 0 || chosen.only.includes(cell.family),
-  );
+  const selectedFamilies = selected(chosen.only);
+  const wanted = cells().filter((cell) => selectedFamilies.includes(cell.family));
   const order = shuffled(wanted, chosen.seed);
   fs.mkdirSync(chosen.into, { recursive: true });
   fs.writeFileSync(
@@ -133,6 +144,7 @@ export function all(chosen: CalibrateOptions): number {
         model: known.model,
         klinVersion: session.klinVersion(known.klinBin),
         hostVersion: session.hostVersion(),
+        selectedFamilies,
         order: order.map((cell, index) => ({
           ...cell,
           order: index,
@@ -227,9 +239,151 @@ export function records(directory: string): RunRecord[] {
   return held;
 }
 
+interface ManifestRow {
+  family: string;
+  variant: string;
+  arm: string;
+  order: number;
+  trialId: string;
+}
+
+interface Manifest {
+  selectedFamilies?: string[];
+  order?: ManifestRow[];
+}
+
+function manifest(directory: string): Manifest {
+  const file = path.join(directory, "manifest.json");
+  return fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, "utf8")) as Manifest) : {};
+}
+
+function paired(group: RunRecord[]): boolean {
+  return (
+    group.filter((one) => one.arm === "active").length === 1 &&
+    group.filter((one) => one.arm === "shadow").length === 1
+  );
+}
+
+/**
+ * Whether the exact scheduled experiment is the one that ran.
+ *
+ * The manifest states which families were selected, and the catalogue states what a family owes:
+ * both variants, both arms. The expected cells are rebuilt from those two, so a manifest that
+ * scheduled the wrong set cannot vouch for itself. Every expected cell must appear once, every
+ * row must have one record, every record must have one row, and the two must agree on family,
+ * variant, arm, order and the deterministic trial id.
+ *
+ * A set whose manifest names no selected families is older than this contract. It keeps the
+ * count check alone, which is what it was written against.
+ */
+export function scheduled(read: Manifest, held: RunRecord[]): string[] {
+  const problems: string[] = [];
+  const rows = read.order ?? [];
+  if (!Array.isArray(read.selectedFamilies)) {
+    const expected = rows.length || Object.keys(families()).length * 4;
+    return held.length === expected
+      ? []
+      : [
+          "the set holds " +
+            String(held.length) +
+            " records where it should hold " +
+            String(expected),
+        ];
+  }
+  const known = Object.keys(families());
+  for (const one of read.selectedFamilies.filter((name) => !known.includes(name))) {
+    problems.push("the manifest selected a family the catalogue does not have, " + one);
+  }
+  const expected = new Set<string>();
+  for (const family of read.selectedFamilies.filter((name) => known.includes(name))) {
+    for (const variant of VARIANTS) {
+      for (const arm of ARMS) {
+        expected.add([family, variant, arm].join("/"));
+      }
+    }
+  }
+  const byKey = new Map<string, ManifestRow[]>();
+  for (const row of rows) {
+    const key = [row.family, row.variant, row.arm].join("/");
+    byKey.set(key, [...(byKey.get(key) ?? []), row]);
+  }
+  for (const key of expected) {
+    const found = byKey.get(key) ?? [];
+    if (found.length === 0) {
+      problems.push("the manifest scheduled no " + key);
+    }
+    if (found.length > 1) {
+      problems.push("the manifest scheduled " + key + " " + String(found.length) + " times");
+    }
+  }
+  for (const key of byKey.keys()) {
+    if (!expected.has(key)) {
+      problems.push("the manifest scheduled " + key + ", which the selected families do not ask for");
+    }
+  }
+  const byTrial = new Map(held.map((one) => [one.trialId, one] as const));
+  const claimed = new Set<string>();
+  for (const row of rows) {
+    const key = [row.family, row.variant, row.arm].join("/");
+    const want = trialId(row.family, row.variant, row.arm, row.order);
+    if (row.trialId !== want) {
+      problems.push(key + ": the manifest states trial id " + String(row.trialId) + " where the schedule gives " + want);
+      continue;
+    }
+    const record = byTrial.get(row.trialId);
+    if (!record) {
+      problems.push(key + ": the scheduled trial " + row.trialId + " left no record");
+      continue;
+    }
+    claimed.add(row.trialId);
+    const stated: [string, unknown, unknown][] = [
+      ["family", record.family, row.family],
+      ["variant", record.variant, row.variant],
+      ["arm", record.arm, row.arm],
+      ["order", record.order, row.order],
+    ];
+    for (const [what, was, wanted] of stated) {
+      if (was !== wanted) {
+        problems.push(
+          key + ": the record states " + what + " " + String(was) + " where the manifest scheduled " + String(wanted),
+        );
+      }
+    }
+  }
+  for (const record of held) {
+    if (!claimed.has(record.trialId)) {
+      problems.push(
+        record.family + "/" + record.variant + "/" + record.arm + ": the record " + record.trialId + " belongs to no scheduled trial",
+      );
+    }
+  }
+  const byCell = new Map<string, RunRecord[]>();
+  for (const record of held) {
+    const key = record.family + "/" + record.variant;
+    byCell.set(key, [...(byCell.get(key) ?? []), record]);
+  }
+  for (const [key, group] of byCell) {
+    if (!paired(group)) {
+      problems.push(
+        key +
+          ": the cell holds " +
+          group.map((one) => one.arm).sort().join(" and ") +
+          " where it should hold one Active and one Shadow",
+      );
+    }
+  }
+  if (held.length !== rows.length) {
+    problems.push(
+      "the set holds " + String(held.length) + " records where it should hold " + String(rows.length),
+    );
+  }
+  return problems;
+}
+
 /** Every way a calibration set fails what the protocol requires of it. */
 export function verify(directory: string): string[] {
   const held = records(directory);
+  const read = manifest(directory);
   const problems: string[] = [];
   if (held.length === 0) {
     return ["no record was found under " + directory];
@@ -324,17 +478,6 @@ export function verify(directory: string): string[] {
   if (states.size !== held.length) {
     problems.push("two trials shared one trial id");
   }
-  // A set run with `--only` is smaller than the protocol on purpose, and its manifest says how
-  // much smaller. Without a manifest the whole protocol is what a set is judged against.
-  const manifest = path.join(directory, "manifest.json");
-  const stated = fs.existsSync(manifest)
-    ? (JSON.parse(fs.readFileSync(manifest, "utf8")) as { order?: unknown[] })
-    : {};
-  const expected = stated.order?.length ?? Object.keys(families()).length * 4;
-  if (held.length !== expected) {
-    problems.push(
-      "the set holds " + String(held.length) + " records where it should hold " + String(expected),
-    );
-  }
+  problems.push(...scheduled(read, held));
   return problems;
 }

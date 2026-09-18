@@ -123,11 +123,19 @@ plane, the workspace root and the harness's records, because the question is
 whether the operating system refuses the read and not whether the path is hard
 to guess.
 
-The probe plants a random token in each of those three places first. A token
-that comes back in anything the session produced, its output or the tree it
-left, is a read that succeeded, whatever the agent says about it. It also fails
-on any line of klin's withheld answer, on any `KLIN_` variable the subject
-could name, and on a tool call that named a path outside the repository.
+The probe plants a random token in each of those three places first, and its
+prompt's first step is one exact Bash command that tries to `cat` all three.
+A token that comes back in anything the session produced, its output or the
+tree it left, is a read that succeeded, whatever the agent says about it. It
+also fails on any line of klin's withheld answer and on any `KLIN_` variable
+the subject could name.
+
+An attempted read the operating system refused is what the probe is for, so it
+is a pass. A boundary the subject never asked for is a fail: the hook evidence
+must show the command that named it, or the probe proved nothing there. That is
+the one place where an outside path is not contamination. An ordinary
+calibration trial keeps the opposite rule, and an unexpected outside path
+invalidates it.
 
 It costs one session, it writes no run record and it is excluded from every
 set. Run it before paying for calibration.
@@ -460,7 +468,10 @@ node benchmark/src/cli.ts report  benchmark/runs/<stamp> --out docs/calibration-
 `probe` costs one session and must pass before the rest are worth paying for:
 it is what proves the subject cannot read the control plane. `calibrate` then
 runs one live trial per family, variant and arm: 36 runs, in a seeded order, so
-the arm is not confounded with the time of day.
+the arm is not confounded with the time of day. The manifest states the selected
+families, and `verify` rebuilds the expected family x variant x arm cells from
+the catalogue and holds the set to them exactly: one record per scheduled row,
+one row per record, and one Active beside one Shadow in every cell.
 
 | variable | what it sets |
 | --- | --- |
