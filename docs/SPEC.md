@@ -626,7 +626,10 @@ Each check documents its rule. The rules for the shipped checks:
 - `radius`: the 90th percentile over the last 200 non-merge commits, per
   ADR 0014, or no section below 50 commits.
 - `build`: one entry per manifest, per ADR 0012, derived only by a hook run
-  that builds. Manifests are a path set. A manifest the derivation commit
+  that runs the build. The `derived:` line names each command and the
+  manifest it came from, and the hook prints it whether the build passes or
+  fails, so a derived command never reaches the agent with no origin (ADR
+  0040, ADR 0048). Manifests are a path set. A manifest the derivation commit
   lacks gets its entry from the fixed table on the turn that adds it.
 
 A derived ceiling is not monotone. A percentile falls when simple functions
@@ -1117,8 +1120,10 @@ and printed with the NOTE.
 `lockfile` proves one thing: every dependency the manifest names has an entry
 in the lockfile beside it, and no pin the base held is gone. It cannot prove
 that a package exists in a registry, because it runs offline. A dependency
-that does not exist fails the project's own install, which the `build` step
-runs. Workspace members, path dependencies and optional dependencies are
+that does not exist fails the project's own install, when the `build` step
+runs one. A derived build runs no install, so a declared dependency that was
+never installed leaves the build's tool absent, and 9.3 makes that a NOTE
+that lets this gate speak. Workspace members, path dependencies and optional dependencies are
 implementation-defined and MUST be documented per manifest format, which
 8.2.1 does for the five formats that ship.
 
@@ -2312,7 +2317,7 @@ that reads a host's JSON.
 | session start | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
 | pre-tool | `klin guard` | deny or ask | nothing |
 | prompt submitted | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
-| stop | `klin gate --hook --changed` | each stop while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
+| stop | `klin gate --hook --changed` | each stop that changed the tree while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
 
 The shared hook lines call `klin` from PATH:
 
@@ -2343,13 +2348,33 @@ delivery; the matching prompt consumes it without opening another turn. A
 deleted test is the one gate failure that does not stay red: the stop that blocks on it records the
 question beside the stamp, and the next stop lets it through as a NOTE and
 ends green (8.2, ADR 0031). A build failure blocks at each
-stop until the tree builds, up to eight in one turn, and then the hook
-reports, says that it stopped blocking, and lets the turn end. The build
-stamp holds the count and the prompt counter of 6.2 the count was taken
-under. A count taken under an earlier prompt reads as zero, so every turn
+stop that changed the tree since the last build block, until the tree
+builds, up to eight in one turn, and then the hook reports, says that it
+stopped blocking, and lets the turn end. A stop over a tree the last build
+block already saw spends no block: the hook reports the failure, says the
+tree did not change, and lets the turn end, because a block over a tree the
+agent did not touch teaches it nothing (ADR 0048). The build
+stamp holds the count, the prompt counter of 6.2 the count was taken
+under, and the tree of 6.5 the last block was taken over. A count taken
+under an earlier prompt reads as zero, so every turn
 has eight blocks and only the stop writes the build stamp. A build-failure
 stop writes a RED verdict before it blocks, so the next prompt does not move
-the turn stamp over a tree that does not build.
+the turn stamp over a tree that does not build. Each block names its number
+in the turn, and a failing build's report opens with the `derived:` line of
+5.4 when the command was derived.
+
+A build whose shell exits 127 is not a build failure. The shell could not
+find the command, so the tool is absent and the code is unjudged. The hook
+records the build as unmeasured: one NOTE names the command, quotes the
+shell, and says that klin judged the source as it stands, that CI runs the
+build, and that the action left is to install the project's dependencies or
+for a person to set `build` to `false`. The gates then run over the tree,
+so a `lockfile` finding for the dependency that was declared and never
+installed reaches the agent, and the NOTE is told at a stop nothing blocks.
+The exit code is the whole test: klin reads no shell message and guesses no
+tool name. An absent tool skips its own entry and no other, so a later entry
+that fails still blocks, and the NOTE stands only for a build in which every
+entry that ran passed (ADR 0048).
 
 Two facts in ADR 0014 about where hook output goes on exit 0 need one more
 check against the current documentation before #91 lands. The documentation
@@ -3483,12 +3508,17 @@ hook(event):
   if count is None or count.prompt != turn.prompt:
     count = Count(prompt=turn.prompt, builds=0, gate_spent=False)   # a new turn
   failure = build(config_or(survey), changed_files(window))
+  unbuilt = None
+  if failure and failure.exit == 127:
+    unbuilt = note("unbuilt", failure.command, failure.shell_said); failure = None
   if failure:
-    count.builds += 1; write_atomic(state/build-blocked, count)
     write_verdict_atomic(state/turn, RED)
+    tree = tree_of(working_directory)
+    if count.builds > 0 and tree == count.tree: report(failure, "the tree did not change"); return 0
+    count.builds += 1; count.tree = tree; write_atomic(state/build-blocked, count)
     if count.builds > 8: report(failure, "stopped blocking after eight"); return 0
-    block(failure)
-  (failed, errored, reported, told) = run_gates(config_or(survey), window, scope=changed)
+    block(derived_lines + failure + "block N of 8")
+  (failed, errored, reported, told) = run_gates(config_or(survey), window, scope=changed, unbuilt)
   if failed == 0 and errored == 0:
     write_verdict_atomic(state/turn, GREEN)
     if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
@@ -3514,10 +3544,15 @@ agent never saw is asked again at the next stop that blocks. `inventory`
 reads `asked` under `--hook` (8.2).
 
 The build stamp is one record per prompt: the prompt counter it belongs to,
-the number of build blocks, and whether the turn's one gate block is spent.
+the number of build blocks, the tree the last build block was taken over,
+and whether the turn's one gate block is spent.
 A passing build does not reset the build count, so a tree that builds, breaks
 and builds again inside one turn still gets eight blocks in that turn and no
-more. The host's `blocked_before` flag is a second opinion for the first gate
+more. The tree is the one 6.5 hashes for the stamp, read through an index of
+the build stamp's own, `build-index`, so a build block costs one hash of the
+working tree and leaves the turn stamp's first-session marker alone. `unbuilt` is one
+note the runner adds to the run's notes and counts as told, so a stop nothing
+blocks still tells it. The host's `blocked_before` flag is a second opinion for the first gate
 block only, because after a build block that flag is true while the gate
 block is still unspent (ADR 0004).
 
@@ -3782,7 +3817,10 @@ green, because deterministic detection is not correct judgement:
   beats FAIL in the exit code, `--gate` on an excluded gate, `--list` shows
   derived and pinned, no source root is exit 2 under `--strict` and a NOTE in
   the hook.
-- Hook: build failure blocks every stop and stops after eight, a new prompt
+- Hook: build failure blocks every stop that changed the tree and stops
+  after eight, an unchanged tree is reported and not blocked again, a
+  command the shell cannot find is a NOTE and the gates run, a derived
+  build's failure names its command and its manifest, a new prompt
   restores the eight, a build failure writes a red verdict and the next
   prompt does not move the stamp, gate failure blocks once, the stamp hands
   the second stop an unspent block, a second session's prompt in the same

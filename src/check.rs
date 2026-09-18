@@ -41,6 +41,11 @@ pub const NOT_MEASURED: &str = "not-measured";
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
 pub const DERIVATION: &str = "derivation";
 
+/// The outcome of a build whose command the shell could not find. The tool is absent, so the
+/// tree is unmeasured rather than failing: the gates judge the source and the hook tells the
+/// note, because the one action left is an install. ADR 0048.
+pub const UNBUILT: &str = "unbuilt";
+
 /// The outcome of a dependency form a module resolver supports and could not resolve. A green
 /// layering run must not imply a resolution klin did not make. Spec 8.2.1, 8.6.
 pub const UNRESOLVED: &str = "unresolved";

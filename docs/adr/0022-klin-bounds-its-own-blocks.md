@@ -1,5 +1,8 @@
 # klin bounds its own blocks
 
+> ADR 0048 amends this: the count rises only at a stop whose tree changed
+> since the last block, and the stamp records that tree.
+>
 > Amends ADR 0004 and ADR 0012. The block-once policy stands. What changes is
 > who bounds a build failure that never clears.
 

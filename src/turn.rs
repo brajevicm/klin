@@ -605,10 +605,15 @@ fn stamped(root: &Path, tree: &str, reference: &str) -> Option<(String, Option<S
 /// A tree of the working directory, everything `.gitignore` does not exclude, written through
 /// an index of klin's own. Both the stamp and the spread report read the turn from it.
 pub fn tree(root: &Path, at: &Path) -> Option<String> {
-    let index = at.join(INDEX);
-    let _ = std::fs::remove_file(&index);
-    git(root, Some(&index), &["add", "-A"])?;
-    git(root, Some(&index), &["write-tree"])
+    tree_through(root, &at.join(INDEX))
+}
+
+/// The same tree through an index the caller names, for a reader that must not leave the
+/// stamp's own index behind, because `run` reads that file's absence as a first session.
+pub fn tree_through(root: &Path, index: &Path) -> Option<String> {
+    let _ = std::fs::remove_file(index);
+    git(root, Some(index), &["add", "-A"])?;
+    git(root, Some(index), &["write-tree"])
 }
 
 fn resolve(root: &Path, reference: &str) -> Option<String> {

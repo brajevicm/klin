@@ -188,11 +188,83 @@ fn a_build_key_is_not_read_outside_the_hook() {
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 
+/// Stops that each follow an edit, because a stop over an unchanged tree spends no block.
 fn blocked(tree: &Tree, times: usize) {
     for at in 1..=times {
+        tree.write("edited", &at.to_string());
         let run = stop(tree, A_STOP, &["gate", "--hook"]);
         assert_eq!(run.code, 2, "stop {at} of {times}: {}", run.out);
     }
+}
+
+#[test]
+fn a_stop_over_an_unchanged_tree_is_reported_and_not_blocked_again() {
+    let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
+
+    let first = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(first.says("block 1 of 8"), "{}", first.out);
+
+    let again = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(again.says("the-compiler-spoke"), "{}", again.out);
+    assert!(again.says("did not change"), "{}", again.out);
+
+    tree.write(
+        "src/lib.rs",
+        "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+    let edited = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(edited.code, 2, "{}", edited.out);
+    assert!(edited.says("block 2 of 8"), "{}", edited.out);
+}
+
+#[test]
+fn a_build_whose_command_is_missing_is_a_note_and_the_gates_run() {
+    let tree = tree(r#""build": "klin-no-such-tool --noEmit","#);
+    tree.words("README.md", 30);
+
+    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(
+        run.says("the build `klin-no-such-tool --noEmit` could not run"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Install the project's dependencies"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("does not build"), "{}", run.out);
+}
+
+#[test]
+fn a_missing_command_skips_its_entry_and_a_failing_entry_after_it_still_blocks() {
+    let tree = tree(
+        r#""build": [
+    {"root": "api", "run": "klin-no-such-tool"},
+    {"root": "web", "run": "echo the-compiler-spoke; exit 1"}
+  ],"#,
+    );
+    tree.write("api/keep", "");
+    tree.write("web/keep", "");
+
+    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the tree does not build"), "{}", run.out);
+    assert!(run.says("the-compiler-spoke"), "{}", run.out);
+}
+
+#[test]
+fn a_missing_build_command_is_told_when_nothing_blocks() {
+    let tree = tree(r#""build": "klin-no-such-tool","#);
+
+    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("nothing blocks the stop"), "{}", run.out);
+    assert!(run.says("could not run"), "{}", run.out);
 }
 
 #[test]
@@ -200,6 +272,7 @@ fn a_failing_build_blocks_eight_stops_under_one_prompt_and_the_ninth_reports() {
     let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
     blocked(&tree, 8);
 
+    tree.write("edited", "9");
     let ninth = stop(&tree, A_STOP, &["gate", "--hook"]);
     assert_eq!(ninth.code, 0, "{}", ninth.out);
     assert!(ninth.says("the-compiler-spoke"), "{}", ninth.out);
@@ -210,6 +283,7 @@ fn a_failing_build_blocks_eight_stops_under_one_prompt_and_the_ninth_reports() {
 fn a_new_prompt_restores_the_eight_build_blocks() {
     let tree = tree(r#""build": "exit 1","#);
     blocked(&tree, 8);
+    tree.write("edited", "9");
     let spent = stop(&tree, A_STOP, &["gate", "--hook"]);
     assert_eq!(spent.code, 0, "{}", spent.out);
 
@@ -230,6 +304,7 @@ fn a_passing_build_inside_one_prompt_does_not_restore_the_build_blocks() {
     assert_eq!(green.code, 0, "{}", green.out);
 
     tree.write("fails", "");
+    tree.write("edited", "9");
     let after = stop(&tree, A_STOP, &["gate", "--hook"]);
     assert_eq!(after.code, 0, "{}", after.out);
     assert!(after.says("stops blocking"), "{}", after.out);
@@ -273,6 +348,7 @@ fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
     let tree = tree(r#""build": "exit 1","#);
     blocked(&tree, 8);
 
+    tree.write("edited", "9");
     let ninth = stop(&tree, A_STOP, &["gate", "--hook", "--json"]);
     assert_eq!(ninth.code, 0, "{}", ninth.out);
     let report: serde_json::Value = match serde_json::from_str(ninth.out.trim()) {
@@ -383,10 +459,47 @@ fn a_derived_build_that_fails_blocks_the_stop_and_names_its_command() {
     tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
     tree.write("src/lib.rs", CLEAN);
     tree.base();
+    let path = toolchain(&tree);
+    tree.write(
+        "toolchain/cargo",
+        "#!/bin/sh\necho the-compiler-spoke\nexit 1\n",
+    );
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("$ cargo build --all-targets"), "{}", run.out);
+    assert!(run.says("the-compiler-spoke"), "{}", run.out);
+    assert!(
+        run.says(
+            "derived: build cargo build --all-targets from Cargo.toml, one command per manifest"
+        ),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_derived_build_whose_tool_is_absent_names_the_manifest_and_runs_the_gates() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("package.json", "{\"name\": \"web\"}\n");
+    tree.write("tsconfig.json", "{}\n");
+    tree.write("src/index.ts", "export const a = 1;\n");
+    tree.base();
+
+    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the build `tsc --noEmit` could not run"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("derived: build tsc --noEmit from package.json beside tsconfig.json"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("does not build"), "{}", run.out);
 }
 
 #[test]

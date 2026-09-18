@@ -33,6 +33,16 @@ pub struct Entry {
     pub run: String,
 }
 
+/// Why a build did not pass. `Failed` is the output of the first entry that did not build.
+/// `Missing` is an entry whose shell exited 127, which is a command it could not find: the tool
+/// is absent, not the code broken, so the tree is unmeasured rather than failing. ADR 0048.
+pub enum Failure {
+    Failed(String),
+    Missing { run: String, output: String },
+}
+
+const MISSING: i32 = 127;
+
 /// What a hook run builds, and where the commands came from.
 #[derive(Default)]
 pub struct Plan {
@@ -90,20 +100,24 @@ fn entry(config: &Config, item: &serde_json::Map<String, Value>) -> Result<Entry
 /// the one `derived:` line that says so. Spec 5.4.
 fn derived(project: &Project) -> Plan {
     let manifests = &project.facts().found.manifests;
-    let mut entries: Vec<Entry> = manifests
+    let mut found: Vec<(Entry, String)> = manifests
         .iter()
         .filter_map(|path| command(manifests, path))
         .collect();
-    entries.sort();
-    let Some(first) = entries.first() else {
+    found.sort();
+    let Some((first, _)) = found.first() else {
         return Plan::default();
     };
-    let value = match (entries.len(), &first.root) {
+    let value = match (found.len(), &first.root) {
         (1, None) => Value::String(first.run.clone()),
-        _ => Value::Array(entries.iter().map(Entry::value).collect()),
+        _ => Value::Array(found.iter().map(|(entry, _)| entry.value()).collect()),
     };
-    let runs: Vec<&str> = entries.iter().map(|entry| entry.run.as_str()).collect();
+    let runs: Vec<String> = found
+        .iter()
+        .map(|(entry, from)| format!("{} from {from}", entry.run))
+        .collect();
     let line = format!("derived: {BUILD} {}, {RULE}", runs.join(", "));
+    let entries = found.into_iter().map(|(entry, _)| entry).collect();
     let said = vec![(line, Some(check::derived_entry(BUILD, None, value, RULE)))];
     Plan { entries, said }
 }
@@ -119,9 +133,9 @@ impl Entry {
     }
 }
 
-/// The command a manifest the table names builds with, and nothing for one that builds no
-/// project of its own or whose companion file is not beside it.
-fn command(manifests: &[String], path: &str) -> Option<Entry> {
+/// The command a manifest the table names builds with, and the manifest it came from, or
+/// nothing for one that builds no project of its own or whose companion file is not beside it.
+fn command(manifests: &[String], path: &str) -> Option<(Entry, String)> {
     let name = path.rsplit_once('/').map_or(path, |(_, name)| name);
     let (_, beside, run) = MANIFESTS.iter().find(|(held, _, _)| name == *held)?;
     let root = match survey::parent(path) {
@@ -133,10 +147,23 @@ fn command(manifests: &[String], path: &str) -> Option<Entry> {
         Some(at) => format!("{at}/{beside}"),
     };
     let whole = beside.is_empty() || manifests.contains(&companion);
-    (!run.is_empty() && whole).then(|| Entry {
-        root,
-        run: run.to_string(),
+    (!run.is_empty() && whole).then(|| {
+        (
+            Entry {
+                root,
+                run: run.to_string(),
+            },
+            origin(path, beside),
+        )
     })
+}
+
+/// The manifest a derived command came from, as the `derived:` line and a failing build name it.
+fn origin(path: &str, beside: &str) -> String {
+    match beside.is_empty() {
+        true => path.to_string(),
+        false => format!("{path} beside {beside}"),
+    }
 }
 
 /// The entries a run builds. Without a changed set that is every entry. With one it is the
@@ -180,8 +207,11 @@ fn holds(entry: &Entry, path: &str) -> bool {
     }
 }
 
-/// The output of the first entry that failed, or None when every entry built.
-pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<String> {
+/// The first entry that failed, or the first whose command the shell could not find when every
+/// entry that ran passed, or None when every entry built. An absent tool skips its own entry
+/// and no other, so a compile error behind it still blocks.
+pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<Failure> {
+    let mut missing = None;
     for entry in wanted {
         let at = match &entry.root {
             Some(under) => root.join(under),
@@ -193,14 +223,20 @@ pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<String> {
             .current_dir(&at)
             .output();
         match done {
-            Err(why) => return Some(format!("{}: {why}\n", entry.run)),
+            Err(why) => return Some(Failure::Failed(format!("{}: {why}\n", entry.run))),
+            Ok(done) if done.status.code() == Some(MISSING) => {
+                missing.get_or_insert(Failure::Missing {
+                    run: entry.run.clone(),
+                    output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
+                });
+            }
             Ok(done) if !done.status.success() => {
                 let mut text = String::from_utf8_lossy(&done.stdout).into_owned();
                 text.push_str(&String::from_utf8_lossy(&done.stderr));
-                return Some(format!("$ {}\n{text}", entry.run));
+                return Some(Failure::Failed(format!("$ {}\n{text}", entry.run)));
             }
             Ok(_) => (),
         }
     }
-    None
+    missing
 }
