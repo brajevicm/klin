@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { family } from "../src/catalogue.ts";
 import * as integrity from "../src/integrity.ts";
 import * as workspace from "../src/workspace.ts";
@@ -448,4 +449,35 @@ test("no variable handed to a subject names a path the harness owns", () => {
       }
     }
   }
+});
+
+/**
+ * Filtering the environment is not enough on its own.
+ *
+ * `~/.zshenv` runs for every zsh invocation, interactive or not, and this operator's sources
+ * `~/.config/secrets.env`. So every Bash call in every trial re-exported a GitHub OAuth token, a
+ * fine-grained PAT, two API keys and a proxy password inside the subject's own shell, after the
+ * allowlist had already dropped them. A probe session read them and said so.
+ */
+test("the subject's shell reads no startup file of the operator's", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-home-"));
+  fs.writeFileSync(path.join(home, ".zshenv"), "export A_PERSONAL_SECRET=from-the-profile\n");
+  const asked = ["-lc", 'printf "%s" "${A_PERSONAL_SECRET-}"'];
+  const read = (extra: Record<string, string>): string =>
+    spawnSync("/bin/zsh", asked, {
+      encoding: "utf8",
+      env: { HOME: home, PATH: "/usr/bin:/bin", ...extra },
+    }).stdout ?? "";
+
+  assert.equal(read({}), "from-the-profile", "the fixture profile must export something to hide");
+
+  const kept = session.withoutKlin();
+  assert.ok(kept.ZDOTDIR, "no startup directory reaches the subject");
+  assert.equal(fs.readFileSync(path.join(kept.ZDOTDIR, ".zshenv"), "utf8"), "");
+  assert.equal(
+    read({ ZDOTDIR: kept.ZDOTDIR }),
+    "",
+    "a startup file of the operator's still reached the subject's shell",
+  );
+  fs.rmSync(home, { recursive: true, force: true });
 });

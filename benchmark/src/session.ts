@@ -153,6 +153,31 @@ const KEPT = [
 const KEPT_PREFIXES = ["FNM_", "NPM_CONFIG_", "npm_config_"];
 
 /**
+ * A shell startup directory holding one empty `.zshenv`, so the subject's shell starts clean.
+ *
+ * Filtering the environment the harness hands the host is not enough on its own. `~/.zshenv` runs
+ * for every zsh invocation, interactive or not, and this operator's sources
+ * `~/.config/secrets.env`. So every Bash call in every trial re-exported a GitHub OAuth token, a
+ * fine-grained PAT, two API keys and a proxy `username:password` pair inside the subject's own
+ * shell, after the allowlist above had already dropped them. A probe session read them and said
+ * so.
+ *
+ * zsh reads `$ZDOTDIR/.zshenv` in place of `$HOME/.zshenv`, so an empty one in a directory the
+ * harness owns stops the sourcing. `/etc/zshenv` still runs, which is the machine's own business
+ * and holds no personal secret.
+ *
+ * The directory is shared by every trial and holds one empty file. It names no trial and no arm.
+ */
+function quietShell(): string {
+  const room = path.join(os.tmpdir(), "klin-bench-shell");
+  fs.mkdirSync(room, { recursive: true });
+  for (const name of [".zshenv", ".zshrc", ".zprofile", ".zlogin", ".bashrc", ".bash_profile"]) {
+    fs.writeFileSync(path.join(room, name), "");
+  }
+  return room;
+}
+
+/**
  * The environment a subject session and a behaviour test run under.
  *
  * Two rules, and a variable must pass both. It has to be one this harness allows, and its value
@@ -172,6 +197,9 @@ export function withoutKlin(): NodeJS.ProcessEnv {
   const names = (value: string): boolean => secret.some((one) => value.includes(one));
   const allowed = (name: string): boolean =>
     KEPT.includes(name) || KEPT_PREFIXES.some((one) => name.startsWith(one));
+  kept.ZDOTDIR = quietShell();
+  kept.BASH_ENV = "";
+  kept.ENV = "";
   for (const [name, value] of Object.entries(process.env)) {
     if (value === undefined || !allowed(name)) {
       continue;
