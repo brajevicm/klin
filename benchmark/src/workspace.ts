@@ -100,10 +100,17 @@ function forms(one: string): string[] {
 /**
  * Where the subject may read and write, and where it may not.
  *
- * The operating system enforces this, not the layout. `denied` is everything the harness owns:
+ * The operating system enforces this, not the layout. Everything the harness owns is denied:
  * this trial's plane, the root every workspace is materialized under, and klin's own repository,
- * which holds the fixtures, the hidden oracles and every other trial's records. The repository
- * is re-opened inside the denied region, because it sits under that root.
+ * which holds the fixtures, the hidden oracles and every other trial's records.
+ *
+ * The read and write denials are not the same list, because the two rules do not behave the
+ * same way. The repository sits under the work root, and a nested `allowWrite` does not re-open
+ * a path inside a `denyWrite` region: the deny wins, and the subject cannot write in its own
+ * repository at all. `denyRead` has no such problem, so the work root stays there. Writes need
+ * no deny of their own: the sandbox already refuses every write outside the working directory,
+ * which is what keeps one trial out of another trial's workspace. #252 is where this was found,
+ * after a whole publishable round ran with every subject building outside its own repository.
  *
  * `allowUnsandboxedCommands: false` is what makes the boundary hold: without it the host retries
  * a refused command outside the sandbox, and the subject reaches the plane on the second try.
@@ -122,8 +129,11 @@ function forms(one: string): string[] {
  * session has no one to answer a network prompt, so a domain that is not named here is refused
  * outright and the command fails, rather than the trial stalling until the harness times out.
  */
-function confinement(repo: string, denied: string[]): Record<string, unknown> {
-  const out = denied.flatMap(forms);
+function confinement(
+  repo: string,
+  deniedRead: string[],
+  deniedWrite: string[],
+): Record<string, unknown> {
   const own = forms(repo);
   return {
     sandbox: {
@@ -131,9 +141,9 @@ function confinement(repo: string, denied: string[]): Record<string, unknown> {
       autoAllowBashIfSandboxed: true,
       allowUnsandboxedCommands: false,
       filesystem: {
-        denyRead: out,
+        denyRead: deniedRead.flatMap(forms),
         allowRead: [...own, ...TOOLCHAINS],
-        denyWrite: out,
+        denyWrite: deniedWrite.flatMap(forms),
         allowWrite: [...own, ...TOOLCHAINS],
       },
       network: { allowedDomains: REGISTRIES, strictAllowlist: true },
@@ -182,7 +192,11 @@ function settingsFor(place: { hook: string; plane: string; repo: string }): stri
   const command = (args: string): string => [quoted(place.hook), args].join(" ");
   return JSON.stringify(
     {
-      ...confinement(place.repo, [place.plane, paths.workRoot(), paths.REPO]),
+      ...confinement(
+        place.repo,
+        [place.plane, paths.workRoot(), paths.REPO],
+        [place.plane, paths.REPO],
+      ),
       hooks: {
         SessionStart: [{ hooks: [{ type: "command", command: command("radius"), timeout: 60 }] }],
         UserPromptSubmit: [

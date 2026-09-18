@@ -326,6 +326,12 @@ test("the session's own paths normalize away and the rules do not", () => {
  * `cwd` is no sandbox: the plane, the other trials' workspaces and klin's own repository are all
  * absolute paths a shell can name. These rules are what refuse them, and `allowUnsandboxedCommands`
  * is what stops the host from retrying a refused command outside the sandbox.
+ *
+ * The work root is denied for reading and left open for writing, and #252 is what that cost. A
+ * nested `allowWrite` does not re-open a path inside a `denyWrite` region, so a denied work root
+ * walls the subject out of its own repository, and a whole publishable round ran with every
+ * subject building somewhere else. Writes need no deny of their own: the sandbox already refuses
+ * every write outside the working directory.
  */
 test("the settings confine the subject to its own repository", () => {
   const { place, clear } = laid("lockfile", "risk", "selftest-sandbox", false);
@@ -349,8 +355,18 @@ test("the settings confine the subject to its own repository", () => {
   for (const denied of [place.plane, paths.workRoot(), paths.REPO]) {
     for (const form of [denied, fs.realpathSync(denied)]) {
       assert.ok(settings.sandbox.filesystem.denyRead.includes(form), form + " is readable");
+    }
+  }
+  for (const denied of [place.plane, paths.REPO]) {
+    for (const form of [denied, fs.realpathSync(denied)]) {
       assert.ok(settings.sandbox.filesystem.denyWrite.includes(form), form + " is writable");
     }
+  }
+  for (const form of [paths.workRoot(), fs.realpathSync(paths.workRoot())]) {
+    assert.ok(
+      !settings.sandbox.filesystem.denyWrite.includes(form),
+      form + " is denied for writing, which walls the subject out of its own repository",
+    );
   }
   const reopened = [...new Set([place.repo, fs.realpathSync(place.repo)])].sort();
   const toolchains = ["~/.cargo", "~/.rustup", "~/.npm"];
@@ -358,7 +374,7 @@ test("the settings confine the subject to its own repository", () => {
     assert.deepEqual(
       named.filter((one) => !toolchains.includes(one)).sort(),
       reopened,
-      "the repository sits inside a denied root, so only it is re-opened, in both its forms",
+      "only the subject's own repository is opened, in both its forms",
     );
     for (const home of toolchains) {
       assert.ok(named.includes(home), home + " is refused, so the subject cannot run its own build");
