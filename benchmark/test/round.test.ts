@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
 import {
@@ -111,7 +112,7 @@ function frozenFor(): Frozen {
     };
   }
   return {
-    protocol: paths.PROTOCOL,
+    protocol: CURRENT_PROTOCOL.version,
     schemaSha256: "s",
     harness: { commit: "h", dirty: false, treeSha256: "ht" },
     klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
@@ -134,7 +135,7 @@ function recordFor(row: Row, trialId: string, replaces: string | null, valid: bo
   const exposed = row.arm === "shadow" && row.variant === "risk" && (shape.exposed ?? []).includes(row.family);
   return {
     ...BASE,
-    protocol: paths.PROTOCOL,
+    protocol: CURRENT_PROTOCOL.version,
     kind: "publishable",
     publishable: true,
     family: row.family,

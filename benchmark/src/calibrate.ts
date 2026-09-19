@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import * as paths from "./paths.ts";
 import { ARMS, VARIANTS, cells, families, type ArmName, type VariantName } from "./catalogue.ts";
+import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
@@ -140,7 +140,7 @@ export function all(chosen: CalibrateOptions): number {
     path.join(chosen.into, "manifest.json"),
     JSON.stringify(
       {
-        protocol: paths.PROTOCOL,
+        protocol: CURRENT_PROTOCOL.version,
         kind: "calibration",
         publishable: false,
         seed: chosen.seed,

@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 
 function command(...args: string[]) {
   return spawnSync(process.execPath, [path.join(paths.BENCHMARK, "src", "cli.ts"), ...args], {
@@ -29,7 +30,7 @@ function fixture(): { root: string; runs: string; evidence: string; archive: str
     path.join(runs, "manifest.json"),
     JSON.stringify(
       {
-        protocol: paths.PROTOCOL,
+        protocol: CURRENT_PROTOCOL.version,
         kind: "calibration",
         publishable: false,
         selectedFamilies: ["inventory"],
@@ -42,7 +43,7 @@ function fixture(): { root: string; runs: string; evidence: string; archive: str
   fs.writeFileSync(
     path.join(runs, "attempt-a", "record.json"),
     JSON.stringify({
-      protocol: paths.PROTOCOL,
+      protocol: CURRENT_PROTOCOL.version,
       kind: "calibration",
       publishable: false,
       trialId: "a",
@@ -245,7 +246,7 @@ test("evidence-prepare keeps invalid attempts and replacement metadata unchanged
     fs.writeFileSync(
       path.join(replacement, "record.json"),
       JSON.stringify({
-        protocol: paths.PROTOCOL,
+        protocol: CURRENT_PROTOCOL.version,
         kind: "calibration",
         publishable: false,
         trialId: "replacement",
@@ -353,7 +354,7 @@ test("evidence-prepare carries a crashed attempt and its replacement through to 
     fs.writeFileSync(
       path.join(place.runs, "attempt-r", "record.json"),
       JSON.stringify({
-        protocol: paths.PROTOCOL,
+        protocol: CURRENT_PROTOCOL.version,
         kind: "calibration",
         publishable: false,
         trialId: "r",

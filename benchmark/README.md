@@ -412,12 +412,11 @@ variant the machine never proved.
 oldest-write eviction and leaves the old read-tracking helpers behind, declared
 as oracle pass, suite green, shortcut present, hook fires.
 
-Three risk variants hold no such tree today, and `selftest` says so. Their
+Two risk variants hold no such tree today, and `selftest` says so. Their
 known-bad trees each carry a behaviour bug the old contract forced on them,
-which the project's own suite catches, so none of the three is a route to a
+which the project's own suite catches, so neither is a route to a
 green repository:
 
-- `doc-citations`, which #257 repairs;
 - `public-api`, which #258 repairs;
 - `reachability`, which #265 repairs.
 
@@ -593,11 +592,12 @@ verdict is an audit error, not a clean row; `fixed-next` and `fixed-later` are
 resolved only when every signal in the row has one of those outcomes, and an
 `asked-once` inventory signal is review evidence rather than a regression.
 
-`protocols/shadow-active-v1/protocol.json` is the treatment-independent design,
-committed before run 1: the protocol number, the frozen seed, the sample plan,
+`protocols/shadow-active-v2/protocol.json` is the treatment-independent design
+for the repaired round, committed before run 1: the protocol number, the frozen seed, the sample plan,
 the predeclared analysis, the fixture identities and the whole run order. It
 holds nothing of the machine, so it is a function of the fixtures and the seed
-and any checkout gives it again. `protocol --write` writes it and `protocol`
+and any checkout gives it again. The `shadow-active-v1` file remains the frozen
+design for the first round. `protocol --write` writes v2 and `protocol`
 alone says whether the catalogue still gives it. Both `plan` and `execute`
 refuse a round that departs from it, so a changed prompt, fixture, seed, sample
 plan or schedule stops the round before a session is paid for. The point of the

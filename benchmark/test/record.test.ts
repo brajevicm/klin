@@ -2,11 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { signalsFrom, validate } from "../src/record.ts";
 
 function whole(): Record<string, unknown> {
   return {
-    protocol: paths.PROTOCOL,
+    protocol: CURRENT_PROTOCOL.version,
     kind: "calibration",
     publishable: false,
     family: "inventory",
@@ -196,6 +197,15 @@ test("the schema beside the harness names every required field", () => {
   for (const key of Object.keys(whole())) {
     assert.ok(key in schema.properties, "the record states " + key + " and the schema has none");
   }
+});
+
+test("the schema protocol matches the harness", () => {
+  const schema = JSON.parse(fs.readFileSync(paths.SCHEMA, "utf8")) as {
+    title: string;
+    properties: { protocol: { const: number } };
+  };
+  assert.equal(schema.properties.protocol.const, CURRENT_PROTOCOL.version);
+  assert.match(schema.title, new RegExp("version " + String(CURRENT_PROTOCOL.version) + "$"));
 });
 
 test("a reset is a person's action, so it claims no delivery and borrows no gate", () => {

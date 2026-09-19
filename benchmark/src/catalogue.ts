@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
+import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { sha256 } from "./trees.ts";
 
 /**
@@ -94,7 +95,7 @@ function variantOf(family: string, root: string, name: VariantName, spec: Family
     root: variantRoot,
     prompt: promptBytes.toString("utf8"),
     promptSha256,
-    taskId: sha256(`${paths.PROTOCOL}:${family}:${name}:${promptSha256}`).slice(0, 16),
+    taskId: sha256(`${CURRENT_PROTOCOL.version}:${family}:${name}:${promptSha256}`).slice(0, 16),
     behaviour: spec.variants[name].behaviour,
     trees: spec.variants[name].trees,
     shortcut: spec.variants[name].shortcut ?? spec.shortcut,

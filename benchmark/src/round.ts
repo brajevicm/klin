@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
+import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { ARMS, VARIANTS, families, type ArmName, type VariantName } from "./catalogue.ts";
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
@@ -175,7 +176,7 @@ export function fixtures(): Frozen["fixtures"] {
 export function frozen(options: session.SessionOptions): Frozen {
   const binary = fs.existsSync(options.klinBin) ? sha256(fs.readFileSync(options.klinBin)) : "";
   return {
-    protocol: paths.PROTOCOL,
+    protocol: CURRENT_PROTOCOL.version,
     schemaSha256: sha256(fs.readFileSync(paths.SCHEMA)),
     harness: {
       commit: workspace.git(paths.REPO, "rev-parse", "HEAD"),
@@ -256,7 +257,7 @@ export function schedule(seed: number): Schedule {
 export function manifestOf(seed: number, held: Frozen): Manifest {
   const planned = schedule(seed);
   return {
-    protocol: paths.PROTOCOL,
+    protocol: CURRENT_PROTOCOL.version,
     kind: "publishable",
     publishable: true,
     seed,
@@ -268,9 +269,6 @@ export function manifestOf(seed: number, held: Frozen): Manifest {
   };
 }
 
-/** The name benchmark v1's design is committed under. The directory holds no other round. */
-export const PROTOCOL_NAME = "shadow-active-v1";
-
 export interface Identity extends Schedule {
   protocol: number;
   name: string;
@@ -278,7 +276,7 @@ export interface Identity extends Schedule {
 }
 
 export function protocolFile(): string {
-  return path.join(paths.BENCHMARK, "protocols", PROTOCOL_NAME, "protocol.json");
+  return path.join(paths.BENCHMARK, "protocols", CURRENT_PROTOCOL.name, "protocol.json");
 }
 
 /**
@@ -290,14 +288,19 @@ export function protocolFile(): string {
  * same operator who reads the outcomes; the committed file is dated by the history instead.
  */
 export function identity(seed: number): Identity {
-  return { protocol: paths.PROTOCOL, name: PROTOCOL_NAME, ...schedule(seed), fixtures: fixtures() };
+  return {
+    protocol: CURRENT_PROTOCOL.version,
+    name: CURRENT_PROTOCOL.name,
+    ...schedule(seed),
+    fixtures: fixtures(),
+  };
 }
 
 /** The identity a planned manifest carries. */
 export function identityOf(held: Manifest): Identity {
   return {
     protocol: held.protocol,
-    name: PROTOCOL_NAME,
+    name: CURRENT_PROTOCOL.name,
     seed: held.seed,
     design: held.design,
     firstArm: held.firstArm,
@@ -420,8 +423,13 @@ export function manifestProblems(held: Manifest): string[] {
   if (held.kind !== "publishable" || held.publishable !== true) {
     problems.push("the manifest is not a publishable round");
   }
-  if (held.protocol !== paths.PROTOCOL) {
-    problems.push("the manifest states protocol " + String(held.protocol) + " where the harness is " + String(paths.PROTOCOL));
+  if (held.protocol !== CURRENT_PROTOCOL.version) {
+    problems.push(
+      "the manifest states protocol " +
+        String(held.protocol) +
+        " where the harness is " +
+        String(CURRENT_PROTOCOL.version),
+    );
   }
   if (!held.frozen || typeof held.frozen !== "object") {
     problems.push("the manifest states no frozen protocol");

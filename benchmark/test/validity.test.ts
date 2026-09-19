@@ -8,6 +8,7 @@ import { outcomeOf, validity, sourceCommit } from "../src/trial.ts";
 import { verify } from "../src/calibrate.ts";
 import { write as reportOf } from "../src/report.ts";
 import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import type { Check } from "../src/record.ts";
 import type { SessionResult } from "../src/session.ts";
 import type { Judgement } from "../src/oracle.ts";
@@ -242,7 +243,7 @@ function setOf(where: string, runs: Record<string, unknown>[]): string {
       path.join(into, "record.json"),
       JSON.stringify({
         ...held,
-        protocol: paths.PROTOCOL,
+        protocol: CURRENT_PROTOCOL.version,
         audit: [],
         trialId: "t" + String(index),
         ...over,

@@ -6,6 +6,7 @@ import path from "node:path";
 import { all, scheduled, trialId, verify } from "../src/calibrate.ts";
 import { VARIANTS, ARMS } from "../src/catalogue.ts";
 import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import type { RunRecord } from "../src/record.ts";
 
 /**
@@ -182,7 +183,7 @@ test("verify accepts the complete four-record inventory set", () => {
     fs.mkdirSync(into, { recursive: true });
     fs.writeFileSync(
       path.join(into, "record.json"),
-      JSON.stringify({ ...base, protocol: paths.PROTOCOL, audit: [], ...row }) + "\n",
+      JSON.stringify({ ...base, protocol: CURRENT_PROTOCOL.version, audit: [], ...row }) + "\n",
     );
   }
   fs.writeFileSync(
@@ -221,7 +222,7 @@ test("a malformed pair is a schedule error and no frozen-variable difference", (
       path.join(into, "record.json"),
       JSON.stringify({
         ...base,
-        protocol: paths.PROTOCOL,
+        protocol: CURRENT_PROTOCOL.version,
         audit: [],
         ...row,
         arm: "active",
