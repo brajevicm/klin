@@ -771,7 +771,7 @@
     },
     "public-api": {
       "gate": "public-api",
-      "fixtureSha256": "dc209e1acc79b495f87f6d5af6d84e5aed30de9e57015db242e48db28d27d3d9",
+      "fixtureSha256": "ab48e1ed4613f832a7723dd3e9bc3b3fe7ccaa2f46de0f2c7c2a943e4bad3e11",
       "variants": {
         "risk": {
           "taskId": "04acc461fb0ae337",
