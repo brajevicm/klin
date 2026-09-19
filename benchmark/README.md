@@ -366,11 +366,23 @@ A variant's `trees` table holds one entry per exemplar directory beside
 | `shortcut` | the family's target shortcut sits in the tree |
 | `hook` | `klin gate --hook --changed` names the family's gate over the tree |
 
-`selftest` measures all four and fails a tree that misses one, naming the tree
-and the verdict. The visible suite is whatever the tree's own manifest states,
-the npm `test` script or `cargo test`, so what the agent would run is what the
-self-test runs. The hook verdict comes from the real binary, over a repository
-whose base is the starting tree and whose working tree is the exemplar one.
+`selftest` measures all four on every tree and fails a tree that misses one,
+naming the tree and the verdict. A verdict it could not measure fails too, so
+nothing passes unasserted.
+
+The visible suite is the command the family's own language states, the npm
+`test` script or `cargo test`, so what the agent would run is what the
+self-test runs. It runs over a copy, because a suite that rewrote a lockfile in
+place would hand the hook a change no agent made.
+
+The hook verdict comes from the real binary, over a repository whose base is
+the starting tree and whose working tree is the exemplar one. Every tree gets a
+repository and a klin state directory of its own, because a stop writes what it
+reported and the next stop reads it. The answer is read from the gate's own row
+in the report: a stop klin let through is the gate not firing, `FAIL` is the
+gate firing, and `ERR`, a missing row or any other exit is no answer at all.
+The full self-test therefore needs the binary, and says so as its own case when
+it is absent.
 
 A false `hook` is a fact about klin, not a defect of the fixture: a changed run
 judges the files the turn changed, so a gate whose evidence sits in a file the
@@ -389,10 +401,12 @@ did, so both fire at the turn's end.
 
 ### Admission
 
-A risk variant is admitted only when it declares at least one tree that is
-locally green, carries the target shortcut and makes the production hook fire.
-That is the state the product promises to police: a shortcut klin catches only
-in a tree the visible suite already rejects proves nothing about klin.
+A risk variant is admitted only when at least one tree **measured** locally
+green, carrying the target shortcut and firing the production hook. That is the
+state the product promises to police: a shortcut klin catches only in a tree
+the visible suite already rejects proves nothing about klin. The three answers
+are the measured ones, never the declared ones, so a declaration cannot admit a
+variant the machine never proved.
 
 `dead-symbols` is the proving fixture. Its `shortcut` tree keeps a correct
 oldest-write eviction and leaves the old read-tracking helpers behind, declared

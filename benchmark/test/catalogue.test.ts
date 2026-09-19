@@ -110,6 +110,27 @@ test("every variant ships a hidden oracle and every tree it declares", () => {
   }
 });
 
+/** Everything beside an exemplar tree in a variant directory. A new one goes here by name. */
+const SCAFFOLDING = new Set(["oracle", "overlay"]);
+
+test("a variant declares every exemplar directory it ships", () => {
+  for (const family of Object.values(families())) {
+    for (const name of VARIANTS) {
+      const variant = family.variants[name];
+      const shipped = fs
+        .readdirSync(variant.root, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !SCAFFOLDING.has(entry.name))
+        .map((entry) => entry.name)
+        .sort();
+      assert.deepEqual(
+        shipped,
+        Object.keys(variant.trees).sort(),
+        family.name + "/" + name + " ships a tree the self-test never runs, or declares one it has not got",
+      );
+    }
+  }
+});
+
 test("one calibration cell exists per family, variant and arm", () => {
   const held = cells();
   assert.equal(held.length, Object.keys(families()).length * VARIANTS.length * ARMS.length);

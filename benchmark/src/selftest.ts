@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { copyTree, files, overlay } from "./trees.ts";
-import { families, VARIANTS, type Family, type TreeSpec, type Variant } from "./catalogue.ts";
+import {
+  families,
+  VARIANTS,
+  type Family,
+  type FamilySpec,
+  type TreeSpec,
+  type Variant,
+} from "./catalogue.ts";
 import * as oracle from "./oracle.ts";
 import * as workspace from "./workspace.ts";
 import * as integrity from "./integrity.ts";
@@ -59,7 +66,10 @@ function judge(name: string, passed: boolean, detail: string, family: Family, va
   return { family: family.name, variant: variant.name, name, passed, detail };
 }
 
-const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", "klin");
+/** The binary under test, read on every use so a test can stand a stub in its place. */
+function klinBinary(): string {
+  return process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", "klin");
+}
 
 /**
  * The gates the production Stop hook names as failing over a tree, through the real binary.
@@ -67,8 +77,21 @@ const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", 
  * This runs `klin gate --hook --changed`, the command the hook runs, over a repository whose
  * base is the starting tree and whose working tree is the exemplar one. It is the only way to
  * know whether a family's target gate reaches an agent at the end of a turn.
+ *
+ * `room` is the exemplar tree's own room, so the repository and klin's state directory are fresh
+ * for every tree. A stop writes a stamp and the findings it reported into that state, and the
+ * next stop reads them, so two trees measured through one state would answer in the order they
+ * ran rather than on their own evidence.
+ *
+ * A run that could not be read answers nothing rather than an empty list. klin prints nothing and
+ * exits 0 when every gate passed, so an empty list is only a fact when the exit code says so.
  */
-function gatesTheHookNames(starting: string, tree: string, room: string): string[] {
+export function gatesTheHookNames(
+  starting: string,
+  tree: string,
+  room: string,
+  gate: string,
+): Measured {
   const repo = path.join(room, "hooked");
   fs.rmSync(repo, { recursive: true, force: true });
   copyTree(starting, repo);
@@ -80,37 +103,91 @@ function gatesTheHookNames(starting: string, tree: string, room: string): string
   }
   copyTree(tree, repo);
   const state = path.join(room, "hooked-state");
+  fs.rmSync(state, { recursive: true, force: true });
   const payload = JSON.stringify({ hook_event_name: "Stop", session_id: "selftest" });
-  const ran = spawnSync(KLIN, ["gate", "--hook", "--changed"], {
+  const ran = spawnSync(klinBinary(), ["gate", "--hook", "--changed"], {
     cwd: repo,
     input: payload,
     encoding: "utf8",
     timeout: 300_000,
     env: { ...process.env, KLIN_STATE_DIR: state },
   });
-  return ((ran.stdout ?? "") + (ran.stderr ?? ""))
-    .split("\n")
-    .filter((line) => /^\s{2}(FAIL|ERR)\s/.test(line))
-    .map((line) => line.trim().split(/\s+/)[1]);
+  return hookVerdict(ran, gate);
 }
 
 /**
- * The command the project's own visible suite runs, read from the tree's own manifest.
+ * What one hook run says about one gate, with every way it could not answer held apart from a
+ * stop it let through.
  *
- * What the agent would run is what the self-test runs, so nothing here states a command per
- * family. A tree whose manifest declares no suite has none, and the self-test says so.
+ * A Claude Code stop block is exit 2 with the report on stderr (9.1), so exit 0 is a stop klin
+ * allowed and the gate did not reach the agent. Exit 1 is a host event klin could not read, and
+ * every other exit code, a spawn error and a signal are the same kind of answer: none. A blocked
+ * stop is read from the gate's own row, so an `ERR` on the gate this family measures is
+ * indeterminate and a block another gate raised is not this gate firing.
  */
-export function suiteCommand(tree: string): string[] | null {
-  const manifest = path.join(tree, "package.json");
-  if (fs.existsSync(manifest)) {
-    const stated = JSON.parse(fs.readFileSync(manifest, "utf8")) as {
-      scripts?: Record<string, string>;
-    };
-    return stated.scripts?.test ? ["npm", "test", "--silent"] : null;
+export function hookVerdict(
+  ran: {
+    error?: Error;
+    signal?: NodeJS.Signals | null;
+    status: number | null;
+    stdout?: string;
+    stderr?: string;
+  },
+  gate: string,
+): Measured {
+  if (ran.error) {
+    return { passed: null, detail: "the hook could not run: " + ran.error.message };
   }
-  return fs.existsSync(path.join(tree, "Cargo.toml"))
-    ? ["cargo", "test", "--offline", "--quiet"]
-    : null;
+  if (ran.signal) {
+    return { passed: null, detail: "the hook took the signal " + ran.signal };
+  }
+  const output = (ran.stdout ?? "") + (ran.stderr ?? "");
+  if (ran.status === 0) {
+    return { passed: false, detail: "the hook let the stop through" };
+  }
+  const row = new RegExp(
+    "^\\s{2}(ok|FAIL|ERR)\\s+" + gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$",
+    "m",
+  ).exec(output);
+  if (ran.status === 2 && row) {
+    return {
+      passed: row[1] === "ERR" ? null : row[1] === "FAIL",
+      detail: "the hook blocked the stop and the " + gate + " row reads " + row[1],
+    };
+  }
+  return {
+    passed: null,
+    detail:
+      "the hook exited " +
+      String(ran.status) +
+      " and its report holds no " +
+      gate +
+      " row: " +
+      output.slice(-600),
+  };
+}
+
+/**
+ * The command the project's own visible suite runs, from the language the family declares.
+ *
+ * What the agent would run is what the self-test runs, so the command is the fixture's own: the
+ * npm `test` script, or `cargo test`. The language decides which manifest is read, so a stray
+ * `package.json` beside a Cargo manifest cannot move a Rust family onto npm.
+ */
+export function suiteCommand(language: FamilySpec["language"], tree: string): string[] | null {
+  if (language === "rust") {
+    return fs.existsSync(path.join(tree, "Cargo.toml"))
+      ? ["cargo", "test", "--offline", "--quiet"]
+      : null;
+  }
+  const manifest = path.join(tree, "package.json");
+  if (!fs.existsSync(manifest)) {
+    return null;
+  }
+  const stated = JSON.parse(fs.readFileSync(manifest, "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  return stated.scripts?.test ? ["npm", "test", "--silent"] : null;
 }
 
 /**
@@ -120,12 +197,12 @@ export function suiteCommand(tree: string): string[] | null {
  * lockfile or a manifest, and the hook measurement that follows judges the exemplar tree itself,
  * so a suite that ran in place would hand the hook a change no agent made.
  *
- * A tree no manifest states a suite for is measured as nothing, not as red.
+ * A tree whose manifest states no suite is measured as nothing, not as red.
  */
-function suiteIsGreen(tree: string, into: string): { passed: boolean | null; detail: string } {
-  const command = suiteCommand(tree);
+function suiteIsGreen(language: FamilySpec["language"], tree: string, into: string): Measured {
+  const command = suiteCommand(language, tree);
   if (!command) {
-    return { passed: null, detail: "no manifest in the tree states a visible suite" };
+    return { passed: null, detail: "no " + language + " manifest in the tree states a visible suite" };
   }
   fs.rmSync(into, { recursive: true, force: true });
   copyTree(tree, into);
@@ -137,7 +214,10 @@ function suiteIsGreen(tree: string, into: string): { passed: boolean | null; det
     timeout: 600_000,
   });
   if (ran.error) {
-    return { passed: false, detail: command.join(" ") + " could not run: " + ran.error.message };
+    return { passed: null, detail: command.join(" ") + " could not run: " + ran.error.message };
+  }
+  if (ran.signal) {
+    return { passed: null, detail: command.join(" ") + " took the signal " + ran.signal };
   }
   return { passed: ran.status === 0, detail: command.join(" ") + " exited " + String(ran.status) };
 }
@@ -157,23 +237,19 @@ export interface Measured {
 }
 
 /**
- * One case per verdict a tree declares and the self-test measured.
+ * One case per verdict, for every one of the four a tree declares.
  *
- * A verdict with no measurement is left out, which is how a machine without the klin binary
- * skips the hook. A measurement that answered nothing fails, because a fixture that cannot be
- * read proves nothing about it.
+ * Every verdict is asserted on every tree. A measurement that answered nothing fails rather than
+ * passing quietly, because a verdict this could not measure proves nothing about the tree.
  */
 export function verdicts(
   tree: string,
   declared: TreeSpec,
-  measured: Partial<Record<Verdict, Measured>>,
+  measured: Record<Verdict, Measured>,
 ): { name: string; passed: boolean; detail: string }[] {
   const held: { name: string; passed: boolean; detail: string }[] = [];
   for (const [verdict, [yes, no]] of Object.entries(VERDICTS) as [Verdict, [string, string]][]) {
     const one = measured[verdict];
-    if (!one) {
-      continue;
-    }
     const want = declared[verdict];
     held.push({
       name: "the " + tree + " tree: " + (want ? yes : no),
@@ -202,17 +278,23 @@ export function verdicts(
  * A shortcut klin only catches in a tree that is already broken proves nothing: the visible
  * suite would have caught that one. A variant is admitted only when one exemplar is locally
  * green, carries the target shortcut and makes the hook fire.
+ *
+ * The three answers are the measured ones, never the declared ones. A declaration that says a
+ * tree polices what the product promises, over a measurement that answered nothing, admits
+ * nothing.
  */
-export function admission(trees: Record<string, TreeSpec>): { passed: boolean; detail: string } {
-  const admitting = Object.entries(trees)
-    .filter(([, one]) => one.suite && one.shortcut && one.hook)
+export function admission(
+  measured: Record<string, Record<Verdict, Measured>>,
+): { passed: boolean; detail: string } {
+  const admitting = Object.entries(measured)
+    .filter(([, one]) => one.suite.passed === true && one.shortcut.passed === true && one.hook.passed === true)
     .map(([name]) => name);
   return {
     passed: admitting.length > 0,
     detail:
       admitting.length > 0
-        ? "the " + admitting.join(", ") + " tree is locally green, carries the shortcut and fires the hook"
-        : "no declared tree is locally green, carries the target shortcut and makes the production hook fire",
+        ? "the " + admitting.join(", ") + " tree measured locally green, carrying the shortcut and firing the hook"
+        : "no measured tree is locally green, carries the target shortcut and makes the production hook fire",
   };
 }
 
@@ -240,20 +322,13 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
     ),
   );
 
-  if (variant.name === "risk") {
-    const admitted = admission(variant.trees);
-    cases.push(
-      judge("a declared tree states what the product polices", admitted.passed, admitted.detail, family, variant),
-    );
-  }
-
+  const measured: Record<string, Record<keyof TreeSpec, Measured>> = {};
   for (const [name, declared] of Object.entries(variant.trees)) {
     const own = path.join(room, "trees", name);
     const tree = overlaid(variant, starting, name, path.join(own, "laid"));
     const behaviour = oracle.behaviour(variant, tree, path.join(own, "scored"));
     const shortcut = oracle.shortcut(variant, starting, tree);
-    const suite = suiteIsGreen(tree, path.join(own, "suite"));
-    const measured: Partial<Record<keyof TreeSpec, Measured>> = {
+    measured[name] = {
       oracle: {
         passed: behaviour.passed,
         detail:
@@ -262,22 +337,25 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
           " " +
           (behaviour.reason || (behaviour.stderr || behaviour.stdout).slice(-600)),
       },
-      suite,
+      suite: suiteIsGreen(family.spec.language, tree, path.join(own, "suite")),
       shortcut: {
         passed: shortcut.present,
         detail: JSON.stringify(shortcut.sites) + " " + shortcut.note,
       },
+      hook: fs.existsSync(klinBinary())
+        ? gatesTheHookNames(starting, tree, own, family.spec.gate)
+        : { passed: null, detail: "no klin binary stands at " + klinBinary() },
     };
-    if (fs.existsSync(KLIN)) {
-      const named = gatesTheHookNames(starting, tree, room);
-      measured.hook = {
-        passed: named.includes(family.spec.gate),
-        detail: "the hook named [" + named.join(", ") + "]",
-      };
-    }
-    for (const one of verdicts(name, declared, measured)) {
+    for (const one of verdicts(name, declared, measured[name])) {
       cases.push(judge(one.name, one.passed, one.detail, family, variant));
     }
+  }
+
+  if (variant.name === "risk") {
+    const admitted = admission(measured);
+    cases.push(
+      judge("a measured tree states what the product polices", admitted.passed, admitted.detail, family, variant),
+    );
   }
 
   const isolation = integrity.judge(variant, family.spec.gate, starting, path.join(room, "control"));
@@ -302,6 +380,17 @@ export function run(only: string[]): Case[] {
   const shared = integrity.sameConfiguration(configurations(found));
   const cases: Case[] = [
     { family: "every", variant: "-", name: shared.name, passed: shared.passed, detail: shared.detail },
+    {
+      family: "every",
+      variant: "-",
+      name: "the klin binary under test is on this machine",
+      passed: fs.existsSync(klinBinary()),
+      detail: fs.existsSync(klinBinary())
+        ? klinBinary()
+        : "no binary stands at " +
+          klinBinary() +
+          ", so no hook verdict can be measured. Build it first.",
+    },
   ];
   for (const name of chosen) {
     const family = found[name];
