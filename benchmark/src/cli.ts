@@ -8,6 +8,7 @@ import * as probe from "./probe.ts";
 import * as report from "./report.ts";
 import * as evidence from "./evidence.ts";
 import * as round from "./round.ts";
+import * as audit from "./audit.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
@@ -22,6 +23,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
   node benchmark/src/cli.ts scorecard <round-dir> [--out FILE]
+  node benchmark/src/cli.ts audit <evidence-dir> [--archive FILE] [--out FILE]
   node benchmark/src/cli.ts evidence-prepare <runs-dir> --into DIR --archive FILE
   node benchmark/src/cli.ts evidence-verify <evidence-dir> [--archive FILE]
 
@@ -164,6 +166,26 @@ function evidenceVerify(directory: string, args: string[]): number {
   return problems.length === 0 ? 0 : 1;
 }
 
+function auditEvidence(directory: string, args: string[]): number {
+  if (directory === "") {
+    process.stdout.write("audit needs an evidence directory\n\n" + USAGE);
+    return 2;
+  }
+  try {
+    const text = audit.write(directory, flag(args, "--archive", ""));
+    const out = flag(args, "--out", "");
+    if (out) {
+      fs.writeFileSync(out, text);
+    } else {
+      process.stdout.write(text);
+    }
+    return 0;
+  } catch (why) {
+    process.stdout.write(String(why) + "\n");
+    return 2;
+  }
+}
+
 export function main(argv: string[]): number {
   const [command, ...args] = argv;
   if (!command || command === "--help" || command === "-h") {
@@ -244,6 +266,9 @@ export function main(argv: string[]): number {
       process.stdout.write(text);
     }
     return card.verification.length === 0 ? 0 : 1;
+  }
+  if (command === "audit") {
+    return auditEvidence(args[0] ?? "", args.slice(1));
   }
   if (command === "report") {
     const text = report.write(args[0] ?? "");
