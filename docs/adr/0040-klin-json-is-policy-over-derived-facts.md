@@ -136,3 +136,46 @@ configuration.
   generator for the explicit `reference --schema` command, while the measured
   runtime paths remain unchanged; no performance-specific implementation is
   justified by these medians.
+
+  The final rebased issue-181 tree was remeasured on 2026-09-19 against
+  `origin/main` at `f9519fd`, on the same macos/aarch64 machine and release
+  toolchain. The existing fixture was run for five samples per row with
+  `{"build": []}`; its counters and digests matched the base in every case:
+
+  | Row | origin/main (ms) | final (ms) | Change |
+  |---|---:|---:|---:|
+  | 2k warm hook | 300 | 297 | -1.0% |
+  | 2k cold survey | 1,894 | 1,869 | -1.3% |
+  | 2k strict | 1,194 | 1,191 | -0.3% |
+  | 10k warm hook | 483 | 487 | +0.8% |
+  | 10k cold survey | 14,447 | 14,343 | -0.7% |
+  | 10k strict | 5,702 | 5,626 | -1.3% |
+  | guard, 1,000 events | 10,375 | 10,450 | +0.7% |
+
+  The release binary was 22,224,528 bytes at `origin/main` and 22,306,768
+  bytes in the final tree (+82,240 bytes, +0.37%). That increase is negligible,
+  so the deterministic generator remains in the binary; no performance
+  optimization or feature split is justified.
+
+  The same final-head comparison covered the #175 source-dense fixtures. Both
+  fixtures kept their exact counters and digest. The 1M row was stable within
+  normal run variance:
+
+  | Row | origin/main (ms) | final (ms) | Change |
+  |---|---:|---:|---:|
+  | 300k warm hook | 776 | 768 | -1.0% |
+  | 300k cold survey | 25,977 | 56,319 | +116.8% |
+  | 300k strict | 13,967 | 29,587 | +111.8% |
+  | 1M warm hook | 1,989 | 2,105 | +5.8% |
+  | 1M cold survey | 96,008 | 95,322 | -0.7% |
+  | 1M strict | 64,252 | 68,187 | +6.1% |
+
+  The 300k final row was repeated twice, and the base was rerun between them.
+  In complete observation order, final medians were
+  `768/56,319/29,587`, `1,081/43,415/23,864` and
+  `1,300/43,171/22,764`; base medians were `776/25,977/13,967` and
+  `879/31,846/22,053` (warm/cold/strict). The changed medians move with host
+  state rather than with the schema code (the 1M rows and the 2k/10k rows stay
+  within 6.1%), so this is recorded as benchmark noise and does not justify a
+  hot-path change. The controlled #193 dense measurements remain the release
+  baseline.

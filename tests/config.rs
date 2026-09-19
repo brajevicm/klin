@@ -41,6 +41,103 @@ fn a_malformed_config_is_a_tool_error_naming_the_file() {
 }
 
 #[test]
+fn structural_config_shapes_fail_before_any_gate_runs() {
+    for config in [r#"[]"#, r#"{"journal":{"prompt":"yes"}}"#] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+        tree.words("README.md", 1);
+
+        let run = tree.run(&["doc-size"]);
+        assert_eq!(run.code, 2, "{config}: {}", run.out);
+        assert!(run.says(&tree.at("klin.json")), "{config}: {}", run.out);
+    }
+}
+
+#[test]
+fn declared_shapes_accept_and_reject_the_same_config_families() {
+    valid_shape_configs();
+    false_disables_a_gate();
+    invalid_shape_configs();
+}
+
+fn valid_shape_configs() {
+    for (name, config) in [
+        ("root", r#"{}"#),
+        ("journal", r#"{"journal":{"prompt":false}}"#),
+        (
+            "scope",
+            r#"{"complexity":{"in":"src","except":["src/generated"]}}"#,
+        ),
+        ("ceiling", r#"{"doc_size":{"README.md":{"2000-01-01":10}}}"#),
+        (
+            "convention",
+            r#"{"conventions":{"no-todo":{"text":"TODO","remedy":"remove it"}}}"#,
+        ),
+        (
+            "layering",
+            r#"{"layering":{"layers":{"app":{"in":"src","can_use":null}}}}"#,
+        ),
+        (
+            "sarif",
+            r#"{"sarif":[{"name":"scanner","report":"report.sarif","differential":true}]}"#,
+        ),
+    ] {
+        let tree = Tree::new();
+        tree.words("README.md", 1);
+        tree.write("src/lib.rs", "fn main() {}\n");
+        tree.write("klin.json", config);
+
+        let run = tree.run(&["gate", "--list"]);
+        assert_eq!(run.code, 0, "valid {name}: {}", run.out);
+    }
+}
+
+fn false_disables_a_gate() {
+    let tree = Tree::new();
+    tree.words("README.md", 1);
+    tree.write("klin.json", r#"{"doc_size":false}"#);
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "false disables: {}", run.out);
+    assert!(run.says("doc-size — excluded"), "{}", run.out);
+}
+
+fn invalid_shape_configs() {
+    for (name, config, fragment) in [
+        ("root", r#"[]"#, "must be an object"),
+        ("journal", r#"{"journal":{"prompt":"yes"}}"#, "prompt"),
+        ("scope", r#"{"complexity":{"in":1}}"#, "in"),
+        ("ceiling", r#"{"complexity":{"cc":"10"}}"#, "cc"),
+        (
+            "convention",
+            r#"{"conventions":{"bad":{"text":"TODO","code":"TODO","remedy":"remove it"}}}"#,
+            "exactly one",
+        ),
+        (
+            "layering",
+            r#"{"layering":{"layers":{"app":{"in":"src","can_use":true}}}}"#,
+            "can_use",
+        ),
+        (
+            "sarif",
+            r#"{"sarif":[{"name":"scanner","report":"report.sarif","unknown":true}]}"#,
+            "unknown field",
+        ),
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+
+        let run = tree.run(&["gate", "--list"]);
+        assert_eq!(run.code, 2, "invalid {name}: {}", run.out);
+        assert!(run.says(fragment), "invalid {name}: {}", run.out);
+        assert!(
+            run.says(&tree.at("klin.json")),
+            "invalid {name}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
 fn config_flag_overrides_discovery() {
     let tree = Tree::new();
     tree.write("repo/klin.json", ONE_DOC);

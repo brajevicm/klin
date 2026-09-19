@@ -8,7 +8,8 @@ use serde_json::Value;
 fn schema() -> Value {
     let run = Tree::bare().run(&["reference", "--schema"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    serde_json::from_str(&run.printed).expect("reference --schema prints JSON")
+    serde_json::from_str(&run.printed)
+        .unwrap_or_else(|why| panic!("reference --schema prints JSON: {why}"))
 }
 
 #[test]
@@ -17,8 +18,17 @@ fn the_schema_describes_the_compact_configuration_shapes() {
     let properties = schema
         .get("properties")
         .and_then(Value::as_object)
-        .expect("top-level properties");
+        .unwrap_or_else(|| panic!("top-level properties: {schema}"));
 
+    top_level_schema(&schema, properties);
+    compact_policy_schema(properties);
+    document_map_schema(properties);
+    convention_schema(properties);
+    layering_schema(properties);
+    sarif_schema(properties);
+}
+
+fn top_level_schema(schema: &Value, properties: &serde_json::Map<String, Value>) {
     assert_eq!(
         schema.get("$schema").and_then(Value::as_str),
         Some("https://json-schema.org/draft/2020-12/schema")
@@ -27,22 +37,20 @@ fn the_schema_describes_the_compact_configuration_shapes() {
         schema.get("additionalProperties"),
         Some(&Value::Bool(false))
     );
-    assert!(properties.contains_key("complexity"));
-    assert!(properties.contains_key("doc_size"));
-    assert!(properties.contains_key("conventions"));
-    assert!(properties.contains_key("layering"));
-    assert!(properties.contains_key("sarif"));
+    for name in ["complexity", "doc_size", "conventions", "layering", "sarif"] {
+        assert!(properties.contains_key(name));
+    }
     assert!(!properties.contains_key("version"));
     assert!(schema.get("required").is_none());
+}
 
+fn compact_policy_schema(properties: &serde_json::Map<String, Value>) {
     let complexity = &properties["complexity"]["anyOf"];
-    assert!(
-        complexity
-            .as_array()
-            .unwrap()
+    assert!(complexity.as_array().is_some_and(|shapes| {
+        shapes
             .iter()
             .any(|shape| shape.get("const") == Some(&Value::Bool(false)))
-    );
+    }));
     let complexity_object = &complexity[1];
     assert_eq!(
         complexity_object["additionalProperties"],
@@ -64,20 +72,30 @@ fn the_schema_describes_the_compact_configuration_shapes() {
         complexity_object["properties"]["cc"]["anyOf"][1]["type"],
         "object"
     );
+}
 
+fn document_map_schema(properties: &serde_json::Map<String, Value>) {
     let document_map = &properties["doc_size"]["anyOf"][1];
     assert_eq!(document_map["minProperties"], 1);
     assert_eq!(
         document_map["additionalProperties"]["anyOf"][0]["type"],
         "integer"
     );
+}
 
+fn convention_schema(properties: &serde_json::Map<String, Value>) {
     let convention = &properties["conventions"]["anyOf"][1]["additionalProperties"];
     assert_eq!(convention["additionalProperties"], Value::Bool(false));
     assert_eq!(convention["required"][0], "remedy");
-    assert!(!convention["oneOf"].as_array().unwrap().is_empty());
+    assert!(
+        convention["oneOf"]
+            .as_array()
+            .is_some_and(|one_of| !one_of.is_empty())
+    );
     assert_eq!(convention["properties"]["language"]["enum"][0], "rust");
+}
 
+fn layering_schema(properties: &serde_json::Map<String, Value>) {
     let layer = &properties["layering"]["anyOf"][1];
     assert_eq!(layer["required"][0], "layers");
     assert_eq!(
@@ -89,7 +107,9 @@ fn the_schema_describes_the_compact_configuration_shapes() {
             ["type"],
         "null"
     );
+}
 
+fn sarif_schema(properties: &serde_json::Map<String, Value>) {
     let sarif = &properties["sarif"]["anyOf"][1]["items"];
     assert_eq!(sarif["required"][0], "name");
     assert_eq!(sarif["required"][1], "report");
@@ -99,7 +119,8 @@ fn the_schema_describes_the_compact_configuration_shapes() {
 #[test]
 fn the_committed_schema_is_what_the_binary_generates() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/klin.json");
-    let committed = fs::read_to_string(path).expect("committed schema");
+    let committed = fs::read_to_string(path)
+        .unwrap_or_else(|why| panic!("committed schema could not be read: {why}"));
     let run = Tree::bare().run(&["reference", "--schema"]);
 
     assert_eq!(run.code, 0, "{}", run.out);

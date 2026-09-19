@@ -77,7 +77,7 @@ const LANGUAGE: Key = Key {
     required: false,
     rule: None,
     default: "the one language the source in scope is written in",
-    shape: crate::reference::Shape::Language,
+    shape: crate::reference::Shape::Language(pattern::language_extensions),
 };
 
 pub const KEYS: &[Key] = &[TEXT, CODE, FILES, REMEDY, IN, EXCEPT, LANGUAGE];
@@ -505,7 +505,7 @@ fn scope(fields: &Map<String, Value>) -> Result<(Vec<Selector>, Vec<Selector>), 
 
 /// A key a convention does not read would measure nothing, so it is refused, naming the key a
 /// person most likely meant.
-fn known(fields: &Map<String, Value>) -> Result<(), String> {
+pub(crate) fn known(fields: &Map<String, Value>) -> Result<(), String> {
     let Some(unknown) = fields
         .keys()
         .find(|key| !KEYS.iter().any(|held| held.name == *key))

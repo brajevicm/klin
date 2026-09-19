@@ -145,16 +145,24 @@ fn a_rename_out_of_a_root_builds_the_root_it_left_as_well() {
 }
 
 #[test]
-fn a_build_klin_cannot_read_reports_and_blocks_only_the_first_stop() {
+fn a_build_entry_without_run_is_a_config_error() {
     let tree = tree(r#""build": [{"root": "api"}],"#);
 
     let first = stop(&tree, A_STOP, &["gate", "--hook"]);
-    assert_eq!(first.code, 2, "{}", first.out);
-    assert!(first.says("has no \"run\""), "{}", first.out);
+    assert_eq!(first.code, 1, "{}", first.out);
+    assert!(
+        first.says("a \"build\" entry has no \"run\""),
+        "{}",
+        first.out
+    );
 
     let second = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
-    assert_eq!(second.code, 0, "{}", second.out);
-    assert!(second.says("not blocking a second time"), "{}", second.out);
+    assert_eq!(second.code, 1, "{}", second.out);
+    assert!(
+        second.says("a \"build\" entry has no \"run\""),
+        "{}",
+        second.out
+    );
 }
 
 #[test]
