@@ -528,7 +528,16 @@ node benchmark/src/cli.ts plan --seed 1                   # writes the frozen ma
 node benchmark/src/cli.ts execute benchmark/runs/publishable-<stamp> --manifest-sha256 <digest>
 node benchmark/src/cli.ts verify    benchmark/runs/publishable-<stamp>
 node benchmark/src/cli.ts scorecard benchmark/runs/publishable-<stamp> --out docs/round-<date>.md
+node benchmark/src/cli.ts audit benchmark/evidence/<set> --archive /path/to/<set>-raw.tar.gz \
+  --out docs/benchmark-audit-<date>.md
 ```
+
+`audit` verifies the slim evidence and raw archive, then runs the production
+binary over every valid recorded final tree and every catalogue `bad/`
+exemplar. Its three verdicts are the benchmark detector, a whole `klin gate
+--json` run, and the gate signals recorded for the run (`delivered` in Active
+or `would-have-been-delivered` in Shadow). It starts no agent and does not
+link klin's Rust modules.
 
 `protocols/shadow-active-v1/protocol.json` is the treatment-independent design,
 committed before run 1: the protocol number, the frozen seed, the sample plan,
