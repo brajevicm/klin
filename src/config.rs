@@ -273,14 +273,20 @@ fn document_map_shape(file: &Path, section: &str, value: &Value) -> Result<(), E
                     file.display()
                 )));
             }
+            let malformed = |name: &str| {
+                Error(format!(
+                    "{}: \"{section}\" \"{name}\" must be a whole number of words or an object of dated steps — \"{section}\" maps a document path to its ceiling, such as {{\"README.md\": 1200}}",
+                    file.display()
+                ))
+            };
             for (name, value) in fields {
-                let valid = !name.is_empty()
-                    && value_shape(file, section, &crate::doc_size::DOCUMENT, value).is_ok();
-                if !valid {
-                    return Err(Error(format!(
-                        "{}: \"{section}\" \"{name}\" must be a whole number of words or an object of dated steps — \"{section}\" maps a document path to its ceiling, such as {{\"README.md\": 1200}}",
-                        file.display()
-                    )));
+                if name.is_empty() {
+                    return Err(malformed(name));
+                }
+                match value_shape(file, section, &crate::doc_size::DOCUMENT, value) {
+                    Ok(()) => {}
+                    Err(error) if value.is_object() => return Err(error),
+                    Err(_) => return Err(malformed(name)),
                 }
             }
             Ok(())
@@ -372,14 +378,25 @@ fn value_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(
 }
 
 fn ceiling_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
-    let valid = value.is_u64() || value.is_object();
-    require(
+    if value.is_u64() {
+        return Ok(());
+    }
+    if value.is_object() {
+        return crate::ceiling::read(
+            &Config::empty(file),
+            section,
+            key.name,
+            value,
+            "a whole number",
+        )
+        .map(|_| ());
+    }
+    Err(shape_error(
         file,
         section,
         key.name,
-        valid,
         "a whole number or an object of dated steps",
-    )
+    ))
 }
 
 fn complex_value_shape(
