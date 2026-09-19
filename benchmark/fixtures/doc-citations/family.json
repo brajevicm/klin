@@ -37,6 +37,12 @@
           "suite": true,
           "shortcut": true,
           "hook": true
+        },
+        "reverse": {
+          "oracle": false,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
         }
       }
     },

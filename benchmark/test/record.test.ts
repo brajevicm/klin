@@ -198,6 +198,15 @@ test("the schema beside the harness names every required field", () => {
   }
 });
 
+test("the schema protocol matches the harness", () => {
+  const schema = JSON.parse(fs.readFileSync(paths.SCHEMA, "utf8")) as {
+    title: string;
+    properties: { protocol: { const: number } };
+  };
+  assert.equal(schema.properties.protocol.const, paths.PROTOCOL);
+  assert.match(schema.title, new RegExp("version " + String(paths.PROTOCOL) + "$"));
+});
+
 test("a reset is a person's action, so it claims no delivery and borrows no gate", () => {
   const stats = {
     episodes: [],

@@ -5,6 +5,10 @@ import { request, send } from "../src/index.ts";
 import { request as transportRequest } from "../src/transport/client.ts";
 import { send as transportSend } from "../src/transport/socket.ts";
 
+function source(file: string): string {
+  return fs.readFileSync(file, "utf8");
+}
+
 test("the wire layer moved into transport", () => {
   for (const old of ["src/client.ts", "src/socket.ts"]) {
     assert.equal(fs.existsSync(old), false, old + " still exists");
@@ -17,6 +21,15 @@ test("the wire layer moved into transport", () => {
 test("the entry re-exports the moved implementations", () => {
   assert.equal(request, transportRequest);
   assert.equal(send, transportSend);
+});
+
+test("the entry points at transport instead of transport pointing back", () => {
+  const entry = source("src/index.ts");
+  assert.match(entry, /export\s+\{\s*request\s*\}\s+from\s+["']\.\/transport\/client\.ts["']/);
+  assert.match(entry, /export\s+\{\s*send\s*\}\s+from\s+["']\.\/transport\/socket\.ts["']/);
+  const backImport = /\bfrom\s+["']\.\.\/index\.ts["']/;
+  assert.doesNotMatch(source("src/transport/client.ts"), backImport);
+  assert.doesNotMatch(source("src/transport/socket.ts"), backImport);
 });
 
 test("the entry still sends a request", () => {
