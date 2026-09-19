@@ -273,23 +273,9 @@ fn document_map_shape(file: &Path, section: &str, value: &Value) -> Result<(), E
                     file.display()
                 )));
             }
-            let malformed = |name: &str| {
-                Error(format!(
-                    "{}: \"{section}\" \"{name}\" must be a whole number of words or an object of dated steps — \"{section}\" maps a document path to its ceiling, such as {{\"README.md\": 1200}}",
-                    file.display()
-                ))
-            };
-            for (name, value) in fields {
-                if name.is_empty() {
-                    return Err(malformed(name));
-                }
-                match value_shape(file, section, &crate::doc_size::DOCUMENT, value) {
-                    Ok(()) => {}
-                    Err(error) if value.is_object() => return Err(error),
-                    Err(_) => return Err(malformed(name)),
-                }
-            }
-            Ok(())
+            fields
+                .iter()
+                .try_for_each(|(name, value)| document_shape(file, section, name, value))
         }
         _ => Err(Error(format!(
             "{}: \"{section}\" must be an object or false — {}",
@@ -297,6 +283,24 @@ fn document_map_shape(file: &Path, section: &str, value: &Value) -> Result<(), E
             policy_shape(section)
         ))),
     }
+}
+
+fn document_shape(file: &Path, section: &str, name: &str, value: &Value) -> Result<(), Error> {
+    if name.is_empty() {
+        return Err(document_error(file, section, name));
+    }
+    match value_shape(file, section, &crate::doc_size::DOCUMENT, value) {
+        Ok(()) => Ok(()),
+        Err(error) if value.is_object() => Err(error),
+        Err(_) => Err(document_error(file, section, name)),
+    }
+}
+
+fn document_error(file: &Path, section: &str, name: &str) -> Error {
+    Error(format!(
+        "{}: \"{section}\" \"{name}\" must be a whole number of words or an object of dated steps — \"{section}\" maps a document path to its ceiling, such as {{\"README.md\": 1200}}",
+        file.display()
+    ))
 }
 
 fn retired_list(file: &Path, section: &str) -> Result<(), Error> {
