@@ -443,6 +443,21 @@ impl ModuleGraph {
             )
     }
 
+    /// The identity that tells one module apart from every other across the base and the working
+    /// tree: the kind and root of the target that owns it under current paths, then its identity.
+    /// A file two targets reach is a different module under each. A module no target owns is
+    /// its identity alone. ADR 0047.
+    pub fn semantic(&self, module: usize, current: impl Fn(&str) -> String) -> String {
+        let identity = self.identity(module, &current);
+        match self.modules[module].target {
+            Some(at) => {
+                let target = &self.targets[at];
+                format!("{:?} {} {identity}", target.kind, current(&target.root))
+            }
+            None => identity,
+        }
+    }
+
     /// The module a path names from this module, and the segments left after it. `crate` starts
     /// at the module's target root, `self` and `super` at the module and the ones above it, a
     /// name this module declares as a child at that child, and any other first name is external.
@@ -642,7 +657,8 @@ mod tests {
         builder.depend(from, to, "a.go", 3);
         let graph = builder.graph;
         assert_eq!(graph.modules[from].sources, ["a.go", "b.go"]);
-        assert_eq!(graph.attached.len(), 3);
+        let attached: Vec<&str> = graph.attached.keys().map(String::as_str).collect();
+        assert_eq!(attached, ["a.go", "b.go", "c.go"]);
         assert_eq!(graph.source(&graph.dependencies[0]), "b.go");
         assert_eq!(graph.reached_at(from, "a.go", 3), [to]);
         assert_eq!(graph.cost().sources, 3);

@@ -209,9 +209,15 @@ persistent graph/SCC state, parallel resolution or a resident service.
   gets no verdict.
 - `ModuleGraph::cycles` takes a per-site predicate, deduplicates the selected
   `(from, to)` pairs, and runs SCCs over the modules those pairs join.
-- The semantic bridge is the ratchet's existing cross-file pass: a layering
-  finding carries a body hash of the writing module's identity and the key
-  text. Accepted entries carry no body hash, so they never follow a move.
+- `layering` groups judged sites into semantic edges keyed by the semantic
+  identity of both modules and the edge text, pairs the working tree's with
+  the base's, and only then merges them into one physical finding per file and
+  text. A finding is held where the base holds every semantic edge it merges,
+  and the ratchet receives that as a base site at the finding's own place.
+  Accepted entries still match only the site a person wrote.
+- `ModuleGraph::semantic` is the pairing identity: the owning target's kind
+  and root under current paths, then `identity`. A file two Rust targets
+  reach is two semantic modules. The report name and key text are unchanged.
 - The graph cost counts modules, source memberships, dependency sites,
   distinct semantic edges and resolver dispatches by language. The surface
   cost counts surface dispatches by language.
