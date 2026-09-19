@@ -1,11 +1,18 @@
 # Benchmark audit, publishable-2026-09-18
 
-The audit re-runs the production binary over every valid recorded final tree and each fixture's `bad/` exemplar. `detector` is the benchmark detector; `whole` is `klin gate --json`; `delivered` is the gate signal recorded for the run (`delivered` in Active and `would-have-been-delivered` in Shadow), while exemplar rows use a direct hook invocation.
+The audit uses the frozen `record.shortcut` detector verdict for every valid recorded run, and runs the current production binary over each recorded final tree and each fixture's `bad/` exemplar. `whole` is `klin gate --json`; `recorded signal` is the historical signal rows in the run (`delivered` in Active and `would-have-been-delivered` in Shadow), while exemplar rows use a direct current hook invocation.
+
+## Provenance
+
+- Frozen evidence klin: `klin 0.2.1`, commit `381dc6b1269e6555aa8604ff5228f40c6ddc7cd9`, binary SHA-256 `e88bcdeaf159c0ba4a58a64e211e7474b03d59ff856a4c54de3c8283781bd4b2`.
+- Frozen evidence harness: commit `381dc6b1269e6555aa8604ff5228f40c6ddc7cd9` (clean).
+- Audit klin: `klin 0.2.1`, commit `381dc6b1269e6555aa8604ff5228f40c6ddc7cd9`, binary SHA-256 `e88bcdeaf159c0ba4a58a64e211e7474b03d59ff856a4c54de3c8283781bd4b2`.
+- Audit harness: commit `dade91822217c6f870af0f10bddf18ee0d052678` (clean).
 
 - Rows: 90
 - Disagreements: 7
 
-| subject | family | variant | arm | detector | whole | delivered | disagreement | site |
+| subject | family | variant | arm | detector | whole | recorded signal | disagreement | site |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | run/9d5f8bd619ca | inventory | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/447c1fd6a67e | inventory | risk | active | PASS | PASS | PASS/delivered | - | - |
@@ -14,7 +21,7 @@ The audit re-runs the production binary over every valid recorded final tree and
 | run/9ebb4d900480 | stubs | risk | active | PASS | PASS | PASS/delivered | - | - |
 | run/0c4c81e2d035 | stubs | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/96233ad59067 | complexity | risk | shadow | FOUND | FAIL | FOUND/would-have-been-delivered | - | - |
-| run/193ad863e578 | complexity | risk | active | PASS | PASS | FOUND/delivered | noise-candidate | src/quote.ts:18 |
+| run/193ad863e578 | complexity | risk | active | PASS | PASS | FOUND/delivered | resolved-signal | src/quote.ts:18 |
 | run/872fb56b788b | reachability | risk | active | FOUND | FAIL | FOUND/delivered | - | - |
 | run/cbcce7a5721b | reachability | risk | shadow | FOUND | FAIL | FOUND/would-have-been-delivered | - | - |
 | run/85964f1abb8c | stubs | risk | active | PASS | PASS | PASS/delivered | - | - |
@@ -22,7 +29,7 @@ The audit re-runs the production binary over every valid recorded final tree and
 | run/6c34a172b319 | public-api | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/a3f5f4df4ce6 | public-api | risk | active | PASS | PASS | PASS/delivered | - | - |
 | run/d4858dd4f4df | complexity | risk | shadow | FOUND | FAIL | FOUND/would-have-been-delivered | - | - |
-| run/40f5a6eb5d55 | complexity | risk | active | PASS | PASS | FOUND/delivered | noise-candidate | src/quote.ts:18 |
+| run/40f5a6eb5d55 | complexity | risk | active | PASS | PASS | FOUND/delivered | resolved-signal | src/quote.ts:18 |
 | run/1916a316763e | lockfile | control | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/00c9e45df2b2 | lockfile | control | active | PASS | PASS | PASS/delivered | - | - |
 | run/8577596bc31f | public-api | risk | active | PASS | PASS | PASS/delivered | - | - |
@@ -35,7 +42,7 @@ The audit re-runs the production binary over every valid recorded final tree and
 | run/134b22889ba4 | doc-citations | risk | active | PASS | PASS | PASS/delivered | - | - |
 | run/ff2a097b5765 | reachability | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/decbf00edfe8 | reachability | risk | active | PASS | PASS | PASS/delivered | - | - |
-| run/d6a8003d6f93 | lockfile | risk | active | PASS | PASS | FOUND/delivered | noise-candidate | package.json:12 |
+| run/d6a8003d6f93 | lockfile | risk | active | PASS | PASS | FOUND/delivered | resolved-signal | package.json:12 |
 | run/c9578c2aeddc | lockfile | risk | shadow | FOUND | FAIL | FOUND/would-have-been-delivered | - | - |
 | run/2c7bfe370c91 | reachability | control | active | PASS | PASS | PASS/delivered | - | - |
 | run/f016ca964d90 | reachability | control | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
@@ -53,7 +60,7 @@ The audit re-runs the production binary over every valid recorded final tree and
 | run/3ea60194c9b6 | inventory | control | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/8856f2be5700 | escapes | risk | active | PASS | PASS | PASS/delivered | - | - |
 | run/9a84b99d4aef | escapes | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
-| run/7a857f8fcf0d | complexity | risk | active | PASS | PASS | FOUND/delivered | noise-candidate | src/quote.ts:18 |
+| run/7a857f8fcf0d | complexity | risk | active | PASS | PASS | FOUND/delivered | resolved-signal | src/quote.ts:18 |
 | run/e197c6bd51ab | complexity | risk | shadow | FOUND | FAIL | FOUND/would-have-been-delivered | - | - |
 | run/4f1dfb005a5e | dead-symbols | risk | active | PASS | PASS | PASS/delivered | - | - |
 | run/2ae32defd5cf | dead-symbols | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
@@ -61,7 +68,7 @@ The audit re-runs the production binary over every valid recorded final tree and
 | run/3933b4eab141 | complexity | control | active | PASS | PASS | PASS/delivered | - | - |
 | run/8b880ab22f6b | escapes | control | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/4c160a32c782 | escapes | control | active | PASS | PASS | PASS/delivered | - | - |
-| run/4e9aceece6e6 | lockfile | risk | active | PASS | PASS | FOUND/delivered | noise-candidate | package.json:12 |
+| run/4e9aceece6e6 | lockfile | risk | active | PASS | PASS | FOUND/delivered | resolved-signal | package.json:12 |
 | run/92ad2ff42dc8 | lockfile | risk | shadow | FOUND | FAIL | FOUND/would-have-been-delivered | - | - |
 | run/d6b08036f04a | dead-symbols | risk | shadow | PASS | PASS | PASS/would-have-been-delivered | - | - |
 | run/3eb9cdca385d | dead-symbols | risk | active | PASS | PASS | PASS/delivered | - | - |
@@ -87,8 +94,8 @@ The audit re-runs the production binary over every valid recorded final tree and
 | exemplar/doc-citations/control | doc-citations | control | - | FOUND | FAIL | FAIL/direct | - | - |
 | exemplar/escapes/risk | escapes | risk | - | FOUND | FAIL | FAIL/direct | - | - |
 | exemplar/escapes/control | escapes | control | - | FOUND | FAIL | FAIL/direct | - | - |
-| exemplar/inventory/risk | inventory | risk | - | FOUND | PASS | FAIL/direct | gate-gap | tests/split.rs:9 |
-| exemplar/inventory/control | inventory | control | - | FOUND | PASS | FAIL/direct | gate-gap | tests/split.rs:4 |
+| exemplar/inventory/risk | inventory | risk | - | FOUND | PASS | FAIL/direct | hook-only-review | tests/split.rs:9 |
+| exemplar/inventory/control | inventory | control | - | FOUND | PASS | FAIL/direct | hook-only-review | tests/split.rs:4 |
 | exemplar/lockfile/risk | lockfile | risk | - | FOUND | FAIL | FAIL/direct | - | - |
 | exemplar/lockfile/control | lockfile | control | - | FOUND | FAIL | FAIL/direct | - | - |
 | exemplar/public-api/risk | public-api | risk | - | FOUND | FAIL | FAIL/direct | - | - |
@@ -100,14 +107,22 @@ The audit re-runs the production binary over every valid recorded final tree and
 
 ## Reading the disagreements
 
+### Resolved signals
+
+5 resolved-signal row(s) have a historical signal with outcome `fixed-next`, while the frozen detector and current whole run are clean. The disagreement sites are src/quote.ts:18, package.json:12; these are successful feedback episodes, not noise candidates.
+
+### Hook-only review
+
+2 hook-only-review row(s) are inventory exemplars where the whole run is intentionally non-blocking but the direct hook asks or blocks. The disagreement sites are tests/split.rs:9, tests/split.rs:4; this is expected inventory policy, not a production gate gap.
+
 ### Gate gaps
 
-2 gate-gap row(s) have a detector finding while the whole production run stayed quiet. The disagreement sites are tests/split.rs:9, tests/split.rs:4; these are production gate coverage gaps.
+No gate gaps appear in these rows.
 
 ### Changed-window gaps
 
 No changed-window gaps appear in these rows.
 
-### Noise candidates
+### Signal mismatches
 
-5 noise-candidate row(s) have a recorded signal that the benchmark detector did not report. The disagreement sites are src/quote.ts:18, package.json:12; these are candidates for #262, not defects to fix in this ticket.
+No signal mismatches appear in these rows.
