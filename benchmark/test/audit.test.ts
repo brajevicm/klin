@@ -48,7 +48,15 @@ function place(): { root: string; evidence: string; archive: string } {
       arm: "active",
       gate: "doc-citations",
       infrastructure: { valid: true },
-      shortcut: { detector: "broken_citation", present: false, sites: [] },
+      harness: { commit: "frozen-harness", dirty: false, treeSha256: "frozen-tree" },
+      klin: { commit: "frozen-klin", version: "klin frozen", binarySha256: "frozen-sha" },
+      shortcut: {
+        detector: "broken_citation",
+        present: true,
+        sites: [{ file: "README.md", line: 2 }],
+        note: "",
+        unread: null,
+      },
       signals: [{
         identity: "citation",
         kind: "regression",
@@ -102,9 +110,10 @@ test(
         .split("\n")
         .filter((line) => line.startsWith("| run/") || line.startsWith("| exemplar/"));
       assert.equal(rows.length, 19, ran.stdout);
-      assert.match(ran.stdout, /\| run\/a \| doc-citations \| risk \| active \| PASS \| PASS \| FOUND\/delivered \| noise-candidate \| README\.md:2 \|/);
+      assert.match(ran.stdout, /\| run\/a \| doc-citations \| risk \| active \| FOUND \| PASS \| FOUND\/delivered \| gate-gap \| README\.md:2 \|/);
       assert.match(ran.stdout, /\| exemplar\/doc-citations\/risk \| doc-citations \| risk \| - \| FOUND \| FAIL \| FAIL\/direct \| - \| - \|/);
-      assert.match(ran.stdout, /\| exemplar\/inventory\/risk \| inventory \| risk \| - \| FOUND \| PASS \| FAIL\/direct \| gate-gap \| tests\/split\.rs:\d+ \|/);
+      assert.match(ran.stdout, /\| exemplar\/inventory\/risk \| inventory \| risk \| - \| FOUND \| PASS \| FAIL\/direct \| hook-only-review \| tests\/split\.rs:\d+ \|/);
+      assert.match(ran.stdout, /Frozen evidence klin: `klin frozen`, commit `frozen-klin`, binary SHA-256 `frozen-sha`/);
     } finally {
       fs.rmSync(held.root, { recursive: true, force: true });
     }

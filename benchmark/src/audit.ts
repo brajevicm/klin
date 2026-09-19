@@ -7,7 +7,9 @@ import { families, VARIANTS, type Variant } from "./catalogue.ts";
 import { detect, type Finding } from "./detectors.ts";
 import * as paths from "./paths.ts";
 import type { RunRecord } from "./record.ts";
-import { copyTree, files, overlay } from "./trees.ts";
+import { klinVersion } from "./session.ts";
+import { sourceCommit } from "./trial.ts";
+import { copyTree, files, overlay, sha256 } from "./trees.ts";
 import * as workspace from "./workspace.ts";
 
 type Status = "PASS" | "FAIL" | "ERR" | "MISSING";
@@ -22,6 +24,7 @@ interface Verdict {
   label: string;
   sites: Site[];
   delivery: "delivered" | "would-have-been-delivered" | "direct" | "recorded";
+  resolved?: boolean;
 }
 
 interface Row {
@@ -31,10 +34,33 @@ interface Row {
   arm: string;
   detector: Verdict;
   whole: Verdict;
-  hook: Verdict;
+  signal: Verdict;
 }
 
-type Disagreement = "gate-gap" | "changed-window-gap" | "noise-candidate";
+type Disagreement =
+  | "resolved-signal"
+  | "hook-only-review"
+  | "gate-gap"
+  | "changed-window-gap"
+  | "signal-mismatch";
+
+interface Provenance {
+  commit: string;
+  version: string;
+  binarySha256: string;
+}
+
+interface HarnessProvenance {
+  commit: string;
+  dirty: boolean;
+}
+
+interface Metadata {
+  evidenceKlin: Provenance;
+  evidenceHarness: HarnessProvenance;
+  auditKlin: Provenance;
+  auditHarness: HarnessProvenance;
+}
 
 interface Report {
   gates?: { name?: unknown; status?: unknown }[];
@@ -111,7 +137,7 @@ function lineAt(root: string, file: string, wanted: string): number | null {
 function detectorSite(site: Record<string, unknown>, base: string, final: string): Site | null {
   const file = textOf(site.file) ?? textOf(site.document) ?? textOf(site.path);
   const line = numberOf(site.line);
-  if (file && line !== null) {
+  if (file && line !== null && line > 0) {
     return { file, line };
   }
   const wanted =
@@ -144,9 +170,13 @@ function detectorSite(site: Record<string, unknown>, base: string, final: string
   return null;
 }
 
-function detectorSites(found: Finding, base: string, final: string): Site[] {
+function detectorSites(found: { sites: unknown[] }, base: string, final: string): Site[] {
   return found.sites
-    .map((site) => detectorSite(site, base, final))
+    .map((site) =>
+      site !== null && typeof site === "object"
+        ? detectorSite(site as Record<string, unknown>, base, final)
+        : null,
+    )
     .filter((site): site is Site => site !== null);
 }
 
@@ -271,40 +301,67 @@ function recordedSignals(record: RunRecord, gate: string, base: string, final: s
     label: signals.length > 0 ? "FOUND" : "PASS",
     sites: uniqueSites(sites),
     delivery,
+    resolved: signals.some((one) => one.outcome === "fixed-next"),
   };
 }
 
 function rowDisagrees(one: Row): boolean {
-  const values = [one.detector.caught, one.whole.caught, one.hook.caught];
+  const values = [one.detector.caught, one.whole.caught, one.signal.caught];
   if (values.some((value) => value === null)) {
     return false;
   }
   return new Set(values).size > 1;
 }
 
+function resolvedSignal(one: Row): boolean {
+  return (
+    one.signal.resolved === true &&
+    one.detector.caught === false &&
+    one.whole.caught === false &&
+    one.signal.caught === true
+  );
+}
+
+function hookOnlyReview(one: Row): boolean {
+  return (
+    one.family === "inventory" &&
+    one.arm === "-" &&
+    one.signal.delivery === "direct" &&
+    one.detector.caught === true &&
+    one.whole.caught === false &&
+    one.signal.caught === true
+  );
+}
+
 function disagreement(one: Row): Disagreement | null {
   if (!rowDisagrees(one)) {
     return null;
   }
+  if (resolvedSignal(one)) {
+    return "resolved-signal";
+  }
+  if (hookOnlyReview(one)) {
+    return "hook-only-review";
+  }
   if (one.whole.caught === false && one.detector.caught === true) {
     return "gate-gap";
   }
-  if (one.whole.caught === true && one.hook.caught === false) {
+  if (one.whole.caught === true && one.signal.caught === false) {
     return "changed-window-gap";
   }
-  if (one.detector.caught === false && (one.whole.caught === true || one.hook.caught === true)) {
-    return "noise-candidate";
+  if (one.detector.caught === false && one.signal.caught === true) {
+    return "signal-mismatch";
   }
   throw new Error(one.subject + " has an unclassifiable disagreement");
 }
 
 function siteFor(one: Row, kind: Disagreement): string {
   const sites =
-    kind === "gate-gap"
-      ? [...one.detector.sites, ...one.hook.sites, ...one.whole.sites]
+    kind === "resolved-signal" || kind === "signal-mismatch"
+      ? [...one.signal.sites, ...one.detector.sites, ...one.whole.sites]
       : kind === "changed-window-gap"
-        ? [...one.hook.sites, ...one.whole.sites, ...one.detector.sites]
-        : [...one.whole.sites, ...one.hook.sites, ...one.detector.sites];
+        ? [...one.whole.sites, ...one.signal.sites, ...one.detector.sites]
+        : [...one.detector.sites, ...one.signal.sites, ...one.whole.sites];
   const site = uniqueSites(sites)[0];
   if (!site) {
     throw new Error(one.subject + " " + kind + " has no file and line");
@@ -319,7 +376,7 @@ function display(one: Verdict): string {
   return one.label + "/" + one.delivery;
 }
 
-function markdown(setId: string, rows: Row[]): string {
+function markdown(setId: string, rows: Row[], metadata: Metadata): string {
   const disagreements = rows.filter(rowDisagrees);
   const groups = new Map<Disagreement, Row[]>();
   for (const row of disagreements) {
@@ -330,7 +387,7 @@ function markdown(setId: string, rows: Row[]): string {
     groups.set(kind, [...(groups.get(kind) ?? []), row]);
   }
   const table = [
-    "| subject | family | variant | arm | detector | whole | delivered | disagreement | site |",
+    "| subject | family | variant | arm | detector | whole | recorded signal | disagreement | site |",
     "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map((row) => {
       const kind = disagreement(row);
@@ -341,7 +398,7 @@ function markdown(setId: string, rows: Row[]): string {
         row.arm,
         row.detector.label,
         row.whole.label,
-        display(row.hook),
+        display(row.signal),
         kind ?? "-",
         kind === null ? "-" : siteFor(row, kind),
       ].join(" | ") + " |";
@@ -351,14 +408,28 @@ function markdown(setId: string, rows: Row[]): string {
     const held = groups.get(kind) ?? [];
     const sites = [...new Set(held.map((row) => siteFor(row, kind)))].join(", ");
     const count = String(held.length);
-    const paragraph =
-      held.length === 0
-        ? "No " + reading.toLowerCase() + " appear in these rows."
-        : kind === "gate-gap"
-          ? count + " gate-gap row(s) have a detector finding while the whole production run stayed quiet. The disagreement sites are " + sites + "; these are production gate coverage gaps."
-          : kind === "changed-window-gap"
-            ? count + " changed-window-gap row(s) have a whole-run finding with no recorded signal for that gate. The disagreement sites are " + sites + "; the changed-files window missed a finding the full run sees."
-            : count + " noise-candidate row(s) have a recorded signal that the benchmark detector did not report. The disagreement sites are " + sites + "; these are candidates for #262, not defects to fix in this ticket.";
+    let paragraph: string;
+    if (held.length === 0) {
+      paragraph = "No " + reading.toLowerCase() + " appear in these rows.";
+    } else {
+      switch (kind) {
+        case "resolved-signal":
+          paragraph = count + " resolved-signal row(s) have a historical signal with outcome `fixed-next`, while the frozen detector and current whole run are clean. The disagreement sites are " + sites + "; these are successful feedback episodes, not noise candidates.";
+          break;
+        case "hook-only-review":
+          paragraph = count + " hook-only-review row(s) are inventory exemplars where the whole run is intentionally non-blocking but the direct hook asks or blocks. The disagreement sites are " + sites + "; this is expected inventory policy, not a production gate gap.";
+          break;
+        case "gate-gap":
+          paragraph = count + " gate-gap row(s) have a detector finding while the whole production run stayed quiet. The disagreement sites are " + sites + "; these are production gate coverage gaps.";
+          break;
+        case "changed-window-gap":
+          paragraph = count + " changed-window-gap row(s) have a whole-run finding with no recorded signal for that gate. The disagreement sites are " + sites + "; the changed-files window missed a finding the full run sees.";
+          break;
+        case "signal-mismatch":
+          paragraph = count + " signal-mismatch row(s) have a recorded signal that the frozen detector does not report and no `fixed-next` resolution or expected hook policy explains. The disagreement sites are " + sites + "; these need follow-up before they are treated as product defects.";
+          break;
+      }
+    }
     return [
       "### " + reading,
       "",
@@ -369,7 +440,14 @@ function markdown(setId: string, rows: Row[]): string {
   return [
     "# Benchmark audit, " + setId,
     "",
-    "The audit re-runs the production binary over every valid recorded final tree and each fixture's `bad/` exemplar. `detector` is the benchmark detector; `whole` is `klin gate --json`; `delivered` is the gate signal recorded for the run (`delivered` in Active and `would-have-been-delivered` in Shadow), while exemplar rows use a direct hook invocation.",
+    "The audit uses the frozen `record.shortcut` detector verdict for every valid recorded run, and runs the current production binary over each recorded final tree and each fixture's `bad/` exemplar. `whole` is `klin gate --json`; `recorded signal` is the historical signal rows in the run (`delivered` in Active and `would-have-been-delivered` in Shadow), while exemplar rows use a direct current hook invocation.",
+    "",
+    "## Provenance",
+    "",
+    "- Frozen evidence klin: `" + metadata.evidenceKlin.version + "`, commit `" + metadata.evidenceKlin.commit + "`, binary SHA-256 `" + metadata.evidenceKlin.binarySha256 + "`.",
+    "- Frozen evidence harness: commit `" + metadata.evidenceHarness.commit + "` (" + (metadata.evidenceHarness.dirty ? "dirty" : "clean") + ").",
+    "- Audit klin: `" + metadata.auditKlin.version + "`, commit `" + metadata.auditKlin.commit + "`, binary SHA-256 `" + metadata.auditKlin.binarySha256 + "`.",
+    "- Audit harness: commit `" + metadata.auditHarness.commit + "` (" + (metadata.auditHarness.dirty ? "dirty" : "clean") + ").",
     "",
     "- Rows: " + String(rows.length),
     "- Disagreements: " + String(disagreements.length),
@@ -378,10 +456,34 @@ function markdown(setId: string, rows: Row[]): string {
     "",
     "## Reading the disagreements",
     "",
+    ...section("resolved-signal", "Resolved signals"),
+    ...section("hook-only-review", "Hook-only review"),
     ...section("gate-gap", "Gate gaps"),
     ...section("changed-window-gap", "Changed-window gaps"),
-    ...section("noise-candidate", "Noise candidates"),
+    ...section("signal-mismatch", "Signal mismatches"),
   ].join("\n");
+}
+
+function metadataOf(runs: RunRecord[]): Metadata {
+  const frozen = runs[0];
+  if (!frozen) {
+    throw new Error("the evidence set has no valid runs");
+  }
+  const klin = binary();
+  const binarySha256 = sha256(fs.readFileSync(klin));
+  return {
+    evidenceKlin: frozen.klin,
+    evidenceHarness: { commit: frozen.harness.commit, dirty: frozen.harness.dirty },
+    auditKlin: {
+      commit: sourceCommit(klin, binarySha256),
+      version: klinVersion(klin),
+      binarySha256,
+    },
+    auditHarness: {
+      commit: workspace.git(paths.REPO, "rev-parse", "HEAD"),
+      dirty: workspace.git(paths.REPO, "status", "--porcelain") !== "",
+    },
+  };
 }
 
 function records(root: string): RunRecord[] {
@@ -428,8 +530,10 @@ export function write(directory: string, archive: string): string {
       throw new Error("the raw archive could not be extracted: " + (ran.stderr ?? ran.stdout ?? ""));
     }
     const found = families();
+    const runs = records(extracted);
+    const metadata = metadataOf(runs);
     const rows: Row[] = [];
-    for (const record of records(extracted)) {
+    for (const record of runs) {
       const family = found[record.family];
       const variant = family?.variants[record.variant as keyof typeof family.variants];
       if (!family || !variant) {
@@ -440,19 +544,18 @@ export function write(directory: string, archive: string): string {
       if (!fs.existsSync(base) || !fs.existsSync(final)) {
         throw new Error(record.trialId + " has no recorded base and final trees");
       }
-      const detected = detect(variant.shortcut, base, final);
       const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-audit-run-"));
       try {
         const whole = runWhole(base, final, record.gate, room);
-        const hook = recordedSignals(record, record.gate, base, final);
+        const signal = recordedSignals(record, record.gate, base, final);
         rows.push({
           subject: "run/" + record.trialId,
           family: record.family,
           variant: record.variant,
           arm: record.arm,
-          detector: detectorVerdict(detected.present, detectorSites(detected, base, final)),
+          detector: detectorVerdict(record.shortcut.present, detectorSites(record.shortcut, base, final)),
           whole,
-          hook,
+          signal,
         });
       } finally {
         fs.rmSync(room, { recursive: true, force: true });
@@ -466,7 +569,7 @@ export function write(directory: string, archive: string): string {
           const trees = badTree(variant, room);
           const detected = detect(variant.shortcut, trees.base, trees.final);
           const whole = runWhole(trees.base, trees.final, family.spec.gate, room);
-          const hook = runHook(trees.base, trees.final, family.spec.gate, room);
+          const signal = runHook(trees.base, trees.final, family.spec.gate, room);
           rows.push({
             subject: "exemplar/" + family.name + "/" + variantName,
             family: family.name,
@@ -474,14 +577,14 @@ export function write(directory: string, archive: string): string {
             arm: "-",
             detector: detectorVerdict(detected.present, detectorSites(detected, trees.base, trees.final)),
             whole,
-            hook,
+            signal,
           });
         } finally {
           fs.rmSync(room, { recursive: true, force: true });
         }
       }
     }
-    return markdown(path.basename(evidenceRoot), rows);
+    return markdown(path.basename(evidenceRoot), rows, metadata);
   } finally {
     fs.rmSync(extracted, { recursive: true, force: true });
   }
