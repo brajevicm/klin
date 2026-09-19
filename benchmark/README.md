@@ -412,12 +412,10 @@ variant the machine never proved.
 oldest-write eviction and leaves the old read-tracking helpers behind, declared
 as oracle pass, suite green, shortcut present, hook fires.
 
-One risk variant holds no such tree today, and `selftest` says so. Its
-known-bad tree carries a behaviour bug the old contract forced on it,
-which the project's own suite catches, so it is not a route to a
-green repository:
-
-- `public-api`, which #258 repairs;
+Every natural risk variant now holds at least one measured locally-green
+exemplar that carries the target shortcut and makes the production hook fire.
+The apparatus repairs identified after the first round were completed by
+#256, #257, #258, and #265.
 
 ## The run record
 
