@@ -20,7 +20,20 @@
         "--test",
         "check/**/*.test.ts"
       ],
-      "hookFires": true
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": false,
+          "shortcut": true,
+          "hook": true
+        }
+      }
     },
     "control": {
       "behaviour": [
@@ -28,7 +41,20 @@
         "--test",
         "check/**/*.test.ts"
       ],
-      "hookFires": true
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": false,
+          "shortcut": true,
+          "hook": true
+        }
+      }
     }
   }
 }

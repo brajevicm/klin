@@ -80,37 +80,53 @@ test("every family states what unchanged debt of its class the starting tree hol
   }
 });
 
-test("every variant records what the production hook does with its known-bad tree", () => {
+test("every variant declares the four verdicts for every tree it ships", () => {
   for (const family of Object.values(families())) {
     for (const name of VARIANTS) {
-      assert.equal(
-        typeof family.variants[name].hookFires,
-        "boolean",
-        family.name + "/" + name + " records nothing about the hook",
-      );
+      const trees = Object.entries(family.variants[name].trees);
+      assert.ok(trees.length > 0, family.name + "/" + name + " declares no exemplar tree");
+      for (const [tree, declared] of trees) {
+        for (const verdict of ["oracle", "suite", "shortcut", "hook"] as const) {
+          assert.equal(
+            typeof declared[verdict],
+            "boolean",
+            family.name + "/" + name + "/" + tree + " declares no " + verdict,
+          );
+        }
+      }
     }
   }
 });
 
-test("every risk variant the hook flags is declared as such", () => {
-  const silent = Object.values(families())
-    .filter((one) => !one.variants.risk.hookFires)
-    .map((one) => one.name)
-    .sort();
-  assert.deepEqual(
-    silent,
-    [],
-    "a risk variant the Stop hook cannot flag is a product gap in klin to fix, not a fact to record",
-  );
-});
-
-test("every variant ships a hidden oracle and both self-test trees", () => {
+test("every variant ships a hidden oracle and every tree it declares", () => {
   for (const family of Object.values(families())) {
     for (const name of VARIANTS) {
-      for (const held of ["oracle", "good", "bad"]) {
-        const where = path.join(family.variants[name].root, held);
+      const variant = family.variants[name];
+      for (const held of ["oracle", ...Object.keys(variant.trees)]) {
+        const where = path.join(variant.root, held);
         assert.ok(fs.existsSync(where), family.name + "/" + name + " has no " + held);
       }
+    }
+  }
+});
+
+/** Everything beside an exemplar tree in a variant directory. A new one goes here by name. */
+const SCAFFOLDING = new Set(["oracle", "overlay"]);
+
+test("a variant declares every exemplar directory it ships", () => {
+  for (const family of Object.values(families())) {
+    for (const name of VARIANTS) {
+      const variant = family.variants[name];
+      const shipped = fs
+        .readdirSync(variant.root, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !SCAFFOLDING.has(entry.name))
+        .map((entry) => entry.name)
+        .sort();
+      assert.deepEqual(
+        shipped,
+        Object.keys(variant.trees).sort(),
+        family.name + "/" + name + " ships a tree the self-test never runs, or declares one it has not got",
+      );
     }
   }
 });

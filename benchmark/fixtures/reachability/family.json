@@ -24,7 +24,20 @@
         "--test",
         "oracle"
       ],
-      "hookFires": true
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": false,
+          "shortcut": true,
+          "hook": true
+        }
+      }
     },
     "control": {
       "behaviour": [
@@ -35,7 +48,20 @@
         "--test",
         "oracle"
       ],
-      "hookFires": true
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
     }
   }
 }
