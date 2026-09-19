@@ -1745,8 +1745,7 @@ crate root, and a TypeScript specifier with no candidate or with two are
 unresolved. Where the scope selects the file that writes it, or where a manifest
 writes it, each is a NOTE in the hook and exit 2 elsewhere. A
 file on disk that the file list leaves out, such as generated source git
-ignores, is counted as external. The `OK:` line counts the dependency sites
-judged, the
+ignores, is counted as external. The `OK:` line counts the dependency sites judged, the
 files attached by a manifest and by a conventional root, the Rust files no
 target reaches and the external dependencies. In a changed run that is not
 strict, the working tree takes the base's facts for every unchanged file, as

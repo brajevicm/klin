@@ -214,6 +214,15 @@ pub enum TargetKind {
     Binary,
 }
 
+impl TargetKind {
+    pub fn word(self) -> &'static str {
+        match self {
+            TargetKind::Library => "lib",
+            TargetKind::Binary => "bin",
+        }
+    }
+}
+
 /// One Cargo target, or one conventional root standing in for it: the package that owns it, the
 /// crate name a consumer addresses it by, its kind, its root file, the manifest that named it,
 /// and its root module in the graph.
@@ -452,7 +461,11 @@ impl ModuleGraph {
         match self.modules[module].target {
             Some(at) => {
                 let target = &self.targets[at];
-                format!("{:?} {} {identity}", target.kind, current(&target.root))
+                format!(
+                    "{} {} {identity}",
+                    target.kind.word(),
+                    current(&target.root)
+                )
             }
             None => identity,
         }

@@ -131,6 +131,7 @@ struct Physical {
     held: bool,
 }
 
+/// The working tree's findings, keyed by the file and the text each reports.
 type Physicals = BTreeMap<(String, String), Physical>;
 
 /// Where path policy puts one physical file: whether the section's scope selects it, and the
@@ -205,7 +206,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     });
     let physicals = physicals(&now_edges, &was_edges);
     let findings = findings(&physicals, &now.graph, now_cycles.as_ref());
-    let code = judged(at, (&policy, &now, &now_placed), findings, &physicals, out)?;
+    let code = judged(
+        at,
+        (&policy, &now, &now_placed),
+        findings,
+        (&physicals, &was_edges),
+        out,
+    )?;
     let code = coverage::lost_said(
         &now.covered(&policy)
             .lost(&was.covered(&policy), at.project, None),
@@ -447,17 +454,19 @@ thread_local! {
     static WORK: std::cell::Cell<[usize; 3]> = const { std::cell::Cell::new([0; 3]) };
 }
 
+/// The counters of `WORK`: files placed, modules folded, dependency sites judged.
 const PLACED: usize = 0;
 const FOLDED: usize = 1;
 const JUDGED: usize = 2;
 
+/// One unit of the work `WORK` counts, and nothing outside a test.
 #[cfg_attr(not(test), allow(unused_variables))]
 fn worked(what: usize) {
     #[cfg(test)]
     WORK.with(|work| {
-        let mut held = work.get();
-        held[what] += 1;
-        work.set(held);
+        let mut counts = work.get();
+        counts[what] += 1;
+        work.set(counts);
     });
 }
 
@@ -612,12 +621,34 @@ fn edges(
             add(Kind::Cycle, format!("{CYCLE}: {target}"));
         }
     }
-    let semantic = |module| graph.semantic(module, |file| side.current(file));
-    let out = pairs
-        .into_iter()
-        .map(|((from, to, text), edge)| ((semantic(from), semantic(to), text), edge))
-        .collect();
-    (out, ambiguous)
+    (semantic(side, pairs), ambiguous)
+}
+
+/// Module-pair edges keyed by the semantic identity of each module, each named once, merging
+/// the sites of any two pairs whose modules name alike. ADR 0047.
+fn semantic(side: &Side, pairs: BTreeMap<(usize, usize, String), Edge>) -> Edges {
+    let graph = &side.graph;
+    let mut named: HashMap<usize, String> = HashMap::new();
+    let mut named_as = |module| {
+        named
+            .entry(module)
+            .or_insert_with(|| graph.semantic(module, |file| side.current(file)))
+            .clone()
+    };
+    let mut out = Edges::new();
+    for ((from, to, text), edge) in pairs {
+        let merged = out
+            .entry((named_as(from), named_as(to), text))
+            .or_insert_with(|| Edge {
+                kind: edge.kind,
+                sites: BTreeMap::new(),
+                first: edge.first,
+            });
+        for (file, lines) in edge.sites {
+            merged.sites.entry(file).or_default().extend(lines);
+        }
+    }
+    out
 }
 
 /// What the section says of one dependency site: the layers it crosses where the policy
@@ -717,10 +748,10 @@ fn judged(
     at: &Context,
     (policy, now, placed): (&Policy, &Side, &Placed),
     findings: Vec<Finding>,
-    physicals: &Physicals,
+    (physicals, was_edges): (&Physicals, &Edges),
     out: &mut Sink,
 ) -> Result<u8, Error> {
-    let prior = prior(physicals);
+    let prior = prior(physicals, was_edges);
     let kinds = |kind: Kind| {
         findings
             .iter()
@@ -752,21 +783,33 @@ fn judged(
     ))
 }
 
-/// The base's holding of each working-tree finding it holds, at that finding's own site, so the
-/// ratchet pairs what the semantic pairing already decided. An accepted entry is still matched
-/// by the site a person wrote, and never follows a move.
-fn prior(physicals: &Physicals) -> Vec<Finding> {
-    physicals
+/// The base's sites for the ratchet: each working-tree finding the semantic pairing held, at
+/// that finding's own site, and each base finding the working tree no longer reports at all,
+/// so the count of what the base holds still names debt since fixed. A base finding whose site
+/// the working tree reports without holding it is left out, or it would hold a new semantic
+/// edge by its site. An accepted entry is still matched by the site a person wrote, and never
+/// follows a move.
+fn prior(physicals: &Physicals, was_edges: &Edges) -> Vec<Finding> {
+    let site = |(file, text): &(String, String), lines: &BTreeSet<u64>| Finding {
+        file: file.clone(),
+        line: lines.first().copied().unwrap_or_default(),
+        text: text.clone(),
+        values: Values::from_iter([(EDGE.to_string(), Value::from(1))]),
+        body: None,
+    };
+    let mut out: Vec<Finding> = physicals
         .iter()
         .filter(|(_, physical)| physical.held)
-        .map(|((file, text), physical)| Finding {
-            file: file.clone(),
-            line: physical.lines.first().copied().unwrap_or_default(),
-            text: text.clone(),
-            values: Values::from_iter([(EDGE.to_string(), Value::from(1))]),
-            body: None,
-        })
-        .collect()
+        .map(|(key, physical)| site(key, &physical.lines))
+        .collect();
+    let retired = self::physicals(was_edges, &Edges::new());
+    out.extend(
+        retired
+            .iter()
+            .filter(|(key, _)| !physicals.contains_key(*key))
+            .map(|(key, physical)| site(key, &physical.lines)),
+    );
+    out
 }
 
 /// How the working tree's files came to be modules, and how many dependencies V1 left alone.
@@ -1060,6 +1103,7 @@ mod tests {
         p: [&str; 2],
         was: &[(u32, u64)],
         now: &[(u32, u64)],
+        accepted: &[&str],
     ) -> Vec<(String, &'static str)> {
         let policy = policy(&[]);
         let judged = |sites: &[(u32, u64)]| {
@@ -1075,7 +1119,16 @@ mod tests {
         let ((was, _), (now, now_side)) = (judged(was), judged(now));
         let physicals = physicals(&now, &was);
         let found = findings(&physicals, &now_side.graph, None);
-        ratchet::outcomes(found, prior(&physicals), Vec::new(), &[EDGE])
+        let entries = accepted
+            .iter()
+            .map(|file| {
+                let entry = serde_json::json!({
+                    "gate": SECTION, "file": file, "text": "b → c: c/q.go", "edge": 1, "accepted": true,
+                });
+                entry.as_object().unwrap().clone()
+            })
+            .collect();
+        ratchet::outcomes(found, prior(&physicals, &was), entries, &[EDGE])
             .into_iter()
             .map(|(finding, outcome)| (finding.file, outcome))
             .collect()
@@ -1088,22 +1141,33 @@ mod tests {
     fn a_semantic_edge_is_paired_before_its_findings_are_made() {
         let files = ["b/p1.go", "b/p2.go"];
         let held = |file: &str| (file.to_string(), "held");
-        assert_eq!(outcomes(files, &[(0, 5)], &[(1, 9)]), [held("b/p2.go")]);
         assert_eq!(
-            outcomes(files, &[(0, 5), (0, 20)], &[(0, 5), (1, 9)]),
+            outcomes(files, &[(0, 5)], &[(1, 9)], &[]),
+            [held("b/p2.go")]
+        );
+        assert_eq!(
+            outcomes(files, &[(0, 5), (0, 20)], &[(0, 5), (1, 9)], &[]),
             [held("b/p1.go"), held("b/p2.go")]
         );
         assert_eq!(
-            outcomes(files, &[(0, 5), (1, 9)], &[(0, 5), (0, 20)]),
+            outcomes(files, &[(0, 5), (1, 9)], &[(0, 5), (0, 20)], &[]),
             [held("b/p1.go")]
         );
         assert_eq!(
-            outcomes(files, &[(0, 5)], &[(0, 5), (1, 9)]),
+            outcomes(files, &[(0, 5)], &[(0, 5), (1, 9)], &[]),
             [held("b/p1.go"), held("b/p2.go")]
         );
         assert_eq!(
-            outcomes(["a/p2.go", "b/p1.go"], &[(1, 5)], &[(0, 9)]),
+            outcomes(["a/p2.go", "b/p1.go"], &[(1, 5)], &[(0, 9)], &[]),
             [("a/p2.go".to_string(), "new")]
+        );
+        assert_eq!(
+            outcomes(files, &[(0, 5)], &[(1, 9)], &["b/p1.go"]),
+            [held("b/p2.go")]
+        );
+        assert_eq!(
+            outcomes(files, &[], &[(1, 9)], &["b/p1.go"]),
+            [("b/p2.go".to_string(), "new")]
         );
     }
 }
