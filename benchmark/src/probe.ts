@@ -5,7 +5,7 @@ import * as paths from "./paths.ts";
 import { family as familyNamed } from "./catalogue.ts";
 import { files, read } from "./trees.ts";
 import { preflight } from "./calibrate.ts";
-import { frozen } from "./round.ts";
+import { drift, frozen, type Frozen } from "./round.ts";
 import { suiteCommand } from "./selftest.ts";
 import type { Family, FamilySpec } from "./catalogue.ts";
 import * as session from "./session.ts";
@@ -183,6 +183,8 @@ export function sentinelIn(text: string): { status: string; cwd: string; build: 
  */
 export function suiteChecks(
   language: FamilySpec["language"],
+  /** The repository's symbolic-link-resolved path, as the shell would print it. An audit runs
+   * after the workspace is gone, so this is a recorded value and is never resolved again. */
   repo: string,
   suite: string[],
   guard: { tool: string; paths: string }[],
@@ -191,7 +193,9 @@ export function suiteChecks(
   const wanted = suiteShellCommand(suite);
   const asked = guard.filter((one) => one.tool !== "");
   const first = asked.length === 0 ? null : asked[0];
-  const firstIsSuite = first !== null && first.tool === "Bash" && first.paths.includes(wanted);
+  // Equality, not containment: a first command that merely holds the suite command could run
+  // anything before it, and the tree the suite then measured would not be the tree it was given.
+  const firstIsSuite = first !== null && first.tool === "Bash" && first.paths.trim() === wanted;
   const checks = [
     check(
       "suite-invoked-first",
@@ -205,7 +209,7 @@ export function suiteChecks(
   ];
   const ran = seen.find((one) => one.tool === "Bash" && one.command === wanted) ?? null;
   const said = ran === null ? null : sentinelIn(ran.output);
-  const inside = said !== null && said.cwd === fs.realpathSync(repo);
+  const inside = said !== null && said.cwd === repo;
   const green = said !== null && said.status === "0" && inside;
   checks.push(
     check(
@@ -399,6 +403,99 @@ export function perLanguage(found: Record<string, Family>): string[] {
   return [...first.values()];
 }
 
+/** Everything one probe's verdict was computed from, kept in the plane beside the evidence. */
+export interface ProbeRecord {
+  trialId: string;
+  family: string;
+  language: FamilySpec["language"];
+  variant: string;
+  arm: string;
+  at: string;
+  host: string;
+  frozen: Frozen;
+  suite: string[];
+  workspace: { repo: string; owned: string[]; mine: string[] };
+  planted: { name: string; file: string; token: string }[];
+  checks: Check[];
+  passed: boolean;
+  transcriptBytes: number;
+}
+
+/** The files a probe writes beside the plane's own evidence, so its verdict can be recomputed. */
+const TRANSCRIPT = "transcript.txt";
+const SHELL = "shell.txt";
+
+/**
+ * Recompute one probe's verdict from the evidence it kept, and say whether it holds.
+ *
+ * `plan` will not take a probe's word for its own verdict. A `probe.json` saying `passed: true`
+ * is a claim, and this is the check of it: the transcript, the shell output, the planted tokens,
+ * the guard's hook evidence and the witness payloads are all in the probe directory, so every
+ * check the probe recorded is computed again here and held to what it recorded.
+ *
+ * A probe that kept too little to recompute is not a probe that passed. It fails here.
+ */
+export function verifyProbe(directory: string): string[] {
+  const file = path.join(directory, "probe.json");
+  if (!fs.existsSync(file)) {
+    return [directory + " holds no probe.json"];
+  }
+  let held: ProbeRecord;
+  try {
+    held = JSON.parse(fs.readFileSync(file, "utf8")) as ProbeRecord;
+  } catch (why) {
+    return [file + " is not valid JSON: " + String(why)];
+  }
+  const text = path.join(directory, TRANSCRIPT);
+  const shell = path.join(directory, SHELL);
+  for (const [what, one] of [["the transcript", text], ["the shell output", shell], ["the hook evidence", path.join(directory, "hooks")]] as [string, string][]) {
+    if (!fs.existsSync(one)) {
+      return [held.trialId + " kept no " + what + ", so its verdict cannot be recomputed"];
+    }
+  }
+  if (!Array.isArray(held.planted) || held.planted.length === 0 || held.workspace === undefined) {
+    return [held.trialId + " kept no planted tokens or workspace, so its verdict cannot be recomputed"];
+  }
+  const hooks = session.hookEvidence(path.join(directory, "hooks"));
+  const now = [
+    ...suiteChecks(
+      held.language,
+      held.workspace.repo,
+      held.suite,
+      hooks,
+      witnessed(path.join(directory, "witness")),
+    ),
+    ...judge(
+      fs.readFileSync(text, "utf8"),
+      held.planted,
+      hooks,
+      fs.readFileSync(shell, "utf8"),
+      held.workspace.owned,
+      held.workspace.mine,
+    ).checks,
+  ];
+  const problems: string[] = [];
+  const was = new Map((held.checks ?? []).map((one) => [one.name, one.passed]));
+  for (const one of now) {
+    if (!one.passed) {
+      problems.push(held.trialId + " does not pass " + one.name + " on its own evidence: " + one.detail);
+    } else if (was.get(one.name) !== true) {
+      problems.push(held.trialId + " recorded " + one.name + " as " + String(was.get(one.name)) + " and its evidence says it passed");
+    }
+  }
+  for (const [name, passed] of was) {
+    if (!now.some((one) => one.name === name)) {
+      problems.push(held.trialId + " recorded " + name + " and its evidence recomputes no such check");
+    } else if (passed !== true) {
+      problems.push(held.trialId + " recorded " + name + " as failed");
+    }
+  }
+  if (held.passed !== true) {
+    problems.push(held.trialId + " records itself as failed");
+  }
+  return problems;
+}
+
 /** Run the probe. It costs one live session. */
 export function run(familyName: string, into: string): number {
   const blocked = preflight(session.defaults().klinBin);
@@ -407,6 +504,10 @@ export function run(familyName: string, into: string): number {
     return 2;
   }
   const options = session.defaults();
+  // The apparatus is read before anything is materialized. A session takes minutes, and a host,
+  // binary or fixture that moved while it ran would otherwise be recorded as the apparatus the
+  // probe proved.
+  const before = frozen(options);
   const found = familyNamed(familyName);
   // The control starting tree is green in every family, so a red suite is the boundary's doing.
   const variant = found.variants.control;
@@ -434,6 +535,8 @@ export function run(familyName: string, into: string): number {
   process.stdout.write("  waiting for the session to end\n");
 
   let held: ProbeResult;
+  let kept = { text: "", shell: "" };
+  let room = { repo: "", owned: [] as string[], mine: [] as string[] };
   try {
     const began = Date.now();
     const ran = session.run(
@@ -450,13 +553,24 @@ export function run(familyName: string, into: string): number {
         "\n\n",
     );
     const hooks: HookInvocation[] = session.hookEvidence(place.hooks);
-    const bounded = judge(transcript(ran, place.repo), planted, hooks, shellOutput(place.repo), ownedPaths(), [
+    const text = transcript(ran, place.repo);
+    const bounded = judge(text, planted, hooks, shellOutput(place.repo), ownedPaths(), [
       ...new Set([place.root, fs.realpathSync(place.root)]),
     ]);
     const checks = [
-      ...suiteChecks(found.spec.language, place.repo, suite, hooks, witnessed(place.seen)),
+      ...suiteChecks(found.spec.language, fs.realpathSync(place.repo), suite, hooks, witnessed(place.seen)),
       ...bounded.checks,
     ];
+    const moved = drift(before, frozen(options));
+    if (moved.length > 0) {
+      checks.push(
+        check("the-apparatus-held-still", false, "the apparatus moved while the session ran: " + moved.join("; ")),
+      );
+    } else {
+      checks.push(check("the-apparatus-held-still", true, "every frozen value was the same after the session as before it"));
+    }
+    kept = { text, shell: shellOutput(place.repo) };
+    room = { repo: fs.realpathSync(place.repo), owned: ownedPaths(), mine: [...new Set([place.root, fs.realpathSync(place.root)])] };
     held = { ...bounded, checks, passed: checks.every((one) => one.passed) };
   } finally {
     // A host that throws and an operator who interrupts both leave the tokens on disk, one of
@@ -465,26 +579,26 @@ export function run(familyName: string, into: string): number {
       fs.rmSync(one.file, { force: true });
     }
   }
-  fs.writeFileSync(
-    path.join(plane, "probe.json"),
-    JSON.stringify(
-      {
-        trialId,
-        family: familyName,
-        language: found.spec.language,
-        variant: variant.name,
-        arm: "shadow",
-        host: session.hostVersion(),
-        at: new Date().toISOString(),
-        // The whole apparatus the round freezes, so `plan` can hold a probe to the round it is
-        // asked to authorize rather than to the three values a probe used to carry.
-        frozen: frozen(options),
-        ...held,
-      },
-      null,
-      2,
-    ) + "\n",
-  );
+  // Everything the verdict was computed from stays beside it, so `plan` and a later audit can
+  // compute it again instead of reading `passed` and believing it.
+  fs.writeFileSync(path.join(plane, TRANSCRIPT), kept.text);
+  fs.writeFileSync(path.join(plane, SHELL), kept.shell);
+  const record: ProbeRecord = {
+    trialId,
+    family: familyName,
+    language: found.spec.language,
+    variant: variant.name,
+    arm: "shadow",
+    at: new Date().toISOString(),
+    host: session.hostVersion(),
+    // The apparatus as it stood before the session, which the probe proved.
+    frozen: before,
+    suite,
+    workspace: room,
+    planted: planted.map((one) => ({ ...one })),
+    ...held,
+  };
+  fs.writeFileSync(path.join(plane, "probe.json"), JSON.stringify(record, null, 2) + "\n");
   for (const one of held.checks) {
     process.stdout.write((one.passed ? "ok   " : "FAIL ") + one.name + ": " + one.detail + "\n");
   }

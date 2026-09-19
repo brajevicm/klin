@@ -155,6 +155,26 @@ function confinement(
 }
 
 /**
+ * The confinement every trial of this round will run under, as one digest.
+ *
+ * The enumerated frozen values do not hold it. `KLIN_BENCH_WORK`, and `TMPDIR` when that is
+ * unset, move the root every workspace is materialized under, and that root is a `denyRead` rule,
+ * the placement of the subject's own repository, the owned-path test and the environment filter.
+ * A probe run under one work root would otherwise authorize a round run under another.
+ *
+ * The three per-trial paths are named rather than real, so the digest is a function of the rules
+ * and not of a trial. The work root is deliberately left as it stands, because it is one of the
+ * rules.
+ */
+export function confinementSha256(): string {
+  return sha256(
+    JSON.stringify(
+      confinement("<repo>", ["<plane>", paths.workRoot(), paths.REPO], ["<plane>", paths.REPO]),
+    ),
+  );
+}
+
+/**
  * One trial's copy of the hook wrapper, with the three values it must not name on a command line
  * substituted into it.
  *

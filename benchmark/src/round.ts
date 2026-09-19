@@ -10,7 +10,8 @@ export const LANGUAGES: FamilySpec["language"][] = ["typescript", "rust"];
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
-import { copyTree } from "./trees.ts";
+import * as forensic from "./forensic.ts";
+import { verifyProbe } from "./probe.ts";
 import * as toolchain from "./toolchain.ts";
 import * as workspace from "./workspace.ts";
 import {
@@ -36,6 +37,9 @@ import { validate, type RunRecord } from "./record.ts";
  * that is #115's.
  */
 
+/** Where a planned round keeps the probe evidence that authorized it. */
+export const PROBES = "probes";
+
 export const REPETITIONS: Record<VariantName, number> = { risk: 3, control: 1 };
 /** How many attempts one scheduled trial gets before the round stops for a person. */
 export const ATTEMPTS = 3;
@@ -60,6 +64,8 @@ export interface Frozen {
   protocol: number;
   schemaSha256: string;
   harness: { commit: string; dirty: boolean; treeSha256: string; hookSha256: string };
+  /** The sandbox and permission rules a trial runs under, including the work root they name. */
+  confinement: string;
   klin: { commit: string; version: string; binarySha256: string };
   toolchain: toolchain.Provenance;
   host: { name: string; version: string };
@@ -152,16 +158,22 @@ export function witnesses(
   const mine = probesUnder(directory).filter(
     (one) => one.frozen !== undefined && one.frozen !== null && drift(one.frozen, now).length === 0 && one.frozen.harness.dirty === false,
   );
+  // A probe's own word for its verdict is not evidence. Every probe at this apparatus is
+  // recomputed from what it kept, and one that cannot be recomputed is one that did not pass.
+  const unverifiable = new Map(mine.map((one) => [one.trialId, verifyProbe(one.directory)]));
   const found: Omit<Witness, "filesSha256">[] = [];
   const directories: string[] = [];
   const missing: string[] = [];
   for (const language of LANGUAGES) {
     const ours = mine.filter((one) => one.language === language).sort((a, b) => a.at.localeCompare(b.at));
-    const failed = ours.filter((one) => !one.passed);
-    const newest = ours.filter((one) => one.passed).at(-1);
+    const holds = (one: Probe): boolean => one.passed && (unverifiable.get(one.trialId) ?? []).length === 0;
+    const failed = ours.filter((one) => !holds(one));
+    const newest = ours.filter(holds).at(-1);
     if (failed.length > 0) {
+      const last = failed[failed.length - 1];
+      const why = unverifiable.get(last.trialId) ?? [];
       missing.push(
-        "the " + language + " probe " + failed[failed.length - 1].trialId + " failed at this apparatus, so the workspace is not proved",
+        "the " + language + " probe " + last.trialId + " does not hold at this apparatus: " + (why.length > 0 ? why[0] : "it records itself as failed"),
       );
       continue;
     }
@@ -301,6 +313,7 @@ export function frozen(options: session.SessionOptions): Frozen {
       version: session.klinVersion(options.klinBin),
       binarySha256: binary,
     },
+    confinement: workspace.confinementSha256(),
     toolchain: toolchain.frozen(),
     host: { name: "claude-code", version: session.hostVersion() },
     model: options.model,
@@ -310,6 +323,40 @@ export function frozen(options: session.SessionOptions): Frozen {
     machine: { platform: os.platform(), release: os.release(), arch: os.arch(), node: process.version },
     fixtures: fixtures(),
   };
+}
+
+/**
+ * Whether the probe evidence the manifest names is still the evidence beside it.
+ *
+ * The manifest holds a digest of each copied probe directory, and this recomputes it. Without
+ * this the digests are syntax and nothing more, and an edited or emptied probe directory would
+ * run a round that claims to be authorized by it.
+ */
+export function probeEvidenceProblems(directory: string, held: Manifest): string[] {
+  const problems: string[] = [];
+  for (const one of held.probes ?? []) {
+    const kept = path.join(directory, PROBES, one.trialId);
+    if (!fs.existsSync(kept)) {
+      problems.push("the probe evidence for " + one.trialId + " is not under " + PROBES + "/");
+      continue;
+    }
+    let now = "";
+    try {
+      now = forensic.digest(kept);
+    } catch (why) {
+      problems.push("the probe evidence for " + one.trialId + " cannot be read: " + String(why));
+      continue;
+    }
+    if (now !== one.filesSha256) {
+      problems.push("the probe evidence for " + one.trialId + " is " + now + " and the manifest names " + one.filesSha256);
+    }
+    const file = path.join(kept, "probe.json");
+    const said = fs.existsSync(file) ? sha256(fs.readFileSync(file)) : "";
+    if (said !== one.sha256) {
+      problems.push("the probe.json for " + one.trialId + " is " + (said || "absent") + " and the manifest names " + one.sha256);
+    }
+  }
+  return problems;
 }
 
 /** The values two frozen readings disagree on, as sentences. */
@@ -322,6 +369,7 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     ["the harness commit", held.harness.commit],
     ["the harness tree", held.harness.treeSha256],
     ["the hook wrapper", held.harness.hookSha256],
+    ["the confinement", held.confinement],
     ["the harness clean state", String(held.harness.dirty)],
     ["the host version", held.host.version],
     ["the requested model", held.model],
@@ -708,11 +756,6 @@ export function plan(into: string, seed: number, probes = path.join(paths.RUNS, 
     );
     return 2;
   }
-  const unsound = manifestProblems(held);
-  if (unsound.length > 0) {
-    process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
-    return 2;
-  }
   const departures = uncommitted(identityOf(held));
   if (departures.length > 0) {
     process.stdout.write("the plan is not the committed protocol: " + departures.join("; ") + "\n");
@@ -729,13 +772,14 @@ export function plan(into: string, seed: number, probes = path.join(paths.RUNS, 
   // The probe evidence travels with the round it authorized: the run directory is what
   // `evidence-prepare` archives and hashes, and a probe left under `runs/probe` is not in it.
   held.probes = proved.found.map((one, at) => {
-    const kept = path.join(into, "probes", one.trialId);
-    copyTree(proved.directories[at], kept);
-    return { ...one, filesSha256: digest(kept) };
+    const kept = path.join(into, PROBES, one.trialId);
+    forensic.copy(proved.directories[at], kept);
+    return { ...one, filesSha256: forensic.digest(kept) };
   });
-  const unproved = probeProblems(held);
-  if (unproved.length > 0) {
-    process.stdout.write("the plan does not carry its probes: " + unproved.join("; ") + "\n");
+  const unsound = manifestProblems(held);
+  if (unsound.length > 0) {
+    fs.rmSync(path.join(into, PROBES), { recursive: true, force: true });
+    process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
     return 2;
   }
   const bytes = JSON.stringify(held, null, 2) + "\n";
@@ -850,7 +894,11 @@ export function execute(directory: string, approved: string): number {
     process.stdout.write(blocked + "\n");
     return 2;
   }
-  const moved = [...drift(manifest.frozen, frozen(known)), ...uncommitted(identityOf(manifest))];
+  const moved = [
+    ...probeEvidenceProblems(directory, manifest),
+    ...drift(manifest.frozen, frozen(known)),
+    ...uncommitted(identityOf(manifest)),
+  ];
   if (moved.length > 0) {
     process.stdout.write("refusing to start: " + moved.join("; ") + "\n");
     return 2;
@@ -941,7 +989,7 @@ export function verify(directory: string): string[] {
     return ["no manifest.json under " + directory];
   }
   const manifest = readManifest(directory).value;
-  const problems = manifestProblems(manifest);
+  const problems = [...manifestProblems(manifest), ...probeEvidenceProblems(directory, manifest)];
   if (!manifest.frozen || !Array.isArray(manifest.order)) {
     return problems;
   }

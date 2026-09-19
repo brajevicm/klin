@@ -643,20 +643,45 @@ passing probe per language under `benchmark/runs/probe`.
 A probe counts only when the whole apparatus it ran under is the apparatus the
 plan freezes. The same `drift` reading that stops a block mid-round compares the
 probe's frozen values with the plan's: the klin binary and its source commit,
-the harness commit, tree and hook wrapper, the host, the model, the flags, the
-configuration, the memory, the schema, the protocol, the machine and every
-fixture identity. The probe's own harness must have been clean. So a probe that
-ran before a repaired fixture, a changed `host/hook` or another binary proves
-nothing about this round. A failed probe at that same apparatus refuses its
-language outright, because probe ids are random and a newer failure must not be
-passed over for an older pass beside it.
+the harness commit, tree and hook wrapper, the confinement, the host, the model,
+the flags, the configuration, the memory, the schema, the protocol, the machine
+and every fixture identity. The probe's own harness must have been clean. So a
+probe that ran before a repaired fixture, a changed `host/hook` or another
+binary proves nothing about this round.
+
+`confinement` is the sandbox and permission rules themselves, digested with the
+work root they name. `KLIN_BENCH_WORK`, and `TMPDIR` when that is unset, move
+the root every workspace is materialized under, which is a `denyRead` rule, the
+placement of the subject's own repository, the owned-path test and the
+environment filter. Without that digest a probe run under one work root would
+authorize a round run under another.
+
+A probe also reads the apparatus before it materializes anything and again when
+the session ends, and records `the-apparatus-held-still`. A session takes
+minutes, and a binary or fixture that moved while one ran would otherwise be
+recorded as the apparatus the probe proved.
+
+Nothing takes a probe's word for its own verdict. `verifyProbe` recomputes every
+check from what the probe kept beside it, the transcript, the shell output, the
+planted tokens, the guard's hook evidence and the witness payloads, and holds
+the result to what the probe recorded. A probe that kept too little to recompute
+is not a probe that passed. A probe that does not hold refuses its language
+outright, because probe ids are random and a newer failure must not be passed
+over for an older pass beside it.
 
 `plan` copies each named probe directory into `<round>/probes/<trial>`, so the
-probe evidence, hook evidence and all, is in what `evidence-prepare` archives
-and hashes. The manifest names each probe by trial id, the digest of its
-`probe.json` and the digest of that copy. `execute` and `verify` read one
-validation: exactly one witness per language, a family the catalogue has, a
-language that family speaks, and two digests that are digests. It prints the file's digest and
+probe evidence, hook evidence and all, travels with the round.
+`evidence-prepare` copies it into the slim package beside the attempts, hashes
+it into `files.sha256` and keeps it out of the attempt set. The copy and the
+digest are `src/forensic.ts`, not the source-tree helpers: evidence has to
+answer what was on disk, so nothing is skipped and a symbolic link or a device
+node is refused rather than quietly left out.
+
+The manifest names each probe by trial id, the digest of its `probe.json` and
+the digest of that copy. `execute` and `verify` recompute both digests against
+the evidence in the round, and read one shared validation of the witnesses:
+exactly one per language, a family the catalogue has, a language that family
+speaks, and two digests that are digests. It prints the file's digest and
 exits. It refuses a harness with uncommitted changes, because a round is frozen
 against a commit. The owner reviews the file, records the digest in the issue
 and changes the label. Nothing has been paid for yet.
@@ -729,6 +754,7 @@ benchmark/
   fixtures/<family>/     base/, risk/, control/, each with prompt, overlay,
                          oracle and one directory per declared exemplar tree
   runs/                  ephemeral live control plane, and where records land
+  runs/<round>/probes/   the probe evidence that authorized the planned round
   evidence/              committed slim evidence and its descriptors
   external archive       full forensic evidence, bound by evidence.json
 ```
