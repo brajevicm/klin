@@ -7,7 +7,7 @@ import * as paths from "../src/paths.ts";
 import * as session from "../src/session.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { families } from "../src/catalogue.ts";
-import { digest, sha256 } from "../src/trees.ts";
+import { sha256 } from "../src/trees.ts";
 import * as forensic from "../src/forensic.ts";
 import { hookEvidence } from "../src/session.ts";
 import { judge, suiteChecks, suiteShellCommand, verifyProbe, witnessed } from "../src/probe.ts";
@@ -453,20 +453,8 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.match(unproved.wrote, /no passing typescript probe/);
     assert.match(unproved.wrote, /no passing rust probe/);
     assert.equal(fs.existsSync(path.join(where, "manifest.json")), false, "an unproved workspace plans nothing");
-    for (const [language, family] of [["typescript", "complexity"], ["rust", "dead-symbols"]]) {
-      fs.mkdirSync(path.join(probes, "probe-" + language, "hooks"), { recursive: true });
-      fs.writeFileSync(path.join(probes, "probe-" + language, "hooks", "payload.json"), "{}\n");
-      fs.writeFileSync(
-        path.join(probes, "probe-" + language, "probe.json"),
-        JSON.stringify({
-          trialId: "probe-" + language,
-          family,
-          language,
-          at: "2026-09-19T12:00:00.000Z",
-          frozen: now,
-          passed: true,
-        }),
-      );
+    for (const language of ["typescript", "rust"]) {
+      probeOnDisk(probes, "probe-" + language, language, true, now, "2026-09-19T12:00:00.000Z");
     }
     const first = quiet(() => plan(where, 1, probes));
     assert.equal(first.value, 0, first.wrote);
@@ -493,8 +481,9 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.deepEqual(held.probes.map((one) => one.language).sort(), ["rust", "typescript"]);
     for (const one of held.probes) {
       const kept = path.join(where, "probes", one.trialId);
-      assert.ok(fs.existsSync(path.join(kept, "hooks", "payload.json")), "the probe's own evidence travels with the round");
-      assert.equal(one.filesSha256, digest(kept));
+      assert.ok(fs.existsSync(path.join(kept, "hooks", "0000-1", "payload.json")), "the probe's own evidence travels with the round");
+      assert.equal(one.filesSha256, forensic.digest(kept));
+      assert.equal(one.sha256, sha256(fs.readFileSync(path.join(kept, "probe.json"))));
     }
     assert.deepEqual(fs.readdirSync(where).sort(), ["manifest.json", "probes"], "a plan writes the manifest and the probe evidence it names");
     const again = quiet(() => plan(where, 1, probes));
@@ -671,7 +660,7 @@ test("a probe that kept no evidence proves nothing, whatever its own verdict say
   probeOnDisk(root, "probe-a", "typescript", true, now, "2026-09-19T10:00:00Z");
   assert.deepEqual(verifyProbe(path.join(root, "probe-a")), []);
   for (const [what, spoil, expected] of [
-    ["no transcript", () => fs.rmSync(path.join(root, "probe-a", "transcript.txt")), /kept no the transcript|kept no transcript/],
+    ["no transcript", () => fs.rmSync(path.join(root, "probe-a", "transcript.txt")), /kept no transcript/],
     ["no hook evidence", () => fs.rmSync(path.join(root, "probe-a", "hooks"), { recursive: true }), /suite-invoked-first|kept no/],
     ["no witness", () => fs.rmSync(path.join(root, "probe-a", "witness"), { recursive: true }), /suite-green-inside/],
   ] as [string, () => void, RegExp][]) {

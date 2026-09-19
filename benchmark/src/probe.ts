@@ -448,7 +448,7 @@ export function verifyProbe(directory: string): string[] {
   }
   const text = path.join(directory, TRANSCRIPT);
   const shell = path.join(directory, SHELL);
-  for (const [what, one] of [["the transcript", text], ["the shell output", shell], ["the hook evidence", path.join(directory, "hooks")]] as [string, string][]) {
+  for (const [what, one] of [["transcript", text], ["shell output", shell], ["hook evidence", path.join(directory, "hooks")]] as [string, string][]) {
     if (!fs.existsSync(one)) {
       return [held.trialId + " kept no " + what + ", so its verdict cannot be recomputed"];
     }
