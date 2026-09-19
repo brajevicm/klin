@@ -11,7 +11,7 @@ import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
 import * as forensic from "./forensic.ts";
-import { verifyProbe } from "./probe.ts";
+import { ID, verifyProbe } from "./probe.ts";
 import { drift, fixtures, frozen, type Frozen } from "./frozen.ts";
 
 export { drift, fixtures, frozen, type Frozen } from "./frozen.ts";
@@ -139,18 +139,18 @@ export function witnesses(
   );
   // A probe's own word for its verdict is not evidence. Every probe at this apparatus is
   // recomputed from what it kept, and one that cannot be recomputed is one that did not pass.
-  const unverifiable = new Map(mine.map((one) => [one.trialId, verifyProbe(one.directory)]));
+  const unverifiable = new Map(mine.map((one) => [one.directory, verifyProbe(one.directory)]));
   const found: Omit<Witness, "filesSha256">[] = [];
   const directories: string[] = [];
   const missing: string[] = [];
   for (const language of LANGUAGES) {
     const ours = mine.filter((one) => one.language === language).sort((a, b) => a.at.localeCompare(b.at));
-    const holds = (one: Probe): boolean => one.passed && (unverifiable.get(one.trialId) ?? []).length === 0;
+    const holds = (one: Probe): boolean => one.passed && (unverifiable.get(one.directory) ?? []).length === 0;
     const failed = ours.filter((one) => !holds(one));
     const newest = ours.filter(holds).at(-1);
     if (failed.length > 0) {
       const last = failed[failed.length - 1];
-      const why = unverifiable.get(last.trialId) ?? [];
+      const why = unverifiable.get(last.directory) ?? [];
       missing.push(
         "the " + language + " probe " + last.trialId + " does not hold at this apparatus: " + (why.length > 0 ? why[0] : "it records itself as failed"),
       );
@@ -578,8 +578,11 @@ export function probeProblems(held: Manifest): string[] {
     if (family.spec.language !== one.language) {
       problems.push("the probe " + String(one.trialId) + " states " + String(one.language) + " and " + one.family + " is " + family.spec.language);
     }
-    if (typeof one.trialId !== "string" || one.trialId === "") {
-      problems.push("a probe witness states no trial id");
+    if (typeof one.trialId !== "string" || !ID.test(one.trialId)) {
+      problems.push("the probe witness " + JSON.stringify(String(one.trialId)) + " is not a production probe id");
+    }
+    if (kept.filter((other) => other.trialId === one.trialId).length > 1) {
+      problems.push("two probe witnesses claim the id " + String(one.trialId));
     }
     for (const [what, value] of [["probe.json", one.sha256], ["probe directory", one.filesSha256]]) {
       if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) {
@@ -600,6 +603,10 @@ export function probeProblems(held: Manifest): string[] {
 export function probeEvidenceProblems(directory: string, held: Manifest): string[] {
   const problems: string[] = [];
   for (const one of held.probes ?? []) {
+    if (!ID.test(String(one.trialId))) {
+      problems.push("the probe witness " + JSON.stringify(String(one.trialId)) + " is not a production probe id");
+      continue;
+    }
     const kept = path.join(directory, PROBES, one.trialId);
     if (!fs.existsSync(kept)) {
       problems.push("the probe evidence for " + one.trialId + " is not under " + PROBES + "/");
@@ -669,8 +676,14 @@ export function plan(into: string, seed: number, probes = path.join(paths.RUNS, 
   fs.mkdirSync(into, { recursive: true });
   // The probe evidence travels with the round it authorized: the run directory is what
   // `evidence-prepare` archives and hashes, and a probe left under `runs/probe` is not in it.
+  const root = path.resolve(into, PROBES);
   held.probes = proved.found.map((one, at) => {
-    const kept = path.join(into, PROBES, one.trialId);
+    const kept = path.resolve(root, one.trialId);
+    // The id is a directory name, and `forensic.copy` removes what it writes over. An id holding
+    // a path would otherwise reach outside the round it is supposed to be evidence in.
+    if (!ID.test(one.trialId) || path.dirname(kept) !== root) {
+      throw new Error("the probe id " + JSON.stringify(one.trialId) + " is not a directory name");
+    }
     forensic.copy(proved.directories[at], kept);
     return { ...one, filesSha256: forensic.digest(kept) };
   });

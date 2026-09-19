@@ -25,6 +25,16 @@ export interface Frozen {
   harness: { commit: string; dirty: boolean; treeSha256: string; hookSha256: string };
   /** The sandbox and permission rules a trial runs under, including the work root they name. */
   confinement: string;
+  /**
+   * The process a subject actually runs in: the sanitized environment it is handed, the wall
+   * clock and budget it runs under, and which configuration root it reads.
+   *
+   * The confinement digest holds the rules and this holds the rest. `CARGO_TARGET_DIR` sends a
+   * Rust build outside the repository the sandbox allows, `PATH` and the toolchain homes decide
+   * which compiler runs at all, and a shorter timeout ends a session the probe's own timeout let
+   * finish. A probe run under one of these cannot authorize a round run under another.
+   */
+  execution: string;
   klin: { commit: string; version: string; binarySha256: string };
   toolchain: toolchain.Provenance;
   host: { name: string; version: string };
@@ -85,6 +95,14 @@ export function frozen(options: session.SessionOptions): Frozen {
       binarySha256: binary,
     },
     confinement: workspace.confinementSha256(),
+    execution: sha256(
+      JSON.stringify([
+        Object.entries(session.withoutKlin()).sort((a, b) => a[0].localeCompare(b[0])),
+        options.timeoutMs,
+        options.budgetUsd,
+        options.configRoot === "" ? "" : sha256(options.configRoot),
+      ]),
+    ),
     toolchain: toolchain.frozen(),
     host: { name: "claude-code", version: session.hostVersion() },
     model: options.model,
@@ -107,6 +125,7 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     ["the harness tree", held.harness.treeSha256],
     ["the hook wrapper", held.harness.hookSha256],
     ["the confinement", held.confinement],
+    ["the execution environment", held.execution],
     ["the harness clean state", String(held.harness.dirty)],
     ["the host version", held.host.version],
     ["the requested model", held.model],

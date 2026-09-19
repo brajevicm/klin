@@ -10,7 +10,8 @@ import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
 import * as forensic from "../src/forensic.ts";
 import { hookEvidence } from "../src/session.ts";
-import { judge, suiteChecks, suiteShellCommand, verifyProbe, witnessed } from "../src/probe.ts";
+import { judge, ownedPaths, suiteChecks, suiteShellCommand, verifyProbe, witnessed } from "../src/probe.ts";
+import { suiteCommand } from "../src/selftest.ts";
 import {
   ATTEMPTS,
   FLOOR,
@@ -196,8 +197,8 @@ function write(where: string, record: RunRecord): void {
 /** The two probe witnesses a planned round carries, as `plan` records them. */
 function witnessesFor(): Manifest["probes"] {
   return [
-    { trialId: "probe-a", family: "complexity", language: "typescript", sha256: "a".repeat(64), filesSha256: "b".repeat(64) },
-    { trialId: "probe-b", family: "dead-symbols", language: "rust", sha256: "c".repeat(64), filesSha256: "d".repeat(64) },
+    { trialId: "probe-0000000a", family: "complexity", language: "typescript", sha256: "a".repeat(64), filesSha256: "b".repeat(64) },
+    { trialId: "probe-0000000b", family: "dead-symbols", language: "rust", sha256: "c".repeat(64), filesSha256: "d".repeat(64) },
   ];
 }
 
@@ -208,7 +209,7 @@ function plantProbes(where: string): Manifest["probes"] {
     ["typescript", "complexity"],
     ["rust", "dead-symbols"],
   ].map(([language, family]) => {
-    const trialId = "probe-" + language;
+    const trialId = language === "rust" ? "probe-22222222" : "probe-11111111";
     probeOnDisk(root, trialId, language, true, frozenFor(), "2026-09-19T10:00:00Z");
     const kept = path.join(root, trialId);
     return {
@@ -454,7 +455,7 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.match(unproved.wrote, /no passing rust probe/);
     assert.equal(fs.existsSync(path.join(where, "manifest.json")), false, "an unproved workspace plans nothing");
     for (const language of ["typescript", "rust"]) {
-      probeOnDisk(probes, "probe-" + language, language, true, now, "2026-09-19T12:00:00.000Z");
+      probeOnDisk(probes, language === "rust" ? "probe-22222222" : "probe-11111111", language, true, now, "2026-09-19T12:00:00.000Z");
     }
     const first = quiet(() => plan(where, 1, probes));
     assert.equal(first.value, 0, first.wrote);
@@ -520,7 +521,7 @@ test("execute refuses a round whose frozen values moved, before any record exist
     fs.writeFileSync(path.join(where, "manifest.json"), edited);
     const changed = quiet(() => execute(where, sha256(edited)));
     assert.equal(changed.value, 2);
-    assert.match(changed.wrote, /probe evidence for probe-typescript is/);
+    assert.match(changed.wrote, /probe evidence for probe-11111111 is/);
     const unproved = JSON.stringify({ ...manifestFor(1), probes: [witnessesFor()[0]] }) + "\n";
     fs.writeFileSync(path.join(where, "manifest.json"), unproved);
     const refused = quiet(() => execute(where, sha256(unproved)));
@@ -598,8 +599,10 @@ function writeHook(hooks: string, name: string, payload: Record<string, unknown>
 }
 
 /**
- * A whole probe on disk, at the apparatus `held` describes: the plane's hook evidence, the
- * witness payload, the transcript, the shell output and the planted token.
+ * A whole probe on disk, at the apparatus `held` describes and under the contract the harness
+ * owes: the control variant of a real family, its own suite command, the three planted
+ * boundaries, the plane's hook evidence, the witness payload, the transcript and the shell
+ * output.
  *
  * The recorded checks are the ones the real functions compute over this evidence, because a
  * fixture that recorded a verdict its own evidence does not give would be a fixture of the bug
@@ -607,14 +610,22 @@ function writeHook(hooks: string, name: string, payload: Record<string, unknown>
  */
 function probeOnDisk(root: string, id: string, language: string, passed: boolean, held: Frozen, at: string): void {
   const family = language === "rust" ? "dead-symbols" : "complexity";
-  const suite = language === "rust" ? ["cargo", "test", "--offline", "--quiet"] : ["npm", "test", "--silent"];
-  const repo = "/tmp/klin-bench-work/" + id + "/repo";
-  const planted = [{ name: "control-plane", file: "/plane/" + id + "/sentinel.txt", token: "klin-probe-" + id }];
+  const suite = suiteCommand(language as "rust" | "typescript", path.join(paths.FIXTURES, family, "base"))!;
+  const repo = path.join(paths.workRoot(), id, "repo");
   const directory = path.join(root, id);
+  const planted = [
+    { name: "control-plane", file: path.join(paths.RUNS, "probe", id, "sentinel.txt"), token: "klin-probe-" + id + "-a" },
+    { name: "workspace-root", file: path.join(paths.workRoot(), "sentinel.txt"), token: "klin-probe-" + id + "-b" },
+    { name: "harness-records", file: path.join(paths.RUNS, "sentinel.txt"), token: "klin-probe-" + id + "-c" },
+  ];
   const hooks = path.join(directory, "hooks");
   const command = suiteShellCommand(suite);
   writeHook(hooks, "0000-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
-  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "cat '" + planted[0].file + "'" } });
+  writeHook(hooks, "0001-1", {
+    hook_event_name: "PreToolUse",
+    tool_name: "Bash",
+    tool_input: { command: planted.map((one) => "cat '" + one.file + "'").join("; ") },
+  });
   fs.mkdirSync(path.join(directory, "witness"), { recursive: true });
   fs.writeFileSync(
     path.join(directory, "witness", "0000-1.json"),
@@ -628,13 +639,15 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
     }),
   );
   const transcript = "HOME=/home/someone\nPATH=/usr/bin:/bin\nOperation not permitted\n";
-  const shell = "cat: " + planted[0].file + ": Operation not permitted\n";
+  const shell = planted.map((one) => "cat: " + one.file + ": Operation not permitted").join("\n") + "\n";
   fs.writeFileSync(path.join(directory, "transcript.txt"), transcript);
   fs.writeFileSync(path.join(directory, "shell.txt"), shell);
   const evidence = hookEvidence(hooks);
+  const mine = [path.join(paths.workRoot(), id)];
   const checks = [
     ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, witnessed(path.join(directory, "witness"))),
-    ...judge(transcript, planted, evidence, shell, [], []).checks,
+    ...judge(transcript, planted, evidence, shell, ownedPaths(), mine).checks,
+    { name: "the-apparatus-held-still", passed: true, detail: "" },
   ];
   fs.writeFileSync(
     path.join(directory, "probe.json"),
@@ -642,11 +655,14 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
       trialId: id,
       family,
       language,
+      variant: "control",
+      arm: "shadow",
       at,
       host: "2.1.276 (Claude Code)",
       frozen: held,
+      frozenAfter: held,
       suite,
-      workspace: { repo, owned: [], mine: [] },
+      workspace: { repo, owned: ownedPaths(), mine },
       planted,
       checks,
       passed: passed && checks.every((one) => one.passed),
@@ -657,50 +673,111 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
 test("a probe that kept no evidence proves nothing, whatever its own verdict says", () => {
   const root = room();
   const now = frozenFor();
-  probeOnDisk(root, "probe-a", "typescript", true, now, "2026-09-19T10:00:00Z");
-  assert.deepEqual(verifyProbe(path.join(root, "probe-a")), []);
+  probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  assert.deepEqual(verifyProbe(path.join(root, "probe-0000000a")), []);
   for (const [what, spoil, expected] of [
-    ["no transcript", () => fs.rmSync(path.join(root, "probe-a", "transcript.txt")), /kept no transcript/],
-    ["no hook evidence", () => fs.rmSync(path.join(root, "probe-a", "hooks"), { recursive: true }), /suite-invoked-first|kept no/],
-    ["no witness", () => fs.rmSync(path.join(root, "probe-a", "witness"), { recursive: true }), /suite-green-inside/],
+    ["no transcript", () => fs.rmSync(path.join(root, "probe-0000000a", "transcript.txt")), /kept no transcript/],
+    ["no hook evidence", () => fs.rmSync(path.join(root, "probe-0000000a", "hooks"), { recursive: true }), /suite-invoked-first|kept no/],
+    ["no witness", () => fs.rmSync(path.join(root, "probe-0000000a", "witness"), { recursive: true }), /suite-green-inside/],
   ] as [string, () => void, RegExp][]) {
     const where = room();
-    probeOnDisk(where, "probe-a", "typescript", true, now, "2026-09-19T10:00:00Z");
-    fs.cpSync(path.join(where, "probe-a"), path.join(root, "probe-a"), { recursive: true, force: true });
+    probeOnDisk(where, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+    fs.cpSync(path.join(where, "probe-0000000a"), path.join(root, "probe-0000000a"), { recursive: true, force: true });
     spoil();
-    const problems = verifyProbe(path.join(root, "probe-a"));
+    const problems = verifyProbe(path.join(root, "probe-0000000a"));
     assert.ok(problems.some((one) => expected.test(one)), what + ": " + problems.join(" / "));
     assert.deepEqual(witnesses(root, now).found, [], what + " must not authorize a round");
   }
 });
 
 /** A probe's own `passed` is a claim, and the evidence beside it is what answers. */
+/**
+ * The contract is the harness's, not the probe's. A probe that planted one boundary instead of
+ * three, or ran a suite of its own choosing, satisfied a smaller contract than it owed.
+ */
+test("a probe that satisfied a smaller contract than it owed is refused", () => {
+  const now = frozenFor();
+  const spoil = (change: (held: Record<string, unknown>) => void): string[] => {
+    const root = room();
+    probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+    const file = path.join(root, "probe-0000000a", "probe.json");
+    const held = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+    change(held);
+    fs.writeFileSync(file, JSON.stringify(held));
+    const problems = verifyProbe(path.join(root, "probe-0000000a"));
+    assert.deepEqual(witnesses(root, now).found, [], "a probe under a smaller contract must not authorize a round");
+    return problems;
+  };
+  for (const [what, change, expected] of [
+    ["one boundary short", (held) => { (held.planted as unknown[]).splice(1, 1); }, /planted no token in the workspace-root/],
+    ["a suite of its own", (held) => { held.suite = ["true"]; }, /the family's own suite is/],
+    ["an emptied owned list", (held) => { (held.workspace as { owned: string[] }).owned = []; }, /judged its environment against/],
+    ["an emptied workspace list", (held) => { (held.workspace as { mine: string[] }).mine = []; }, /which is not the workspace it ran in/],
+    ["the risk variant", (held) => { held.variant = "risk"; }, /a probe runs the control variant/],
+    ["the active arm", (held) => { held.arm = "active"; }, /a probe runs the shadow arm/],
+    ["one reading of the apparatus", (held) => { delete held.frozenAfter; }, /kept one reading of the apparatus/],
+    ["an id that is not its directory", (held) => { held.trialId = "probe-0000000b"; }, /is not this directory's own production id/],
+  ] as [string, (held: Record<string, unknown>) => void, RegExp][]) {
+    const problems = spoil(change);
+    assert.ok(problems.some((one) => expected.test(one)), what + ": " + problems.join(" / "));
+  }
+});
+
+/** A probe whose two readings of the apparatus differ ran under an apparatus that moved. */
+test("a probe whose apparatus moved while the session ran is refused", () => {
+  const now = frozenFor();
+  const root = room();
+  probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  const file = path.join(root, "probe-0000000a", "probe.json");
+  const held = JSON.parse(fs.readFileSync(file, "utf8")) as { frozenAfter: Frozen };
+  held.frozenAfter = { ...now, klin: { ...now.klin, binarySha256: "another" } };
+  fs.writeFileSync(file, JSON.stringify(held));
+  const problems = verifyProbe(path.join(root, "probe-0000000a"));
+  assert.ok(problems.some((one) => /the-apparatus-held-still/.test(one)), problems.join(" / "));
+  assert.deepEqual(witnesses(root, now).found, []);
+});
+
+/** A probe id names a directory. One holding a path would reach outside the round's evidence. */
+test("a probe id that is not a production id never reaches a copy", () => {
+  for (const id of ["../escape", "probe-zz", "", "probe-0000000a/.."]) {
+    const held = manifestFor(1);
+    held.probes![0].trialId = id;
+    assert.ok(
+      probeProblems(held).some((one) => /is not a production probe id/.test(one)),
+      id + " must be refused: " + probeProblems(held).join(" / "),
+    );
+  }
+  const twice = manifestFor(1);
+  twice.probes![1] = { ...twice.probes![0] };
+  assert.ok(probeProblems(twice).some((one) => /two probe witnesses claim the id/.test(one)));
+});
+
 test("a probe claiming to pass on evidence that fails is refused", () => {
   const root = room();
   const now = frozenFor();
-  probeOnDisk(root, "probe-a", "typescript", true, now, "2026-09-19T10:00:00Z");
-  const file = path.join(root, "probe-a", "witness", "0000-1.json");
+  probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  const file = path.join(root, "probe-0000000a", "witness", "0000-1.json");
   const payload = JSON.parse(fs.readFileSync(file, "utf8")) as { tool_response: { stdout: string } };
   payload.tool_response.stdout = payload.tool_response.stdout.replace("status=0", "status=1");
   fs.writeFileSync(file, JSON.stringify(payload));
-  assert.ok(verifyProbe(path.join(root, "probe-a")).some((one) => /suite-green-inside/.test(one)));
+  assert.ok(verifyProbe(path.join(root, "probe-0000000a")).some((one) => /suite-green-inside/.test(one)));
   assert.deepEqual(witnesses(root, now).found, []);
 });
 
 test("a probe proves a round only when its whole apparatus is the round's", () => {
   const root = room();
   const now = frozenFor();
-  probeOnDisk(root, "probe-a", "typescript", true, now, "2026-09-19T10:00:00Z");
-  probeOnDisk(root, "probe-b", "rust", true, now, "2026-09-19T10:00:00Z");
+  probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  probeOnDisk(root, "probe-0000000b", "rust", true, now, "2026-09-19T10:00:00Z");
   assert.deepEqual(witnesses(root, now).missing, []);
-  assert.deepEqual(witnesses(root, now).found.map((one) => one.trialId).sort(), ["probe-a", "probe-b"]);
+  assert.deepEqual(witnesses(root, now).found.map((one) => one.trialId).sort(), ["probe-0000000a", "probe-0000000b"]);
 
   const moved = (change: (held: Frozen) => void): string[] => {
     const held = frozenFor();
     change(held);
     const where = room();
-    probeOnDisk(where, "probe-a", "typescript", true, held, "2026-09-19T10:00:00Z");
-    probeOnDisk(where, "probe-b", "rust", true, held, "2026-09-19T10:00:00Z");
+    probeOnDisk(where, "probe-0000000a", "typescript", true, held, "2026-09-19T10:00:00Z");
+    probeOnDisk(where, "probe-0000000b", "rust", true, held, "2026-09-19T10:00:00Z");
     return witnesses(where, now).missing;
   };
   for (const [what, change] of [
@@ -708,6 +785,7 @@ test("a probe proves a round only when its whole apparatus is the round's", () =
     ["a changed harness commit", (held: Frozen) => { held.harness.commit = "other"; }],
     ["a repaired fixture", (held: Frozen) => { held.fixtures.stubs.fixtureSha256 = "other"; }],
     ["another work root", (held: Frozen) => { held.confinement = "other"; }],
+    ["another subject environment", (held: Frozen) => { held.execution = "other"; }],
     ["another klin binary", (held: Frozen) => { held.klin.binarySha256 = "other"; }],
     ["a dirty harness", (held: Frozen) => { held.harness.dirty = true; }],
   ] as [string, (held: Frozen) => void][]) {
@@ -719,23 +797,23 @@ test("a probe proves a round only when its whole apparatus is the round's", () =
 test("a failed probe at this apparatus refuses its language, whatever sits beside it", () => {
   const now = frozenFor();
   const root = room();
-  probeOnDisk(root, "zzz-older", "typescript", true, now, "2026-09-19T09:00:00Z");
-  probeOnDisk(root, "aaa-newer", "typescript", false, now, "2026-09-19T11:00:00Z");
-  probeOnDisk(root, "probe-b", "rust", true, now, "2026-09-19T10:00:00Z");
+  probeOnDisk(root, "probe-000000f0", "typescript", true, now, "2026-09-19T09:00:00Z");
+  probeOnDisk(root, "probe-000000f1", "typescript", false, now, "2026-09-19T11:00:00Z");
+  probeOnDisk(root, "probe-0000000b", "rust", true, now, "2026-09-19T10:00:00Z");
   const held = witnesses(root, now);
   assert.deepEqual(held.found.map((one) => one.language), ["rust"]);
-  assert.match(held.missing[0], /aaa-newer does not hold/);
+  assert.match(held.missing[0], /probe-000000f1 does not hold/);
 
   const two = room();
-  probeOnDisk(two, "zzz-older", "rust", true, now, "2026-09-19T09:00:00Z");
-  probeOnDisk(two, "aaa-newer", "rust", true, now, "2026-09-19T11:00:00Z");
-  assert.deepEqual(witnesses(two, now).found.map((one) => one.trialId), ["aaa-newer"]);
+  probeOnDisk(two, "probe-000000f0", "rust", true, now, "2026-09-19T09:00:00Z");
+  probeOnDisk(two, "probe-000000f1", "rust", true, now, "2026-09-19T11:00:00Z");
+  assert.deepEqual(witnesses(two, now).found.map((one) => one.trialId), ["probe-000000f1"]);
 });
 
 test("a manifest whose probe witnesses do not hold is refused by execute and verify", () => {
   const cases: [string, (held: Manifest) => void, RegExp][] = [
     ["no probes at all", (held) => { held.probes = []; }, /names 0 passing typescript probes/],
-    ["two probes for one language", (held) => { held.probes = [held.probes![0], { ...held.probes![0], trialId: "probe-c" }]; }, /names 2 passing typescript probes/],
+    ["two probes for one language", (held) => { held.probes = [held.probes![0], { ...held.probes![0], trialId: "probe-0000000c" }]; }, /names 2 passing typescript probes/],
     ["a family the catalogue has not", (held) => { held.probes![0].family = "nowhere"; }, /names no family the catalogue has/],
     ["a language the family does not speak", (held) => { held.probes![0].family = "stubs"; }, /states typescript and stubs is rust/],
     ["a digest that is not one", (held) => { held.probes![1].sha256 = "p"; }, /states no probe\.json digest/],

@@ -180,7 +180,9 @@ calibration trial keeps the opposite rule, and an unexpected outside path
 invalidates it.
 
 The prompt's first step runs the project's own suite, `npm test` or
-`cargo test`, from the subject's repository. The probe uses the control
+`cargo test`, from the subject's repository. Nothing is redirected into the
+tree, because a redirection creates and truncates its file before the suite
+starts, and the suite has to run against the tree the subject was given. The probe uses the control
 variant, because every control starting tree is green, so a red suite is the
 boundary's doing. #252 found a whole round where the boundary refused the
 subject's own build.
@@ -197,8 +199,9 @@ answer instead:
 - the probe's witness hook, `host/witness`. The probe alone wires a `PostToolUse`
   hook to it, and it records the host's own payload into the plane. The suite
   command ends by printing one `klin-probe-suite status=... cwd=... build=...`
-  line, so the exit status, the directory the shell stood in and the Rust build
-  output reach the plane as the host reported them.
+  line, so the suite's own output, its exit status, the directory the shell
+  stood in and the Rust build output all reach the plane as the host reported
+  them.
 
 A subject cannot forge either one. The witnessed command has to be the exact
 suite command to count, and running that command runs the suite. The witness
@@ -649,6 +652,12 @@ and every fixture identity. The probe's own harness must have been clean. So a
 probe that ran before a repaired fixture, a changed `host/hook` or another
 binary proves nothing about this round.
 
+`execution` is the process a subject runs in: the sanitized environment the host
+is handed, the wall clock and the budget per trial, and which configuration root
+it reads. `CARGO_TARGET_DIR` sends a Rust build outside the repository the
+sandbox allows, `PATH` and the toolchain homes decide which compiler runs at
+all, and a shorter timeout ends a session the probe's own timeout let finish.
+
 `confinement` is the sandbox and permission rules themselves, digested with the
 work root they name. `KLIN_BENCH_WORK`, and `TMPDIR` when that is unset, move
 the root every workspace is materialized under, which is a `denyRead` rule, the
@@ -661,18 +670,30 @@ the session ends, and records `the-apparatus-held-still`. A session takes
 minutes, and a binary or fixture that moved while one ran would otherwise be
 recorded as the apparatus the probe proved.
 
-Nothing takes a probe's word for its own verdict. `verifyProbe` recomputes every
-check from what the probe kept beside it, the transcript, the shell output, the
-planted tokens, the guard's hook evidence and the witness payloads, and holds
-the result to what the probe recorded. A probe that kept too little to recompute
-is not a probe that passed. A probe that does not hold refuses its language
+Nothing takes a probe's word for its own verdict, or for the contract it owed.
+`verifyProbe` recomputes every check from what the probe kept beside it, the
+transcript, the shell output, the planted tokens, the guard's hook evidence and
+the witness payloads, and holds the result to what the probe recorded. The
+contract comes from the catalogue and the harness: the control variant, the
+shadow arm, the family's own suite command, the three planted boundaries, the
+owned paths this harness has, the workspace the probe stood in, and the whole
+set of check names a probe of that language owes. The two readings of the
+apparatus are both kept, so `the-apparatus-held-still` is recomputed as well. A
+probe that kept too little to recompute, or that satisfied a smaller contract
+than it owed, is not a probe that passed.
+
+A probe id is `probe-` and eight hexadecimal digits, it must be its own
+directory's name, and no two witnesses may claim it. The id becomes a path, and
+the forensic copy removes what it writes over. A probe that does not hold refuses its language
 outright, because probe ids are random and a newer failure must not be passed
 over for an older pass beside it.
 
 `plan` copies each named probe directory into `<round>/probes/<trial>`, so the
 probe evidence, hook evidence and all, travels with the round.
 `evidence-prepare` copies it into the slim package beside the attempts, hashes
-it into `files.sha256` and keeps it out of the attempt set. The copy and the
+it into `files.sha256`, keeps it out of the attempt set, and `evidence-verify`
+holds every copied probe file to the raw archive the way it holds an attempt's
+slim files. The copy and the
 digest are `src/forensic.ts`, not the source-tree helpers: evidence has to
 answer what was on disk, so nothing is skipped and a symbolic link or a device
 node is refused rather than quietly left out.

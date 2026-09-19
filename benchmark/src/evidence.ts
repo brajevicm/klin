@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as forensic from "./forensic.ts";
+import { ID } from "./probe.ts";
 
 const SLIM = ["record.json", "agent.json", "behaviour.json", "stats-session.json", "settings.json", "hook"];
 /** An attempt that crashed before a record existed holds this and no forensic tree. */
@@ -408,6 +409,11 @@ function setReadme(directory: string, read: Manifest, archiveName: string): void
  */
 function copyProbes(source: string, into: string, manifest: Manifest): void {
   for (const one of manifest.probes ?? []) {
+    // The id is a directory name. `forensic.copy` removes what it writes over, so an id holding
+    // a path would reach outside the evidence it is part of.
+    if (!ID.test(String(one.trialId))) {
+      fail("the manifest names the probe " + JSON.stringify(String(one.trialId)) + ", which is not a production probe id");
+    }
     const from = path.join(source, PROBES, String(one.trialId));
     if (!isDirectory(from)) {
       fail("the manifest names the probe " + String(one.trialId) + " and the round holds no evidence for it");
@@ -544,6 +550,14 @@ function extract(archiveFile: string): { directory: string; state: EvidenceState
 
 function slimFiles(directory: string): Map<string, string> {
   const expected = new Map<string, string>();
+  // The probe evidence is copied byte for byte, so every file of it is bound to the archive the
+  // same way an attempt's slim files are.
+  const probesRoot = path.join(directory, PROBES);
+  if (isDirectory(probesRoot)) {
+    for (const name of walk(probesRoot)) {
+      expected.set(PROBES + "/" + name, path.join(probesRoot, name));
+    }
+  }
   const attemptsRoot = path.join(directory, "attempts");
   if (!isDirectory(attemptsRoot)) {
     return expected;
