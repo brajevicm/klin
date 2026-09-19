@@ -12,7 +12,7 @@ import { sourceCommit } from "./trial.ts";
 import { copyTree, files, overlay, sha256 } from "./trees.ts";
 import * as workspace from "./workspace.ts";
 
-type Status = "PASS" | "FAIL" | "ERR" | "MISSING";
+type Status = "PASS" | "FAIL" | "ERR" | "MISSING" | "UNKNOWN";
 
 interface Site {
   file: string;
@@ -25,6 +25,8 @@ interface Verdict {
   sites: Site[];
   delivery: "delivered" | "would-have-been-delivered" | "direct" | "recorded";
   resolved?: boolean;
+  review?: boolean;
+  outcomes?: string[];
 }
 
 interface Row {
@@ -80,7 +82,8 @@ function regular(file: string): boolean {
 }
 
 function status(value: unknown): Status {
-  switch (String(value ?? "").trim().toUpperCase()) {
+  const written = String(value ?? "").trim().toUpperCase();
+  switch (written) {
     case "OK":
     case "PASS":
       return "PASS";
@@ -88,8 +91,12 @@ function status(value: unknown): Status {
       return "FAIL";
     case "ERR":
       return "ERR";
-    default:
+    case "":
       return "MISSING";
+    case "UNKNOWN":
+      return "UNKNOWN";
+    default:
+      return "UNKNOWN";
   }
 }
 
@@ -101,10 +108,11 @@ function verdict(value: Status, sites: Site[], delivery: Verdict["delivery"]): V
   return { caught: caught(value), label: value, sites, delivery };
 }
 
-function detectorVerdict(present: boolean | null, sites: Site[]): Verdict {
+function detectorVerdict(present: unknown, sites: Site[]): Verdict {
+  const caught = present === true ? true : present === false ? false : null;
   return {
-    caught: present,
-    label: present === true ? "FOUND" : present === false ? "PASS" : "UNKNOWN",
+    caught,
+    label: caught === true ? "FOUND" : caught === false ? "PASS" : "UNKNOWN",
     sites,
     delivery: "recorded",
   };
@@ -112,7 +120,7 @@ function detectorVerdict(present: boolean | null, sites: Site[]): Verdict {
 
 function rowFor(text: string, gate: string): Status {
   const safe = gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = text.match(new RegExp("^\\s{2}(ok|FAIL|ERR)\\s+" + safe + "\\s*$", "m"));
+  const match = text.match(new RegExp("^\\s{2}([A-Za-z]+)\\s+" + safe + "\\s*$", "m"));
   return status(match?.[1]);
 }
 
@@ -284,6 +292,8 @@ function runHook(base: string, final: string, gate: string, root: string): Verdi
 
 function recordedSignals(record: RunRecord, gate: string, base: string, final: string): Verdict {
   const signals = record.signals.filter((one) => one.gate === gate);
+  const outcomes = [...new Set(signals.map((one) => one.outcome ?? "MISSING"))].sort();
+  const resolvedOutcomes = new Set(["fixed-next", "fixed-later"]);
   const sites = signals
     .filter((one) => one.file && one.line !== null)
     .map((one) => {
@@ -301,16 +311,30 @@ function recordedSignals(record: RunRecord, gate: string, base: string, final: s
     label: signals.length > 0 ? "FOUND" : "PASS",
     sites: uniqueSites(sites),
     delivery,
-    resolved: signals.some((one) => one.outcome === "fixed-next"),
+    resolved: signals.length > 0 && signals.every((one) => resolvedOutcomes.has(one.outcome ?? "")),
+    review:
+      gate === "inventory" &&
+      signals.length > 0 &&
+      signals.every((one) => one.auditKind === "asked-once"),
+    outcomes,
   };
 }
 
 function rowDisagrees(one: Row): boolean {
-  const values = [one.detector.caught, one.whole.caught, one.signal.caught];
-  if (values.some((value) => value === null)) {
-    return false;
+  const verdicts: [string, Verdict][] = [
+    ["detector", one.detector],
+    ["whole", one.whole],
+    ["recorded signal", one.signal],
+  ];
+  const unknown = verdicts.filter(([, value]) => typeof value.caught !== "boolean");
+  if (unknown.length > 0) {
+    throw new Error(
+      one.subject +
+        " has indeterminate " +
+        unknown.map(([name, value]) => name + "=" + value.label).join(", "),
+    );
   }
-  return new Set(values).size > 1;
+  return new Set(verdicts.map(([, value]) => value.caught)).size > 1;
 }
 
 function resolvedSignal(one: Row): boolean {
@@ -325,11 +349,10 @@ function resolvedSignal(one: Row): boolean {
 function hookOnlyReview(one: Row): boolean {
   return (
     one.family === "inventory" &&
-    one.arm === "-" &&
-    one.signal.delivery === "direct" &&
-    one.detector.caught === true &&
     one.whole.caught === false &&
-    one.signal.caught === true
+    one.signal.caught === true &&
+    (one.signal.review === true ||
+      (one.arm === "-" && one.signal.delivery === "direct" && one.detector.caught === true))
   );
 }
 
@@ -414,7 +437,7 @@ function markdown(setId: string, rows: Row[], metadata: Metadata): string {
     } else {
       switch (kind) {
         case "resolved-signal":
-          paragraph = count + " resolved-signal row(s) have a historical signal with outcome `fixed-next`, while the frozen detector and current whole run are clean. The disagreement sites are " + sites + "; these are successful feedback episodes, not noise candidates.";
+          paragraph = count + " resolved-signal row(s) have historical signal outcome(s) `fixed-next` or `fixed-later`, while the frozen detector and current whole run are clean. The disagreement sites are " + sites + "; these are successful feedback episodes, not noise candidates.";
           break;
         case "hook-only-review":
           paragraph = count + " hook-only-review row(s) are inventory exemplars where the whole run is intentionally non-blocking but the direct hook asks or blocks. The disagreement sites are " + sites + "; this is expected inventory policy, not a production gate gap.";
@@ -426,7 +449,7 @@ function markdown(setId: string, rows: Row[], metadata: Metadata): string {
           paragraph = count + " changed-window-gap row(s) have a whole-run finding with no recorded signal for that gate. The disagreement sites are " + sites + "; the changed-files window missed a finding the full run sees.";
           break;
         case "signal-mismatch":
-          paragraph = count + " signal-mismatch row(s) have a recorded signal that the frozen detector does not report and no `fixed-next` resolution or expected hook policy explains. The disagreement sites are " + sites + "; these need follow-up before they are treated as product defects.";
+          paragraph = count + " signal-mismatch row(s) have a recorded signal that the frozen detector does not report and no complete `fixed-next`/`fixed-later` resolution or expected hook policy explains. The disagreement sites are " + sites + "; these need follow-up before they are treated as product defects.";
           break;
       }
     }

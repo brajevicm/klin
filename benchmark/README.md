@@ -539,7 +539,10 @@ exemplar. For recorded rows, the detector verdict comes from the frozen
 are that detector, a whole `klin gate --json` run, and the historical signal
 rows recorded for the run (`delivered` in Active or
 `would-have-been-delivered` in Shadow). It records frozen and audit provenance,
-and starts no agent or links klin's Rust modules.
+and starts no agent or links klin's Rust modules. An `ERR`, missing or unknown
+verdict is an audit error, not a clean row; `fixed-next` and `fixed-later` are
+resolved only when every signal in the row has one of those outcomes, and an
+`asked-once` inventory signal is review evidence rather than a regression.
 
 `protocols/shadow-active-v1/protocol.json` is the treatment-independent design,
 committed before run 1: the protocol number, the frozen seed, the sample plan,
