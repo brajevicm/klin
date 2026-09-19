@@ -1,4 +1,4 @@
-import * as paths from "./paths.ts";
+import { CURRENT_PROTOCOL } from "./protocol.ts";
 
 /**
  * The machine run record.
@@ -180,7 +180,7 @@ export function validate(record: Record<string, unknown>): string[] {
       problems.push("the record states no " + key);
     }
   }
-  if (record.protocol !== paths.PROTOCOL) {
+  if (record.protocol !== CURRENT_PROTOCOL.version) {
     problems.push("the record states protocol " + String(record.protocol));
   }
   if (record.kind === "calibration" && record.publishable !== false) {

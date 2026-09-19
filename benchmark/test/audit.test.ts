@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { prepare } from "../src/evidence.ts";
 
 function cli(args: string[], env: NodeJS.ProcessEnv) {
@@ -40,7 +41,7 @@ function place(options: PlaceOptions = {}): { root: string; evidence: string; ar
   fs.writeFileSync(
     path.join(runs, "manifest.json"),
     JSON.stringify({
-      protocol: paths.PROTOCOL,
+      protocol: CURRENT_PROTOCOL.version,
       kind: "publishable",
       publishable: true,
       order: [{ trialId: "a" }],
@@ -49,7 +50,7 @@ function place(options: PlaceOptions = {}): { root: string; evidence: string; ar
   fs.writeFileSync(
     path.join(attempt, "record.json"),
     JSON.stringify({
-      protocol: paths.PROTOCOL,
+      protocol: CURRENT_PROTOCOL.version,
       kind: "publishable",
       publishable: true,
       trialId: "a",

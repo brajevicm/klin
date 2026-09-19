@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
+import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { copyTree, digest, links, sha256 } from "./trees.ts";
 import { family as familyNamed, type ArmName, type VariantName } from "./catalogue.ts";
 import * as workspace from "./workspace.ts";
@@ -299,7 +300,7 @@ export function run(
   const activity = (stats.activity ?? {}) as Record<string, number>;
 
   const record: RunRecord = {
-    protocol: paths.PROTOCOL,
+    protocol: CURRENT_PROTOCOL.version,
     kind: options.kind,
     publishable: options.kind === "publishable",
     family: familyName,
