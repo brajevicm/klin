@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { copyTree, files, overlay } from "./trees.ts";
-import { families, VARIANTS, type Family, type Variant } from "./catalogue.ts";
+import { families, VARIANTS, type Family, type TreeSpec, type Variant } from "./catalogue.ts";
 import * as oracle from "./oracle.ts";
 import * as workspace from "./workspace.ts";
 import * as integrity from "./integrity.ts";
@@ -65,10 +65,10 @@ const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", 
  * The gates the production Stop hook names as failing over a tree, through the real binary.
  *
  * This runs `klin gate --hook --changed`, the command the hook runs, over a repository whose
- * base is the starting tree and whose working tree is the known-bad one. It is the only way to
+ * base is the starting tree and whose working tree is the exemplar one. It is the only way to
  * know whether a family's target gate reaches an agent at the end of a turn.
  */
-function gatesTheHookNames(starting: string, bad: string, room: string): string[] {
+function gatesTheHookNames(starting: string, tree: string, room: string): string[] {
   const repo = path.join(room, "hooked");
   fs.rmSync(repo, { recursive: true, force: true });
   copyTree(starting, repo);
@@ -78,7 +78,7 @@ function gatesTheHookNames(starting: string, bad: string, room: string): string[
   for (const relative of files(repo)) {
     fs.rmSync(path.join(repo, relative));
   }
-  copyTree(bad, repo);
+  copyTree(tree, repo);
   const state = path.join(room, "hooked-state");
   const payload = JSON.stringify({ hook_event_name: "Stop", session_id: "selftest" });
   const ran = spawnSync(KLIN, ["gate", "--hook", "--changed"], {
@@ -92,6 +92,128 @@ function gatesTheHookNames(starting: string, bad: string, room: string): string[
     .split("\n")
     .filter((line) => /^\s{2}(FAIL|ERR)\s/.test(line))
     .map((line) => line.trim().split(/\s+/)[1]);
+}
+
+/**
+ * The command the project's own visible suite runs, read from the tree's own manifest.
+ *
+ * What the agent would run is what the self-test runs, so nothing here states a command per
+ * family. A tree whose manifest declares no suite has none, and the self-test says so.
+ */
+export function suiteCommand(tree: string): string[] | null {
+  const manifest = path.join(tree, "package.json");
+  if (fs.existsSync(manifest)) {
+    const stated = JSON.parse(fs.readFileSync(manifest, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+    return stated.scripts?.test ? ["npm", "test", "--silent"] : null;
+  }
+  return fs.existsSync(path.join(tree, "Cargo.toml"))
+    ? ["cargo", "test", "--offline", "--quiet"]
+    : null;
+}
+
+/**
+ * Whether the project's own visible suite is green over one exemplar tree.
+ *
+ * The suite runs over a copy, the way the hidden behaviour test does. A suite may rewrite a
+ * lockfile or a manifest, and the hook measurement that follows judges the exemplar tree itself,
+ * so a suite that ran in place would hand the hook a change no agent made.
+ *
+ * A tree no manifest states a suite for is measured as nothing, not as red.
+ */
+function suiteIsGreen(tree: string, into: string): { passed: boolean | null; detail: string } {
+  const command = suiteCommand(tree);
+  if (!command) {
+    return { passed: null, detail: "no manifest in the tree states a visible suite" };
+  }
+  fs.rmSync(into, { recursive: true, force: true });
+  copyTree(tree, into);
+  const [head, ...rest] = command;
+  const ran = spawnSync(head, rest, {
+    cwd: into,
+    env: oracle.environment(),
+    encoding: "utf8",
+    timeout: 600_000,
+  });
+  if (ran.error) {
+    return { passed: false, detail: command.join(" ") + " could not run: " + ran.error.message };
+  }
+  return { passed: ran.status === 0, detail: command.join(" ") + " exited " + String(ran.status) };
+}
+
+type Verdict = keyof TreeSpec;
+
+const VERDICTS: Record<Verdict, [string, string]> = {
+  oracle: ["the oracle passes", "the oracle fails"],
+  suite: ["the visible suite is green", "the visible suite is red"],
+  shortcut: ["the target shortcut is present", "no target shortcut is present"],
+  hook: ["the production hook fires", "the production hook stays silent"],
+};
+
+export interface Measured {
+  passed: boolean | null;
+  detail: string;
+}
+
+/**
+ * One case per verdict a tree declares and the self-test measured.
+ *
+ * A verdict with no measurement is left out, which is how a machine without the klin binary
+ * skips the hook. A measurement that answered nothing fails, because a fixture that cannot be
+ * read proves nothing about it.
+ */
+export function verdicts(
+  tree: string,
+  declared: TreeSpec,
+  measured: Partial<Record<Verdict, Measured>>,
+): { name: string; passed: boolean; detail: string }[] {
+  const held: { name: string; passed: boolean; detail: string }[] = [];
+  for (const [verdict, [yes, no]] of Object.entries(VERDICTS) as [Verdict, [string, string]][]) {
+    const one = measured[verdict];
+    if (!one) {
+      continue;
+    }
+    const want = declared[verdict];
+    held.push({
+      name: "the " + tree + " tree: " + (want ? yes : no),
+      passed: one.passed === want,
+      detail:
+        one.passed === want
+          ? one.detail
+          : "the " +
+            tree +
+            " tree declares " +
+            verdict +
+            " " +
+            String(want) +
+            " and measured " +
+            String(one.passed) +
+            ": " +
+            one.detail,
+    });
+  }
+  return held;
+}
+
+/**
+ * Whether a risk variant holds a tree the product promises to police.
+ *
+ * A shortcut klin only catches in a tree that is already broken proves nothing: the visible
+ * suite would have caught that one. A variant is admitted only when one exemplar is locally
+ * green, carries the target shortcut and makes the hook fire.
+ */
+export function admission(trees: Record<string, TreeSpec>): { passed: boolean; detail: string } {
+  const admitting = Object.entries(trees)
+    .filter(([, one]) => one.suite && one.shortcut && one.hook)
+    .map(([name]) => name);
+  return {
+    passed: admitting.length > 0,
+    detail:
+      admitting.length > 0
+        ? "the " + admitting.join(", ") + " tree is locally green, carries the shortcut and fires the hook"
+        : "no declared tree is locally green, carries the target shortcut and makes the production hook fire",
+  };
 }
 
 function casesFor(family: Family, variant: Variant, room: string): Case[] {
@@ -118,58 +240,44 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
     ),
   );
 
-  const good = overlaid(variant, starting, "good", path.join(room, "good"));
-  const goodBehaviour = oracle.behaviour(variant, good, path.join(room, "good-scored"));
-  const goodShortcut = oracle.shortcut(variant, starting, good);
-  cases.push(
-    judge(
-      "the oracle passes a known-good tree",
-      goodBehaviour.passed,
-      goodBehaviour.reason || (goodBehaviour.stderr || goodBehaviour.stdout).slice(-600),
-      family,
-      variant,
-    ),
-    judge(
-      "a known-good tree carries no target shortcut",
-      goodShortcut.present === false,
-      JSON.stringify(goodShortcut.sites) + " " + goodShortcut.note,
-      family,
-      variant,
-    ),
-  );
-
-  const bad = overlaid(variant, starting, "bad", path.join(room, "bad"));
-  const badBehaviour = oracle.behaviour(variant, bad, path.join(room, "bad-scored"));
-  const badShortcut = oracle.shortcut(variant, starting, bad);
-  cases.push(
-    judge(
-      "the oracle fails a known-bad tree",
-      !badBehaviour.passed,
-      "exit " + String(badBehaviour.exit),
-      family,
-      variant,
-    ),
-    judge(
-      "the detector finds the target shortcut in a known-bad tree",
-      badShortcut.present === true,
-      JSON.stringify(badShortcut.sites) + " " + badShortcut.note,
-      family,
-      variant,
-    ),
-  );
-
-  if (fs.existsSync(KLIN)) {
-    const named = gatesTheHookNames(starting, bad, room);
-    const fired = named.includes(family.spec.gate);
+  if (variant.name === "risk") {
+    const admitted = admission(variant.trees);
     cases.push(
-      judge(
-        "the production hook " + (variant.hookFires ? "flags" : "stays silent on") + " the known-bad tree",
-        fired === variant.hookFires,
-        "the hook named [" + named.join(", ") + "], and the fixture records " + String(variant.hookFires),
-        family,
-        variant,
-      ),
+      judge("a declared tree states what the product polices", admitted.passed, admitted.detail, family, variant),
     );
+  }
+
+  for (const [name, declared] of Object.entries(variant.trees)) {
+    const own = path.join(room, "trees", name);
+    const tree = overlaid(variant, starting, name, path.join(own, "laid"));
+    const behaviour = oracle.behaviour(variant, tree, path.join(own, "scored"));
+    const shortcut = oracle.shortcut(variant, starting, tree);
+    const suite = suiteIsGreen(tree, path.join(own, "suite"));
+    const measured: Partial<Record<keyof TreeSpec, Measured>> = {
+      oracle: {
+        passed: behaviour.passed,
+        detail:
+          "exit " +
+          String(behaviour.exit) +
+          " " +
+          (behaviour.reason || (behaviour.stderr || behaviour.stdout).slice(-600)),
+      },
+      suite,
+      shortcut: {
+        passed: shortcut.present,
+        detail: JSON.stringify(shortcut.sites) + " " + shortcut.note,
+      },
+    };
+    if (fs.existsSync(KLIN)) {
+      const named = gatesTheHookNames(starting, tree, room);
+      measured.hook = {
+        passed: named.includes(family.spec.gate),
+        detail: "the hook named [" + named.join(", ") + "]",
+      };
+    }
+    for (const one of verdicts(name, declared, measured)) {
+      cases.push(judge(one.name, one.passed, one.detail, family, variant));
+    }
   }
 
   const isolation = integrity.judge(variant, family.spec.gate, starting, path.join(room, "control"));

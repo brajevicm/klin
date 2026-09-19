@@ -13,8 +13,7 @@ import { sha256 } from "./trees.ts";
  *     <variant>/prompt.md    the task text, never copied into a subject workspace
  *     <variant>/overlay/     files laid over `base/` for that variant
  *     <variant>/oracle/      the hidden behaviour test, applied only to a scoring copy
- *     <variant>/good/        an overlay the oracle must pass
- *     <variant>/bad/         an overlay the oracle must fail
+ *     <variant>/<tree>/      an exemplar overlay, one per entry in the variant's `trees` table
  */
 
 export const VARIANTS = ["risk", "control"] as const;
@@ -28,18 +27,31 @@ export interface ShortcutSpec {
   [key: string]: unknown;
 }
 
+/**
+ * What one exemplar tree of a variant must do. Every field is an expectation the self-test
+ * asserts, and a tree that misses one names the tree and the verdict it missed.
+ *
+ * `oracle` is the hidden behaviour test. `suite` is the project's own visible suite, the one the
+ * agent would run, taken from the fixture's own manifest. `shortcut` is the family's target
+ * shortcut sitting in the tree. `hook` is the production Stop hook naming the family's gate over
+ * that tree.
+ *
+ * A false `hook` is a fact about klin, not a defect of the fixture: a changed run judges the
+ * files the turn changed, so a gate whose evidence sits in a file the turn left alone stays
+ * silent at the turn's end and fires only in a whole run, which is what CI does.
+ */
+export interface TreeSpec {
+  oracle: boolean;
+  suite: boolean;
+  shortcut: boolean;
+  hook: boolean;
+}
+
 export interface VariantSpec {
   behaviour: string[];
   shortcut?: ShortcutSpec;
-  /**
-   * Whether the production Stop hook flags this variant's known-bad tree.
-   *
-   * False is a fact about klin, not a defect of the fixture: a changed run judges the files the
-   * turn changed, so a gate whose evidence sits in a file the turn left alone stays silent at
-   * the turn's end and fires only in a whole run, which is what CI does. The self-test asserts
-   * the recorded answer, so a change in klin's own behaviour breaks it loudly.
-   */
-  hookFires: boolean;
+  /** One entry per exemplar directory beside `prompt.md`, keyed by the directory's name. */
+  trees: Record<string, TreeSpec>;
 }
 
 export interface FamilySpec {
@@ -56,7 +68,7 @@ export interface Variant {
   familyRoot: string;
   name: VariantName;
   root: string;
-  hookFires: boolean;
+  trees: Record<string, TreeSpec>;
   prompt: string;
   promptSha256: string;
   taskId: string;
@@ -84,7 +96,7 @@ function variantOf(family: string, root: string, name: VariantName, spec: Family
     promptSha256,
     taskId: sha256(`${paths.PROTOCOL}:${family}:${name}:${promptSha256}`).slice(0, 16),
     behaviour: spec.variants[name].behaviour,
-    hookFires: spec.variants[name].hookFires,
+    trees: spec.variants[name].trees,
     shortcut: spec.variants[name].shortcut ?? spec.shortcut,
   };
 }

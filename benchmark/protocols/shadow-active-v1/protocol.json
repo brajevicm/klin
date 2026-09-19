@@ -675,7 +675,7 @@
   "fixtures": {
     "complexity": {
       "gate": "complexity",
-      "fixtureSha256": "daf450d14f26a6e25de30b2b2186af45deb620f2858ac6cfbb4d44d6228345b6",
+      "fixtureSha256": "810cee17764eaa01fa7cbdb4f33dd50f41eedd38aaf0cdb8cf8cb749729f37e0",
       "variants": {
         "risk": {
           "taskId": "f8ae10909b896ba0",
@@ -691,7 +691,7 @@
     },
     "dead-symbols": {
       "gate": "dead-symbols",
-      "fixtureSha256": "c5bdceb5f34eeed1b8bd460cc45cd7acdb1f5195da5d93c617723512bce77e37",
+      "fixtureSha256": "9890243c51096a7417c31b182e1eefb5bfd3d7377ac43e65c84496a68cee830f",
       "variants": {
         "risk": {
           "taskId": "db8fce6deaf854e6",
@@ -707,7 +707,7 @@
     },
     "doc-citations": {
       "gate": "doc-citations",
-      "fixtureSha256": "e4de86edd7fc9fe3eedd42786ae5516e3f50dd001fa9be2c7cbc3cc5085c052a",
+      "fixtureSha256": "c6248e14e8afffdd197f7f3de7ada4f9f641cc2207e180b6185ff9366b7e9c4c",
       "variants": {
         "risk": {
           "taskId": "a02dcb85aae0c7b3",
@@ -723,7 +723,7 @@
     },
     "escapes": {
       "gate": "escapes",
-      "fixtureSha256": "0d5d072658170cc02da5fe43414971f7f46bef0eaa39b6c3e297d6974e92e282",
+      "fixtureSha256": "73da0feb2104be5af36c8d7939e152e158be53351e2dad15bdb71a84207cb65e",
       "variants": {
         "risk": {
           "taskId": "c7343e5a89fa856a",
@@ -739,7 +739,7 @@
     },
     "inventory": {
       "gate": "inventory",
-      "fixtureSha256": "cdb3c7f3d6edd7bc05b7c43875f8c4c8dad46d36c37e2dc654abf2c1a39e06b7",
+      "fixtureSha256": "f4d880492f62d0724184fcb1ce9c7e7574b8e3d5a9326d5a802aaa50b8c9c6db",
       "variants": {
         "risk": {
           "taskId": "dec0c3268103f76e",
@@ -755,7 +755,7 @@
     },
     "lockfile": {
       "gate": "lockfile",
-      "fixtureSha256": "e94a4d60aabce5f4729dc4f876ab0b6a0b96ab1a82eb39055eead2d716c97f82",
+      "fixtureSha256": "0a39bbf8f73ce9c826dfbb3c484b889bd7a60f9b232b42afa0036aaef7fb8626",
       "variants": {
         "risk": {
           "taskId": "5647518dbc0c654b",
@@ -771,7 +771,7 @@
     },
     "public-api": {
       "gate": "public-api",
-      "fixtureSha256": "30a17c1d56f0082a9bab5f8312b9d45fc4afdf4e51eba308f8187332862427f9",
+      "fixtureSha256": "4bd3a848590dedd7c4bf5cfa70d97257c0b7eddec3050b04d4487597beccfbbd",
       "variants": {
         "risk": {
           "taskId": "f03ad73588cdd0f0",
@@ -787,7 +787,7 @@
     },
     "reachability": {
       "gate": "reachability",
-      "fixtureSha256": "d107e7ad1cd13517645aad9656a78af1652db1355fd980dc8ac774f804235a1c",
+      "fixtureSha256": "4d3b5eec07c390d3480dd53683d4139bb2eb6f9d3528f796ce4caa65bbb52896",
       "variants": {
         "risk": {
           "taskId": "df3985181f29d2dc",
@@ -803,7 +803,7 @@
     },
     "stubs": {
       "gate": "stubs",
-      "fixtureSha256": "3156d10f69ce819c45cdab84a8ab1e455eef24050d9dbf443d69c70639974a1d",
+      "fixtureSha256": "ce8e6d5896f3109055f00dafce14e9d4cd9ae6fbc01cc6b5448f9f48cb356aaf",
       "variants": {
         "risk": {
           "taskId": "32f1d6a471e82551",

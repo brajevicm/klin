@@ -16,8 +16,9 @@ import type { Check, HookInvocation, Isolation } from "./record.ts";
 /**
  * The overlay whose files must never reach a subject workspace.
  *
- * `good/` and `bad/` are self-test scaffolding. The harness never copies them into a workspace,
- * and their relative paths are the fixture's own, so they are not a leak to look for here.
+ * A variant's exemplar trees are self-test scaffolding. The harness never copies them into a
+ * workspace, and their relative paths are the fixture's own, so they are not a leak to look for
+ * here.
  */
 const HIDDEN = ["oracle"];
 const TEXT = [".rs", ".ts", ".tsx", ".js", ".mjs", ".json", ".md", ".toml", ".lock", ".txt", ".sh"];

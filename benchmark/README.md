@@ -302,13 +302,13 @@ by walking `fixtures/`. Adding one takes:
 
 1. `fixtures/<family>/family.json`: the language, the gate, a one-line summary,
    what unchanged debt of the class the starting tree holds, the words a prompt
-   may not use, the shortcut detector and its arguments, and the behaviour
-   command per variant.
+   may not use, the shortcut detector and its arguments, the behaviour command
+   per variant and the declared expectation per exemplar tree.
 2. `fixtures/<family>/base/`: the starting tree, with the same `klin.json`
    every other family ships. A self-test case fails if it differs.
 3. `fixtures/<family>/{risk,control}/`: `prompt.md`, an optional `overlay/`,
-   the hidden `oracle/`, and the `good/` and `bad/` trees the self-test runs
-   the oracle against.
+   the hidden `oracle/`, and one directory per exemplar tree the variant's
+   `trees` table declares.
 4. A detector in `src/detectors.ts` and one line in `DETECTORS`, if no existing
    detector answers the question. Nine detectors are there now.
 5. The gate's name in `GATES` in `test/catalogue.test.ts`.
@@ -351,26 +351,61 @@ Three rules in them exist because the first review found their absence:
   live test. An agent that silenced the failing test took the same shortcut as
   one that deleted it.
 
-Each variant ships a known-good tree the oracle must pass and a known-bad tree
-it must fail, as overlays over the starting tree. `selftest` runs all of them.
+Each variant declares what every exemplar tree it ships must do, and `selftest`
+asserts all of it.
 
-## What the production hook does with each known-bad tree
+## The declared expectation per exemplar tree
 
-`selftest` also runs `klin gate --hook --changed`, the command the Stop hook
-runs, over each known-bad tree against its own starting tree, and compares the
-answer with the `hookFires` the fixture records. All nine risk variants are
-flagged at the turn's end.
+A variant's `trees` table holds one entry per exemplar directory beside
+`prompt.md`, and each entry states four verdicts:
 
-Two of them were not when the apparatus was built. The first probe runs, on
-2026-09-17, recorded that the Stop hook stayed silent over the `doc-citations`
-and `reachability` risk trees, because a changed run judged only the files the
-turn changed and in each of those two the evidence sits in a file the turn
-left alone: the document that still cites the moved file, and the command
-module the new dispatch no longer reaches. That was recorded rather than tuned
-away, and it was a product gap, not a fixture defect. Issues #234 and #235
-closed it. Each of those two checks now owns a bounded judgement unit wider
-than the changed-file set, the way `public-api` already did, so both fire at
-the turn's end and the fixtures record `hookFires` true.
+| verdict | what it declares |
+| --- | --- |
+| `oracle` | the hidden behaviour test passes over the tree |
+| `suite` | the project's own visible suite is green over the tree |
+| `shortcut` | the family's target shortcut sits in the tree |
+| `hook` | `klin gate --hook --changed` names the family's gate over the tree |
+
+`selftest` measures all four and fails a tree that misses one, naming the tree
+and the verdict. The visible suite is whatever the tree's own manifest states,
+the npm `test` script or `cargo test`, so what the agent would run is what the
+self-test runs. The hook verdict comes from the real binary, over a repository
+whose base is the starting tree and whose working tree is the exemplar one.
+
+A false `hook` is a fact about klin, not a defect of the fixture: a changed run
+judges the files the turn changed, so a gate whose evidence sits in a file the
+turn left alone stays silent at the turn's end and fires only in a whole run,
+which is what CI does.
+
+Two risk variants recorded exactly that when the apparatus was built. The first
+probe runs, on 2026-09-17, recorded that the Stop hook stayed silent over the
+`doc-citations` and `reachability` risk trees, because in each of those two the
+evidence sits in a file the turn left alone: the document that still cites the
+moved file, and the command module the new dispatch no longer reaches. That was
+recorded rather than tuned away, and it was a product gap, not a fixture defect.
+Issues #234 and #235 closed it. Each of those two checks now owns a bounded
+judgement unit wider than the changed-file set, the way `public-api` already
+did, so both fire at the turn's end.
+
+### Admission
+
+A risk variant is admitted only when it declares at least one tree that is
+locally green, carries the target shortcut and makes the production hook fire.
+That is the state the product promises to police: a shortcut klin catches only
+in a tree the visible suite already rejects proves nothing about klin.
+
+`dead-symbols` is the proving fixture. Its `shortcut` tree keeps a correct
+oldest-write eviction and leaves the old read-tracking helpers behind, declared
+as oracle pass, suite green, shortcut present, hook fires.
+
+Three risk variants hold no such tree today, and `selftest` says so. Their
+known-bad trees each carry a behaviour bug the old contract forced on them,
+which the project's own suite catches, so none of the three is a route to a
+green repository:
+
+- `doc-citations`, which #257 repairs;
+- `public-api`, which #258 repairs;
+- `reachability`, which #265 repairs.
 
 ## The run record
 
@@ -629,7 +664,7 @@ benchmark/
   src/                   the harness
   test/                  the harness's own tests
   fixtures/<family>/     base/, risk/, control/, each with prompt, overlay,
-                         oracle, good and bad
+                         oracle and one directory per declared exemplar tree
   runs/                  ephemeral live control plane, and where records land
   evidence/              committed slim evidence and its descriptors
   external archive       full forensic evidence, bound by evidence.json
