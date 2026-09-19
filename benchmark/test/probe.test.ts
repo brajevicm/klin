@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { judge, prompt, shellCommand, transcript } from "../src/probe.ts";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { families } from "../src/catalogue.ts";
+import { judge, perLanguage, prompt, shellCommand, suiteChecks, suiteShellCommand, transcript, witnesses } from "../src/probe.ts";
 import type { SessionResult } from "../src/session.ts";
 
 /**
@@ -100,7 +104,7 @@ test("a variable naming a path the harness owns fails the probe", () => {
 
 test("the prompt names every place the subject must not reach, and the command to try", () => {
   const place = { plane: "/plane/t1", work: "/tmp/work", records: "/repo/runs" };
-  const asked = prompt(place);
+  const asked = prompt(place, ["cargo", "test"]);
   for (const named of ["/plane/t1", "/tmp/work", "/repo/runs"]) {
     assert.ok(asked.includes(named), asked);
   }
@@ -143,4 +147,92 @@ test("a variable naming the subject's own workspace is not a leak", () => {
     held.checks.some((one) => one.name === "no-owned-path-in-the-environment" && one.passed),
     held.checks.map((one) => one.detail).join(" / "),
   );
+});
+
+/** A repository after a subject ran the probe's suite step, with what that step left behind. */
+function ranSuite(status: string | null, where = "", build = false): string {
+  const repo = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-probe-")));
+  if (status !== null) {
+    fs.writeFileSync(path.join(repo, "probe-suite-output.txt"), (where || repo) + "\nok 1 - it works\n");
+    fs.writeFileSync(path.join(repo, "probe-suite-status.txt"), status + "\n");
+  }
+  if (build) {
+    fs.mkdirSync(path.join(repo, "target", "debug"), { recursive: true });
+  }
+  return repo;
+}
+
+function failing(checks: { name: string; passed: boolean }[]): string[] {
+  return checks.filter((one) => !one.passed).map((one) => one.name);
+}
+
+test("the prompt asks for the project's own suite inside the repository first", () => {
+  const place = { plane: "/plane/t1", work: "/tmp/work", records: "/repo/runs" };
+  const asked = prompt(place, ["npm", "test", "--silent"]);
+  assert.ok(asked.includes(suiteShellCommand(["npm", "test", "--silent"])), asked);
+  assert.ok(asked.indexOf("npm test") < asked.indexOf(shellCommand(place)), asked);
+});
+
+test("a green TypeScript suite run inside the repository passes the suite checks", () => {
+  const repo = ranSuite("0");
+  assert.deepEqual(failing(suiteChecks("typescript", repo)), []);
+});
+
+test("a red suite, or a suite never run, proves nothing about the workspace", () => {
+  assert.deepEqual(failing(suiteChecks("typescript", ranSuite("1"))), ["suite-green-inside"]);
+  assert.deepEqual(failing(suiteChecks("typescript", ranSuite(null))), ["suite-green-inside"]);
+});
+
+test("a suite whose shell stood somewhere else did not run inside the repository", () => {
+  assert.deepEqual(failing(suiteChecks("typescript", ranSuite("0", "/elsewhere"))), ["suite-green-inside"]);
+});
+
+test("a Rust suite must leave its build output inside the repository", () => {
+  assert.deepEqual(failing(suiteChecks("rust", ranSuite("0", "", true))), []);
+  assert.deepEqual(failing(suiteChecks("rust", ranSuite("0"))), ["build-output-inside"]);
+});
+
+/** The fields of a probe record `plan` reads, for one language, at one harness, host and binary. */
+function probeOnDisk(root: string, id: string, language: string, passed: boolean, tree = "ht"): void {
+  fs.mkdirSync(path.join(root, id), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, id, "probe.json"),
+    JSON.stringify({
+      trialId: id,
+      family: language === "rust" ? "dead-symbols" : "complexity",
+      language,
+      host: "2.1.276 (Claude Code)",
+      harness: { commit: "h", treeSha256: tree },
+      klin: { binarySha256: "kb" },
+      passed,
+    }) + "\n",
+  );
+}
+
+const AT = { harness: "ht", host: "2.1.276 (Claude Code)", klin: "kb" };
+
+test("a plan finds one passing probe per language at its own harness, host and binary", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-probes-"));
+  probeOnDisk(root, "probe-a", "typescript", true);
+  probeOnDisk(root, "probe-b", "rust", true);
+  const held = witnesses(root, AT);
+  assert.deepEqual(held.missing, []);
+  assert.deepEqual(held.found.map((one) => one.language).sort(), ["rust", "typescript"]);
+  assert.match(held.found[0].sha256, /^[0-9a-f]{64}$/);
+});
+
+test("a failed probe, or one from another harness, does not stand in for a language", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-probes-"));
+  probeOnDisk(root, "probe-a", "typescript", true);
+  probeOnDisk(root, "probe-b", "rust", false);
+  probeOnDisk(root, "probe-c", "rust", true, "older");
+  const held = witnesses(root, AT);
+  assert.deepEqual(held.found.map((one) => one.language), ["typescript"]);
+  assert.equal(held.missing.length, 1);
+  assert.match(held.missing[0], /rust/);
+  assert.deepEqual(witnesses(path.join(root, "absent"), AT).missing.length, 2);
+});
+
+test("probe alone runs the first family of each language", () => {
+  assert.deepEqual(perLanguage(families()), ["complexity", "dead-symbols"]);
 });

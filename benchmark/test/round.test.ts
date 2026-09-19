@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as paths from "../src/paths.ts";
+import * as session from "../src/session.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
@@ -13,6 +14,7 @@ import {
   crash,
   execute,
   committedAt,
+  frozen,
   identity,
   protocol,
   manifestOf,
@@ -404,13 +406,35 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
   process.env.KLIN_BIN = binary;
   const where = path.join(room(), "round");
   try {
-    const first = quiet(() => plan(where, 1));
+    const probes = path.join(path.dirname(where), "probes");
+    const unproved = quiet(() => plan(where, 1, probes));
     if (execFileSync("git", ["status", "--porcelain"], { cwd: paths.REPO, encoding: "utf8" }).trim() !== "") {
-      assert.equal(first.value, 2, first.wrote);
-      assert.match(first.wrote, /uncommitted/);
+      assert.equal(unproved.value, 2, unproved.wrote);
+      assert.match(unproved.wrote, /uncommitted/);
       assert.equal(fs.existsSync(path.join(where, "manifest.json")), false, "a dirty harness plans nothing");
       return;
     }
+    assert.equal(unproved.value, 2, unproved.wrote);
+    assert.match(unproved.wrote, /no passing typescript probe/);
+    assert.match(unproved.wrote, /no passing rust probe/);
+    assert.equal(fs.existsSync(path.join(where, "manifest.json")), false, "an unproved workspace plans nothing");
+    const now = frozen(session.defaults());
+    for (const language of ["typescript", "rust"]) {
+      fs.mkdirSync(path.join(probes, language), { recursive: true });
+      fs.writeFileSync(
+        path.join(probes, language, "probe.json"),
+        JSON.stringify({
+          trialId: language,
+          family: language,
+          language,
+          host: now.host.version,
+          harness: { treeSha256: now.harness.treeSha256 },
+          klin: { binarySha256: now.klin.binarySha256 },
+          passed: true,
+        }),
+      );
+    }
+    const first = quiet(() => plan(where, 1, probes));
     assert.equal(first.value, 0, first.wrote);
     assert.match(first.wrote, /No session ran/);
     const held = JSON.parse(fs.readFileSync(path.join(where, "manifest.json"), "utf8")) as {
@@ -420,6 +444,7 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
       firstArm: { active: number; shadow: number };
       frozen: Frozen;
       order: Row[];
+      probes: { language: string }[];
     };
     assert.equal(held.kind, "publishable");
     assert.equal(held.publishable, true);
@@ -431,11 +456,12 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.equal(held.frozen.toolchain.version, "5.9.3");
     assert.equal(held.frozen.toolchain.sha256, TYPESCRIPT_SHA256);
     assert.equal(Object.keys(held.frozen.fixtures).length, 9);
+    assert.deepEqual(held.probes.map((one) => one.language).sort(), ["rust", "typescript"]);
     assert.equal(fs.readdirSync(where).length, 1, "the manifest is the only thing a plan writes");
-    const again = quiet(() => plan(where, 1));
+    const again = quiet(() => plan(where, 1, probes));
     assert.equal(again.value, 2);
     assert.match(again.wrote, /not regenerated/);
-    const other = quiet(() => plan(path.join(path.dirname(where), "other"), 2));
+    const other = quiet(() => plan(path.join(path.dirname(where), "other"), 2, probes));
     assert.equal(other.value, 2, other.wrote);
     assert.match(other.wrote, /not the committed protocol: the seed/);
   } finally {

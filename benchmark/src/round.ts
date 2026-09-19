@@ -9,6 +9,7 @@ import * as session from "./session.ts";
 import * as trial from "./trial.ts";
 import * as toolchain from "./toolchain.ts";
 import * as workspace from "./workspace.ts";
+import { witnesses, type Witness } from "./probe.ts";
 import {
   FROZEN,
   normalizedFlags,
@@ -93,6 +94,8 @@ export interface Manifest {
   firstArm: Record<ArmName, number>;
   frozen: Frozen;
   order: Row[];
+  /** The passing workspace probes, one per language, that let this round be planned. */
+  probes?: Witness[];
 }
 
 function stamp(): string {
@@ -532,7 +535,7 @@ function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
 }
 
 /** Write the frozen protocol and run order, and start nothing. Prints the digest a person freezes. */
-export function plan(into: string, seed: number): number {
+export function plan(into: string, seed: number, probes = path.join(paths.RUNS, "probe")): number {
   const known = session.defaults();
   const blocked = preflight(known.klinBin);
   if (blocked !== "") {
@@ -565,8 +568,19 @@ export function plan(into: string, seed: number): number {
     process.stdout.write("the plan is not the committed protocol: " + departures.join("; ") + "\n");
     return 2;
   }
+  const proved = witnesses(probes, {
+    harness: held.frozen.harness.treeSha256,
+    host: held.frozen.host.version,
+    klin: held.frozen.klin.binarySha256,
+  });
+  if (proved.missing.length > 0) {
+    process.stdout.write(
+      "the workspace is not proved for this round: " + proved.missing.join("; ") + ". node benchmark/src/cli.ts probe runs one per language.\n",
+    );
+    return 2;
+  }
   fs.mkdirSync(into, { recursive: true });
-  const bytes = JSON.stringify(held, null, 2) + "\n";
+  const bytes = JSON.stringify({ ...held, probes: proved.found }, null, 2) + "\n";
   fs.writeFileSync(file, bytes);
   process.stdout.write(
     [

@@ -221,12 +221,14 @@ export function main(argv: string[]): number {
   }
   if (command === "probe") {
     const [family] = positionals(args);
-    const named = family ?? Object.keys(families())[0];
-    if (!Object.keys(families()).includes(named)) {
-      process.stdout.write("no family named " + named + "\n\n" + USAGE);
+    const found = families();
+    if (family !== undefined && !(family in found)) {
+      process.stdout.write("no family named " + family + "\n\n" + USAGE);
       return 2;
     }
-    return probe.run(named, flag(args, "--into", path.join(paths.RUNS, "probe")));
+    const named = family !== undefined ? [family] : probe.perLanguage(found);
+    const into = flag(args, "--into", path.join(paths.RUNS, "probe"));
+    return Math.max(...named.map((one) => probe.run(one, into)));
   }
   if (command === "calibrate") {
     return calibrate.all({

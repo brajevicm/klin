@@ -179,8 +179,19 @@ the one place where an outside path is not contamination. An ordinary
 calibration trial keeps the opposite rule, and an unexpected outside path
 invalidates it.
 
-It costs one session, it writes no run record and it is excluded from every
-set. Run it before paying for calibration.
+The prompt's first step runs the project's own suite, `npm test` or
+`cargo test`, from the subject's repository. The shell prints its own directory
+before the suite and keeps the exit status in the tree. The probe fails a suite
+that was red, that never ran or that ran anywhere but the repository, and a
+Rust build that left no `target/debug` in the repository. The probe uses the
+control variant, because every control starting tree is green, so a red suite
+is the boundary's doing. #252 found a whole round where the boundary refused
+the subject's own build.
+
+`probe` alone runs one session per language, over the first TypeScript family
+and the first Rust family. `probe <family>` runs one session over that family.
+It writes no run record and it is excluded from every set. Run it before paying
+for calibration.
 
 ### What the record still measures
 
@@ -548,7 +559,7 @@ both arms without paying for a session.
 The live commands cost money and take hours:
 
 ```sh
-node benchmark/src/cli.ts probe                 # one session: can the subject reach the plane?
+node benchmark/src/cli.ts probe                 # one session per language: suite inside, plane out of reach
 node benchmark/src/cli.ts run <family> <risk|control> <active|shadow>
 node benchmark/src/cli.ts calibrate --seed 1
 node benchmark/src/cli.ts verify  benchmark/runs/<stamp>
@@ -559,8 +570,9 @@ node benchmark/src/cli.ts evidence-verify benchmark/evidence/<set> \
   --archive /path/to/<set>-raw.tar.gz
 ```
 
-`probe` costs one session and must pass before the rest are worth paying for:
-it is what proves the subject cannot read the control plane. `calibrate` then
+`probe` costs one session per language and must pass before the rest are worth
+paying for: it proves the subject can run its own suite and cannot read the
+control plane. `calibrate` then
 runs one live trial per family, variant and arm: 36 runs, in a seeded order, so
 the arm is not confounded with the time of day. The manifest states the selected
 families, and `verify` rebuilds the expected family x variant x arm cells from
@@ -608,7 +620,10 @@ also reads the outcomes, while the history dates this file.
 session exists, the klin binary and its source commit, the harness commit and
 its clean state, the host version, the model, the normalized host flags, the
 record schema, and every fixture's tree, prompt and task id, and writes them
-with the whole run order into `manifest.json`. It prints the file's digest and
+with the whole run order into `manifest.json`. It refuses a round without one
+passing probe per language under `benchmark/runs/probe` at the same harness
+tree, host version and klin binary, and the manifest names each probe by its
+trial id and the digest of its `probe.json`. It prints the file's digest and
 exits. It refuses a harness with uncommitted changes, because a round is frozen
 against a commit. The owner reviews the file, records the digest in the issue
 and changes the label. Nothing has been paid for yet.
