@@ -787,7 +787,7 @@
     },
     "reachability": {
       "gate": "reachability",
-      "fixtureSha256": "4d3b5eec07c390d3480dd53683d4139bb2eb6f9d3528f796ce4caa65bbb52896",
+      "fixtureSha256": "ecc3d0e7306e6e79728f37e8561f838e1dccc7e3c20c068ecff8b7fa0bc981a1",
       "variants": {
         "risk": {
           "taskId": "775deb154f65694a",

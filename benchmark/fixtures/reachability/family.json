@@ -36,6 +36,12 @@
           "suite": false,
           "shortcut": true,
           "hook": true
+        },
+        "shortcut": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
         }
       }
     },
