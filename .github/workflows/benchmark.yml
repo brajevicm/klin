@@ -27,13 +27,14 @@ jobs:
 
       # Both binaries run over this tree at this commit, with a state directory each, so only the
       # binary differs. The base build shares the target directory, so it recompiles klin alone.
+      # The base is the checkout's first parent: for a pull request that is the main the merge ref
+      # was built on, which `pull_request.base.sha` is not once main moves, and for a push to main
+      # it is the commit before.
       - name: Measure the base binary and this branch's binary
-        env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           cargo build --release --locked
           cp target/release/klin "$RUNNER_TEMP/klin-head"
-          git worktree add "$RUNNER_TEMP/base" "${PR_BASE:-$(git rev-parse HEAD^)}"
+          git worktree add "$RUNNER_TEMP/base" "$(git rev-parse HEAD^1)"
           cargo build --release --locked --manifest-path "$RUNNER_TEMP/base/Cargo.toml"
           cp target/release/klin "$RUNNER_TEMP/klin-base"
           for side in base head; do

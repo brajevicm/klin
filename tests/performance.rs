@@ -1016,7 +1016,10 @@ fn work_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
             ][..],
         ),
         ("work", &["reads", "parses"][..]),
-        ("graph", &["modules", "dependencies", "ms"][..]),
+        (
+            "graph",
+            &["modules", "sources", "dependencies", "edges", "ms"][..],
+        ),
         (
             "surface",
             &["surfaces", "items", "measured", "opaque", "holes", "ms"][..],

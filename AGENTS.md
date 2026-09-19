@@ -26,6 +26,12 @@ thing to be rewritten, so nothing should be coupled to its shape.
 The harness gives every tree a repository whose base holds nothing, so every
 finding is new. `tree.base()` makes the tree as it stands the base.
 
+One exception: an architecture invariant that no shipped resolver or adapter
+can reach yet may be pinned by a `#[cfg(test)]` test over a structure built in
+memory, such as a module of several files before a language groups files
+(#220). Name such tests in `docs/SPEC.md` as the pins, and move the invariant
+to a CLI test once a shipped language reaches it.
+
 ## The rules klin enforces on itself
 
 Do not edit `klin.json` or the hooks to make a gate pass, and do not add an

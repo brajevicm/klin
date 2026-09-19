@@ -791,3 +791,23 @@ fn a_cached_changed_run_reads_and_parses_only_the_changed_file() {
         "{again}"
     );
 }
+
+#[test]
+fn a_tree_with_no_typescript_path_derives_only_rust_surfaces() {
+    let tree = Tree::new();
+    library(&tree);
+
+    let report = tree.run(&["gate", "--json", "--gate", "public-api"]).json();
+    let gate = &report["gates"][0];
+
+    assert_eq!(
+        gate["surface"]["dispatches"],
+        serde_json::json!({"rust": 2, "typescript": 0}),
+        "{report}"
+    );
+    assert_eq!(
+        gate["graph"]["dispatches"],
+        serde_json::json!({"rust": 2, "typescript": 0}),
+        "{report}"
+    );
+}

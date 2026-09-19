@@ -14,6 +14,7 @@ use crate::check::{
 use crate::config::{self, Error};
 use crate::host::{self, Stop};
 use crate::project::Project;
+use crate::syntax::{LanguageId, structural};
 use crate::{build, coverage, journal, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
@@ -1340,7 +1341,10 @@ fn costs(out: &mut Map<String, Value>, records: &Records) {
         records.graph.map_or(Value::Null, |graph| {
             serde_json::json!({
                 "modules": graph.modules,
+                "sources": graph.sources,
                 "dependencies": graph.dependencies,
+                "edges": graph.edges,
+                "dispatches": by_language(graph.dispatched()),
                 "ms": journal::millis(graph.time),
             })
         }),
@@ -1354,10 +1358,23 @@ fn costs(out: &mut Map<String, Value>, records: &Records) {
                 "measured": surface.measured,
                 "opaque": surface.opaque,
                 "holes": surface.holes,
+                "dispatches": by_language(surface.dispatched()),
                 "ms": journal::millis(surface.time),
             })
         }),
     );
+}
+
+/// One count per structural language, under the name a config names the language by.
+fn by_language(counts: impl Iterator<Item = (LanguageId, usize)>) -> Value {
+    let names = structural::languages();
+    counts
+        .filter_map(|(language, count)| {
+            let (name, _) = names.iter().find(|(_, id)| *id == language)?;
+            Some((name.to_string(), Value::from(count)))
+        })
+        .collect::<Map<String, Value>>()
+        .into()
 }
 
 /// A note the hook tells a person even when nothing blocks the stop: a file the run could not

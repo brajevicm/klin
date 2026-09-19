@@ -299,7 +299,7 @@ fn typescript_relative_imports_resolve_and_package_imports_are_counted_not_guess
 
     assert_eq!(green.code, 0, "{}", green.out);
     assert!(
-        green.says("1 dependency edge(s) judged")
+        green.says("1 dependency site(s) judged")
             && green.says("1 external or unsupported dependenc(ies)"),
         "{}",
         green.out
@@ -489,7 +489,7 @@ fn a_module_declaration_is_containment_and_not_a_dependency() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 dependency edge(s) judged, 0 forbidden, 0 cyclic"),
+        run.says("1 dependency site(s) judged, 0 forbidden, 0 cyclic"),
         "{}",
         run.out
     );
@@ -622,4 +622,113 @@ fn without_a_section_the_gate_needs_one_a_person_writes() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn a_tree_with_no_typescript_path_dispatches_only_the_rust_resolver() {
+    let tree = Tree::new();
+    two_layers(&tree, "use crate::ui::show;\npub fn rule() { show(); }\n");
+
+    let report = tree.run(&["gate", "--json", "--gate", "layering"]).json();
+    let graph = &report["gates"][0]["graph"];
+
+    assert_eq!(
+        graph["dispatches"],
+        serde_json::json!({"rust": 1, "typescript": 0}),
+        "{report}"
+    );
+    assert_eq!(graph["sources"], graph["modules"], "{report}");
+    assert_eq!(graph["edges"], 1, "{report}");
+}
+
+#[test]
+fn rust_source_the_grammar_rejects_still_dispatches_the_rust_resolver() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"core":{"in":"src"}}}}"#,
+    );
+    tree.write("src/lib.rs", "fn broken( {\n");
+
+    let run = tree.run(&["gate", "--json", "--gate", "layering"]);
+    let report = run.json();
+
+    assert_eq!(
+        report["gates"][0]["graph"]["dispatches"]["rust"], 1,
+        "{report}"
+    );
+    assert_eq!(report["gates"][0]["graph"]["modules"], 1, "{report}");
+    assert!(
+        tree.run(&["layering"])
+            .says("1 file(s) attached, 0 by a Cargo manifest and 1 by a conventional root"),
+        "{report}"
+    );
+}
+
+#[test]
+fn typescript_source_the_grammar_rejects_still_dispatches_the_typescript_resolver() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"web":{"in":"web"}}}}"#,
+    );
+    tree.write("web/a.ts", "export function broken( {\n");
+
+    let report = tree.run(&["gate", "--json", "--gate", "layering"]).json();
+
+    assert_eq!(
+        report["gates"][0]["graph"]["dispatches"],
+        serde_json::json!({"rust": 0, "typescript": 1}),
+        "{report}"
+    );
+    assert_eq!(report["gates"][0]["graph"]["modules"], 1, "{report}");
+}
+
+#[test]
+fn a_file_two_targets_reach_that_swaps_what_each_target_reaches_is_new() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() { crate::ui::show(); }\n");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write(
+        "src/main.rs",
+        "mod domain;\n#[path = \"ui/other.rs\"]\nmod ui;\nfn main() {}\n",
+    );
+    tree.write("src/ui/other.rs", "pub fn show() {}\n");
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        "mod domain;\n#[path = \"ui/other.rs\"]\nmod ui;\n",
+    );
+    tree.write("src/main.rs", "mod domain;\nmod ui;\nfn main() {}\n");
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_edge_does_not_follow_its_dependency_to_another_file() {
+    let tree = Tree::new();
+    two_layers(&tree, "mod rules;\npub fn rule() {}\n");
+    tree.write(
+        "src/domain/rules.rs",
+        "pub fn check() { crate::ui::show(); }\n",
+    );
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":["domain"]},"domain":{"in":"src/domain","can_use":[]}}},"accepted":[{"gate":"layering","file":"src/domain/rules.rs","text":"domain → ui: src/ui/mod.rs","edge":1}]}"#,
+    );
+    tree.base();
+    tree.write("src/domain/rules.rs", "pub fn check() {}\n");
+    tree.write(
+        "src/domain/mod.rs",
+        "mod rules;\npub fn rule() { crate::ui::show(); }\n",
+    );
+
+    let run = tree.run(&["layering", "--strict"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new"), "{}", run.out);
+    assert!(run.says("matched nothing"), "{}", run.out);
 }

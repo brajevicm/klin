@@ -194,6 +194,38 @@ local provenance reference if controlled measurements isolate a real cost.
 This decision does not justify repository-wide `FileId`, path interning,
 persistent graph/SCC state, parallel resolution or a resident service.
 
+## Implementation (#220)
+
+- `Module.sources` is a sorted, duplicate-free, non-empty `Vec<String>`. Rust
+  and TypeScript modules hold one file. Module identity stays the resolver's
+  `name`; `ModuleGraph::identity` maps only a leading source path through a
+  rename.
+- `Dependency.source` is a `u32` position in the writing module's `sources`,
+  so a site names its exact file with no owned path per edge.
+  `ModuleGraph::source` resolves it and `reached_at` takes the file.
+- `layering` places each physical file once, folds each module once into
+  `All` or `Mixed` for scope and layer, and judges a site by lookup. A site on
+  a mixed destination is reported with the unresolved dependency forms and
+  gets no verdict.
+- `ModuleGraph::cycles` takes a per-site predicate, deduplicates the selected
+  `(from, to)` pairs, and runs SCCs over the modules those pairs join.
+- `layering` groups judged sites into semantic edges keyed by the semantic
+  identity of both modules and the edge text, pairs the working tree's with
+  the base's, and only then merges them into one physical finding per file and
+  text. A finding is held where the base holds every semantic edge it merges,
+  and the ratchet receives that as a base site at the finding's own place.
+  Accepted entries still match only the site a person wrote.
+- `ModuleGraph::semantic` is the pairing identity: the owning target's kind
+  and root under current paths, then `identity`. A file two Rust targets
+  reach is two semantic modules. The report name and key text are unchanged.
+  `layering` names each module, its report name and its semantic identity,
+  at most once per side, so naming is one pass over a module's sources and
+  never one per site that reaches it. Retired base debt comes only from
+  semantic edges the working tree no longer holds.
+- The graph cost counts modules, source memberships, dependency sites,
+  distinct semantic edges and resolver dispatches by language. The surface
+  cost counts surface dispatches by language.
+
 ## Language probes
 
 The design was challenged against Rust, TypeScript, Go, Python, Java, C#,
