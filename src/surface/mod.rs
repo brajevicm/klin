@@ -11,8 +11,7 @@ use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use crate::modules::{ModuleGraph, Topology};
-use crate::syntax::LanguageId;
-use crate::syntax::structural::{Declaration, DeclarationKind};
+use crate::syntax::structural::{Declaration, DeclarationKind, LanguageId};
 
 mod rust;
 mod typescript;

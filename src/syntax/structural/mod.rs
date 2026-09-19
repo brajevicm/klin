@@ -19,10 +19,9 @@ use crate::config::{Config, Error};
 use crate::coverage::Files;
 use crate::files::{self, Found};
 use crate::project::Tree;
+pub use crate::syntax::LanguageId;
 use crate::syntax::convention;
-use crate::syntax::{
-    LANGUAGES, Language, LanguageId, Parsed, ParsedFile, Unparsed, line_at, parse, walk,
-};
+use crate::syntax::{LANGUAGES, Language, Parsed, ParsedFile, Unparsed, line_at, parse, walk};
 
 mod cache;
 pub mod footprint;
@@ -659,6 +658,12 @@ fn adapter(id: LanguageId) -> Option<&'static Adapter> {
         LanguageId::TypeScript => Some(&typescript::ADAPTER),
         _ => None,
     }
+}
+
+/// The logical language a path is written in, by its extension, whether or not its grammar
+/// accepts the file. The module graph asks this to know which resolvers a tree needs.
+pub fn language_of(path: &str) -> Option<LanguageId> {
+    crate::syntax::language_of(path).map(|language| language.id)
 }
 
 /// Whether any adapter reads this language, which is what a consumer asks before it counts a

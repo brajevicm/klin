@@ -136,11 +136,8 @@ enum Folded<T> {
 }
 
 impl<T: Copy + PartialEq> Folded<T> {
-    fn with(self, next: T) -> Folded<T> {
-        match self {
-            Folded::All(held) if held == next => self,
-            _ => Folded::Mixed,
-        }
+    fn and(self, other: Folded<T>) -> Folded<T> {
+        if self == other { self } else { Folded::Mixed }
     }
 }
 
@@ -438,15 +435,13 @@ fn placed<'g>(graph: &'g ModuleGraph, mut place: impl FnMut(&str) -> Place) -> P
         .modules
         .iter()
         .map(|module| {
-            let mut places = module
+            module
                 .sources
                 .iter()
-                .map(|file| *files.entry(file.as_str()).or_insert_with(|| place(file)));
-            let first = places.next().expect("a module holds at least one file");
-            places.fold(
-                (Folded::All(first.selected), Folded::All(first.layer)),
-                |(selected, layer), place| (selected.with(place.selected), layer.with(place.layer)),
-            )
+                .map(|file| *files.entry(file.as_str()).or_insert_with(|| place(file)))
+                .map(|place| (Folded::All(place.selected), Folded::All(place.layer)))
+                .reduce(|(scope, layer), (more, other)| (scope.and(more), layer.and(other)))
+                .unwrap_or((Folded::Mixed, Folded::Mixed))
         })
         .collect();
     Placed { files, modules }
@@ -543,27 +538,18 @@ fn edges(
     let mut ambiguous = Vec::new();
     let graph = &side.graph;
     for (at, dependency) in graph.dependencies.iter().enumerate() {
-        let file = graph.source(dependency);
-        let from = placed.files[file];
-        let (scope, layer) = placed.modules[dependency.to];
-        if !from.selected || scope == Folded::All(false) {
+        let Some(verdict) = verdict(policy, placed, cycles, graph, dependency) else {
             continue;
-        }
+        };
+        let file = graph.source(dependency);
         let target = graph.identity(dependency.to, |file| side.current(file));
-        let mut straddled = |what: &str| {
+        if let Some(what) = verdict.straddled {
             ambiguous.push(Hole {
                 file: side.current(file),
                 line: dependency.line,
                 text: target.clone(),
                 why: format!("reaches a module whose files lie across {what}"),
             });
-        };
-        if scope == Folded::Mixed {
-            straddled("the section's scope");
-            continue;
-        }
-        if layer == Folded::Mixed && from.layer.is_some() {
-            straddled("more than one layer, or a layer and none");
         }
         let mut add = |kind, text: String| {
             let edge = out
@@ -576,17 +562,55 @@ fn edges(
                 });
             edge.lines.insert(dependency.line);
         };
-        if let Some(layers) = match layer {
-            Folded::All(to) => policy.forbidden(from.layer, to),
-            Folded::Mixed => None,
-        } {
+        if let Some(layers) = verdict.forbidden {
             add(Kind::Forbidden, format!("{layers}: {target}"));
         }
-        if cycles.is_some_and(|cycles| cycles.closes(dependency)) {
+        if verdict.cyclic {
             add(Kind::Cycle, format!("{CYCLE}: {target}"));
         }
     }
     (out, ambiguous)
+}
+
+/// What the section says of one dependency site: the layers it crosses where the policy
+/// forbids that, whether it closes a cycle, and what it cannot judge because the files of the
+/// module it reaches straddle the scope or the layers.
+struct Verdict {
+    forbidden: Option<String>,
+    cyclic: bool,
+    straddled: Option<&'static str>,
+}
+
+/// The verdict on one site, and `None` where the scope leaves out the file that writes it or
+/// every file of the module it reaches. A module that straddles the scope gets no verdict; one
+/// that straddles the layers gets no layer verdict and is still judged for cycles.
+fn verdict(
+    policy: &Policy,
+    placed: &Placed,
+    cycles: Option<&Cycles>,
+    graph: &ModuleGraph,
+    dependency: &Dependency,
+) -> Option<Verdict> {
+    let from = placed.files[graph.source(dependency)];
+    let (scope, layer) = placed.modules[dependency.to];
+    match scope {
+        _ if !from.selected => None,
+        Folded::All(false) => None,
+        Folded::Mixed => Some(Verdict {
+            forbidden: None,
+            cyclic: false,
+            straddled: Some("the section's scope"),
+        }),
+        Folded::All(true) => Some(Verdict {
+            forbidden: match layer {
+                Folded::All(to) => policy.forbidden(from.layer, to),
+                Folded::Mixed => None,
+            },
+            cyclic: cycles.is_some_and(|cycles| cycles.closes(dependency)),
+            straddled: (layer == Folded::Mixed && from.layer.is_some())
+                .then_some("more than one layer, or a layer and none"),
+        }),
+    }
 }
 
 /// The key the ratchet's cross-file pass pairs an edge by: the module that writes it and what it

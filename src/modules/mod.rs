@@ -15,8 +15,7 @@ use std::time::{Duration, Instant};
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 
-use crate::syntax::structural::FileFacts;
-use crate::syntax::{self, LanguageId};
+use crate::syntax::structural::{self, FileFacts, LanguageId};
 
 mod rust;
 mod typescript;
@@ -140,14 +139,12 @@ fn present(files: &[String]) -> Vec<LanguageId> {
             break;
         }
         let name = file.rsplit('/').next().unwrap_or(file);
-        let language = syntax::language_of(file)
-            .map(|language| language.id)
-            .or_else(|| {
-                MANIFESTS
-                    .iter()
-                    .find(|(held, _)| *held == name)
-                    .map(|(_, id)| *id)
-            });
+        let language = structural::language_of(file).or_else(|| {
+            MANIFESTS
+                .iter()
+                .find(|(held, _)| *held == name)
+                .map(|(_, id)| *id)
+        });
         if let Some(id) = language.filter(|id| RESOLVERS.iter().any(|(held, _)| held == id))
             && !out.contains(&id)
         {
@@ -332,16 +329,23 @@ impl Builder<'_> {
 
     /// A dependency written in `file`, which is one of the writing module's own sources.
     fn depend(&mut self, from: usize, to: usize, file: &str, line: u64) {
-        let source = self.graph.modules[from]
+        let written = self.graph.modules[from]
             .sources
-            .binary_search_by(|held| held.as_str().cmp(file))
-            .expect("a dependency is written in a source of its module");
-        self.graph.dependencies.push(Dependency {
-            from,
-            to,
-            source: source as u32,
-            line,
-        });
+            .binary_search_by(|held| held.as_str().cmp(file));
+        match written {
+            Ok(source) => self.graph.dependencies.push(Dependency {
+                from,
+                to,
+                source: source as u32,
+                line,
+            }),
+            Err(_) => self.hole(
+                file,
+                line,
+                &self.graph.modules[to].name.clone(),
+                "a dependency from a file that is not one of its module's files".to_string(),
+            ),
+        }
     }
 
     fn hole(&mut self, file: &str, line: u64, text: &str, why: String) {
