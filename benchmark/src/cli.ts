@@ -9,10 +9,12 @@ import * as report from "./report.ts";
 import * as evidence from "./evidence.ts";
 import * as round from "./round.ts";
 import * as audit from "./audit.ts";
+import * as toolchain from "./toolchain.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
   node benchmark/src/cli.ts list
+  node benchmark/src/cli.ts toolchain
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family] [--into DIR]
@@ -86,6 +88,12 @@ function list(): number {
   }
   process.stdout.write("\n" + String(cells().length) + " calibration cells\n");
   return 0;
+}
+
+function toolchainStatus(): number {
+  const problem = toolchain.requirement();
+  process.stdout.write((problem || toolchain.describe()) + "\n");
+  return problem === "" ? 0 : 2;
 }
 
 function runSelftest(only: string[]): number {
@@ -194,6 +202,9 @@ export function main(argv: string[]): number {
   }
   if (command === "list") {
     return list();
+  }
+  if (command === "toolchain") {
+    return toolchainStatus();
   }
   if (command === "selftest") {
     return runSelftest(positionals(args));

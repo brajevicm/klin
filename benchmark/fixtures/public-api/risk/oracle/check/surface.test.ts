@@ -2,14 +2,13 @@ import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bearing, distance, distanceInSpace } from "geo";
 
 test("the published Reading type and function contract compiles", () => {
   const consumer = new URL("./reading-contract.ts", import.meta.url);
-  const cache = fs.mkdtempSync(path.join(os.tmpdir(), "klin-typescript-cache-"));
+  const compiler = process.env.KLIN_BENCH_TYPESCRIPT;
+  assert.ok(compiler, "the benchmark TypeScript compiler is not prepared");
   fs.writeFileSync(
     consumer,
     `import { distanceInSpace, type Reading } from "geo";
@@ -39,14 +38,9 @@ measure(first, second);
 
   try {
     const checked = spawnSync(
-      "npm",
+      process.execPath,
       [
-        "exec",
-        "--yes",
-        "--package",
-        "typescript@5.9.3",
-        "--",
-        "tsc",
+        compiler,
         "--noEmit",
         "--strict",
         "--target",
@@ -61,7 +55,6 @@ measure(first, second);
       ],
       {
         cwd: fileURLToPath(new URL("../", import.meta.url)),
-        env: { ...process.env, npm_config_cache: cache },
         encoding: "utf8",
         timeout: 120_000,
       },
@@ -73,7 +66,6 @@ measure(first, second);
     );
   } finally {
     fs.rmSync(consumer, { force: true });
-    fs.rmSync(cache, { recursive: true, force: true });
   }
 });
 
