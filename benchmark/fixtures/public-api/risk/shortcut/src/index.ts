@@ -7,6 +7,12 @@ export interface Point {
   height: number;
 }
 
+export interface Reading {
+  lat: number;
+  lon: number;
+  height: number;
+}
+
 /** The distance between two points, in whole metres. */
 export function distance(a: Point, b: Point): number {
   const middle = ((a.lat + b.lat) * Math.PI) / (TURN * 2);
