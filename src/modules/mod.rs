@@ -380,6 +380,13 @@ pub fn build(topology: &Topology) -> ModuleGraph {
             resolve(&mut builder);
         }
     }
+    finished(builder, started)
+}
+
+/// The graph a builder's resolvers made, with its dependencies and holes in order and each
+/// structural file no resolver attached counted as unattached, one by one.
+fn finished(builder: Builder, started: Instant) -> ModuleGraph {
+    let topology = builder.topology;
     let mut graph = builder.graph;
     let site = |held: &Dependency| (held.from, held.to, held.source, held.line);
     graph.dependencies.sort_unstable_by_key(site);
@@ -453,11 +460,15 @@ impl ModuleGraph {
     }
 
     /// The identity that tells one module apart from every other across the base and the working
-    /// tree: the kind and root of the target that owns it under current paths, then its identity.
-    /// A file two targets reach is a different module under each. A module no target owns is
-    /// its identity alone. ADR 0047.
-    pub fn semantic(&self, module: usize, current: impl Fn(&str) -> String) -> String {
-        let identity = self.identity(module, &current);
+    /// tree: the kind and root of the target that owns it under current paths, then its
+    /// `identity`, which the caller made once. A file two targets reach is a different module
+    /// under each. A module no target owns is its identity alone. ADR 0047.
+    pub fn semantic(
+        &self,
+        module: usize,
+        identity: &str,
+        current: impl Fn(&str) -> String,
+    ) -> String {
         match self.modules[module].target {
             Some(at) => {
                 let target = &self.targets[at];
@@ -467,7 +478,7 @@ impl ModuleGraph {
                     current(&target.root)
                 )
             }
-            None => identity,
+            None => identity.to_string(),
         }
     }
 
@@ -656,24 +667,35 @@ pub(crate) fn directory(path: &str) -> &str {
 mod tests {
     use super::*;
 
+    fn facts(path: &str) -> Rc<FileFacts> {
+        match structural::of(path, "pub fn f() {}\n") {
+            Ok(structural::Outcome::Facts(facts)) => facts,
+            _ => panic!("{path} measures"),
+        }
+    }
+
+    /// A module of two files attaches each file on its own, a structural file no module holds
+    /// stays unattached on its own, and each site names the file that writes it.
     #[test]
     fn a_module_of_many_files_attaches_each_file_and_names_each_site() {
-        let files = ["b.go".to_string(), "a.go".to_string()];
-        let topology = Topology::new(Path::new("."), &files, &[], &HashMap::new());
+        let files = ["b.rs", "a.rs", "c.rs", "d.rs"].map(String::from);
+        let measured = [facts("a.rs"), facts("b.rs"), facts("c.rs"), facts("d.rs")];
+        let topology = Topology::new(Path::new("."), &files, &measured, &HashMap::new());
         let mut builder = Builder {
             topology: &topology,
             graph: ModuleGraph::default(),
         };
-        let from = builder.module("p".into(), &["b.go", "a.go", "b.go"], Attachment::File);
-        let to = builder.module("q".into(), &["c.go"], Attachment::File);
-        builder.depend(from, to, "b.go", 3);
-        builder.depend(from, to, "a.go", 3);
-        let graph = builder.graph;
-        assert_eq!(graph.modules[from].sources, ["a.go", "b.go"]);
+        let from = builder.module("p".into(), &["b.rs", "a.rs", "b.rs"], Attachment::File);
+        let to = builder.module("q".into(), &["c.rs"], Attachment::File);
+        builder.depend(from, to, "b.rs", 3);
+        builder.depend(from, to, "a.rs", 3);
+        let graph = finished(builder, Instant::now());
+        assert_eq!(graph.modules[from].sources, ["a.rs", "b.rs"]);
         let attached: Vec<&str> = graph.attached.keys().map(String::as_str).collect();
-        assert_eq!(attached, ["a.go", "b.go", "c.go"]);
-        assert_eq!(graph.source(&graph.dependencies[0]), "b.go");
-        assert_eq!(graph.reached_at(from, "a.go", 3), [to]);
+        assert_eq!(attached, ["a.rs", "b.rs", "c.rs"]);
+        assert_eq!(graph.unattached, ["d.rs"]);
+        assert_eq!(graph.source(&graph.dependencies[0]), "a.rs");
+        assert_eq!(graph.reached_at(from, "b.rs", 3), [to]);
         assert_eq!(graph.cost().sources, 3);
     }
 }

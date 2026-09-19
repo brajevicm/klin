@@ -218,6 +218,10 @@ persistent graph/SCC state, parallel resolution or a resident service.
 - `ModuleGraph::semantic` is the pairing identity: the owning target's kind
   and root under current paths, then `identity`. A file two Rust targets
   reach is two semantic modules. The report name and key text are unchanged.
+  `layering` names each module, its report name and its semantic identity,
+  at most once per side, so naming is one pass over a module's sources and
+  never one per site that reaches it. Retired base debt comes only from
+  semantic edges the working tree no longer holds.
 - The graph cost counts modules, source memberships, dependency sites,
   distinct semantic edges and resolver dispatches by language. The surface
   cost counts surface dispatches by language.

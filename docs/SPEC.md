@@ -1787,7 +1787,8 @@ strict, the working tree takes the base's facts for every unchanged file, as
 unit tests
 `multi_source_work_is_linear_in_files_modules_sites_and_unique_edges`,
 `a_straddled_destination_is_ambiguous_and_never_judged`,
-`a_site_is_its_file_and_line` and
+`a_site_is_its_file_and_line`,
+`a_moved_semantic_edge_is_held_once` and
 `a_semantic_edge_is_paired_before_its_findings_are_made` in
 `src/layering.rs`, and
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in

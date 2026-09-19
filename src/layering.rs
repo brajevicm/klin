@@ -1,13 +1,14 @@
 //! The `layering` check: a dependency that crosses a declared architectural boundary, or that
 //! closes a dependency cycle, instead of going through the interface the architecture intends.
 //! It reads the module graph of both trees and judges resolved dependencies only; containment
-//! is never a dependency. A forbidden edge is keyed by the file that writes it, the two layers
-//! and the module it reaches, named by its file and inline modules, and a cyclic edge by the file
-//! and the module. Each carries `edge`
-//! at 1, so a base edge with the same key is held and any other is new. A renamed file is placed
-//! in the base's layers under its base path and keyed under its current one. The section is a
-//! person's policy and nothing derives it: with no section the gate does not run. Spec 8.2.1,
-//! ADR 0043.
+//! is never a dependency. Judged sites group into semantic edges: the module that writes one
+//! and the module it reaches, each by its semantic identity, and the edge's text, which names
+//! its kind, its layers and the module it reaches by its file and inline modules. The working
+//! tree's semantic edges pair with the base's first; each is then reported as one finding per
+//! file that writes it and text, carrying `edge` at 1, held where the base holds every semantic
+//! edge it merges and new otherwise. A renamed file is placed in the base's layers under its
+//! base path and keyed under its current one. The section is a person's policy and nothing
+//! derives it: with no section the gate does not run. Spec 8.2.1, ADR 0043, ADR 0047.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
@@ -210,7 +211,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         at,
         (&policy, &now, &now_placed),
         findings,
-        (&physicals, &was_edges),
+        (&physicals, &was_edges, &now_edges),
         out,
     )?;
     let code = coverage::lost_said(
@@ -450,14 +451,42 @@ fn refused(config: &Config, why: &str) -> Error {
 #[cfg(test)]
 thread_local! {
     /// The work one side's judgement does, counted where a test asks: files placed, modules
-    /// folded, and dependency sites judged. #220.
-    static WORK: std::cell::Cell<[usize; 3]> = const { std::cell::Cell::new([0; 3]) };
+    /// folded, dependency sites judged, and modules named. #220.
+    static WORK: std::cell::Cell<[usize; 4]> = const { std::cell::Cell::new([0; 4]) };
 }
 
-/// The counters of `WORK`: files placed, modules folded, dependency sites judged.
+/// The counters of `WORK`: files placed, modules folded, dependency sites judged, modules named.
 const PLACED: usize = 0;
 const FOLDED: usize = 1;
 const JUDGED: usize = 2;
+const NAMED: usize = 3;
+
+/// Each module's report name and semantic identity on one side, each made at most once, so
+/// naming costs one pass over a module's files and never one per site that reaches it.
+struct Names<'s> {
+    side: &'s Side,
+    held: HashMap<usize, (String, String)>,
+}
+
+impl<'s> Names<'s> {
+    fn new(side: &'s Side) -> Names<'s> {
+        Names {
+            side,
+            held: HashMap::new(),
+        }
+    }
+
+    fn of(&mut self, module: usize) -> &(String, String) {
+        let side = self.side;
+        self.held.entry(module).or_insert_with(|| {
+            worked(NAMED);
+            let current = |file: &str| side.current(file);
+            let identity = side.graph.identity(module, current);
+            let semantic = side.graph.semantic(module, &identity, current);
+            (identity, semantic)
+        })
+    }
+}
 
 /// One unit of the work `WORK` counts, and nothing outside a test.
 #[cfg_attr(not(test), allow(unused_variables))]
@@ -586,13 +615,14 @@ fn edges(
 ) -> (Edges, Vec<Hole>) {
     let mut pairs: BTreeMap<(usize, usize, String), Edge> = BTreeMap::new();
     let mut ambiguous = Vec::new();
+    let mut names = Names::new(side);
     let graph = &side.graph;
     for (at, dependency) in graph.dependencies.iter().enumerate() {
         let Some(verdict) = verdict(policy, placed, cycles, graph, dependency) else {
             continue;
         };
         let file = graph.source(dependency);
-        let target = graph.identity(dependency.to, |file| side.current(file));
+        let target = names.of(dependency.to).0.clone();
         if let Some(what) = verdict.straddled {
             ambiguous.push(Hole {
                 file: side.current(file),
@@ -621,29 +651,20 @@ fn edges(
             add(Kind::Cycle, format!("{CYCLE}: {target}"));
         }
     }
-    (semantic(side, pairs), ambiguous)
+    (semantic(&mut names, pairs), ambiguous)
 }
 
-/// Module-pair edges keyed by the semantic identity of each module, each named once, merging
-/// the sites of any two pairs whose modules name alike. ADR 0047.
-fn semantic(side: &Side, pairs: BTreeMap<(usize, usize, String), Edge>) -> Edges {
-    let graph = &side.graph;
-    let mut named: HashMap<usize, String> = HashMap::new();
-    let mut named_as = |module| {
-        named
-            .entry(module)
-            .or_insert_with(|| graph.semantic(module, |file| side.current(file)))
-            .clone()
-    };
+/// Module-pair edges keyed by the semantic identity of each module, merging the sites of any
+/// two pairs whose modules name alike. ADR 0047.
+fn semantic(names: &mut Names, pairs: BTreeMap<(usize, usize, String), Edge>) -> Edges {
     let mut out = Edges::new();
     for ((from, to, text), edge) in pairs {
-        let merged = out
-            .entry((named_as(from), named_as(to), text))
-            .or_insert_with(|| Edge {
-                kind: edge.kind,
-                sites: BTreeMap::new(),
-                first: edge.first,
-            });
+        let key = (names.of(from).1.clone(), names.of(to).1.clone(), text);
+        let merged = out.entry(key).or_insert_with(|| Edge {
+            kind: edge.kind,
+            sites: BTreeMap::new(),
+            first: edge.first,
+        });
         for (file, lines) in edge.sites {
             merged.sites.entry(file).or_default().extend(lines);
         }
@@ -748,10 +769,10 @@ fn judged(
     at: &Context,
     (policy, now, placed): (&Policy, &Side, &Placed),
     findings: Vec<Finding>,
-    (physicals, was_edges): (&Physicals, &Edges),
+    (physicals, was_edges, now_edges): (&Physicals, &Edges, &Edges),
     out: &mut Sink,
 ) -> Result<u8, Error> {
-    let prior = prior(physicals, was_edges);
+    let prior = prior(physicals, (was_edges, now_edges));
     let kinds = |kind: Kind| {
         findings
             .iter()
@@ -789,7 +810,7 @@ fn judged(
 /// the working tree reports without holding it is left out, or it would hold a new semantic
 /// edge by its site. An accepted entry is still matched by the site a person wrote, and never
 /// follows a move.
-fn prior(physicals: &Physicals, was_edges: &Edges) -> Vec<Finding> {
+fn prior(physicals: &Physicals, (was_edges, now_edges): (&Edges, &Edges)) -> Vec<Finding> {
     let site = |(file, text): &(String, String), lines: &BTreeSet<u64>| Finding {
         file: file.clone(),
         line: lines.first().copied().unwrap_or_default(),
@@ -802,12 +823,23 @@ fn prior(physicals: &Physicals, was_edges: &Edges) -> Vec<Finding> {
         .filter(|(_, physical)| physical.held)
         .map(|(key, physical)| site(key, &physical.lines))
         .collect();
-    let retired = self::physicals(was_edges, &Edges::new());
+    let mut retired: BTreeMap<(String, String), BTreeSet<u64>> = BTreeMap::new();
+    for (key, edge) in was_edges
+        .iter()
+        .filter(|(key, _)| !now_edges.contains_key(*key))
+    {
+        for (file, lines) in &edge.sites {
+            retired
+                .entry((file.clone(), key.2.clone()))
+                .or_default()
+                .extend(lines);
+        }
+    }
     out.extend(
         retired
             .iter()
             .filter(|(key, _)| !physicals.contains_key(*key))
-            .map(|(key, physical)| site(key, &physical.lines)),
+            .map(|(key, lines)| site(key, lines)),
     );
     out
 }
@@ -997,13 +1029,14 @@ mod tests {
         }
     }
 
-    fn work() -> [usize; 3] {
-        WORK.with(|work| work.replace([0; 3]))
+    fn work() -> [usize; 4] {
+        WORK.with(|work| work.replace([0; 4]))
     }
 
     /// Many modules of many files, each file writing repeated sites to the same two modules:
-    /// each file is placed once, each module folded once, each site judged once, and the
-    /// components are found over each module pair once.
+    /// each file is placed once, each module folded once and named once however many sites
+    /// reach it, each site judged once, and the components are found over each module pair
+    /// once. No module's name starts with one of its files, so naming one scans them all.
     #[test]
     fn multi_source_work_is_linear_in_files_modules_sites_and_unique_edges() {
         let (count, files, lines) = (100, 10, 5);
@@ -1042,7 +1075,7 @@ mod tests {
         let placed = policy.placed(&side.graph);
         let cycles = policy.cycles(&side, &placed).unwrap();
         let (edges, ambiguous) = edges(&policy, (&side, &placed), Some(&cycles));
-        assert_eq!(work(), [count * files, count, sites]);
+        assert_eq!(work(), [count * files, count, sites, count]);
         assert_eq!(side.graph.dependencies.len(), sites);
         assert_eq!(cycles.edges(), count * 2);
         assert_eq!(side.graph.cost().edges, count * 2);
@@ -1128,10 +1161,30 @@ mod tests {
                 entry.as_object().unwrap().clone()
             })
             .collect();
-        ratchet::outcomes(found, prior(&physicals, &was), entries, &[EDGE])
+        ratchet::outcomes(found, prior(&physicals, (&was, &now)), entries, &[EDGE])
             .into_iter()
             .map(|(finding, outcome)| (finding.file, outcome))
             .collect()
+    }
+
+    /// An edge that moves to another file of its module is one base site at its new place, and
+    /// the file it left is not retired debt as well.
+    #[test]
+    fn a_moved_semantic_edge_is_held_once() {
+        let policy = policy(&[]);
+        let judged = |source: u32| {
+            let modules = vec![
+                module("p", &["b/p1.go", "b/p2.go"]),
+                module("q", &["c/q.go"]),
+            ];
+            let side = side(modules, vec![site(0, 1, source, 5)]);
+            let placed = policy.placed(&side.graph);
+            edges(&policy, (&side, &placed), None).0
+        };
+        let (was, now) = (judged(0), judged(1));
+        let prior = prior(&physicals(&now, &was), (&was, &now));
+        let sites: Vec<&str> = prior.iter().map(|finding| finding.file.as_str()).collect();
+        assert_eq!(sites, ["b/p2.go"]);
     }
 
     /// Evidence of one semantic edge that moves between the files of its module, splits across
