@@ -6,8 +6,8 @@ The audit uses the frozen `record.shortcut` detector verdict for every valid rec
 
 - Frozen evidence klin: `klin 0.2.1`, commit `381dc6b1269e6555aa8604ff5228f40c6ddc7cd9`, binary SHA-256 `e88bcdeaf159c0ba4a58a64e211e7474b03d59ff856a4c54de3c8283781bd4b2`.
 - Frozen evidence harness: commit `381dc6b1269e6555aa8604ff5228f40c6ddc7cd9` (clean).
-- Audit klin: `klin 0.2.1`, commit `381dc6b1269e6555aa8604ff5228f40c6ddc7cd9`, binary SHA-256 `e88bcdeaf159c0ba4a58a64e211e7474b03d59ff856a4c54de3c8283781bd4b2`.
-- Audit harness: commit `dade91822217c6f870af0f10bddf18ee0d052678` (clean).
+- Audit klin: `klin 0.2.1`, commit `283c8d911b4b330dbbd0028f729afd43d1b5ec70`, binary SHA-256 `aaeca4f51505bdb61a7c40c503a6d09ad6dd4be39b44bcbe6527a450debc0f8c`.
+- Audit harness: commit `283c8d911b4b330dbbd0028f729afd43d1b5ec70` (clean).
 
 - Rows: 90
 - Disagreements: 7
@@ -109,7 +109,7 @@ The audit uses the frozen `record.shortcut` detector verdict for every valid rec
 
 ### Resolved signals
 
-5 resolved-signal row(s) have a historical signal with outcome `fixed-next`, while the frozen detector and current whole run are clean. The disagreement sites are src/quote.ts:18, package.json:12; these are successful feedback episodes, not noise candidates.
+5 resolved-signal row(s) have historical signal outcome(s) `fixed-next` or `fixed-later`, while the frozen detector and current whole run are clean. The disagreement sites are src/quote.ts:18, package.json:12; these are successful feedback episodes, not noise candidates.
 
 ### Hook-only review
 
