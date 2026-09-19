@@ -204,10 +204,11 @@ fn excerpt(text: &str) -> String {
 /// and not twice. Spec 5.2.
 pub fn prompt_enabled(loaded: &Config) -> bool {
     match loaded.pinned(config::JOURNAL.name) {
-        Some(Value::Object(section)) => section
-            .get("prompt")
-            .and_then(Value::as_bool)
-            .unwrap_or(true),
+        Some(Value::Object(section)) => match section.get("prompt") {
+            Some(Value::Bool(enabled)) => *enabled,
+            Some(_) => false,
+            None => true,
+        },
         _ => true,
     }
 }

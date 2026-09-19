@@ -1,0 +1,806 @@
+{
+  "$id": "https://raw.githubusercontent.com/brajevicm/klin/main/schemas/klin.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Human policy for klin; repository facts and semantic validation remain native to klin.",
+  "properties": {
+    "accepted": {
+      "description": "the debt a person accepted, each entry a site and a reason. Only a person writes it",
+      "items": {
+        "additionalProperties": {
+          "type": "number"
+        },
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "gate": {
+            "type": "string"
+          },
+          "line": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gate",
+          "file",
+          "text"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "build": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "root": {
+                "type": "string"
+              },
+              "run": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "run"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "const": false
+        }
+      ],
+      "description": "a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing"
+    },
+    "complexity": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "cc": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": false,
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[0-9]{4}-[0-9]{2}-[0-9]{2}$": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              ],
+              "description": "the cyclomatic complexity a function may not pass"
+            },
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            },
+            "lines": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": false,
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[0-9]{4}-[0-9]{2}-[0-9]{2}$": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              ],
+              "description": "the body length a function may not pass"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "conventions": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "oneOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "code"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "files"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "language"
+                      ]
+                    }
+                  ]
+                },
+                "required": [
+                  "text"
+                ]
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "text"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "files"
+                      ]
+                    }
+                  ]
+                },
+                "required": [
+                  "code"
+                ]
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "text"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "code"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "language"
+                      ]
+                    }
+                  ]
+                },
+                "required": [
+                  "files"
+                ]
+              }
+            ],
+            "properties": {
+              "code": {
+                "description": "a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list. A fragment, such as a match arm or a type, is read everywhere the language holds one",
+                "type": "string"
+              },
+              "except": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                ],
+                "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              },
+              "files": {
+                "description": "a glob over repository-relative paths no file may sit at, where `*` stays inside one directory and `**/` crosses any number",
+                "type": "string"
+              },
+              "in": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                ],
+                "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              },
+              "language": {
+                "description": "the language a `code` pattern is written in",
+                "enum": [
+                  "rust",
+                  "typescript"
+                ],
+                "type": "string"
+              },
+              "remedy": {
+                "description": "the exact action to take instead, printed with every failure",
+                "type": "string"
+              },
+              "text": {
+                "description": "the literal text no line may hold, matched as written. Each convention states one of `text`, `code` and `files`",
+                "type": "string"
+              }
+            },
+            "required": [
+              "remedy"
+            ],
+            "type": "object"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "minLength": 1
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "dead_symbols": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "ignore": {
+              "description": "name globs for declarations the check leaves out",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "doc_citations": {
+      "const": false
+    },
+    "doc_size": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "additionalProperties": false,
+                "minProperties": 1,
+                "patternProperties": {
+                  "^[0-9]{4}-[0-9]{2}-[0-9]{2}$": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            ],
+            "description": "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. Every other document at the tree root keeps a derived ceiling"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "minLength": 1
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "escapes": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            },
+            "skip_rust_tests": {
+              "description": "whether an inline Rust test module is left out",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "inventory": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "journal": {
+      "additionalProperties": false,
+      "description": "how the journal records a turn, as `prompt`, `false` to record no prompt excerpt",
+      "properties": {
+        "prompt": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "layering": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "acyclic": {
+              "description": "`true` to fail a dependency that closes a module cycle the base did not hold",
+              "type": "boolean"
+            },
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            },
+            "layers": {
+              "additionalProperties": {
+                "additionalProperties": false,
+                "properties": {
+                  "can_use": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    ]
+                  },
+                  "in": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "in"
+                ],
+                "type": "object"
+              },
+              "description": "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer",
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "layers"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "lockfile": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "public_api": {
+      "const": false
+    },
+    "radius": {
+      "additionalProperties": false,
+      "description": "the change radius a turn may not pass, as `lines` and `directories`",
+      "properties": {
+        "directories": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "lines": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "reachability": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "sarif": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "differential": {
+                "description": "whether only a finding on a line the window changed is judged",
+                "type": "boolean"
+              },
+              "name": {
+                "description": "the gate's own name, which `--gate` takes",
+                "type": "string"
+              },
+              "report": {
+                "description": "the SARIF file this gate reads",
+                "type": "string"
+              },
+              "run": {
+                "description": "the command that writes the report before the gate reads it",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "report"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "stubs": {
+      "anyOf": [
+        {
+          "const": false
+        },
+        {
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "except": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+            },
+            "in": {
+              "anyOf": [
+                {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              ],
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "title": "klin.json",
+  "type": "object"
+}

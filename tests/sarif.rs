@@ -274,6 +274,15 @@ fn a_section_that_is_not_a_list_of_entries_is_a_config_error() {
 }
 
 #[test]
+fn an_entry_with_an_unknown_field_is_a_config_error() {
+    let tree = tree(r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "extra": true}]}"#);
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("has unknown field \"extra\""), "{}", run.out);
+}
+
+#[test]
 fn run_deletes_the_report_it_finds_before_it_reads_the_one_the_tool_wrote() {
     let tree = tree(r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "true"}]}"#);
     tree.write(

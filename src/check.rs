@@ -15,7 +15,7 @@ use crate::base::{self, Prior};
 use crate::changed::Change;
 use crate::config::{Config, Error};
 use crate::project::Project;
-use crate::reference::{Key, Languages};
+use crate::reference::{Key, Languages, SectionShape};
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering,
     lockfile, modules, public_api, reachability, sarif, stubs, surface, syntax,
@@ -345,6 +345,7 @@ pub struct Row {
     /// Whether the section is a list of entries a person writes, each its own gate under its
     /// own `name`, rather than one section the whole check runs under. Spec 8.3.
     pub gate_per_entry: bool,
+    pub shape: SectionShape,
     /// What a report calls this check's findings when it writes for a person. Spec 11.5.
     pub labels: Labels,
 }
@@ -365,6 +366,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "long documents",
         },
         gate_per_entry: false,
+        shape: SectionShape::DocumentMap,
     },
     Row {
         name: "doc-citations",
@@ -381,6 +383,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "broken citations",
         },
         gate_per_entry: false,
+        shape: SectionShape::FalseOnly,
     },
     Row {
         name: "lockfile",
@@ -397,6 +400,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "unlocked dependencies",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "escapes",
@@ -413,6 +417,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "escape hatches",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "stubs",
@@ -429,6 +434,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "stubs",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "inventory",
@@ -445,6 +451,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "missing tests",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "complexity",
@@ -461,6 +468,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "tangled functions",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "dead-symbols",
@@ -477,6 +485,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "dead symbols",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "reachability",
@@ -493,6 +502,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "unreferenced files",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: "layering",
@@ -509,6 +519,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "layering breaches",
         },
         gate_per_entry: false,
+        shape: SectionShape::Object,
     },
     Row {
         name: public_api::NAME,
@@ -525,6 +536,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "broken public contracts",
         },
         gate_per_entry: false,
+        shape: SectionShape::FalseOnly,
     },
     Row {
         name: "conventions",
@@ -541,6 +553,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "convention breaches",
         },
         gate_per_entry: false,
+        shape: SectionShape::Conventions,
     },
     Row {
         name: "sarif",
@@ -557,6 +570,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "scanner findings",
         },
         gate_per_entry: true,
+        shape: SectionShape::Sarif,
     },
 ];
 
@@ -594,6 +608,7 @@ pub const NAMED: Key = Key {
     required: true,
     rule: None,
     default: "",
+    shape: crate::reference::Shape::String,
 };
 
 /// The entries of a section a person writes entry by entry, each with the name its gate takes.

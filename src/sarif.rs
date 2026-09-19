@@ -32,6 +32,7 @@ const REPORT: Key = Key {
     required: true,
     rule: None,
     default: "",
+    shape: crate::reference::Shape::String,
 };
 
 const RUN: Key = Key {
@@ -40,6 +41,7 @@ const RUN: Key = Key {
     required: false,
     rule: None,
     default: "klin reads the report as it finds it and refuses one that predates the change",
+    shape: crate::reference::Shape::String,
 };
 
 const DIFFERENTIAL: Key = Key {
@@ -48,6 +50,7 @@ const DIFFERENTIAL: Key = Key {
     required: false,
     rule: None,
     default: "`false`",
+    shape: crate::reference::Shape::Boolean,
 };
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];
@@ -158,6 +161,12 @@ fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
         .find(|(name, _)| name == gate)
         .ok_or_else(|| shape(config))?;
     let held = held.as_object().ok_or_else(|| shape(config))?;
+    crate::config::known_fields(
+        &config.file,
+        SECTION,
+        held,
+        &[check::NAMED.name, REPORT.name, RUN.name, DIFFERENTIAL.name],
+    )?;
     let report = held
         .get(REPORT.name)
         .and_then(Value::as_str)

@@ -36,6 +36,7 @@ pub const IGNORE: Key = Key {
     required: false,
     rule: None,
     default: "Rust `main`, test functions and declarations marked externally visible",
+    shape: crate::reference::Shape::Strings,
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, IGNORE];

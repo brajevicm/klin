@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::reference::Key;
+use crate::reference::{Key, SectionShape, Shape};
 
 const FILENAME: &str = "klin.json";
 
@@ -29,6 +29,7 @@ pub const BUILD: Key = Key {
     required: false,
     rule: Some("one command per standard manifest, from the fixed table of ADR 0012"),
     default: "",
+    shape: crate::reference::Shape::Build,
 };
 
 pub const ACCEPTED: Key = Key {
@@ -37,6 +38,7 @@ pub const ACCEPTED: Key = Key {
     required: false,
     rule: None,
     default: "nothing is accepted",
+    shape: crate::reference::Shape::Accepted,
 };
 
 pub const RADIUS: Key = Key {
@@ -47,6 +49,7 @@ pub const RADIUS: Key = Key {
         "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
     ),
     default: "",
+    shape: crate::reference::Shape::Radius,
 };
 
 pub const JOURNAL: Key = Key {
@@ -55,6 +58,7 @@ pub const JOURNAL: Key = Key {
     required: false,
     rule: None,
     default: "the prompt excerpt is recorded",
+    shape: crate::reference::Shape::Journal,
 };
 
 #[derive(Debug)]
@@ -196,10 +200,646 @@ impl Config {
 fn well_formed(file: &Path, data: &Value) -> Result<(), Error> {
     every_key_is_one_klin_reads(file, data)?;
     no_section_names_a_retired_key(file, data)?;
-    every_automatic_section_is_policy(file, data)?;
-    nested_fields(file, data)?;
+    structure(file, data)?;
     crate::conventions::no_stale_debt(file, data)?;
     crate::ceiling::every_schedule(file, data)
+}
+
+/// The structural contract shared by the native reader and the generated schema. Semantic rules
+/// that need a tree, parser or dated step stay in the check that owns them. Spec 5.2, 5.3, 5.5.
+fn structure(file: &Path, data: &Value) -> Result<(), Error> {
+    let fields = data
+        .as_object()
+        .ok_or_else(|| Error(format!("{}: klin.json must be an object", file.display())))?;
+    for key in KEYS {
+        if let Some(value) = fields.get(key.name) {
+            value_shape(file, key.name, key, value)?;
+        }
+    }
+    for check in crate::check::CATALOGUE {
+        if let Some(value) = fields.get(check.section) {
+            section_shape(file, check, value)?;
+        }
+    }
+    Ok(())
+}
+
+fn section_shape(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+    match check.shape {
+        SectionShape::Object => object_section_shape(file, check, value),
+        SectionShape::DocumentMap => document_map_shape(file, check.section, value),
+        SectionShape::FalseOnly => false_only_shape(file, check, value),
+        SectionShape::Conventions => dynamic_conventions(file, check, value),
+        SectionShape::Sarif => named_entries_shape(file, check, value),
+    }
+}
+
+fn object_section_shape(
+    file: &Path,
+    check: &crate::check::Row,
+    value: &Value,
+) -> Result<(), Error> {
+    if check.activation == crate::check::Activation::Automatic && matches!(value, Value::Array(_)) {
+        return retired_list(file, check.section);
+    }
+    disabled_object(file, check.section, value, check.keys)
+}
+
+fn false_only_shape(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+    match (
+        check.activation == crate::check::Activation::Automatic,
+        value,
+    ) {
+        (_, Value::Bool(false)) => Ok(()),
+        (true, Value::Array(_)) => retired_list(file, check.section),
+        (true, Value::Object(_)) => Err(Error(format!(
+            "{}: \"{}\" reads no policy — {}",
+            file.display(),
+            check.section,
+            policy_shape(check.section)
+        ))),
+        _ => Err(shape_error(file, check.section, check.section, "false")),
+    }
+}
+
+fn document_map_shape(file: &Path, section: &str, value: &Value) -> Result<(), Error> {
+    match value {
+        Value::Bool(false) => Ok(()),
+        Value::Array(_) => retired_list(file, section),
+        Value::Object(fields) => {
+            if fields.is_empty() {
+                return Err(Error(format!(
+                    "{}: \"{section}\" must pin at least one document — remove the section to derive every ceiling",
+                    file.display()
+                )));
+            }
+            fields
+                .iter()
+                .try_for_each(|(name, value)| document_shape(file, section, name, value))
+        }
+        _ => Err(Error(format!(
+            "{}: \"{section}\" must be an object or false — {}",
+            file.display(),
+            policy_shape(section)
+        ))),
+    }
+}
+
+fn document_shape(file: &Path, section: &str, name: &str, value: &Value) -> Result<(), Error> {
+    if name.is_empty() {
+        return Err(document_error(file, section, name));
+    }
+    match value_shape(file, section, &crate::doc_size::DOCUMENT, value) {
+        Ok(()) => Ok(()),
+        Err(error) if value.is_object() => Err(error),
+        Err(_) => Err(document_error(file, section, name)),
+    }
+}
+
+fn document_error(file: &Path, section: &str, name: &str) -> Error {
+    Error(format!(
+        "{}: \"{section}\" \"{name}\" must be a whole number of words or an object of dated steps — \"{section}\" maps a document path to its ceiling, such as {{\"README.md\": 1200}}",
+        file.display()
+    ))
+}
+
+fn retired_list(file: &Path, section: &str) -> Result<(), Error> {
+    Err(Error(format!(
+        "{}: \"{section}\" no longer accepts a list of entries, because klin discovers what it applies to — {}",
+        file.display(),
+        policy_shape(section)
+    )))
+}
+
+fn disabled_object(file: &Path, section: &str, value: &Value, keys: &[Key]) -> Result<(), Error> {
+    match value {
+        Value::Bool(false) => Ok(()),
+        Value::Object(fields) => fields_shape(file, section, fields, keys, true),
+        _ => Err(shape_error(file, section, section, "an object or false")),
+    }
+}
+
+fn fields_shape(
+    file: &Path,
+    section: &str,
+    fields: &Map<String, Value>,
+    keys: &[Key],
+    non_empty: bool,
+) -> Result<(), Error> {
+    if non_empty && fields.is_empty() {
+        return Err(Error(format!(
+            "{}: \"{section}\" must state at least one of: {}",
+            file.display(),
+            keys.iter()
+                .map(|key| key.name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
+    }
+    let names: Vec<&str> = keys.iter().map(|key| key.name).collect();
+    known_fields(file, section, fields, &names)?;
+    keys.iter()
+        .try_for_each(|key| field_shape(file, section, fields, key))
+}
+
+fn field_shape(
+    file: &Path,
+    section: &str,
+    fields: &Map<String, Value>,
+    key: &Key,
+) -> Result<(), Error> {
+    match fields.get(key.name) {
+        Some(value) => value_shape(file, section, key, value),
+        None if key.required => missing(file, section, key.name),
+        None => Ok(()),
+    }
+}
+
+fn value_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    match key.shape {
+        Shape::String => require(file, section, key.name, value.is_string(), "a string"),
+        Shape::Boolean => require(file, section, key.name, value.is_boolean(), "true or false"),
+        Shape::WholeNumber => require(file, section, key.name, value.is_u64(), "a whole number"),
+        Shape::Ceiling => ceiling_shape(file, section, key, value),
+        Shape::Strings => require(
+            file,
+            section,
+            key.name,
+            value
+                .as_array()
+                .is_some_and(|items| items.iter().all(Value::is_string)),
+            "a list of strings",
+        ),
+        Shape::StringOrList => require(
+            file,
+            section,
+            key.name,
+            string_or_list(value),
+            "a non-empty path or list of paths",
+        ),
+        shape => complex_value_shape(file, section, key, value, shape),
+    }
+}
+
+fn ceiling_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    if value.is_u64() {
+        return Ok(());
+    }
+    if value.is_object() {
+        return crate::ceiling::read(
+            &Config::empty(file),
+            section,
+            key.name,
+            value,
+            "a whole number",
+        )
+        .map(|_| ());
+    }
+    Err(shape_error(
+        file,
+        section,
+        key.name,
+        "a whole number or an object of dated steps",
+    ))
+}
+
+fn complex_value_shape(
+    file: &Path,
+    section: &str,
+    key: &Key,
+    value: &Value,
+    shape: Shape,
+) -> Result<(), Error> {
+    match shape {
+        Shape::Language(languages) => require(
+            file,
+            section,
+            key.name,
+            value
+                .as_str()
+                .is_some_and(|name| languages().iter().any(|(known, _)| *known == name)),
+            "a supported language name",
+        ),
+        Shape::Build => build_shape(file, section, key, value),
+        Shape::Accepted => accepted_shape(file, section, key, value),
+        Shape::Radius => radius_shape(file, section, key, value),
+        Shape::Journal => journal_shape(file, section, key, value),
+        Shape::Layers => layers_shape(file, section, key, value),
+        _ => Ok(()),
+    }
+}
+
+fn build_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    match value {
+        Value::Bool(false) | Value::String(_) => Ok(()),
+        Value::Array(entries) if entries.iter().all(Value::is_object) => {
+            entries.iter().try_for_each(|entry| {
+                let Some(fields) = entry.as_object() else {
+                    return Err(build_error(file, key.name));
+                };
+                fields_shape(
+                    file,
+                    section,
+                    fields,
+                    &[
+                        Key {
+                            name: crate::build::RUN,
+                            holds: "",
+                            required: true,
+                            rule: None,
+                            default: "",
+                            shape: Shape::String,
+                        },
+                        Key {
+                            name: crate::build::ROOT,
+                            holds: "",
+                            required: false,
+                            rule: None,
+                            default: "",
+                            shape: Shape::String,
+                        },
+                    ],
+                    false,
+                )
+            })
+        }
+        _ => Err(build_error(file, key.name)),
+    }
+}
+
+fn build_error(file: &Path, key: &str) -> Error {
+    Error(format!(
+        "{}: \"{key}\" is a command, a list of {{\"root\", \"run\"}} entries, or false",
+        file.display()
+    ))
+}
+
+fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    let Some(entries) = value.as_array() else {
+        return Err(shape_error(
+            file,
+            section,
+            key.name,
+            "a list of accepted entries",
+        ));
+    };
+    for entry in entries {
+        let Some(fields) = entry.as_object() else {
+            return Err(shape_error(
+                file,
+                section,
+                key.name,
+                "a list of accepted entries",
+            ));
+        };
+        for name in ["gate", "file", "text"] {
+            if !fields.get(name).is_some_and(Value::is_string) {
+                return missing(file, section, name);
+            }
+        }
+        if let Some(line) = fields.get("line")
+            && !line.is_u64()
+        {
+            return Err(shape_error(file, section, "line", "a whole number"));
+        }
+    }
+    Ok(())
+}
+
+fn radius_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    object_shape(
+        file,
+        section,
+        key,
+        value,
+        &[
+            ("lines", Shape::WholeNumber),
+            ("directories", Shape::WholeNumber),
+        ],
+    )
+}
+
+fn journal_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    object_shape(file, section, key, value, &[("prompt", Shape::Boolean)])
+}
+
+fn object_shape(
+    file: &Path,
+    section: &str,
+    key: &Key,
+    value: &Value,
+    fields: &[(&'static str, Shape)],
+) -> Result<(), Error> {
+    let Some(object) = value.as_object() else {
+        return Err(shape_error(file, section, key.name, "an object"));
+    };
+    let names: Vec<&str> = fields.iter().map(|(name, _)| *name).collect();
+    known_fields(file, section, object, &names)?;
+    for (name, shape) in fields {
+        if let Some(value) = object.get(*name) {
+            value_shape(
+                file,
+                section,
+                &Key {
+                    name,
+                    holds: "",
+                    required: false,
+                    rule: None,
+                    default: "",
+                    shape: *shape,
+                },
+                value,
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn layers_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    let Some(layers) = value.as_object().filter(|layers| !layers.is_empty()) else {
+        return Err(shape_error(
+            file,
+            section,
+            key.name,
+            "a non-empty map of layers",
+        ));
+    };
+    for (name, value) in layers {
+        let Some(fields) = value.as_object() else {
+            return Err(shape_error(
+                file,
+                section,
+                name,
+                "an object with an \"in\" path",
+            ));
+        };
+        known_fields(
+            file,
+            &format!("{section} layer {name}"),
+            fields,
+            &["in", "can_use"],
+        )?;
+        let within = fields.get("in").ok_or_else(|| {
+            Error(format!(
+                "{}: \"{section}\" layer \"{name}\" has no \"in\"",
+                file.display()
+            ))
+        })?;
+        if !string_or_list(within) {
+            return Err(shape_error(
+                file,
+                section,
+                "in",
+                "a non-empty path or list of paths",
+            ));
+        }
+        if let Some(can_use) = fields.get("can_use")
+            && !can_use.is_null()
+            && !can_use
+                .as_array()
+                .is_some_and(|items| items.iter().all(Value::is_string))
+        {
+            return Err(shape_error(
+                file,
+                section,
+                "can_use",
+                "a list of layer names or null",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn dynamic_conventions(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+    match value {
+        Value::Bool(false) => Ok(()),
+        Value::Object(conventions) if !conventions.is_empty() => conventions
+            .iter()
+            .try_for_each(|(name, value)| convention_shape_entry(file, check, name, value)),
+        Value::Object(_) => Err(Error(format!(
+            "{}: \"{}\" names no convention — write one, or set the section to false",
+            file.display(),
+            check.section
+        ))),
+        _ => Err(Error(format!(
+            "{}: \"{}\" is an object of convention names, each with a \"remedy\" and one of: text, code, files",
+            file.display(),
+            check.section
+        ))),
+    }
+}
+
+fn convention_shape_entry(
+    file: &Path,
+    check: &crate::check::Row,
+    name: &str,
+    value: &Value,
+) -> Result<(), Error> {
+    let fields = value.as_object().ok_or_else(|| {
+        Error(format!(
+            "{}: convention \"{name}\" must be an object with a matcher and a remedy",
+            file.display()
+        ))
+    })?;
+    crate::conventions::known(fields)
+        .map_err(|why| Error(format!("{}: convention \"{name}\" {why}", file.display())))?;
+    convention_fields(file, check.keys, name, fields)?;
+    convention_matcher(file, name, fields)?;
+    convention_language(file, check.keys, name, fields)?;
+    convention_remedy(file, name, fields)
+}
+
+fn convention_fields(
+    file: &Path,
+    keys: &[Key],
+    name: &str,
+    fields: &Map<String, Value>,
+) -> Result<(), Error> {
+    for key in keys {
+        if key.name != "language"
+            && let Some(value) = fields.get(key.name)
+            && !convention_shape(key, value)
+        {
+            return Err(convention_shape_error(file, name, key.name, value));
+        }
+    }
+    Ok(())
+}
+
+fn convention_matcher(file: &Path, name: &str, fields: &Map<String, Value>) -> Result<(), Error> {
+    let matchers: Vec<&str> = ["text", "code", "files"]
+        .into_iter()
+        .filter(|matcher| fields.contains_key(*matcher))
+        .collect();
+    match matchers.as_slice() {
+        [] => Err(Error(format!(
+            "{}: convention \"{name}\" defines none of: text, code, files\nChoose exactly one of: text, code, files.",
+            file.display()
+        ))),
+        [first, second, ..] => Err(Error(format!(
+            "{}: convention \"{name}\" defines both \"{first}\" and \"{second}\"\nChoose exactly one of: text, code, files.",
+            file.display()
+        ))),
+        [_] => Ok(()),
+    }
+}
+
+fn convention_language(
+    file: &Path,
+    keys: &[Key],
+    name: &str,
+    fields: &Map<String, Value>,
+) -> Result<(), Error> {
+    let Some(language) = fields.get("language") else {
+        return Ok(());
+    };
+    if !fields.contains_key("code") {
+        return Err(Error(format!(
+            "{}: convention \"{name}\" sets \"language\" on a rule that is not \"code\"",
+            file.display()
+        )));
+    }
+    if !language_is_known(keys, language) {
+        let named = language.as_str().unwrap_or_default();
+        let known = language_names(keys).join(", ");
+        return Err(Error(format!(
+            "{}: convention \"{name}\" names language \"{named}\", which no code pattern is written in — one of: {known}",
+            file.display()
+        )));
+    }
+    Ok(())
+}
+
+fn convention_remedy(file: &Path, name: &str, fields: &Map<String, Value>) -> Result<(), Error> {
+    if fields
+        .get("remedy")
+        .and_then(Value::as_str)
+        .is_some_and(|remedy| !remedy.trim().is_empty())
+    {
+        return Ok(());
+    }
+    Err(Error(format!(
+        "{}: convention \"{name}\" has no \"remedy\" — write the exact action to take instead",
+        file.display()
+    )))
+}
+
+fn convention_shape(key: &Key, value: &Value) -> bool {
+    match key.shape {
+        Shape::String => value.is_string(),
+        Shape::StringOrList => string_or_list(value),
+        Shape::Language(languages) => value
+            .as_str()
+            .is_some_and(|name| languages().iter().any(|(known, _)| *known == name)),
+        _ => true,
+    }
+}
+
+fn convention_shape_error(file: &Path, name: &str, key: &str, value: &Value) -> Error {
+    let expected = match key {
+        "in" | "except" => format!(
+            "has an \"{key}\" that is not a repository-relative path or a non-empty list of them"
+        ),
+        "language" => format!(
+            "names language \"{}\", which no code pattern is written in",
+            value.as_str().unwrap_or_default()
+        ),
+        "remedy" => "has no \"remedy\" — write the exact action to take instead".to_string(),
+        key => format!("has a \"{key}\" that is not a string"),
+    };
+    Error(format!(
+        "{}: convention \"{name}\" {expected}",
+        file.display()
+    ))
+}
+
+fn language_is_known(keys: &[Key], value: &Value) -> bool {
+    keys.iter()
+        .find(|key| key.name == "language")
+        .is_some_and(|key| convention_shape(key, value))
+}
+
+fn language_names(keys: &[Key]) -> Vec<&'static str> {
+    keys.iter()
+        .find(|key| key.name == "language")
+        .and_then(|key| match key.shape {
+            Shape::Language(languages) => {
+                Some(languages().into_iter().map(|(name, _)| name).collect())
+            }
+            _ => None,
+        })
+        .unwrap_or_default()
+}
+
+fn named_entries_shape(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+    let Value::Bool(false) = value else {
+        let Some(entries) = value.as_array() else {
+            return Err(Error(format!(
+                "{}: \"{}\" is a list of entries, each its own gate under its own \"name\"",
+                file.display(),
+                check.section
+            )));
+        };
+        for entry in entries {
+            let Some(fields) = entry.as_object() else {
+                return Err(shape_error(
+                    file,
+                    check.section,
+                    check.section,
+                    "a list of entries, or false",
+                ));
+            };
+            fields_shape(file, check.section, fields, check.keys, false)?;
+        }
+        return Ok(());
+    };
+    Ok(())
+}
+
+fn string_or_list(value: &Value) -> bool {
+    match value {
+        Value::String(value) => !value.is_empty(),
+        Value::Array(values) => {
+            !values.is_empty()
+                && values
+                    .iter()
+                    .all(|value| value.as_str().is_some_and(|value| !value.is_empty()))
+        }
+        _ => false,
+    }
+}
+
+fn require(
+    file: &Path,
+    section: &str,
+    key: &str,
+    valid: bool,
+    expected: &str,
+) -> Result<(), Error> {
+    valid
+        .then_some(())
+        .ok_or_else(|| shape_error(file, section, key, expected))
+}
+
+fn missing(file: &Path, section: &str, key: &str) -> Result<(), Error> {
+    Err(Error(format!(
+        "{}: a \"{section}\" entry has no \"{key}\"",
+        file.display()
+    )))
+}
+
+fn shape_error(file: &Path, section: &str, key: &str, expected: &str) -> Error {
+    if section == key {
+        Error(format!(
+            "{}: \"{section}\" must be {expected}",
+            file.display()
+        ))
+    } else {
+        Error(format!(
+            "{}: a \"{section}\" entry's \"{key}\" must be {expected}",
+            file.display()
+        ))
+    }
 }
 
 /// The fields a section's entries once described the repository with. A person who still
@@ -219,45 +859,6 @@ const TOPOLOGY: &[&str] = &[
     "manifests",
     "extensions",
 ];
-
-/// Every Automatic section is absent, `false`, or a person's policy: fields for most checks, a
-/// document-to-ceiling map for `doc_size`, and nothing at all for `doc_citations`. A list of
-/// generated entries is refused whole. Spec 5.2, 5.3.
-fn every_automatic_section_is_policy(file: &Path, data: &Value) -> Result<(), Error> {
-    crate::check::CATALOGUE
-        .iter()
-        .filter(|check| check.activation == crate::check::Activation::Automatic)
-        .filter_map(|check| Some((check, data.get(check.section)?)))
-        .try_for_each(|(check, value)| policy(file, check, value))
-}
-
-/// One Automatic section a person wrote, judged against the shape its check reads.
-fn policy(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
-    let section = check.section;
-    let refused = |why: &str| {
-        Err(Error(format!(
-            "{}: \"{section}\" {why} — {}",
-            file.display(),
-            policy_shape(section)
-        )))
-    };
-    match value {
-        Value::Bool(false) => Ok(()),
-        Value::Array(_) => refused(
-            "no longer accepts a list of entries, because klin discovers what it applies to",
-        ),
-        Value::Object(fields) if section == crate::doc_size::SECTION => {
-            crate::doc_size::well_formed(file, fields)
-        }
-        Value::Object(_) if section == crate::doc_citations::SECTION => refused("reads no policy"),
-        Value::Object(_) if section == crate::public_api::SECTION => refused("reads no policy"),
-        Value::Object(fields) => {
-            let names: Vec<&str> = check.keys.iter().map(|key| key.name).collect();
-            known_fields(file, section, fields, &names)
-        }
-        _ => refused("must be an object or false"),
-    }
-}
 
 /// What a section may say, in the words of the error that refused what it said.
 fn policy_shape(section: &str) -> &'static str {
@@ -307,44 +908,6 @@ pub fn known_fields(
             known.join(", ")
         ),
     }))
-}
-
-/// The top-level sections whose fields klin reads by name, each refused a field it does not
-/// read, before any command runs. Spec 5.2.
-fn nested_fields(file: &Path, data: &Value) -> Result<(), Error> {
-    for (section, known) in [
-        (RADIUS.name, &["lines", "directories"][..]),
-        (JOURNAL.name, &["prompt"][..]),
-    ] {
-        if let Some(Value::Object(fields)) = data.get(section) {
-            known_fields(file, section, fields, known)?;
-        }
-    }
-    build_entries(file, data)
-}
-
-/// A `build` is a command, a list of entries of a `run` and an optional `root`, or `false`.
-fn build_entries(file: &Path, data: &Value) -> Result<(), Error> {
-    let entries = match data.get(BUILD.name) {
-        None | Some(Value::String(_) | Value::Bool(false)) => return Ok(()),
-        Some(Value::Array(entries)) if entries.iter().all(Value::is_object) => entries,
-        Some(_) => {
-            return Err(Error(format!(
-                "{}: \"{}\" is a command, a list of {{\"root\", \"run\"}} entries, or false",
-                file.display(),
-                BUILD.name
-            )));
-        }
-    };
-    for fields in entries.iter().filter_map(Value::as_object) {
-        known_fields(
-            file,
-            BUILD.name,
-            fields,
-            &[crate::build::RUN, crate::build::ROOT],
-        )?;
-    }
-    Ok(())
 }
 
 /// The candidate a misspelling most likely meant: the nearest within two edits.

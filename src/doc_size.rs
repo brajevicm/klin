@@ -33,6 +33,7 @@ pub const DOCUMENT: Key = Key {
         "every Markdown file at the tree root that the derivation commit holds: its word count there, rounded up to the next 50 and never below 50",
     ),
     default: "",
+    shape: crate::reference::Shape::Ceiling,
 };
 
 const CEILING_STEP: u64 = 50;
@@ -442,30 +443,6 @@ fn read_ceilings(cached: &Value) -> Option<BTreeMap<String, u64>> {
         .iter()
         .map(|(name, words)| Some((name.clone(), words.as_u64()?)))
         .collect()
-}
-
-/// A section a person wrote: each key a document path, each value a ceiling. Refused before any
-/// gate runs, naming what the section holds instead. A dated schedule is judged by `ceiling`.
-pub fn well_formed(file: &Path, fields: &Map<String, Value>) -> Result<(), Error> {
-    if fields.is_empty() {
-        return Err(Error(format!(
-            "{}: \"{SECTION}\" must pin at least one document — remove the section to derive \
-             every ceiling",
-            file.display()
-        )));
-    }
-    for (name, value) in fields {
-        let ceiling = value.is_u64() || value.as_object().is_some_and(ceiling::is_schedule);
-        if !ceiling || name.is_empty() {
-            return Err(Error(format!(
-                "{}: \"{SECTION}\" \"{name}\" must be a whole number of words or an object of \
-                 dated steps — \"{SECTION}\" maps a document path to its ceiling, such as \
-                 {{\"README.md\": 1200}}",
-                file.display()
-            )));
-        }
-    }
-    Ok(())
 }
 
 fn identity(path: &Path) -> PathBuf {

@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Generated `klin.json` schema (#181)
+
+The generated SchemaStore artifact now shares its native Rust structural
+contract with configuration loading, including the root object, `journal`
+prompt, false disables, scopes, ceilings, conventions, layering, SARIF and
+required build-entry fields. Runtime semantic checks remain in their owning
+gates; normal gate and hook paths do not read the schema.
+
+The final rebased release binary was 22,306,768 bytes versus 22,224,528 at
+`origin/main` (+0.37%). The 2k/10k file-count and 1M source-dense rows stayed
+within 6.1% with identical fixture counters and digests. The complete 300k
+source-dense observations (warm/cold/strict) were base
+`776/25,977/13,967`, `879/31,846/22,053` and final
+`768/56,319/29,587`, `1,081/43,415/23,864`, `1,300/43,171/22,764`; the
+interleaved spread is diagnostic noise rather than evidence for a
+schema-related hot-path change. The controlled #193 dense measurements remain
+the release baseline.
+
 ### `klin stats` is an attention and value report (#172)
 
 The default report answers three questions in order: does anything need you,

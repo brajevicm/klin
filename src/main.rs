@@ -134,7 +134,7 @@ enum Tool {
     /// Report what klin caught over the last seven days, in the person's words
     Stats(stats::Args),
     /// Print the configuration reference, as Markdown, from the keys the checks declare
-    Reference,
+    Reference(reference::Args),
     /// Install the newest release over this binary, through the klin-update beside it
     Update,
 }
@@ -188,7 +188,7 @@ fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, config::Er
         Tool::Radius(args) => turn::run(args, start, out),
         Tool::Turn(args) => turn::moved(args, start, out),
         Tool::Stats(args) => stats::run(args, start, out),
-        Tool::Reference => reference::run(out),
+        Tool::Reference(args) => reference::run(args, out),
         Tool::Update => Ok(update::run()),
     }
 }

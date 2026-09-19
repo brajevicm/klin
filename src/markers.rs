@@ -56,6 +56,7 @@ pub const SKIP_RUST_TESTS: Key = Key {
     required: false,
     rule: None,
     default: "`true`",
+    shape: crate::reference::Shape::Boolean,
 };
 
 /// Every language name a kind's table holds, with the extensions that name selects.

@@ -8,8 +8,38 @@
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
+use serde_json::{Map, Value, json};
+
 use crate::config::{self, Error};
 use crate::{check, doc_citations};
+
+/// Every language name a section selects a file set by, with the extensions each name selects.
+pub type Languages = fn() -> Vec<(&'static str, String)>;
+
+#[derive(Clone, Copy)]
+pub enum Shape {
+    String,
+    Boolean,
+    WholeNumber,
+    Ceiling,
+    Strings,
+    StringOrList,
+    Language(Languages),
+    Build,
+    Accepted,
+    Radius,
+    Journal,
+    Layers,
+}
+
+#[derive(Clone, Copy)]
+pub enum SectionShape {
+    Object,
+    DocumentMap,
+    FalseOnly,
+    Conventions,
+    Sarif,
+}
 
 /// One configuration key, declared beside the code that reads it. `rule` is the rule klin
 /// derives the key by when the configuration leaves it out, and none for a key only a person
@@ -23,10 +53,8 @@ pub struct Key {
     pub required: bool,
     pub rule: Option<&'static str>,
     pub default: &'static str,
+    pub shape: Shape,
 }
-
-/// Every language name a section selects a file set by, with the extensions each name selects.
-pub type Languages = fn() -> Vec<(&'static str, String)>;
 
 /// The vocabulary of spec 5.3: the keys every section spells the same way and means the same
 /// by. A section takes a row and states only what differs, so one meaning is written once.
@@ -40,6 +68,7 @@ pub const ROOTS: Key = Key {
                 survey and a walk of the working tree",
     ),
     default: "",
+    shape: Shape::Strings,
 };
 
 pub const LANGUAGES: Key = Key {
@@ -51,6 +80,7 @@ pub const LANGUAGES: Key = Key {
                 working tree",
     ),
     default: "",
+    shape: Shape::Strings,
 };
 
 pub const EXCLUDE: Key = Key {
@@ -59,6 +89,7 @@ pub const EXCLUDE: Key = Key {
     required: false,
     rule: None,
     default: "nothing is excluded",
+    shape: Shape::Strings,
 };
 
 pub const SKIP_DIRS: Key = Key {
@@ -67,20 +98,272 @@ pub const SKIP_DIRS: Key = Key {
     required: false,
     rule: None,
     default: "the shared list only",
+    shape: Shape::Strings,
 };
 
 const HEAD: &str = "| Key | Holds | Required | Source | Derivation rule | Default |";
 const RULE: &str = "| --- | --- | --- | --- | --- | --- |";
 const NONE: &str = "—";
 
-pub fn run(out: &mut String) -> Result<u8, Error> {
+#[derive(clap::Args)]
+pub struct Args {
+    /// Print the generated JSON Schema instead of the Markdown reference.
+    #[arg(long)]
+    pub schema: bool,
+}
+
+pub fn run(args: &Args, out: &mut String) -> Result<u8, Error> {
+    if args.schema {
+        schema(out);
+    } else {
+        reference(out);
+    }
+    Ok(0)
+}
+
+fn reference(out: &mut String) {
     preamble(out);
     top_level(out);
     sections(out);
     languages(out);
     exclusion(out);
     ceilings(out);
-    Ok(0)
+}
+
+const SCHEMA: &str = "https://json-schema.org/draft/2020-12/schema";
+const SCHEMA_ID: &str = "https://raw.githubusercontent.com/brajevicm/klin/main/schemas/klin.json";
+const DATE: &str = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
+
+fn schema(out: &mut String) {
+    if let Ok(schema) = serde_json::to_string_pretty(&schema_value()) {
+        let _ = writeln!(out, "{schema}");
+    }
+}
+
+fn schema_value() -> Value {
+    let mut properties = Map::new();
+    for key in config::KEYS {
+        properties.insert(key.name.into(), field(key));
+    }
+    for spec in check::CATALOGUE {
+        properties.insert(spec.section.into(), section(spec));
+    }
+    json!({
+        "$schema": SCHEMA,
+        "$id": SCHEMA_ID,
+        "title": "klin.json",
+        "description": "Human policy for klin; repository facts and semantic validation remain native to klin.",
+        "type": "object",
+        "properties": properties,
+        "additionalProperties": false
+    })
+}
+
+fn section(spec: &check::Row) -> Value {
+    match spec.shape {
+        SectionShape::Object => disabled(object(spec.keys, true)),
+        SectionShape::DocumentMap => disabled(document_map()),
+        SectionShape::FalseOnly => json!({"const": false}),
+        SectionShape::Conventions => disabled(conventions(spec.keys)),
+        SectionShape::Sarif => disabled(json!({
+            "type": "array",
+            "items": object(spec.keys, false)
+        })),
+    }
+}
+
+fn disabled(value: Value) -> Value {
+    json!({"anyOf": [{"const": false}, value]})
+}
+
+fn document_map() -> Value {
+    json!({
+        "type": "object",
+        "minProperties": 1,
+        "propertyNames": {"minLength": 1},
+        "additionalProperties": field(&crate::doc_size::DOCUMENT)
+    })
+}
+
+fn conventions(keys: &[Key]) -> Value {
+    let mut item = object(keys, true);
+    if let Value::Object(fields) = &mut item {
+        fields.insert(
+            "oneOf".into(),
+            json!([
+                {"required": ["text"], "not": {"anyOf": [{"required": ["code"]}, {"required": ["files"]}, {"required": ["language"]}]}},
+                {"required": ["code"], "not": {"anyOf": [{"required": ["text"]}, {"required": ["files"]}]}},
+                {"required": ["files"], "not": {"anyOf": [{"required": ["text"]}, {"required": ["code"]}, {"required": ["language"]}]}}
+            ]),
+        );
+    }
+    json!({
+        "type": "object",
+        "minProperties": 1,
+        "propertyNames": {"minLength": 1},
+        "additionalProperties": item
+    })
+}
+
+fn object(keys: &[Key], minimum: bool) -> Value {
+    let mut properties = Map::new();
+    let mut required = Vec::new();
+    for key in keys {
+        if key.required {
+            required.push(Value::from(key.name));
+        }
+        properties.insert(key.name.into(), field(key));
+    }
+    let mut out = Map::new();
+    out.insert("type".into(), Value::from("object"));
+    if minimum {
+        out.insert("minProperties".into(), Value::from(1));
+    }
+    out.insert("properties".into(), Value::Object(properties));
+    out.insert("additionalProperties".into(), Value::Bool(false));
+    if !required.is_empty() {
+        out.insert("required".into(), Value::Array(required));
+    }
+    Value::Object(out)
+}
+
+fn field(key: &Key) -> Value {
+    let mut out = shape(key.shape);
+    if let Value::Object(fields) = &mut out {
+        fields.insert("description".into(), Value::from(key.holds));
+    }
+    out
+}
+
+fn shape(shape: Shape) -> Value {
+    match shape {
+        Shape::String => json!({"type": "string"}),
+        Shape::Boolean => json!({"type": "boolean"}),
+        Shape::WholeNumber => integer(),
+        Shape::Ceiling => ceiling_schema(),
+        Shape::Strings => json!({"type": "array", "items": {"type": "string"}}),
+        Shape::StringOrList => string_or_list_schema(),
+        shape => schema_for_shape(shape),
+    }
+}
+
+fn schema_for_shape(shape: Shape) -> Value {
+    match shape {
+        Shape::Language(languages) => language_schema(languages),
+        Shape::Build => build_schema(),
+        Shape::Accepted => accepted_schema(),
+        Shape::Radius => radius_schema(),
+        Shape::Journal => journal_schema(),
+        Shape::Layers => layers_schema(),
+        _ => Value::Null,
+    }
+}
+
+fn language_schema(languages: Languages) -> Value {
+    json!({"type": "string", "enum": languages().into_iter().map(|(name, _)| name).collect::<Vec<_>>()})
+}
+
+fn build_schema() -> Value {
+    json!({
+        "anyOf": [
+            {"type": "string"},
+            {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "run": {"type": "string"},
+                        "root": {"type": "string"}
+                    },
+                    "required": ["run"],
+                    "additionalProperties": false
+                }
+            },
+            {"const": false}
+        ]
+    })
+}
+
+fn accepted_schema() -> Value {
+    json!({
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "gate": {"type": "string"},
+                "file": {"type": "string"},
+                "text": {"type": "string"},
+                "line": integer()
+            },
+            "required": ["gate", "file", "text"],
+            "additionalProperties": {"type": "number"}
+        }
+    })
+}
+
+fn radius_schema() -> Value {
+    object_fields([("lines", integer()), ("directories", integer())])
+}
+
+fn journal_schema() -> Value {
+    object_fields([("prompt", json!({"type": "boolean"}))])
+}
+
+fn layers_schema() -> Value {
+    json!({
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": {
+            "type": "object",
+            "properties": {
+                "in": string_or_list_schema(),
+                "can_use": {"anyOf": [{"type": "null"}, {"type": "array", "items": {"type": "string"}}]}
+            },
+            "required": ["in"],
+            "additionalProperties": false
+        }
+    })
+}
+
+fn object_fields<const N: usize>(fields: [(&str, Value); N]) -> Value {
+    let properties = fields
+        .into_iter()
+        .map(|(name, value)| (name.to_string(), value))
+        .collect::<Map<String, Value>>();
+    Value::Object(Map::from_iter([
+        ("type".into(), Value::from("object")),
+        ("properties".into(), Value::Object(properties)),
+        ("additionalProperties".into(), Value::Bool(false)),
+    ]))
+}
+
+fn integer() -> Value {
+    json!({"type": "integer", "minimum": 0})
+}
+
+fn string_or_list_schema() -> Value {
+    json!({
+        "anyOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        ]
+    })
+}
+
+fn ceiling_schema() -> Value {
+    let mut schedule = Map::new();
+    schedule.insert(DATE.into(), integer());
+    json!({
+        "anyOf": [
+            integer(),
+            {
+                "type": "object",
+                "minProperties": 1,
+                "patternProperties": schedule,
+                "additionalProperties": false
+            }
+        ]
+    })
 }
 
 fn preamble(out: &mut String) {

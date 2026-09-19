@@ -38,6 +38,7 @@ pub const CC: Key = Key {
          floor of 5, and the floor itself below 50 functions",
     ),
     default: "",
+    shape: crate::reference::Shape::Ceiling,
 };
 
 pub const LINES: Key = Key {
@@ -46,6 +47,7 @@ pub const LINES: Key = Key {
     required: false,
     rule: Some("the 95th percentile of `lines`, by the same rule as `cc`, with a floor of 25"),
     default: "",
+    shape: crate::reference::Shape::Ceiling,
 };
 
 const ECMASCRIPT_DECISIONS: &[&str] = &[
