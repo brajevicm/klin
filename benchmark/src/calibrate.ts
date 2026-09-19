@@ -5,6 +5,7 @@ import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
+import * as toolchain from "./toolchain.ts";
 import type { Check, RunRecord } from "./record.ts";
 import { validate } from "./record.ts";
 
@@ -97,7 +98,8 @@ export function preflight(binary: string): string {
     return "no klin binary at " + binary + ". Build it with: benchmark/build-klin";
   }
   const named = session.klinVersion(binary);
-  return named === "" ? "the binary at " + binary + " did not answer --version" : "";
+  if (named === "") return "the binary at " + binary + " did not answer --version";
+  return toolchain.requirement();
 }
 
 /** The family set a calibration covers: every family, or the deduplicated `--only` subset. */

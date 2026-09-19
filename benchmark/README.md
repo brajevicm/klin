@@ -535,13 +535,16 @@ arm could have delivered it.
 ## Running it
 
 ```sh
+benchmark/prepare                            # installs the pinned local compiler
 benchmark/build-klin                        # the binary under test, with its provenance
 node --test 'benchmark/test/**/*.test.ts'   # the harness, the wrapper, the lifecycle
 node benchmark/src/cli.ts selftest          # every fixture and every oracle
 node benchmark/src/cli.ts list              # the families and their opaque task ids
 ```
 
-Those three need no network and no agent. The lifecycle suite plays the four
+`benchmark/prepare` is the only networked step. It installs the exact
+TypeScript version in `benchmark/package-lock.json`; all commands after it
+use that local compiler and need no network or agent. The lifecycle suite plays the four
 events Claude Code sends, in order, against the real klin binary, and proves
 both arms without paying for a session.
 
@@ -689,9 +692,11 @@ on purpose is never measured as klin's own. Each run record keeps its tree
 copies under a `fixtures/` directory of its own for the same reason: records
 committed to this repository must not become klin's own source.
 
-The harness is TypeScript run by Node, with no build step and no dependency. It
-links no klin Rust module and speaks to klin only through the binary's command
-line, which is the seam `AGENTS.md` names.
+The harness is TypeScript run by Node, with no build step. Its compiler is
+pinned in `package-lock.json`, installed by `benchmark/prepare`, and recorded
+in each frozen manifest by version, path and SHA-256. It links no klin Rust
+module and speaks to klin only through the binary's command line, which is the
+seam `AGENTS.md` names.
 
 ## Why raw evidence stays outside Git
 

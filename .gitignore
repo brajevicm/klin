@@ -2,6 +2,7 @@
 .env
 .codegraph
 .DS_Store
+/benchmark/node_modules/
 /canary-artifacts
 benchmark/**/sentinel.txt
 

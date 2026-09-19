@@ -5,6 +5,7 @@ import path from "node:path";
 import { copyTree, overlay } from "./trees.ts";
 import { detect, type Finding } from "./detectors.ts";
 import { withoutKlin } from "./session.ts";
+import * as toolchain from "./toolchain.ts";
 import type { Variant } from "./catalogue.ts";
 
 /**
@@ -47,6 +48,7 @@ export function environment(): NodeJS.ProcessEnv {
   const kept = withoutKlin();
   kept.CARGO_TARGET_DIR =
     kept.CARGO_TARGET_DIR ?? path.join(os.homedir(), ".cache", "klin-bench", "cargo");
+  kept.KLIN_BENCH_TYPESCRIPT = toolchain.current()?.path ?? "";
   return kept;
 }
 

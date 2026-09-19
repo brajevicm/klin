@@ -32,6 +32,7 @@ import {
 } from "../src/round.ts";
 import { execFileSync } from "node:child_process";
 import type { RunRecord } from "../src/record.ts";
+import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
 
 /**
  * The publishable round: its frozen schedule, its write-once attempts and its mechanical
@@ -116,6 +117,12 @@ function frozenFor(): Frozen {
     schemaSha256: "s",
     harness: { commit: "h", dirty: false, treeSha256: "ht" },
     klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
+    toolchain: {
+      package: "typescript",
+      version: "5.9.3",
+      path: "/benchmark/node_modules/typescript/lib/tsc.js",
+      sha256: TYPESCRIPT_SHA256,
+    },
     host: { name: "claude-code", version: "2.1.276 (Claude Code)" },
     model: "sonnet",
     flags: ["--print"],
@@ -366,6 +373,7 @@ test("a manifest that does not encode the frozen design exactly is refused befor
     ["a dropped row", (held) => { held.order.pop(); }, /72 rows/],
     ["balance", (held) => { held.order[0].arm = held.order[1].arm; }, /adjacent|first arm/],
     ["a missing family", (held) => { delete held.frozen.fixtures.stubs; }, /fixtures/],
+    ["compiler", (held) => { held.frozen.toolchain.sha256 = "wrong"; }, /compiler/],
     ["kind", (held) => { (held as { kind: string }).kind = "calibration"; }, /publishable/],
     ["protocol", (held) => { held.protocol = 99; }, /protocol/],
   ];
@@ -420,6 +428,8 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.deepEqual(held.firstArm, { active: 18, shadow: 18 });
     assert.equal(held.frozen.klin.commit, "stubcommit");
     assert.equal(held.frozen.klin.version, "klin 0.0-test");
+    assert.equal(held.frozen.toolchain.version, "5.9.3");
+    assert.equal(held.frozen.toolchain.sha256, TYPESCRIPT_SHA256);
     assert.equal(Object.keys(held.frozen.fixtures).length, 9);
     assert.equal(fs.readdirSync(where).length, 1, "the manifest is the only thing a plan writes");
     const again = quiet(() => plan(where, 1));

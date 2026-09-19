@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+benchmark=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+npm ci --prefix "$benchmark" --ignore-scripts --no-audit --no-fund
+node "$benchmark/src/cli.ts" toolchain

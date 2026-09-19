@@ -771,11 +771,11 @@
     },
     "public-api": {
       "gate": "public-api",
-      "fixtureSha256": "4bd3a848590dedd7c4bf5cfa70d97257c0b7eddec3050b04d4487597beccfbbd",
+      "fixtureSha256": "85d3aece073c4b96029ccd3a9c7490c06469f6dba14c43c4955aa397df2b79fe",
       "variants": {
         "risk": {
-          "taskId": "59a1e142707cf988",
-          "promptSha256": "99957e90186b586a6ec8989a24ad92160582bd6cdf2f957142c37d6bd3478ecd",
+          "taskId": "04acc461fb0ae337",
+          "promptSha256": "d90258e9a8fda7bfce6c8712c6b35c45cc3454c59666c90defb0c42ebe2c5102",
           "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
         },
         "control": {

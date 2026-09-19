@@ -7,6 +7,7 @@ import { ARMS, VARIANTS, families, type ArmName, type VariantName } from "./cata
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
+import * as toolchain from "./toolchain.ts";
 import * as workspace from "./workspace.ts";
 import {
   FROZEN,
@@ -56,6 +57,7 @@ export interface Frozen {
   schemaSha256: string;
   harness: { commit: string; dirty: boolean; treeSha256: string };
   klin: { commit: string; version: string; binarySha256: string };
+  toolchain: toolchain.Provenance;
   host: { name: string; version: string };
   model: string;
   flags: string[];
@@ -188,6 +190,7 @@ export function frozen(options: session.SessionOptions): Frozen {
       version: session.klinVersion(options.klinBin),
       binarySha256: binary,
     },
+    toolchain: toolchain.frozen(),
     host: { name: "claude-code", version: session.hostVersion() },
     model: options.model,
     flags: normalizedFlags(session.flagsFor({ settings: "" } as workspace.Workspace, "", options)),
@@ -204,6 +207,7 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     ["the klin binary", held.klin.binarySha256],
     ["the klin version", held.klin.version],
     ["the klin source commit", held.klin.commit],
+    ["the TypeScript compiler", JSON.stringify(held.toolchain ?? null)],
     ["the harness commit", held.harness.commit],
     ["the harness tree", held.harness.treeSha256],
     ["the harness clean state", String(held.harness.dirty)],
@@ -433,6 +437,18 @@ export function manifestProblems(held: Manifest): string[] {
   }
   if (!held.frozen || typeof held.frozen !== "object") {
     problems.push("the manifest states no frozen protocol");
+  }
+  const heldToolchain = held.frozen?.toolchain;
+  if (
+    !heldToolchain ||
+    heldToolchain.package !== "typescript" ||
+    heldToolchain.version !== toolchain.TYPESCRIPT_VERSION ||
+    typeof heldToolchain.path !== "string" ||
+    heldToolchain.path === "" ||
+    typeof heldToolchain.sha256 !== "string" ||
+    heldToolchain.sha256 !== toolchain.TYPESCRIPT_SHA256
+  ) {
+    problems.push("the frozen TypeScript compiler provenance is missing or not pinned");
   }
   const design = held.design ?? ({} as Manifest["design"]);
   const same = (what: string, was: unknown, want: unknown): void => {
