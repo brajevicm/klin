@@ -592,11 +592,12 @@ verdict is an audit error, not a clean row; `fixed-next` and `fixed-later` are
 resolved only when every signal in the row has one of those outcomes, and an
 `asked-once` inventory signal is review evidence rather than a regression.
 
-`protocols/shadow-active-v1/protocol.json` is the treatment-independent design,
-committed before run 1: the protocol number, the frozen seed, the sample plan,
+`protocols/shadow-active-v2/protocol.json` is the treatment-independent design
+for the repaired round, committed before run 1: the protocol number, the frozen seed, the sample plan,
 the predeclared analysis, the fixture identities and the whole run order. It
 holds nothing of the machine, so it is a function of the fixtures and the seed
-and any checkout gives it again. `protocol --write` writes it and `protocol`
+and any checkout gives it again. The `shadow-active-v1` file remains the frozen
+design for the first round. `protocol --write` writes v2 and `protocol`
 alone says whether the catalogue still gives it. Both `plan` and `execute`
 refuse a round that departs from it, so a changed prompt, fixture, seed, sample
 plan or schedule stops the round before a session is paid for. The point of the

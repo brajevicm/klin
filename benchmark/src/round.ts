@@ -268,8 +268,8 @@ export function manifestOf(seed: number, held: Frozen): Manifest {
   };
 }
 
-/** The name benchmark v1's design is committed under. The directory holds no other round. */
-export const PROTOCOL_NAME = "shadow-active-v1";
+/** The name benchmark v2's repaired design is committed under. The directory holds no other round. */
+export const PROTOCOL_NAME = "shadow-active-v2";
 
 export interface Identity extends Schedule {
   protocol: number;

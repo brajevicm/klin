@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { request, send } from "../src/index.ts";
+import { request as transportRequest } from "../src/transport/client.ts";
+import { send as transportSend } from "../src/transport/socket.ts";
 
 test("the wire layer moved into transport", () => {
   for (const old of ["src/client.ts", "src/socket.ts"]) {
@@ -10,6 +12,11 @@ test("the wire layer moved into transport", () => {
   for (const fresh of ["src/transport/client.ts", "src/transport/socket.ts"]) {
     assert.equal(fs.existsSync(fresh), true, fresh + " is missing");
   }
+});
+
+test("the entry re-exports the moved implementations", () => {
+  assert.equal(request, transportRequest);
+  assert.equal(send, transportSend);
 });
 
 test("the entry still sends a request", () => {

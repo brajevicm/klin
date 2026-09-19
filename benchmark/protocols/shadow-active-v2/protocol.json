@@ -1,6 +1,6 @@
 {
-  "protocol": 4,
-  "name": "shadow-active-v1",
+  "protocol": 5,
+  "name": "shadow-active-v2",
   "seed": 1,
   "design": {
     "repetitions": {
@@ -678,12 +678,12 @@
       "fixtureSha256": "810cee17764eaa01fa7cbdb4f33dd50f41eedd38aaf0cdb8cf8cb749729f37e0",
       "variants": {
         "risk": {
-          "taskId": "f8ae10909b896ba0",
+          "taskId": "5bd275709a6b389a",
           "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
           "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
         },
         "control": {
-          "taskId": "2d604b9d013369ff",
+          "taskId": "81d2693779a7b58b",
           "promptSha256": "401f45a1c209b55af2fcaa4bb02d44a4d83afe505b13d07fcb3fd872c5d84c65",
           "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
         }
@@ -694,12 +694,12 @@
       "fixtureSha256": "9890243c51096a7417c31b182e1eefb5bfd3d7377ac43e65c84496a68cee830f",
       "variants": {
         "risk": {
-          "taskId": "db8fce6deaf854e6",
+          "taskId": "ef2cde9471de190a",
           "promptSha256": "f4d7facd9de6dad9a6424ac78884b2638c3c3cc3e19b200c0c12b877f1ad471c",
           "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
         },
         "control": {
-          "taskId": "55334398bc5358fb",
+          "taskId": "c1457f8994ee651d",
           "promptSha256": "7432398d5407b570a747dfdbc0f2cd2254b38fb140a6003e94f691e833ffbd02",
           "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
         }
@@ -707,15 +707,15 @@
     },
     "doc-citations": {
       "gate": "doc-citations",
-      "fixtureSha256": "c6248e14e8afffdd197f7f3de7ada4f9f641cc2207e180b6185ff9366b7e9c4c",
+      "fixtureSha256": "8054f3d3f55dc2c285191c11ea45a318838ba77e95e7452d9dbf83dea706d739",
       "variants": {
         "risk": {
-          "taskId": "a02dcb85aae0c7b3",
+          "taskId": "054c71912bbb36c7",
           "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
           "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
         },
         "control": {
-          "taskId": "51a36cf2b9afd7c2",
+          "taskId": "8de74ac2600b2a35",
           "promptSha256": "04dd79fb674a2a8792b3e41bdcfd9cb60863177385d40b2e70d52be4e6d8c3ab",
           "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
         }
@@ -726,12 +726,12 @@
       "fixtureSha256": "73da0feb2104be5af36c8d7939e152e158be53351e2dad15bdb71a84207cb65e",
       "variants": {
         "risk": {
-          "taskId": "c7343e5a89fa856a",
+          "taskId": "04b17f2662f98776",
           "promptSha256": "4ca853f31f02b409219f2c38f0e215c2a7814df31e680d972c31c03bc4e9f9a0",
           "treeSha256": "bb3ef61988317895203fe0bf41b67121d2ed67cb067f0ab7066ae71df2225669"
         },
         "control": {
-          "taskId": "53d5a059acf32295",
+          "taskId": "51205f7cfe6dc0ed",
           "promptSha256": "86687572c947a472ecdde27254b5dfa41d6f193464ab179dc3dab0e0f970f7d0",
           "treeSha256": "23991eecd98df5de4482a6fb6495ec75b9ce7fdf7308b47d5256b521806b96ef"
         }
@@ -742,12 +742,12 @@
       "fixtureSha256": "f4d880492f62d0724184fcb1ce9c7e7574b8e3d5a9326d5a802aaa50b8c9c6db",
       "variants": {
         "risk": {
-          "taskId": "dec0c3268103f76e",
+          "taskId": "a5e4b6318f7ab08d",
           "promptSha256": "96544b28c11e4b1f45cd30b4ba944c019a3cc200fb72bd2b8915b4c14c5b1c05",
           "treeSha256": "90763eba316fa0e020e587eae39ee7baa57d65834a2f6c93e873259162d5b9ca"
         },
         "control": {
-          "taskId": "9d4bc34eeaf02a3a",
+          "taskId": "d395af245a4630b6",
           "promptSha256": "972958ea5607e1406ff35a98bbe0867610f61c72b9c0bad62e6c425494f3424b",
           "treeSha256": "f716210d2b1a4b75c862de18f4dce978c39b3e683ee048f48d7981513386e240"
         }
@@ -758,12 +758,12 @@
       "fixtureSha256": "0a39bbf8f73ce9c826dfbb3c484b889bd7a60f9b232b42afa0036aaef7fb8626",
       "variants": {
         "risk": {
-          "taskId": "5647518dbc0c654b",
+          "taskId": "64cefa7ca0b0a7d1",
           "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
           "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
         },
         "control": {
-          "taskId": "c5369407d15695e8",
+          "taskId": "4588e9a0eb82b50d",
           "promptSha256": "6c97b008790ef27eb01dded8633190477fb12f772c6b923848756144fd237dcb",
           "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
         }
@@ -774,12 +774,12 @@
       "fixtureSha256": "4bd3a848590dedd7c4bf5cfa70d97257c0b7eddec3050b04d4487597beccfbbd",
       "variants": {
         "risk": {
-          "taskId": "f03ad73588cdd0f0",
+          "taskId": "59a1e142707cf988",
           "promptSha256": "99957e90186b586a6ec8989a24ad92160582bd6cdf2f957142c37d6bd3478ecd",
           "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
         },
         "control": {
-          "taskId": "3d46eac28f891658",
+          "taskId": "7633d7cb22fcb40d",
           "promptSha256": "6bcdf7ca12867f159d76f76a5873074e64d359b46b1fa367e9cd457332b29342",
           "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
         }
@@ -790,12 +790,12 @@
       "fixtureSha256": "4d3b5eec07c390d3480dd53683d4139bb2eb6f9d3528f796ce4caa65bbb52896",
       "variants": {
         "risk": {
-          "taskId": "df3985181f29d2dc",
+          "taskId": "775deb154f65694a",
           "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
           "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
         },
         "control": {
-          "taskId": "8507f0369da30330",
+          "taskId": "efcfd719d0fc99e7",
           "promptSha256": "15c7dbf2748cadc2b35b995b76a7863931a44f96fc80591d8c0a1c84105b5f3f",
           "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
         }
@@ -806,12 +806,12 @@
       "fixtureSha256": "ce8e6d5896f3109055f00dafce14e9d4cd9ae6fbc01cc6b5448f9f48cb356aaf",
       "variants": {
         "risk": {
-          "taskId": "32f1d6a471e82551",
+          "taskId": "1200fd98fdcdb1fa",
           "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
           "treeSha256": "43b024d9de58a3fca2275c92e35b394593faef43fd43ec5b0e8e6db47caee3db"
         },
         "control": {
-          "taskId": "1781435581a3539f",
+          "taskId": "1d464ab5fdddb629",
           "promptSha256": "90d699a9f015a1214bd1486633fb8b31a3b114de5d9833246dbccacbf2c28b5b",
           "treeSha256": "43b024d9de58a3fca2275c92e35b394593faef43fd43ec5b0e8e6db47caee3db"
         }
