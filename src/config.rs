@@ -481,16 +481,6 @@ fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Resul
         {
             return Err(shape_error(file, section, "line", "a whole number"));
         }
-        if fields.iter().any(|(name, value)| {
-            !matches!(name.as_str(), "gate" | "file" | "text" | "line") && !value.is_number()
-        }) {
-            return Err(shape_error(
-                file,
-                section,
-                key.name,
-                "accepted metrics as numbers",
-            ));
-        }
     }
     Ok(())
 }
