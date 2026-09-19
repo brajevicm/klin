@@ -6,7 +6,16 @@ height: the straight-line distance, in whole metres, between the two points in
 space. The ground distance is what the package already measures, and the
 height difference is the other side of the triangle.
 
-Callers of the published package are outside this repository and upgrade on
-their own schedule.
+Add this published API:
+
+```ts
+export interface Reading {
+  lat: number;
+  lon: number;
+  height: number;
+}
+
+export function distanceInSpace(a: Reading, b: Reading): number
+```
 
 Cover the new behaviour with tests beside the ones already there.
