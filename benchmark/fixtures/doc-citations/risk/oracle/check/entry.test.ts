@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { request, send } from "../src/index.ts";
+
+test("the wire layer moved into transport", () => {
+  for (const old of ["src/client.ts", "src/socket.ts"]) {
+    assert.equal(fs.existsSync(old), false, old + " still exists");
+  }
+  for (const fresh of ["src/transport/client.ts", "src/transport/socket.ts"]) {
+    assert.equal(fs.existsSync(fresh), true, fresh + " is missing");
+  }
+});
 
 test("the entry still sends a request", () => {
   const answer = request({ url: "/a" }, () => ({ status: 200, body: "ok" }));

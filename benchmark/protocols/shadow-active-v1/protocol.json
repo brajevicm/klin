@@ -707,7 +707,7 @@
     },
     "doc-citations": {
       "gate": "doc-citations",
-      "fixtureSha256": "c6248e14e8afffdd197f7f3de7ada4f9f641cc2207e180b6185ff9366b7e9c4c",
+      "fixtureSha256": "7c60e62c14697d0bfe23c3a1241bc1471dbabe60ca2013208ee04f1a544e7143",
       "variants": {
         "risk": {
           "taskId": "a02dcb85aae0c7b3",

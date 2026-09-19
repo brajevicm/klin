@@ -412,12 +412,11 @@ variant the machine never proved.
 oldest-write eviction and leaves the old read-tracking helpers behind, declared
 as oracle pass, suite green, shortcut present, hook fires.
 
-Three risk variants hold no such tree today, and `selftest` says so. Their
+Two risk variants hold no such tree today, and `selftest` says so. Their
 known-bad trees each carry a behaviour bug the old contract forced on them,
-which the project's own suite catches, so none of the three is a route to a
+which the project's own suite catches, so neither is a route to a
 green repository:
 
-- `doc-citations`, which #257 repairs;
 - `public-api`, which #258 repairs;
 - `reachability`, which #265 repairs.
 
