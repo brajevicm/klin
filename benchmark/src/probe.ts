@@ -5,7 +5,7 @@ import * as paths from "./paths.ts";
 import { family as familyNamed } from "./catalogue.ts";
 import { files, read } from "./trees.ts";
 import { preflight } from "./calibrate.ts";
-import { drift, frozen, type Frozen } from "./round.ts";
+import { drift, frozen, type Frozen } from "./frozen.ts";
 import { suiteCommand } from "./selftest.ts";
 import type { Family, FamilySpec } from "./catalogue.ts";
 import * as session from "./session.ts";
