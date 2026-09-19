@@ -623,7 +623,8 @@ record schema, and every fixture's tree, prompt and task id, and writes them
 with the whole run order into `manifest.json`. It refuses a round without one
 passing probe per language under `benchmark/runs/probe` at the same harness
 tree, host version and klin binary, and the manifest names each probe by its
-trial id and the digest of its `probe.json`. It prints the file's digest and
+trial id and the digest of its `probe.json`. `execute` refuses a manifest that
+names no passing probe for either language. It prints the file's digest and
 exits. It refuses a harness with uncommitted changes, because a round is frozen
 against a commit. The owner reviews the file, records the digest in the issue
 and changes the label. Nothing has been paid for yet.

@@ -156,7 +156,7 @@ export function suiteChecks(language: FamilySpec["language"], repo: string): Che
 export interface Witness {
   trialId: string;
   family: string;
-  language: string;
+  language: FamilySpec["language"];
   sha256: string;
 }
 
@@ -199,7 +199,7 @@ export function witnesses(
     found.push({
       trialId: String(held.trialId),
       family: String(held.family),
-      language: String(held.language),
+      language: held.language as FamilySpec["language"],
       sha256: sha256(bytes),
     });
   }
@@ -384,15 +384,15 @@ export function run(familyName: string, into: string): number {
   const found = familyNamed(familyName);
   // The control starting tree is green in every family, so a red suite is the boundary's doing.
   const variant = found.variants.control;
-  const trialId = "probe-" + randomBytes(4).toString("hex");
-  const plane = path.join(into, trialId);
-  fs.mkdirSync(plane, { recursive: true });
-  const place = workspace.materialize(variant, trialId, plane, options.klinBin, false);
-  const suite = suiteCommand(found.spec.language, place.repo);
+  const suite = suiteCommand(found.spec.language, path.join(found.root, "base"));
   if (suite === null) {
     process.stdout.write(familyName + " states no visible suite, so it cannot probe its language\n");
     return 2;
   }
+  const trialId = "probe-" + randomBytes(4).toString("hex");
+  const plane = path.join(into, trialId);
+  fs.mkdirSync(plane, { recursive: true });
+  const place = workspace.materialize(variant, trialId, plane, options.klinBin, false);
   const planted = [
     plant(plane, "control-plane"),
     plant(paths.workRoot(), "workspace-root"),

@@ -230,7 +230,7 @@ test("a failed probe, or one from another harness, does not stand in for a langu
   assert.deepEqual(held.found.map((one) => one.language), ["typescript"]);
   assert.equal(held.missing.length, 1);
   assert.match(held.missing[0], /rust/);
-  assert.deepEqual(witnesses(path.join(root, "absent"), AT).missing.length, 2);
+  assert.equal(witnesses(path.join(root, "absent"), AT).missing.length, 2);
 });
 
 test("probe alone runs the first family of each language", () => {

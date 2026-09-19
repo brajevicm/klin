@@ -486,7 +486,15 @@ test("execute refuses a round whose frozen values moved, before any record exist
     const unapproved = quiet(() => execute(where, "0000"));
     assert.equal(unapproved.value, 2);
     assert.match(unapproved.wrote, /digest/);
-    const ran = quiet(() => execute(where, sha256(bytes)));
+    const unproved = quiet(() => execute(where, sha256(bytes)));
+    assert.equal(unproved.value, 2);
+    assert.match(unproved.wrote, /names no passing typescript or rust probe/);
+    const proved = JSON.stringify({
+      ...manifestFor(1),
+      probes: ["typescript", "rust"].map((language) => ({ trialId: language, family: language, language, sha256: "p" })),
+    }) + "\n";
+    fs.writeFileSync(path.join(where, "manifest.json"), proved);
+    const ran = quiet(() => execute(where, sha256(proved)));
     assert.equal(ran.value, 2);
     assert.match(ran.wrote, /refusing to start: .*moved from/);
     assert.deepEqual(fs.readdirSync(where), ["manifest.json"]);

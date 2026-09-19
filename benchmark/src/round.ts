@@ -686,6 +686,13 @@ export function execute(directory: string, approved: string): number {
     process.stdout.write("refusing to start: " + unsound.join("; ") + "\n");
     return 2;
   }
+  const unproved = (["typescript", "rust"] as const).filter(
+    (language) => !(manifest.probes ?? []).some((one) => one.language === language),
+  );
+  if (unproved.length > 0) {
+    process.stdout.write("refusing to start: the manifest names no passing " + unproved.join(" or ") + " probe\n");
+    return 2;
+  }
   const known = session.defaults();
   const blocked = preflight(known.klinBin);
   if (blocked !== "") {
