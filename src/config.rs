@@ -372,10 +372,7 @@ fn value_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(
 }
 
 fn ceiling_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
-    let valid = value.is_u64()
-        || value.as_object().is_some_and(|fields| {
-            crate::ceiling::is_schedule(fields) && fields.values().all(Value::is_u64)
-        });
+    let valid = value.is_u64() || value.is_object();
     require(
         file,
         section,
