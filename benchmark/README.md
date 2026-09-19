@@ -180,13 +180,30 @@ calibration trial keeps the opposite rule, and an unexpected outside path
 invalidates it.
 
 The prompt's first step runs the project's own suite, `npm test` or
-`cargo test`, from the subject's repository. The shell prints its own directory
-before the suite and keeps the exit status in the tree. The probe fails a suite
-that was red, that never ran or that ran anywhere but the repository, and a
-Rust build that left no `target/debug` in the repository. The probe uses the
-control variant, because every control starting tree is green, so a red suite
-is the boundary's doing. #252 found a whole round where the boundary refused
-the subject's own build.
+`cargo test`, from the subject's repository. The probe uses the control
+variant, because every control starting tree is green, so a red suite is the
+boundary's doing. #252 found a whole round where the boundary refused the
+subject's own build.
+
+Nothing in that verdict is read from the subject's own workspace. The workspace
+is writable, so a status file in it is the subject's word and a probe that read
+one would accept a suite that never ran. Two pieces of evidence in the plane
+answer instead:
+
+- the guard's own `PreToolUse` evidence, which holds every `Bash` command, write
+  and edit the subject asked for, in order. The suite must be the first of them,
+  so a subject that changed the tree first proves nothing about the tree it was
+  given;
+- the probe's witness hook, `host/witness`. The probe alone wires a `PostToolUse`
+  hook to it, and it records the host's own payload into the plane. The suite
+  command ends by printing one `klin-probe-suite status=... cwd=... build=...`
+  line, so the exit status, the directory the shell stood in and the Rust build
+  output reach the plane as the host reported them.
+
+A subject cannot forge either one. The witnessed command has to be the exact
+suite command to count, and running that command runs the suite. The witness
+hook answers nothing, relaxes no sandbox rule and holds no tool permission, so
+the confinement the probe proves is the confinement a trial runs under.
 
 `probe` alone runs one session per language, over the first TypeScript family
 and the first Rust family. `probe <family>` runs one session over that family.
@@ -621,10 +638,25 @@ session exists, the klin binary and its source commit, the harness commit and
 its clean state, the host version, the model, the normalized host flags, the
 record schema, and every fixture's tree, prompt and task id, and writes them
 with the whole run order into `manifest.json`. It refuses a round without one
-passing probe per language under `benchmark/runs/probe` at the same harness
-tree, host version and klin binary, and the manifest names each probe by its
-trial id and the digest of its `probe.json`. `execute` refuses a manifest that
-names no passing probe for either language. It prints the file's digest and
+passing probe per language under `benchmark/runs/probe`.
+
+A probe counts only when the whole apparatus it ran under is the apparatus the
+plan freezes. The same `drift` reading that stops a block mid-round compares the
+probe's frozen values with the plan's: the klin binary and its source commit,
+the harness commit, tree and hook wrapper, the host, the model, the flags, the
+configuration, the memory, the schema, the protocol, the machine and every
+fixture identity. The probe's own harness must have been clean. So a probe that
+ran before a repaired fixture, a changed `host/hook` or another binary proves
+nothing about this round. A failed probe at that same apparatus refuses its
+language outright, because probe ids are random and a newer failure must not be
+passed over for an older pass beside it.
+
+`plan` copies each named probe directory into `<round>/probes/<trial>`, so the
+probe evidence, hook evidence and all, is in what `evidence-prepare` archives
+and hashes. The manifest names each probe by trial id, the digest of its
+`probe.json` and the digest of that copy. `execute` and `verify` read one
+validation: exactly one witness per language, a family the catalogue has, a
+language that family speaks, and two digests that are digests. It prints the file's digest and
 exits. It refuses a harness with uncommitted changes, because a round is frozen
 against a commit. The owner reviews the file, records the digest in the issue
 and changes the label. Nothing has been paid for yet.
@@ -689,6 +721,7 @@ protocol.
 ```text
 benchmark/
   host/hook              the wrapper both arms run
+  host/witness           the probe's own record of what the host reported
   record.schema.json     the run record contract
   protocols/<name>/      the treatment-independent design, committed before run 1
   src/                   the harness

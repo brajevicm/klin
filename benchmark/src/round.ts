@@ -3,13 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
-import { ARMS, VARIANTS, families, type ArmName, type VariantName } from "./catalogue.ts";
+import { ARMS, VARIANTS, families, type ArmName, type FamilySpec, type VariantName } from "./catalogue.ts";
+
+/** The languages a round runs, and therefore the languages a probe has to prove. */
+export const LANGUAGES: FamilySpec["language"][] = ["typescript", "rust"];
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
+import { copyTree } from "./trees.ts";
 import * as toolchain from "./toolchain.ts";
 import * as workspace from "./workspace.ts";
-import { witnesses, type Witness } from "./probe.ts";
 import {
   FROZEN,
   normalizedFlags,
@@ -56,7 +59,7 @@ export interface Row {
 export interface Frozen {
   protocol: number;
   schemaSha256: string;
-  harness: { commit: string; dirty: boolean; treeSha256: string };
+  harness: { commit: string; dirty: boolean; treeSha256: string; hookSha256: string };
   klin: { commit: string; version: string; binarySha256: string };
   toolchain: toolchain.Provenance;
   host: { name: string; version: string };
@@ -73,6 +76,108 @@ export interface Frozen {
       variants: Record<VariantName, { taskId: string; promptSha256: string; treeSha256: string }>;
     }
   >;
+}
+
+/**
+ * What `plan` keeps of the probe that proved one language's workspace.
+ *
+ * The digest is of the probe's own `probe.json`, and `filesSha256` is of the copy the plan took
+ * of the whole probe directory, hook evidence and all, so the frozen round carries the evidence
+ * that authorized it instead of pointing at a directory that may be gone.
+ */
+export interface Witness {
+  trialId: string;
+  family: string;
+  language: FamilySpec["language"];
+  sha256: string;
+  filesSha256: string;
+}
+
+interface Probe {
+  directory: string;
+  trialId: string;
+  family: string;
+  language: string;
+  at: string;
+  passed: boolean;
+  frozen: Frozen;
+  sha256: string;
+}
+
+function probesUnder(directory: string): Probe[] {
+  const names = fs.existsSync(directory) ? fs.readdirSync(directory).sort() : [];
+  const held: Probe[] = [];
+  for (const name of names) {
+    const file = path.join(directory, name, "probe.json");
+    if (!fs.existsSync(file)) {
+      continue;
+    }
+    const bytes = fs.readFileSync(file);
+    try {
+      const read = JSON.parse(bytes.toString("utf8")) as Partial<Probe>;
+      held.push({
+        directory: path.join(directory, name),
+        trialId: String(read.trialId ?? ""),
+        family: String(read.family ?? ""),
+        language: String(read.language ?? ""),
+        at: String(read.at ?? ""),
+        passed: read.passed === true,
+        frozen: read.frozen as Frozen,
+        sha256: sha256(bytes),
+      });
+    } catch {
+      held.push({ directory: path.join(directory, name), trialId: name, family: "", language: "", at: "", passed: false, frozen: undefined as unknown as Frozen, sha256: sha256(bytes) });
+    }
+  }
+  return held;
+}
+
+/**
+ * The probe that proves each language's workspace for the round about to be planned.
+ *
+ * A probe counts only when the whole apparatus it ran under is the apparatus the plan freezes:
+ * `drift` compares the klin binary and its commit, the harness commit and tree, the hook
+ * wrapper, the host, the model, the flags, the configuration, the memory, the schema, the
+ * protocol, the machine and every fixture identity, and the probe's own harness must have been
+ * clean. A probe from before a repaired fixture or a changed wrapper therefore proves nothing
+ * about this round.
+ *
+ * A failed probe at that same apparatus refuses the language outright. Probe ids are random, so
+ * without this a newer failure could be passed over for an older pass sitting beside it.
+ */
+export function witnesses(
+  directory: string,
+  now: Frozen,
+): { found: Omit<Witness, "filesSha256">[]; directories: string[]; missing: string[] } {
+  const mine = probesUnder(directory).filter(
+    (one) => one.frozen !== undefined && one.frozen !== null && drift(one.frozen, now).length === 0 && one.frozen.harness.dirty === false,
+  );
+  const found: Omit<Witness, "filesSha256">[] = [];
+  const directories: string[] = [];
+  const missing: string[] = [];
+  for (const language of LANGUAGES) {
+    const ours = mine.filter((one) => one.language === language).sort((a, b) => a.at.localeCompare(b.at));
+    const failed = ours.filter((one) => !one.passed);
+    const newest = ours.filter((one) => one.passed).at(-1);
+    if (failed.length > 0) {
+      missing.push(
+        "the " + language + " probe " + failed[failed.length - 1].trialId + " failed at this apparatus, so the workspace is not proved",
+      );
+      continue;
+    }
+    if (newest === undefined) {
+      missing.push("no passing " + language + " probe under " + directory + " ran at this round's apparatus");
+      continue;
+    }
+    found.push({
+      trialId: newest.trialId,
+      family: newest.family,
+      language: language,
+      sha256: newest.sha256,
+    });
+    directories.push(newest.directory);
+  }
+  return { found, directories, missing };
 }
 
 export interface Manifest {
@@ -187,6 +292,9 @@ export function frozen(options: session.SessionOptions): Frozen {
       commit: workspace.git(paths.REPO, "rev-parse", "HEAD"),
       dirty: workspace.git(paths.REPO, "status", "--porcelain") !== "",
       treeSha256: digest(path.join(paths.BENCHMARK, "src")),
+      // The wrapper template is the hook every trial runs and it sits outside `src`, so without
+      // this a changed `host/hook` moved nothing a round or a probe could see.
+      hookSha256: sha256(fs.readFileSync(paths.HOOK)),
     },
     klin: {
       commit: trial.sourceCommit(options.klinBin, binary),
@@ -213,6 +321,7 @@ export function drift(planned: Frozen, now: Frozen): string[] {
     ["the TypeScript compiler", JSON.stringify(held.toolchain ?? null)],
     ["the harness commit", held.harness.commit],
     ["the harness tree", held.harness.treeSha256],
+    ["the hook wrapper", held.harness.hookSha256],
     ["the harness clean state", String(held.harness.dirty)],
     ["the host version", held.host.version],
     ["the requested model", held.model],
@@ -423,10 +532,10 @@ export function protocol(seed: number, write: boolean): number {
  * vouch for itself, and a catalogue that changed under a planned round is caught the same way.
  */
 export function manifestProblems(held: Manifest): string[] {
-  const problems: string[] = [];
   if (!held || typeof held !== "object") {
     return ["the manifest is not an object"];
   }
+  const problems: string[] = probeProblems(held);
   if (held.kind !== "publishable" || held.publishable !== true) {
     problems.push("the manifest is not a publishable round");
   }
@@ -528,6 +637,47 @@ export function manifestProblems(held: Manifest): string[] {
   return problems;
 }
 
+/**
+ * What the manifest must state about the probes that authorized the round.
+ *
+ * `execute` and `verify` both read this, so a round cannot start or pass on a witness that names
+ * a family the catalogue does not have, a language that family does not speak, or a digest that
+ * is not a digest. Rounds before protocol 5 had no probe requirement and are held to none.
+ */
+export function probeProblems(held: Manifest): string[] {
+  if (Number(held.protocol) < 5) {
+    return [];
+  }
+  const problems: string[] = [];
+  const kept = held.probes ?? [];
+  const known = families();
+  for (const language of LANGUAGES) {
+    const ours = kept.filter((one) => one.language === language);
+    if (ours.length !== 1) {
+      problems.push("the manifest names " + String(ours.length) + " passing " + language + " probes, and it must name one");
+    }
+  }
+  for (const one of kept) {
+    const family = known[one.family];
+    if (family === undefined) {
+      problems.push("the probe " + String(one.trialId) + " names no family the catalogue has");
+      continue;
+    }
+    if (family.spec.language !== one.language) {
+      problems.push("the probe " + String(one.trialId) + " states " + String(one.language) + " and " + one.family + " is " + family.spec.language);
+    }
+    if (typeof one.trialId !== "string" || one.trialId === "") {
+      problems.push("a probe witness states no trial id");
+    }
+    for (const [what, value] of [["probe.json", one.sha256], ["probe directory", one.filesSha256]]) {
+      if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) {
+        problems.push("the probe " + String(one.trialId) + " states no " + what + " digest");
+      }
+    }
+  }
+  return problems;
+}
+
 function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
   const file = path.join(directory, "manifest.json");
   const bytes = fs.readFileSync(file);
@@ -568,11 +718,7 @@ export function plan(into: string, seed: number, probes = path.join(paths.RUNS, 
     process.stdout.write("the plan is not the committed protocol: " + departures.join("; ") + "\n");
     return 2;
   }
-  const proved = witnesses(probes, {
-    harness: held.frozen.harness.treeSha256,
-    host: held.frozen.host.version,
-    klin: held.frozen.klin.binarySha256,
-  });
+  const proved = witnesses(probes, held.frozen);
   if (proved.missing.length > 0) {
     process.stdout.write(
       "the workspace is not proved for this round: " + proved.missing.join("; ") + ". node benchmark/src/cli.ts probe runs one per language.\n",
@@ -580,7 +726,19 @@ export function plan(into: string, seed: number, probes = path.join(paths.RUNS, 
     return 2;
   }
   fs.mkdirSync(into, { recursive: true });
-  const bytes = JSON.stringify({ ...held, probes: proved.found }, null, 2) + "\n";
+  // The probe evidence travels with the round it authorized: the run directory is what
+  // `evidence-prepare` archives and hashes, and a probe left under `runs/probe` is not in it.
+  held.probes = proved.found.map((one, at) => {
+    const kept = path.join(into, "probes", one.trialId);
+    copyTree(proved.directories[at], kept);
+    return { ...one, filesSha256: digest(kept) };
+  });
+  const unproved = probeProblems(held);
+  if (unproved.length > 0) {
+    process.stdout.write("the plan does not carry its probes: " + unproved.join("; ") + "\n");
+    return 2;
+  }
+  const bytes = JSON.stringify(held, null, 2) + "\n";
   fs.writeFileSync(file, bytes);
   process.stdout.write(
     [
@@ -684,13 +842,6 @@ export function execute(directory: string, approved: string): number {
   const unsound = manifestProblems(manifest);
   if (unsound.length > 0) {
     process.stdout.write("refusing to start: " + unsound.join("; ") + "\n");
-    return 2;
-  }
-  const unproved = (["typescript", "rust"] as const).filter(
-    (language) => !(manifest.probes ?? []).some((one) => one.language === language),
-  );
-  if (unproved.length > 0) {
-    process.stdout.write("refusing to start: the manifest names no passing " + unproved.join(" or ") + " probe\n");
     return 2;
   }
   const known = session.defaults();

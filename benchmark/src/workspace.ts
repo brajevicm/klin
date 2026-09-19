@@ -29,6 +29,8 @@ export interface Workspace {
   settings: string;
   state: string;
   hooks: string;
+  /** Where the probe's witness hook keeps the host's own PostToolUse payloads. Empty in a trial. */
+  seen: string;
   startCommit: string;
   treeSha256: string;
   commits: number;
@@ -187,7 +189,7 @@ export function wrapper(plane: string, klinBin: string, deliver: boolean): strin
  * themselves are the host's own lifecycle and no sandbox holds them, so the wrapper still writes
  * the plane the subject cannot read.
  */
-function settingsFor(place: { hook: string; plane: string; repo: string }): string {
+function settingsFor(place: { hook: string; plane: string; repo: string; witness: string }): string {
   const quoted = (one: string): string => JSON.stringify(one);
   const command = (args: string): string => [quoted(place.hook), args].join(" ");
   return JSON.stringify(
@@ -215,6 +217,19 @@ function settingsFor(place: { hook: string; plane: string; repo: string }): stri
             ],
           },
         ],
+        // The probe alone wires this, and it is the probe's trusted record of what a Bash call
+        // asked for and what it printed. It relaxes no sandbox rule and no tool permission, so
+        // the confinement a probe proves is the confinement a trial runs under.
+        ...(place.witness === ""
+          ? {}
+          : {
+              PostToolUse: [
+                {
+                  matcher: "Bash",
+                  hooks: [{ type: "command", command: quoted(place.witness), timeout: 60 }],
+                },
+              ],
+            }),
       },
     },
     null,
@@ -293,6 +308,7 @@ export function materialize(
   plane: string,
   klinBin: string,
   deliver: boolean,
+  observe = false,
 ): Workspace {
   const root = path.join(paths.workRoot(), trialId);
   fs.rmSync(root, { recursive: true, force: true });
@@ -301,6 +317,7 @@ export function materialize(
   const settings = path.join(plane, "settings.json");
   const state = path.join(plane, "state");
   const hooks = path.join(plane, "hooks");
+  const seen = path.join(plane, "witness");
   fs.mkdirSync(repo, { recursive: true });
   fs.mkdirSync(plane, { recursive: true });
   fs.rmSync(state, { recursive: true, force: true });
@@ -310,7 +327,13 @@ export function materialize(
 
   fs.writeFileSync(hook, wrapper(plane, klinBin, deliver));
   fs.chmodSync(hook, 0o755);
-  fs.writeFileSync(settings, settingsFor({ hook, plane, repo }) + "\n");
+  const witness = observe ? path.join(plane, randomBytes(12).toString("hex")) : "";
+  if (witness !== "") {
+    fs.rmSync(path.join(plane, "witness"), { recursive: true, force: true });
+    fs.writeFileSync(witness, fs.readFileSync(paths.WITNESS, "utf8").replace("@PLANE@", "'" + plane + "'"));
+    fs.chmodSync(witness, 0o755);
+  }
+  fs.writeFileSync(settings, settingsFor({ hook, plane, repo, witness }) + "\n");
 
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");
@@ -327,6 +350,7 @@ export function materialize(
     settings,
     state,
     hooks,
+    seen: witness === "" ? "" : seen,
     startCommit,
     treeSha256,
     commits: Number(commits),

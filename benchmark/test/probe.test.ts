@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { families } from "../src/catalogue.ts";
-import { judge, perLanguage, prompt, shellCommand, suiteChecks, suiteShellCommand, transcript, witnesses } from "../src/probe.ts";
+import { judge, perLanguage, prompt, shellCommand, sentinelIn, suiteChecks, suiteShellCommand, transcript, witnessed } from "../src/probe.ts";
 import type { SessionResult } from "../src/session.ts";
 
 /**
@@ -149,17 +149,33 @@ test("a variable naming the subject's own workspace is not a leak", () => {
   );
 });
 
-/** A repository after a subject ran the probe's suite step, with what that step left behind. */
-function ranSuite(status: string | null, where = "", build = false): string {
+/** A repository with the files the subject itself wrote, which prove nothing on their own. */
+function repoWith(files: Record<string, string> = {}, build = false): string {
   const repo = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-probe-")));
-  if (status !== null) {
-    fs.writeFileSync(path.join(repo, "probe-suite-output.txt"), (where || repo) + "\nok 1 - it works\n");
-    fs.writeFileSync(path.join(repo, "probe-suite-status.txt"), status + "\n");
+  for (const [name, held] of Object.entries(files)) {
+    fs.writeFileSync(path.join(repo, name), held);
   }
   if (build) {
     fs.mkdirSync(path.join(repo, "target", "debug"), { recursive: true });
   }
   return repo;
+}
+
+const SUITE = ["npm", "test", "--silent"];
+const CARGO = ["cargo", "test", "--offline", "--quiet"];
+
+/** The guard's own PreToolUse evidence, which is written in the plane and not in the workspace. */
+function guarded(...calls: [string, string][]): { tool: string; paths: string }[] {
+  return calls.map(([tool, paths]) => ({ tool, paths }));
+}
+
+/** What the witness hook kept for one Bash call, as the plane recorded the host's payload. */
+function witness(command: string, status: string, cwd: string, build = "none") {
+  return {
+    tool: "Bash",
+    command,
+    output: JSON.stringify({ stdout: "klin-probe-suite status=" + status + " cwd=" + cwd + " build=" + build + "\n" }),
+  };
 }
 
 function failing(checks: { name: string; passed: boolean }[]): string[] {
@@ -168,69 +184,104 @@ function failing(checks: { name: string; passed: boolean }[]): string[] {
 
 test("the prompt asks for the project's own suite inside the repository first", () => {
   const place = { plane: "/plane/t1", work: "/tmp/work", records: "/repo/runs" };
-  const asked = prompt(place, ["npm", "test", "--silent"]);
-  assert.ok(asked.includes(suiteShellCommand(["npm", "test", "--silent"])), asked);
+  const asked = prompt(place, SUITE);
+  assert.ok(asked.includes(suiteShellCommand(SUITE)), asked);
   assert.ok(asked.indexOf("npm test") < asked.indexOf(shellCommand(place)), asked);
+  assert.match(suiteShellCommand(SUITE), /klin-probe-suite status=%s cwd=%s build=%s/);
 });
 
-test("a green TypeScript suite run inside the repository passes the suite checks", () => {
-  const repo = ranSuite("0");
-  assert.deepEqual(failing(suiteChecks("typescript", repo)), []);
+test("a green suite the plane witnessed inside the repository passes the suite checks", () => {
+  const repo = repoWith();
+  const held = suiteChecks("typescript", repo, SUITE, guarded(["Bash", suiteShellCommand(SUITE)]), [
+    witness(suiteShellCommand(SUITE), "0", repo),
+  ]);
+  assert.deepEqual(failing(held), []);
 });
 
-test("a red suite, or a suite never run, proves nothing about the workspace", () => {
-  assert.deepEqual(failing(suiteChecks("typescript", ranSuite("1"))), ["suite-green-inside"]);
-  assert.deepEqual(failing(suiteChecks("typescript", ranSuite(null))), ["suite-green-inside"]);
-});
-
-test("a suite whose shell stood somewhere else did not run inside the repository", () => {
-  assert.deepEqual(failing(suiteChecks("typescript", ranSuite("0", "/elsewhere"))), ["suite-green-inside"]);
-});
-
-test("a Rust suite must leave its build output inside the repository", () => {
-  assert.deepEqual(failing(suiteChecks("rust", ranSuite("0", "", true))), []);
-  assert.deepEqual(failing(suiteChecks("rust", ranSuite("0"))), ["build-output-inside"]);
-});
-
-/** The fields of a probe record `plan` reads, for one language, at one harness, host and binary. */
-function probeOnDisk(root: string, id: string, language: string, passed: boolean, tree = "ht"): void {
-  fs.mkdirSync(path.join(root, id), { recursive: true });
-  fs.writeFileSync(
-    path.join(root, id, "probe.json"),
-    JSON.stringify({
-      trialId: id,
-      family: language === "rust" ? "dead-symbols" : "complexity",
-      language,
-      host: "2.1.276 (Claude Code)",
-      harness: { commit: "h", treeSha256: tree },
-      klin: { binarySha256: "kb" },
-      passed,
-    }) + "\n",
+/**
+ * The subject's own workspace is writable, so every file in it is the subject's word. A probe
+ * that read one would accept a suite that never ran.
+ */
+test("status and output files the subject wrote prove nothing without the plane's witness", () => {
+  const repo = repoWith(
+    { "probe-suite-status.txt": "0\n", "probe-suite-output.txt": "/tmp\nok 1 - it works\n" },
+    true,
   );
-}
-
-const AT = { harness: "ht", host: "2.1.276 (Claude Code)", klin: "kb" };
-
-test("a plan finds one passing probe per language at its own harness, host and binary", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-probes-"));
-  probeOnDisk(root, "probe-a", "typescript", true);
-  probeOnDisk(root, "probe-b", "rust", true);
-  const held = witnesses(root, AT);
-  assert.deepEqual(held.missing, []);
-  assert.deepEqual(held.found.map((one) => one.language).sort(), ["rust", "typescript"]);
-  assert.match(held.found[0].sha256, /^[0-9a-f]{64}$/);
+  const held = suiteChecks("rust", repo, CARGO, guarded(["Bash", suiteShellCommand(CARGO)]), []);
+  assert.deepEqual(failing(held), ["suite-green-inside", "build-output-inside"]);
 });
 
-test("a failed probe, or one from another harness, does not stand in for a language", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-probes-"));
-  probeOnDisk(root, "probe-a", "typescript", true);
-  probeOnDisk(root, "probe-b", "rust", false);
-  probeOnDisk(root, "probe-c", "rust", true, "older");
-  const held = witnesses(root, AT);
-  assert.deepEqual(held.found.map((one) => one.language), ["typescript"]);
-  assert.equal(held.missing.length, 1);
-  assert.match(held.missing[0], /rust/);
-  assert.equal(witnesses(path.join(root, "absent"), AT).missing.length, 2);
+/** The witnessed call is the host's own record of what the command printed, so a later
+ * overwrite of the subject's copy moves nothing. */
+test("overwriting the status file after the suite does not change what the plane witnessed", () => {
+  const repo = repoWith({ "probe-suite-status.txt": "0\n" });
+  const held = suiteChecks("typescript", repo, SUITE, guarded(["Bash", suiteShellCommand(SUITE)]), [
+    witness(suiteShellCommand(SUITE), "1", repo),
+  ]);
+  assert.deepEqual(failing(held), ["suite-green-inside"]);
+});
+
+test("a tree the subject changed before the suite ran is another tree", () => {
+  const repo = repoWith();
+  const held = suiteChecks(
+    "typescript",
+    repo,
+    SUITE,
+    guarded(["Write", path.join(repo, "src/index.ts")], ["Bash", suiteShellCommand(SUITE)]),
+    [witness(suiteShellCommand(SUITE), "0", repo)],
+  );
+  assert.deepEqual(failing(held), ["suite-invoked-first"]);
+});
+
+test("a suite the plane never witnessed, and one that stood elsewhere, both fail", () => {
+  const repo = repoWith();
+  assert.deepEqual(
+    failing(suiteChecks("typescript", repo, SUITE, guarded(["Bash", suiteShellCommand(SUITE)]), [])),
+    ["suite-green-inside"],
+  );
+  assert.deepEqual(
+    failing(
+      suiteChecks("typescript", repo, SUITE, guarded(["Bash", suiteShellCommand(SUITE)]), [
+        witness(suiteShellCommand(SUITE), "0", "/elsewhere"),
+      ]),
+    ),
+    ["suite-green-inside"],
+  );
+  assert.deepEqual(
+    failing(suiteChecks("typescript", repo, SUITE, guarded(), [witness(suiteShellCommand(SUITE), "0", repo)])),
+    ["suite-invoked-first"],
+  );
+});
+
+test("a Rust build the plane witnessed outside the repository fails", () => {
+  const repo = repoWith({}, true);
+  const held = suiteChecks("rust", repo, CARGO, guarded(["Bash", suiteShellCommand(CARGO)]), [
+    witness(suiteShellCommand(CARGO), "0", repo, "none"),
+  ]);
+  assert.deepEqual(failing(held), ["build-output-inside"]);
+  assert.deepEqual(
+    failing(
+      suiteChecks("rust", repo, CARGO, guarded(["Bash", suiteShellCommand(CARGO)]), [
+        witness(suiteShellCommand(CARGO), "0", repo, "target/debug"),
+      ]),
+    ),
+    [],
+  );
+});
+
+/** The witness hook's own reading of a payload, which is the only thing the checks above read. */
+test("the witness reads the command and the output the host reported", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-witness-"));
+  fs.writeFileSync(
+    path.join(room, "0000-1.json"),
+    JSON.stringify({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "npm test" }, tool_response: { stdout: "klin-probe-suite status=0 cwd=/repo build=none" } }),
+  );
+  fs.writeFileSync(path.join(room, "0001-2.json"), "not json");
+  const held = witnessed(room);
+  assert.equal(held.length, 2);
+  assert.equal(held[0].command, "npm test");
+  assert.deepEqual(sentinelIn(held[0].output), { status: "0", cwd: "/repo", build: "none" });
+  assert.equal(sentinelIn(held[1].output), null);
 });
 
 test("probe alone runs the first family of each language", () => {

@@ -7,7 +7,7 @@ import * as paths from "../src/paths.ts";
 import * as session from "../src/session.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { families } from "../src/catalogue.ts";
-import { sha256 } from "../src/trees.ts";
+import { digest, sha256 } from "../src/trees.ts";
 import {
   ATTEMPTS,
   FLOOR,
@@ -26,8 +26,10 @@ import {
   replacementId,
   rows,
   scorecard,
+  probeProblems,
   uncommitted,
   verify,
+  witnesses,
   type Frozen,
   type Manifest,
   type Row,
@@ -117,7 +119,7 @@ function frozenFor(): Frozen {
   return {
     protocol: CURRENT_PROTOCOL.version,
     schemaSha256: "s",
-    harness: { commit: "h", dirty: false, treeSha256: "ht" },
+    harness: { commit: "h", dirty: false, treeSha256: "ht", hookSha256: "hook" },
     klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
     toolchain: {
       package: "typescript",
@@ -187,9 +189,17 @@ function write(where: string, record: RunRecord): void {
   fs.writeFileSync(path.join(where, record.trialId, "record.json"), JSON.stringify(record) + "\n");
 }
 
+/** The two probe witnesses a planned round carries, as `plan` records them. */
+function witnessesFor(): Manifest["probes"] {
+  return [
+    { trialId: "probe-a", family: "complexity", language: "typescript", sha256: "a".repeat(64), filesSha256: "b".repeat(64) },
+    { trialId: "probe-b", family: "dead-symbols", language: "rust", sha256: "c".repeat(64), filesSha256: "d".repeat(64) },
+  ];
+}
+
 /** The manifest `plan` would write for a seed, with the test's frozen values in place of the machine's. */
 function manifestFor(seed: number): Manifest {
-  return { ...manifestOf(seed, frozenFor()), frozen: frozenFor() };
+  return { ...manifestOf(seed, frozenFor()), frozen: frozenFor(), probes: witnessesFor() };
 }
 
 /** A complete valid round on disk, every scheduled trial answered on its first attempt. */
@@ -407,6 +417,7 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
   const where = path.join(room(), "round");
   try {
     const probes = path.join(path.dirname(where), "probes");
+    const now = frozen(session.defaults());
     const unproved = quiet(() => plan(where, 1, probes));
     if (execFileSync("git", ["status", "--porcelain"], { cwd: paths.REPO, encoding: "utf8" }).trim() !== "") {
       assert.equal(unproved.value, 2, unproved.wrote);
@@ -418,18 +429,17 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.match(unproved.wrote, /no passing typescript probe/);
     assert.match(unproved.wrote, /no passing rust probe/);
     assert.equal(fs.existsSync(path.join(where, "manifest.json")), false, "an unproved workspace plans nothing");
-    const now = frozen(session.defaults());
-    for (const language of ["typescript", "rust"]) {
-      fs.mkdirSync(path.join(probes, language), { recursive: true });
+    for (const [language, family] of [["typescript", "complexity"], ["rust", "dead-symbols"]]) {
+      fs.mkdirSync(path.join(probes, "probe-" + language, "hooks"), { recursive: true });
+      fs.writeFileSync(path.join(probes, "probe-" + language, "hooks", "payload.json"), "{}\n");
       fs.writeFileSync(
-        path.join(probes, language, "probe.json"),
+        path.join(probes, "probe-" + language, "probe.json"),
         JSON.stringify({
-          trialId: language,
-          family: language,
+          trialId: "probe-" + language,
+          family,
           language,
-          host: now.host.version,
-          harness: { treeSha256: now.harness.treeSha256 },
-          klin: { binarySha256: now.klin.binarySha256 },
+          at: "2026-09-19T12:00:00.000Z",
+          frozen: now,
           passed: true,
         }),
       );
@@ -457,7 +467,12 @@ test("plan writes the frozen manifest, starts nothing and refuses to plan twice 
     assert.equal(held.frozen.toolchain.sha256, TYPESCRIPT_SHA256);
     assert.equal(Object.keys(held.frozen.fixtures).length, 9);
     assert.deepEqual(held.probes.map((one) => one.language).sort(), ["rust", "typescript"]);
-    assert.equal(fs.readdirSync(where).length, 1, "the manifest is the only thing a plan writes");
+    for (const one of held.probes) {
+      const kept = path.join(where, "probes", one.trialId);
+      assert.ok(fs.existsSync(path.join(kept, "hooks", "payload.json")), "the probe's own evidence travels with the round");
+      assert.equal(one.filesSha256, digest(kept));
+    }
+    assert.deepEqual(fs.readdirSync(where).sort(), ["manifest.json", "probes"], "a plan writes the manifest and the probe evidence it names");
     const again = quiet(() => plan(where, 1, probes));
     assert.equal(again.value, 2);
     assert.match(again.wrote, /not regenerated/);
@@ -486,15 +501,13 @@ test("execute refuses a round whose frozen values moved, before any record exist
     const unapproved = quiet(() => execute(where, "0000"));
     assert.equal(unapproved.value, 2);
     assert.match(unapproved.wrote, /digest/);
-    const unproved = quiet(() => execute(where, sha256(bytes)));
-    assert.equal(unproved.value, 2);
-    assert.match(unproved.wrote, /names no passing typescript or rust probe/);
-    const proved = JSON.stringify({
-      ...manifestFor(1),
-      probes: ["typescript", "rust"].map((language) => ({ trialId: language, family: language, language, sha256: "p" })),
-    }) + "\n";
-    fs.writeFileSync(path.join(where, "manifest.json"), proved);
-    const ran = quiet(() => execute(where, sha256(proved)));
+    const unproved = JSON.stringify({ ...manifestFor(1), probes: [witnessesFor()[0]] }) + "\n";
+    fs.writeFileSync(path.join(where, "manifest.json"), unproved);
+    const refused = quiet(() => execute(where, sha256(unproved)));
+    assert.equal(refused.value, 2);
+    assert.match(refused.wrote, /names 0 passing rust probes/);
+    fs.writeFileSync(path.join(where, "manifest.json"), bytes);
+    const ran = quiet(() => execute(where, sha256(bytes)));
     assert.equal(ran.value, 2);
     assert.match(ran.wrote, /refusing to start: .*moved from/);
     assert.deepEqual(fs.readdirSync(where), ["manifest.json"]);
@@ -555,4 +568,75 @@ test("a seed that is not an integer writes no committed protocol", () => {
   assert.equal(wrote.value, 2);
   assert.match(wrote.wrote, /--seed needs an integer/);
   assert.deepEqual(fs.readFileSync(protocolFile()), before, "a bad seed leaves the committed file alone");
+});
+
+/** One probe on disk, at the apparatus `held` describes. */
+function probeOnDisk(root: string, id: string, language: string, passed: boolean, held: Frozen, at: string): void {
+  const family = language === "rust" ? "dead-symbols" : "complexity";
+  fs.mkdirSync(path.join(root, id), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, id, "probe.json"),
+    JSON.stringify({ trialId: id, family, language, at, frozen: held, passed }) + "\n",
+  );
+}
+
+test("a probe proves a round only when its whole apparatus is the round's", () => {
+  const root = room();
+  const now = frozenFor();
+  probeOnDisk(root, "probe-a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  probeOnDisk(root, "probe-b", "rust", true, now, "2026-09-19T10:00:00Z");
+  assert.deepEqual(witnesses(root, now).missing, []);
+  assert.deepEqual(witnesses(root, now).found.map((one) => one.trialId).sort(), ["probe-a", "probe-b"]);
+
+  const moved = (change: (held: Frozen) => void): string[] => {
+    const held = frozenFor();
+    change(held);
+    const where = room();
+    probeOnDisk(where, "probe-a", "typescript", true, held, "2026-09-19T10:00:00Z");
+    probeOnDisk(where, "probe-b", "rust", true, held, "2026-09-19T10:00:00Z");
+    return witnesses(where, now).missing;
+  };
+  for (const [what, change] of [
+    ["a changed hook wrapper", (held: Frozen) => { held.harness.hookSha256 = "other"; }],
+    ["a changed harness commit", (held: Frozen) => { held.harness.commit = "other"; }],
+    ["a repaired fixture", (held: Frozen) => { held.fixtures.stubs.fixtureSha256 = "other"; }],
+    ["another klin binary", (held: Frozen) => { held.klin.binarySha256 = "other"; }],
+    ["a dirty harness", (held: Frozen) => { held.harness.dirty = true; }],
+  ] as [string, (held: Frozen) => void][]) {
+    assert.equal(moved(change).length, 2, what + " must prove nothing about this round");
+  }
+});
+
+/** Probe ids are random, so the newest pass is the one that counts, and a failure refuses. */
+test("a failed probe at this apparatus refuses its language, whatever sits beside it", () => {
+  const now = frozenFor();
+  const root = room();
+  probeOnDisk(root, "zzz-older", "typescript", true, now, "2026-09-19T09:00:00Z");
+  probeOnDisk(root, "aaa-newer", "typescript", false, now, "2026-09-19T11:00:00Z");
+  probeOnDisk(root, "probe-b", "rust", true, now, "2026-09-19T10:00:00Z");
+  const held = witnesses(root, now);
+  assert.deepEqual(held.found.map((one) => one.language), ["rust"]);
+  assert.match(held.missing[0], /aaa-newer failed/);
+
+  const two = room();
+  probeOnDisk(two, "zzz-older", "rust", true, now, "2026-09-19T09:00:00Z");
+  probeOnDisk(two, "aaa-newer", "rust", true, now, "2026-09-19T11:00:00Z");
+  assert.deepEqual(witnesses(two, now).found.map((one) => one.trialId), ["aaa-newer"]);
+});
+
+test("a manifest whose probe witnesses do not hold is refused by execute and verify", () => {
+  const cases: [string, (held: Manifest) => void, RegExp][] = [
+    ["no probes at all", (held) => { held.probes = []; }, /names 0 passing typescript probes/],
+    ["two probes for one language", (held) => { held.probes = [held.probes![0], { ...held.probes![0], trialId: "probe-c" }]; }, /names 2 passing typescript probes/],
+    ["a family the catalogue has not", (held) => { held.probes![0].family = "nowhere"; }, /names no family the catalogue has/],
+    ["a language the family does not speak", (held) => { held.probes![0].family = "stubs"; }, /states typescript and stubs is rust/],
+    ["a digest that is not one", (held) => { held.probes![1].sha256 = "p"; }, /states no probe\.json digest/],
+    ["no evidence digest", (held) => { held.probes![1].filesSha256 = ""; }, /states no probe directory digest/],
+  ];
+  for (const [what, spoil, expected] of cases) {
+    const held = manifestFor(1);
+    spoil(held);
+    assert.ok(probeProblems(held).some((one) => expected.test(one)), what + ": " + probeProblems(held).join(" / "));
+    assert.ok(manifestProblems(held).some((one) => expected.test(one)), what + " must also fail the shared manifest check");
+  }
 });
