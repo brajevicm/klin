@@ -127,9 +127,9 @@ function shellQuote(one: string): string {
 export function environmentShellCommand(
   roots: EnvironmentRoots = { owned: ownedPaths(), mine: [] },
 ): string {
-  const separator = String.fromCharCode(28);
+  const separator = "|";
   const script = [
-    "function load(text,target,field,count,i){count=split(text,field,\"\\034\");for(i=1;i<=count;i++)target[i]=field[i];return count;}",
+    "function load(text,target,field,count,i){count=split(text,field,\"\\\\|\");for(i=1;i<=count;i++)target[i]=field[i];return count;}",
     "function normalize(value,absolute,count,i,item,result){absolute=substr(value,1,1)==\"/\";if(!absolute)value=pwd \"/\" value;gsub(/\\/+/ ,\"/\",value);count=split(value,parts,\"/\");result=\"/\";depth=0;for(i=1;i<=count;i++){item=parts[i];if(item==\"\"||item==\".\")continue;if(item==\"..\"){if(depth>0)depth--;continue;}stack[++depth]=item;}for(i=1;i<=depth;i++)result=result stack[i] \"/\";sub(/\\/$/,\"\",result);return result==\"\"?\"/\":result;}",
     "function inside(outer,inner){outer=normalize(outer);inner=normalize(inner);return outer==\"/\"?substr(inner,1,1)==\"/\":inner==outer||index(inner,outer \"/\")==1;}",
     "function matches(value,root){return inside(root,value)||(root==\"/\"?substr(value,1,1)==\"/\":value==root||index(value,root \"/\")>0);}",

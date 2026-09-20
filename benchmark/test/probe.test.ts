@@ -324,6 +324,10 @@ test("the prompt names every place the subject must not reach, and the command t
   }
 });
 
+test("the trusted environment command keeps root arguments printable", () => {
+  assert.doesNotMatch(environmentShellCommand(ENV_ROOTS), /[\u0000-\u001f]/);
+});
+
 /** The tree the agent left is part of the reading: a token it copied into a file is a read. */
 test("the transcript holds the tree the agent left", () => {
   const ran = { stdout: "", stderr: "", agent: null } as unknown as SessionResult;
