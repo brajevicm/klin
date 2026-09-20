@@ -642,7 +642,7 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   // The host's own file tools, turned on every forbidden place and refused: a PreToolUse payload
   // each and no PostToolUse answer, which is what a refused call leaves behind. Read answers
   // about a file and Glob and Grep about a directory, so each owes its own calls.
-  const roots = { plane: path.join(paths.RUNS, "probe", id), records: paths.RUNS };
+  const roots = { plane: path.join(paths.RUNS, "probe", id), work: paths.workRoot(), records: paths.RUNS, mine: workspace };
   fileToolAttempts(planted, roots).forEach((one, at) => {
     fs.writeFileSync(
       path.join(directory, "witness", "1" + String(at).padStart(3, "0") + "-1.json"),

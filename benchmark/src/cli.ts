@@ -229,7 +229,7 @@ export function main(argv: string[]): number {
     const named = family !== undefined ? [family] : probe.perLanguage(found);
     // A probe writes where `plan` looks and nowhere else. The verification composes the plane's
     // own path from the trial id, so a probe written elsewhere could authorize nothing.
-    return Math.max(...named.map((one) => probe.run(one, probe.PROBES)));
+    return Math.max(...named.map((one) => probe.run(one)));
   }
   if (command === "calibrate") {
     return calibrate.all({
