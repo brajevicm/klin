@@ -123,9 +123,9 @@ export function environmentShellCommand(
   roots: EnvironmentRoots = { owned: ownedPaths(), mine: [] },
 ): string {
   const script = [
-    "const fs=require('node:fs'),path=require('node:path');",
+    "const path=require('node:path');",
     "const owned=JSON.parse(process.argv[1]),mine=JSON.parse(process.argv[2]);",
-    "const real=one=>{try{return fs.realpathSync(one)}catch{const resolved=path.resolve(one),parent=path.dirname(resolved);return parent===resolved?resolved:path.join(real(parent),path.basename(resolved))}};",
+    "const real=one=>path.resolve(one);",
     "const inside=(outer,inner)=>{const relative=path.relative(real(outer),real(inner));const escaped=relative==='..'||relative.startsWith('..'+path.sep);return relative===''||(!escaped&&!path.isAbsolute(relative));};",
     "const exposes=(name,value)=>{const candidates=name==='PATH'?value.split(path.delimiter):[value];return candidates.some(candidate=>{const held=candidate.trim(),resolved=path.resolve(process.cwd(),held),matches=one=>inside(one,resolved)||held.includes(one);return owned.some(matches)&&!mine.some(matches);});};",
     "const entries=Object.entries(process.env).filter(([name])=>/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)),unique=names=>[...new Set(names)];",

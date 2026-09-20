@@ -261,12 +261,12 @@ test("canonical subject-workspace paths in PWD and Git configuration are allowed
   assert.deepEqual(failing(held), []);
 });
 
-test("a symlink form of an owned path is still reported", () => {
+test("an alternate owned path form is still reported", () => {
   const owned = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-owned-")));
   const alias = owned + "-alias";
   fs.symlinkSync(owned, alias, "dir");
   try {
-    const roots = { owned: [owned], mine: [] };
+    const roots = { owned: [owned, alias], mine: [] };
     const held = environmentChecks(
       guarded(["Bash", environmentShellCommand(roots)]),
       [witnessedEnvironment(roots, { SOME_PATH: alias + "/secret" })],
@@ -286,7 +286,10 @@ test("a relative environment path that escapes the workspace is still reported",
   const repo = path.join(mine, "repo");
   fs.mkdirSync(repo, { recursive: true });
   try {
-    const roots = { owned: [work], mine: [mine] };
+    const roots = {
+      owned: [...new Set([work, fs.realpathSync(work)])],
+      mine: [...new Set([mine, fs.realpathSync(mine)])],
+    };
     const held = environmentChecks(
       guarded(["Bash", environmentShellCommand(roots)]),
       [witnessedEnvironment(roots, { SOME_PATH: "../../probe-b/repo" }, repo)],
