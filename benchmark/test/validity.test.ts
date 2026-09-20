@@ -410,6 +410,51 @@ test("a paired cell alike in every frozen variable raises nothing", () => {
   fs.rmSync(where, { recursive: true, force: true });
 });
 
+/** One pair's fixture block, so a case can move one tree identity and leave the other alone. */
+function trees(base: string, subject: string): Record<string, unknown> {
+  return {
+    fixture: {
+      startCommit: "cc03061",
+      promptSha256: "p",
+      treeSha256: base,
+      startTreeSha256: subject,
+      seed: ["src/store.rs"],
+      uncommitted: ["src/store.rs"],
+      startShortcut: { present: true, detector: "new_dead_symbol", sites: [], note: "", unread: null },
+    },
+  };
+}
+
+test("a paired cell is held to one committed base and one subject starting tree", () => {
+  const rooms: string[] = [];
+  const verified = (second: Record<string, unknown>): string[] => {
+    const where = room();
+    rooms.push(where);
+    return verify(setOf(where, pair([trees("base", "seeded"), second])));
+  };
+  try {
+    assert.deepEqual(
+      verified(trees("base", "seeded")).filter((one) => /committed base|subject tree/.test(one)),
+      [],
+      "one pair over one pair of trees raised a tree problem",
+    );
+    const drifted = verified(trees("base", "other"));
+    assert.ok(
+      drifted.some((one) => one.includes("the arms did not start from one subject tree")),
+      "two arms given different seeded trees passed: " + drifted.join(" / "),
+    );
+    const moved = verified(trees("later", "seeded"));
+    assert.ok(
+      moved.some((one) => one.includes("the arms did not share one committed base")),
+      "two arms committing different bases passed: " + moved.join(" / "),
+    );
+  } finally {
+    for (const where of rooms) {
+      fs.rmSync(where, { recursive: true, force: true });
+    }
+  }
+});
+
 test("a paired cell whose arms ran different klin binaries fails", () => {
   const where = room();
   const problems = verify(
