@@ -381,9 +381,10 @@ test("the settings confine the subject to its own repository", () => {
       return [];
     }
   });
+  const shells = process.platform === "win32" ? [] : ["/bin/sh"];
   for (const named of [settings.sandbox.filesystem.allowRead, settings.sandbox.filesystem.allowWrite]) {
     assert.deepEqual(
-      named.filter((one) => !toolchains.includes(one) && !runtimes.includes(one)).sort(),
+      named.filter((one) => !toolchains.includes(one) && !runtimes.includes(one) && !shells.includes(one)).sort(),
       reopened,
       "only the subject's own repository is opened, in both its forms",
     );
@@ -394,6 +395,10 @@ test("the settings confine the subject to its own repository", () => {
   for (const runtime of runtimes) {
     assert.ok(settings.sandbox.filesystem.allowRead.includes(runtime), runtime + " is refused, so npm cannot spawn Node");
     assert.ok(!settings.sandbox.filesystem.allowWrite.includes(runtime), runtime + " is writable by the subject");
+  }
+  for (const shell of shells) {
+    assert.ok(settings.sandbox.filesystem.allowRead.includes(shell), shell + " is refused, so npm cannot run its package script");
+    assert.ok(!settings.sandbox.filesystem.allowWrite.includes(shell), shell + " is writable by the subject");
   }
   assert.deepEqual(
     settings.sandbox.network,

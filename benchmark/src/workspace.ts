@@ -102,6 +102,9 @@ function nodeRuntimes(): string[] {
 
 const NODE_RUNTIMES = nodeRuntimes();
 
+/** npm runs POSIX package scripts through this interpreter. Read-only in the subject. */
+const SCRIPT_SHELLS = process.platform === "win32" ? [] : ["/bin/sh"];
+
 /**
  * A path and its symbolic-link-resolved form, deduplicated.
  *
@@ -165,7 +168,7 @@ function confinement(
       allowUnsandboxedCommands: false,
       filesystem: {
         denyRead: deniedRead.flatMap(forms),
-        allowRead: [...own, ...TOOLCHAINS, ...NODE_RUNTIMES],
+        allowRead: [...own, ...TOOLCHAINS, ...NODE_RUNTIMES, ...SCRIPT_SHELLS],
         denyWrite: deniedWrite.flatMap(forms),
         allowWrite: [...own, ...TOOLCHAINS],
       },
