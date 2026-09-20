@@ -8,6 +8,7 @@ export const BENCHMARK = path.resolve(here, "..");
 export const REPO = path.resolve(BENCHMARK, "..");
 export const FIXTURES = path.join(BENCHMARK, "fixtures");
 export const HOOK = path.join(BENCHMARK, "host", "hook");
+export const WITNESS = path.join(BENCHMARK, "host", "witness");
 export const RUNS = path.join(BENCHMARK, "runs");
 export const SCHEMA = path.join(BENCHMARK, "record.schema.json");
 

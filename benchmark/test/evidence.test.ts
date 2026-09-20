@@ -391,3 +391,72 @@ test("calibration evidence says in its README that it is not publishable", () =>
   assert.match(readme, /publishable: false/);
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+/**
+ * The probe directory a planned round carries is evidence beside the attempts, not an attempt.
+ *
+ * Without this, `evidence-prepare` read `probes/` as a trial with no record and refused the whole
+ * set, and a slim evidence package held no trace of the probe that authorized the round.
+ */
+test("the probe evidence travels into the slim package and is not read as an attempt", () => {
+  const place = fixture();
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(place.runs, "manifest.json"), "utf8")) as Record<string, unknown>;
+    manifest.probes = [{ trialId: "probe-11111111", family: "complexity", language: "typescript" }];
+    fs.writeFileSync(path.join(place.runs, "manifest.json"), JSON.stringify(manifest) + "\n");
+    const kept = path.join(place.runs, "probes", "probe-11111111");
+    fs.mkdirSync(path.join(kept, "hooks", "0000-1"), { recursive: true });
+    fs.writeFileSync(path.join(kept, "probe.json"), '{"trialId":"probe-11111111"}\n');
+    fs.writeFileSync(path.join(kept, "hooks", "0000-1", "payload.json"), "{}\n");
+    prepare(place);
+    const into = path.join(place.evidence, "probes", "probe-11111111");
+    assert.ok(fs.existsSync(path.join(into, "probe.json")), "the probe's own record is in the slim evidence");
+    assert.ok(fs.existsSync(path.join(into, "hooks", "0000-1", "payload.json")), "so is its hook evidence");
+    assert.equal(fs.existsSync(path.join(place.evidence, "attempts", "probes")), false);
+    const listed = fs.readFileSync(path.join(place.evidence, "files.sha256"), "utf8");
+    assert.match(listed, /probes\/probe-11111111\/probe\.json/);
+  } finally {
+    fs.rmSync(place.root, { recursive: true, force: true });
+  }
+});
+
+test("a manifest naming a probe the round does not hold is refused", () => {
+  const place = fixture();
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(place.runs, "manifest.json"), "utf8")) as Record<string, unknown>;
+    manifest.probes = [{ trialId: "probe-99999999", family: "complexity", language: "typescript" }];
+    fs.writeFileSync(path.join(place.runs, "manifest.json"), JSON.stringify(manifest) + "\n");
+    const refused = command("evidence-prepare", place.runs, "--into", place.evidence, "--archive", place.archive);
+    assert.equal(refused.status, 2, refused.stdout);
+    assert.match(refused.stdout, /holds no evidence for it/);
+  } finally {
+    fs.rmSync(place.root, { recursive: true, force: true });
+  }
+});
+
+/**
+ * The copied probe bytes are bound to the archive the way an attempt's slim files are.
+ *
+ * Without this the slim and raw comparison never reached `probes/`, so a probe record could be
+ * edited after packaging and the archive would still verify.
+ */
+test("an edited slim probe file is caught against the raw archive", () => {
+  const place = fixture();
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(place.runs, "manifest.json"), "utf8")) as Record<string, unknown>;
+    manifest.probes = [{ trialId: "probe-11111111", family: "complexity", language: "typescript" }];
+    fs.writeFileSync(path.join(place.runs, "manifest.json"), JSON.stringify(manifest) + "\n");
+    const kept = path.join(place.runs, "probes", "probe-11111111");
+    fs.mkdirSync(kept, { recursive: true });
+    fs.writeFileSync(path.join(kept, "probe.json"), '{"trialId":"probe-11111111"}\n');
+    prepare(place);
+    const intact = command("evidence-verify", place.evidence, "--archive", place.archive);
+    assert.equal(intact.status, 0, intact.stdout);
+    fs.writeFileSync(path.join(place.evidence, "probes", "probe-11111111", "probe.json"), '{"trialId":"edited"}\n');
+    const caught = command("evidence-verify", place.evidence, "--archive", place.archive);
+    assert.equal(caught.status, 1, caught.stdout);
+    assert.match(caught.stdout, /probes\/probe-11111111\/probe\.json/);
+  } finally {
+    fs.rmSync(place.root, { recursive: true, force: true });
+  }
+});

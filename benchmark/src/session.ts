@@ -216,6 +216,11 @@ export function withoutKlin(): NodeJS.ProcessEnv {
     }
     kept[name] = value;
   }
+  // npm otherwise probes the operator's ~/.npmrc, which the sandbox refuses and npm reports as
+  // spawn EPERM before it runs a package suite. An empty config keeps that host file out.
+  kept.NPM_CONFIG_USERCONFIG = "/dev/null";
+  // npm's POSIX runner invokes `sh` by name; pin it to the allowlisted system interpreter.
+  kept.NPM_CONFIG_SCRIPT_SHELL = "/bin/sh";
   return kept;
 }
 

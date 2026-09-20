@@ -370,15 +370,35 @@ test("the settings confine the subject to its own repository", () => {
   }
   const reopened = [...new Set([place.repo, fs.realpathSync(place.repo)])].sort();
   const toolchains = ["~/.cargo", "~/.rustup", "~/.npm"];
+  const runtimeCandidates = [
+    process.execPath,
+    ...(process.env.PATH ?? "").split(path.delimiter).map((one) => path.join(one, "node")),
+  ];
+  const runtimes = [...new Set(runtimeCandidates)].flatMap((one) => {
+    try {
+      return [path.dirname(path.dirname(fs.realpathSync(one)))];
+    } catch {
+      return [];
+    }
+  });
+  const shells = process.platform === "win32" ? [] : ["/bin/sh"];
   for (const named of [settings.sandbox.filesystem.allowRead, settings.sandbox.filesystem.allowWrite]) {
     assert.deepEqual(
-      named.filter((one) => !toolchains.includes(one)).sort(),
+      named.filter((one) => !toolchains.includes(one) && !runtimes.includes(one) && !shells.includes(one)).sort(),
       reopened,
       "only the subject's own repository is opened, in both its forms",
     );
     for (const home of toolchains) {
       assert.ok(named.includes(home), home + " is refused, so the subject cannot run its own build");
     }
+  }
+  for (const runtime of runtimes) {
+    assert.ok(settings.sandbox.filesystem.allowRead.includes(runtime), runtime + " is refused, so npm cannot spawn Node");
+    assert.ok(!settings.sandbox.filesystem.allowWrite.includes(runtime), runtime + " is writable by the subject");
+  }
+  for (const shell of shells) {
+    assert.ok(settings.sandbox.filesystem.allowRead.includes(shell), shell + " is refused, so npm cannot run its package script");
+    assert.ok(!settings.sandbox.filesystem.allowWrite.includes(shell), shell + " is writable by the subject");
   }
   assert.deepEqual(
     settings.sandbox.network,
@@ -451,6 +471,8 @@ test("no variable handed to a subject names a path the harness owns", () => {
     assert.equal(kept.OLDPWD, undefined);
     assert.equal(kept.A_TOOL_CACHE, undefined);
     assert.equal(kept.KLIN_STATE_DIR, undefined, "every KLIN_ variable is still dropped");
+    assert.equal(kept.NPM_CONFIG_USERCONFIG, "/dev/null", "npm must not probe the operator's user config");
+    assert.equal(kept.NPM_CONFIG_SCRIPT_SHELL, "/bin/sh", "npm must use the allowlisted package-script shell");
     assert.deepEqual(
       (kept.PATH ?? "").split(path.delimiter),
       ["/usr/bin", "/bin"],

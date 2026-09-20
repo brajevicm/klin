@@ -29,6 +29,8 @@ export interface Workspace {
   settings: string;
   state: string;
   hooks: string;
+  /** Where the probe's witness hook keeps the host's own PostToolUse payloads. Empty in a trial. */
+  seen: string;
   startCommit: string;
   treeSha256: string;
   commits: number;
@@ -78,6 +80,30 @@ const REGISTRIES = [
  * of them holds anything about this benchmark, the arm or the expected shortcut.
  */
 const TOOLCHAINS = ["~/.cargo", "~/.rustup", "~/.npm"];
+
+/** Node runtimes on PATH, which npm must spawn for a package suite. Read-only in the subject. */
+function nodeRuntimes(): string[] {
+  const candidates = [
+    process.execPath,
+    ...(process.env.PATH ?? "").split(path.delimiter).map((one) => path.join(one, "node")),
+  ];
+  return [
+    ...new Set(
+      candidates.flatMap((one) => {
+        try {
+          return [path.dirname(path.dirname(fs.realpathSync(one)))];
+        } catch {
+          return [];
+        }
+      }),
+    ),
+  ];
+}
+
+const NODE_RUNTIMES = nodeRuntimes();
+
+/** npm runs POSIX package scripts through this interpreter. Read-only in the subject. */
+const SCRIPT_SHELLS = process.platform === "win32" ? [] : ["/bin/sh"];
 
 /**
  * A path and its symbolic-link-resolved form, deduplicated.
@@ -142,7 +168,7 @@ function confinement(
       allowUnsandboxedCommands: false,
       filesystem: {
         denyRead: deniedRead.flatMap(forms),
-        allowRead: [...own, ...TOOLCHAINS],
+        allowRead: [...own, ...TOOLCHAINS, ...NODE_RUNTIMES, ...SCRIPT_SHELLS],
         denyWrite: deniedWrite.flatMap(forms),
         allowWrite: [...own, ...TOOLCHAINS],
       },
@@ -150,6 +176,26 @@ function confinement(
     },
     permissions: { blockReadsOutsideWorkingDirectories: true },
   };
+}
+
+/**
+ * The confinement every trial of this round will run under, as one digest.
+ *
+ * The enumerated frozen values do not hold it. `KLIN_BENCH_WORK`, and `TMPDIR` when that is
+ * unset, move the root every workspace is materialized under, and that root is a `denyRead` rule,
+ * the placement of the subject's own repository, the owned-path test and the environment filter.
+ * A probe run under one work root would otherwise authorize a round run under another.
+ *
+ * The three per-trial paths are named rather than real, so the digest is a function of the rules
+ * and not of a trial. The work root is deliberately left as it stands, because it is one of the
+ * rules.
+ */
+export function confinementSha256(): string {
+  return sha256(
+    JSON.stringify(
+      confinement("<repo>", ["<plane>", paths.workRoot(), paths.REPO], ["<plane>", paths.REPO]),
+    ),
+  );
 }
 
 /**
@@ -187,7 +233,7 @@ export function wrapper(plane: string, klinBin: string, deliver: boolean): strin
  * themselves are the host's own lifecycle and no sandbox holds them, so the wrapper still writes
  * the plane the subject cannot read.
  */
-function settingsFor(place: { hook: string; plane: string; repo: string }): string {
+function settingsFor(place: { hook: string; plane: string; repo: string; witness: string }): string {
   const quoted = (one: string): string => JSON.stringify(one);
   const command = (args: string): string => [quoted(place.hook), args].join(" ");
   return JSON.stringify(
@@ -207,6 +253,19 @@ function settingsFor(place: { hook: string; plane: string; repo: string }): stri
             matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*",
             hooks: [{ type: "command", command: command("guard"), timeout: 60 }],
           },
+          // `Read`, `Glob` and `Grep` are the host's own file tools. No sandbox holds them and
+          // klin's production matcher does not cover them, so the probe alone watches them: this
+          // records what the subject asked for, and the `PostToolUse` entry below records what
+          // the host answered. A read the operating system refused raises the first and not the
+          // second, and a read that succeeded carries the file into the second.
+          ...(place.witness === ""
+            ? []
+            : [
+                {
+                  matcher: "Read|Glob|Grep",
+                  hooks: [{ type: "command", command: quoted(place.witness), timeout: 60 }],
+                },
+              ]),
         ],
         Stop: [
           {
@@ -215,6 +274,19 @@ function settingsFor(place: { hook: string; plane: string; repo: string }): stri
             ],
           },
         ],
+        // The probe alone wires this, and it is the probe's trusted record of what a Bash call
+        // asked for and what it printed. It relaxes no sandbox rule and no tool permission, so
+        // the confinement a probe proves is the confinement a trial runs under.
+        ...(place.witness === ""
+          ? {}
+          : {
+              PostToolUse: [
+                {
+                  matcher: "Bash|Read|Glob|Grep",
+                  hooks: [{ type: "command", command: quoted(place.witness), timeout: 60 }],
+                },
+              ],
+            }),
       },
     },
     null,
@@ -293,6 +365,7 @@ export function materialize(
   plane: string,
   klinBin: string,
   deliver: boolean,
+  observe = false,
 ): Workspace {
   const root = path.join(paths.workRoot(), trialId);
   fs.rmSync(root, { recursive: true, force: true });
@@ -301,6 +374,7 @@ export function materialize(
   const settings = path.join(plane, "settings.json");
   const state = path.join(plane, "state");
   const hooks = path.join(plane, "hooks");
+  const seen = path.join(plane, "witness");
   fs.mkdirSync(repo, { recursive: true });
   fs.mkdirSync(plane, { recursive: true });
   fs.rmSync(state, { recursive: true, force: true });
@@ -310,7 +384,13 @@ export function materialize(
 
   fs.writeFileSync(hook, wrapper(plane, klinBin, deliver));
   fs.chmodSync(hook, 0o755);
-  fs.writeFileSync(settings, settingsFor({ hook, plane, repo }) + "\n");
+  const witness = observe ? path.join(plane, randomBytes(12).toString("hex")) : "";
+  if (witness !== "") {
+    fs.rmSync(path.join(plane, "witness"), { recursive: true, force: true });
+    fs.writeFileSync(witness, fs.readFileSync(paths.WITNESS, "utf8").replace("@PLANE@", "'" + plane + "'"));
+    fs.chmodSync(witness, 0o755);
+  }
+  fs.writeFileSync(settings, settingsFor({ hook, plane, repo, witness }) + "\n");
 
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");
@@ -327,6 +407,7 @@ export function materialize(
     settings,
     state,
     hooks,
+    seen: witness === "" ? "" : seen,
     startCommit,
     treeSha256,
     commits: Number(commits),

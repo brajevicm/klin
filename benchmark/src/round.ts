@@ -3,10 +3,18 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
-import { ARMS, VARIANTS, families, type ArmName, type VariantName } from "./catalogue.ts";
+import { ARMS, VARIANTS, families, type ArmName, type FamilySpec, type VariantName } from "./catalogue.ts";
+
+/** The languages a round runs, and therefore the languages a probe has to prove. */
+export const LANGUAGES: FamilySpec["language"][] = ["typescript", "rust"];
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
+import * as forensic from "./forensic.ts";
+import { ID, PROBES as PROBE_RUNS, verifyProbe } from "./probe.ts";
+import { drift, fixtures, frozen, type Frozen } from "./frozen.ts";
+
+export { drift, fixtures, frozen, type Frozen } from "./frozen.ts";
 import * as toolchain from "./toolchain.ts";
 import * as workspace from "./workspace.ts";
 import {
@@ -32,6 +40,9 @@ import { validate, type RunRecord } from "./record.ts";
  * that is #115's.
  */
 
+/** Where a planned round keeps the probe evidence that authorized it. */
+export const PROBES = "probes";
+
 export const REPETITIONS: Record<VariantName, number> = { risk: 3, control: 1 };
 /** How many attempts one scheduled trial gets before the round stops for a person. */
 export const ATTEMPTS = 3;
@@ -52,26 +63,112 @@ export interface Row {
   trialId: string;
 }
 
-export interface Frozen {
-  protocol: number;
-  schemaSha256: string;
-  harness: { commit: string; dirty: boolean; treeSha256: string };
-  klin: { commit: string; version: string; binarySha256: string };
-  toolchain: toolchain.Provenance;
-  host: { name: string; version: string };
-  model: string;
-  flags: string[];
-  isolatedConfiguration: boolean;
-  memory: { sha256: string; bytes: number } | null;
-  machine: { platform: string; release: string; arch: string; node: string };
-  fixtures: Record<
-    string,
-    {
-      gate: string;
-      fixtureSha256: string;
-      variants: Record<VariantName, { taskId: string; promptSha256: string; treeSha256: string }>;
+/**
+ * What `plan` keeps of the probe that proved one language's workspace.
+ *
+ * The digest is of the probe's own `probe.json`, and `filesSha256` is of the copy the plan took
+ * of the whole probe directory, hook evidence and all, so the frozen round carries the evidence
+ * that authorized it instead of pointing at a directory that may be gone.
+ */
+export interface Witness {
+  trialId: string;
+  family: string;
+  language: FamilySpec["language"];
+  sha256: string;
+  filesSha256: string;
+}
+
+interface Probe {
+  directory: string;
+  trialId: string;
+  family: string;
+  language: string;
+  at: string;
+  passed: boolean;
+  frozen: Frozen;
+  sha256: string;
+}
+
+function probesUnder(directory: string): Probe[] {
+  const names = fs.existsSync(directory) ? fs.readdirSync(directory).sort() : [];
+  const held: Probe[] = [];
+  for (const name of names) {
+    const file = path.join(directory, name, "probe.json");
+    if (!fs.existsSync(file)) {
+      continue;
     }
-  >;
+    const bytes = fs.readFileSync(file);
+    try {
+      const read = JSON.parse(bytes.toString("utf8")) as Partial<Probe>;
+      held.push({
+        directory: path.join(directory, name),
+        trialId: String(read.trialId ?? ""),
+        family: String(read.family ?? ""),
+        language: String(read.language ?? ""),
+        at: String(read.at ?? ""),
+        passed: read.passed === true,
+        frozen: read.frozen as Frozen,
+        sha256: sha256(bytes),
+      });
+    } catch {
+      held.push({ directory: path.join(directory, name), trialId: name, family: "", language: "", at: "", passed: false, frozen: undefined as unknown as Frozen, sha256: sha256(bytes) });
+    }
+  }
+  return held;
+}
+
+/**
+ * The probe that proves each language's workspace for the round about to be planned.
+ *
+ * A probe counts only when the whole apparatus it ran under is the apparatus the plan freezes:
+ * `drift` compares the klin binary and its commit, the harness commit and tree, the hook
+ * wrapper, the host, the model, the flags, the configuration, the memory, the schema, the
+ * protocol, the machine and every fixture identity, and the probe's own harness must have been
+ * clean. A probe from before a repaired fixture or a changed wrapper therefore proves nothing
+ * about this round.
+ *
+ * A failed probe at that same apparatus refuses the language outright. Probe ids are random, so
+ * without this a newer failure could be passed over for an older pass sitting beside it.
+ */
+export function witnesses(
+  directory: string,
+  now: Frozen,
+): { found: Omit<Witness, "filesSha256">[]; directories: string[]; missing: string[] } {
+  const mine = probesUnder(directory).filter(
+    (one) => one.frozen !== undefined && one.frozen !== null && drift(one.frozen, now).length === 0 && one.frozen.harness.dirty === false,
+  );
+  // A probe's own word for its verdict is not evidence. Every probe at this apparatus is
+  // recomputed from what it kept, and one that cannot be recomputed is one that did not pass.
+  const unverifiable = new Map(mine.map((one) => [one.directory, verifyProbe(one.directory)]));
+  const found: Omit<Witness, "filesSha256">[] = [];
+  const directories: string[] = [];
+  const missing: string[] = [];
+  for (const language of LANGUAGES) {
+    const ours = mine.filter((one) => one.language === language).sort((a, b) => a.at.localeCompare(b.at));
+    // The last probe run at this apparatus is the one that answers. An older failure is kept and
+    // is not a verdict on the apparatus as it now stands, and an older pass cannot stand in for a
+    // newer failure.
+    const newest = ours.at(-1);
+    if (newest === undefined) {
+      missing.push("no " + language + " probe under " + directory + " ran at this round's apparatus");
+      continue;
+    }
+    const why = unverifiable.get(newest.directory) ?? [];
+    if (!newest.passed || why.length > 0) {
+      missing.push(
+        "the last " + language + " probe " + newest.trialId + " does not hold at this apparatus: " + (why.length > 0 ? why[0] : "it records itself as failed"),
+      );
+      continue;
+    }
+    found.push({
+      trialId: newest.trialId,
+      family: newest.family,
+      language: language,
+      sha256: newest.sha256,
+    });
+    directories.push(newest.directory);
+  }
+  return { found, directories, missing };
 }
 
 export interface Manifest {
@@ -93,6 +190,8 @@ export interface Manifest {
   firstArm: Record<ArmName, number>;
   frozen: Frozen;
   order: Row[];
+  /** The passing workspace probes, one per language, that let this round be planned. */
+  probes?: Witness[];
 }
 
 function stamp(): string {
@@ -152,81 +251,6 @@ export function replacementId(scheduled: string, attempt: number): string {
  * overlay, and a digest is relative paths and bytes, so the same catalogue gives the same
  * identities anywhere. That is what lets a committed copy of them bind a later round.
  */
-export function fixtures(): Frozen["fixtures"] {
-  const held: Frozen["fixtures"] = {};
-  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-plan-"));
-  try {
-    for (const [name, family] of Object.entries(families())) {
-      const variants = {} as Frozen["fixtures"][string]["variants"];
-      for (const variant of VARIANTS) {
-        const laid = workspace.startingTree(family.variants[variant], path.join(room, name, variant));
-        variants[variant] = {
-          taskId: family.variants[variant].taskId,
-          promptSha256: family.variants[variant].promptSha256,
-          treeSha256: digest(laid),
-        };
-      }
-      held[name] = { gate: family.spec.gate, fixtureSha256: digest(family.root), variants };
-    }
-  } finally {
-    fs.rmSync(room, { recursive: true, force: true });
-  }
-  return held;
-}
-
-/** Every round-wide frozen value the harness can read before the first session. */
-export function frozen(options: session.SessionOptions): Frozen {
-  const binary = fs.existsSync(options.klinBin) ? sha256(fs.readFileSync(options.klinBin)) : "";
-  return {
-    protocol: CURRENT_PROTOCOL.version,
-    schemaSha256: sha256(fs.readFileSync(paths.SCHEMA)),
-    harness: {
-      commit: workspace.git(paths.REPO, "rev-parse", "HEAD"),
-      dirty: workspace.git(paths.REPO, "status", "--porcelain") !== "",
-      treeSha256: digest(path.join(paths.BENCHMARK, "src")),
-    },
-    klin: {
-      commit: trial.sourceCommit(options.klinBin, binary),
-      version: session.klinVersion(options.klinBin),
-      binarySha256: binary,
-    },
-    toolchain: toolchain.frozen(),
-    host: { name: "claude-code", version: session.hostVersion() },
-    model: options.model,
-    flags: normalizedFlags(session.flagsFor({ settings: "" } as workspace.Workspace, "", options)),
-    isolatedConfiguration: options.configRoot !== "",
-    memory: options.configRoot === "" ? session.memory("") : null,
-    machine: { platform: os.platform(), release: os.release(), arch: os.arch(), node: process.version },
-    fixtures: fixtures(),
-  };
-}
-
-/** The values two frozen readings disagree on, as sentences. */
-export function drift(planned: Frozen, now: Frozen): string[] {
-  const flat = (held: Frozen): [string, string][] => [
-    ["the klin binary", held.klin.binarySha256],
-    ["the klin version", held.klin.version],
-    ["the klin source commit", held.klin.commit],
-    ["the TypeScript compiler", JSON.stringify(held.toolchain ?? null)],
-    ["the harness commit", held.harness.commit],
-    ["the harness tree", held.harness.treeSha256],
-    ["the harness clean state", String(held.harness.dirty)],
-    ["the host version", held.host.version],
-    ["the requested model", held.model],
-    ["the host flags", held.flags.join(" ")],
-    ["the isolated-configuration status", String(held.isolatedConfiguration)],
-    ["the user memory", held.memory?.sha256 ?? "none"],
-    ["the record schema", held.schemaSha256],
-    ["the protocol", String(held.protocol)],
-    ["the fixtures", JSON.stringify(held.fixtures)],
-    ["the machine", JSON.stringify(held.machine)],
-  ];
-  const was = new Map(flat(planned));
-  return flat(now)
-    .filter(([what, value]) => was.get(what) !== value)
-    .map(([what, value]) => what + " moved from " + String(was.get(what)) + " to " + value);
-}
-
 export interface Schedule {
   seed: number;
   design: Manifest["design"];
@@ -420,10 +444,10 @@ export function protocol(seed: number, write: boolean): number {
  * vouch for itself, and a catalogue that changed under a planned round is caught the same way.
  */
 export function manifestProblems(held: Manifest): string[] {
-  const problems: string[] = [];
   if (!held || typeof held !== "object") {
     return ["the manifest is not an object"];
   }
+  const problems: string[] = probeProblems(held);
   if (held.kind !== "publishable" || held.publishable !== true) {
     problems.push("the manifest is not a publishable round");
   }
@@ -525,6 +549,90 @@ export function manifestProblems(held: Manifest): string[] {
   return problems;
 }
 
+/**
+ * What the manifest must state about the probes that authorized the round.
+ *
+ * `execute` and `verify` both read this, so a round cannot start or pass on a witness that names
+ * a family the catalogue does not have, a language that family does not speak, or a digest that
+ * is not a digest. Rounds before protocol 5 had no probe requirement and are held to none.
+ */
+export function probeProblems(held: Manifest): string[] {
+  if (Number(held.protocol) < 5) {
+    return [];
+  }
+  const problems: string[] = [];
+  const kept = held.probes ?? [];
+  const known = families();
+  for (const language of LANGUAGES) {
+    const ours = kept.filter((one) => one.language === language);
+    if (ours.length !== 1) {
+      problems.push("the manifest names " + String(ours.length) + " passing " + language + " probes, and it must name one");
+    }
+  }
+  for (const one of kept) {
+    const family = known[one.family];
+    if (family === undefined) {
+      problems.push("the probe " + String(one.trialId) + " names no family the catalogue has");
+      continue;
+    }
+    if (family.spec.language !== one.language) {
+      problems.push("the probe " + String(one.trialId) + " states " + String(one.language) + " and " + one.family + " is " + family.spec.language);
+    }
+    if (typeof one.trialId !== "string" || !ID.test(one.trialId)) {
+      problems.push("the probe witness " + JSON.stringify(String(one.trialId)) + " is not a production probe id");
+    }
+    if (kept.filter((other) => other.trialId === one.trialId).length > 1) {
+      problems.push("two probe witnesses claim the id " + String(one.trialId));
+    }
+    for (const [what, value] of [["probe.json", one.sha256], ["probe directory", one.filesSha256]]) {
+      if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) {
+        problems.push("the probe " + String(one.trialId) + " states no " + what + " digest");
+      }
+    }
+  }
+  return problems;
+}
+
+/**
+ * Whether the probe evidence the manifest names is still the evidence beside it.
+ *
+ * The manifest holds a digest of each copied probe directory, and this recomputes it. Without
+ * this the digests are syntax and nothing more, and an edited or emptied probe directory would
+ * run a round that claims to be authorized by it.
+ */
+export function probeEvidenceProblems(directory: string, held: Manifest): string[] {
+  const problems: string[] = [];
+  for (const one of held.probes ?? []) {
+    if (!ID.test(String(one.trialId))) {
+      problems.push("the probe witness " + JSON.stringify(String(one.trialId)) + " is not a production probe id");
+      continue;
+    }
+    const kept = path.join(directory, PROBES, one.trialId);
+    if (!fs.existsSync(kept)) {
+      problems.push("the probe evidence for " + one.trialId + " is not under " + PROBES + "/");
+      continue;
+    }
+    let now = "";
+    try {
+      now = forensic.digest(kept);
+    } catch (why) {
+      problems.push("the probe evidence for " + one.trialId + " cannot be read: " + String(why));
+      continue;
+    }
+    if (now !== one.filesSha256) {
+      problems.push("the probe evidence for " + one.trialId + " is " + now + " and the manifest names " + one.filesSha256);
+    }
+    const file = path.join(kept, "probe.json");
+    const said = fs.existsSync(file) ? sha256(fs.readFileSync(file)) : "";
+    if (said !== one.sha256) {
+      problems.push("the probe.json for " + one.trialId + " is " + (said || "absent") + " and the manifest names " + one.sha256);
+    }
+    // Digests say the bytes are the frozen ones. This says those bytes still prove the round.
+    problems.push(...verifyProbe(kept));
+  }
+  return problems;
+}
+
 function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
   const file = path.join(directory, "manifest.json");
   const bytes = fs.readFileSync(file);
@@ -532,7 +640,7 @@ function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
 }
 
 /** Write the frozen protocol and run order, and start nothing. Prints the digest a person freezes. */
-export function plan(into: string, seed: number): number {
+export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
   const known = session.defaults();
   const blocked = preflight(known.klinBin);
   if (blocked !== "") {
@@ -555,17 +663,44 @@ export function plan(into: string, seed: number): number {
     );
     return 2;
   }
-  const unsound = manifestProblems(held);
-  if (unsound.length > 0) {
-    process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
-    return 2;
-  }
   const departures = uncommitted(identityOf(held));
   if (departures.length > 0) {
     process.stdout.write("the plan is not the committed protocol: " + departures.join("; ") + "\n");
     return 2;
   }
+  const proved = witnesses(probes, held.frozen);
+  if (proved.missing.length > 0) {
+    process.stdout.write(
+      "the workspace is not proved for this round: " + proved.missing.join("; ") + ". node benchmark/src/cli.ts probe runs one per language.\n",
+    );
+    return 2;
+  }
   fs.mkdirSync(into, { recursive: true });
+  // The probe evidence travels with the round it authorized: the run directory is what
+  // `evidence-prepare` archives and hashes, and a probe left under `runs/probe` is not in it.
+  const root = path.resolve(into, PROBES);
+  held.probes = proved.found.map((one, at) => {
+    const kept = path.resolve(root, one.trialId);
+    // The id is a directory name, and `forensic.copy` removes what it writes over. An id holding
+    // a path would otherwise reach outside the round it is supposed to be evidence in.
+    if (!ID.test(one.trialId) || path.dirname(kept) !== root) {
+      throw new Error("the probe id " + JSON.stringify(one.trialId) + " is not a directory name");
+    }
+    forensic.copy(proved.directories[at], kept);
+    // The copy is what the round carries, so the copy is what has to hold. A file that changed
+    // between the verification and the copy would otherwise be frozen with a digest of its own.
+    const broken = verifyProbe(kept);
+    if (broken.length > 0) {
+      throw new Error("the copied probe evidence for " + one.trialId + " does not hold: " + broken.join("; "));
+    }
+    return { ...one, filesSha256: forensic.digest(kept) };
+  });
+  const unsound = manifestProblems(held);
+  if (unsound.length > 0) {
+    fs.rmSync(path.join(into, PROBES), { recursive: true, force: true });
+    process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
+    return 2;
+  }
   const bytes = JSON.stringify(held, null, 2) + "\n";
   fs.writeFileSync(file, bytes);
   process.stdout.write(
@@ -678,7 +813,11 @@ export function execute(directory: string, approved: string): number {
     process.stdout.write(blocked + "\n");
     return 2;
   }
-  const moved = [...drift(manifest.frozen, frozen(known)), ...uncommitted(identityOf(manifest))];
+  const moved = [
+    ...probeEvidenceProblems(directory, manifest),
+    ...drift(manifest.frozen, frozen(known)),
+    ...uncommitted(identityOf(manifest)),
+  ];
   if (moved.length > 0) {
     process.stdout.write("refusing to start: " + moved.join("; ") + "\n");
     return 2;
@@ -769,7 +908,7 @@ export function verify(directory: string): string[] {
     return ["no manifest.json under " + directory];
   }
   const manifest = readManifest(directory).value;
-  const problems = manifestProblems(manifest);
+  const problems = [...manifestProblems(manifest), ...probeEvidenceProblems(directory, manifest)];
   if (!manifest.frozen || !Array.isArray(manifest.order)) {
     return problems;
   }

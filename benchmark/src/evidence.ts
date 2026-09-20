@@ -3,10 +3,14 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import * as forensic from "./forensic.ts";
+import { ID } from "./probe.ts";
 
 const SLIM = ["record.json", "agent.json", "behaviour.json", "stats-session.json", "settings.json", "hook"];
 /** An attempt that crashed before a record existed holds this and no forensic tree. */
 const CRASH = "crash.json";
+/** The planned round's probe evidence. It sits beside the attempts and is not one. */
+const PROBES = "probes";
 const FORENSIC_DIRS = ["state", "hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"];
 const KINDS = new Set(["calibration", "publishable"]);
 
@@ -24,6 +28,7 @@ interface Manifest {
   kind?: unknown;
   publishable?: unknown;
   order?: { trialId?: unknown }[];
+  probes?: { trialId?: unknown }[];
 }
 
 interface RecordShape {
@@ -171,7 +176,9 @@ function isDirectory(file: string): boolean {
 }
 
 function recordsAt(root: string, requireForensic: boolean): Attempt[] {
-  const entries = fs.readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  const entries = fs
+    .readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== PROBES);
   if (entries.length === 0) {
     fail("no attempt directory was found under " + root);
   }
@@ -394,6 +401,27 @@ function setReadme(directory: string, read: Manifest, archiveName: string): void
   );
 }
 
+/**
+ * The probe evidence the manifest names, into the slim evidence beside the attempts.
+ *
+ * The probe is what authorized the round, so a reader holding only the slim evidence has to be
+ * able to audit it. Its digest is the manifest's, and `round.probeEvidenceProblems` checks it.
+ */
+function copyProbes(source: string, into: string, manifest: Manifest): void {
+  for (const one of manifest.probes ?? []) {
+    // The id is a directory name. `forensic.copy` removes what it writes over, so an id holding
+    // a path would reach outside the evidence it is part of.
+    if (!ID.test(String(one.trialId))) {
+      fail("the manifest names the probe " + JSON.stringify(String(one.trialId)) + ", which is not a production probe id");
+    }
+    const from = path.join(source, PROBES, String(one.trialId));
+    if (!isDirectory(from)) {
+      fail("the manifest names the probe " + String(one.trialId) + " and the round holds no evidence for it");
+    }
+    forensic.copy(from, path.join(into, PROBES, String(one.trialId)));
+  }
+}
+
 export function prepare(source: string, into: string, archiveFile: string): EvidenceDescriptor {
   const sourceRoot = path.resolve(source);
   const evidenceRoot = path.resolve(into);
@@ -409,7 +437,7 @@ export function prepare(source: string, into: string, archiveFile: string): Evid
   const rawManifest = manifestText(before);
 
   fs.mkdirSync(evidenceRoot, { recursive: true });
-  for (const name of ["attempts", "manifest.json", "files.sha256", "evidence.json", "README.md"]) {
+  for (const name of ["attempts", PROBES, "manifest.json", "files.sha256", "evidence.json", "README.md"]) {
     fs.rmSync(path.join(evidenceRoot, name), { recursive: true, force: true });
   }
   fs.writeFileSync(path.join(evidenceRoot, "manifest.json"), sourceManifest.bytes);
@@ -419,6 +447,7 @@ export function prepare(source: string, into: string, archiveFile: string): Evid
   if (scheduled.length > 0) {
     fail("the source evidence is incomplete: " + scheduled.join(", "));
   }
+  copyProbes(sourceRoot, evidenceRoot, sourceManifest.value);
   setReadme(evidenceRoot, sourceManifest.value, path.basename(archivePath));
   archive(sourceRoot, archivePath);
 
@@ -521,6 +550,14 @@ function extract(archiveFile: string): { directory: string; state: EvidenceState
 
 function slimFiles(directory: string): Map<string, string> {
   const expected = new Map<string, string>();
+  // The probe evidence is copied byte for byte, so every file of it is bound to the archive the
+  // same way an attempt's slim files are.
+  const probesRoot = path.join(directory, PROBES);
+  if (isDirectory(probesRoot)) {
+    for (const name of walk(probesRoot)) {
+      expected.set(PROBES + "/" + name, path.join(probesRoot, name));
+    }
+  }
   const attemptsRoot = path.join(directory, "attempts");
   if (!isDirectory(attemptsRoot)) {
     return expected;

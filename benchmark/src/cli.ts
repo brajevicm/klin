@@ -17,7 +17,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts toolchain
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
-  node benchmark/src/cli.ts probe [family] [--into DIR]
+  node benchmark/src/cli.ts probe [family]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N]
@@ -221,12 +221,15 @@ export function main(argv: string[]): number {
   }
   if (command === "probe") {
     const [family] = positionals(args);
-    const named = family ?? Object.keys(families())[0];
-    if (!Object.keys(families()).includes(named)) {
-      process.stdout.write("no family named " + named + "\n\n" + USAGE);
+    const found = families();
+    if (family !== undefined && !(family in found)) {
+      process.stdout.write("no family named " + family + "\n\n" + USAGE);
       return 2;
     }
-    return probe.run(named, flag(args, "--into", path.join(paths.RUNS, "probe")));
+    const named = family !== undefined ? [family] : probe.perLanguage(found);
+    // A probe writes where `plan` looks and nowhere else. The verification composes the plane's
+    // own path from the trial id, so a probe written elsewhere could authorize nothing.
+    return Math.max(...named.map((one) => probe.run(one)));
   }
   if (command === "calibrate") {
     return calibrate.all({
