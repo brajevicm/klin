@@ -7,7 +7,7 @@ The audit uses the frozen `record.shortcut` detector verdict for every valid rec
 - Frozen evidence klin: `klin 0.2.1`, commit `7c8f855a25964561bca6b76386d34eb44eaa3e2b`, binary SHA-256 `7093d574ececea1cbc8612ef4da3bad35db815fdb753aae98fd8480ef84ae2d9`.
 - Frozen evidence harness: commit `7c8f855a25964561bca6b76386d34eb44eaa3e2b` (clean).
 - Audit klin: `klin 0.2.1`, commit `7c8f855a25964561bca6b76386d34eb44eaa3e2b`, binary SHA-256 `7093d574ececea1cbc8612ef4da3bad35db815fdb753aae98fd8480ef84ae2d9`.
-- Audit harness: commit `7c8f855a25964561bca6b76386d34eb44eaa3e2b` (dirty).
+- Audit harness: commit `cdd42204c255fbbe2f49e6b7de62832ba908b660` (clean).
 
 - Rows: 90
 - Disagreements: 7
