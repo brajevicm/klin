@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { copyTree, overlay, digest, sha256 } from "./trees.ts";
+import { copyTree, files, overlay, digest, sha256 } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
 
 /**
@@ -32,7 +32,19 @@ export interface Workspace {
   /** Where the probe's witness hook keeps the host's own PostToolUse payloads. Empty in a trial. */
   seen: string;
   startCommit: string;
+  /**
+   * The committed clean base, by digest.
+   *
+   * klin's base comparison and every detector measure against this tree, so a shortcut the seed
+   * carries is new relative to it.
+   */
   treeSha256: string;
+  /** The tree the subject starts from: the committed base under any declared seed overlay. */
+  startTreeSha256: string;
+  /** The relative paths the declared seed wrote. Empty where the variant declares no seed. */
+  seed: string[];
+  /** Whether the harness stamped the committed base before laying the seed over it. */
+  stamped: boolean;
   commits: number;
 }
 
@@ -295,10 +307,12 @@ function settingsFor(place: { hook: string; plane: string; repo: string; witness
 }
 
 /**
- * Lay one variant's starting tree into `into`.
+ * Lay one variant's committed clean base into `into`.
  *
- * The subject workspace and the tree a detector compares against are laid by this one function,
- * so the baseline a shortcut is measured against is always the tree the agent was given.
+ * This is the tree the harness commits, the tree klin's base comparison reads and the tree every
+ * detector measures against. For a natural variant it is also the tree the agent is given. For a
+ * seeded variant the agent is given this tree under the declared seed, and the two are held apart
+ * on purpose: a shortcut the seed carries has to be new relative to the commit.
  */
 function layStartingTree(variant: Variant, into: string): string {
   copyTree(path.join(variant.familyRoot, "base"), into);
@@ -307,6 +321,68 @@ function layStartingTree(variant: Variant, into: string): string {
     fs.writeFileSync(path.join(into, "klin.json"), "{}\n");
   }
   return into;
+}
+
+/**
+ * Lay the variant's declared seed over a committed tree, and return the paths it wrote.
+ *
+ * A seed is a colleague's uncommitted work. It goes on after the commit and is never committed,
+ * so it is the only change standing in the working tree when the subject's session begins.
+ */
+function laySeed(variant: Variant, into: string): string[] {
+  return variant.seed === "" ? [] : overlay(path.join(variant.root, variant.seed), into);
+}
+
+/**
+ * Stamp the committed base as the turn klin measures the seed against.
+ *
+ * klin's hook window is the turn stamp, not the commit (SPEC 6.1). On a first session the stamp
+ * moves to the working tree as it stands, which treats a person's uncommitted work as prior
+ * (SPEC 6.2). A seed laid before the subject's session would therefore be inherited debt, the
+ * Stop would stay silent, and a seeded trial would measure nothing.
+ *
+ * So the harness takes one stamp over the committed clean base, before the seed goes on. The
+ * subject's own session start then finds a state directory that exists, so the stamp stays and
+ * the seed is new at every stop. This is what makes the record's committed base the tree klin
+ * compares against, which is the identity the seeded design rests on.
+ *
+ * It writes `repository`, `turn` and `index` and no journal, so the trial's own signals, stops
+ * and `klin_ms` are still the session's alone.
+ */
+function stampCommittedBase(repo: string, state: string, klinBin: string): void {
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith("KLIN_")),
+  );
+  const ran = spawnSync(klinBin, ["radius"], {
+    cwd: repo,
+    input: JSON.stringify({ hook_event_name: "SessionStart", session_id: "base" }),
+    encoding: "utf8",
+    timeout: 300_000,
+    env: { ...env, KLIN_STATE_DIR: state },
+  });
+  if (ran.error || ran.status !== 0) {
+    throw new Error(
+      "the committed base could not be stamped, so a seed laid over it would read as prior work: " +
+        (ran.error?.message ?? "klin radius exited " + String(ran.status) + " " + (ran.stderr ?? "")),
+    );
+  }
+}
+
+/**
+ * Every path git reports as changed in the working tree, by relative path, sorted.
+ *
+ * Two plain listings rather than one `status --porcelain`, because both print a path per line and
+ * neither prints a status code, a rename arrow or anything else to parse off the front. A rename
+ * appears here as the old path and the new one, which is what a declared seed's own path list
+ * names too.
+ */
+export function uncommitted(repo: string): string[] {
+  const changed = git(repo, "diff", "--name-only", "HEAD");
+  const untracked = git(repo, "ls-files", "--others", "--exclude-standard");
+  return [...new Set([...changed.split("\n"), ...untracked.split("\n")])]
+    .map((one) => one.trim())
+    .filter((one) => one.length > 0)
+    .sort();
 }
 
 /**
@@ -398,6 +474,12 @@ export function materialize(
   git(repo, "commit", "--quiet", "-m", "The starting tree");
   const startCommit = git(repo, "rev-parse", "HEAD");
   const commits = git(repo, "rev-list", "--count", "HEAD");
+  const stamped = variant.seed !== "";
+  if (stamped) {
+    stampCommittedBase(repo, state, klinBin);
+  }
+  const seed = laySeed(variant, repo);
+  const startTreeSha256 = digest(repo);
 
   return {
     root,
@@ -410,6 +492,9 @@ export function materialize(
     seen: witness === "" ? "" : seen,
     startCommit,
     treeSha256,
+    startTreeSha256,
+    seed,
+    stamped,
     commits: Number(commits),
   };
 }
@@ -429,9 +514,21 @@ export function settle(place: Workspace): string {
   return stable;
 }
 
-/** The starting tree again, on its own, so a detector can compare against it. */
+/** The committed clean base again, on its own, so a detector can compare against it. */
 export function startingTree(variant: Variant, into: string): string {
   fs.rmSync(into, { recursive: true, force: true });
   fs.mkdirSync(into, { recursive: true });
   return layStartingTree(variant, into);
+}
+
+/** The tree the subject starts from again: the committed clean base under any declared seed. */
+export function subjectStartingTree(variant: Variant, into: string): string {
+  const laid = startingTree(variant, into);
+  laySeed(variant, laid);
+  return laid;
+}
+
+/** The paths a variant's declared seed writes, read from the overlay the fixture ships. */
+export function seedPaths(variant: Variant): string[] {
+  return variant.seed === "" ? [] : files(path.join(variant.root, variant.seed)).filter((one) => one !== "REMOVE");
 }

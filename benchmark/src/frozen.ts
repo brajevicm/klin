@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
-import { VARIANTS, families, type VariantName } from "./catalogue.ts";
+import { PLANTED, VARIANTS, families, type NaturalVariantName } from "./catalogue.ts";
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
@@ -48,7 +48,7 @@ export interface Frozen {
     {
       gate: string;
       fixtureSha256: string;
-      variants: Record<VariantName, { taskId: string; promptSha256: string; treeSha256: string }>;
+      variants: Record<NaturalVariantName, { taskId: string; promptSha256: string; treeSha256: string }>;
     }
   >;
 }
@@ -67,7 +67,14 @@ export function fixtures(): Frozen["fixtures"] {
           treeSha256: digest(laid),
         };
       }
-      held[name] = { gate: family.spec.gate, fixtureSha256: digest(family.root), variants };
+      // The digest leaves out every planted variant's directory, so a seeded fixture added
+      // beside a frozen round moves no identity that round was planned against. A family that
+      // ships none digests exactly as it did before planting existed.
+      held[name] = {
+        gate: family.spec.gate,
+        fixtureSha256: digest(family.root, new Set(PLANTED)),
+        variants,
+      };
     }
   } finally {
     fs.rmSync(room, { recursive: true, force: true });

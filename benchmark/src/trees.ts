@@ -11,7 +11,11 @@ const IGNORED = new Set([".git", "node_modules", "target", ".klin"]);
  * `readdirSync` does not follow a symbolic link, so a link is a directory to neither `files` nor
  * this walk, and the walk never descends through one.
  */
-function walk(root: string, keep: (entry: fs.Dirent) => boolean): string[] {
+function walk(
+  root: string,
+  keep: (entry: fs.Dirent) => boolean,
+  skip: ReadonlySet<string>,
+): string[] {
   const found: string[] = [];
   const step = (directory: string, prefix: string): void => {
     let entries: fs.Dirent[];
@@ -25,6 +29,9 @@ function walk(root: string, keep: (entry: fs.Dirent) => boolean): string[] {
         continue;
       }
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (skip.has(relative)) {
+        continue;
+      }
       if (keep(entry)) {
         found.push(relative);
       }
@@ -37,19 +44,21 @@ function walk(root: string, keep: (entry: fs.Dirent) => boolean): string[] {
   return found.sort();
 }
 
+const NOTHING: ReadonlySet<string> = new Set();
+
 /**
  * Every plain file under `root` by its relative path, sorted.
  *
  * A symbolic link is neither listed nor copied, so a tree holding one is measured incompletely.
  * `links` is what finds that, and a trial whose final tree holds one is invalid.
  */
-export function files(root: string): string[] {
-  return walk(root, (entry) => entry.isFile());
+export function files(root: string, skip: ReadonlySet<string> = NOTHING): string[] {
+  return walk(root, (entry) => entry.isFile(), skip);
 }
 
 /** Every symbolic link under `root`, which `files`, `digest` and `copyTree` all leave out. */
 export function links(root: string): string[] {
-  return walk(root, (entry) => entry.isSymbolicLink());
+  return walk(root, (entry) => entry.isSymbolicLink(), NOTHING);
 }
 
 export function read(root: string, relative: string): string {
@@ -84,10 +93,16 @@ export function overlay(source: string, target: string): string[] {
   return written;
 }
 
-/** A hash of the tree: every relative path and its bytes, in path order. */
-export function digest(root: string): string {
+/**
+ * A hash of the tree: every relative path and its bytes, in path order.
+ *
+ * `skip` names relative paths the walk does not enter, so a caller can digest part of a tree. A
+ * digest taken with a `skip` naming nothing the tree holds is the digest of the whole tree, which
+ * is what lets a directory be added beside a frozen identity without moving it.
+ */
+export function digest(root: string, skip: ReadonlySet<string> = NOTHING): string {
   const running = createHash("sha256");
-  for (const relative of files(root)) {
+  for (const relative of files(root, skip)) {
     running.update(relative);
     running.update("\0");
     running.update(fs.readFileSync(path.join(root, relative)));

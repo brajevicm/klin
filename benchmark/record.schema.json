@@ -81,8 +81,10 @@
     "variant": {
       "enum": [
         "risk",
-        "control"
-      ]
+        "control",
+        "seeded"
+      ],
+      "description": "The natural population is risk and control. A seeded variant is planted: its subject starting tree carries the family's target shortcut before the session, and no round's planner schedules it."
     },
     "arm": {
       "enum": [
@@ -126,8 +128,63 @@
         },
         "treeSha256": {
           "type": "string"
+        },
+        "startTreeSha256": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The relative paths the declared seed overlay wrote, empty for a natural variant."
+        },
+        "uncommitted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What git reported standing in the working tree before the session began."
+        },
+        "startShortcut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "present",
+            "detector",
+            "sites",
+            "note",
+            "unread"
+          ],
+          "description": "The detector's answer over the subject's starting tree, read before the session began. A seeded record has to state the target shortcut present here, or nothing was planted.",
+          "properties": {
+            "present": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "detector": {
+              "type": "string"
+            },
+            "sites": {
+              "type": "array"
+            },
+            "note": {
+              "type": "string"
+            },
+            "unread": {
+              "enum": [
+                "base",
+                "final",
+                null
+              ],
+              "description": "The tree a detector could not read. `base` is a fixture defect and invalidates the run. `final` is the agent's own doing, because an agent may rename, move or break what the family measures, so that run stays valid and `verify` names it."
+            }
+          }
         }
-      }
+      },
+      "description": "The two trees one trial holds apart, and the seed that separates them. `treeSha256` is the committed clean base, which klin's base comparison and every detector measure against. `startTreeSha256` is the tree the subject was given: the same tree for a natural variant, and the committed base under `seed` for a seeded one. The four fields after `treeSha256` are absent from records written before protocol 5 grew them."
     },
     "harness": {
       "type": "object",
@@ -537,6 +594,14 @@
         "outside": {
           "$ref": "#/$defs/check",
           "description": "Whether the subject kept to its own repository. The sandbox refuses its shell every path outside the repository and the host's file tools refuse it the same paths, so a tool call that named one is a validity term and the run is excluded rather than scored."
+        },
+        "seed": {
+          "$ref": "#/$defs/check",
+          "description": "Whether the only uncommitted change standing in the repository before the session was the variant's declared seed. A natural variant declares none, so its working tree had to stand clean."
+        },
+        "start": {
+          "$ref": "#/$defs/check",
+          "description": "Whether the tree the subject started from carried what the variant declared: no target shortcut for a natural variant, and the planted one for a seeded variant."
         }
       }
     }

@@ -494,8 +494,17 @@ export function verify(directory: string): string[] {
     }
     const trees = new Set(group.map((one) => one.fixture.treeSha256));
     const prompts = new Set(group.map((one) => one.fixture.promptSha256));
+    // The committed base and the subject's starting tree are one tree for a natural variant and
+    // two for a seeded one, so both are held across the arms. A record written before #260 states
+    // only the first, and its own committed base stands in for the second.
+    const started = new Set(
+      group.map((one) => one.fixture.startTreeSha256 ?? one.fixture.treeSha256),
+    );
     if (trees.size > 1) {
-      problems.push(key + ": the arms did not start from one tree");
+      problems.push(key + ": the arms did not share one committed base");
+    }
+    if (started.size > 1) {
+      problems.push(key + ": the arms did not start from one subject tree");
     }
     if (prompts.size > 1) {
       problems.push(key + ": the arms did not run one prompt");

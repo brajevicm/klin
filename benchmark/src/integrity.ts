@@ -153,20 +153,31 @@ export function judge(variant: Variant, gate: string, workspace: string, control
  * than a failure: the host keys its credential by the configuration directory, so a per-trial
  * directory needs a credential of its own. Every record keeps the memory digest either way, so a
  * reader can tell whether the two arms saw one configuration.
+ *
+ * `stamped` says the harness took one stamp over the committed base before laying a seed over it.
+ * A seeded trial's state therefore holds exactly that one worktree entry and no journal, and a
+ * natural trial's state holds nothing at all. Either way the state is this trial's own: the
+ * harness removes it before it materializes anything.
  */
 export function freshness(
   repo: string,
   state: string,
   config: string,
   commits: number,
+  stamped = false,
 ): Isolation {
   const isolated = config !== "";
+  const entries = fs.existsSync(state) ? fs.readdirSync(state) : [];
   const checks: Check[] = [
     check("fresh-repository", commits === 1, String(commits) + " commit(s) before the session"),
     check(
       "fresh-klin-state",
-      !fs.existsSync(state) || fs.readdirSync(state).length === 0,
-      "klin state at " + state,
+      entries.length === (stamped ? 1 : 0),
+      (stamped
+        ? "klin state holds this trial's own stamp over the committed base, " +
+          String(entries.length) +
+          " worktree entry(s), at "
+        : "klin state at ") + state,
     ),
     check(
       "fresh-host-configuration",
@@ -178,6 +189,57 @@ export function freshness(
     check("workspace-is-its-own-repository", fs.existsSync(path.join(repo, ".git")), repo),
   ];
   return { verified: checks.every((one) => one.passed), checks };
+}
+
+/**
+ * What stood uncommitted in the repository before the session, against what the variant declared.
+ *
+ * The harness equated three trees until #260: the committed tree, the subject's starting tree and
+ * the detector's baseline. A seeded variant separates the first two by exactly its declared seed,
+ * and this is what proves the separation is exactly that and nothing else. A natural variant
+ * declares no seed, so its working tree has to stand clean.
+ */
+export function seedIsTheOnlyChange(standing: string[], declared: string[]): Check {
+  const want = [...declared].sort();
+  const held = [...standing].sort();
+  const same = want.length === held.length && want.every((one, at) => one === held[at]);
+  const named = (list: string[]): string => (list.length === 0 ? "nothing" : list.join(", "));
+  return check(
+    "seed-as-declared",
+    same,
+    same
+      ? want.length === 0
+        ? "the working tree stood clean before the session"
+        : "the declared seed " + named(want) + " was the only uncommitted change"
+      : "the working tree held " + named(held) + " where the variant declares " + named(want),
+  );
+}
+
+/**
+ * Whether the tree the subject started from carries what the variant declared.
+ *
+ * A natural variant declares a clean start, so the detector must find nothing before the agent
+ * begins. A seeded variant declares the target shortcut present, and a seeded run that started
+ * without it measures nothing about catch, delivery or repair after exposure.
+ */
+export function startTreeAsDeclared(
+  measured: { present: boolean | null; note: string },
+  declared: boolean,
+): Check {
+  return check(
+    "start-tree-as-declared",
+    measured.present === declared,
+    measured.present === declared
+      ? declared
+        ? "the detector found the target shortcut in the subject's starting tree"
+        : "the detector found no target shortcut in the subject's starting tree"
+      : "the variant declares the starting shortcut " +
+        String(declared) +
+        " and the detector measured " +
+        String(measured.present) +
+        ": " +
+        measured.note,
+  );
 }
 
 /**

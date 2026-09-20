@@ -4,7 +4,7 @@ import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { copyTree, digest, links, sha256 } from "./trees.ts";
-import { family as familyNamed, type ArmName, type VariantName } from "./catalogue.ts";
+import { family as familyNamed, variantIn, type ArmName, type VariantName } from "./catalogue.ts";
 import * as workspace from "./workspace.ts";
 import * as session from "./session.ts";
 import * as oracle from "./oracle.ts";
@@ -122,6 +122,8 @@ export function outcomeOf(ran: session.SessionResult, hooks: HookInvocation[]): 
 export function validity(held: {
   isolation: Isolation;
   freshness: Isolation;
+  seed: Check;
+  start: Check;
   ran: session.SessionResult;
   judged: oracle.Judgement;
   links: string[];
@@ -155,6 +157,12 @@ export function validity(held: {
         ? "the repository, klin's state and the session were new"
         : "the trial failed " + broke(held.freshness),
     ),
+    // The tree the subject was given, against the tree the fixture declared it would be given.
+    // A seeded run whose seed did not stand, or did not carry the shortcut, measured no repair
+    // after exposure, and a natural run whose working tree was not clean measured a baseline the
+    // harness never meant to hand it.
+    held.seed,
+    held.start,
     term(
       "host-result-read",
       held.ran.agent !== null,
@@ -251,7 +259,7 @@ export function run(
   options: TrialOptions,
 ): RunRecord {
   const found = familyNamed(familyName);
-  const variant = found.variants[variantName];
+  const variant = variantIn(found, variantName);
   const control = planeFor(options.control, trialId);
   fs.mkdirSync(control, { recursive: true });
 
@@ -259,23 +267,46 @@ export function run(
   const binaryHash = binarySha256(options.klinBin);
   const configDir = session.configFor(options, trialId);
   const place = workspace.materialize(variant, trialId, control, options.klinBin, arm === "active");
-  const freshness = integrity.freshness(place.repo, place.state, configDir, place.commits);
+  const freshness = integrity.freshness(
+    place.repo,
+    place.state,
+    configDir,
+    place.commits,
+    place.stamped,
+  );
   const isolation = integrity.judge(variant, found.spec.gate, place.repo, control);
+
+  // The tree copies sit under a directory named `fixtures`, which is in klin's built-in skip set,
+  // so records kept inside this repository are never measured as klin's own source.
+  const trees = path.join(control, "fixtures");
+  const base = workspace.startingTree(variant, path.join(trees, "base"));
+  // Read before the session, so the record proves the seed stood in the working tree and carried
+  // the family's target shortcut against the committed base while the agent was still to start.
+  const standing = workspace.uncommitted(place.repo);
+  const started = oracle.shortcut(variant, base, place.repo);
+  const seeded = integrity.seedIsTheOnlyChange(standing, place.seed);
+  const startTree = integrity.startTreeAsDeclared(started, variant.start.shortcut);
 
   const ran = session.run(place, variant.prompt, options, configDir);
   const wrapperRan = workspace.settle(place);
   isolation.checks.push(integrity.stillHidden(variant, place.repo));
   isolation.verified = isolation.checks.every((one) => one.passed);
 
-  // The tree copies sit under a directory named `fixtures`, which is in klin's built-in skip
-  // set, so records kept inside this repository are never measured as klin's own source.
-  const trees = path.join(control, "fixtures");
-  const base = workspace.startingTree(variant, path.join(trees, "base"));
   const final = path.join(trees, "final");
   fs.rmSync(final, { recursive: true, force: true });
   copyTree(place.repo, final);
 
-  const judged = oracle.judge(variant, base, final, path.join(trees, "scoring"));
+  // The baseline is laid again, because the copy the pre-session detector read stood on disk for
+  // the whole session. The sandbox refuses the subject every write into the plane, and a subject
+  // that named one invalidates its own trial, so this is the second line and not the first.
+  // `startingTree` removes the directory before it re-lays it, so the tree the final scoring
+  // measures against is the fixture's own bytes either way.
+  const judged = oracle.judge(
+    variant,
+    workspace.startingTree(variant, base),
+    final,
+    path.join(trees, "scoring"),
+  );
   const stats = session.stats(place.repo, place.state, options.klinBin, ["--since", "1d"]) as Record<
     string,
     unknown
@@ -290,6 +321,8 @@ export function run(
   const terms = validity({
     isolation,
     freshness,
+    seed: seeded,
+    start: startTree,
     ran,
     judged,
     links: links(place.repo),
@@ -316,6 +349,16 @@ export function run(
       startCommit: place.startCommit,
       promptSha256: variant.promptSha256,
       treeSha256: place.treeSha256,
+      startTreeSha256: place.startTreeSha256,
+      seed: place.seed,
+      uncommitted: standing,
+      startShortcut: {
+        present: started.present,
+        detector: started.detector ?? variant.shortcut.detector,
+        sites: started.sites,
+        note: started.note,
+        unread: started.unread ?? null,
+      },
     },
     harness: {
       commit: here.commit,
@@ -368,7 +411,7 @@ export function run(
     stats,
     activity: { klinMs: activity.klin_ms ?? null },
     turns: (ran.agent?.num_turns as number | undefined) ?? null,
-    isolation: { workspace: isolation, freshness, outside },
+    isolation: { workspace: isolation, freshness, outside, seed: seeded, start: startTree },
   };
 
   write(control, "record.json", record);

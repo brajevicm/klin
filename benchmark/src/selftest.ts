@@ -6,7 +6,8 @@ import * as paths from "./paths.ts";
 import { copyTree, files, overlay } from "./trees.ts";
 import {
   families,
-  VARIANTS,
+  variantNames,
+  variantIn,
   type Family,
   type FamilySpec,
   type TreeSpec,
@@ -299,8 +300,46 @@ export function admission(
   };
 }
 
+/**
+ * The cases a seeded variant owes beyond every other variant's.
+ *
+ * A seed is both the overlay the harness leaves uncommitted and an exemplar tree the self-test
+ * measures on all four verdicts, so it has to be one of the declared trees: what the harness
+ * plants is then exactly what the four verdicts were taken over. A seed that removed a file would
+ * stand in the working tree as a deletion the declared path list does not name, and `seed-as-
+ * declared` would fail every live trial, so it is refused here instead.
+ */
+function seedCases(family: Family, variant: Variant): Case[] {
+  if (variant.seed === "") {
+    return [];
+  }
+  const declared = Object.keys(variant.trees);
+  const removals = path.join(variant.root, variant.seed, "REMOVE");
+  return [
+    judge(
+      "the seed overlay is one of the variant's declared trees",
+      declared.includes(variant.seed),
+      declared.includes(variant.seed)
+        ? "the seed " + variant.seed + " is measured as an exemplar tree"
+        : "the variant seeds " + variant.seed + " and declares " + declared.join(", "),
+      family,
+      variant,
+    ),
+    judge(
+      "the seed overlay states no removal",
+      !fs.existsSync(removals),
+      fs.existsSync(removals)
+        ? "the seed removes files, which no declared seed path can name"
+        : "the seed only writes files",
+      family,
+      variant,
+    ),
+  ];
+}
+
 function casesFor(family: Family, variant: Variant, room: string): Case[] {
   const starting = workspace.startingTree(variant, path.join(room, "start"));
+  const subject = workspace.subjectStartingTree(variant, path.join(room, "subject"));
   const words = held(family, variant);
   const cases: Case[] = [
     judge(
@@ -312,15 +351,30 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
     ),
   ];
 
-  const clean = oracle.shortcut(variant, starting, starting);
+  // The committed clean base against the tree the subject is given. They are one tree wherever
+  // the variant declares no seed, so this reads as the old clean-start invariant there, and a
+  // seeded variant declares the target shortcut present instead.
+  const clean = oracle.shortcut(variant, starting, subject);
   cases.push(
     judge(
-      "the starting tree carries no target shortcut",
-      clean.present === false,
-      JSON.stringify(clean.sites) + " " + clean.note,
+      variant.start.shortcut
+        ? "the subject's starting tree carries the declared target shortcut"
+        : "the subject's starting tree carries no target shortcut",
+      clean.present === variant.start.shortcut,
+      clean.present === variant.start.shortcut
+        ? JSON.stringify(clean.sites) + " " + clean.note
+        : "the variant declares the starting shortcut " +
+          String(variant.start.shortcut) +
+          " and the detector measured " +
+          String(clean.present) +
+          ": " +
+          JSON.stringify(clean.sites) +
+          " " +
+          clean.note,
       family,
       variant,
     ),
+    ...seedCases(family, variant),
   );
 
   const measured: Record<string, Record<keyof TreeSpec, Measured>> = {};
@@ -352,14 +406,19 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
     }
   }
 
-  if (variant.name === "risk") {
+  // Control is matched ordinary work where the target regression should not appear, so it owes
+  // no policed tree. Every other variant does: a risk variant has to make the shortcut available
+  // and a seeded one has to plant it.
+  if (variant.name !== "control") {
     const admitted = admission(measured);
     cases.push(
       judge("a measured tree states what the product polices", admitted.passed, admitted.detail, family, variant),
     );
   }
 
-  const isolation = integrity.judge(variant, family.spec.gate, starting, path.join(room, "control"));
+  // The isolation scan reads the tree the agent is given, which for a seeded variant is the
+  // committed base under its seed.
+  const isolation = integrity.judge(variant, family.spec.gate, subject, path.join(room, "control"));
   for (const one of isolation.checks) {
     cases.push(judge("workspace isolation: " + one.name, one.passed, one.detail, family, variant));
   }
@@ -406,10 +465,10 @@ export function run(only: string[]): Case[] {
     if (!family) {
       throw new Error("no fixture family named " + name);
     }
-    for (const variantName of VARIANTS) {
+    for (const variantName of variantNames(family)) {
       const room = scratch(name + "-" + variantName);
       try {
-        cases.push(...casesFor(family, family.variants[variantName], room));
+        cases.push(...casesFor(family, variantIn(family, variantName), room));
       } finally {
         fs.rmSync(room, { recursive: true, force: true });
       }

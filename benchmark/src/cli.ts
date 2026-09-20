@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { ARMS, VARIANTS, cells, families } from "./catalogue.ts";
+import { ARMS, cells, families, variantNames } from "./catalogue.ts";
 import * as selftest from "./selftest.ts";
 import * as calibrate from "./calibrate.ts";
 import * as probe from "./probe.ts";
@@ -16,7 +16,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts list
   node benchmark/src/cli.ts toolchain
   node benchmark/src/cli.ts selftest [family ...]
-  node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
+  node benchmark/src/cli.ts run <family> <variant> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
@@ -60,12 +60,27 @@ export function positionals(args: string[]): string[] {
   return kept;
 }
 
-/** Every way a `run` command line names something the catalogue does not have. */
+/**
+ * Every way a `run` command line names something the catalogue does not have.
+ *
+ * Where a family was named, the variant is held to that family's own list rather than a global
+ * one. A planted variant is shipped by the one family it was built for, so `run` is the only way
+ * to address one and another family refuses it by name. Where no family was named, the variant is
+ * held to every variant any family ships, so a command line with three wrong parts still names
+ * all three at once.
+ */
 export function wrongArguments(family: string, variant: string, arm: string): string[] {
-  const named = Object.keys(families());
+  const found = families()[family];
+  const named = found
+    ? (variantNames(found) as string[])
+    : [...new Set(Object.values(families()).flatMap((one) => variantNames(one) as string[]))];
   return [
-    named.includes(family) ? "" : "no family named " + String(family),
-    (VARIANTS as readonly string[]).includes(variant) ? "" : "no variant named " + String(variant),
+    found ? "" : "no family named " + String(family),
+    named.includes(variant)
+      ? ""
+      : found
+        ? family + " ships no variant named " + String(variant) + ", only " + named.join(", ")
+        : "no variant named " + String(variant),
     (ARMS as readonly string[]).includes(arm) ? "" : "no arm named " + String(arm),
   ].filter((one) => one.length > 0);
 }
