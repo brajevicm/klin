@@ -92,7 +92,7 @@ test("a KLIN_ variable the subject could read fails the probe", () => {
   );
 });
 
-test("a missing Bash environment witness proves nothing about the environment", () => {
+test("a report with no environment listing proves nothing about the environment", () => {
   const held = environmentChecks(
     guarded(["Bash", environmentShellCommand()]),
     [],
