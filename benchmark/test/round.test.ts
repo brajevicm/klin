@@ -10,7 +10,7 @@ import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
 import * as forensic from "../src/forensic.ts";
 import { hookEvidence } from "../src/session.ts";
-import { fileToolAttempts, fileToolChecks, judge, ownedPaths, suiteChecks, suiteShellCommand, verifyProbe, witnessed, workspaceForms } from "../src/probe.ts";
+import { ENVIRONMENT_SENTINEL, environmentChecks, environmentShellCommand, fileToolAttempts, fileToolChecks, judge, ownedPaths, suiteChecks, suiteShellCommand, verifyProbe, witnessed, workspaceForms } from "../src/probe.ts";
 import { suiteCommand } from "../src/selftest.ts";
 import {
   ATTEMPTS,
@@ -622,7 +622,8 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   const hooks = path.join(directory, "hooks");
   const command = suiteShellCommand(suite);
   writeHook(hooks, "0000-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
-  writeHook(hooks, "0001-1", {
+  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: environmentShellCommand() } });
+  writeHook(hooks, "0002-1", {
     hook_event_name: "PreToolUse",
     tool_name: "Bash",
     tool_input: { command: planted.map((one) => "cat '" + one.file + "'").join("; ") },
@@ -636,6 +637,17 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
       tool_input: { command },
       tool_response: {
         stdout: "klin-probe-suite status=0 cwd=" + repo + " build=" + (language === "rust" ? "target/debug" : "none") + "\n",
+      },
+    }),
+  );
+  fs.writeFileSync(
+    path.join(directory, "witness", "0001-1.json"),
+    JSON.stringify({
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: environmentShellCommand() },
+      tool_response: {
+        stdout: "HOME=/home/someone\nPATH=/usr/bin:/bin\n" + ENVIRONMENT_SENTINEL + " status=0\n",
       },
     }),
   );
@@ -659,10 +671,12 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   fs.writeFileSync(path.join(directory, "shell.txt"), shell);
   const evidence = hookEvidence(hooks);
   const mine = workspace;
+  const seen = witnessed(path.join(directory, "witness"));
   const checks = [
-    ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, witnessed(path.join(directory, "witness"))),
-    ...judge(transcript, planted, evidence, shell, ownedPaths(), mine).checks,
-    ...fileToolChecks(planted, roots, witnessed(path.join(directory, "witness"))),
+    ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, seen),
+    ...judge(transcript, planted, evidence, shell).checks,
+    ...environmentChecks(evidence, seen, ownedPaths(), mine),
+    ...fileToolChecks(planted, roots, seen),
     { name: "the-apparatus-held-still", passed: true, detail: "" },
   ];
   fs.writeFileSync(
