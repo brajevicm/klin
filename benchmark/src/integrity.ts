@@ -27,9 +27,10 @@ function check(name: string, passed: boolean, detail: string): Check {
   return { name, passed, detail };
 }
 
-function inside(outer: string, inner: string): boolean {
-  const relative = path.relative(path.resolve(outer), path.resolve(inner));
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+export function inside(outer: string, inner: string): boolean {
+  const relative = path.relative(real(outer), real(inner));
+  const escaped = relative === ".." || relative.startsWith(".." + path.sep);
+  return relative === "" || (!escaped && !path.isAbsolute(relative));
 }
 
 /**
@@ -200,12 +201,14 @@ export function sameConfiguration(configurations: Map<string, string>): Check {
 /** Every path-shaped word of a shell command or a tool input. */
 const WORDS = /[^\s"'`;|&()<>{}=]+/g;
 
-/** A path with its symbolic links resolved, or the path itself where it does not exist. */
+/** A path with symbolic links resolved, including the existing part of a deleted path. */
 function real(one: string): string {
   try {
     return fs.realpathSync(one);
   } catch {
-    return one;
+    const resolved = path.resolve(one);
+    const parent = path.dirname(resolved);
+    return parent === resolved ? resolved : path.join(real(parent), path.basename(resolved));
   }
 }
 

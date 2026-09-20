@@ -8,6 +8,7 @@ import { preflight } from "./calibrate.ts";
 import { drift, frozen, type Frozen } from "./frozen.ts";
 import { suiteCommand } from "./selftest.ts";
 import type { Family, FamilySpec } from "./catalogue.ts";
+import { inside } from "./integrity.ts";
 import * as session from "./session.ts";
 import * as workspace from "./workspace.ts";
 import type { Check, HookInvocation } from "./record.ts";
@@ -334,11 +335,10 @@ function forbids(roots: Forbidden, target: string): boolean {
   if (target === "") {
     return false;
   }
-  const inside = (root: string): boolean => target === root || target.startsWith(root.endsWith("/") ? root : root + "/");
-  if (roots.mine.some(inside)) {
+  if (roots.mine.some((root) => inside(root, target))) {
     return false;
   }
-  return [roots.plane, roots.work, roots.records].some(inside);
+  return [roots.plane, roots.work, roots.records].some((root) => inside(root, target));
 }
 
 /** The input field that says where a call of this tool went. */
