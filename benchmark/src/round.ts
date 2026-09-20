@@ -145,19 +145,19 @@ export function witnesses(
   const missing: string[] = [];
   for (const language of LANGUAGES) {
     const ours = mine.filter((one) => one.language === language).sort((a, b) => a.at.localeCompare(b.at));
-    const holds = (one: Probe): boolean => one.passed && (unverifiable.get(one.directory) ?? []).length === 0;
-    const failed = ours.filter((one) => !holds(one));
-    const newest = ours.filter(holds).at(-1);
-    if (failed.length > 0) {
-      const last = failed[failed.length - 1];
-      const why = unverifiable.get(last.directory) ?? [];
-      missing.push(
-        "the " + language + " probe " + last.trialId + " does not hold at this apparatus: " + (why.length > 0 ? why[0] : "it records itself as failed"),
-      );
+    // The last probe run at this apparatus is the one that answers. An older failure is kept and
+    // is not a verdict on the apparatus as it now stands, and an older pass cannot stand in for a
+    // newer failure.
+    const newest = ours.at(-1);
+    if (newest === undefined) {
+      missing.push("no " + language + " probe under " + directory + " ran at this round's apparatus");
       continue;
     }
-    if (newest === undefined) {
-      missing.push("no passing " + language + " probe under " + directory + " ran at this round's apparatus");
+    const why = unverifiable.get(newest.directory) ?? [];
+    if (!newest.passed || why.length > 0) {
+      missing.push(
+        "the last " + language + " probe " + newest.trialId + " does not hold at this apparatus: " + (why.length > 0 ? why[0] : "it records itself as failed"),
+      );
       continue;
     }
     found.push({
@@ -627,6 +627,8 @@ export function probeEvidenceProblems(directory: string, held: Manifest): string
     if (said !== one.sha256) {
       problems.push("the probe.json for " + one.trialId + " is " + (said || "absent") + " and the manifest names " + one.sha256);
     }
+    // Digests say the bytes are the frozen ones. This says those bytes still prove the round.
+    problems.push(...verifyProbe(kept));
   }
   return problems;
 }
@@ -685,6 +687,12 @@ export function plan(into: string, seed: number, probes = path.join(paths.RUNS, 
       throw new Error("the probe id " + JSON.stringify(one.trialId) + " is not a directory name");
     }
     forensic.copy(proved.directories[at], kept);
+    // The copy is what the round carries, so the copy is what has to hold. A file that changed
+    // between the verification and the copy would otherwise be frozen with a digest of its own.
+    const broken = verifyProbe(kept);
+    if (broken.length > 0) {
+      throw new Error("the copied probe evidence for " + one.trialId + " does not hold: " + broken.join("; "));
+    }
     return { ...one, filesSha256: forensic.digest(kept) };
   });
   const unsound = manifestProblems(held);

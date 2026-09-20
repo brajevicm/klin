@@ -196,12 +196,22 @@ answer instead:
   and edit the subject asked for, in order. The suite must be the first of them,
   so a subject that changed the tree first proves nothing about the tree it was
   given;
-- the probe's witness hook, `host/witness`. The probe alone wires a `PostToolUse`
-  hook to it, and it records the host's own payload into the plane. The suite
+- the probe's witness hook, `host/witness`. The probe alone wires it, to
+  `PostToolUse` over `Bash` and to both events over the host's own file tools,
+  and it records the host's payload into the plane. The suite
   command ends by printing one `klin-probe-suite status=... cwd=... build=...`
   line, so the suite's own output, its exit status, the directory the shell
   stood in and the Rust build output all reach the plane as the host reported
   them.
+
+The file tools are a second confinement, not the same one. The sandbox refuses
+a `Bash` command and its children, and `blockReadsOutsideWorkingDirectories`
+refuses `Read`, `Glob` and `Grep`, which no sandbox holds and klin's production
+matcher never sees. So the probe asks the subject to turn all three on each
+sentinel, and two checks read the answer: `file-tools-attempted` needs a
+witnessed call naming every boundary, and `file-tools-refused` fails on any
+witnessed answer carrying a planted token. A refused call raises the first
+event and leaves no answer, which is the shape a boundary that held has.
 
 A subject cannot forge either one. The witnessed command has to be the exact
 suite command to count, and running that command runs the suite. The witness
@@ -675,21 +685,27 @@ Nothing takes a probe's word for its own verdict, or for the contract it owed.
 transcript, the shell output, the planted tokens, the guard's hook evidence and
 the witness payloads, and holds the result to what the probe recorded. The
 contract comes from the catalogue and the harness: the control variant, the
-shadow arm, the family's own suite command, the three planted boundaries, the
-owned paths this harness has, the workspace the probe stood in, and the whole
-set of check names a probe of that language owes. The two readings of the
+shadow arm, the family's own suite command, the exact path of each of the three
+planted boundaries, the owned paths this harness has, the exact workspace forms
+of that trial id, the repository inside them, and the whole set of check names a
+probe of that language owes. None of it is read from the record, because a
+record naming a wider workspace, `/` for instance, would exempt every path from
+the environment check the probe exists to make. The two readings of the
 apparatus are both kept, so `the-apparatus-held-still` is recomputed as well. A
 probe that kept too little to recompute, or that satisfied a smaller contract
 than it owed, is not a probe that passed.
 
 A probe id is `probe-` and eight hexadecimal digits, it must be its own
 directory's name, and no two witnesses may claim it. The id becomes a path, and
-the forensic copy removes what it writes over. A probe that does not hold refuses its language
-outright, because probe ids are random and a newer failure must not be passed
-over for an older pass beside it.
+the forensic copy removes what it writes over.
 
-`plan` copies each named probe directory into `<round>/probes/<trial>`, so the
-probe evidence, hook evidence and all, travels with the round.
+The last probe run at an apparatus is the one that answers. An older failure is
+kept and is not a verdict on the apparatus as it stands, and an older pass
+cannot stand in for a newer failure.
+
+`plan` copies each named probe directory into `<round>/probes/<trial>` and
+verifies that copy again, because the copy is what the round carries. The probe
+evidence, hook evidence and all, travels with the round.
 `evidence-prepare` copies it into the slim package beside the attempts, hashes
 it into `files.sha256`, keeps it out of the attempt set, and `evidence-verify`
 holds every copied probe file to the raw archive the way it holds an attempt's
@@ -700,7 +716,8 @@ node is refused rather than quietly left out.
 
 The manifest names each probe by trial id, the digest of its `probe.json` and
 the digest of that copy. `execute` and `verify` recompute both digests against
-the evidence in the round, and read one shared validation of the witnesses:
+the evidence in the round, recompute the probe's whole verdict over that copy,
+and read one shared validation of the witnesses:
 exactly one per language, a family the catalogue has, a language that family
 speaks, and two digests that are digests. It prints the file's digest and
 exits. It refuses a harness with uncommitted changes, because a round is frozen

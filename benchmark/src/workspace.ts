@@ -229,6 +229,19 @@ function settingsFor(place: { hook: string; plane: string; repo: string; witness
             matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*",
             hooks: [{ type: "command", command: command("guard"), timeout: 60 }],
           },
+          // `Read`, `Glob` and `Grep` are the host's own file tools. No sandbox holds them and
+          // klin's production matcher does not cover them, so the probe alone watches them: this
+          // records what the subject asked for, and the `PostToolUse` entry below records what
+          // the host answered. A read the operating system refused raises the first and not the
+          // second, and a read that succeeded carries the file into the second.
+          ...(place.witness === ""
+            ? []
+            : [
+                {
+                  matcher: "Read|Glob|Grep",
+                  hooks: [{ type: "command", command: quoted(place.witness), timeout: 60 }],
+                },
+              ]),
         ],
         Stop: [
           {
@@ -245,7 +258,7 @@ function settingsFor(place: { hook: string; plane: string; repo: string; witness
           : {
               PostToolUse: [
                 {
-                  matcher: "Bash",
+                  matcher: "Bash|Read|Glob|Grep",
                   hooks: [{ type: "command", command: quoted(place.witness), timeout: 60 }],
                 },
               ],
