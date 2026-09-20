@@ -200,6 +200,9 @@ export function withoutKlin(): NodeJS.ProcessEnv {
   kept.ZDOTDIR = quietShell();
   kept.BASH_ENV = "";
   kept.ENV = "";
+  // npm otherwise probes the operator's ~/.npmrc, which the sandbox refuses and npm reports as
+  // spawn EPERM before it runs a package suite. An empty config keeps that host file out.
+  kept.NPM_CONFIG_USERCONFIG = "/dev/null";
   for (const [name, value] of Object.entries(process.env)) {
     if (value === undefined || !allowed(name)) {
       continue;

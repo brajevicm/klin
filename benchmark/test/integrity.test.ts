@@ -451,6 +451,7 @@ test("no variable handed to a subject names a path the harness owns", () => {
     assert.equal(kept.OLDPWD, undefined);
     assert.equal(kept.A_TOOL_CACHE, undefined);
     assert.equal(kept.KLIN_STATE_DIR, undefined, "every KLIN_ variable is still dropped");
+    assert.equal(kept.NPM_CONFIG_USERCONFIG, "/dev/null", "npm must not probe the operator's user config");
     assert.deepEqual(
       (kept.PATH ?? "").split(path.delimiter),
       ["/usr/bin", "/bin"],
