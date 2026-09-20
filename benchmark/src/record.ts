@@ -159,6 +159,7 @@ export interface RunRecord {
     outside: Check;
     seed: Check;
     start: Check;
+    baseStamp: Check;
   };
 }
 

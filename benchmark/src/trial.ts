@@ -124,6 +124,7 @@ export function validity(held: {
   freshness: Isolation;
   seed: Check;
   start: Check;
+  baseStamp: Check;
   ran: session.SessionResult;
   judged: oracle.Judgement;
   links: string[];
@@ -157,12 +158,14 @@ export function validity(held: {
         ? "the repository, klin's state and the session were new"
         : "the trial failed " + broke(held.freshness),
     ),
-    // The tree the subject was given, against the tree the fixture declared it would be given.
-    // A seeded run whose seed did not stand, or did not carry the shortcut, measured no repair
-    // after exposure, and a natural run whose working tree was not clean measured a baseline the
-    // harness never meant to hand it.
+    // The tree the subject was given, against the tree the fixture declared it would be given,
+    // and the stamp klin will measure that tree's turn against. A seeded run whose seed did not
+    // stand, did not carry the shortcut or ran against a stamp that never landed measured no
+    // repair after exposure, and a natural run whose working tree was not clean measured a
+    // baseline the harness never meant to hand it.
     held.seed,
     held.start,
+    held.baseStamp,
     term(
       "host-result-read",
       held.ran.agent !== null,
@@ -280,12 +283,28 @@ export function run(
   // so records kept inside this repository are never measured as klin's own source.
   const trees = path.join(control, "fixtures");
   const base = workspace.startingTree(variant, path.join(trees, "base"));
+  // The fixture's own bytes for both trees the trial holds apart, laid again from the catalogue,
+  // so the digests the record carries are compared with the fixture and not with themselves.
+  const declared = workspace.subjectStartingTree(variant, path.join(trees, "subject"));
   // Read before the session, so the record proves the seed stood in the working tree and carried
   // the family's target shortcut against the committed base while the agent was still to start.
   const standing = workspace.uncommitted(place.repo);
   const started = oracle.shortcut(variant, base, place.repo);
-  const seeded = integrity.seedIsTheOnlyChange(standing, place.seed);
+  const seeded = integrity.seedIsTheOnlyChange({
+    standing,
+    declared: place.seed,
+    committed: { measured: place.treeSha256, declared: digest(base) },
+    start: { measured: place.startTreeSha256, declared: digest(declared) },
+  });
   const startTree = integrity.startTreeAsDeclared(started, variant.start.shortcut);
+  // `klin radius` exits 0 whether or not it wrote the stamp, so the pre-session stamp is proven
+  // from klin's own state rather than from that exit status.
+  const baseStamp = integrity.baseStampAsDeclared(
+    workspace.baseStamp(place),
+    place.stamped,
+    place.startCommit,
+    place.repo,
+  );
 
   const ran = session.run(place, variant.prompt, options, configDir);
   const wrapperRan = workspace.settle(place);
@@ -323,6 +342,7 @@ export function run(
     freshness,
     seed: seeded,
     start: startTree,
+    baseStamp,
     ran,
     judged,
     links: links(place.repo),
@@ -411,7 +431,14 @@ export function run(
     stats,
     activity: { klinMs: activity.klin_ms ?? null },
     turns: (ran.agent?.num_turns as number | undefined) ?? null,
-    isolation: { workspace: isolation, freshness, outside, seed: seeded, start: startTree },
+    isolation: {
+      workspace: isolation,
+      freshness,
+      outside,
+      seed: seeded,
+      start: startTree,
+      baseStamp,
+    },
   };
 
   write(control, "record.json", record);

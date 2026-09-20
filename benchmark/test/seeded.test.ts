@@ -18,12 +18,17 @@ import { digest } from "../src/trees.ts";
 import { fixtures } from "../src/frozen.ts";
 import { rows } from "../src/round.ts";
 import { wrongArguments } from "../src/cli.ts";
-import { seedIsTheOnlyChange, startTreeAsDeclared } from "../src/integrity.ts";
+import {
+  baseStampAsDeclared,
+  seedIsTheOnlyChange,
+  startTreeAsDeclared,
+} from "../src/integrity.ts";
 import { validate } from "../src/record.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
 import * as report from "../src/report.ts";
+import * as integrity from "../src/integrity.ts";
 
 /**
  * The seeded population: a variant the harness plants and no round schedules.
@@ -109,15 +114,117 @@ test("run addresses a variant through the family that ships it", () => {
   assert.deepEqual(wrongArguments("nothing", "risk", "active"), ["no family named nothing"]);
 });
 
+/** A seed reading that holds, with `over` merged in so one case can break one part of it. */
+function seedRead(over: Record<string, unknown> = {}): Parameters<typeof seedIsTheOnlyChange>[0] {
+  return {
+    standing: ["src/a.rs"],
+    declared: ["src/a.rs"],
+    committed: { measured: "base", declared: "base" },
+    start: { measured: "seeded", declared: "seeded" },
+    ...over,
+  } as Parameters<typeof seedIsTheOnlyChange>[0];
+}
+
 test("the declared seed must be the only uncommitted change", () => {
-  assert.equal(seedIsTheOnlyChange([], []).passed, true);
-  assert.equal(seedIsTheOnlyChange(["src/a.rs"], ["src/a.rs"]).passed, true);
-  const extra = seedIsTheOnlyChange(["src/a.rs", "src/b.rs"], ["src/a.rs"]);
+  assert.equal(seedIsTheOnlyChange(seedRead()).passed, true);
+  assert.equal(
+    seedIsTheOnlyChange(seedRead({ standing: [], declared: [] })).passed,
+    true,
+    "a natural variant declares no seed and its working tree stands clean",
+  );
+  const extra = seedIsTheOnlyChange(seedRead({ standing: ["src/a.rs", "src/b.rs"] }));
   assert.equal(extra.passed, false);
   assert.match(extra.detail, /held src\/a\.rs, src\/b\.rs where the variant declares src\/a\.rs/);
-  const dirty = seedIsTheOnlyChange(["src/a.rs"], []);
+  const dirty = seedIsTheOnlyChange(seedRead({ standing: ["src/a.rs"], declared: [] }));
   assert.equal(dirty.passed, false);
   assert.match(dirty.detail, /where the variant declares nothing/);
+});
+
+test("the seed is proven by its bytes and not only by its changed paths", () => {
+  const wrongStart = seedIsTheOnlyChange(
+    seedRead({ start: { measured: "other", declared: "seeded" } }),
+  );
+  assert.equal(
+    wrongStart.passed,
+    false,
+    "a seed that wrote the declared path with other bytes passed",
+  );
+  assert.match(wrongStart.detail, /the subject's starting tree digests other/);
+  const wrongBase = seedIsTheOnlyChange(
+    seedRead({ committed: { measured: "other", declared: "base" } }),
+  );
+  assert.equal(wrongBase.passed, false);
+  assert.match(wrongBase.detail, /the committed tree digests other/);
+});
+
+/** A stamp reading that holds, with `over` merged in so one case can break one part of it. */
+function stampRead(over: Record<string, unknown> = {}): Parameters<typeof baseStampAsDeclared>[0] {
+  return {
+    worktrees: ["d0777fd8"],
+    entries: ["index", "repository", "turn"],
+    turn: { commit: "stamp", parent: "base", verdict: "red" },
+    ref: "stamp",
+    repository: "/repo",
+    ...over,
+  } as Parameters<typeof baseStampAsDeclared>[0];
+}
+
+const stamped = (over: Record<string, unknown> = {}) =>
+  baseStampAsDeclared(stampRead(over), true, "base", "/repo");
+
+test("a pre-session stamp is proven from klin's state, not from an exit status", () => {
+  assert.equal(stamped().passed, true, stamped().detail);
+  assert.equal(
+    stamped({ turn: null }).passed,
+    false,
+    "radius exits 0 whether or not it wrote a stamp, so a missing stamp must fail",
+  );
+  assert.match(stamped({ turn: null }).detail, /klin wrote none/);
+});
+
+test("a stamp that would not survive the subject's own session start fails", () => {
+  const green = stamped({ turn: { commit: "stamp", parent: "base", verdict: "green" } });
+  assert.equal(green.passed, false);
+  assert.match(green.detail, /only a red stamp survives/);
+});
+
+test("a stamp taken over the wrong tree, or with no ref, fails", () => {
+  const elsewhere = stamped({ turn: { commit: "stamp", parent: "other", verdict: "red" } });
+  assert.equal(elsewhere.passed, false);
+  assert.match(elsewhere.detail, /names the parent other where the committed base is base/);
+
+  const unresolved = stamped({ ref: "" });
+  assert.equal(unresolved.passed, false);
+  assert.match(unresolved.detail, /resolves to nothing/);
+
+  const moved = stamped({ ref: "another" });
+  assert.equal(moved.passed, false);
+  assert.match(moved.detail, /resolves to another/);
+});
+
+test("a state that is short of what a stamp needs, or already dirty, fails", () => {
+  const partial = stamped({ entries: ["turn"] });
+  assert.equal(partial.passed, false);
+  assert.match(partial.detail, /holds no index/);
+
+  const journaled = stamped({ entries: ["index", "journal.jsonl", "repository", "turn"] });
+  assert.equal(journaled.passed, false);
+  assert.match(journaled.detail, /already holds a journal/);
+
+  const crowded = stamped({ worktrees: ["one", "two"] });
+  assert.equal(crowded.passed, false);
+  assert.match(crowded.detail, /holds 2 worktree entries/);
+});
+
+test("a trial that took no stamp is held to an empty state", () => {
+  assert.equal(
+    baseStampAsDeclared(stampRead({ worktrees: [], entries: [], turn: null }), false, "base", "/repo")
+      .passed,
+    true,
+  );
+  const leftover = baseStampAsDeclared(stampRead(), false, "base", "/repo");
+  assert.equal(leftover.passed, false);
+  assert.match(leftover.detail, /took no pre-session stamp and klin's state holds d0777fd8/);
 });
 
 test("the starting tree is held to what the variant declared", () => {
@@ -347,6 +454,63 @@ test(
       assert.deepEqual(workspace.uncommitted(held.place.repo), []);
       assert.equal(held.place.treeSha256, held.place.startTreeSha256);
       assert.equal(fs.existsSync(held.place.state), false, "a natural trial pre-stamps nothing");
+    } finally {
+      clear(held);
+    }
+  },
+);
+
+test(
+  "the real pre-session stamp holds the declared contract",
+  { skip: available ? false : "the klin binary is not built" },
+  () => {
+    const held = materialized("seeded");
+    try {
+      const read = workspace.baseStamp(held.place);
+      assert.equal(read.worktrees.length, 1, JSON.stringify(read.worktrees));
+      assert.deepEqual(read.entries, ["index", "repository", "turn"]);
+      assert.equal(read.turn?.parent, held.place.startCommit, "the stamp is not over the commit");
+      assert.equal(read.turn?.verdict, "red", "a green stamp would move at the subject's start");
+      assert.equal(read.ref, read.turn?.commit, "the turn ref does not resolve to the stamp");
+      const judged = integrity.baseStampAsDeclared(
+        read,
+        held.place.stamped,
+        held.place.startCommit,
+        held.place.repo,
+      );
+      assert.equal(judged.passed, true, judged.detail);
+
+      // The reader and the judge have to agree on a real broken state, not only on a hand-built
+      // one: `klin radius` exits 0 whether or not the stamp landed, so this is the failure the
+      // term exists for.
+      fs.rmSync(path.join(held.place.state, read.worktrees[0], "turn"));
+      const without = integrity.baseStampAsDeclared(
+        workspace.baseStamp(held.place),
+        held.place.stamped,
+        held.place.startCommit,
+        held.place.repo,
+      );
+      assert.equal(without.passed, false, "a trial with no stamp on disk was called valid");
+      assert.match(without.detail, /klin wrote none/);
+    } finally {
+      clear(held);
+    }
+  },
+);
+
+test(
+  "a natural trial takes no stamp and its state stays empty",
+  { skip: available ? false : "the klin binary is not built" },
+  () => {
+    const held = materialized("risk");
+    try {
+      const read = workspace.baseStamp(held.place);
+      assert.deepEqual(read.worktrees, []);
+      assert.equal(
+        integrity.baseStampAsDeclared(read, held.place.stamped, held.place.startCommit, held.place.repo)
+          .passed,
+        true,
+      );
     } finally {
       clear(held);
     }

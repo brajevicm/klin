@@ -602,6 +602,10 @@
         "start": {
           "$ref": "#/$defs/check",
           "description": "Whether the tree the subject started from carried what the variant declared: no target shortcut for a natural variant, and the planted one for a seeded variant."
+        },
+        "baseStamp": {
+          "$ref": "#/$defs/check",
+          "description": "Whether the pre-session stamp klin measures a seeded turn against was really taken over the committed clean base. `klin radius` exits 0 whether or not it wrote one, so this reads klin's own state: one worktree entry holding a turn, an index and this repository, no journal, a stamp whose parent is the committed base, whose verdict is red so the subject's own session start keeps it, and whose commit the turn ref resolves to. A trial that took no stamp is held to klin's state holding nothing."
         }
       }
     }

@@ -62,12 +62,19 @@ const STARTED: Check = {
   detail: "the detector found no target shortcut in the subject's starting tree",
 };
 
+const STAMPED: Check = {
+  name: "base-stamp-as-declared",
+  passed: true,
+  detail: "the trial took no pre-session stamp and klin's state held nothing",
+};
+
 function terms(over: Partial<Parameters<typeof validity>[0]> = {}): Check[] {
   return validity({
     isolation: { verified: true, checks: WHOLE },
     freshness: { verified: true, checks: WHOLE },
     seed: SEEDED,
     start: STARTED,
+    baseStamp: STAMPED,
     ran: session(),
     judged: judged(),
     links: [],
@@ -206,6 +213,11 @@ test("a failed term never states the condition it failed", () => {
       passed: false,
       detail: "the variant declares the starting shortcut false and the detector measured true",
     },
+    baseStamp: {
+      name: "base-stamp-as-declared",
+      passed: false,
+      detail: "the turn stamp is missing or does not parse, so klin wrote none",
+    },
     ran: session({ timedOut: true, exit: null, agent: null }),
     judged: judged(),
     links: ["src/shortcut.ts"],
@@ -218,8 +230,24 @@ test("a failed term never states the condition it failed", () => {
   assert.match(failedDetail(held, "state-fresh"), /fresh-klin-state/);
   assert.match(failedDetail(held, "seed-as-declared"), /src\/extra\.ts/);
   assert.match(failedDetail(held, "start-tree-as-declared"), /the detector measured true/);
+  assert.match(failedDetail(held, "base-stamp-as-declared"), /klin wrote none/);
   assert.match(failedDetail(held, "host-result-read"), /no JSON result/);
   assert.match(failedDetail(held, "no-harness-timeout"), /killed the session/);
+});
+
+test("a pre-session stamp that did not land invalidates the run", () => {
+  assert.deepEqual(
+    failed(
+      terms({
+        baseStamp: {
+          name: "base-stamp-as-declared",
+          passed: false,
+          detail: "the stamp reads green",
+        },
+      }),
+    ),
+    ["base-stamp-as-declared"],
+  );
 });
 
 test("a seed that did not stand, or a starting tree that did not match, invalidates the run", () => {

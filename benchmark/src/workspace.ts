@@ -48,6 +48,9 @@ export interface Workspace {
   commits: number;
 }
 
+/** The ref klin writes its turn stamp to, which a seeded trial's stamp must still resolve. */
+const TURN_REF = "refs/worktree/klin/turn";
+
 const GIT = [
   "-c",
   "user.name=klin benchmark",
@@ -526,6 +529,60 @@ export function subjectStartingTree(variant: Variant, into: string): string {
   const laid = startingTree(variant, into);
   laySeed(variant, laid);
   return laid;
+}
+
+/**
+ * What klin's state and the repository hold after the pre-session stamp, as plain facts.
+ *
+ * `integrity.baseStampAsDeclared` judges these. The reading lives here because this module owns
+ * git and the plane's layout, and the judging lives there because that is where a trial's other
+ * named contracts are written.
+ */
+export interface BaseStamp {
+  /** The worktree directories klin's state root holds. A trial owns its state, so this is 0 or 1. */
+  worktrees: string[];
+  /** The files that one worktree entry holds, by name. */
+  entries: string[];
+  /** The `turn` file as klin wrote it, or null where it is missing or does not parse. */
+  turn: { commit?: string; parent?: string; verdict?: string } | null;
+  /** The object `refs/worktree/klin/turn` resolves to, or the empty string. */
+  ref: string;
+  /** The repository path the state entry names, or the empty string. */
+  repository: string;
+}
+
+/** Read klin's state and the turn ref, without judging either. */
+export function baseStamp(place: Workspace): BaseStamp {
+  const worktrees = fs.existsSync(place.state)
+    ? fs.readdirSync(place.state).sort()
+    : [];
+  const one = worktrees.length === 1 ? path.join(place.state, worktrees[0]) : "";
+  const held = (name: string): string => {
+    try {
+      return fs.readFileSync(path.join(one, name), "utf8");
+    } catch {
+      return "";
+    }
+  };
+  let turn: BaseStamp["turn"] = null;
+  try {
+    turn = one === "" ? null : (JSON.parse(held("turn")) as BaseStamp["turn"]);
+  } catch {
+    turn = null;
+  }
+  let ref = "";
+  try {
+    ref = git(place.repo, "rev-parse", "--verify", "--quiet", TURN_REF);
+  } catch {
+    ref = "";
+  }
+  return {
+    worktrees,
+    entries: one === "" || !fs.existsSync(one) ? [] : fs.readdirSync(one).sort(),
+    turn,
+    ref,
+    repository: held("repository").trim(),
+  };
 }
 
 /** The paths a variant's declared seed writes, read from the overlay the fixture ships. */

@@ -406,6 +406,11 @@ reported standing in the working tree, and `seed-as-declared` is the term that
 holds the two together. A natural variant declares no seed, so its working
 tree has to stand clean, which is the same contract read the other way.
 
+A path set alone says only which files changed, so the same term also lays
+both trees again from the catalogue and compares their digests with the two
+the record carries. A seed that wrote the declared path with other bytes fails
+there.
+
 `fixture.startShortcut` is the detector's answer over that starting tree,
 against the committed base, read **before** the session begins.
 `start-tree-as-declared` holds it to `variant.start.shortcut`: absent for
@@ -427,6 +432,23 @@ finds a state directory that exists, so the stamp stays and the seed is new at
 every stop. That stamp writes `repository`, `turn` and `index` and no journal,
 so the trial's signals, stops and `klin_ms` are still the session's alone, and
 `fresh-klin-state` holds a seeded trial to exactly that one worktree entry.
+
+`klin radius` exits 0 whether or not it wrote that stamp. `turn::run` returns
+`Ok(0)` on every path, and the write that persists the stamp returns a boolean
+its caller discards, so the exit status proves nothing. `base-stamp-as-declared`
+therefore reads klin's own state instead and holds a seeded trial to all of it:
+
+- klin's state holds one worktree entry;
+- that entry holds a `turn`, an `index` and a `repository` naming this
+  repository, and no journal;
+- the stamp's parent is the committed base commit;
+- the stamp's verdict is `red`, because a stamp moves on a first session or
+  when the last stop ended green (SPEC 6.2), so only a red one survives the
+  subject's own session start;
+- `refs/worktree/klin/turn` resolves to the commit the stamp names.
+
+A trial that took no stamp is held to the opposite: klin's state holds nothing
+at all.
 
 ### What a seeded run measures, and what it does not
 
@@ -588,8 +610,9 @@ a fact about the agent.
 | `shortcut-baseline-read` | the detector read the starting tree it measures against |
 | `no-tool-call-outside-the-workspace` | the subject named no path outside its own repository |
 | `no-symlink-in-final-tree` | every entry is a plain file, so the digest and the scoring copy hold the whole tree |
-| `seed-as-declared` | the only uncommitted change before the session was the variant's declared seed |
+| `seed-as-declared` | the only uncommitted change before the session was the variant's declared seed, at the fixture's own bytes |
 | `start-tree-as-declared` | the tree the subject started from carried what the variant declared |
+| `base-stamp-as-declared` | the stamp klin measures a seeded turn against was really taken over the committed base |
 
 The five terms after the first two are why an apparatus failure can never
 reach the scorecard as a product outcome. A scorer that could not run, a
