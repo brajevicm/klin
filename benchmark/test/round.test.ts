@@ -612,6 +612,8 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   const family = language === "rust" ? "dead-symbols" : "complexity";
   const suite = suiteCommand(language as "rust" | "typescript", path.join(paths.FIXTURES, family, "base"))!;
   const workspace = workspaceForms(id);
+  const environmentRoots = { owned: ownedPaths(), mine: workspace };
+  const environment = environmentShellCommand(environmentRoots);
   const repo = path.join(workspace[0], "repo");
   const directory = path.join(root, id);
   const planted = [
@@ -622,7 +624,7 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   const hooks = path.join(directory, "hooks");
   const command = suiteShellCommand(suite);
   writeHook(hooks, "0000-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
-  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: environmentShellCommand() } });
+  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: environment } });
   writeHook(hooks, "0002-1", {
     hook_event_name: "PreToolUse",
     tool_name: "Bash",
@@ -645,9 +647,9 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
     JSON.stringify({
       hook_event_name: "PostToolUse",
       tool_name: "Bash",
-      tool_input: { command: environmentShellCommand() },
+      tool_input: { command: environment },
       tool_response: {
-        stdout: "HOME=/home/someone\nPATH=/usr/bin:/bin\n" + ENVIRONMENT_SENTINEL + " status=0\n",
+        stdout: ENVIRONMENT_SENTINEL + " home=1 path=1 status=0\n",
       },
     }),
   );
@@ -675,7 +677,7 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   const checks = [
     ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, seen),
     ...judge(transcript, planted, evidence, shell).checks,
-    ...environmentChecks(evidence, seen, ownedPaths(), mine),
+    ...environmentChecks(evidence, seen, environmentRoots),
     ...fileToolChecks(planted, roots, seen),
     { name: "the-apparatus-held-still", passed: true, detail: "" },
   ];
@@ -755,6 +757,29 @@ test("a probe that satisfied a smaller contract than it owed is refused", () => 
     const problems = spoil(change);
     assert.ok(problems.some((one) => expected.test(one)), what + ": " + problems.join(" / "));
   }
+});
+
+test("a retained probe cannot widen the roots used by trusted environment evidence", () => {
+  const now = frozenFor();
+  const root = room();
+  probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  const directory = path.join(root, "probe-0000000a");
+  const file = path.join(directory, "probe.json");
+  const held = JSON.parse(fs.readFileSync(file, "utf8")) as { workspace: { owned: string[]; mine: string[] } };
+  held.workspace.mine = ["/"];
+  fs.writeFileSync(file, JSON.stringify(held));
+  const widened = environmentShellCommand({ owned: held.workspace.owned, mine: ["/"] });
+  for (const at of [
+    path.join(directory, "hooks", "0001-1", "payload.json"),
+    path.join(directory, "witness", "0001-1.json"),
+  ]) {
+    const payload = JSON.parse(fs.readFileSync(at, "utf8")) as { tool_input: { command: string } };
+    payload.tool_input.command = widened;
+    fs.writeFileSync(at, JSON.stringify(payload));
+  }
+  const problems = verifyProbe(directory);
+  assert.ok(problems.some((one) => /does not pass reported-the-environment/.test(one)), problems.join(" / "));
+  assert.ok(problems.some((one) => /does not pass no-owned-path-in-the-environment/.test(one)), problems.join(" / "));
 });
 
 /** A probe whose two readings of the apparatus differ ran under an apparatus that moved. */
