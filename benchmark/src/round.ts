@@ -3,7 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
-import { ARMS, VARIANTS, families, type ArmName, type FamilySpec, type VariantName } from "./catalogue.ts";
+import {
+  ARMS,
+  VARIANTS,
+  families,
+  type ArmName,
+  type FamilySpec,
+  type NaturalVariantName,
+} from "./catalogue.ts";
 
 /** The languages a round runs, and therefore the languages a probe has to prove. */
 export const LANGUAGES: FamilySpec["language"][] = ["typescript", "rust"];
@@ -43,7 +50,13 @@ import { validate, type RunRecord } from "./record.ts";
 /** Where a planned round keeps the probe evidence that authorized it. */
 export const PROBES = "probes";
 
-export const REPETITIONS: Record<VariantName, number> = { risk: 3, control: 1 };
+/**
+ * How often a round runs each natural variant. A planted variant is never scheduled here.
+ *
+ * #259 froze this population, and #260 leaves it exactly as it stands: a seeded experiment is
+ * addressed by name through `run`, not by being added to a list the planner iterates.
+ */
+export const REPETITIONS: Record<NaturalVariantName, number> = { risk: 3, control: 1 };
 /** How many attempts one scheduled trial gets before the round stops for a person. */
 export const ATTEMPTS = 3;
 /** The predeclared challenge-adequacy floor, over valid Shadow risk runs. */
@@ -55,7 +68,7 @@ export const PRIMARY_ANALYSIS =
 
 export interface Row {
   family: string;
-  variant: VariantName;
+  variant: NaturalVariantName;
   repetition: number;
   arm: ArmName;
   block: number;
@@ -178,7 +191,7 @@ export interface Manifest {
   seed: number;
   plannedAt: string;
   design: {
-    repetitions: Record<VariantName, number>;
+    repetitions: Record<NaturalVariantName, number>;
     blocks: number;
     runs: number;
     attemptsPerTrial: number;
@@ -208,7 +221,7 @@ function stamp(): string {
  */
 export function rows(seed: number): Row[] {
   const draw = ordering(seed);
-  const blocks: { family: string; variant: VariantName; repetition: number }[] = [];
+  const blocks: { family: string; variant: NaturalVariantName; repetition: number }[] = [];
   for (const family of Object.keys(families()).sort()) {
     for (const variant of VARIANTS) {
       for (let repetition = 1; repetition <= REPETITIONS[variant]; repetition += 1) {
@@ -996,7 +1009,7 @@ export function verify(directory: string): string[] {
     byVariant.set(key, [...(byVariant.get(key) ?? []), record]);
   }
   for (const [key, group] of byVariant) {
-    const [family, variant] = key.split("/") as [string, VariantName];
+    const [family, variant] = key.split("/") as [string, NaturalVariantName];
     const planned = manifest.frozen.fixtures[family]?.variants[variant];
     for (const record of group) {
       if (record.fixture.treeSha256 !== planned?.treeSha256) {
@@ -1024,7 +1037,7 @@ export function verify(directory: string): string[] {
     ["the user memory", (one) => one.host.memory?.sha256 ?? "none", manifest.frozen.memory?.sha256 ?? "none"],
   ];
   for (const record of valid) {
-    const planned = manifest.frozen.fixtures[record.family]?.variants[record.variant as VariantName];
+    const planned = manifest.frozen.fixtures[record.family]?.variants[record.variant as NaturalVariantName];
     if (planned && record.taskId !== planned.taskId) {
       problems.push(record.family + "/" + record.variant + ": " + record.trialId + " states task id " + record.taskId + " where the manifest froze " + planned.taskId);
     }

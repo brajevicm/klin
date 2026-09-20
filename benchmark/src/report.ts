@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { records, verify } from "./calibrate.ts";
+import { VARIANTS } from "./catalogue.ts";
 import type { RunRecord } from "./record.ts";
 
 /**
@@ -30,6 +31,65 @@ function yesNo(held: boolean | null): string {
   return held ? "yes" : "no";
 }
 
+/**
+ * The runs of the natural population, and the runs whose exposure was planted, held apart.
+ *
+ * A seeded run starts from a tree that already carries the target shortcut, so its shortcut
+ * column answers a different question than a natural run's: what klin did after exposure, not
+ * whether the agent took the shortcut unprompted. Averaging the two would report a natural rate
+ * that no natural run measured, so the primary table holds natural runs alone.
+ */
+function natural(held: RunRecord[]): RunRecord[] {
+  return held.filter((one) => (VARIANTS as readonly string[]).includes(one.variant));
+}
+
+function planted(held: RunRecord[]): RunRecord[] {
+  return held.filter((one) => !(VARIANTS as readonly string[]).includes(one.variant));
+}
+
+function plantedSection(held: RunRecord[]): string {
+  if (held.length === 0) {
+    return "No planted run is in this set.";
+  }
+  return [
+    "Every run below started from a tree that already carried the family's target shortcut. The",
+    "exposure was planted by the harness, as a colleague's uncommitted change, before either arm",
+    "began. These rows measure whether klin caught it, delivered it and whether the agent repaired",
+    "it after that exposure. They measure no natural shortcut rate, and they are excluded from the",
+    "table above and from the exposure counts below.",
+    "",
+    table(
+      [
+        "family",
+        "variant",
+        "arm",
+        "apparatus",
+        "result",
+        "oracle",
+        "shortcut at the start",
+        "shortcut at the end",
+        "regressions",
+        "blocked stops",
+      ],
+      held
+        .slice()
+        .sort((a, b) => (a.family + a.variant + a.arm).localeCompare(b.family + b.variant + b.arm))
+        .map((record) => [
+          record.family,
+          record.variant,
+          record.arm,
+          record.infrastructure.valid ? "valid" : "invalid: " + String(record.infrastructure.reason),
+          record.result.outcome,
+          record.oracle.behaviourPassed ? "pass" : "fail",
+          yesNo(record.fixture.startShortcut?.present ?? null),
+          yesNo(record.shortcut.present),
+          String(record.signals.filter((one) => one.kind === "regression").length),
+          String(record.friction.blockedStops),
+        ]),
+    ),
+  ].join("\n");
+}
+
 function counts(held: RunRecord[]): string[][] {
   return held
     .slice()
@@ -57,6 +117,9 @@ function counts(held: RunRecord[]): string[][] {
  * The host names its housekeeping model beside the session's, and an arm that needed no
  * housekeeping names fewer for a legitimate reason. So this is reported and `verify` does not
  * fail the cell for it, unlike every other frozen variable.
+ *
+ * This reads every run, planted included. A planted pair owes its arms the same treatment as a
+ * natural one, and no other section would state it.
  */
 function modelDrift(held: RunRecord[]): string {
   const byCell = new Map<string, Set<string>>();
@@ -71,7 +134,8 @@ function modelDrift(held: RunRecord[]): string {
 }
 
 export function write(directory: string): string {
-  const held = records(directory);
+  const all = records(directory);
+  const held = natural(all);
   const problems = verify(directory);
   const manifest = path.join(directory, "manifest.json");
   const manifestHeld = fs.existsSync(manifest)
@@ -120,7 +184,11 @@ export function write(directory: string): string {
     "",
     "## Where the arms named different models",
     "",
-    modelDrift(held),
+    modelDrift(all),
+    "",
+    "## Runs whose exposure was planted",
+    "",
+    plantedSection(planted(all)),
     "",
     "## Challenge exposure, for the later round's floor",
     "",

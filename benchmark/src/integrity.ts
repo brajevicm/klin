@@ -27,6 +27,11 @@ function check(name: string, passed: boolean, detail: string): Check {
   return { name, passed, detail };
 }
 
+/** Whether two paths name one place, through their symbolic links. */
+function samePath(one: string, other: string): boolean {
+  return real(one) === real(other);
+}
+
 export function inside(outer: string, inner: string): boolean {
   const relative = path.relative(real(outer), real(inner));
   const escaped = relative === ".." || relative.startsWith(".." + path.sep);
@@ -153,20 +158,31 @@ export function judge(variant: Variant, gate: string, workspace: string, control
  * than a failure: the host keys its credential by the configuration directory, so a per-trial
  * directory needs a credential of its own. Every record keeps the memory digest either way, so a
  * reader can tell whether the two arms saw one configuration.
+ *
+ * `stamped` says the harness took one stamp over the committed base before laying a seed over it.
+ * A seeded trial's state therefore holds exactly that one worktree entry and no journal, and a
+ * natural trial's state holds nothing at all. Either way the state is this trial's own: the
+ * harness removes it before it materializes anything.
  */
 export function freshness(
   repo: string,
   state: string,
   config: string,
   commits: number,
+  stamped = false,
 ): Isolation {
   const isolated = config !== "";
+  const entries = fs.existsSync(state) ? fs.readdirSync(state) : [];
   const checks: Check[] = [
     check("fresh-repository", commits === 1, String(commits) + " commit(s) before the session"),
     check(
       "fresh-klin-state",
-      !fs.existsSync(state) || fs.readdirSync(state).length === 0,
-      "klin state at " + state,
+      entries.length === (stamped ? 1 : 0),
+      (stamped
+        ? "klin state holds this trial's own stamp over the committed base, " +
+          String(entries.length) +
+          " worktree entry(s), at "
+        : "klin state at ") + state,
     ),
     check(
       "fresh-host-configuration",
@@ -178,6 +194,177 @@ export function freshness(
     check("workspace-is-its-own-repository", fs.existsSync(path.join(repo, ".git")), repo),
   ];
   return { verified: checks.every((one) => one.passed), checks };
+}
+
+/**
+ * What stood uncommitted in the repository before the session, against what the variant declared.
+ *
+ * The harness equated three trees until #260: the committed tree, the subject's starting tree and
+ * the detector's baseline. A seeded variant separates the first two by exactly its declared seed,
+ * and this is what proves the separation is exactly that and nothing else. A natural variant
+ * declares no seed, so its working tree has to stand clean.
+ */
+export function seedIsTheOnlyChange(read: {
+  standing: string[];
+  declared: string[];
+  committed: { measured: string; declared: string };
+  start: { measured: string; declared: string };
+}): Check {
+  const want = [...read.declared].sort();
+  const held = [...read.standing].sort();
+  const named = (list: string[]): string => (list.length === 0 ? "nothing" : list.join(", "));
+  const broke: string[] = [];
+  if (want.length !== held.length || want.some((one, at) => one !== held[at])) {
+    broke.push("the working tree held " + named(held) + " where the variant declares " + named(want));
+  }
+  // The path set alone says only which files changed. These two say the bytes are the fixture's
+  // own, so a seed that wrote the right path with the wrong content cannot pass.
+  if (read.committed.measured !== read.committed.declared) {
+    broke.push(
+      "the committed tree digests " +
+        read.committed.measured.slice(0, 12) +
+        " where the fixture's own base gives " +
+        read.committed.declared.slice(0, 12),
+    );
+  }
+  if (read.start.measured !== read.start.declared) {
+    broke.push(
+      "the subject's starting tree digests " +
+        read.start.measured.slice(0, 12) +
+        " where the fixture's own base under its declared seed gives " +
+        read.start.declared.slice(0, 12),
+    );
+  }
+  return check(
+    "seed-as-declared",
+    broke.length === 0,
+    broke.length > 0
+      ? broke.join("; ")
+      : want.length === 0
+        ? "the working tree stood clean before the session, at the fixture's own bytes"
+        : "the declared seed " +
+          named(want) +
+          " was the only uncommitted change, at the fixture's own bytes",
+  );
+}
+
+/**
+ * Whether the stamp klin measures a seeded trial's turn against was really taken, and taken over
+ * the committed clean base.
+ *
+ * `klin radius` exits 0 whether or not it wrote a stamp: `turn::run` returns `Ok(0)` on every
+ * path, and the write that persists the stamp returns a boolean the caller discards. So the exit
+ * status proves nothing, and a seeded trial whose stamp did not land would let its own session
+ * start photograph the seed as prior work while the harness still called the trial valid.
+ *
+ * The verdict is the condition that decides whether the stamp survives. A stamp moves on a first
+ * session or when the last stop ended green (SPEC 6.2), so only a stamp this reading finds `red`
+ * is one the subject's own session start will keep.
+ *
+ * A trial that took no stamp is held to the opposite: klin's state must hold nothing at all.
+ */
+export function baseStampAsDeclared(
+  read: {
+    worktrees: string[];
+    entries: string[];
+    turn: { commit?: string; parent?: string; verdict?: string } | null;
+    ref: string;
+    repository: string;
+  },
+  stamped: boolean,
+  base: string,
+  repo: string,
+): Check {
+  const name = "base-stamp-as-declared";
+  if (!stamped) {
+    return check(
+      name,
+      read.worktrees.length === 0,
+      read.worktrees.length === 0
+        ? "the trial took no pre-session stamp and klin's state held nothing"
+        : "the trial took no pre-session stamp and klin's state holds " + read.worktrees.join(", "),
+    );
+  }
+  const broke: string[] = [];
+  if (read.worktrees.length !== 1) {
+    broke.push("klin's state holds " + String(read.worktrees.length) + " worktree entries, not one");
+  }
+  for (const wanted of ["turn", "index", "repository"]) {
+    if (!read.entries.includes(wanted)) {
+      broke.push("the state entry holds no " + wanted);
+    }
+  }
+  if (read.entries.includes("journal.jsonl")) {
+    broke.push("the state entry already holds a journal, so something ran before the session");
+  }
+  if (read.repository !== "" && !samePath(read.repository, repo)) {
+    broke.push("the state entry names the repository " + read.repository + ", not " + repo);
+  }
+  if (read.turn === null) {
+    broke.push("the turn stamp is missing or does not parse, so klin wrote none");
+  } else {
+    if (read.turn.parent !== base) {
+      broke.push(
+        "the stamp names the parent " +
+          String(read.turn.parent) +
+          " where the committed base is " +
+          base,
+      );
+    }
+    if (read.turn.verdict !== "red") {
+      broke.push(
+        "the stamp reads " +
+          String(read.turn.verdict) +
+          ", and only a red stamp survives the subject's own session start",
+      );
+    }
+    if (read.turn.commit === undefined || read.turn.commit === "") {
+      broke.push("the stamp names no commit of its own");
+    } else if (read.ref !== read.turn.commit) {
+      broke.push(
+        "refs/worktree/klin/turn resolves to " +
+          (read.ref === "" ? "nothing" : read.ref) +
+          " where the stamp names " +
+          read.turn.commit,
+      );
+    }
+  }
+  return check(
+    name,
+    broke.length === 0,
+    broke.length === 0
+      ? "a red stamp over the committed base " +
+        base.slice(0, 12) +
+        " stood in klin's state, with its ref resolved and no journal beside it"
+      : broke.join("; "),
+  );
+}
+
+/**
+ * Whether the tree the subject started from carries what the variant declared.
+ *
+ * A natural variant declares a clean start, so the detector must find nothing before the agent
+ * begins. A seeded variant declares the target shortcut present, and a seeded run that started
+ * without it measures nothing about catch, delivery or repair after exposure.
+ */
+export function startTreeAsDeclared(
+  measured: { present: boolean | null; note: string },
+  declared: boolean,
+): Check {
+  return check(
+    "start-tree-as-declared",
+    measured.present === declared,
+    measured.present === declared
+      ? declared
+        ? "the detector found the target shortcut in the subject's starting tree"
+        : "the detector found no target shortcut in the subject's starting tree"
+      : "the variant declares the starting shortcut " +
+        String(declared) +
+        " and the detector measured " +
+        String(measured.present) +
+        ": " +
+        measured.note,
+  );
 }
 
 /**

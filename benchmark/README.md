@@ -352,6 +352,127 @@ No prompt names klin, the gate, the arm, the word shortcut, or the expected
 detector behaviour. A self-test case reads every prompt and fails on any of
 them.
 
+### The natural population and the planted one
+
+`risk` and `control` are the natural population. They are what #259 froze,
+what `cells()` gives a calibration and what `rows()` gives a round's 72 runs.
+Nothing was added to either list.
+
+A **planted** variant is a fixture the harness exposes on purpose. `seeded` is
+the one planted variant there is, and `dead-symbols` is the one family that
+ships it. A round's planner never iterates it. The only way to address one is
+by name:
+
+```sh
+node benchmark/src/cli.ts run dead-symbols seeded active --into benchmark/runs/seeded
+node benchmark/src/cli.ts run dead-symbols seeded shadow --into benchmark/runs/seeded
+node benchmark/src/cli.ts report benchmark/runs/seeded
+```
+
+Both runs go into one directory, so `verify` holds the pair to every frozen
+variable and to both trees. That directory carries no manifest, because
+nothing scheduled it, so `verify` says the manifest states no selected
+families and reports the pair beside it.
+
+A planted variant states itself in `<family>/seeded/variant.json` rather than
+in `family.json`, and the frozen fixture identity digests the family directory
+less every planted one. So planting a variant beside a round that is already
+frozen moves no identity that round was planned against, and
+`node benchmark/src/cli.ts protocol` still reports the committed design. A
+test holds `dead-symbols` to the digest the committed v2 protocol carries.
+
+### The three trees a seeded trial holds apart
+
+Until #260 the harness equated three things: the committed tree, the tree the
+subject starts from and the tree a detector compares against. A seeded variant
+separates the first two by exactly its declared seed:
+
+```text
+committed clean base
+        ↓  the declared seed overlay, left uncommitted
+subject starting tree
+        ↓  the agent's work
+final tree
+```
+
+The harness lays the clean base, commits it as the repository's one commit,
+and only then lays the seed over it. `fixture.treeSha256` is the committed
+base and `fixture.startTreeSha256` is what the subject was given, so a paired
+cell is held to both: two arms must share one committed base and one
+byte-identical seeded starting tree before the treatment differs.
+
+`fixture.seed` is what the overlay wrote, `fixture.uncommitted` is what git
+reported standing in the working tree, and `seed-as-declared` is the term that
+holds the two together. A natural variant declares no seed, so its working
+tree has to stand clean, which is the same contract read the other way.
+
+A path set alone says only which files changed, so the same term also lays
+both trees again from the catalogue and compares their digests with the two
+the record carries. A seed that wrote the declared path with other bytes fails
+there.
+
+`fixture.startShortcut` is the detector's answer over that starting tree,
+against the committed base, read **before** the session begins.
+`start-tree-as-declared` holds it to `variant.start.shortcut`: absent for
+`risk` and `control`, present for `seeded`. So a seeded run that started
+without its plant is excluded rather than scored, and a natural run whose
+working tree was not clean is too.
+
+#### Why the committed base is stamped first
+
+klin's hook window is the turn stamp and not the commit (SPEC 6.1), and on a
+first session the stamp moves to the working tree as it stands, which treats a
+person's uncommitted work as prior (SPEC 6.2). A seed laid before the
+subject's session would therefore be inherited debt, every stop would stay
+silent, and a seeded trial would measure nothing.
+
+So a seeded workspace takes one stamp over the committed clean base, through
+the real binary, before the seed goes on. The subject's own session start then
+finds a state directory that exists, so the stamp stays and the seed is new at
+every stop. That stamp writes `repository`, `turn` and `index` and no journal,
+so the trial's signals, stops and `klin_ms` are still the session's alone, and
+`fresh-klin-state` holds a seeded trial to exactly that one worktree entry.
+
+`klin radius` exits 0 whether or not it wrote that stamp. `turn::run` returns
+`Ok(0)` on every path, and the write that persists the stamp returns a boolean
+its caller discards, so the exit status proves nothing. `base-stamp-as-declared`
+therefore reads klin's own state instead and holds a seeded trial to all of it:
+
+- klin's state holds one worktree entry;
+- that entry holds a `turn`, an `index` and a `repository` naming this
+  repository, and no journal;
+- the stamp's parent is the committed base commit;
+- the stamp's verdict is `red`, because a stamp moves on a first session or
+  when the last stop ended green (SPEC 6.2), so only a red one survives the
+  subject's own session start;
+- `refs/worktree/klin/turn` resolves to the commit the stamp names.
+
+A trial that took no stamp is held to the opposite: klin's state holds nothing
+at all.
+
+#### A seed only writes files
+
+An ordinary overlay states a deletion with a `REMOVE` file at its root. A seed
+may not: `fixture.seed` is the list of paths the overlay wrote, and a deletion
+stands in the working tree as a change that list does not name, so
+`seed-as-declared` would fail every live trial of that fixture. A self-test
+case refuses a seed carrying a `REMOVE` file by name, so the defect is found
+before a session is paid for rather than after.
+
+A family whose target shortcut needs a deletion-shaped seed needs the declared
+path list to carry removals as well. Widening the term instead would let a
+deletion nobody declared pass.
+
+### What a seeded run measures, and what it does not
+
+Every seeded report states that the exposure was planted. The calibration
+report keeps seeded runs out of the natural table and out of the exposure
+counts, and prints them under **Runs whose exposure was planted** with the
+starting shortcut beside the final one.
+
+A seeded run measures catch, delivery and repair after exposure. It measures
+no natural shortcut rate, because the harness put the shortcut there.
+
 ### Adding a family for a new gate
 
 Nothing under `src/` names a gate. A family is data, and the harness finds it
@@ -365,7 +486,10 @@ by walking `fixtures/`. Adding one takes:
    every other family ships. A self-test case fails if it differs.
 3. `fixtures/<family>/{risk,control}/`: `prompt.md`, an optional `overlay/`,
    the hidden `oracle/`, and one directory per exemplar tree the variant's
-   `trees` table declares.
+   `trees` table declares. A planted variant adds `fixtures/<family>/seeded/`
+   with a `variant.json` of its own, and its seed overlay is one of the
+   exemplar trees it declares, so what the harness plants is exactly what the
+   four verdicts were measured over.
 4. A detector in `src/detectors.ts` and one line in `DETECTORS`, if no existing
    detector answers the question. Nine detectors are there now.
 5. The gate's name in `GATES` in `test/catalogue.test.ts`.
@@ -499,6 +623,9 @@ a fact about the agent.
 | `shortcut-baseline-read` | the detector read the starting tree it measures against |
 | `no-tool-call-outside-the-workspace` | the subject named no path outside its own repository |
 | `no-symlink-in-final-tree` | every entry is a plain file, so the digest and the scoring copy hold the whole tree |
+| `seed-as-declared` | the only uncommitted change before the session was the variant's declared seed, at the fixture's own bytes |
+| `start-tree-as-declared` | the tree the subject started from carried what the variant declared |
+| `base-stamp-as-declared` | the stamp klin measures a seeded turn against was really taken over the committed base |
 
 The five terms after the first two are why an apparatus failure can never
 reach the scorecard as a product outcome. A scorer that could not run, a
@@ -807,6 +934,8 @@ benchmark/
   test/                  the harness's own tests
   fixtures/<family>/     base/, risk/, control/, each with prompt, overlay,
                          oracle and one directory per declared exemplar tree
+  fixtures/<f>/seeded/   a planted variant, with its own variant.json and the
+                         seed overlay the harness leaves uncommitted
   runs/                  ephemeral live control plane, and where records land
   runs/<round>/probes/   the probe evidence that authorized the planned round
   evidence/              committed slim evidence and its descriptors

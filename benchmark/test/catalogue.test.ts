@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { ARMS, VARIANTS, cells, families } from "../src/catalogue.ts";
+import { ARMS, VARIANTS, cells, families, variantIn, variantNames } from "../src/catalogue.ts";
 import { DETECTORS } from "../src/detectors.ts";
 
 /**
@@ -64,8 +64,8 @@ test("the structural gates do not all rest on one language adapter", () => {
 
 test("every variant names a detector the harness has", () => {
   for (const family of Object.values(families())) {
-    for (const name of VARIANTS) {
-      const named = family.variants[name].shortcut.detector;
+    for (const name of variantNames(family)) {
+      const named = variantIn(family, name).shortcut.detector;
       assert.ok(DETECTORS[named], family.name + "/" + name + " names " + named);
     }
   }
@@ -82,8 +82,8 @@ test("every family states what unchanged debt of its class the starting tree hol
 
 test("every variant declares the four verdicts for every tree it ships", () => {
   for (const family of Object.values(families())) {
-    for (const name of VARIANTS) {
-      const trees = Object.entries(family.variants[name].trees);
+    for (const name of variantNames(family)) {
+      const trees = Object.entries(variantIn(family, name).trees);
       assert.ok(trees.length > 0, family.name + "/" + name + " declares no exemplar tree");
       for (const [tree, declared] of trees) {
         for (const verdict of ["oracle", "suite", "shortcut", "hook"] as const) {
@@ -100,8 +100,8 @@ test("every variant declares the four verdicts for every tree it ships", () => {
 
 test("every variant ships a hidden oracle and every tree it declares", () => {
   for (const family of Object.values(families())) {
-    for (const name of VARIANTS) {
-      const variant = family.variants[name];
+    for (const name of variantNames(family)) {
+      const variant = variantIn(family, name);
       for (const held of ["oracle", ...Object.keys(variant.trees)]) {
         const where = path.join(variant.root, held);
         assert.ok(fs.existsSync(where), family.name + "/" + name + " has no " + held);
@@ -115,8 +115,8 @@ const SCAFFOLDING = new Set(["oracle", "overlay"]);
 
 test("a variant declares every exemplar directory it ships", () => {
   for (const family of Object.values(families())) {
-    for (const name of VARIANTS) {
-      const variant = family.variants[name];
+    for (const name of variantNames(family)) {
+      const variant = variantIn(family, name);
       const shipped = fs
         .readdirSync(variant.root, { withFileTypes: true })
         .filter((entry) => entry.isDirectory() && !SCAFFOLDING.has(entry.name))
@@ -131,7 +131,7 @@ test("a variant declares every exemplar directory it ships", () => {
   }
 });
 
-test("one calibration cell exists per family, variant and arm", () => {
+test("one calibration cell exists per family, natural variant and arm", () => {
   const held = cells();
   assert.equal(held.length, Object.keys(families()).length * VARIANTS.length * ARMS.length);
   assert.equal(
@@ -143,8 +143,8 @@ test("one calibration cell exists per family, variant and arm", () => {
 
 test("a task id names no gate, family, variant or arm", () => {
   for (const family of Object.values(families())) {
-    for (const name of VARIANTS) {
-      const id = family.variants[name].taskId;
+    for (const name of variantNames(family)) {
+      const id = variantIn(family, name).taskId;
       assert.match(id, /^[0-9a-f]{16}$/);
       for (const word of [family.name, family.spec.gate, name, ...ARMS]) {
         assert.ok(!id.includes(word), id + " names " + word);

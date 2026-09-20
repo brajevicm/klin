@@ -1,3 +1,4 @@
+import { VARIANTS } from "./catalogue.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
 
 /**
@@ -90,7 +91,30 @@ export interface RunRecord {
   repetition: number;
   /** The trial id of the infrastructure-invalid attempt this run replaces, or null. */
   replaces: string | null;
-  fixture: { startCommit: string; promptSha256: string; treeSha256: string };
+  /**
+   * The two trees one trial holds apart, and the seed that separates them.
+   *
+   * `treeSha256` is the committed clean base, which klin's base comparison and every detector
+   * measure against. `startTreeSha256` is the tree the subject was given, which is the same tree
+   * for a natural variant and the committed base under `seed` for a seeded one. `uncommitted` is
+   * what git reported standing in the working tree before the session, and `startShortcut` is the
+   * detector's answer over that tree, read before the agent started.
+   */
+  fixture: {
+    startCommit: string;
+    promptSha256: string;
+    treeSha256: string;
+    startTreeSha256: string;
+    seed: string[];
+    uncommitted: string[];
+    startShortcut: {
+      present: boolean | null;
+      detector: string;
+      sites: unknown[];
+      note: string;
+      unread: "base" | "final" | null;
+    };
+  };
   harness: { commit: string; dirty: boolean; treeSha256: string };
   klin: { commit: string; version: string; binarySha256: string };
   host: {
@@ -129,7 +153,14 @@ export interface RunRecord {
   stats: unknown;
   activity: { klinMs: number | null };
   turns: number | null;
-  isolation: { workspace: Isolation; freshness: Isolation; outside: Check };
+  isolation: {
+    workspace: Isolation;
+    freshness: Isolation;
+    outside: Check;
+    seed: Check;
+    start: Check;
+    baseStamp: Check;
+  };
 }
 
 const REQUIRED = [
@@ -228,6 +259,33 @@ export function validate(record: Record<string, unknown>): string[] {
   }
   if (audit.some((one) => one.auditKind === ASKED)) {
     problems.push("a deleted-test question is filed as an ordinary audit row");
+  }
+  // A planted record has to prove its plant. This reads the natural population rather than one
+  // variant's name, so a second planted variant cannot escape the contract by being called
+  // something else. Records of a natural variant state none of this and stay valid, because the
+  // natural population is committed whole and its two trees are one.
+  if (!(VARIANTS as readonly string[]).includes(String(record.variant))) {
+    const fixture = (record.fixture ?? {}) as Record<string, unknown>;
+    for (const key of ["startTreeSha256", "seed", "uncommitted", "startShortcut"]) {
+      if (!(key in fixture)) {
+        problems.push("a planted record states no fixture " + key);
+      }
+    }
+    const seed = fixture.seed;
+    if (Array.isArray(seed) && seed.length === 0) {
+      problems.push("a planted record declares no seed overlay");
+    }
+    const started = fixture.startShortcut as { present?: unknown } | undefined;
+    if (started && started.present !== true) {
+      problems.push(
+        "a planted record states the starting shortcut " +
+          String(started.present) +
+          " where a plant is only a plant when the detector found it before the session",
+      );
+    }
+    if (fixture.startTreeSha256 !== undefined && fixture.startTreeSha256 === fixture.treeSha256) {
+      problems.push("a planted record states one digest for the committed base and the subject's starting tree");
+    }
   }
   for (const hook of (record.hooks ?? []) as HookInvocation[]) {
     if (!hook.stdinClosed) {

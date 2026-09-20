@@ -50,10 +50,31 @@ const STAYED: Check = {
   detail: "every tool call the guard saw named a path inside the workspace",
 };
 
+const SEEDED: Check = {
+  name: "seed-as-declared",
+  passed: true,
+  detail: "the working tree stood clean before the session",
+};
+
+const STARTED: Check = {
+  name: "start-tree-as-declared",
+  passed: true,
+  detail: "the detector found no target shortcut in the subject's starting tree",
+};
+
+const STAMPED: Check = {
+  name: "base-stamp-as-declared",
+  passed: true,
+  detail: "the trial took no pre-session stamp and klin's state held nothing",
+};
+
 function terms(over: Partial<Parameters<typeof validity>[0]> = {}): Check[] {
   return validity({
     isolation: { verified: true, checks: WHOLE },
     freshness: { verified: true, checks: WHOLE },
+    seed: SEEDED,
+    start: STARTED,
+    baseStamp: STAMPED,
     ran: session(),
     judged: judged(),
     links: [],
@@ -182,6 +203,21 @@ test("a failed term never states the condition it failed", () => {
   const held = validity({
     isolation: { verified: false, checks: [{ name: "no-metadata-in-paths", passed: false, detail: "" }] },
     freshness: { verified: false, checks: [{ name: "fresh-klin-state", passed: false, detail: "" }] },
+    seed: {
+      name: "seed-as-declared",
+      passed: false,
+      detail: "the working tree held src/extra.ts where the variant declares nothing",
+    },
+    start: {
+      name: "start-tree-as-declared",
+      passed: false,
+      detail: "the variant declares the starting shortcut false and the detector measured true",
+    },
+    baseStamp: {
+      name: "base-stamp-as-declared",
+      passed: false,
+      detail: "the turn stamp is missing or does not parse, so klin wrote none",
+    },
     ran: session({ timedOut: true, exit: null, agent: null }),
     judged: judged(),
     links: ["src/shortcut.ts"],
@@ -192,8 +228,39 @@ test("a failed term never states the condition it failed", () => {
   }
   assert.match(failedDetail(held, "workspace-isolated"), /no-metadata-in-paths/);
   assert.match(failedDetail(held, "state-fresh"), /fresh-klin-state/);
+  assert.match(failedDetail(held, "seed-as-declared"), /src\/extra\.ts/);
+  assert.match(failedDetail(held, "start-tree-as-declared"), /the detector measured true/);
+  assert.match(failedDetail(held, "base-stamp-as-declared"), /klin wrote none/);
   assert.match(failedDetail(held, "host-result-read"), /no JSON result/);
   assert.match(failedDetail(held, "no-harness-timeout"), /killed the session/);
+});
+
+test("a pre-session stamp that did not land invalidates the run", () => {
+  assert.deepEqual(
+    failed(
+      terms({
+        baseStamp: {
+          name: "base-stamp-as-declared",
+          passed: false,
+          detail: "the stamp reads green",
+        },
+      }),
+    ),
+    ["base-stamp-as-declared"],
+  );
+});
+
+test("a seed that did not stand, or a starting tree that did not match, invalidates the run", () => {
+  assert.deepEqual(
+    failed(terms({ seed: { name: "seed-as-declared", passed: false, detail: "the tree was dirty" } })),
+    ["seed-as-declared"],
+  );
+  assert.deepEqual(
+    failed(
+      terms({ start: { name: "start-tree-as-declared", passed: false, detail: "nothing was planted" } }),
+    ),
+    ["start-tree-as-declared"],
+  );
 });
 
 test("a host that reported its own budget or turn limit is the agent giving up", () => {
@@ -369,6 +436,51 @@ test("a paired cell alike in every frozen variable raises nothing", () => {
     "verify said: " + problems.join(" / "),
   );
   fs.rmSync(where, { recursive: true, force: true });
+});
+
+/** One pair's fixture block, so a case can move one tree identity and leave the other alone. */
+function trees(base: string, subject: string): Record<string, unknown> {
+  return {
+    fixture: {
+      startCommit: "cc03061",
+      promptSha256: "p",
+      treeSha256: base,
+      startTreeSha256: subject,
+      seed: ["src/store.rs"],
+      uncommitted: ["src/store.rs"],
+      startShortcut: { present: true, detector: "new_dead_symbol", sites: [], note: "", unread: null },
+    },
+  };
+}
+
+test("a paired cell is held to one committed base and one subject starting tree", () => {
+  const rooms: string[] = [];
+  const verified = (second: Record<string, unknown>): string[] => {
+    const where = room();
+    rooms.push(where);
+    return verify(setOf(where, pair([trees("base", "seeded"), second])));
+  };
+  try {
+    assert.deepEqual(
+      verified(trees("base", "seeded")).filter((one) => /committed base|subject tree/.test(one)),
+      [],
+      "one pair over one pair of trees raised a tree problem",
+    );
+    const drifted = verified(trees("base", "other"));
+    assert.ok(
+      drifted.some((one) => one.includes("the arms did not start from one subject tree")),
+      "two arms given different seeded trees passed: " + drifted.join(" / "),
+    );
+    const moved = verified(trees("later", "seeded"));
+    assert.ok(
+      moved.some((one) => one.includes("the arms did not share one committed base")),
+      "two arms committing different bases passed: " + moved.join(" / "),
+    );
+  } finally {
+    for (const where of rooms) {
+      fs.rmSync(where, { recursive: true, force: true });
+    }
+  }
 });
 
 test("a paired cell whose arms ran different klin binaries fails", () => {
