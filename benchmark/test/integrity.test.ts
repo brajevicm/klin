@@ -370,15 +370,30 @@ test("the settings confine the subject to its own repository", () => {
   }
   const reopened = [...new Set([place.repo, fs.realpathSync(place.repo)])].sort();
   const toolchains = ["~/.cargo", "~/.rustup", "~/.npm"];
+  const runtimeCandidates = [
+    process.execPath,
+    ...(process.env.PATH ?? "").split(path.delimiter).map((one) => path.join(one, "node")),
+  ];
+  const runtimes = [...new Set(runtimeCandidates)].flatMap((one) => {
+    try {
+      return [path.dirname(path.dirname(fs.realpathSync(one)))];
+    } catch {
+      return [];
+    }
+  });
   for (const named of [settings.sandbox.filesystem.allowRead, settings.sandbox.filesystem.allowWrite]) {
     assert.deepEqual(
-      named.filter((one) => !toolchains.includes(one)).sort(),
+      named.filter((one) => !toolchains.includes(one) && !runtimes.includes(one)).sort(),
       reopened,
       "only the subject's own repository is opened, in both its forms",
     );
     for (const home of toolchains) {
       assert.ok(named.includes(home), home + " is refused, so the subject cannot run its own build");
     }
+  }
+  for (const runtime of runtimes) {
+    assert.ok(settings.sandbox.filesystem.allowRead.includes(runtime), runtime + " is refused, so npm cannot spawn Node");
+    assert.ok(!settings.sandbox.filesystem.allowWrite.includes(runtime), runtime + " is writable by the subject");
   }
   assert.deepEqual(
     settings.sandbox.network,

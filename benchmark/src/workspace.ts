@@ -81,6 +81,27 @@ const REGISTRIES = [
  */
 const TOOLCHAINS = ["~/.cargo", "~/.rustup", "~/.npm"];
 
+/** Node runtimes on PATH, which npm must spawn for a package suite. Read-only in the subject. */
+function nodeRuntimes(): string[] {
+  const candidates = [
+    process.execPath,
+    ...(process.env.PATH ?? "").split(path.delimiter).map((one) => path.join(one, "node")),
+  ];
+  return [
+    ...new Set(
+      candidates.flatMap((one) => {
+        try {
+          return [path.dirname(path.dirname(fs.realpathSync(one)))];
+        } catch {
+          return [];
+        }
+      }),
+    ),
+  ];
+}
+
+const NODE_RUNTIMES = nodeRuntimes();
+
 /**
  * A path and its symbolic-link-resolved form, deduplicated.
  *
@@ -144,7 +165,7 @@ function confinement(
       allowUnsandboxedCommands: false,
       filesystem: {
         denyRead: deniedRead.flatMap(forms),
-        allowRead: [...own, ...TOOLCHAINS],
+        allowRead: [...own, ...TOOLCHAINS, ...NODE_RUNTIMES],
         denyWrite: deniedWrite.flatMap(forms),
         allowWrite: [...own, ...TOOLCHAINS],
       },
