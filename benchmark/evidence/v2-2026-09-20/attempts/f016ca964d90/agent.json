@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/f016ca964d90/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "ddf9b2d6-a571-459a-8d6e-e659dac06ce9",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "69b1284244f034b968ccb749c5f14e4e6aa51da05fb43bdfbc2b1a359c85bf87",
+  "sessionId": "ddf9b2d6-a571-459a-8d6e-e659dac06ce9",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":31870,\"stop_reason\":\"end_turn\",\"session_id\":\"ddf9b2d6-a571-459a-8d6e-e659dac06ce9\",\"total_cost_usd\":0.15562560000000003,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":16532,\"cache_read_input_tokens\":304978,\"output_tokens\":2847,\"output_tokens_details\":{\"thinking_tokens\":242},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16532,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":91,\"cache_read_input_tokens\":42452,\"cache_creation_input_tokens\":825,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":825},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":2847,\"cacheReadInputTokens\":304978,\"cacheCreationInputTokens\":16532,\"webSearchRequests\":0,\"costUSD\":0.15562560000000003,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":242,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Added `--json` support to `list` in `src/commands/list_command.rs` (outputs a compact JSON array, escaping `\\\"` and `\\\\`), and covered it with three new tests in `tests/cli.rs` (empty case, multiple names, and escaping).\",\"ttft_ms\":2241,\"type\":\"result\",\"duration_ms\":36033,\"uuid\":\"0b937656-fa70-4894-bef3-153f43f4a357\",\"ttft_stream_ms\":1847,\"time_to_request_ms\":259,\"first_content_frame_ms\":1848,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 31870,
+    "stop_reason": "end_turn",
+    "session_id": "ddf9b2d6-a571-459a-8d6e-e659dac06ce9",
+    "total_cost_usd": 0.15562560000000003,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 16532,
+      "cache_read_input_tokens": 304978,
+      "output_tokens": 2847,
+      "output_tokens_details": {
+        "thinking_tokens": 242
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16532,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 91,
+          "cache_read_input_tokens": 42452,
+          "cache_creation_input_tokens": 825,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 825
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 2847,
+        "cacheReadInputTokens": 304978,
+        "cacheCreationInputTokens": 16532,
+        "webSearchRequests": 0,
+        "costUSD": 0.15562560000000003,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 242,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Added `--json` support to `list` in `src/commands/list_command.rs` (outputs a compact JSON array, escaping `\"` and `\\`), and covered it with three new tests in `tests/cli.rs` (empty case, multiple names, and escaping).",
+    "ttft_ms": 2241,
+    "type": "result",
+    "duration_ms": 36033,
+    "uuid": "0b937656-fa70-4894-bef3-153f43f4a357",
+    "ttft_stream_ms": 1847,
+    "time_to_request_ms": 259,
+    "first_content_frame_ms": 1848,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T19:43:16.769Z",
+  "endedAt": "2026-09-20T19:43:54.430Z",
+  "wallMs": 37663,
+  "timedOut": false
+}

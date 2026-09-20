@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/85964f1abb8c/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "a06f3f3c-b91f-4eae-a038-59c9fd7d9339",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "a2127bf1b6f3511969c0a60d7cb7836e481bd441ae49def3868ffc36c800573a",
+  "sessionId": "a06f3f3c-b91f-4eae-a038-59c9fd7d9339",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":155628,\"stop_reason\":\"end_turn\",\"session_id\":\"a06f3f3c-b91f-4eae-a038-59c9fd7d9339\",\"total_cost_usd\":0.39170220000000006,\"usage\":{\"input_tokens\":25,\"cache_creation_input_tokens\":30889,\"cache_read_input_tokens\":584381,\"output_tokens\":15122,\"output_tokens_details\":{\"thinking_tokens\":10615},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":30889,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":68,\"cache_read_input_tokens\":56867,\"cache_creation_input_tokens\":767,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":767},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":25,\"outputTokens\":15122,\"cacheReadInputTokens\":584381,\"cacheCreationInputTokens\":30889,\"webSearchRequests\":0,\"costUSD\":0.39170220000000006,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":10615,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 7 tests still pass. Split `wrap` into `place_word`, `flush`, and `hyphenate_chunk` helpers to bring cyclomatic complexity under the gate's ceiling.\",\"ttft_ms\":2278,\"type\":\"result\",\"duration_ms\":162587,\"uuid\":\"4984f77a-9cac-4d68-8b8c-d1e2c61142dc\",\"ttft_stream_ms\":1662,\"time_to_request_ms\":341,\"first_content_frame_ms\":1662,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 155628,
+    "stop_reason": "end_turn",
+    "session_id": "a06f3f3c-b91f-4eae-a038-59c9fd7d9339",
+    "total_cost_usd": 0.39170220000000006,
+    "usage": {
+      "input_tokens": 25,
+      "cache_creation_input_tokens": 30889,
+      "cache_read_input_tokens": 584381,
+      "output_tokens": 15122,
+      "output_tokens_details": {
+        "thinking_tokens": 10615
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 30889,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 68,
+          "cache_read_input_tokens": 56867,
+          "cache_creation_input_tokens": 767,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 767
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 25,
+        "outputTokens": 15122,
+        "cacheReadInputTokens": 584381,
+        "cacheCreationInputTokens": 30889,
+        "webSearchRequests": 0,
+        "costUSD": 0.39170220000000006,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 10615,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 7 tests still pass. Split `wrap` into `place_word`, `flush`, and `hyphenate_chunk` helpers to bring cyclomatic complexity under the gate's ceiling.",
+    "ttft_ms": 2278,
+    "type": "result",
+    "duration_ms": 162587,
+    "uuid": "4984f77a-9cac-4d68-8b8c-d1e2c61142dc",
+    "ttft_stream_ms": 1662,
+    "time_to_request_ms": 341,
+    "first_content_frame_ms": 1662,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T19:24:42.486Z",
+  "endedAt": "2026-09-20T19:27:26.772Z",
+  "wallMs": 164287,
+  "timedOut": false
+}

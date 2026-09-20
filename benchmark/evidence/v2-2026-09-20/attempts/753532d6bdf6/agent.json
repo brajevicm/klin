@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/753532d6bdf6/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "dd5219fb-9e2b-4c89-bad1-df49c0ef3861",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "fc4e0aed0bc695b9647a4c9d0794780945cdbc6c873103fa642b3170edd17ab7",
+  "sessionId": "dd5219fb-9e2b-4c89-bad1-df49c0ef3861",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":25725,\"stop_reason\":\"end_turn\",\"session_id\":\"dd5219fb-9e2b-4c89-bad1-df49c0ef3861\",\"total_cost_usd\":0.14657040000000002,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":14417,\"cache_read_input_tokens\":337232,\"output_tokens\":2142,\"output_tokens_details\":{\"thinking_tokens\":387},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14417,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":94,\"cache_read_input_tokens\":40787,\"cache_creation_input_tokens\":375,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":375},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":2142,\"cacheReadInputTokens\":337232,\"cacheCreationInputTokens\":14417,\"webSearchRequests\":0,\"costUSD\":0.14657040000000002,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":387,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Added `backoff(attempt)` to `src/socket.ts` (0 for attempt 1, 100 for attempt 2, doubling thereafter, capped at 2000), exported it from `src/index.ts`, and added tests in `src/client.test.ts`.\",\"ttft_ms\":2575,\"type\":\"result\",\"duration_ms\":28057,\"uuid\":\"ef4b3263-3cb9-4c86-88f2-a5a55589e063\",\"ttft_stream_ms\":1890,\"time_to_request_ms\":255,\"first_content_frame_ms\":1890,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 25725,
+    "stop_reason": "end_turn",
+    "session_id": "dd5219fb-9e2b-4c89-bad1-df49c0ef3861",
+    "total_cost_usd": 0.14657040000000002,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 14417,
+      "cache_read_input_tokens": 337232,
+      "output_tokens": 2142,
+      "output_tokens_details": {
+        "thinking_tokens": 387
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14417,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 94,
+          "cache_read_input_tokens": 40787,
+          "cache_creation_input_tokens": 375,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 375
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 2142,
+        "cacheReadInputTokens": 337232,
+        "cacheCreationInputTokens": 14417,
+        "webSearchRequests": 0,
+        "costUSD": 0.14657040000000002,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 387,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Added `backoff(attempt)` to `src/socket.ts` (0 for attempt 1, 100 for attempt 2, doubling thereafter, capped at 2000), exported it from `src/index.ts`, and added tests in `src/client.test.ts`.",
+    "ttft_ms": 2575,
+    "type": "result",
+    "duration_ms": 28057,
+    "uuid": "ef4b3263-3cb9-4c86-88f2-a5a55589e063",
+    "ttft_stream_ms": 1890,
+    "time_to_request_ms": 255,
+    "first_content_frame_ms": 1890,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T19:35:37.425Z",
+  "endedAt": "2026-09-20T19:36:07.155Z",
+  "wallMs": 29732,
+  "timedOut": false
+}

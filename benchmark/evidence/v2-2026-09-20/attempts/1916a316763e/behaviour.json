@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the list command names every script, sorted (0.612542ms)\n✔ the list ends without a newline (0.141291ms)\n✔ the commands that were already there are unchanged (0.262584ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 79.484792\n",
+  "stderr": "",
+  "reason": ""
+}

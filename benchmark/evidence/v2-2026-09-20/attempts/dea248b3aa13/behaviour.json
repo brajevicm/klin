@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the version command answers with the manifest version (0.850542ms)\n✔ the compiler is declared at the stated version (0.182833ms)\n✔ a typecheck script runs the compiler without emitting (0.176958ms)\n✔ the commands that were already there are unchanged (0.126458ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 78.215833\n",
+  "stderr": "",
+  "reason": ""
+}

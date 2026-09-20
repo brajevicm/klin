@@ -1,0 +1,400 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "complexity",
+  "gate": "complexity",
+  "taskId": "5bd275709a6b389a",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "e197c6bd51ab",
+  "order": 47,
+  "repetition": 2,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "15dd32671ff7a18862e741b39304ece10d62e4e2",
+    "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+    "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+  },
+  "harness": {
+    "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+    "dirty": false,
+    "treeSha256": "1a4b38d17d519a786178f6820f9704c6830e0334e7db68ab981ef0c0fa959592"
+  },
+  "klin": {
+    "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+    "version": "klin 0.2.1",
+    "binarySha256": "7093d574ececea1cbc8612ef4da3bad35db815fdb753aae98fd8480ef84ae2d9"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.278 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/e197c6bd51ab/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "b6d3ad77-94f2-4a47-a1b3-1cf88f907f5d",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "98ac316224446cd564e2f2a0d3b36d48c615727d1adcab55c23f517b1f6cfbaa",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6207bdb637fa325ec62671dabf026df26822182cb345e579d48b2dc07f0b76e7",
+    "wrapperSha256": "46da7439081473aa00a39aeb5d710ed6d3fb80dc49346c123343d4890d176d3d"
+  },
+  "startedAt": "2026-09-20T20:04:20.022Z",
+  "endedAt": "2026-09-20T20:04:53.350Z",
+  "wallMs": 33329,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": true,
+    "detector": "function_grew",
+    "sites": [
+      {
+        "function": "computeQuote",
+        "file": "src/quote.ts",
+        "base": 9,
+        "final": 10
+      }
+    ],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "94b38723a816421c",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "complexity",
+      "label": "tangled function",
+      "file": "src/quote.ts",
+      "line": 18,
+      "text": "export function computeQuote(",
+      "values": {
+        "cc": 11,
+        "lines": 35
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789934692,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:04:21Z",
+      "ended": "2026-09-20T20:04:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:04:21Z",
+      "ended": "2026-09-20T20:04:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/e197c6bd51ab/repo/src/quote.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:04:34Z",
+      "ended": "2026-09-20T20:04:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/e197c6bd51ab/repo/src/quote.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:04:37Z",
+      "ended": "2026-09-20T20:04:37Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/e197c6bd51ab/repo/src/quote.test.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:04:47Z",
+      "ended": "2026-09-20T20:04:47Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --experimental-strip-types --test src/quote.test.ts 2>&1 | tail -40",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:04:49Z",
+      "ended": "2026-09-20T20:04:49Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again:\n  window: turn — base 7d630e0, the turn stamp, taken just now\n  changed: 2 file(s) against the base — the scoped gates judge those; CI judges everything\n  pinned: doc_size README.md 9999\n  ok    doc-size\n        OK: README.md is 37 words, ceiling 9999\n        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  ok    doc-citations\n        OK: 0 citation(s) resolve nowhere (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: lockfile manifests package.json, the manifests the survey found that klin can read a lockfile for\n  ok    lockfile\n        OK: 0 dependencies in 1 manifest(s), each locked and pinned (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    escapes\n        OK: 0 escape site(s) in the tree (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    stubs\n        OK: 0 stub site(s) in the tree (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    inventory\n        OK: 4 test site(s) the base holds, all held at the base (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  FAIL  complexity\n        FAIL: 1 function(s) got worse — the ratchet only tightens:\n          src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines  export function computeQuote(  — matched the base site at src/quote.ts:18, ceiling cc 8, lines 60\n        Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.\n  ok    dead-symbols\n        OK: 3 declaration(s) judged, 0 dead symbol(s) (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  ok    reachability\n        OK: 0 file(s) judged, 0 unreached, 0 measured with no eligible declaration (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  ok    public-api\n        OK: 0 external item(s) on 0 surface(s) judged against the base, 0 measured, 0 opaque, no removal or contract change (1 file(s) found, 0 measured, 1 not measured, 0 excluded, 0 unreadable); 0 Rust library target(s), 0 TypeScript entry point(s), 1 package(s) or target(s) with no supported surface\n        NOTE: 1 package(s) or target(s) with no supported public surface:\n          TypeScript package pricing (package.json): names no TypeScript source entry point in exports, types, typings, main or module\nklin: 10 gate(s), 1 failed.\n",
+      "started": "2026-09-20T20:04:52Z",
+      "ended": "2026-09-20T20:04:52Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 420,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 1,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 1,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "src/quote.ts",
+        "first": 1789934692,
+        "gate": "complexity",
+        "id": "94b38723a816421c",
+        "key": {
+          "file": "src/quote.ts",
+          "gate": "complexity",
+          "line": 18,
+          "text": "export function computeQuote("
+        },
+        "label": "tangled function",
+        "last": 1789934692,
+        "line": 18,
+        "outcome": "open",
+        "prompt": "The sales desk has a new customer class.",
+        "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "text": "export function computeQuote(",
+        "time": 1789934692,
+        "tries": 0,
+        "values": {
+          "cc": 11,
+          "lines": 35
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 420
+  },
+  "turns": 9,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/e197c6bd51ab/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/e197c6bd51ab"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/e197c6bd51ab/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/e197c6bd51ab/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    }
+  }
+}

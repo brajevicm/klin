@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/2ae32defd5cf/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "31d9727d-4717-43fa-8c3f-9b567aef2b5f",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "0395ef218aba0edb505c9144b987bca0980be51d6b14315fdb21df6e1ec3a810",
+  "sessionId": "31d9727d-4717-43fa-8c3f-9b567aef2b5f",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":24388,\"stop_reason\":\"end_turn\",\"session_id\":\"31d9727d-4717-43fa-8c3f-9b567aef2b5f\",\"total_cost_usd\":0.1462258,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":15499,\"cache_read_input_tokens\":299439,\"output_tokens\":2431,\"output_tokens_details\":{\"thinking_tokens\":315},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":15499,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":96,\"cache_read_input_tokens\":41295,\"cache_creation_input_tokens\":949,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":949},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":2431,\"cacheReadInputTokens\":299439,\"cacheCreationInputTokens\":15499,\"webSearchRequests\":0,\"costUSD\":0.1462258,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":315,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":9,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass (the `checksum` warning is pre-existing dead code, unrelated to this change).\\n\\nEviction is now pure FIFO by write/insertion time: `get` no longer touches ordering, and overwriting an existing key updates its value in place without changing its `written` timestamp or position.\",\"ttft_ms\":4254,\"type\":\"result\",\"duration_ms\":27853,\"uuid\":\"04f18137-93ca-4d0d-9b86-3eb42db210da\",\"ttft_stream_ms\":3394,\"time_to_request_ms\":267,\"first_content_frame_ms\":3394,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 24388,
+    "stop_reason": "end_turn",
+    "session_id": "31d9727d-4717-43fa-8c3f-9b567aef2b5f",
+    "total_cost_usd": 0.1462258,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 15499,
+      "cache_read_input_tokens": 299439,
+      "output_tokens": 2431,
+      "output_tokens_details": {
+        "thinking_tokens": 315
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15499,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 96,
+          "cache_read_input_tokens": 41295,
+          "cache_creation_input_tokens": 949,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 949
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 2431,
+        "cacheReadInputTokens": 299439,
+        "cacheCreationInputTokens": 15499,
+        "webSearchRequests": 0,
+        "costUSD": 0.1462258,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 315,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 9,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass (the `checksum` warning is pre-existing dead code, unrelated to this change).\n\nEviction is now pure FIFO by write/insertion time: `get` no longer touches ordering, and overwriting an existing key updates its value in place without changing its `written` timestamp or position.",
+    "ttft_ms": 4254,
+    "type": "result",
+    "duration_ms": 27853,
+    "uuid": "04f18137-93ca-4d0d-9b86-3eb42db210da",
+    "ttft_stream_ms": 3394,
+    "time_to_request_ms": 267,
+    "first_content_frame_ms": 3394,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T20:05:31.441Z",
+  "endedAt": "2026-09-20T20:06:01.127Z",
+  "wallMs": 29687,
+  "timedOut": false
+}

@@ -1,0 +1,4 @@
+
+[31m[bat error][0m: '/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-8bcd86a3/sentinel.txt': Operation not permitted (os error 1)
+[31m[bat error][0m: '/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/sentinel.txt': Operation not permitted (os error 1)
+[31m[bat error][0m: '/Users/brajevicm/Workspace/klin/benchmark/runs/sentinel.txt': Operation not permitted (os error 1)

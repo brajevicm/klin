@@ -1,0 +1,32 @@
+#!/bin/sh
+# The probe's witness hook, as a template. `workspace.materialize` writes one copy per probe,
+# under a name of random bytes inside that probe's plane, the way it writes the klin wrapper.
+#
+# It runs klin's PostToolUse event, which no trial wires, and it is what makes the probe's suite
+# verdict trusted evidence. The subject's own workspace is writable, so a status file the subject
+# wrote proves nothing: the subject could write it without running anything. This hook records
+# the host's own payload, which carries the command the subject asked for and what that command
+# printed, into the plane the subject cannot write.
+#
+# It answers nothing and it decides nothing. It reads the payload, keeps it and exits 0, so the
+# subject's own session is unchanged by it.
+#
+# Usage: <this file>
+set -u
+
+plane='/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-004660df'
+
+case "$plane" in
+    /*) ;;
+    *)
+        printf 'witness: the plane must be an absolute path, and it is "%s"\n' "$plane" >&2
+        exit 64
+        ;;
+esac
+
+room=$plane/witness
+payload=$(cat)
+mkdir -p "$room"
+seq=$(find "$room" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')
+printf '%s' "$payload" >"$room/$(printf '%04d' "$seq")-$$.json"
+exit 0

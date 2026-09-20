@@ -1,0 +1,482 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "doc-citations",
+  "gate": "doc-citations",
+  "taskId": "054c71912bbb36c7",
+  "variant": "risk",
+  "arm": "active",
+  "trialId": "848d1fc0bbb6",
+  "order": 63,
+  "repetition": 3,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "075be4b748f37c1ef8f8147b94932f10c7e8a52b",
+    "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+    "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
+  },
+  "harness": {
+    "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+    "dirty": false,
+    "treeSha256": "1a4b38d17d519a786178f6820f9704c6830e0334e7db68ab981ef0c0fa959592"
+  },
+  "klin": {
+    "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+    "version": "klin 0.2.1",
+    "binarySha256": "7093d574ececea1cbc8612ef4da3bad35db815fdb753aae98fd8480ef84ae2d9"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.278 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/848d1fc0bbb6/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "cd8da39a-40e2-429d-946f-f63710ebf954",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "c231717f79b59a169a4183b3861ffb909e02aa8b25de9c3adda215546d6559b9",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6207bdb637fa325ec62671dabf026df26822182cb345e579d48b2dc07f0b76e7",
+    "wrapperSha256": "46da7439081473aa00a39aeb5d710ed6d3fb80dc49346c123343d4890d176d3d"
+  },
+  "startedAt": "2026-09-20T20:14:28.875Z",
+  "endedAt": "2026-09-20T20:15:07.989Z",
+  "wallMs": 39115,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "broken_citation",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "0bbb6f67dbad2d2c",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "README.md",
+      "line": 9,
+      "text": "src/client.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/transport/client.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "fixed-next",
+      "tries": 1,
+      "decision": null,
+      "reason": null,
+      "time": 1789935295,
+      "delivery": "delivered"
+    },
+    {
+      "identity": "2dbc9d19382e3d42",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "README.md",
+      "line": 12,
+      "text": "src/socket.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/transport/socket.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "fixed-next",
+      "tries": 1,
+      "decision": null,
+      "reason": null,
+      "time": 1789935295,
+      "delivery": "delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:29Z",
+      "ended": "2026-09-20T20:14:30Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:30Z",
+      "ended": "2026-09-20T20:14:30Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find src -type f | sort",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:32Z",
+      "ended": "2026-09-20T20:14:32Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cat package.json 2>/dev/null; echo ---; cat tsconfig.json 2>/dev/null; echo ---; find . -maxdepth 2 -type f -name \"*.json\" -not -path \"./node_modules/*\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:42Z",
+      "ended": "2026-09-20T20:14:42Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "mkdir -p src/transport && git mv src/client.ts src/transport/client.ts && git mv src/socket.ts src/transport/socket.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:44Z",
+      "ended": "2026-09-20T20:14:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/848d1fc0bbb6/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:49Z",
+      "ended": "2026-09-20T20:14:49Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:14:51Z",
+      "ended": "2026-09-20T20:14:51Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again:\n  window: turn — base c57db08, the turn stamp, taken just now\n  changed: 3 file(s) against the base — the scoped gates judge those; CI judges everything\n  pinned: doc_size README.md 9999\n  ok    doc-size\n        OK: README.md is 80 words, ceiling 9999\n        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  FAIL  doc-citations\n        FAIL: 2 new citation(s) where a document cites a file that resolves nowhere, beyond the 1 the base holds:\n          README.md:9  not under the roots — likely src/transport/client.ts  src/client.ts  — nothing matched\n          README.md:12  not under the roots — likely src/transport/socket.ts  src/socket.ts  — nothing matched\n        Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.\n  derived: lockfile manifests package.json, the manifests the survey found that klin can read a lockfile for\n  ok    lockfile\n        OK: 0 dependencies in 1 manifest(s), each locked and pinned (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    escapes\n        OK: 0 escape site(s) in the tree (3 file(s) found, 3 measured, 0 excluded, 0 unreadable)\n  ok    stubs\n        OK: 0 stub site(s) in the tree (3 file(s) found, 3 measured, 0 excluded, 0 unreadable)\n  ok    inventory\n        OK: 0 test site(s) the base holds (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  ok    complexity\n        OK: 2 function(s) judged, 0 over the gate (3 file(s) found, 3 measured, 0 excluded, 0 unreadable)\n  ok    dead-symbols\n        OK: 2 declaration(s) judged, 0 dead symbol(s) (3 file(s) found, 3 measured, 0 excluded, 0 unreadable)\n  ok    reachability\n        OK: 0 file(s) judged, 0 unreached, 0 measured with no eligible declaration (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  ok    public-api\n        OK: 0 external item(s) on 0 surface(s) judged against the base, 0 measured, 0 opaque, no removal or contract change (1 file(s) found, 0 measured, 1 not measured, 0 excluded, 0 unreadable); 0 Rust library target(s), 0 TypeScript entry point(s), 1 package(s) or target(s) with no supported surface\n        NOTE: 1 package(s) or target(s) with no supported public surface:\n          TypeScript package transport (package.json): names no TypeScript source entry point in exports, types, typings, main or module\nklin: 10 gate(s), 1 failed.\n",
+      "started": "2026-09-20T20:14:54Z",
+      "ended": "2026-09-20T20:14:55Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/848d1fc0bbb6/repo/README.md",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T20:15:04Z",
+      "ended": "2026-09-20T20:15:04Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": true,
+      "stdout": "{\"systemMessage\":\"klin caught 2 regressions this turn. All 2 were fixed after klin flagged them.\"}\n",
+      "stderr": "",
+      "started": "2026-09-20T20:15:06Z",
+      "ended": "2026-09-20T20:15:07Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 2,
+    "guardRefusals": 0,
+    "tries": 2,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 1377,
+      "stops": 2
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 2,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 2,
+      "open": 0,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "README.md",
+        "first": 1789935295,
+        "gate": "doc-citations",
+        "id": "0bbb6f67dbad2d2c",
+        "key": {
+          "file": "README.md",
+          "gate": "doc-citations",
+          "line": 9,
+          "text": "src/client.ts"
+        },
+        "label": "broken citation",
+        "last": 1789935307,
+        "line": 9,
+        "outcome": "fixed-next",
+        "prompt": "The wire layer should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/client.ts",
+        "time": 1789935295,
+        "tries": 1,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/transport/client.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "README.md",
+        "first": 1789935295,
+        "gate": "doc-citations",
+        "id": "2dbc9d19382e3d42",
+        "key": {
+          "file": "README.md",
+          "gate": "doc-citations",
+          "line": 12,
+          "text": "src/socket.ts"
+        },
+        "label": "broken citation",
+        "last": 1789935307,
+        "line": 12,
+        "outcome": "fixed-next",
+        "prompt": "The wire layer should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/socket.ts",
+        "time": 1789935295,
+        "tries": 1,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/transport/socket.ts"
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 2,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 1377
+  },
+  "turns": 13,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/848d1fc0bbb6/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/848d1fc0bbb6"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/848d1fc0bbb6/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/848d1fc0bbb6/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    }
+  }
+}

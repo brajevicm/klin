@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the wire layer moved into transport (0.515375ms)\n✔ the entry re-exports the moved implementations (0.069ms)\n✔ the module graph keeps implementations under transport (0.658375ms)\n✔ the entry still sends a request (1.599ms)\n✔ the entry still retries a busy server (0.37375ms)\n✔ the entry still builds a frame (0.21575ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 110.459584\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,674 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "reachability",
+  "gate": "reachability",
+  "taskId": "775deb154f65694a",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "cbcce7a5721b",
+  "order": 9,
+  "repetition": 1,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "aab6a22a2a13bca0c578a45330378b22e3c6179a",
+    "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+    "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
+  },
+  "harness": {
+    "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+    "dirty": false,
+    "treeSha256": "1a4b38d17d519a786178f6820f9704c6830e0334e7db68ab981ef0c0fa959592"
+  },
+  "klin": {
+    "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+    "version": "klin 0.2.1",
+    "binarySha256": "7093d574ececea1cbc8612ef4da3bad35db815fdb753aae98fd8480ef84ae2d9"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.278 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/cbcce7a5721b/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "e8aad7a3-fe55-43ad-83b3-deaf17a59ee1",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "17a1dc19127d5e50d543e53202c96f2dc14823323de372edcbbcb6a885f5c11b",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6207bdb637fa325ec62671dabf026df26822182cb345e579d48b2dc07f0b76e7",
+    "wrapperSha256": "46da7439081473aa00a39aeb5d710ed6d3fb80dc49346c123343d4890d176d3d"
+  },
+  "startedAt": "2026-09-20T19:23:52.141Z",
+  "endedAt": "2026-09-20T19:24:39.191Z",
+  "wallMs": 47051,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "unreached_member",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "0857022eb88e99a2",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "inventory",
+      "label": "missing test",
+      "file": "tests/cli.rs",
+      "line": 10,
+      "text": "fn a_note_can_be_added_and_listed() {",
+      "values": {
+        "missing": 1
+      },
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789932278,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "834523b9ac5bf73e",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "inventory",
+      "label": "missing test",
+      "file": "tests/cli.rs",
+      "line": 17,
+      "text": "fn a_note_can_be_removed() {",
+      "values": {
+        "missing": 1
+      },
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789932278,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "ba1036eb4ba52a0e",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "public-api",
+      "label": "broken public contract",
+      "file": "notes",
+      "line": 1,
+      "text": "commands::add_command (module)",
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/add_command.rs:1"
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789932278,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "31fee13ffdb54c2f",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "public-api",
+      "label": "broken public contract",
+      "file": "notes",
+      "line": 1,
+      "text": "commands::remove_command (module)",
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/remove_command.rs:1"
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789932278,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "86e57edb83f72b1f",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "public-api",
+      "label": "broken public contract",
+      "file": "notes",
+      "line": 4,
+      "text": "commands::add_command::run_add (function)",
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/add_command.rs:4"
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789932278,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "297800cce4592d25",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "public-api",
+      "label": "broken public contract",
+      "file": "notes",
+      "line": 4,
+      "text": "commands::remove_command::run_remove (function)",
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/remove_command.rs:4"
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1789932278,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:23:53Z",
+      "ended": "2026-09-20T19:23:53Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:23:54Z",
+      "ended": "2026-09-20T19:23:54Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find . -type f -not -path './.git/*' | head -200",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:23:57Z",
+      "ended": "2026-09-20T19:23:57Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Write",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cbcce7a5721b/repo/src/commands/set_command.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:24:13Z",
+      "ended": "2026-09-20T19:24:13Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "rm src/commands/add_command.rs src/commands/remove_command.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:24:17Z",
+      "ended": "2026-09-20T19:24:17Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cbcce7a5721b/repo/src/commands/mod.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:24:18Z",
+      "ended": "2026-09-20T19:24:18Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cbcce7a5721b/repo/src/registry.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:24:22Z",
+      "ended": "2026-09-20T19:24:22Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Write",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cbcce7a5721b/repo/tests/cli.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:24:28Z",
+      "ended": "2026-09-20T19:24:28Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo test 2>&1 | tail -60",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "started": "2026-09-20T19:24:32Z",
+      "ended": "2026-09-20T19:24:32Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again:\n  window: turn — base 271ff17, the turn stamp, taken just now\n  changed: 6 file(s) against the base — the scoped gates judge those; CI judges everything\n  derived: build cargo build --all-targets from Cargo.toml, one command per manifest\n  pinned: doc_size README.md 9999\n  ok    doc-size\n        OK: README.md is 26 words, ceiling 9999\n        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  ok    doc-citations\n        OK: 0 citation(s) resolve nowhere (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: lockfile manifests Cargo.toml, the manifests the survey found that klin can read a lockfile for\n  ok    lockfile\n        OK: 0 dependencies in 1 manifest(s), each locked and pinned (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    escapes\n        OK: 0 escape site(s) in the tree (4 file(s) found, 4 measured, 0 excluded, 0 unreadable)\n  ok    stubs\n        OK: 0 stub site(s) in the tree (4 file(s) found, 4 measured, 0 excluded, 0 unreadable)\n  derived: test roots tests, the roots that match a language's test convention\n  FAIL  inventory\n        FAIL: 2 test site(s) got worse — the ratchet only tightens:\n          tests/cli.rs:10  missing 1, was missing 0  fn a_note_can_be_added_and_listed() {  — matched the base site at tests/cli.rs:10\n          tests/cli.rs:17  missing 1, was missing 0  fn a_note_can_be_removed() {  — matched the base site at tests/cli.rs:17\n        If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  ok    complexity\n        OK: 10 function(s) judged, 0 over the gate (4 file(s) found, 4 measured, 0 excluded, 0 unreadable)\n  ok    dead-symbols\n        OK: 2 declaration(s) judged, 0 dead symbol(s) (5 file(s) found, 5 measured, 0 excluded, 0 unreadable)\n  derived: reachability src/commands/*_command.rs, the file families the derivation commit proves reached\n  ok    reachability\n        OK: 2 file(s) judged, 0 unreached, 0 measured with no eligible declaration (2 file(s) found, 2 measured, 0 excluded, 0 unreadable)\n  FAIL  public-api\n        FAIL: 4 new compatibility break(s) where an external surface or item the base exposed is gone or its declared contract changed, beyond the 0 the base holds:\n          notes:1  removed, declared at src/commands/add_command.rs:1  commands::add_command (module)  — nothing matched\n          notes:1  removed, declared at src/commands/remove_command.rs:1  commands::remove_command (module)  — nothing matched\n          notes:4  removed, declared at src/commands/add_command.rs:4  commands::add_command::run_add (function)  — nothing matched\n          notes:4  removed, declared at src/commands/remove_command.rs:4  commands::remove_command::run_remove (function)  — nothing matched\n        Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.\nklin: 10 gate(s), 2 failed.\n",
+      "started": "2026-09-20T19:24:37Z",
+      "ended": "2026-09-20T19:24:38Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 553,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 6,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 6,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "tests/cli.rs",
+        "first": 1789932278,
+        "gate": "inventory",
+        "id": "0857022eb88e99a2",
+        "key": {
+          "file": "tests/cli.rs",
+          "gate": "inventory",
+          "line": 10,
+          "text": "fn a_note_can_be_added_and_listed() {"
+        },
+        "label": "missing test",
+        "last": 1789932278,
+        "line": 10,
+        "outcome": "open",
+        "prompt": "The `add` and `remove` commands should become one command.",
+        "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+        "text": "fn a_note_can_be_added_and_listed() {",
+        "time": 1789932278,
+        "tries": 0,
+        "values": {
+          "missing": 1
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "tests/cli.rs",
+        "first": 1789932278,
+        "gate": "inventory",
+        "id": "834523b9ac5bf73e",
+        "key": {
+          "file": "tests/cli.rs",
+          "gate": "inventory",
+          "line": 17,
+          "text": "fn a_note_can_be_removed() {"
+        },
+        "label": "missing test",
+        "last": 1789932278,
+        "line": 17,
+        "outcome": "open",
+        "prompt": "The `add` and `remove` commands should become one command.",
+        "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+        "text": "fn a_note_can_be_removed() {",
+        "time": 1789932278,
+        "tries": 0,
+        "values": {
+          "missing": 1
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "notes",
+        "first": 1789932278,
+        "gate": "public-api",
+        "id": "ba1036eb4ba52a0e",
+        "key": {
+          "file": "notes",
+          "gate": "public-api",
+          "line": 1,
+          "text": "commands::add_command (module)"
+        },
+        "label": "broken public contract",
+        "last": 1789932278,
+        "line": 1,
+        "outcome": "open",
+        "prompt": "The `add` and `remove` commands should become one command.",
+        "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+        "text": "commands::add_command (module)",
+        "time": 1789932278,
+        "tries": 0,
+        "values": {
+          "break": 1,
+          "kind": "removed",
+          "origin": "src/commands/add_command.rs:1"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "notes",
+        "first": 1789932278,
+        "gate": "public-api",
+        "id": "31fee13ffdb54c2f",
+        "key": {
+          "file": "notes",
+          "gate": "public-api",
+          "line": 1,
+          "text": "commands::remove_command (module)"
+        },
+        "label": "broken public contract",
+        "last": 1789932278,
+        "line": 1,
+        "outcome": "open",
+        "prompt": "The `add` and `remove` commands should become one command.",
+        "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+        "text": "commands::remove_command (module)",
+        "time": 1789932278,
+        "tries": 0,
+        "values": {
+          "break": 1,
+          "kind": "removed",
+          "origin": "src/commands/remove_command.rs:1"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "notes",
+        "first": 1789932278,
+        "gate": "public-api",
+        "id": "86e57edb83f72b1f",
+        "key": {
+          "file": "notes",
+          "gate": "public-api",
+          "line": 4,
+          "text": "commands::add_command::run_add (function)"
+        },
+        "label": "broken public contract",
+        "last": 1789932278,
+        "line": 4,
+        "outcome": "open",
+        "prompt": "The `add` and `remove` commands should become one command.",
+        "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+        "text": "commands::add_command::run_add (function)",
+        "time": 1789932278,
+        "tries": 0,
+        "values": {
+          "break": 1,
+          "kind": "removed",
+          "origin": "src/commands/add_command.rs:4"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "notes",
+        "first": 1789932278,
+        "gate": "public-api",
+        "id": "297800cce4592d25",
+        "key": {
+          "file": "notes",
+          "gate": "public-api",
+          "line": 4,
+          "text": "commands::remove_command::run_remove (function)"
+        },
+        "label": "broken public contract",
+        "last": 1789932278,
+        "line": 4,
+        "outcome": "open",
+        "prompt": "The `add` and `remove` commands should become one command.",
+        "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+        "text": "commands::remove_command::run_remove (function)",
+        "time": 1789932278,
+        "tries": 0,
+        "values": {
+          "break": 1,
+          "kind": "removed",
+          "origin": "src/commands/remove_command.rs:4"
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 553
+  },
+  "turns": 18,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cbcce7a5721b/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/cbcce7a5721b"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/cbcce7a5721b/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cbcce7a5721b/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    }
+  }
+}

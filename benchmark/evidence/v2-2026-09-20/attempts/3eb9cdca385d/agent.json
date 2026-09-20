@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/3eb9cdca385d/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "8c73a903-4a46-413b-a758-8ba7e7830acd",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "ca82be88e069d7a5a1766d5f3e1702b9a9599b65d791188163dc89d97852b879",
+  "sessionId": "8c73a903-4a46-413b-a758-8ba7e7830acd",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":50924,\"stop_reason\":\"end_turn\",\"session_id\":\"8c73a903-4a46-413b-a758-8ba7e7830acd\",\"total_cost_usd\":0.21214439999999996,\"usage\":{\"input_tokens\":24,\"cache_creation_input_tokens\":18697,\"cache_read_input_tokens\":472342,\"output_tokens\":4284,\"output_tokens_details\":{\"thinking_tokens\":1044},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":18697,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":157,\"cache_read_input_tokens\":44587,\"cache_creation_input_tokens\":855,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":855},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":24,\"outputTokens\":4284,\"cacheReadInputTokens\":472342,\"cacheCreationInputTokens\":18697,\"webSearchRequests\":0,\"costUSD\":0.21214439999999996,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":1044,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 6 tests pass (the `checksum` dead-code warning is pre-existing and unrelated).\\n\\nChanged `src/store.rs` so eviction picks the entry with the oldest write time instead of oldest access time: `get` no longer touches the clock, and `insert` on an existing key only replaces the value without updating its `written` timestamp. Added two tests in `tests/store.rs` verifying reads don't protect an entry and that rewriting a key preserves its original write-order position.\",\"ttft_ms\":2691,\"type\":\"result\",\"duration_ms\":55682,\"uuid\":\"005caa2d-8e23-443d-a58e-626b6841e8b9\",\"ttft_stream_ms\":1188,\"time_to_request_ms\":297,\"first_content_frame_ms\":1189,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 50924,
+    "stop_reason": "end_turn",
+    "session_id": "8c73a903-4a46-413b-a758-8ba7e7830acd",
+    "total_cost_usd": 0.21214439999999996,
+    "usage": {
+      "input_tokens": 24,
+      "cache_creation_input_tokens": 18697,
+      "cache_read_input_tokens": 472342,
+      "output_tokens": 4284,
+      "output_tokens_details": {
+        "thinking_tokens": 1044
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 18697,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 157,
+          "cache_read_input_tokens": 44587,
+          "cache_creation_input_tokens": 855,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 855
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 24,
+        "outputTokens": 4284,
+        "cacheReadInputTokens": 472342,
+        "cacheCreationInputTokens": 18697,
+        "webSearchRequests": 0,
+        "costUSD": 0.21214439999999996,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 1044,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 6 tests pass (the `checksum` dead-code warning is pre-existing and unrelated).\n\nChanged `src/store.rs` so eviction picks the entry with the oldest write time instead of oldest access time: `get` no longer touches the clock, and `insert` on an existing key only replaces the value without updating its `written` timestamp. Added two tests in `tests/store.rs` verifying reads don't protect an entry and that rewriting a key preserves its original write-order position.",
+    "ttft_ms": 2691,
+    "type": "result",
+    "duration_ms": 55682,
+    "uuid": "005caa2d-8e23-443d-a58e-626b6841e8b9",
+    "ttft_stream_ms": 1188,
+    "time_to_request_ms": 297,
+    "first_content_frame_ms": 1189,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T20:10:56.551Z",
+  "endedAt": "2026-09-20T20:11:53.941Z",
+  "wallMs": 57391,
+  "timedOut": false
+}

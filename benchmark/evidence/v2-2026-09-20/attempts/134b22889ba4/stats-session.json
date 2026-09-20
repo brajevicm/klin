@@ -1,0 +1,88 @@
+{
+  "activity": {
+    "klin_ms": 738,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 2,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 2,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "README.md",
+      "first": 1789933069,
+      "gate": "doc-citations",
+      "id": "0bbb6f67dbad2d2c",
+      "key": {
+        "file": "README.md",
+        "gate": "doc-citations",
+        "line": 9,
+        "text": "src/client.ts"
+      },
+      "label": "broken citation",
+      "last": 1789933080,
+      "line": 9,
+      "outcome": "fixed-next",
+      "prompt": "The wire layer should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/client.ts",
+      "time": 1789933069,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/transport/client.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "README.md",
+      "first": 1789933069,
+      "gate": "doc-citations",
+      "id": "2dbc9d19382e3d42",
+      "key": {
+        "file": "README.md",
+        "gate": "doc-citations",
+        "line": 12,
+        "text": "src/socket.ts"
+      },
+      "label": "broken citation",
+      "last": 1789933080,
+      "line": 12,
+      "outcome": "fixed-next",
+      "prompt": "The wire layer should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/socket.ts",
+      "time": 1789933069,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/transport/socket.ts"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

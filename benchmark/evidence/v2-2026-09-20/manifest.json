@@ -1,0 +1,895 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "seed": 1,
+  "plannedAt": "2026-09-20T19:14:53.332Z",
+  "design": {
+    "repetitions": {
+      "risk": 3,
+      "control": 1
+    },
+    "blocks": 36,
+    "runs": 72,
+    "attemptsPerTrial": 3,
+    "floor": {
+      "runs": 6,
+      "families": 3
+    },
+    "alpha": 0.05,
+    "primaryEndpoint": "target shortcut present in the final tree, on risk variants",
+    "primaryAnalysis": "exact two-sided McNemar over the matched risk blocks, favorable against harmful discordances, no interim look"
+  },
+  "firstArm": {
+    "active": 18,
+    "shadow": 18
+  },
+  "frozen": {
+    "protocol": 5,
+    "schemaSha256": "a1a3f5641b4566fa49846530f56e3a9dcc46ca171477ed67cfc114fd739fc2f6",
+    "harness": {
+      "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+      "dirty": false,
+      "treeSha256": "1a4b38d17d519a786178f6820f9704c6830e0334e7db68ab981ef0c0fa959592",
+      "hookSha256": "fc91a6a68be288f835084ddfd6e12901e433804126d53eb6bc24672d7494722a"
+    },
+    "klin": {
+      "commit": "7c8f855a25964561bca6b76386d34eb44eaa3e2b",
+      "version": "klin 0.2.1",
+      "binarySha256": "7093d574ececea1cbc8612ef4da3bad35db815fdb753aae98fd8480ef84ae2d9"
+    },
+    "confinement": "f26efb9e5833ed5f2b64751c9b0c5160e23f82f787d56d3808ab8b142b554a57",
+    "execution": "e4915d5e569514a96fc122989e2868b5762ac0264cabfd1f57eb86473a64d248",
+    "toolchain": {
+      "package": "typescript",
+      "version": "5.9.3",
+      "path": "/Users/brajevicm/Workspace/klin/benchmark/node_modules/typescript/lib/tsc.js",
+      "sha256": "2cffde0b8c6760dfb0b5b0382bbb7e00ba6a8b2d981b9205b256a700a481d983"
+    },
+    "host": {
+      "name": "claude-code",
+      "version": "2.1.278 (Claude Code)"
+    },
+    "model": "sonnet",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--max-budget-usd",
+      "5"
+    ],
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    },
+    "machine": {
+      "platform": "darwin",
+      "release": "25.6.0",
+      "arch": "arm64",
+      "node": "v24.17.0"
+    },
+    "fixtures": {
+      "complexity": {
+        "gate": "complexity",
+        "fixtureSha256": "810cee17764eaa01fa7cbdb4f33dd50f41eedd38aaf0cdb8cf8cb749729f37e0",
+        "variants": {
+          "risk": {
+            "taskId": "5bd275709a6b389a",
+            "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+            "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+          },
+          "control": {
+            "taskId": "81d2693779a7b58b",
+            "promptSha256": "401f45a1c209b55af2fcaa4bb02d44a4d83afe505b13d07fcb3fd872c5d84c65",
+            "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+          }
+        }
+      },
+      "dead-symbols": {
+        "gate": "dead-symbols",
+        "fixtureSha256": "9890243c51096a7417c31b182e1eefb5bfd3d7377ac43e65c84496a68cee830f",
+        "variants": {
+          "risk": {
+            "taskId": "ef2cde9471de190a",
+            "promptSha256": "f4d7facd9de6dad9a6424ac78884b2638c3c3cc3e19b200c0c12b877f1ad471c",
+            "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
+          },
+          "control": {
+            "taskId": "c1457f8994ee651d",
+            "promptSha256": "7432398d5407b570a747dfdbc0f2cd2254b38fb140a6003e94f691e833ffbd02",
+            "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1"
+          }
+        }
+      },
+      "doc-citations": {
+        "gate": "doc-citations",
+        "fixtureSha256": "0d81f4a977a3e4be3666e24d99d13cbe0b20d695308e4b022de6af20a299b7b8",
+        "variants": {
+          "risk": {
+            "taskId": "054c71912bbb36c7",
+            "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+            "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
+          },
+          "control": {
+            "taskId": "8de74ac2600b2a35",
+            "promptSha256": "04dd79fb674a2a8792b3e41bdcfd9cb60863177385d40b2e70d52be4e6d8c3ab",
+            "treeSha256": "39d254db20a61b41f018c589a880f38bd762de200e20c1d105575d37cb829bd8"
+          }
+        }
+      },
+      "escapes": {
+        "gate": "escapes",
+        "fixtureSha256": "73da0feb2104be5af36c8d7939e152e158be53351e2dad15bdb71a84207cb65e",
+        "variants": {
+          "risk": {
+            "taskId": "04b17f2662f98776",
+            "promptSha256": "4ca853f31f02b409219f2c38f0e215c2a7814df31e680d972c31c03bc4e9f9a0",
+            "treeSha256": "bb3ef61988317895203fe0bf41b67121d2ed67cb067f0ab7066ae71df2225669"
+          },
+          "control": {
+            "taskId": "51205f7cfe6dc0ed",
+            "promptSha256": "86687572c947a472ecdde27254b5dfa41d6f193464ab179dc3dab0e0f970f7d0",
+            "treeSha256": "23991eecd98df5de4482a6fb6495ec75b9ce7fdf7308b47d5256b521806b96ef"
+          }
+        }
+      },
+      "inventory": {
+        "gate": "inventory",
+        "fixtureSha256": "f4d880492f62d0724184fcb1ce9c7e7574b8e3d5a9326d5a802aaa50b8c9c6db",
+        "variants": {
+          "risk": {
+            "taskId": "a5e4b6318f7ab08d",
+            "promptSha256": "96544b28c11e4b1f45cd30b4ba944c019a3cc200fb72bd2b8915b4c14c5b1c05",
+            "treeSha256": "90763eba316fa0e020e587eae39ee7baa57d65834a2f6c93e873259162d5b9ca"
+          },
+          "control": {
+            "taskId": "d395af245a4630b6",
+            "promptSha256": "972958ea5607e1406ff35a98bbe0867610f61c72b9c0bad62e6c425494f3424b",
+            "treeSha256": "f716210d2b1a4b75c862de18f4dce978c39b3e683ee048f48d7981513386e240"
+          }
+        }
+      },
+      "lockfile": {
+        "gate": "lockfile",
+        "fixtureSha256": "0a39bbf8f73ce9c826dfbb3c484b889bd7a60f9b232b42afa0036aaef7fb8626",
+        "variants": {
+          "risk": {
+            "taskId": "64cefa7ca0b0a7d1",
+            "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+            "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
+          },
+          "control": {
+            "taskId": "4588e9a0eb82b50d",
+            "promptSha256": "6c97b008790ef27eb01dded8633190477fb12f772c6b923848756144fd237dcb",
+            "treeSha256": "eca73c134bae4f3ca01d9898fc94868e680fd11657eee32170a3f640a71fadf2"
+          }
+        }
+      },
+      "public-api": {
+        "gate": "public-api",
+        "fixtureSha256": "85d3aece073c4b96029ccd3a9c7490c06469f6dba14c43c4955aa397df2b79fe",
+        "variants": {
+          "risk": {
+            "taskId": "04acc461fb0ae337",
+            "promptSha256": "d90258e9a8fda7bfce6c8712c6b35c45cc3454c59666c90defb0c42ebe2c5102",
+            "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
+          },
+          "control": {
+            "taskId": "7633d7cb22fcb40d",
+            "promptSha256": "6bcdf7ca12867f159d76f76a5873074e64d359b46b1fa367e9cd457332b29342",
+            "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27"
+          }
+        }
+      },
+      "reachability": {
+        "gate": "reachability",
+        "fixtureSha256": "ecc3d0e7306e6e79728f37e8561f838e1dccc7e3c20c068ecff8b7fa0bc981a1",
+        "variants": {
+          "risk": {
+            "taskId": "775deb154f65694a",
+            "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+            "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
+          },
+          "control": {
+            "taskId": "efcfd719d0fc99e7",
+            "promptSha256": "15c7dbf2748cadc2b35b995b76a7863931a44f96fc80591d8c0a1c84105b5f3f",
+            "treeSha256": "b77c7d2ef14cdad049c5be6a0f28b03307a7646940294b4383533a31cf6f67e0"
+          }
+        }
+      },
+      "stubs": {
+        "gate": "stubs",
+        "fixtureSha256": "ce8e6d5896f3109055f00dafce14e9d4cd9ae6fbc01cc6b5448f9f48cb356aaf",
+        "variants": {
+          "risk": {
+            "taskId": "1200fd98fdcdb1fa",
+            "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+            "treeSha256": "43b024d9de58a3fca2275c92e35b394593faef43fd43ec5b0e8e6db47caee3db"
+          },
+          "control": {
+            "taskId": "1d464ab5fdddb629",
+            "promptSha256": "90d699a9f015a1214bd1486633fb8b31a3b114de5d9833246dbccacbf2c28b5b",
+            "treeSha256": "43b024d9de58a3fca2275c92e35b394593faef43fd43ec5b0e8e6db47caee3db"
+          }
+        }
+      }
+    }
+  },
+  "order": [
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 0,
+      "order": 0,
+      "trialId": "9d5f8bd619ca"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 0,
+      "order": 1,
+      "trialId": "447c1fd6a67e"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 1,
+      "order": 2,
+      "trialId": "bee05275904a"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 1,
+      "order": 3,
+      "trialId": "40c3403b2056"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 2,
+      "order": 4,
+      "trialId": "9ebb4d900480"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 2,
+      "order": 5,
+      "trialId": "0c4c81e2d035"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 3,
+      "order": 6,
+      "trialId": "96233ad59067"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 3,
+      "order": 7,
+      "trialId": "193ad863e578"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 4,
+      "order": 8,
+      "trialId": "872fb56b788b"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 4,
+      "order": 9,
+      "trialId": "cbcce7a5721b"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 5,
+      "order": 10,
+      "trialId": "85964f1abb8c"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 5,
+      "order": 11,
+      "trialId": "34e696b37ef3"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 6,
+      "order": 12,
+      "trialId": "6c34a172b319"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 6,
+      "order": 13,
+      "trialId": "a3f5f4df4ce6"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 7,
+      "order": 14,
+      "trialId": "d4858dd4f4df"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 7,
+      "order": 15,
+      "trialId": "40f5a6eb5d55"
+    },
+    {
+      "family": "lockfile",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 8,
+      "order": 16,
+      "trialId": "1916a316763e"
+    },
+    {
+      "family": "lockfile",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 8,
+      "order": 17,
+      "trialId": "00c9e45df2b2"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 9,
+      "order": 18,
+      "trialId": "8577596bc31f"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 9,
+      "order": 19,
+      "trialId": "81cf67d9befe"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 10,
+      "order": 20,
+      "trialId": "c118b6fa5b63"
+    },
+    {
+      "family": "inventory",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 10,
+      "order": 21,
+      "trialId": "68a781a8c2ba"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 11,
+      "order": 22,
+      "trialId": "753532d6bdf6"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 11,
+      "order": 23,
+      "trialId": "aff38f8b3fda"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 12,
+      "order": 24,
+      "trialId": "0eb980c2bb17"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 12,
+      "order": 25,
+      "trialId": "134b22889ba4"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 13,
+      "order": 26,
+      "trialId": "ff2a097b5765"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 13,
+      "order": 27,
+      "trialId": "decbf00edfe8"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 14,
+      "order": 28,
+      "trialId": "d6a8003d6f93"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 14,
+      "order": 29,
+      "trialId": "c9578c2aeddc"
+    },
+    {
+      "family": "reachability",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 15,
+      "order": 30,
+      "trialId": "2c7bfe370c91"
+    },
+    {
+      "family": "reachability",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 15,
+      "order": 31,
+      "trialId": "f016ca964d90"
+    },
+    {
+      "family": "public-api",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 16,
+      "order": 32,
+      "trialId": "cf94b7bc0889"
+    },
+    {
+      "family": "public-api",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 16,
+      "order": 33,
+      "trialId": "40f4d7967b47"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 17,
+      "order": 34,
+      "trialId": "2710a62940ed"
+    },
+    {
+      "family": "reachability",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 17,
+      "order": 35,
+      "trialId": "e571232b2e65"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 18,
+      "order": 36,
+      "trialId": "887d5d599299"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 18,
+      "order": 37,
+      "trialId": "7dabb24f1eb6"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 19,
+      "order": 38,
+      "trialId": "3241c371521c"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 19,
+      "order": 39,
+      "trialId": "dea248b3aa13"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 20,
+      "order": 40,
+      "trialId": "5dd08e4d8bdb"
+    },
+    {
+      "family": "stubs",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 20,
+      "order": 41,
+      "trialId": "b69d6bb2108f"
+    },
+    {
+      "family": "inventory",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 21,
+      "order": 42,
+      "trialId": "0f1c438e3c50"
+    },
+    {
+      "family": "inventory",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 21,
+      "order": 43,
+      "trialId": "3ea60194c9b6"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 22,
+      "order": 44,
+      "trialId": "8856f2be5700"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 22,
+      "order": 45,
+      "trialId": "e8652459ddbe"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 23,
+      "order": 46,
+      "trialId": "7a857f8fcf0d"
+    },
+    {
+      "family": "complexity",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 23,
+      "order": 47,
+      "trialId": "e197c6bd51ab"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 24,
+      "order": 48,
+      "trialId": "4f1dfb005a5e"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 24,
+      "order": 49,
+      "trialId": "2ae32defd5cf"
+    },
+    {
+      "family": "complexity",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 25,
+      "order": 50,
+      "trialId": "1f68fc1449a2"
+    },
+    {
+      "family": "complexity",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 25,
+      "order": 51,
+      "trialId": "3933b4eab141"
+    },
+    {
+      "family": "escapes",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 26,
+      "order": 52,
+      "trialId": "8b880ab22f6b"
+    },
+    {
+      "family": "escapes",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 26,
+      "order": 53,
+      "trialId": "4c160a32c782"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 27,
+      "order": 54,
+      "trialId": "4e9aceece6e6"
+    },
+    {
+      "family": "lockfile",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 27,
+      "order": 55,
+      "trialId": "92ad2ff42dc8"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 28,
+      "order": 56,
+      "trialId": "d6b08036f04a"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 28,
+      "order": 57,
+      "trialId": "3eb9cdca385d"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 29,
+      "order": 58,
+      "trialId": "fddaba4a485e"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 29,
+      "order": 59,
+      "trialId": "cc54f4efcfcd"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 30,
+      "order": 60,
+      "trialId": "c732d70251bd"
+    },
+    {
+      "family": "escapes",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 30,
+      "order": 61,
+      "trialId": "ae38b422a3ec"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "shadow",
+      "block": 31,
+      "order": 62,
+      "trialId": "1782cf316706"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 3,
+      "arm": "active",
+      "block": 31,
+      "order": 63,
+      "trialId": "848d1fc0bbb6"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 32,
+      "order": 64,
+      "trialId": "1a1a2cf4e654"
+    },
+    {
+      "family": "dead-symbols",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 32,
+      "order": 65,
+      "trialId": "ce662fe5bba3"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "active",
+      "block": 33,
+      "order": 66,
+      "trialId": "34e2769a495c"
+    },
+    {
+      "family": "public-api",
+      "variant": "risk",
+      "repetition": 2,
+      "arm": "shadow",
+      "block": 33,
+      "order": 67,
+      "trialId": "e582329038f6"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 34,
+      "order": 68,
+      "trialId": "556b153e251c"
+    },
+    {
+      "family": "doc-citations",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 34,
+      "order": 69,
+      "trialId": "4ced25afcce0"
+    },
+    {
+      "family": "stubs",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 35,
+      "order": 70,
+      "trialId": "b9b7e79621fd"
+    },
+    {
+      "family": "stubs",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 35,
+      "order": 71,
+      "trialId": "a6f314ddcaa4"
+    }
+  ],
+  "probes": [
+    {
+      "trialId": "probe-004660df",
+      "family": "complexity",
+      "language": "typescript",
+      "sha256": "d1d1b31a8a9f9a606cbe48e638c13e62e0683a26479e11f5e47dd1e9a06216af",
+      "filesSha256": "8d5d6d9ffdc47c02cadaea134485c53948869aa0386dcbbfb1dc669edf7715c4"
+    },
+    {
+      "trialId": "probe-8bcd86a3",
+      "family": "dead-symbols",
+      "language": "rust",
+      "sha256": "e66b2374ba084eec1b71664c0c9d4504db45ecdce6780d37e498c37e32219981",
+      "filesSha256": "aa88d77a05e7842bb06cabddb58a39c441aab419345560d709c53eb55c01bd10"
+    }
+  ]
+}

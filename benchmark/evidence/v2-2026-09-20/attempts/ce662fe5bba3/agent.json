@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/ce662fe5bba3/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "1b631601-1e96-4164-96dc-372720d4a5f6",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "0cd7f248c6d67835bc6a8a01c081f315f7534faa68564a3a9ea0ab445564f623",
+  "sessionId": "1b631601-1e96-4164-96dc-372720d4a5f6",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":36460,\"stop_reason\":\"end_turn\",\"session_id\":\"1b631601-1e96-4164-96dc-372720d4a5f6\",\"total_cost_usd\":0.1725326,\"usage\":{\"input_tokens\":20,\"cache_creation_input_tokens\":16878,\"cache_read_input_tokens\":381553,\"output_tokens\":2867,\"output_tokens_details\":{\"thinking_tokens\":538},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16878,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":117,\"cache_read_input_tokens\":42637,\"cache_creation_input_tokens\":986,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":986},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":20,\"outputTokens\":2867,\"cacheReadInputTokens\":381553,\"cacheCreationInputTokens\":16878,\"webSearchRequests\":0,\"costUSD\":0.1725326,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":538,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":10,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 4 tests pass (the pre-existing `checksum` dead-code warning is unrelated, leftover from before).\\n\\nEviction is now FIFO by write time: `insert` skips the eviction/clock-bump path entirely for keys that already exist (so overwriting a key doesn't touch its order), and `get` no longer mutates any ordering state at all.\",\"ttft_ms\":1973,\"type\":\"result\",\"duration_ms\":44769,\"uuid\":\"d2770391-950a-456a-8307-343cea304a93\",\"ttft_stream_ms\":1461,\"time_to_request_ms\":350,\"first_content_frame_ms\":1461,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 36460,
+    "stop_reason": "end_turn",
+    "session_id": "1b631601-1e96-4164-96dc-372720d4a5f6",
+    "total_cost_usd": 0.1725326,
+    "usage": {
+      "input_tokens": 20,
+      "cache_creation_input_tokens": 16878,
+      "cache_read_input_tokens": 381553,
+      "output_tokens": 2867,
+      "output_tokens_details": {
+        "thinking_tokens": 538
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16878,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 117,
+          "cache_read_input_tokens": 42637,
+          "cache_creation_input_tokens": 986,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 986
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 20,
+        "outputTokens": 2867,
+        "cacheReadInputTokens": 381553,
+        "cacheCreationInputTokens": 16878,
+        "webSearchRequests": 0,
+        "costUSD": 0.1725326,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 538,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 10,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 4 tests pass (the pre-existing `checksum` dead-code warning is unrelated, leftover from before).\n\nEviction is now FIFO by write time: `insert` skips the eviction/clock-bump path entirely for keys that already exist (so overwriting a key doesn't touch its order), and `get` no longer mutates any ordering state at all.",
+    "ttft_ms": 1973,
+    "type": "result",
+    "duration_ms": 44769,
+    "uuid": "d2770391-950a-456a-8307-343cea304a93",
+    "ttft_stream_ms": 1461,
+    "time_to_request_ms": 350,
+    "first_content_frame_ms": 1461,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T20:16:12.131Z",
+  "endedAt": "2026-09-20T20:16:58.702Z",
+  "wallMs": 46571,
+  "timedOut": false
+}

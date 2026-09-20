@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a student order takes twenty percent off before tax (0.745125ms)\n✔ a student order still meets the ceiling (0.074542ms)\n✔ the classes that were already there are unchanged (0.080584ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 78.243541\n",
+  "stderr": "",
+  "reason": ""
+}

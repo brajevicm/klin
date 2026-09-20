@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/publishable-2026-09-20T19-14-53/2c7bfe370c91/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "74291f99-88c0-42ce-9762-404568b74740",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "4d24ab5585a89a47ebaf37458dcf15381fe56271b371568be8ca450c72c576a1",
+  "sessionId": "74291f99-88c0-42ce-9762-404568b74740",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":27270,\"stop_reason\":\"end_turn\",\"session_id\":\"74291f99-88c0-42ce-9762-404568b74740\",\"total_cost_usd\":0.137868,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":15426,\"cache_read_input_tokens\":260680,\"output_tokens\":2400,\"output_tokens_details\":{\"thinking_tokens\":218},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":15426,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":63,\"cache_read_input_tokens\":41284,\"cache_creation_input_tokens\":887,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":887},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":2400,\"cacheReadInputTokens\":260680,\"cacheCreationInputTokens\":15426,\"webSearchRequests\":0,\"costUSD\":0.137868,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":218,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":11,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. `list --json` now emits a compact JSON array of names (`[]` when empty), escaping `\\\"` and `\\\\` per JSON rules, while plain `list` is unchanged.\",\"ttft_ms\":2272,\"type\":\"result\",\"duration_ms\":31153,\"uuid\":\"f8cb0dc3-2c5e-4fc5-8a58-f9ea017bd9a3\",\"ttft_stream_ms\":1614,\"time_to_request_ms\":266,\"first_content_frame_ms\":1614,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 27270,
+    "stop_reason": "end_turn",
+    "session_id": "74291f99-88c0-42ce-9762-404568b74740",
+    "total_cost_usd": 0.137868,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 15426,
+      "cache_read_input_tokens": 260680,
+      "output_tokens": 2400,
+      "output_tokens_details": {
+        "thinking_tokens": 218
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15426,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 63,
+          "cache_read_input_tokens": 41284,
+          "cache_creation_input_tokens": 887,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 887
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 2400,
+        "cacheReadInputTokens": 260680,
+        "cacheCreationInputTokens": 15426,
+        "webSearchRequests": 0,
+        "costUSD": 0.137868,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 218,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 11,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. `list --json` now emits a compact JSON array of names (`[]` when empty), escaping `\"` and `\\` per JSON rules, while plain `list` is unchanged.",
+    "ttft_ms": 2272,
+    "type": "result",
+    "duration_ms": 31153,
+    "uuid": "f8cb0dc3-2c5e-4fc5-8a58-f9ea017bd9a3",
+    "ttft_stream_ms": 1614,
+    "time_to_request_ms": 266,
+    "first_content_frame_ms": 1614,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-20T19:42:40.759Z",
+  "endedAt": "2026-09-20T19:43:13.590Z",
+  "wallMs": 32833,
+  "timedOut": false
+}
