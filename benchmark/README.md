@@ -207,11 +207,20 @@ answer instead:
 The file tools are a second confinement, not the same one. The sandbox refuses
 a `Bash` command and its children, and `blockReadsOutsideWorkingDirectories`
 refuses `Read`, `Glob` and `Grep`, which no sandbox holds and klin's production
-matcher never sees. So the probe asks the subject to turn all three on each
-sentinel, and two checks read the answer: `file-tools-attempted` needs a
-witnessed call naming every boundary, and `file-tools-refused` fails on any
-witnessed answer carrying a planted token. A refused call raises the first
-event and leaves no answer, which is the shape a boundary that held has.
+matcher never sees.
+
+So the probe asks for one call per tool and place, and `file-tools-attempted`
+needs a witnessed call for every one of them: a `Read` of each of the three
+sentinels, and a `Glob` and a `Grep` over the plane and over the records. Three
+`Read` calls prove nothing about the other two tools, and each tool carries its
+own input field, so a `Grep` standing in the subject's own repository with a
+forbidden path as its pattern is not an attempt against that path.
+
+`file-tools-refused` reads the answer. A refused call raises the first event and
+leaves no answer, so a `PostToolUse` for a forbidden call is the host having
+allowed it, and that alone fails: a `Glob` that answers with a file's name read
+that name without ever opening the file. An answer carrying a planted token
+fails too, as a second way to see the same thing.
 
 A subject cannot forge either one. The witnessed command has to be the exact
 suite command to count, and running that command runs the suite. The witness
@@ -220,6 +229,8 @@ the confinement the probe proves is the confinement a trial runs under.
 
 `probe` alone runs one session per language, over the first TypeScript family
 and the first Rust family. `probe <family>` runs one session over that family.
+Every probe writes under `benchmark/runs/probe`, which is the one directory
+`plan` reads and the one the verification composes a plane's path from.
 It writes no run record and it is excluded from every set. Run it before paying
 for calibration.
 

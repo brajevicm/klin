@@ -11,7 +11,7 @@ import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
 import * as forensic from "./forensic.ts";
-import { ID, verifyProbe } from "./probe.ts";
+import { ID, PROBES as PROBE_RUNS, verifyProbe } from "./probe.ts";
 import { drift, fixtures, frozen, type Frozen } from "./frozen.ts";
 
 export { drift, fixtures, frozen, type Frozen } from "./frozen.ts";
@@ -640,7 +640,7 @@ function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
 }
 
 /** Write the frozen protocol and run order, and start nothing. Prints the digest a person freezes. */
-export function plan(into: string, seed: number, probes = path.join(paths.RUNS, "probe")): number {
+export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
   const known = session.defaults();
   const blocked = preflight(known.klinBin);
   if (blocked !== "") {

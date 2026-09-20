@@ -17,7 +17,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts toolchain
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <risk|control> <active|shadow> [--into DIR]
-  node benchmark/src/cli.ts probe [family] [--into DIR]
+  node benchmark/src/cli.ts probe [family]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N]
@@ -227,8 +227,9 @@ export function main(argv: string[]): number {
       return 2;
     }
     const named = family !== undefined ? [family] : probe.perLanguage(found);
-    const into = flag(args, "--into", path.join(paths.RUNS, "probe"));
-    return Math.max(...named.map((one) => probe.run(one, into)));
+    // A probe writes where `plan` looks and nowhere else. The verification composes the plane's
+    // own path from the trial id, so a probe written elsewhere could authorize nothing.
+    return Math.max(...named.map((one) => probe.run(one, probe.PROBES)));
   }
   if (command === "calibrate") {
     return calibrate.all({

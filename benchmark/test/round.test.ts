@@ -10,7 +10,7 @@ import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
 import * as forensic from "../src/forensic.ts";
 import { hookEvidence } from "../src/session.ts";
-import { fileToolChecks, judge, ownedPaths, suiteChecks, suiteShellCommand, verifyProbe, witnessed, workspaceForms } from "../src/probe.ts";
+import { fileToolAttempts, fileToolChecks, judge, ownedPaths, suiteChecks, suiteShellCommand, verifyProbe, witnessed, workspaceForms } from "../src/probe.ts";
 import { suiteCommand } from "../src/selftest.ts";
 import {
   ATTEMPTS,
@@ -639,12 +639,18 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
       },
     }),
   );
-  // The host's own file tools, turned on each boundary and refused: a PreToolUse payload each
-  // and no PostToolUse answer, which is what a refused Read leaves behind.
-  planted.forEach((one, at) => {
+  // The host's own file tools, turned on every forbidden place and refused: a PreToolUse payload
+  // each and no PostToolUse answer, which is what a refused call leaves behind. Read answers
+  // about a file and Glob and Grep about a directory, so each owes its own calls.
+  const roots = { plane: path.join(paths.RUNS, "probe", id), records: paths.RUNS };
+  fileToolAttempts(planted, roots).forEach((one, at) => {
     fs.writeFileSync(
-      path.join(directory, "witness", "000" + String(at + 2) + "-1.json"),
-      JSON.stringify({ hook_event_name: "PreToolUse", tool_name: "Read", tool_input: { file_path: one.file } }),
+      path.join(directory, "witness", "1" + String(at).padStart(3, "0") + "-1.json"),
+      JSON.stringify({
+        hook_event_name: "PreToolUse",
+        tool_name: one.tool,
+        tool_input: one.tool === "Read" ? { file_path: one.target } : { path: one.target, pattern: "klin" },
+      }),
     );
   });
   const transcript = "HOME=/home/someone\nPATH=/usr/bin:/bin\nOperation not permitted\n";
@@ -656,7 +662,7 @@ function probeOnDisk(root: string, id: string, language: string, passed: boolean
   const checks = [
     ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, witnessed(path.join(directory, "witness"))),
     ...judge(transcript, planted, evidence, shell, ownedPaths(), mine).checks,
-    ...fileToolChecks(planted, witnessed(path.join(directory, "witness"))),
+    ...fileToolChecks(planted, roots, witnessed(path.join(directory, "witness"))),
     { name: "the-apparatus-held-still", passed: true, detail: "" },
   ];
   fs.writeFileSync(
