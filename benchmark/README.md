@@ -450,6 +450,19 @@ therefore reads klin's own state instead and holds a seeded trial to all of it:
 A trial that took no stamp is held to the opposite: klin's state holds nothing
 at all.
 
+#### A seed only writes files
+
+An ordinary overlay states a deletion with a `REMOVE` file at its root. A seed
+may not: `fixture.seed` is the list of paths the overlay wrote, and a deletion
+stands in the working tree as a change that list does not name, so
+`seed-as-declared` would fail every live trial of that fixture. A self-test
+case refuses a seed carrying a `REMOVE` file by name, so the defect is found
+before a session is paid for rather than after.
+
+A family whose target shortcut needs a deletion-shaped seed needs the declared
+path list to carry removals as well. Widening the term instead would let a
+deletion nobody declared pass.
+
 ### What a seeded run measures, and what it does not
 
 Every seeded report states that the exposure was planted. The calibration
