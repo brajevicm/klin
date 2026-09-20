@@ -118,29 +118,33 @@ function shellQuote(one: string): string {
   return "'" + one.replaceAll("'", "'\"'\"'") + "'";
 }
 
-/** The only environment observation a probe asks the subject to make. */
+/**
+ * The only environment observation a probe asks the subject to make. The subject cannot resolve
+ * arbitrary paths itself: the host refuses commands whose runtime reads cannot be checked against
+ * its read block. The harness therefore supplies each raw/resolved root form, and this shell-only
+ * scan normalizes path segments before comparing them.
+ */
 export function environmentShellCommand(
   roots: EnvironmentRoots = { owned: ownedPaths(), mine: [] },
 ): string {
+  const separator = String.fromCharCode(28);
   const script = [
-    "const path=require('node:path');",
-    "const owned=JSON.parse(process.argv[1]),mine=JSON.parse(process.argv[2]);",
-    "const real=one=>path.resolve(one);",
-    "const inside=(outer,inner)=>{const relative=path.relative(real(outer),real(inner));const escaped=relative==='..'||relative.startsWith('..'+path.sep);return relative===''||(!escaped&&!path.isAbsolute(relative));};",
-    "const exposes=(name,value)=>{const candidates=name==='PATH'?value.split(path.delimiter):[value];return candidates.some(candidate=>{const held=candidate.trim(),resolved=path.resolve(process.cwd(),held),matches=one=>inside(one,resolved)||held.includes(one);return owned.some(matches)&&!mine.some(matches);});};",
-    "const entries=Object.entries(process.env).filter(([name])=>/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)),unique=names=>[...new Set(names)];",
-    "for(const name of unique(entries.filter(([name])=>/^KLIN_[A-Z0-9_]+$/.test(name)).map(([name])=>name)))console.log('" + ENVIRONMENT_SENTINEL + "-klin '+name);",
-    "for(const name of unique(entries.filter(([name,value])=>exposes(name,value)).map(([name])=>name)))console.log('" + ENVIRONMENT_SENTINEL + "-owned '+name);",
-    "console.log('" + ENVIRONMENT_SENTINEL + " home='+(process.env.HOME===undefined?'0':'1')+' path='+(process.env.PATH===undefined?'0':'1')+' status=0');",
+    "function load(text,target,field,count,i){count=split(text,field,\"\\034\");for(i=1;i<=count;i++)target[i]=field[i];return count;}",
+    "function normalize(value,absolute,count,i,item,result){absolute=substr(value,1,1)==\"/\";if(!absolute)value=pwd \"/\" value;gsub(/\\/+/ ,\"/\",value);count=split(value,parts,\"/\");result=\"/\";depth=0;for(i=1;i<=count;i++){item=parts[i];if(item==\"\"||item==\".\")continue;if(item==\"..\"){if(depth>0)depth--;continue;}stack[++depth]=item;}for(i=1;i<=depth;i++)result=result stack[i] \"/\";sub(/\\/$/,\"\",result);return result==\"\"?\"/\":result;}",
+    "function inside(outer,inner){outer=normalize(outer);inner=normalize(inner);return outer==\"/\"?substr(inner,1,1)==\"/\":inner==outer||index(inner,outer \"/\")==1;}",
+    "function matches(value,root){return inside(root,value)||(root==\"/\"?substr(value,1,1)==\"/\":value==root||index(value,root \"/\")>0);}",
+    "function exposes(value,ownedHit,mineHit,i){ownedHit=0;mineHit=0;for(i=1;i<=ownedCount;i++)if(matches(value,owned[i]))ownedHit=1;for(i=1;i<=mineCount;i++)if(matches(value,mine[i]))mineHit=1;return ownedHit&&!mineHit;}",
+    "BEGIN{ownedCount=load(owned0,owned,fields);mineCount=load(mine0,mine,fields);pwd=ENVIRON[\"PWD\"];if(pwd==\"\")pwd=\".\";home=0;path=0;}",
+    "{equals=index($0,\"=\");if(equals<2)next;name=substr($0,1,equals-1);value=substr($0,equals+1);if(name!~ /^[A-Za-z_][A-Za-z0-9_]*$/)next;if(name==\"HOME\")home=1;if(name==\"PATH\")path=1;if(name~ /^KLIN_[A-Z0-9_]+$/&&!seenKlin[name]++){print \"" + ENVIRONMENT_SENTINEL + "-klin \" name;}if(name==\"PATH\")count=split(value,values,\":\");else{values[1]=value;count=1;}for(i=1;i<=count;i++)if(exposes(values[i])){if(!seenOwned[name]++)print \"" + ENVIRONMENT_SENTINEL + "-owned \" name;break;}}",
+    "END{print \"" + ENVIRONMENT_SENTINEL + " home=\" home \" path=\" path \" status=0\";}",
   ].join("");
   return [
-    shellQuote(process.execPath),
-    " -e ",
-    shellQuote(script),
-    " -- ",
-    shellQuote(JSON.stringify(roots.owned)),
+    "/usr/bin/env | /usr/bin/awk -v owned0=",
+    shellQuote(roots.owned.join(separator)),
+    " -v mine0=",
+    shellQuote(roots.mine.join(separator)),
     " ",
-    shellQuote(JSON.stringify(roots.mine)),
+    shellQuote(script),
   ].join("");
 }
 

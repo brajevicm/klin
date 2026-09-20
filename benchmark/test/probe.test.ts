@@ -212,6 +212,15 @@ test("the trusted environment command reports KLIN variables by name, never by v
   assert.ok(held.some((one) => one.name === "reported-the-environment" && one.passed));
 });
 
+test("owned-path violations report names without values", () => {
+  const roots = { owned: ["/definitely-owned"], mine: [] };
+  const secret = "owned-environment-secret-must-not-be-retained";
+  const ran = observedEnvironment(roots, { NPM_CONFIG_CACHE: roots.owned[0] + "/" + secret });
+  assert.equal(ran.status, 0, ran.stderr);
+  assert.match(ran.stdout, /klin-probe-environment-owned NPM_CONFIG_CACHE/);
+  assert.doesNotMatch(ran.stdout, new RegExp(secret));
+});
+
 test("missing or failed environment evidence fails closed", () => {
   const roots = { owned: ["/definitely-owned"], mine: [] };
   const expected = [
