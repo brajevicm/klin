@@ -199,4 +199,7 @@ klin handles the deterministic quality-control loop around code changes. Humans 
 - [Porting klin to another harness](docs/HARNESS_INTEGRATION.md)
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
 
+Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
+Security issue? [Follow the private reporting instructions](SECURITY.md).
+
 Apache-2.0.
