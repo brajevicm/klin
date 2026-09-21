@@ -71,9 +71,16 @@ export interface HookInvocation {
   delivered: boolean;
   stdout: string;
   stderr: string;
+  report?: GateReport | null;
   started: string;
   ended: string;
   stdinClosed: boolean;
+}
+
+export interface GateReport {
+  gates?: unknown;
+  findings?: unknown;
+  notes?: unknown;
 }
 
 export interface WholeRun {
@@ -306,6 +313,9 @@ export function validate(record: Record<string, unknown>): string[] {
   if (record.variant === "seeded") {
     if (!(infrastructure?.terms ?? []).some((one) => one.name === "seeded-whole-run")) {
       problems.push("a seeded record states no seeded-whole-run validity term");
+    }
+    if (!(infrastructure?.terms ?? []).some((one) => one.name === "seeded-stop-evidence")) {
+      problems.push("a seeded record states no seeded-stop-evidence validity term");
     }
     const seeded = record.seeded as Record<string, unknown> | undefined;
     if (!seeded || typeof seeded !== "object") {

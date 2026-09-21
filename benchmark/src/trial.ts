@@ -13,6 +13,7 @@ import {
   signalsFrom,
   validate,
   type Check,
+  type GateReport,
   type HookInvocation,
   type Isolation,
   type RunRecord,
@@ -78,20 +79,38 @@ function targetFindings(sites: unknown[], expected: unknown[]): unknown[] {
   );
 }
 
-function targetNeedles(site: unknown): string[] {
+function siteIdentities(site: unknown): string[] {
   if (typeof site !== "object" || site === null) return [];
   const held = site as Record<string, unknown>;
-  const file = [held.file, held.document, held.path].find((one): one is string => typeof one === "string");
-  const line = typeof held.line === "number" ? held.line : null;
-  if (file !== undefined && line !== null) return [file + ":" + String(line)];
-  return [held.id, held.text, held.test, held.symbol, held.function, held.dependency, held.item, held.cites]
-    .filter((one): one is string => typeof one === "string" && one !== "");
+  const gate = typeof held.gate === "string" ? held.gate : "";
+  const id = typeof held.id === "string" && held.id !== "" ? held.id : null;
+  const file = typeof held.file === "string" ? held.file : null;
+  const text = typeof held.text === "string" ? held.text : null;
+  return [
+    ...(id !== null && gate !== "" ? ["id:" + gate + "\0" + id] : []),
+    ...(gate !== "" && file !== null && text !== null ? ["site:" + gate + "\0" + file + "\0" + text] : []),
+  ];
+}
+
+function reportSites(report: GateReport): unknown[] {
+  return [
+    ...(Array.isArray(report.findings) ? report.findings : []),
+    ...(Array.isArray(report.notes) ? report.notes : []),
+  ];
+}
+
+function completeReport(report: GateReport | null | undefined): report is GateReport {
+  return report !== null && report !== undefined &&
+    Array.isArray(report.gates) && Array.isArray(report.findings) && Array.isArray(report.notes);
 }
 
 export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
   if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
-  const output = hook.stdout + hook.stderr;
-  return sites.some((site) => targetNeedles(site).some((needle) => output.includes(needle)));
+  const targets = new Set(sites.flatMap(siteIdentities));
+  if (targets.size === 0 || !completeReport(hook.report)) return false;
+  return reportSites(hook.report).some((site) =>
+    siteIdentities(site).some((identity) => targets.has(identity)),
+  );
 }
 
 export function stopMetrics(
@@ -276,6 +295,7 @@ export function validity(held: {
   judged: oracle.Judgement;
   links: string[];
   outside: Check;
+  hooks?: HookInvocation[];
   wholeRun?: WholeRun | null;
 }): Check[] {
   const term = (name: string, passed: boolean, detail: string): Check => ({
@@ -358,6 +378,17 @@ export function validity(held: {
       name: "seeded-whole-run",
       passed: ["FAIL", "PASS", "ok"].includes(held.wholeRun.status) && typeof held.wholeRun.caught === "boolean",
       detail: "the production whole-run verdict was obtained before the session",
+    });
+    const missing = (held.hooks ?? []).filter(
+      (hook) => hook.event === "Stop" && hook.arguments.startsWith("gate") && !completeReport(hook.report),
+    );
+    terms.push({
+      name: "seeded-stop-evidence",
+      passed: missing.length === 0,
+      detail:
+        missing.length === 0
+          ? "every seeded Stop has a structured production gate report"
+          : String(missing.length) + " seeded Stop(s) have no structured production gate report",
     });
   }
   return terms;
@@ -507,6 +538,7 @@ export function run(
     judged,
     links: links(place.repo),
     outside,
+    hooks,
     wholeRun: seededWhole,
   });
   const broke = terms.filter((one) => !one.passed);

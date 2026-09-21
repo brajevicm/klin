@@ -322,6 +322,7 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
       terms: [
         { name: "seed-as-declared", passed: true, detail: "" },
         { name: "seeded-whole-run", passed: true, detail: "" },
+        { name: "seeded-stop-evidence", passed: true, detail: "" },
       ],
     },
     result: { outcome: "completed", evidence: "success" },
@@ -364,7 +365,12 @@ test("a seeded record rejects a missing production whole-run verdict", () => {
   assert.ok(problems.includes("a seeded whole-run result states no production status"));
 });
 
-function hookEvidence(output: string, status = 0, delivered = true): Parameters<typeof trial.targetStop>[0] {
+function hookEvidence(
+  output: string,
+  status = 0,
+  delivered = true,
+  report: Record<string, unknown> | null = null,
+): Parameters<typeof trial.targetStop>[0] {
   return {
     order: 0,
     event: "Stop",
@@ -375,29 +381,49 @@ function hookEvidence(output: string, status = 0, delivered = true): Parameters<
     delivered,
     stdout: output,
     stderr: "",
+    report,
     started: "",
     ended: "",
     stdinClosed: true,
   };
 }
 
-test("target Stop metrics ignore an unrelated same-gate finding and keep review delivery separate from blocking", () => {
-  const target = { id: "target", file: "tests/split.rs", line: 7, text: "fn removed()" };
-  const unrelated = hookEvidence("  FAIL  inventory\ntests/split.rs:8  missing 1, was missing 0", 2);
-  const review = hookEvidence(
-    "NOTE: 1 test site(s) the base holds went in this window:\ntests/split.rs:7  fn removed()",
-    0,
-    false,
-  );
-  assert.equal(trial.targetStop(unrelated, [target]), false);
-  assert.deepEqual(trial.stopMetrics([unrelated, review], [target]), {
-    stopDelivery: true,
-    blockedStops: 0,
-  });
-  assert.deepEqual(trial.stopMetrics([hookEvidence("tests/split.rs:7", 2)], [target]), {
+test("target Stop metrics use gate-scoped structured identity and keep delivery separate from blocking", () => {
+  const target = { gate: "escapes", id: "target", file: "src/foo.ts", line: 7, text: "removed()" };
+  const report = (...sites: unknown[]) => ({ gates: [], findings: sites, notes: [] });
+  assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 0, true, report(target)), [target]), true);
+  assert.deepEqual(trial.stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
     stopDelivery: true,
     blockedStops: 1,
   });
+  assert.equal(
+    trial.targetStop(
+      hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 8, text: "other()" })),
+      [target],
+    ),
+    false,
+  );
+  assert.equal(
+    trial.targetStop(
+      hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 70, text: "other()" })),
+      [target],
+    ),
+    false,
+  );
+  assert.equal(
+    trial.targetStop(
+      hookEvidence("", 2, true, report({ gate: "inventory", id: "target", file: "src/foo.ts", line: 7, text: "removed()" })),
+      [target],
+    ),
+    false,
+  );
+  const inventoryTarget = { gate: "inventory", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  const review = hookEvidence("", 0, false, { gates: [], findings: [], notes: [inventoryTarget] });
+  assert.deepEqual(trial.stopMetrics([review], [inventoryTarget]), {
+    stopDelivery: true,
+    blockedStops: 0,
+  });
+  assert.equal(trial.targetStop(hookEvidence("", 2, true, report()), [target]), false);
 });
 
 test("a whole-run inventory review site is captured from production notes", () => {

@@ -57,6 +57,12 @@ printf '%s' "$payload" | "$klin" "$@" >"$out" 2>"$err"
 status=$?
 ended=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
+report=$(mktemp)
+if [ "${1-}" = "gate" ]; then
+    # Keep structured attribution evidence private to the harness.
+    "$klin" gate --json >"$report" 2>/dev/null
+fi
+
 mkdir -p "$hooks"
 seq=$(find "$hooks" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
 # The pid keeps two calls apart if the host ever runs a hook beside another one.
@@ -70,12 +76,13 @@ printf '%s\n' "$started" >"$kept/started"
 printf '%s\n' "$ended" >"$kept/ended"
 cp "$out" "$kept/stdout"
 cp "$err" "$kept/stderr"
+cp "$report" "$kept/report.json"
 
 if [ "$deliver" = "1" ]; then
     cat "$out"
     cat "$err" >&2
-    rm -f "$out" "$err"
+    rm -f "$out" "$err" "$report"
     exit "$status"
 fi
-rm -f "$out" "$err"
+rm -f "$out" "$err" "$report"
 exit 0

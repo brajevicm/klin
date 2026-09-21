@@ -575,6 +575,13 @@
           "stderr": {
             "type": "string"
           },
+          "report": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The structured production gate report captured after this hook, used for seeded target attribution."
+          },
           "started": {
             "type": "string"
           },
