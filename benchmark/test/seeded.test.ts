@@ -45,7 +45,7 @@ const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", 
 const available = fs.existsSync(KLIN);
 const TRACER = "dead-symbols";
 
-test("every family ships a seeded variant", () => {
+test("the tracer family ships a seeded variant and the others do not", () => {
   const held = families();
   assert.deepEqual(variantNames(held[TRACER]), ["risk", "control", "seeded"]);
   for (const [name, one] of Object.entries(held)) {
