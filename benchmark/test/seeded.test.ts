@@ -25,7 +25,7 @@ import {
   seedIsTheOnlyChange,
   startTreeAsDeclared,
 } from "../src/integrity.ts";
-import { validate, type GateReport } from "../src/record.ts";
+import { stopMetrics, targetStop, validate, type GateReport } from "../src/record.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
@@ -317,10 +317,10 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     model: { requested: "sonnet", reported: null },
     agent: { wiringSha256: "a", wrapperSha256: "b" },
     seeded: {
-      wholeRun: { caught: true, status: "FAIL", sites: [] },
-      stopDelivery: true,
-      finalRepair: true,
-      blockedStops: 1,
+      wholeRun: { caught: false, status: "FAIL", sites: [] },
+      stopDelivery: false,
+      finalRepair: false,
+      blockedStops: 0,
       tries: 0,
     },
     startedAt: "2026-09-20T00:00:00.000Z",
@@ -341,7 +341,7 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     signals: [],
     audit: [],
     hooks: [],
-    friction: { blockedStops: 1, gateRuns: 1, guardRefusals: 0, tries: 0, hostDenials: 0 },
+    friction: { blockedStops: 0, gateRuns: 0, guardRefusals: 0, tries: 0, hostDenials: 0 },
     stats: {},
     activity: { klinMs: 12 },
     turns: 3,
@@ -380,7 +380,7 @@ function hookEvidence(
   status = 0,
   delivered = true,
   report: GateReport | null = null,
-): Parameters<typeof trial.targetStop>[0] {
+): Parameters<typeof targetStop>[0] {
   return {
     order: 0,
     event: "Stop",
@@ -409,27 +409,27 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
     notes: [],
     exit: 2,
   });
-  assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 2, true, report(target)), [target]), true);
-  assert.deepEqual(trial.stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
+  assert.equal(targetStop(hookEvidence("x".repeat(20_001), 2, true, report(target)), [target]), true);
+  assert.deepEqual(stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
     stopDelivery: true,
     blockedStops: 1,
   });
   assert.equal(
-    trial.targetStop(
+    targetStop(
       hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 8, text: "other()" })),
       [target],
     ),
     false,
   );
   assert.equal(
-    trial.targetStop(
+    targetStop(
       hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 70, text: "other()" })),
       [target],
     ),
     false,
   );
   assert.equal(
-    trial.targetStop(
+    targetStop(
       hookEvidence("", 2, true, report({ gate: "inventory", id: "target", file: "src/foo.ts", line: 7, text: "removed()" })),
       [target],
     ),
@@ -445,11 +445,11 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
     notes: [inventoryTarget],
     exit: 0,
   });
-  assert.deepEqual(trial.stopMetrics([review], [inventoryTarget]), {
+  assert.deepEqual(stopMetrics([review], [inventoryTarget]), {
     stopDelivery: true,
     blockedStops: 0,
   });
-  assert.equal(trial.targetStop(hookEvidence("", 2, true, report()), [target]), false);
+  assert.equal(targetStop(hookEvidence("", 2, true, report()), [target]), false);
 });
 
 test("a whole-run inventory review site is captured from production notes", () => {
@@ -701,6 +701,44 @@ test("a seeded publishable set survives verification and durable evidence packag
 
     const verified = cli("verify", runs);
     assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+
+    const firstRecord = path.join(runs, manifest.order[0].trialId, "record.json");
+    const originalRecord = JSON.parse(fs.readFileSync(firstRecord, "utf8")) as Record<string, unknown>;
+    for (const [field, needle, mutate] of [
+      ["final repair", "final repair verdict", (record: Record<string, unknown>) => ((record.seeded as Record<string, unknown>).finalRepair = true)],
+      ["whole-run catch", "whole-run catch", (record: Record<string, unknown>) => (((record.seeded as Record<string, unknown>).wholeRun as Record<string, unknown>).caught = true)],
+      ["target site", "malformed target site", (record: Record<string, unknown>) => (((record.seeded as Record<string, unknown>).wholeRun as Record<string, unknown>).sites = [null])],
+      ["production status", "production status", (record: Record<string, unknown>) => (((record.seeded as Record<string, unknown>).wholeRun as Record<string, unknown>).status = ["FAIL"])],
+      ["Stop delivery", "Stop delivery", (record: Record<string, unknown>) => ((record.seeded as Record<string, unknown>).stopDelivery = true)],
+      ["blocked-stop count", "blocked-stop count", (record: Record<string, unknown>) => ((record.seeded as Record<string, unknown>).blockedStops = 1)],
+      ["final repair for null", "final repair verdict", (record: Record<string, unknown>) => {
+        (record.shortcut as Record<string, unknown>).present = null;
+        (record.seeded as Record<string, unknown>).finalRepair = false;
+      }],
+      ["final shortcut verdict", "final shortcut verdict", (record: Record<string, unknown>) => {
+        delete (record.shortcut as Record<string, unknown>).present;
+      }],
+    ] as const) {
+      const broken = structuredClone(originalRecord);
+      mutate(broken);
+      fs.writeFileSync(firstRecord, JSON.stringify(broken) + "\n");
+      const rejected = cli("verify", runs);
+      assert.equal(rejected.status, 1, field + " contradiction was accepted");
+      assert.match(rejected.stdout, new RegExp(needle));
+    }
+    fs.writeFileSync(firstRecord, JSON.stringify(originalRecord) + "\n");
+
+    const unknownPair = structuredClone(originalRecord);
+    (unknownPair.shortcut as Record<string, unknown>).present = null;
+    (unknownPair.seeded as Record<string, unknown>).finalRepair = null;
+    const invalidInfrastructure = unknownPair.infrastructure as Record<string, unknown>;
+    invalidInfrastructure.valid = false;
+    (invalidInfrastructure.terms as Record<string, unknown>[])[0].passed = false;
+    fs.writeFileSync(firstRecord, JSON.stringify(unknownPair) + "\n");
+    const unknownRejected = cli("verify", runs);
+    assert.equal(unknownRejected.status, 1, "an invalid null/null record was accepted");
+    assert.doesNotMatch(unknownRejected.stdout, /final repair verdict disagrees/);
+    fs.writeFileSync(firstRecord, JSON.stringify(originalRecord) + "\n");
 
     const prepared = cli("evidence-prepare", runs, "--into", evidence, "--archive", archive);
     assert.equal(prepared.status, 0, prepared.stdout + prepared.stderr);
