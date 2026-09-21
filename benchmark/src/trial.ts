@@ -13,12 +13,17 @@ import {
   signalsFrom,
   validate,
   type Check,
+  exactStopReport,
+  finalRepairOf,
   type GateReport,
   type HookInvocation,
   type Isolation,
   isGateReport,
   type RunRecord,
+  stopMetrics,
   type WholeRun,
+  WHOLE_RUN_STATUSES,
+  wholeRunCaught,
 } from "./record.ts";
 
 /** One trial: one family, one variant, one arm, one fresh repository and one fresh session. */
@@ -78,54 +83,6 @@ function targetFindings(sites: unknown[], expected: unknown[]): unknown[] {
       return parts.length > 0 && parts.every((part) => text.includes(part));
     }),
   );
-}
-
-function siteIdentities(site: unknown): string[] {
-  if (typeof site !== "object" || site === null) return [];
-  const held = site as Record<string, unknown>;
-  const gate = typeof held.gate === "string" ? held.gate : "";
-  const id = typeof held.id === "string" && held.id !== "" ? held.id : null;
-  const file = typeof held.file === "string" ? held.file : null;
-  const text = typeof held.text === "string" ? held.text : null;
-  return [
-    ...(id !== null && gate !== "" ? ["id:" + gate + "\0" + id] : []),
-    ...(gate !== "" && file !== null && text !== null ? ["site:" + gate + "\0" + file + "\0" + text] : []),
-  ];
-}
-
-function reportSites(report: GateReport): unknown[] {
-  return [
-    ...(Array.isArray(report.findings) ? report.findings : []),
-    ...(Array.isArray(report.notes) ? report.notes : []),
-  ];
-}
-
-function completeReport(report: GateReport | null | undefined): report is GateReport {
-  return isGateReport(report);
-}
-
-function exactStopReport(hook: HookInvocation): hook is HookInvocation & { report: GateReport } {
-  return completeReport(hook.report) && hook.report.exit === hook.status;
-}
-
-export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
-  if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
-  const targets = new Set(sites.flatMap(siteIdentities));
-  if (targets.size === 0 || !exactStopReport(hook)) return false;
-  return reportSites(hook.report).some((site) =>
-    siteIdentities(site).some((identity) => targets.has(identity)),
-  );
-}
-
-export function stopMetrics(
-  hooks: HookInvocation[],
-  sites: unknown[],
-): { stopDelivery: boolean; blockedStops: number } {
-  const targetStops = hooks.filter((one) => targetStop(one, sites));
-  return {
-    stopDelivery: targetStops.length > 0,
-    blockedStops: targetStops.filter((one) => one.status === 2).length,
-  };
 }
 
 function commandFailure(label: string, ran: ReturnType<typeof spawnSync>): Error {
@@ -188,12 +145,12 @@ export function wholeRun(
       (one) => typeof one === "object" && one !== null && (one as Record<string, unknown>).gate === gate,
     );
     const sites = targetFindings(targetFindingsRaw, expected);
-    const status = gateRow ? String(gateRow.status ?? "") : "";
-    if (!["FAIL", "PASS", "ok"].includes(status)) {
+    const status = gateRow?.status;
+    if (typeof status !== "string" || !WHOLE_RUN_STATUSES.includes(status)) {
       throw new Error("seeded whole-run gate returned no production verdict for " + gate);
     }
     return {
-      caught: status === "FAIL" && sites.length > 0,
+      caught: wholeRunCaught(status, sites),
       status,
       sites,
     };
@@ -608,8 +565,7 @@ export function run(
           seeded: {
             wholeRun: seededWhole,
             stopDelivery: seededStops.stopDelivery,
-            finalRepair:
-              judged.shortcut.present === null ? null : judged.shortcut.present === false,
+            finalRepair: finalRepairOf(judged.shortcut.present),
             blockedStops: seededStops.blockedStops,
             tries: signals
               .filter((one) => one.kind === "regression" && seededSignalIds.has(one.identity))

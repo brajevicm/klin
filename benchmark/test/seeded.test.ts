@@ -14,7 +14,8 @@ import {
   variantIn,
   variantNames,
 } from "../src/catalogue.ts";
-import { digest } from "../src/trees.ts";
+import { digest, sha256 } from "../src/trees.ts";
+import * as forensic from "../src/forensic.ts";
 import { fixtures } from "../src/frozen.ts";
 import { rows } from "../src/round.ts";
 import * as round from "../src/round.ts";
@@ -24,7 +25,7 @@ import {
   seedIsTheOnlyChange,
   startTreeAsDeclared,
 } from "../src/integrity.ts";
-import { validate, type GateReport } from "../src/record.ts";
+import { finalRepairOf, stopMetrics, targetStop, validate, type GateReport } from "../src/record.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
@@ -33,6 +34,7 @@ import * as integrity from "../src/integrity.ts";
 import * as seededRound from "../src/seeded.ts";
 import * as session from "../src/session.ts";
 import * as trial from "../src/trial.ts";
+import { probeOnDisk } from "./probe-fixture.ts";
 
 /**
  * The seeded population: a variant the harness plants and no round schedules.
@@ -45,6 +47,14 @@ import * as trial from "../src/trial.ts";
 const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", "klin");
 const available = fs.existsSync(KLIN);
 const TRACER = "dead-symbols";
+
+function cli(...args: string[]) {
+  return spawnSync(process.execPath, [path.join(paths.BENCHMARK, "src", "cli.ts"), ...args], {
+    cwd: paths.REPO,
+    encoding: "utf8",
+    timeout: 60_000,
+  });
+}
 
 test("the tracer family ships a seeded variant and the others do not", () => {
   const held = families();
@@ -307,10 +317,10 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     model: { requested: "sonnet", reported: null },
     agent: { wiringSha256: "a", wrapperSha256: "b" },
     seeded: {
-      wholeRun: { caught: true, status: "FAIL", sites: [] },
-      stopDelivery: true,
-      finalRepair: true,
-      blockedStops: 1,
+      wholeRun: { caught: false, status: "FAIL", sites: [] },
+      stopDelivery: false,
+      finalRepair: false,
+      blockedStops: 0,
       tries: 0,
     },
     startedAt: "2026-09-20T00:00:00.000Z",
@@ -331,7 +341,7 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     signals: [],
     audit: [],
     hooks: [],
-    friction: { blockedStops: 1, gateRuns: 1, guardRefusals: 0, tries: 0, hostDenials: 0 },
+    friction: { blockedStops: 0, gateRuns: 0, guardRefusals: 0, tries: 0, hostDenials: 0 },
     stats: {},
     activity: { klinMs: 12 },
     turns: 3,
@@ -370,7 +380,7 @@ function hookEvidence(
   status = 0,
   delivered = true,
   report: GateReport | null = null,
-): Parameters<typeof trial.targetStop>[0] {
+): Parameters<typeof targetStop>[0] {
   return {
     order: 0,
     event: "Stop",
@@ -399,27 +409,27 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
     notes: [],
     exit: 2,
   });
-  assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 2, true, report(target)), [target]), true);
-  assert.deepEqual(trial.stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
+  assert.equal(targetStop(hookEvidence("x".repeat(20_001), 2, true, report(target)), [target]), true);
+  assert.deepEqual(stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
     stopDelivery: true,
     blockedStops: 1,
   });
   assert.equal(
-    trial.targetStop(
+    targetStop(
       hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 8, text: "other()" })),
       [target],
     ),
     false,
   );
   assert.equal(
-    trial.targetStop(
+    targetStop(
       hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 70, text: "other()" })),
       [target],
     ),
     false,
   );
   assert.equal(
-    trial.targetStop(
+    targetStop(
       hookEvidence("", 2, true, report({ gate: "inventory", id: "target", file: "src/foo.ts", line: 7, text: "removed()" })),
       [target],
     ),
@@ -435,11 +445,11 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
     notes: [inventoryTarget],
     exit: 0,
   });
-  assert.deepEqual(trial.stopMetrics([review], [inventoryTarget]), {
+  assert.deepEqual(stopMetrics([review], [inventoryTarget]), {
     stopDelivery: true,
     blockedStops: 0,
   });
-  assert.equal(trial.targetStop(hookEvidence("", 2, true, report()), [target]), false);
+  assert.equal(targetStop(hookEvidence("", 2, true, report()), [target]), false);
 });
 
 test("a whole-run inventory review site is captured from production notes", () => {
@@ -480,6 +490,52 @@ test("a whole-run inventory review site is captured from production notes", () =
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
   }
+});
+
+test("a whole-run production failure catches its planted target", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-catch-"));
+  const base = path.join(room, "base");
+  const subject = path.join(room, "subject");
+  const binary = path.join(room, "fake-klin");
+  const target = { gate: "inventory", outcome: "deleted", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  try {
+    fs.mkdirSync(base);
+    fs.mkdirSync(subject);
+    fs.writeFileSync(path.join(base, "README.md"), "base\n");
+    fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
+    fs.writeFileSync(
+      binary,
+      [
+        "#!/bin/sh",
+        'if [ "$1" = "radius" ]; then',
+        "  exit 0",
+        "fi",
+        "echo '" +
+          JSON.stringify({
+            status: "FAIL",
+            summary: "gate",
+            derived: [],
+            gates: [{ name: "inventory", status: "FAIL" }],
+            findings: [target],
+            notes: [],
+            exit: 2,
+          }) +
+          "'",
+      ].join("\n") + "\n",
+    );
+    fs.chmodSync(binary, 0o755);
+    const result = trial.wholeRun("inventory", base, subject, [target], room, binary);
+    assert.equal(result.caught, true);
+    assert.deepEqual(result.sites, [target]);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("final repair follows the final shortcut verdict", () => {
+  assert.equal(finalRepairOf(false), true);
+  assert.equal(finalRepairOf(true), false);
+  assert.equal(finalRepairOf(null), null);
 });
 
 test("a whole-run apparatus failure is refused before a session can start", () => {
@@ -609,6 +665,167 @@ test("a seeded round verifies incompleteness and refuses an unapproved execution
     assert.equal(seededRound.execute(room, "not-the-manifest-digest"), 2);
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("a seeded publishable set survives verification and durable evidence packaging", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-evidence-"));
+  const runs = path.join(root, "runs");
+  const evidence = path.join(root, "evidence", "seeded-test");
+  const archive = path.join(root, "seeded-test-raw.tar.gz");
+  try {
+    const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
+    manifest.frozen.klin.commit = "fixture-commit";
+    const probeRoot = path.join(runs, "probes");
+    const probes = [
+      ["probe-0000000a", "complexity", "typescript"],
+      ["probe-0000000b", "dead-symbols", "rust"],
+    ] as const;
+    for (const [id, family, language] of probes) {
+      probeOnDisk(probeRoot, id, language, true, manifest.frozen, "2026-09-19T10:00:00Z");
+      const directory = path.join(probeRoot, id);
+      manifest.probes = [
+        ...(manifest.probes ?? []),
+        {
+          trialId: id,
+          family,
+          language,
+          sha256: sha256(fs.readFileSync(path.join(directory, "probe.json"))),
+          filesSha256: forensic.digest(directory),
+        },
+      ];
+    }
+    fs.mkdirSync(runs, { recursive: true });
+    fs.writeFileSync(path.join(runs, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+    for (const row of manifest.order) {
+      const fixture = manifest.fixtures[row.family];
+      const record = seededRecord({
+        kind: "publishable",
+        publishable: true,
+        family: row.family,
+        gate: fixture.gate,
+        taskId: fixture.variant.taskId,
+        arm: row.arm,
+        trialId: row.trialId,
+        order: row.order,
+        repetition: row.repetition,
+        fixture: {
+          promptSha256: fixture.variant.promptSha256,
+          treeSha256: fixture.variant.treeSha256,
+          startTreeSha256: fixture.variant.startTreeSha256,
+          seed: fixture.variant.seed,
+          uncommitted: fixture.variant.seed,
+        },
+        harness: manifest.frozen.harness,
+        klin: manifest.frozen.klin,
+        host: {
+          name: manifest.frozen.host.name,
+          version: manifest.frozen.host.version,
+          flags: manifest.frozen.flags,
+          flagsSha256: "b",
+          isolatedConfiguration: manifest.frozen.isolatedConfiguration,
+          memory: manifest.frozen.memory,
+        },
+        model: { requested: manifest.frozen.model, reported: null },
+      });
+      const attempt = path.join(runs, row.trialId);
+      fs.mkdirSync(path.join(attempt, "state"), { recursive: true });
+      for (const directory of ["hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"]) {
+        fs.mkdirSync(path.join(attempt, directory), { recursive: true });
+      }
+      fs.writeFileSync(path.join(attempt, "record.json"), JSON.stringify(record) + "\n");
+      for (const name of ["agent.json", "behaviour.json", "stats-session.json", "settings.json"]) {
+        fs.writeFileSync(path.join(attempt, name), "{}\n");
+      }
+      fs.writeFileSync(path.join(attempt, "hook"), "#!/bin/sh\n");
+      fs.writeFileSync(path.join(attempt, "state", "journal"), "state\n");
+      fs.writeFileSync(path.join(attempt, "hooks", "invocation"), "hook\n");
+      for (const directory of ["fixtures/base", "fixtures/final", "fixtures/scoring"]) {
+        fs.writeFileSync(path.join(attempt, directory, "README.md"), directory + "\n");
+      }
+    }
+
+    const verified = cli("verify", runs);
+    assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+
+    const firstRecord = path.join(runs, manifest.order[0].trialId, "record.json");
+    const originalRecord = JSON.parse(fs.readFileSync(firstRecord, "utf8")) as Record<string, unknown>;
+    for (const [field, needle, mutate] of [
+      ["final repair", "final repair verdict", (record: Record<string, unknown>) => ((record.seeded as Record<string, unknown>).finalRepair = true)],
+      ["whole-run catch", "whole-run catch", (record: Record<string, unknown>) => (((record.seeded as Record<string, unknown>).wholeRun as Record<string, unknown>).caught = true)],
+      ["target site", "malformed target site", (record: Record<string, unknown>) => (((record.seeded as Record<string, unknown>).wholeRun as Record<string, unknown>).sites = [null])],
+      ["production status", "production status", (record: Record<string, unknown>) => (((record.seeded as Record<string, unknown>).wholeRun as Record<string, unknown>).status = ["FAIL"])],
+      ["Stop delivery", "Stop delivery", (record: Record<string, unknown>) => ((record.seeded as Record<string, unknown>).stopDelivery = true)],
+      ["blocked-stop count", "blocked-stop count", (record: Record<string, unknown>) => ((record.seeded as Record<string, unknown>).blockedStops = 1)],
+      ["final repair for null", "final repair verdict", (record: Record<string, unknown>) => {
+        (record.shortcut as Record<string, unknown>).present = null;
+        (record.seeded as Record<string, unknown>).finalRepair = false;
+      }],
+      ["final shortcut verdict", "final shortcut verdict", (record: Record<string, unknown>) => {
+        delete (record.shortcut as Record<string, unknown>).present;
+      }],
+    ] as const) {
+      const broken = structuredClone(originalRecord);
+      mutate(broken);
+      fs.writeFileSync(firstRecord, JSON.stringify(broken) + "\n");
+      const rejected = cli("verify", runs);
+      assert.equal(rejected.status, 1, field + " contradiction was accepted");
+      assert.match(rejected.stdout, new RegExp(needle));
+    }
+    fs.writeFileSync(firstRecord, JSON.stringify(originalRecord) + "\n");
+
+    const unknownPair = structuredClone(originalRecord);
+    (unknownPair.shortcut as Record<string, unknown>).present = null;
+    (unknownPair.seeded as Record<string, unknown>).finalRepair = null;
+    const invalidInfrastructure = unknownPair.infrastructure as Record<string, unknown>;
+    invalidInfrastructure.valid = false;
+    (invalidInfrastructure.terms as Record<string, unknown>[])[0].passed = false;
+    fs.writeFileSync(firstRecord, JSON.stringify(unknownPair) + "\n");
+    const unknownRejected = cli("verify", runs);
+    assert.equal(unknownRejected.status, 1, "an invalid null/null record was accepted");
+    assert.doesNotMatch(unknownRejected.stdout, /final repair verdict disagrees/);
+    fs.writeFileSync(firstRecord, JSON.stringify(originalRecord) + "\n");
+
+    const prepared = cli("evidence-prepare", runs, "--into", evidence, "--archive", archive);
+    assert.equal(prepared.status, 0, prepared.stdout + prepared.stderr);
+    for (const name of ["manifest.json", "evidence.json", "files.sha256"]) {
+      assert.ok(fs.existsSync(path.join(evidence, name)), name);
+    }
+    assert.ok(fs.existsSync(path.join(evidence, "attempts", manifest.order[0].trialId, "record.json")));
+    assert.ok(fs.existsSync(archive));
+    assert.equal(
+      (JSON.parse(fs.readFileSync(path.join(evidence, "manifest.json"), "utf8")) as { population?: string }).population,
+      "seeded",
+    );
+    const descriptor = JSON.parse(fs.readFileSync(path.join(evidence, "evidence.json"), "utf8")) as {
+      kind?: string;
+      attempts?: number;
+      scheduledValidRuns?: number;
+    };
+    assert.equal(descriptor.kind, "publishable");
+    assert.equal(descriptor.attempts, manifest.order.length);
+    assert.equal(descriptor.scheduledValidRuns, manifest.order.length);
+
+    const listed = spawnSync("tar", ["-tzf", archive], { encoding: "utf8" });
+    assert.equal(listed.status, 0, listed.stderr);
+    assert.match(listed.stdout, new RegExp(manifest.order[0].trialId + "/state/journal"));
+    const intact = cli("evidence-verify", evidence, "--archive", archive);
+    assert.equal(intact.status, 0, intact.stdout + intact.stderr);
+
+    const slimRecord = path.join(evidence, "attempts", manifest.order[0].trialId, "record.json");
+    const original = fs.readFileSync(slimRecord);
+    fs.appendFileSync(slimRecord, "tampered\n");
+    const slimTamper = cli("evidence-verify", evidence, "--archive", archive);
+    assert.equal(slimTamper.status, 1, slimTamper.stdout + slimTamper.stderr);
+    assert.match(slimTamper.stdout, /slim .*record\.json differs from the raw archive/);
+    fs.writeFileSync(slimRecord, original);
+
+    fs.appendFileSync(archive, "tampered\n");
+    const archiveTamper = cli("evidence-verify", evidence, "--archive", archive);
+    assert.equal(archiveTamper.status, 1, archiveTamper.stdout + archiveTamper.stderr);
+    assert.match(archiveTamper.stdout, /raw archive has the wrong SHA-256/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

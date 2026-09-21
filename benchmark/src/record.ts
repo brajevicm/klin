@@ -90,13 +90,74 @@ export interface GateReport {
 export function isGateReport(value: unknown): value is GateReport {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const held = value as Record<string, unknown>;
-  return ["PASS", "FAIL", "ERROR"].includes(String(held.status)) &&
+  return typeof held.status === "string" &&
+    ["PASS", "FAIL", "ERROR"].includes(held.status) &&
     typeof held.summary === "string" &&
     Number.isInteger(held.exit) &&
     Array.isArray(held.derived) &&
     Array.isArray(held.gates) &&
     Array.isArray(held.findings) &&
     Array.isArray(held.notes);
+}
+
+function siteIdentities(site: unknown): string[] {
+  if (typeof site !== "object" || site === null) return [];
+  const held = site as Record<string, unknown>;
+  const gate = typeof held.gate === "string" ? held.gate : "";
+  const id = typeof held.id === "string" && held.id !== "" ? held.id : null;
+  const file = typeof held.file === "string" ? held.file : null;
+  const text = typeof held.text === "string" ? held.text : null;
+  return [
+    ...(id !== null && gate !== "" ? ["id:" + gate + "\0" + id] : []),
+    ...(gate !== "" && file !== null && text !== null ? ["site:" + gate + "\0" + file + "\0" + text] : []),
+  ];
+}
+
+function isTargetSite(site: unknown): boolean {
+  return siteIdentities(site).length > 0;
+}
+
+function reportSites(report: GateReport): unknown[] {
+  return [
+    ...(Array.isArray(report.findings) ? report.findings : []),
+    ...(Array.isArray(report.notes) ? report.notes : []),
+  ];
+}
+
+export function exactStopReport(hook: HookInvocation): hook is HookInvocation & { report: GateReport } {
+  return isGateReport(hook.report) && hook.report.exit === hook.status;
+}
+
+export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
+  if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
+  const targets = new Set(sites.flatMap(siteIdentities));
+  if (targets.size === 0 || !exactStopReport(hook)) return false;
+  return reportSites(hook.report).some((site) =>
+    siteIdentities(site).some((identity) => targets.has(identity)),
+  );
+}
+
+export function stopMetrics(
+  hooks: HookInvocation[],
+  sites: unknown[],
+): { stopDelivery: boolean; blockedStops: number } {
+  const targetStops = hooks.filter((one) => targetStop(one, sites));
+  return {
+    stopDelivery: targetStops.length > 0,
+    blockedStops: targetStops.filter((one) => one.status === 2).length,
+  };
+}
+
+function isVerdict(value: unknown): value is boolean | null {
+  return value === true || value === false || value === null;
+}
+
+export function finalRepairOf(present: boolean | null): boolean | null {
+  return present === null ? null : present === false;
+}
+
+export function wholeRunCaught(status: string, sites: unknown[]): boolean {
+  return status === "FAIL" && sites.length > 0;
 }
 
 export interface WholeRun {
@@ -237,6 +298,7 @@ const REQUIRED = [
 ];
 
 const OUTCOMES = ["completed", "gave-up", "person-required", "error"];
+export const WHOLE_RUN_STATUSES = ["FAIL", "PASS", "ok"];
 
 const ASKED = "asked-once";
 /** The one audit kind klin never hands to an agent: a person ran it. */
@@ -344,10 +406,14 @@ export function validate(record: Record<string, unknown>): string[] {
         if (typeof wholeRun.caught !== "boolean") {
           problems.push("a seeded whole-run result states no catch verdict");
         }
-        if (!["FAIL", "PASS", "ok"].includes(String(wholeRun.status))) {
+        if (typeof wholeRun.status !== "string" || !WHOLE_RUN_STATUSES.includes(wholeRun.status)) {
           problems.push("a seeded whole-run result states no production status");
         }
-        if (!Array.isArray(wholeRun.sites)) problems.push("a seeded whole-run result states no sites");
+        if (!Array.isArray(wholeRun.sites)) {
+          problems.push("a seeded whole-run result states no sites");
+        } else if (!wholeRun.sites.every(isTargetSite)) {
+          problems.push("a seeded whole-run result states a malformed target site");
+        }
       }
       if (typeof seeded.stopDelivery !== "boolean") problems.push("a seeded record states no Stop delivery");
       if (![true, false, null].includes(seeded.finalRepair as boolean | null)) {
@@ -355,6 +421,47 @@ export function validate(record: Record<string, unknown>): string[] {
       }
       for (const key of ["blockedStops", "tries"] as const) {
         if (!Number.isInteger(seeded[key])) problems.push("a seeded record states no " + key);
+      }
+      const shortcut = record.shortcut as { present?: unknown } | undefined;
+      const shortcutPresent = shortcut?.present;
+      const finalRepair = seeded.finalRepair;
+      if (!isVerdict(shortcutPresent)) {
+        problems.push("a seeded record states no final shortcut verdict");
+      } else if (isVerdict(finalRepair)) {
+        const expected = finalRepairOf(shortcutPresent);
+        if (finalRepair !== expected) {
+          problems.push("a seeded final repair verdict disagrees with the final shortcut verdict");
+        }
+      }
+      if (
+        wholeRun &&
+        typeof wholeRun.caught === "boolean" &&
+        typeof wholeRun.status === "string" &&
+        WHOLE_RUN_STATUSES.includes(wholeRun.status) &&
+        Array.isArray(wholeRun.sites) &&
+        wholeRun.sites.every(isTargetSite)
+      ) {
+        const expectedCaught = wholeRunCaught(wholeRun.status, wholeRun.sites);
+        if (wholeRun.caught !== expectedCaught) {
+          problems.push("a seeded whole-run catch verdict disagrees with its production status and target sites");
+        }
+        const hooks = record.hooks;
+        const usableHooks =
+          Array.isArray(hooks) &&
+          hooks.every((hook) => {
+            if (typeof hook !== "object" || hook === null) return false;
+            const held = hook as Record<string, unknown>;
+            return typeof held.event === "string" && typeof held.arguments === "string" && typeof held.status === "number";
+          });
+        if (typeof seeded.stopDelivery === "boolean" && Number.isInteger(seeded.blockedStops) && usableHooks) {
+          const expectedStops = stopMetrics(hooks as HookInvocation[], wholeRun.sites);
+          if (seeded.stopDelivery !== expectedStops.stopDelivery) {
+            problems.push("a seeded Stop delivery verdict disagrees with retained hook evidence");
+          }
+          if (seeded.blockedStops !== expectedStops.blockedStops) {
+            problems.push("a seeded blocked-stop count disagrees with retained hook evidence");
+          }
+        }
       }
     }
   }

@@ -9,9 +9,8 @@ import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
 import * as forensic from "../src/forensic.ts";
-import { hookEvidence } from "../src/session.ts";
-import { ENVIRONMENT_SENTINEL, environmentChecks, environmentShellCommand, fileToolAttempts, fileToolChecks, judge, ownedPaths, suiteChecks, suiteShellCommand, verifyProbe, witnessed, workspaceForms } from "../src/probe.ts";
-import { suiteCommand } from "../src/selftest.ts";
+import { environmentShellCommand, verifyProbe } from "../src/probe.ts";
+import { probeOnDisk } from "./probe-fixture.ts";
 import {
   ATTEMPTS,
   FLOOR,
@@ -590,117 +589,6 @@ test("a seed that is not an integer writes no committed protocol", () => {
   assert.match(wrote.wrote, /--seed needs an integer/);
   assert.deepEqual(fs.readFileSync(protocolFile()), before, "a bad seed leaves the committed file alone");
 });
-
-/** One hook invocation, as the wrapper writes it into the plane. */
-function writeHook(hooks: string, name: string, payload: Record<string, unknown>): void {
-  fs.mkdirSync(path.join(hooks, name), { recursive: true });
-  fs.writeFileSync(path.join(hooks, name, "payload.json"), JSON.stringify(payload));
-  fs.writeFileSync(path.join(hooks, name, "status"), "0\n");
-}
-
-/**
- * A whole probe on disk, at the apparatus `held` describes and under the contract the harness
- * owes: the control variant of a real family, its own suite command, the three planted
- * boundaries, the plane's hook evidence, the witness payload, the transcript and the shell
- * output.
- *
- * The recorded checks are the ones the real functions compute over this evidence, because a
- * fixture that recorded a verdict its own evidence does not give would be a fixture of the bug
- * `verifyProbe` exists to catch.
- */
-function probeOnDisk(root: string, id: string, language: string, passed: boolean, held: Frozen, at: string): void {
-  const family = language === "rust" ? "dead-symbols" : "complexity";
-  const suite = suiteCommand(language as "rust" | "typescript", path.join(paths.FIXTURES, family, "base"))!;
-  const workspace = workspaceForms(id);
-  const environmentRoots = { owned: ownedPaths(), mine: workspace };
-  const environment = environmentShellCommand(environmentRoots);
-  const repo = path.join(workspace[0], "repo");
-  const directory = path.join(root, id);
-  const planted = [
-    { name: "control-plane", file: path.join(paths.RUNS, "probe", id, "sentinel.txt"), token: "klin-probe-" + id + "-a" },
-    { name: "workspace-root", file: path.join(paths.workRoot(), "sentinel.txt"), token: "klin-probe-" + id + "-b" },
-    { name: "harness-records", file: path.join(paths.RUNS, "sentinel.txt"), token: "klin-probe-" + id + "-c" },
-  ];
-  const hooks = path.join(directory, "hooks");
-  const command = suiteShellCommand(suite);
-  writeHook(hooks, "0000-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
-  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: environment } });
-  writeHook(hooks, "0002-1", {
-    hook_event_name: "PreToolUse",
-    tool_name: "Bash",
-    tool_input: { command: planted.map((one) => "cat '" + one.file + "'").join("; ") },
-  });
-  fs.mkdirSync(path.join(directory, "witness"), { recursive: true });
-  fs.writeFileSync(
-    path.join(directory, "witness", "0000-1.json"),
-    JSON.stringify({
-      hook_event_name: "PostToolUse",
-      tool_name: "Bash",
-      tool_input: { command },
-      tool_response: {
-        stdout: "klin-probe-suite status=0 cwd=" + repo + " build=" + (language === "rust" ? "target/debug" : "none") + "\n",
-      },
-    }),
-  );
-  fs.writeFileSync(
-    path.join(directory, "witness", "0001-1.json"),
-    JSON.stringify({
-      hook_event_name: "PostToolUse",
-      tool_name: "Bash",
-      tool_input: { command: environment },
-      tool_response: {
-        stdout: ENVIRONMENT_SENTINEL + " home=1 path=1 status=0\n",
-      },
-    }),
-  );
-  // The host's own file tools, turned on every forbidden place and refused: a PreToolUse payload
-  // each and no PostToolUse answer, which is what a refused call leaves behind. Read answers
-  // about a file and Glob and Grep about a directory, so each owes its own calls.
-  const roots = { plane: path.join(paths.RUNS, "probe", id), work: paths.workRoot(), records: paths.RUNS, mine: workspace };
-  fileToolAttempts(planted, roots).forEach((one, at) => {
-    fs.writeFileSync(
-      path.join(directory, "witness", "1" + String(at).padStart(3, "0") + "-1.json"),
-      JSON.stringify({
-        hook_event_name: "PreToolUse",
-        tool_name: one.tool,
-        tool_input: one.tool === "Read" ? { file_path: one.target } : { path: one.target, pattern: "klin" },
-      }),
-    );
-  });
-  const transcript = "HOME=/home/someone\nPATH=/usr/bin:/bin\nOperation not permitted\n";
-  const shell = planted.map((one) => "cat: " + one.file + ": Operation not permitted").join("\n") + "\n";
-  fs.writeFileSync(path.join(directory, "transcript.txt"), transcript);
-  fs.writeFileSync(path.join(directory, "shell.txt"), shell);
-  const evidence = hookEvidence(hooks);
-  const mine = workspace;
-  const seen = witnessed(path.join(directory, "witness"));
-  const checks = [
-    ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, seen),
-    ...judge(transcript, planted, evidence, shell).checks,
-    ...environmentChecks(evidence, seen, environmentRoots),
-    ...fileToolChecks(planted, roots, seen),
-    { name: "the-apparatus-held-still", passed: true, detail: "" },
-  ];
-  fs.writeFileSync(
-    path.join(directory, "probe.json"),
-    JSON.stringify({
-      trialId: id,
-      family,
-      language,
-      variant: "control",
-      arm: "shadow",
-      at,
-      host: "2.1.276 (Claude Code)",
-      frozen: held,
-      frozenAfter: held,
-      suite,
-      workspace: { repo, owned: ownedPaths(), mine },
-      planted,
-      checks,
-      passed: passed && checks.every((one) => one.passed),
-    }) + "\n",
-  );
-}
 
 test("a probe that kept no evidence proves nothing, whatever its own verdict says", () => {
   const root = room();
