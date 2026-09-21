@@ -388,7 +388,7 @@ function hookEvidence(
   };
 }
 
-test("target Stop metrics use gate-scoped structured identity and keep delivery separate from blocking", () => {
+test("target Stop metrics ignore an unrelated same-gate finding and keep review delivery separate from blocking", () => {
   const target = { gate: "escapes", id: "target", file: "src/foo.ts", line: 7, text: "removed()" };
   const report = (...sites: unknown[]) => ({ gates: [], findings: sites, notes: [] });
   assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 0, true, report(target)), [target]), true);
