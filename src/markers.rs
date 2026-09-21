@@ -144,8 +144,9 @@ struct Tally {
     count: u64,
 }
 
-/// What one tree walk accumulates across its files: the sites, what each file said about where
-/// a match does not count, the files whose shapes were read, and the tally of idioms left out.
+/// One tree walk: the tree's test roots, and what the walk accumulates across its files. The
+/// sites, what each file said about where a match does not count, the files whose shapes were
+/// read, the tally of idioms left out, and the reads and parses the walk cost.
 struct Walk {
     test_roots: Vec<String>,
     seen: BTreeMap<(String, String), Tally>,
@@ -365,7 +366,7 @@ fn findings(
 ) -> Result<Read, Error> {
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
-    let mut walk = Walk::over(tree);
+    let mut walk = Walk::over(kind, tree);
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search
@@ -413,9 +414,12 @@ fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>) -> Files {
 }
 
 impl Walk {
-    fn over(tree: &Tree) -> Walk {
+    fn over(kind: &Kind, tree: &Tree) -> Walk {
         Walk {
-            test_roots: tree.test_roots(),
+            test_roots: match kind.skips_tests {
+                true => tree.test_roots(),
+                false => Vec::new(),
+            },
             seen: BTreeMap::new(),
             cache: BTreeMap::new(),
             shaped: BTreeSet::new(),
