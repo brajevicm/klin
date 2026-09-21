@@ -40,7 +40,7 @@ No keys: the section is absent, or `false` to exclude the gate.
 | --- | --- | --- | --- | --- | --- |
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
-| `skip_rust_tests` | whether an inline Rust test module is left out | no | pinned only | — | `true` |
+| `skip_rust_tests` | whether `unwrap` and `expect` inside Rust test code are left out | no | pinned only | — | `true` |
 
 ### `stubs`
 

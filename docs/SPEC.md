@@ -532,7 +532,8 @@ not globs. An explicit `in` with no applicable file is exit 2.
 
 `complexity` additionally reads `cc` and `lines`; either is a whole number or
 a dated ceiling schedule and either may be omitted for derivation. `escapes`
-additionally reads `skip_rust_tests`, default `true`. `dead_symbols`
+additionally reads `skip_rust_tests`, default `true`, which leaves `unwrap` and
+`expect` out of Rust test code and nothing else (8.2, ADR 0049). `dead_symbols`
 additionally reads name globs in `ignore`. `stubs` and `reachability` read no
 other policy.
 
@@ -1213,8 +1214,25 @@ that pattern matched. The built-in language table comes first. A line that
 carries two kinds is one site labelled by
 the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
-the text as written, so a pattern inside a string literal is a match, and it
-leaves an inline Rust test module out unless `skip_rust_tests` is `false`.
+the text as written, so a pattern inside a string literal is a match. Unless
+`skip_rust_tests` is `false`, it leaves `unwrap` and `expect` out of Rust test
+code and counts them on the coverage line as skipped in Rust tests. Rust test
+code is an inline `#[cfg(test)]` module or a `.rs` file under a test root the
+survey finds in the tree being read (5.4). Each tree is classified over its
+own files, so a root that stops being test-only has its production sites
+judged. Every other row is judged in a test as anywhere else, so a
+`#[ignore]`, an `#[allow(...)]` or an `unsafe { }` inside a test is a site
+(ADR 0049). Pinned by
+`a_site_inside_a_cfg_test_module_is_not_a_production_site`,
+`skip_rust_tests_turned_off_judges_the_test_module_too`,
+`unwrap_and_expect_in_a_file_under_a_test_root_are_left_out_by_default`,
+`a_skipped_test_under_a_test_root_is_still_an_escape`,
+`a_skipped_test_inside_an_inline_test_module_is_still_an_escape`,
+`allow_and_unsafe_in_rust_tests_remain_escapes`,
+`skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too` and
+`production_rust_beside_a_test_root_is_judged_as_before` and
+`a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged` in
+`tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
 line, judges a test module like any other code, and refuses the key. Pinned by
 `repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
