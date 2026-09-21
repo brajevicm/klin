@@ -10,6 +10,6 @@
   "scheduledValidRuns": 72,
   "runManifestSha256": "c36e8cd8ab58281dd4c2b26b6a8c2c51cc677c87145dfb393e910e744d98f8b4",
   "rawFilesManifestSha256": "7ad3d7ffeaab81b28d47d9cc3843512159ea75d7f58b13d2ba7d211a1164386c",
-  "release": null,
+  "release": "https://github.com/brajevicm/klin/releases/tag/benchmark-publishable-v2-2026-09-20",
   "sigstoreBundle": null
 }

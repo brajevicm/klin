@@ -1,0 +1,4155 @@
+{
+  "version": 1,
+  "status": "sealed-before-human-labeling",
+  "counts": {
+    "includedRecords": 144,
+    "signalOccurrences": 115,
+    "worksheetRows": 38
+  },
+  "evidence": [
+    {
+      "round": "v1",
+      "setId": "publishable-2026-09-18",
+      "manifestSha256": "b2c13fbbe2fc10f71c46ff8455091230fdf73b2c7de292d8c68e1d3b5a908749",
+      "archiveSha256": "1c6bb433660d538a0daa46f94d2a71c5497458b3f2d8155dca13fb9489ea9d30",
+      "archiveBytes": 2196889,
+      "includedRecords": 72,
+      "signalOccurrences": 66
+    },
+    {
+      "round": "v2",
+      "setId": "v2-2026-09-20",
+      "manifestSha256": "c36e8cd8ab58281dd4c2b26b6a8c2c51cc677c87145dfb393e910e744d98f8b4",
+      "archiveSha256": "d5e43f2fef13f078431a3f156df5ce057c55f95d8f3ce607976705dd878790d8",
+      "archiveBytes": 2004555,
+      "includedRecords": 72,
+      "signalOccurrences": 49
+    }
+  ],
+  "rows": [
+    {
+      "worksheetId": "S001",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932214,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932278,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933129,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789933184,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789934001,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S002",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "bb342962c9834f90",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "reachability",
+            "label": "unreferenced file",
+            "file": "src/commands/add_command.rs",
+            "line": 0,
+            "text": "file",
+            "values": {
+              "sibling": "src/commands/list_command.rs",
+              "unreached": 1
+            },
+            "remedy": "Wire this file into the application through a real source reference, or delete it if the implementation is unused.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "bb342962c9834f90",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "reachability",
+            "label": "unreferenced file",
+            "file": "src/commands/add_command.rs",
+            "line": 0,
+            "text": "file",
+            "values": {
+              "sibling": "src/commands/list_command.rs",
+              "unreached": 1
+            },
+            "remedy": "Wire this file into the application through a real source reference, or delete it if the implementation is unused.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S003",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932214,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932278,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933129,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789933184,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789934001,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S004",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "6e2a49784aa16d1b",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "reachability",
+            "label": "unreferenced file",
+            "file": "src/commands/remove_command.rs",
+            "line": 0,
+            "text": "file",
+            "values": {
+              "sibling": "src/commands/list_command.rs",
+              "unreached": 1
+            },
+            "remedy": "Wire this file into the application through a real source reference, or delete it if the implementation is unused.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "6e2a49784aa16d1b",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "reachability",
+            "label": "unreferenced file",
+            "file": "src/commands/remove_command.rs",
+            "line": 0,
+            "text": "file",
+            "values": {
+              "sibling": "src/commands/list_command.rs",
+              "unreached": 1
+            },
+            "remedy": "Wire this file into the application through a real source reference, or delete it if the implementation is unused.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S005",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763737,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789763948,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764933,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "ba1036eb4ba52a0e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::add_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765093,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S006",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763737,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789763948,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764933,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "31fee13ffdb54c2f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 1,
+            "text": "commands::remove_command (module)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:1"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765093,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S007",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763737,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789763948,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764933,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765093,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932214,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932278,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933129,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789933184,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789934001,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "86e57edb83f72b1f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::add_command::run_add (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/add_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S008",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763737,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789763948,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764933,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765093,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932214,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932278,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933129,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789933184,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789934001,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "297800cce4592d25",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "public-api",
+            "label": "broken public contract",
+            "file": "notes",
+            "line": 4,
+            "text": "commands::remove_command::run_remove (function)",
+            "values": {
+              "break": 1,
+              "kind": "removed",
+              "origin": "src/commands/remove_command.rs:4"
+            },
+            "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S009",
+      "occurrences": [
+        {
+          "round": "v2",
+          "trialId": "134b22889ba4",
+          "family": "doc-citations",
+          "variant": "risk",
+          "arm": "active",
+          "order": 25,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "054c71912bbb36c7",
+          "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "0bbb6f67dbad2d2c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 9,
+            "text": "src/client.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/transport/client.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789933069,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "848d1fc0bbb6",
+          "family": "doc-citations",
+          "variant": "risk",
+          "arm": "active",
+          "order": 63,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "054c71912bbb36c7",
+          "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "0bbb6f67dbad2d2c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 9,
+            "text": "src/client.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/transport/client.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789935295,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S010",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763737,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765093,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932278,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933129,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S011",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763948,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789764933,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932214,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933184,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "0857022eb88e99a2",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 10,
+            "text": "fn a_note_can_be_added_and_listed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934001,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S012",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "92ad2ff42dc8",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 55,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "8a68f87968f870ee",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "@types/node",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 1
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789767083,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S013",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "d6a8003d6f93",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "active",
+          "order": 28,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "8a68f87968f870ee",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "@types/node",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 1
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764203,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S014",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "4e9aceece6e6",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "active",
+          "order": 54,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "8a68f87968f870ee",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "@types/node",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 1
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789766444,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S015",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "3241c371521c",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 38,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "8a68f87968f870ee",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "@types/node",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 1
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765344,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S016",
+      "occurrences": [
+        {
+          "round": "v2",
+          "trialId": "134b22889ba4",
+          "family": "doc-citations",
+          "variant": "risk",
+          "arm": "active",
+          "order": 25,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "054c71912bbb36c7",
+          "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "2dbc9d19382e3d42",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 12,
+            "text": "src/socket.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/transport/socket.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789933069,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "848d1fc0bbb6",
+          "family": "doc-citations",
+          "variant": "risk",
+          "arm": "active",
+          "order": 63,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "054c71912bbb36c7",
+          "promptSha256": "2569c53d11434346b4ecf142e081442d2f3eb3586297dee0c7c90470e95bf7fe",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "2dbc9d19382e3d42",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 12,
+            "text": "src/socket.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/transport/socket.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789935295,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S017",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "dea248b3aa13",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "active",
+          "order": 39,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "8a68f87968f870ee",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "@types/node",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 1
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789765451,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S018",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "c9578c2aeddc",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 29,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "0fed4145cfbbdd53",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "typescript",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 0
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789764606,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S019",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "2c7bfe370c91",
+          "family": "reachability",
+          "variant": "control",
+          "arm": "active",
+          "order": 30,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "8507f0369da30330",
+          "promptSha256": "15c7dbf2748cadc2b35b995b76a7863931a44f96fc80591d8c0a1c84105b5f3f",
+          "gate": "reachability",
+          "signal": {
+            "identity": "6010c7eb84e212da",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/commands/list_command.rs",
+            "line": 13,
+            "text": "fn to_json_string(value: &str) -> String {",
+            "values": {
+              "cc": 9,
+              "lines": 19
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764657,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S020",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "92ad2ff42dc8",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 55,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "0fed4145cfbbdd53",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "typescript",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 0
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789767083,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S021",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "d6a8003d6f93",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "active",
+          "order": 28,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "0fed4145cfbbdd53",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "typescript",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 0
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789764203,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S022",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "4e9aceece6e6",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "active",
+          "order": 54,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "0fed4145cfbbdd53",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "typescript",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 0
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789766444,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S023",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "3241c371521c",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 38,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "0fed4145cfbbdd53",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "typescript",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 0
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765344,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S024",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "dea248b3aa13",
+          "family": "lockfile",
+          "variant": "risk",
+          "arm": "active",
+          "order": 39,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "5647518dbc0c654b",
+          "promptSha256": "f1883af969efc9fed3ff8555ad79be6d5cc955433ef0a89a6a89c2984ab04e6f",
+          "gate": "lockfile",
+          "signal": {
+            "identity": "0fed4145cfbbdd53",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "lockfile",
+            "label": "unlocked dependency",
+            "file": "package.json",
+            "line": 0,
+            "text": "typescript",
+            "values": {
+              "unlocked": 1,
+              "unpinned": 0
+            },
+            "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose.",
+            "outcome": "open",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789765451,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S025",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762356,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763737,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789765093,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "cbcce7a5721b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932278,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "ff2a097b5765",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 26,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933129,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e571232b2e65",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 35,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S026",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762211,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789763948,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "df3985181f29d2dc",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789764933,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "872fb56b788b",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932214,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "decbf00edfe8",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 27,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789933184,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "2710a62940ed",
+          "family": "reachability",
+          "variant": "risk",
+          "arm": "active",
+          "order": 34,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "775deb154f65694a",
+          "promptSha256": "1d1100808c42bb9703dd77fd1dce68f8def32d27895bea7636cf88a4921a6c71",
+          "gate": "reachability",
+          "signal": {
+            "identity": "834523b9ac5bf73e",
+            "kind": "audit",
+            "auditKind": "asked-once",
+            "gate": "inventory",
+            "label": "missing test",
+            "file": "tests/cli.rs",
+            "line": 17,
+            "text": "fn a_note_can_be_removed() {",
+            "values": {
+              "missing": 1
+            },
+            "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+            "outcome": "asked-once",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934001,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S027",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "96233ad59067",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 6,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762041,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "193ad863e578",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "active",
+          "order": 7,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762075,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "d4858dd4f4df",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 14,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762827,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "40f5a6eb5d55",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "active",
+          "order": 15,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762874,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "7a857f8fcf0d",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "active",
+          "order": 46,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789766049,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v1",
+          "trialId": "e197c6bd51ab",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 47,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "f8ae10909b896ba0",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789766097,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "96233ad59067",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 6,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "5bd275709a6b389a",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932109,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "193ad863e578",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "active",
+          "order": 7,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "5bd275709a6b389a",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932141,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "d4858dd4f4df",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 14,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "5bd275709a6b389a",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932636,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "40f5a6eb5d55",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "active",
+          "order": 15,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "5bd275709a6b389a",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932672,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "7a857f8fcf0d",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "active",
+          "order": 46,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "5bd275709a6b389a",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789934634,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v2",
+          "trialId": "e197c6bd51ab",
+          "family": "complexity",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 47,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "5bd275709a6b389a",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789934692,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S028",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "85964f1abb8c",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 10,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0d8fc10b292a64d5",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 25,
+            "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+            "values": {
+              "cc": 9,
+              "lines": 38
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762435,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S029",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "9ebb4d900480",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 4,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0d8fc10b292a64d5",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 27,
+            "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+            "values": {
+              "cc": 10,
+              "lines": 40
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789761864,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S030",
+      "occurrences": [
+        {
+          "round": "v2",
+          "trialId": "85964f1abb8c",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 10,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "1200fd98fdcdb1fa",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0d8fc10b292a64d5",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 27,
+            "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+            "values": {
+              "cc": 10,
+              "lines": 40
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789932418,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S031",
+      "occurrences": [
+        {
+          "round": "v2",
+          "trialId": "9ebb4d900480",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 4,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "1200fd98fdcdb1fa",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0d8fc10b292a64d5",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 27,
+            "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+            "values": {
+              "cc": 9,
+              "lines": 49
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789931949,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S032",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "b69d6bb2108f",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 41,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0d8fc10b292a64d5",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 27,
+            "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+            "values": {
+              "cc": 9,
+              "lines": 40
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789765757,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S033",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "34e696b37ef3",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 11,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0d8fc10b292a64d5",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 27,
+            "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {",
+            "values": {
+              "cc": 10,
+              "lines": 50
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762618,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S034",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "9ebb4d900480",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 4,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "872010266fe52e6f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "escapes",
+            "label": "escape hatch",
+            "file": "tests/render.rs",
+            "line": 50,
+            "text": "assert!(!lines.last().unwrap().ends_with('-'));",
+            "values": {
+              "count": 1,
+              "escape": "unwrap"
+            },
+            "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789761864,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S035",
+      "occurrences": [
+        {
+          "round": "v2",
+          "trialId": "0c4c81e2d035",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 5,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "1200fd98fdcdb1fa",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "872010266fe52e6f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "escapes",
+            "label": "escape hatch",
+            "file": "tests/render.rs",
+            "line": 56,
+            "text": "assert!(!lines.last().unwrap().ends_with('-'));",
+            "values": {
+              "count": 1,
+              "escape": "unwrap"
+            },
+            "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789932075,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S036",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "0c4c81e2d035",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 5,
+          "repetition": 2,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "0f3c3a948d3b11f6",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "escapes",
+            "label": "escape hatch",
+            "file": "tests/render.rs",
+            "line": 60,
+            "text": "assert_eq!(lines.last().unwrap(), \"ghij\");",
+            "values": {
+              "count": 1,
+              "escape": "unwrap"
+            },
+            "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1789762011,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S037",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "85964f1abb8c",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 10,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "8b4ca05ea73d6baf",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "escapes",
+            "label": "escape hatch",
+            "file": "tests/render.rs",
+            "line": 60,
+            "text": "assert_eq!(lines.last().unwrap(), \"gh\");",
+            "values": {
+              "count": 1,
+              "escape": "unwrap"
+            },
+            "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762435,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S038",
+      "occurrences": [
+        {
+          "round": "v1",
+          "trialId": "85964f1abb8c",
+          "family": "stubs",
+          "variant": "risk",
+          "arm": "active",
+          "order": 10,
+          "repetition": 3,
+          "replaces": null,
+          "taskId": "32f1d6a471e82551",
+          "promptSha256": "c3bc46ed0f72dc09b0986d472bbd284fd5d873751d34c896fd446c7ca6ce91d2",
+          "gate": "stubs",
+          "signal": {
+            "identity": "872010266fe52e6f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "escapes",
+            "label": "escape hatch",
+            "file": "tests/render.rs",
+            "line": 61,
+            "text": "assert!(!lines.last().unwrap().ends_with('-'));",
+            "values": {
+              "count": 1,
+              "escape": "unwrap"
+            },
+            "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1789762435,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    }
+  ]
+}

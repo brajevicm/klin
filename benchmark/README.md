@@ -767,6 +767,9 @@ node benchmark/src/cli.ts verify    benchmark/runs/publishable-<stamp>
 node benchmark/src/cli.ts scorecard benchmark/runs/publishable-<stamp> --out docs/round-<date>.md
 node benchmark/src/cli.ts audit benchmark/evidence/<set> --archive /path/to/<set>-raw.tar.gz \
   --out docs/benchmark-audit-<date>.md
+node benchmark/src/cli.ts label-prepare benchmark/evidence/<v1-set> benchmark/evidence/<v2-set> \
+  --archive-v1 /path/to/<v1-set>-raw.tar.gz --archive-v2 /path/to/<v2-set>-raw.tar.gz \
+  --into benchmark/evidence/labeling-<date>
 
 node benchmark/src/cli.ts seeded-plan --seed 1             # nine planted blocks, eighteen runs
 node benchmark/src/cli.ts seeded-execute benchmark/runs/seeded-<stamp> --manifest-sha256 <digest>
@@ -784,6 +787,11 @@ and starts no agent or links klin's Rust modules. An `ERR`, missing or unknown
 verdict is an audit error, not a clean row; `fixed-next` and `fixed-later` are
 resolved only when every signal in the row has one of those outcomes, and an
 `asked-once` inventory signal is review evidence rather than a regression.
+
+`label-prepare` verifies both publishable natural evidence sets and their raw
+archives, reconstructs only signal-time context from each frozen base tree,
+and writes a blinded worksheet plus a sealed join. It stops before human labels,
+synthesis and issue filing.
 
 `protocols/shadow-active-v2/protocol.json` is the treatment-independent design
 for the repaired round, committed before run 1: the protocol number, the frozen seed, the sample plan,
