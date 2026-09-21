@@ -4,12 +4,21 @@ import os from "node:os";
 import path from "node:path";
 import * as evidence from "./evidence.ts";
 import type { Signal } from "./record.ts";
-import { digest, sha256 } from "./trees.ts";
+import { digest, files, sha256 } from "./trees.ts";
 
 export interface EvidenceInput {
   name: "v1" | "v2";
   directory: string;
   archive: string;
+}
+
+export interface FrozenEvidence {
+  setId: string;
+  recordProtocol: number;
+  runManifestSha256: string;
+  rawFilesManifestSha256: string;
+  archiveSha256: string;
+  archiveBytes: number;
 }
 
 export interface Counts {
@@ -25,7 +34,13 @@ export interface WorksheetRow {
   taskIntent: string;
   site: { file: string; line: number | null; text: string | null };
   values: unknown;
-  context: { path: string; line: number | null; excerpt: string; note: string | null };
+  context: {
+    path: string;
+    line: number | null;
+    excerpt: string;
+    note: string | null;
+    measurement: string;
+  };
   remedy: string | null;
 }
 
@@ -34,10 +49,24 @@ export interface Preparation {
   rows: WorksheetRow[];
 }
 
-const EXPECTED_SET_IDS = {
-  v1: "publishable-2026-09-18",
-  v2: "v2-2026-09-20",
-} as const;
+export const FROZEN_EVIDENCE: Record<"v1" | "v2", FrozenEvidence> = {
+  v1: {
+    setId: "publishable-2026-09-18",
+    recordProtocol: 4,
+    runManifestSha256: "b2c13fbbe2fc10f71c46ff8455091230fdf73b2c7de292d8c68e1d3b5a908749",
+    rawFilesManifestSha256: "6ead2a735831d08d3d6242baa3966d16d9aacc4e5f9ac83320f90fe47383a152",
+    archiveSha256: "1c6bb433660d538a0daa46f94d2a71c5497458b3f2d8155dca13fb9489ea9d30",
+    archiveBytes: 2196889,
+  },
+  v2: {
+    setId: "v2-2026-09-20",
+    recordProtocol: 5,
+    runManifestSha256: "c36e8cd8ab58281dd4c2b26b6a8c2c51cc677c87145dfb393e910e744d98f8b4",
+    rawFilesManifestSha256: "7ad3d7ffeaab81b28d47d9cc3843512159ea75d7f58b13d2ba7d211a1164386c",
+    archiveSha256: "d5e43f2fef13f078431a3f156df5ce057c55f95d8f3ce607976705dd878790d8",
+    archiveBytes: 2004555,
+  },
+};
 
 interface ManifestRow {
   family?: unknown;
@@ -78,6 +107,8 @@ interface LoadedSet {
   runs: SelectedRun[];
   selectedRecords: RawRecord[];
 }
+
+type Snapshot = Map<string, string>;
 
 interface Candidate {
   taskIntent: string;
@@ -151,17 +182,6 @@ function stable(value: unknown): string {
   return JSON.stringify(canonical(value));
 }
 
-function inside(root: string, file: string): boolean {
-  const relative = path.relative(path.resolve(root), path.resolve(file));
-  return relative === "" || (!relative.startsWith(".." + path.sep) && !path.isAbsolute(relative));
-}
-
-function safeRelative(root: string, relative: string): string {
-  const file = path.resolve(root, relative);
-  if (!inside(root, file)) fail("the worksheet signal names a path outside its base tree: " + relative);
-  return file;
-}
-
 function archiveHash(file: string): { sha256: string; bytes: number } {
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) fail("the raw archive does not exist: " + file);
   const bytes = fs.readFileSync(file);
@@ -201,7 +221,7 @@ function attempts(directory: string): Map<string, Attempt> {
   return found;
 }
 
-function manifest(directory: string): { rows: ManifestRow[]; sha256: string; setId: string } {
+function manifest(directory: string): { rows: ManifestRow[]; sha256: string; setId: string; protocol: number } {
   const file = path.join(directory, "manifest.json");
   const read = json<RawRecord>(file);
   if (read.kind !== "publishable" || read.publishable !== true) {
@@ -216,6 +236,7 @@ function manifest(directory: string): { rows: ManifestRow[]; sha256: string; set
     rows,
     sha256: sha256(fs.readFileSync(file)),
     setId: text(descriptor.setId, "evidence set id"),
+    protocol: number(read.protocol, "manifest protocol"),
   };
 }
 
@@ -260,6 +281,12 @@ function selected(directory: string, rows: ManifestRow[], held: Map<string, Atte
         break;
       }
       const next = children.get(id) ?? [];
+      if (next.length === 0) {
+        fail(directory + " has no valid replacement for scheduled trial " + original + " after " + id);
+      }
+      if (next.length > 1) {
+        fail(directory + " has ambiguous replacements for " + id + ": " + next.map((one) => one.id).sort().join(", "));
+      }
       id = next[0].id;
     }
   }
@@ -281,7 +308,196 @@ function promptAt(raw: string, expected: string): string {
   return unique[0];
 }
 
-function context(base: string, signal: Signal): WorksheetRow["context"] {
+function stringValue(value: unknown, name: string): string {
+  if (typeof value !== "string") fail("the worksheet evidence has no " + name);
+  return value;
+}
+
+function snapshotOf(base: string): Snapshot {
+  return new Map(files(base).map((relative) => [relative, fs.readFileSync(path.join(base, relative), "utf8")]));
+}
+
+function allSnapshotPaths(current: Snapshot, base: Snapshot): string[] {
+  return [...new Set([...current.keys(), ...base.keys()])];
+}
+
+function relativeToolPath(
+  value: unknown,
+  current: Snapshot,
+  base: Snapshot,
+  cwd = "",
+  strict = true,
+): string | null {
+  let raw = stringValue(value, "forensic tool path").replaceAll("\\", "/");
+  const marker = "/repo/";
+  const at = raw.lastIndexOf(marker);
+  if (at >= 0) {
+    raw = raw.slice(at + marker.length);
+  } else if (raw.startsWith("/")) {
+    const matches = allSnapshotPaths(current, base).filter((one) => raw.endsWith("/" + one));
+    if (matches.length === 1) return matches[0];
+    if (strict) fail("the worksheet cannot map forensic path " + raw + " into the frozen repository");
+    return null;
+  } else {
+    raw = path.posix.join(cwd, raw);
+  }
+  const normalized = path.posix.normalize(raw);
+  if (normalized === "." || normalized === ".." || normalized.startsWith("../") || path.posix.isAbsolute(normalized)) {
+    if (strict) fail("the worksheet forensic path escapes the frozen repository: " + raw);
+    return null;
+  }
+  if (current.has(normalized) || base.has(normalized)) return normalized;
+  const matches = allSnapshotPaths(current, base).filter((one) => one.endsWith("/" + normalized));
+  if (matches.length === 1) return matches[0];
+  return normalized;
+}
+
+function shellWords(segment: string): string[] {
+  return [...segment.matchAll(/"(?:\\.|[^"\\])*"|'[^']*'|[^\s]+/g)].map((one) => {
+    const held = one[0];
+    return held.length >= 2 && ((held.startsWith("\"") && held.endsWith("\"")) || (held.startsWith("'") && held.endsWith("'")))
+      ? held.slice(1, -1)
+      : held;
+  });
+}
+
+function trackedCommandPaths(segment: string, current: Snapshot, base: Snapshot, cwd: string): string[] {
+  const found = new Set<string>();
+  for (const word of shellWords(segment)) {
+    if (word.startsWith("-") || word.includes(">$") || word === "2>&1") continue;
+    const relative = relativeToolPath(word.replace(/[;,]$/, ""), current, base, cwd, false);
+    if (relative && (current.has(relative) || base.has(relative))) found.add(relative);
+  }
+  return [...found];
+}
+
+function commandCwd(command: string): string {
+  const found = command.match(/(?:^|&&|;)\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|]+)/);
+  if (!found) return "";
+  const value = found[1].replace(/^['"]|['"]$/g, "");
+  return value.startsWith("/") || value.includes("git rev-parse") ? "" : path.posix.normalize(value);
+}
+
+function applyBash(snapshot: Snapshot, base: Snapshot, command: string): void {
+  const cwd = commandCwd(command);
+  for (const segment of command.split(/&&|;|\n/)) {
+    const words = shellWords(segment);
+    const operation = words.findIndex((one) => ["rm", "/bin/rm", "mv", "/bin/mv", "cp", "/bin/cp", "touch", "git"].includes(one));
+    if (operation < 0) continue;
+    let name = words[operation];
+    let at = operation + 1;
+    if (name === "git") {
+      name = words[at] ?? "";
+      at += 1;
+    }
+    if (!["rm", "/bin/rm", "mv", "/bin/mv", "cp", "/bin/cp", "touch", "checkout", "restore"].includes(name)) continue;
+    const rest = words.slice(at).filter((one) => (one === "--" || !one.startsWith("-")) && !one.startsWith("2>"));
+    if (name === "rm" || name === "/bin/rm") {
+      for (const one of trackedCommandPaths(rest.join(" "), snapshot, base, cwd)) snapshot.delete(one);
+      continue;
+    }
+    if (name === "touch") {
+      for (const one of rest) {
+        const relative = relativeToolPath(one, snapshot, base, cwd, false);
+        if (relative) snapshot.set(relative, snapshot.get(relative) ?? "");
+      }
+      continue;
+    }
+    if (name === "checkout" || name === "restore") {
+      const separator = rest.indexOf("--");
+      for (const one of (separator >= 0 ? rest.slice(separator + 1) : rest)) {
+        const relative = relativeToolPath(one, snapshot, base, cwd, false);
+        if (!relative) continue;
+        if (base.has(relative)) snapshot.set(relative, base.get(relative)!);
+        else snapshot.delete(relative);
+      }
+      continue;
+    }
+    if (name === "mv" || name === "/bin/mv" || name === "cp" || name === "/bin/cp") {
+      if (rest.length < 2) continue;
+      const source = relativeToolPath(rest[0], snapshot, base, cwd, false);
+      if (!source || !snapshot.has(source)) continue;
+      const destination = relativeToolPath(rest[rest.length - 1], snapshot, base, cwd, false);
+      const held = snapshot.get(source)!;
+      if (name === "mv" || name === "/bin/mv") snapshot.delete(source);
+      if (destination) snapshot.set(destination, held);
+    }
+  }
+  if (/\b(?:os\.remove|unlink|rmSync)\s*\(/.test(command)) {
+    for (const one of trackedCommandPaths(command, snapshot, base, cwd)) snapshot.delete(one);
+  }
+  const redirection = command.match(/(?:^|[^0-9])(?:>>|>)\s*(["']?[^\s;&|"']+["']?)/);
+  if (redirection) {
+    const target = relativeToolPath(redirection[1], snapshot, base, cwd, false);
+    if (target && (snapshot.has(target) || base.has(target))) {
+      const append = command.includes(">>");
+      const echo = command.match(/\becho\s+(["'].*?["']|[^>&]+?)\s*(?:>>|>)/);
+      if (echo) {
+        const value = echo[1].replace(/^['"]|['"]$/g, "").trim() + "\n";
+        snapshot.set(target, append ? (snapshot.get(target) ?? "") + value : value);
+      } else {
+        fail("the worksheet cannot reconstruct shell redirection into " + target);
+      }
+    }
+  }
+  if (/\b(?:cargo\s+(?:fmt|fix|update|generate-lockfile)|git\s+apply)\b/.test(command)) {
+    fail("the worksheet cannot reconstruct mutating Bash evidence: " + command);
+  }
+}
+
+function applyEdit(snapshot: Snapshot, base: Snapshot, input: RawRecord): void {
+  const file = relativeToolPath(input.file_path, snapshot, base);
+  if (file === null) fail("the worksheet edit has no file path");
+  const oldString = stringValue(input.old_string, "edit old string");
+  const newString = stringValue(input.new_string, "edit new string");
+  const current = snapshot.get(file);
+  if (current === undefined) fail("the worksheet edit targets no reconstructed file " + file);
+  if (oldString === "") fail("the worksheet cannot reconstruct an empty edit anchor in " + file);
+  const occurrences = current.split(oldString).length - 1;
+  if (occurrences === 0 || (input.replace_all !== true && occurrences !== 1)) {
+    fail("the worksheet edit anchor is not unique in reconstructed " + file);
+  }
+  snapshot.set(file, input.replace_all === true ? current.split(oldString).join(newString) : current.replace(oldString, newString));
+}
+
+function applyTool(snapshot: Snapshot, base: Snapshot, payload: RawRecord): void {
+  const tool = stringValue(payload.tool_name, "forensic tool name");
+  const input = object(payload.tool_input, tool + " input");
+  if (tool === "Edit") {
+    applyEdit(snapshot, base, input);
+  } else if (tool === "Write") {
+    const file = relativeToolPath(input.file_path, snapshot, base);
+    if (file === null) fail("the worksheet write has no file path");
+    snapshot.set(file, stringValue(input.content, "write content"));
+  } else if (tool === "MultiEdit") {
+    const edits = input.edits;
+    if (!Array.isArray(edits) || edits.length === 0) fail("the worksheet MultiEdit has no edits");
+    for (const edit of edits) applyEdit(snapshot, base, object(edit, "MultiEdit edit"));
+  } else if (tool === "Bash") {
+    applyBash(snapshot, base, stringValue(input.command, "Bash command"));
+  } else {
+    fail("the worksheet cannot reconstruct forensic tool " + tool);
+  }
+}
+
+function stopMeasurement(directory: string, signal: Signal): string | null {
+  const report = ["stderr", "stdout"]
+    .map((name) => {
+      const file = path.join(directory, name);
+      return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+    })
+    .join("\n");
+  const lines = report.split(/\r?\n/).map((one) => one.trim()).filter((one) => one.length > 0);
+  const file = text(signal.file, "signal file");
+  const location = file + ":" + String(typeof signal.line === "number" ? signal.line : 0);
+  const wanted = typeof signal.text === "string" && signal.text !== "file" ? signal.text : file;
+  const exact = lines.filter((one) => one.includes(location) && one.includes(wanted));
+  if (exact.length === 1) return exact[0];
+  const fallback = lines.filter((one) => one.includes(wanted));
+  return fallback.length === 1 ? fallback[0] : null;
+}
+
+function context(current: Snapshot, base: Snapshot, signal: Signal, measurement: string): WorksheetRow["context"] {
   const file = text(signal.file, "signal file");
   const values = signal.values !== null && typeof signal.values === "object" ? signal.values as RawRecord : {};
   let source = file;
@@ -293,21 +509,69 @@ function context(base: string, signal: Signal): WorksheetRow["context"] {
       wantedLine = Number(found[2]);
     }
   }
-  const at = safeRelative(base, source);
-  if (!fs.existsSync(at) || !fs.statSync(at).isFile()) fail("the frozen base has no signal context at " + source);
-  const lines = fs.readFileSync(at, "utf8").split(/\r?\n/);
-  const wanted = typeof signal.text === "string" && signal.text !== "file" ? signal.text : "";
-  const matching = wanted === "" ? -1 : lines.findIndex((line) => line.includes(wanted));
-  const exact = matching >= 0;
-  const anchor = exact ? matching : wantedLine !== null && wantedLine <= lines.length ? wantedLine - 1 : 0;
+  const wanted = file === "notes" ? "" : typeof signal.text === "string" && signal.text !== "file" ? signal.text : "";
+  let content = current.get(source);
+  let note: string | null = null;
+  let matching = -1;
+  if (content !== undefined && wanted !== "") {
+    const lines = content.split(/\r?\n/);
+    if (wantedLine !== null && lines[wantedLine - 1]?.includes(wanted)) matching = wantedLine - 1;
+    else {
+      const found = lines.map((line, index) => line.includes(wanted) ? index : -1).filter((one) => one >= 0);
+      if (found.length === 1) matching = found[0];
+    }
+  }
+  const currentLines = content?.split(/\r?\n/);
+  if (
+    content === undefined ||
+    (wanted !== "" && matching < 0) ||
+    (wanted === "" && wantedLine !== null && (currentLines?.length ?? 0) < wantedLine) ||
+    (signal.text === "file" && content.length === 0)
+  ) {
+    content = base.get(source);
+    if (content === undefined) fail("no reconstructable signal context at " + source);
+    note = "The signal-time tree does not contain the reported text; this is the frozen base context at the recorded site.";
+    if (wanted !== "") {
+      const lines = content.split(/\r?\n/);
+      if (wantedLine !== null && lines[wantedLine - 1]?.includes(wanted)) matching = wantedLine - 1;
+      else {
+        const found = lines.map((line, index) => line.includes(wanted) ? index : -1).filter((one) => one >= 0);
+        if (found.length !== 1) fail("the worksheet cannot locate the signal text at " + source);
+        matching = found[0];
+      }
+    }
+  }
+  const lines = content.split(/\r?\n/);
+  const anchor = matching >= 0 ? matching : wantedLine === null ? 0 : wantedLine - 1;
+  if (anchor < 0 || anchor >= lines.length) fail("the worksheet signal line is outside reconstructed " + source);
   const start = Math.max(0, anchor - 2);
   const shown = lines.slice(start, Math.min(lines.length, start + 7));
   return {
     path: source,
-    line: exact || wantedLine !== null ? start + 1 : null,
+    line: matching >= 0 ? matching + 1 : wantedLine,
     excerpt: shown.map((line, index) => String(start + index + 1).padStart(4, "0") + (line === "" ? " |" : " | " + line)).join("\n"),
-    note: exact ? null : "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site.",
+    note,
+    measurement,
   };
+}
+
+function signalContext(raw: string, base: string, signal: Signal): WorksheetRow["context"] {
+  const frozen = snapshotOf(base);
+  const current = new Map(frozen);
+  const hooks = path.join(raw, "hooks");
+  for (const entry of fs.readdirSync(hooks).sort()) {
+    const at = path.join(hooks, entry);
+    const payloadFile = path.join(at, "payload.json");
+    if (!fs.existsSync(payloadFile)) continue;
+    const payload = json<RawRecord>(payloadFile);
+    if (payload.hook_event_name === "Stop") {
+      const measurement = stopMeasurement(at, signal);
+      if (measurement !== null) return context(current, frozen, signal, measurement);
+    } else if (payload.hook_event_name === "PreToolUse") {
+      applyTool(current, frozen, payload);
+    }
+  }
+  fail(raw + " has no reconstructable signal-time stop for " + text(signal.file, "signal file") + ":" + String(signal.line ?? 0));
 }
 
 function candidate(run: SelectedRun, signal: Signal, contextValue: WorksheetRow["context"]): Candidate {
@@ -328,7 +592,7 @@ function candidate(run: SelectedRun, signal: Signal, contextValue: WorksheetRow[
     text: textValue,
     values,
     remedy,
-    context: { path: contextValue.path, excerpt: contextValue.excerpt, note: contextValue.note },
+    context: contextValue,
   });
   return {
     taskIntent: run.prompt,
@@ -344,22 +608,30 @@ function candidate(run: SelectedRun, signal: Signal, contextValue: WorksheetRow[
   };
 }
 
-function load(input: EvidenceInput): LoadedSet {
+function load(input: EvidenceInput, frozen: FrozenEvidence): LoadedSet {
   const details = manifest(input.directory);
-  const expectedSetId = EXPECTED_SET_IDS[input.name];
-  if (details.setId !== expectedSetId) {
-    fail(input.name + " is not the frozen evidence set " + expectedSetId);
+  const descriptor = json<RawRecord>(path.join(input.directory, "evidence.json"));
+  if (
+    details.setId !== frozen.setId ||
+    details.protocol !== frozen.recordProtocol ||
+    details.sha256 !== frozen.runManifestSha256 ||
+    number(descriptor.recordProtocol, "record protocol") !== frozen.recordProtocol ||
+    text(descriptor.runManifestSha256, "run manifest SHA-256") !== frozen.runManifestSha256 ||
+    text(descriptor.rawFilesManifestSha256, "raw files manifest SHA-256") !== frozen.rawFilesManifestSha256
+  ) {
+    fail(input.name + " evidence does not match its frozen identity");
   }
   const held = attempts(input.directory);
   const chosen = selected(input.directory, details.rows, held);
-  const descriptor = json<RawRecord>(path.join(input.directory, "evidence.json"));
   const archive = archiveHash(input.archive);
   const expectedArchive = text(descriptor.archiveSha256, "archive SHA-256");
   if (
     archive.sha256 !== expectedArchive ||
-    archive.bytes !== number(descriptor.archiveBytes, "archive byte count")
+    archive.bytes !== number(descriptor.archiveBytes, "archive byte count") ||
+    archive.sha256 !== frozen.archiveSha256 ||
+    archive.bytes !== frozen.archiveBytes
   ) {
-    fail(input.name + " archive does not match its evidence descriptor");
+    fail(input.name + " archive does not match its frozen identity");
   }
   const rawRoot = extract(input);
   const runs: SelectedRun[] = [];
@@ -376,7 +648,7 @@ function load(input: EvidenceInput): LoadedSet {
       for (let index = 0; index < signals.length; index += 1) {
         const signal = signals[index] as Signal;
         const selectedRun = { round: input.name, row: one.row, record: one.record, raw, prompt, base, signal, signalIndex: index, context: {} as WorksheetRow["context"] };
-        selectedRun.context = context(base, signal);
+        selectedRun.context = signalContext(raw, base, signal);
         runs.push(selectedRun);
       }
     }
@@ -470,12 +742,16 @@ function markdown(rows: WorksheetRow[], counts: Counts): string {
       "",
       "### Signal-time context",
       "",
-      "Frozen base tree excerpt from `" + row.context.path + "`:",
+      "Signal-time tree excerpt from `" + row.context.path + "`:",
       "",
       "```text",
       row.context.excerpt,
       "```",
       ...(row.context.note ? ["", "_" + row.context.note + "_"] : []),
+      "",
+      "Signal-time measurement:",
+      "",
+      quote(row.context.measurement),
       "",
       "### Proposed remedy or review question",
       "",
@@ -519,13 +795,17 @@ function write(into: string, rows: WorksheetRow[], counts: Counts, joins: { work
   );
 }
 
-export function prepare(inputs: EvidenceInput[], into: string): Preparation {
+export function prepare(
+  inputs: EvidenceInput[],
+  into: string,
+  frozen: Record<"v1" | "v2", FrozenEvidence> = FROZEN_EVIDENCE,
+): Preparation {
   if (inputs.length !== 2 || new Set(inputs.map((one) => one.name)).size !== 2 || !inputs.some((one) => one.name === "v1") || !inputs.some((one) => one.name === "v2")) {
     fail("worksheet preparation needs exactly one v1 and one v2 evidence set");
   }
   const sets: LoadedSet[] = [];
   try {
-    for (const input of inputs) sets.push(load(input));
+    for (const input of inputs) sets.push(load(input, frozen[input.name]));
     const groups = new Map<string, Group>();
     for (const set of sets) {
       for (const run of set.runs) {
