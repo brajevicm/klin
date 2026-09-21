@@ -10,6 +10,7 @@ import {
   fileToolChecks,
   judge,
   ownedPaths,
+  retainEnvironmentHelper,
   suiteChecks,
   suiteShellCommand,
   witnessed,
@@ -32,11 +33,13 @@ export function probeOnDisk(root: string, id: string, language: string, passed: 
   fs.mkdirSync(paths.ENVIRONMENT, { recursive: true });
   const workspace = workspaceForms(id);
   const environmentRoots = { owned: ownedPaths(), mine: workspace };
-  const environment = writeEnvironmentHelper(paths.environmentHelper(id), environmentRoots);
   const repo = path.join(workspace[0], "repo");
   const directory = path.join(root, id);
   fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(path.join(directory, ENVIRONMENT_ARTIFACT), fs.readFileSync(environment.helper));
+  const environment = retainEnvironmentHelper(
+    writeEnvironmentHelper(paths.environmentHelper(id), environmentRoots),
+    path.join(directory, ENVIRONMENT_ARTIFACT),
+  );
   const planted = [
     { name: "control-plane", file: path.join(paths.RUNS, "probe", id, "sentinel.txt"), token: "klin-probe-" + id + "-a" },
     { name: "workspace-root", file: path.join(paths.workRoot(), "sentinel.txt"), token: "klin-probe-" + id + "-b" },

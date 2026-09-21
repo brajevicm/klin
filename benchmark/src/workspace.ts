@@ -178,6 +178,7 @@ function confinement(
   fs.mkdirSync(paths.ENVIRONMENT, { recursive: true });
   const own = forms(repo);
   const environment = forms(paths.ENVIRONMENT);
+  const environmentEditDeny = environment.map((one) => "Edit(//" + one.slice(1) + "/**)");
   return {
     sandbox: {
       enabled: true,
@@ -191,7 +192,10 @@ function confinement(
       },
       network: { allowedDomains: REGISTRIES, strictAllowlist: true },
     },
-    permissions: { blockReadsOutsideWorkingDirectories: true },
+    permissions: {
+      blockReadsOutsideWorkingDirectories: true,
+      deny: environmentEditDeny,
+    },
   };
 }
 

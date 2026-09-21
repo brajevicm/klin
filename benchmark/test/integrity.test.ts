@@ -347,7 +347,7 @@ test("the settings confine the subject to its own repository", () => {
       };
       network: { allowedDomains: string[]; strictAllowlist: boolean };
     };
-    permissions: { blockReadsOutsideWorkingDirectories: boolean };
+    permissions: { blockReadsOutsideWorkingDirectories: boolean; deny: string[] };
   };
   assert.equal(settings.sandbox.enabled, true);
   assert.equal(settings.sandbox.allowUnsandboxedCommands, false);
@@ -370,6 +370,14 @@ test("the settings confine the subject to its own repository", () => {
   }
   const reopened = [...new Set([place.repo, fs.realpathSync(place.repo)])].sort();
   const environment = [...new Set([paths.ENVIRONMENT, fs.realpathSync(paths.ENVIRONMENT)])].sort();
+  const environmentEditDeny = environment
+    .map((one) => "Edit(//" + one.slice(1) + "/**)")
+    .sort();
+  assert.deepEqual(
+    settings.permissions.deny.sort(),
+    environmentEditDeny,
+    "host Edit and Write tools are denied for the entire helper directory",
+  );
   const toolchains = ["~/.cargo", "~/.rustup", "~/.npm"];
   const runtimeCandidates = [
     process.execPath,
@@ -395,7 +403,7 @@ test("the settings confine the subject to its own repository", () => {
       .filter((one) => !toolchains.includes(one) && !runtimes.includes(one) && !shells.includes(one))
       .sort(),
     reopened,
-    "the probe helper is not writable",
+    "sandboxed Bash cannot write the probe helper",
   );
   for (const named of [settings.sandbox.filesystem.allowRead, settings.sandbox.filesystem.allowWrite]) {
     for (const home of toolchains) {
