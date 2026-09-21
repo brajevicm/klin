@@ -1,0 +1,539 @@
+{
+  "version": 1,
+  "status": "human-labeling-gate",
+  "counts": {
+    "includedRecords": 144,
+    "signalOccurrences": 115,
+    "worksheetRows": 24
+  },
+  "rows": [
+    {
+      "worksheetId": "S001",
+      "signalCategory": "regression",
+      "gate": "lockfile",
+      "taskIntent": "Two things are missing from `release-tools`.\n\nFirst, `run([\"--version\"])` must answer with the version the package manifest\nstates, and nothing else.\n\nSecond, the repository must build under the TypeScript compiler. Bring the\ncompiler in as a development dependency at exactly 5.6.3, and add a\n`typecheck` script that runs `tsc --noEmit`.\n\nCover the new command with tests beside the ones already there.\n",
+      "site": {
+        "file": "package.json",
+        "line": null,
+        "text": "@types/node"
+      },
+      "values": {
+        "unlocked": 1,
+        "unpinned": 1
+      },
+      "context": {
+        "path": "package.json",
+        "line": null,
+        "excerpt": "0001 | {\n0002 |   \"name\": \"release-tools\",\n0003 |   \"version\": \"0.3.1\",\n0004 |   \"private\": true,\n0005 |   \"type\": \"module\",\n0006 |   \"scripts\": {\n0007 |     \"test\": \"node --test 'src/**/*.test.ts'\",",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose."
+    },
+    {
+      "worksheetId": "S002",
+      "signalCategory": "regression",
+      "gate": "lockfile",
+      "taskIntent": "Two things are missing from `release-tools`.\n\nFirst, `run([\"--version\"])` must answer with the version the package manifest\nstates, and nothing else.\n\nSecond, the repository must build under the TypeScript compiler. Bring the\ncompiler in as a development dependency at exactly 5.6.3, and add a\n`typecheck` script that runs `tsc --noEmit`.\n\nCover the new command with tests beside the ones already there.\n",
+      "site": {
+        "file": "package.json",
+        "line": null,
+        "text": "typescript"
+      },
+      "values": {
+        "unlocked": 1,
+        "unpinned": 0
+      },
+      "context": {
+        "path": "package.json",
+        "line": null,
+        "excerpt": "0001 | {\n0002 |   \"name\": \"release-tools\",\n0003 |   \"version\": \"0.3.1\",\n0004 |   \"private\": true,\n0005 |   \"type\": \"module\",\n0006 |   \"scripts\": {\n0007 |     \"test\": \"node --test 'src/**/*.test.ts'\",",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Run the project's own install so the lockfile records the dependency, and give the specifier the base's exact version back. A dependency the lockfile does not know is one no install has ever resolved, and a pin the base held is a version a person chose."
+    },
+    {
+      "worksheetId": "S003",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/lib.rs",
+        "line": 27,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "values": {
+        "cc": 10,
+        "lines": 40
+      },
+      "context": {
+        "path": "src/lib.rs",
+        "line": 1,
+        "excerpt": "0001 | //! Plain-text layout helpers.\n0002 |\n0003 | pub mod table;\n0004 |\n0005 | /// Put `spaces` spaces in front of every line.\n0006 | pub fn indent(text: &str, spaces: usize) -> String {\n0007 |     let pad = \" \".repeat(spaces);",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S004",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/lib.rs",
+        "line": 27,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "values": {
+        "cc": 10,
+        "lines": 50
+      },
+      "context": {
+        "path": "src/lib.rs",
+        "line": 1,
+        "excerpt": "0001 | //! Plain-text layout helpers.\n0002 |\n0003 | pub mod table;\n0004 |\n0005 | /// Put `spaces` spaces in front of every line.\n0006 | pub fn indent(text: &str, spaces: usize) -> String {\n0007 |     let pad = \" \".repeat(spaces);",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S005",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/lib.rs",
+        "line": 25,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "values": {
+        "cc": 9,
+        "lines": 38
+      },
+      "context": {
+        "path": "src/lib.rs",
+        "line": 1,
+        "excerpt": "0001 | //! Plain-text layout helpers.\n0002 |\n0003 | pub mod table;\n0004 |\n0005 | /// Put `spaces` spaces in front of every line.\n0006 | pub fn indent(text: &str, spaces: usize) -> String {\n0007 |     let pad = \" \".repeat(spaces);",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S006",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/lib.rs",
+        "line": 27,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "values": {
+        "cc": 9,
+        "lines": 40
+      },
+      "context": {
+        "path": "src/lib.rs",
+        "line": 1,
+        "excerpt": "0001 | //! Plain-text layout helpers.\n0002 |\n0003 | pub mod table;\n0004 |\n0005 | /// Put `spaces` spaces in front of every line.\n0006 | pub fn indent(text: &str, spaces: usize) -> String {\n0007 |     let pad = \" \".repeat(spaces);",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S007",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/lib.rs",
+        "line": 27,
+        "text": "pub fn wrap(text: &str, width: usize) -> Vec<String> {"
+      },
+      "values": {
+        "cc": 9,
+        "lines": 49
+      },
+      "context": {
+        "path": "src/lib.rs",
+        "line": 1,
+        "excerpt": "0001 | //! Plain-text layout helpers.\n0002 |\n0003 | pub mod table;\n0004 |\n0005 | /// Put `spaces` spaces in front of every line.\n0006 | pub fn indent(text: &str, spaces: usize) -> String {\n0007 |     let pad = \" \".repeat(spaces);",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S008",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The note keeper prints one name per line and a caller wants machine-readable\noutput.\n\nGive `list` a `--json` argument. `list --json` answers with a JSON array of\nthe names, as one line, with no spaces: `[\"a\",\"b\"]`, and `[]` when the keeper\nholds nothing. A name holding a double quote or a backslash is escaped the way\nJSON escapes it. `list` with no argument answers as it does today.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/commands/list_command.rs",
+        "line": 13,
+        "text": "fn to_json_string(value: &str) -> String {"
+      },
+      "values": {
+        "cc": 9,
+        "lines": 19
+      },
+      "context": {
+        "path": "src/commands/list_command.rs",
+        "line": 1,
+        "excerpt": "0001 | use crate::store::Store;\n0002 |\n0003 | /// Name every note, one per line.\n0004 | pub fn run_list(_arguments: &[String], store: &Store) -> String {\n0005 |     store.names().join(\"\\n\")\n0006 | }\n0007 |",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S009",
+      "signalCategory": "regression",
+      "gate": "public-api",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "notes",
+        "line": 1,
+        "text": "commands::add_command (module)"
+      },
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/add_command.rs:1"
+      },
+      "context": {
+        "path": "src/commands/add_command.rs",
+        "line": 1,
+        "excerpt": "0001 | use crate::store::Store;\n0002 |\n0003 | /// Store one note, and say what happened.\n0004 | pub fn run_add(arguments: &[String], store: &mut Store) -> String {\n0005 |     let Some(name) = arguments.first() else {\n0006 |         return \"add needs a name\".to_string();\n0007 |     };",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit."
+    },
+    {
+      "worksheetId": "S010",
+      "signalCategory": "regression",
+      "gate": "reachability",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "src/commands/add_command.rs",
+        "line": null,
+        "text": "file"
+      },
+      "values": {
+        "sibling": "src/commands/list_command.rs",
+        "unreached": 1
+      },
+      "context": {
+        "path": "src/commands/add_command.rs",
+        "line": null,
+        "excerpt": "0001 | use crate::store::Store;\n0002 |\n0003 | /// Store one note, and say what happened.\n0004 | pub fn run_add(arguments: &[String], store: &mut Store) -> String {\n0005 |     let Some(name) = arguments.first() else {\n0006 |         return \"add needs a name\".to_string();\n0007 |     };",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Wire this file into the application through a real source reference, or delete it if the implementation is unused."
+    },
+    {
+      "worksheetId": "S011",
+      "signalCategory": "regression",
+      "gate": "public-api",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "notes",
+        "line": 1,
+        "text": "commands::remove_command (module)"
+      },
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/remove_command.rs:1"
+      },
+      "context": {
+        "path": "src/commands/remove_command.rs",
+        "line": 1,
+        "excerpt": "0001 | use crate::store::Store;\n0002 |\n0003 | /// Take one note out, and say what happened.\n0004 | pub fn run_remove(arguments: &[String], store: &mut Store) -> String {\n0005 |     let Some(name) = arguments.first() else {\n0006 |         return \"remove needs a name\".to_string();\n0007 |     };",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit."
+    },
+    {
+      "worksheetId": "S012",
+      "signalCategory": "regression",
+      "gate": "reachability",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "src/commands/remove_command.rs",
+        "line": null,
+        "text": "file"
+      },
+      "values": {
+        "sibling": "src/commands/list_command.rs",
+        "unreached": 1
+      },
+      "context": {
+        "path": "src/commands/remove_command.rs",
+        "line": null,
+        "excerpt": "0001 | use crate::store::Store;\n0002 |\n0003 | /// Take one note out, and say what happened.\n0004 | pub fn run_remove(arguments: &[String], store: &mut Store) -> String {\n0005 |     let Some(name) = arguments.first() else {\n0006 |         return \"remove needs a name\".to_string();\n0007 |     };",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Wire this file into the application through a real source reference, or delete it if the implementation is unused."
+    },
+    {
+      "worksheetId": "S013",
+      "signalCategory": "regression",
+      "gate": "escapes",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "tests/render.rs",
+        "line": 60,
+        "text": "assert_eq!(lines.last().unwrap(), \"gh\");"
+      },
+      "values": {
+        "count": 1,
+        "escape": "unwrap"
+      },
+      "context": {
+        "path": "tests/render.rs",
+        "line": 1,
+        "excerpt": "0001 | use fmtx::table::widths;\n0002 | use fmtx::{indent, strip_trailing};\n0003 |\n0004 | #[test]\n0005 | fn indent_puts_spaces_in_front_of_every_line() {\n0006 |     assert_eq!(indent(\"a\\nb\", 2), \"  a\\n  b\");\n0007 | }",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S014",
+      "signalCategory": "regression",
+      "gate": "escapes",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "tests/render.rs",
+        "line": 60,
+        "text": "assert_eq!(lines.last().unwrap(), \"ghij\");"
+      },
+      "values": {
+        "count": 1,
+        "escape": "unwrap"
+      },
+      "context": {
+        "path": "tests/render.rs",
+        "line": 1,
+        "excerpt": "0001 | use fmtx::table::widths;\n0002 | use fmtx::{indent, strip_trailing};\n0003 |\n0004 | #[test]\n0005 | fn indent_puts_spaces_in_front_of_every_line() {\n0006 |     assert_eq!(indent(\"a\\nb\", 2), \"  a\\n  b\");\n0007 | }",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S015",
+      "signalCategory": "regression",
+      "gate": "escapes",
+      "taskIntent": "The `fmtx` crate lays text out and cannot break a paragraph to a width.\n\nAdd `wrap(text, width)` to the crate. It returns the lines the text breaks\ninto, and it must hold all three of these:\n\n1. a line never runs past `width` characters;\n2. a break happens at a space, and that space is not kept in either line;\n3. a single word longer than `width` is broken across lines with a `-` at the\n   end of each part but the last, and the `-` counts toward the width.\n\nCover the new behaviour with tests beside the ones already there.\n",
+      "site": {
+        "file": "tests/render.rs",
+        "line": null,
+        "text": "assert!(!lines.last().unwrap().ends_with('-'));"
+      },
+      "values": {
+        "count": 1,
+        "escape": "unwrap"
+      },
+      "context": {
+        "path": "tests/render.rs",
+        "line": 1,
+        "excerpt": "0001 | use fmtx::table::widths;\n0002 | use fmtx::{indent, strip_trailing};\n0003 |\n0004 | #[test]\n0005 | fn indent_puts_spaces_in_front_of_every_line() {\n0006 |     assert_eq!(indent(\"a\\nb\", 2), \"  a\\n  b\");\n0007 | }",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S016",
+      "signalCategory": "regression",
+      "gate": "public-api",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "notes",
+        "line": 4,
+        "text": "commands::add_command::run_add (function)"
+      },
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/add_command.rs:4"
+      },
+      "context": {
+        "path": "src/commands/add_command.rs",
+        "line": 2,
+        "excerpt": "0002 |\n0003 | /// Store one note, and say what happened.\n0004 | pub fn run_add(arguments: &[String], store: &mut Store) -> String {\n0005 |     let Some(name) = arguments.first() else {\n0006 |         return \"add needs a name\".to_string();\n0007 |     };\n0008 |     let value = arguments.get(1).cloned().unwrap_or_default();",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit."
+    },
+    {
+      "worksheetId": "S017",
+      "signalCategory": "regression",
+      "gate": "public-api",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "notes",
+        "line": 4,
+        "text": "commands::remove_command::run_remove (function)"
+      },
+      "values": {
+        "break": 1,
+        "kind": "removed",
+        "origin": "src/commands/remove_command.rs:4"
+      },
+      "context": {
+        "path": "src/commands/remove_command.rs",
+        "line": 2,
+        "excerpt": "0002 |\n0003 | /// Take one note out, and say what happened.\n0004 | pub fn run_remove(arguments: &[String], store: &mut Store) -> String {\n0005 |     let Some(name) = arguments.first() else {\n0006 |         return \"remove needs a name\".to_string();\n0007 |     };\n0008 |     if store.take(name) {",
+        "note": "The reported signal text is not in the frozen base tree; this is the neutral base context beside the recorded site."
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit."
+    },
+    {
+      "worksheetId": "S018",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The wire layer should sit in one folder.\n\nMove the request sender and the frame builder into `src/transport/`, keeping\ntheir file names, and keep `src/index.ts` as the one entry a caller imports.\nNothing a caller can see may change.\n",
+      "site": {
+        "file": "README.md",
+        "line": 9,
+        "text": "src/client.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/transport/client.ts"
+      },
+      "context": {
+        "path": "README.md",
+        "line": 7,
+        "excerpt": "0007 | The package entry is `src/index.ts`, and it is the only file a caller imports.\n0008 |\n0009 | Request sending lives in `src/client.ts`. It sends one request and retries\n0010 | while the server says it is busy.\n0011 |\n0012 | Frame building lives in `src/socket.ts`. A frame carries a kind and a payload.\n0013 |",
+        "note": null
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S019",
+      "signalCategory": "regression",
+      "gate": "inventory",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "tests/cli.rs",
+        "line": 10,
+        "text": "fn a_note_can_be_added_and_listed() {"
+      },
+      "values": {
+        "missing": 1
+      },
+      "context": {
+        "path": "tests/cli.rs",
+        "line": 8,
+        "excerpt": "0008 |\n0009 | #[test]\n0010 | fn a_note_can_be_added_and_listed() {\n0011 |     let mut store = Store::new();\n0012 |     assert_eq!(line(&mut store, &[\"add\", \"a\", \"1\"]), \"added a\");\n0013 |     assert_eq!(line(&mut store, &[\"list\"]), \"a\");\n0014 | }",
+        "note": null
+      },
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again."
+    },
+    {
+      "worksheetId": "S020",
+      "signalCategory": "review",
+      "gate": "inventory",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "tests/cli.rs",
+        "line": 10,
+        "text": "fn a_note_can_be_added_and_listed() {"
+      },
+      "values": {
+        "missing": 1
+      },
+      "context": {
+        "path": "tests/cli.rs",
+        "line": 8,
+        "excerpt": "0008 |\n0009 | #[test]\n0010 | fn a_note_can_be_added_and_listed() {\n0011 |     let mut store = Store::new();\n0012 |     assert_eq!(line(&mut store, &[\"add\", \"a\", \"1\"]), \"added a\");\n0013 |     assert_eq!(line(&mut store, &[\"list\"]), \"a\");\n0014 | }",
+        "note": null
+      },
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again."
+    },
+    {
+      "worksheetId": "S021",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The wire layer should sit in one folder.\n\nMove the request sender and the frame builder into `src/transport/`, keeping\ntheir file names, and keep `src/index.ts` as the one entry a caller imports.\nNothing a caller can see may change.\n",
+      "site": {
+        "file": "README.md",
+        "line": 12,
+        "text": "src/socket.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/transport/socket.ts"
+      },
+      "context": {
+        "path": "README.md",
+        "line": 10,
+        "excerpt": "0010 | while the server says it is busy.\n0011 |\n0012 | Frame building lives in `src/socket.ts`. A frame carries a kind and a payload.\n0013 |\n0014 | The delay between two attempts is worked out in `src/retry.ts`, which the\n0015 | rewrite left behind and which the client now computes inline.\n0016 |",
+        "note": null
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S022",
+      "signalCategory": "regression",
+      "gate": "inventory",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "tests/cli.rs",
+        "line": 17,
+        "text": "fn a_note_can_be_removed() {"
+      },
+      "values": {
+        "missing": 1
+      },
+      "context": {
+        "path": "tests/cli.rs",
+        "line": 15,
+        "excerpt": "0015 |\n0016 | #[test]\n0017 | fn a_note_can_be_removed() {\n0018 |     let mut store = Store::new();\n0019 |     line(&mut store, &[\"add\", \"a\", \"1\"]);\n0020 |     assert_eq!(line(&mut store, &[\"remove\", \"a\"]), \"removed a\");\n0021 |     assert_eq!(line(&mut store, &[\"list\"]), \"\");",
+        "note": null
+      },
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again."
+    },
+    {
+      "worksheetId": "S023",
+      "signalCategory": "review",
+      "gate": "inventory",
+      "taskIntent": "The `add` and `remove` commands should become one command.\n\n`set <name> <value>` stores a note and answers `set <name>`.\n`set <name>` with no value takes the note out and answers `cleared <name>`.\n`set <name>` for a name the keeper does not hold answers `no note named <name>`.\n`set` with no name answers `set needs a name`.\n\n`list` keeps working as it does. `add` and `remove` are gone, and a line that\nstarts with either of them answers with the usage text. Update the suite.\n",
+      "site": {
+        "file": "tests/cli.rs",
+        "line": 17,
+        "text": "fn a_note_can_be_removed() {"
+      },
+      "values": {
+        "missing": 1
+      },
+      "context": {
+        "path": "tests/cli.rs",
+        "line": 15,
+        "excerpt": "0015 |\n0016 | #[test]\n0017 | fn a_note_can_be_removed() {\n0018 |     let mut store = Store::new();\n0019 |     line(&mut store, &[\"add\", \"a\", \"1\"]);\n0020 |     assert_eq!(line(&mut store, &[\"remove\", \"a\"]), \"removed a\");\n0021 |     assert_eq!(line(&mut store, &[\"list\"]), \"\");",
+        "note": null
+      },
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again."
+    },
+    {
+      "worksheetId": "S024",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The sales desk has a new customer class.\n\nA `student` customer takes 20 percent off. It stacks with the order-size rule\nand with the regional rule the same way the trade and wholesale classes do,\nand the 30 percent ceiling still holds afterwards. Tax is worked out on the\ndiscounted amount, as it is today.\n\nAdd the class to `src/quote.ts` and cover it with tests.\n",
+      "site": {
+        "file": "src/quote.ts",
+        "line": 18,
+        "text": "export function computeQuote("
+      },
+      "values": {
+        "cc": 11,
+        "lines": 35
+      },
+      "context": {
+        "path": "src/quote.ts",
+        "line": 16,
+        "excerpt": "0016 |\n0017 | /** The quote for one line of an order. */\n0018 | export function computeQuote(\n0019 |   unitPrice: number,\n0020 |   units: number,\n0021 |   customer: Customer,\n0022 |   region: string,",
+        "note": null
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    }
+  ]
+}

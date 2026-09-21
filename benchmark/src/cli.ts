@@ -11,6 +11,7 @@ import * as round from "./round.ts";
 import * as seeded from "./seeded.ts";
 import * as audit from "./audit.ts";
 import * as toolchain from "./toolchain.ts";
+import * as worksheet from "./worksheet.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
@@ -29,6 +30,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
   node benchmark/src/cli.ts scorecard <round-dir> [--out FILE]
   node benchmark/src/cli.ts audit <evidence-dir> [--archive FILE] [--out FILE]
+  node benchmark/src/cli.ts label-prepare <v1-evidence> <v2-evidence> --archive-v1 FILE --archive-v2 FILE --into DIR
   node benchmark/src/cli.ts evidence-prepare <runs-dir> --into DIR --archive FILE
   node benchmark/src/cli.ts evidence-verify <evidence-dir> [--archive FILE]
 
@@ -225,6 +227,38 @@ function auditEvidence(directory: string, args: string[]): number {
   }
 }
 
+function prepareWorksheet(args: string[]): number {
+  const [v1, v2] = positionals(args);
+  const into = flag(args, "--into", "");
+  const archiveV1 = flag(args, "--archive-v1", "");
+  const archiveV2 = flag(args, "--archive-v2", "");
+  if (!v1 || !v2 || into === "" || archiveV1 === "" || archiveV2 === "") {
+    process.stdout.write(
+      "label-prepare needs v1 and v2 evidence directories, --archive-v1 FILE, --archive-v2 FILE and --into DIR\n\n" + USAGE,
+    );
+    return 2;
+  }
+  try {
+    const read = worksheet.prepare([
+      { name: "v1", directory: v1, archive: archiveV1 },
+      { name: "v2", directory: v2, archive: archiveV2 },
+    ], into);
+    process.stdout.write(
+      "prepared blinded worksheet with " +
+        String(read.counts.includedRecords) +
+        " records, " +
+        String(read.counts.signalOccurrences) +
+        " signal occurrences and " +
+        String(read.counts.worksheetRows) +
+        " worksheet rows; stop at the human-labeling gate\n",
+    );
+    return 0;
+  } catch (why) {
+    process.stdout.write(String(why) + "\n");
+    return 2;
+  }
+}
+
 export function main(argv: string[]): number {
   const [command, ...args] = argv;
   if (!command || command === "--help" || command === "-h") {
@@ -336,6 +370,9 @@ export function main(argv: string[]): number {
   }
   if (command === "audit") {
     return auditEvidence(args[0] ?? "", args.slice(1));
+  }
+  if (command === "label-prepare") {
+    return prepareWorksheet(args);
   }
   if (command === "report") {
     const text = report.write(args[0] ?? "");
