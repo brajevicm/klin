@@ -175,7 +175,9 @@ function confinement(
   deniedRead: string[],
   deniedWrite: string[],
 ): Record<string, unknown> {
+  fs.mkdirSync(paths.ENVIRONMENT, { recursive: true });
   const own = forms(repo);
+  const environment = forms(paths.ENVIRONMENT);
   return {
     sandbox: {
       enabled: true,
@@ -183,7 +185,7 @@ function confinement(
       allowUnsandboxedCommands: false,
       filesystem: {
         denyRead: deniedRead.flatMap(forms),
-        allowRead: [...own, ...TOOLCHAINS, ...NODE_RUNTIMES, ...SCRIPT_SHELLS],
+        allowRead: [...own, ...environment, ...TOOLCHAINS, ...NODE_RUNTIMES, ...SCRIPT_SHELLS],
         denyWrite: deniedWrite.flatMap(forms),
         allowWrite: [...own, ...TOOLCHAINS],
       },

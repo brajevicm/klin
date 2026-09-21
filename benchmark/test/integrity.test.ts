@@ -369,6 +369,7 @@ test("the settings confine the subject to its own repository", () => {
     );
   }
   const reopened = [...new Set([place.repo, fs.realpathSync(place.repo)])].sort();
+  const environment = [...new Set([paths.ENVIRONMENT, fs.realpathSync(paths.ENVIRONMENT)])].sort();
   const toolchains = ["~/.cargo", "~/.rustup", "~/.npm"];
   const runtimeCandidates = [
     process.execPath,
@@ -382,12 +383,21 @@ test("the settings confine the subject to its own repository", () => {
     }
   });
   const shells = process.platform === "win32" ? [] : ["/bin/sh"];
+  assert.deepEqual(
+    settings.sandbox.filesystem.allowRead
+      .filter((one) => !toolchains.includes(one) && !runtimes.includes(one) && !shells.includes(one))
+      .sort(),
+    [...reopened, ...environment].sort(),
+    "only the subject's own repository and the read-only probe helper are opened",
+  );
+  assert.deepEqual(
+    settings.sandbox.filesystem.allowWrite
+      .filter((one) => !toolchains.includes(one) && !runtimes.includes(one) && !shells.includes(one))
+      .sort(),
+    reopened,
+    "the probe helper is not writable",
+  );
   for (const named of [settings.sandbox.filesystem.allowRead, settings.sandbox.filesystem.allowWrite]) {
-    assert.deepEqual(
-      named.filter((one) => !toolchains.includes(one) && !runtimes.includes(one) && !shells.includes(one)).sort(),
-      reopened,
-      "only the subject's own repository is opened, in both its forms",
-    );
     for (const home of toolchains) {
       assert.ok(named.includes(home), home + " is refused, so the subject cannot run its own build");
     }

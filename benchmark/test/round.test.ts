@@ -9,7 +9,7 @@ import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { families } from "../src/catalogue.ts";
 import { sha256 } from "../src/trees.ts";
 import * as forensic from "../src/forensic.ts";
-import { environmentShellCommand, verifyProbe } from "../src/probe.ts";
+import { ENVIRONMENT_ARTIFACT, verifyProbe } from "../src/probe.ts";
 import { probeOnDisk } from "./probe-fixture.ts";
 import {
   ATTEMPTS,
@@ -656,18 +656,25 @@ test("a retained probe cannot widen the roots used by trusted environment eviden
   const held = JSON.parse(fs.readFileSync(file, "utf8")) as { workspace: { owned: string[]; mine: string[] } };
   held.workspace.mine = ["/"];
   fs.writeFileSync(file, JSON.stringify(held));
-  const widened = environmentShellCommand({ owned: held.workspace.owned, mine: ["/"] });
-  for (const at of [
-    path.join(directory, "hooks", "0001-1", "payload.json"),
-    path.join(directory, "witness", "0001-1.json"),
-  ]) {
-    const payload = JSON.parse(fs.readFileSync(at, "utf8")) as { tool_input: { command: string } };
-    payload.tool_input.command = widened;
-    fs.writeFileSync(at, JSON.stringify(payload));
-  }
   const problems = verifyProbe(directory);
-  assert.ok(problems.some((one) => /does not pass reported-the-environment/.test(one)), problems.join(" / "));
-  assert.ok(problems.some((one) => /does not pass no-owned-path-in-the-environment/.test(one)), problems.join(" / "));
+  assert.ok(problems.some((one) => /this harness allows only/.test(one)), problems.join(" / "));
+});
+
+test("a retained probe whose helper omits an owned path alias fails closed", () => {
+  const now = frozenFor();
+  const root = room();
+  probeOnDisk(root, "probe-0000000a", "typescript", true, now, "2026-09-19T10:00:00Z");
+  const directory = path.join(root, "probe-0000000a");
+  const record = JSON.parse(fs.readFileSync(path.join(directory, "probe.json"), "utf8")) as {
+    workspace: { owned: string[] };
+  };
+  const helper = path.join(directory, ENVIRONMENT_ARTIFACT);
+  const before = fs.readFileSync(helper, "utf8");
+  const after = before.replace(record.workspace.owned[0], "");
+  assert.notEqual(after, before);
+  fs.writeFileSync(helper, after);
+  const problems = verifyProbe(directory);
+  assert.ok(problems.some((one) => /environment helper bytes/.test(one)), problems.join(" / "));
 });
 
 /** A probe whose two readings of the apparatus differ ran under an apparatus that moved. */

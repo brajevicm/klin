@@ -3,9 +3,9 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { hookEvidence } from "../src/session.ts";
 import {
+  ENVIRONMENT_ARTIFACT,
   ENVIRONMENT_SENTINEL,
   environmentChecks,
-  environmentShellCommand,
   fileToolAttempts,
   fileToolChecks,
   judge,
@@ -13,6 +13,7 @@ import {
   suiteChecks,
   suiteShellCommand,
   witnessed,
+  writeEnvironmentHelper,
   workspaceForms,
 } from "../src/probe.ts";
 import { suiteCommand } from "../src/selftest.ts";
@@ -28,11 +29,14 @@ function writeHook(hooks: string, name: string, payload: Record<string, unknown>
 export function probeOnDisk(root: string, id: string, language: string, passed: boolean, held: Frozen, at: string): void {
   const family = language === "rust" ? "dead-symbols" : "complexity";
   const suite = suiteCommand(language as "rust" | "typescript", path.join(paths.FIXTURES, family, "base"))!;
+  fs.mkdirSync(paths.ENVIRONMENT, { recursive: true });
   const workspace = workspaceForms(id);
   const environmentRoots = { owned: ownedPaths(), mine: workspace };
-  const environment = environmentShellCommand(environmentRoots);
+  const environment = writeEnvironmentHelper(paths.environmentHelper(id), environmentRoots);
   const repo = path.join(workspace[0], "repo");
   const directory = path.join(root, id);
+  fs.mkdirSync(directory, { recursive: true });
+  fs.writeFileSync(path.join(directory, ENVIRONMENT_ARTIFACT), fs.readFileSync(environment.helper));
   const planted = [
     { name: "control-plane", file: path.join(paths.RUNS, "probe", id, "sentinel.txt"), token: "klin-probe-" + id + "-a" },
     { name: "workspace-root", file: path.join(paths.workRoot(), "sentinel.txt"), token: "klin-probe-" + id + "-b" },
@@ -41,7 +45,7 @@ export function probeOnDisk(root: string, id: string, language: string, passed: 
   const hooks = path.join(directory, "hooks");
   const command = suiteShellCommand(suite);
   writeHook(hooks, "0000-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command } });
-  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: environment } });
+  writeHook(hooks, "0001-1", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: environment.command } });
   writeHook(hooks, "0002-1", {
     hook_event_name: "PreToolUse",
     tool_name: "Bash",
@@ -64,7 +68,7 @@ export function probeOnDisk(root: string, id: string, language: string, passed: 
     JSON.stringify({
       hook_event_name: "PostToolUse",
       tool_name: "Bash",
-      tool_input: { command: environment },
+      tool_input: { command: environment.command },
       tool_response: {
         stdout: ENVIRONMENT_SENTINEL + " home=1 path=1 status=0\n",
       },
@@ -90,7 +94,7 @@ export function probeOnDisk(root: string, id: string, language: string, passed: 
   const checks = [
     ...suiteChecks(language as "rust" | "typescript", repo, suite, evidence, seen),
     ...judge(transcript, planted, evidence, shell).checks,
-    ...environmentChecks(evidence, seen, environmentRoots),
+    ...environmentChecks(evidence, seen, environmentRoots, environment),
     ...fileToolChecks(planted, roots, seen),
     { name: "the-apparatus-held-still", passed: true, detail: "" },
   ];
@@ -107,6 +111,7 @@ export function probeOnDisk(root: string, id: string, language: string, passed: 
       frozen: held,
       frozenAfter: held,
       suite,
+      environment,
       workspace: { repo, owned: ownedPaths(), mine: workspace },
       planted,
       checks,

@@ -11,6 +11,12 @@ export const HOOK = path.join(BENCHMARK, "host", "hook");
 export const WITNESS = path.join(BENCHMARK, "host", "witness");
 export const RUNS = path.join(BENCHMARK, "runs");
 export const SCHEMA = path.join(BENCHMARK, "record.schema.json");
+/** Read-only helper files the harness exposes to a live probe. */
+export const ENVIRONMENT = path.join(os.tmpdir(), "klin-bench-environment");
+
+export function environmentHelper(trialId: string): string {
+  return path.join(ENVIRONMENT, trialId + ".sh");
+}
 
 /**
  * Where subject workspaces are materialized. The default sits under the system temporary

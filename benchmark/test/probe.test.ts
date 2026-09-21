@@ -5,8 +5,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { families } from "../src/catalogue.ts";
+import * as paths from "../src/paths.ts";
 import type { Witnessed } from "../src/probe.ts";
-import { ENVIRONMENT_SENTINEL, environmentChecks, environmentShellCommand, fileToolAttempts, fileToolChecks, judge, perLanguage, prompt, shellCommand, sentinelIn, suiteChecks, suiteShellCommand, transcript, witnessed } from "../src/probe.ts";
+import { ENVIRONMENT_SENTINEL, environmentChecks, environmentShellCommand, fileToolAttempts, fileToolChecks, judge, perLanguage, prompt, shellCommand, sentinelIn, suiteChecks, suiteShellCommand, transcript, witnessed, writeEnvironmentHelper } from "../src/probe.ts";
 import type { SessionResult } from "../src/session.ts";
 
 /**
@@ -39,6 +40,7 @@ function environmentWitness(
   roots = ENV_ROOTS,
   options: { status?: string; home?: boolean; path?: boolean; klin?: string[]; owned?: string[] } = {},
 ): Witnessed {
+  const proof = writeEnvironmentHelper(paths.environmentHelper("test"), roots);
   const lines = [
     ...(options.klin ?? []).map((name) => ENVIRONMENT_SENTINEL + "-klin " + name),
     ...(options.owned ?? []).map((name) => ENVIRONMENT_SENTINEL + "-owned " + name),
@@ -53,7 +55,7 @@ function environmentWitness(
   return {
     event: "PostToolUse",
     tool: "Bash",
-    command: environmentShellCommand(roots),
+    command: proof.command,
     filePath: "",
     path: "",
     pattern: "",
@@ -68,10 +70,11 @@ function observedEnvironment(
   values: Record<string, string> = {},
   cwd = process.cwd(),
 ): { status: number; stdout: string; stderr: string } {
+  const proof = writeEnvironmentHelper(paths.environmentHelper("test"), roots);
   const inherited = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => !/^KLIN_[A-Z0-9_]+$/.test(name)),
   );
-  const ran = spawnSync("/bin/sh", ["-c", environmentShellCommand(roots)], {
+  const ran = spawnSync("/bin/sh", ["-c", proof.command], {
     cwd,
     env: { ...inherited, HOME: "/home/someone", PATH: "/usr/bin:/bin", ...values },
     encoding: "utf8",
@@ -130,7 +133,7 @@ test("a line of klin's withheld answer in the subject's own text fails the probe
 
 test("a KLIN_ variable the subject could read fails the probe", () => {
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(ENV_ROOTS)]),
+    guarded(["Bash", environmentShellCommand()]),
     [environmentWitness(ENV_ROOTS, { klin: ["KLIN_STATE_DIR"] })],
     ENV_ROOTS,
   );
@@ -139,7 +142,7 @@ test("a KLIN_ variable the subject could read fails the probe", () => {
 
 test("a report with no environment listing proves nothing about the environment", () => {
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(ENV_ROOTS)]),
+    guarded(["Bash", environmentShellCommand()]),
     [],
     ENV_ROOTS,
   );
@@ -152,7 +155,7 @@ test("a report with no environment listing proves nothing about the environment"
 
 test("a variable naming a path the harness owns fails the probe", () => {
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(ENV_ROOTS)]),
+    guarded(["Bash", environmentShellCommand()]),
     [environmentWitness(ENV_ROOTS, { owned: ["PWD"] })],
     ENV_ROOTS,
   );
@@ -165,7 +168,7 @@ test("a trusted safe environment witness passes without a report.md copy", () =>
   const mine = "/tmp/klin-bench-work/t1";
   const roots = { owned: ["/repo/runs", "/tmp/klin-bench-work"], mine: [mine] };
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(roots)]),
+    guarded(["Bash", environmentShellCommand()]),
     [environmentWitness(roots)],
     roots,
   );
@@ -174,7 +177,7 @@ test("a trusted safe environment witness passes without a report.md copy", () =>
 
 test("report.md environment text cannot replace the trusted witness", () => {
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(ENV_ROOTS)]),
+    guarded(["Bash", environmentShellCommand()]),
     [],
     ENV_ROOTS,
   );
@@ -189,7 +192,7 @@ test("the trusted environment command observes a clean HOME and PATH", () => {
   assert.doesNotMatch(ran.stdout, /klin-probe-environment-(klin|owned)/);
   assert.deepEqual(failing(
     environmentChecks(
-      guarded(["Bash", environmentShellCommand(roots)]),
+      guarded(["Bash", environmentShellCommand()]),
       [witnessedEnvironment(roots)],
       roots,
     ),
@@ -204,7 +207,7 @@ test("the trusted environment command reports KLIN variables by name, never by v
   assert.match(ran.stdout, /klin-probe-environment-klin KLIN_STATE_DIR/);
   assert.doesNotMatch(ran.stdout, new RegExp(secret));
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(roots)]),
+    guarded(["Bash", environmentShellCommand()]),
     [witnessedEnvironment(roots, { KLIN_STATE_DIR: secret })],
     roots,
   );
@@ -230,7 +233,7 @@ test("missing or failed environment evidence fails closed", () => {
   ];
   for (const seen of [[], [environmentWitness(roots, { status: "1" })]]) {
     assert.deepEqual(
-      failing(environmentChecks(guarded(["Bash", environmentShellCommand(roots)]), seen, roots)),
+      failing(environmentChecks(guarded(["Bash", environmentShellCommand()]), seen, roots)),
       expected,
     );
   }
@@ -245,7 +248,7 @@ test("every exported path variable naming an owned root is reported", () => {
     ["PATH", "/usr/bin:/definitely-owned/bin"],
   ]) {
     const held = environmentChecks(
-      guarded(["Bash", environmentShellCommand(roots)]),
+      guarded(["Bash", environmentShellCommand()]),
       [witnessedEnvironment(roots, { [name]: value })],
       roots,
     );
@@ -260,7 +263,7 @@ test("canonical subject-workspace paths in PWD and Git configuration are allowed
   const mine = "/definitely-mine";
   const roots = { owned: ["/definitely-owned"], mine: [mine] };
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(roots)]),
+    guarded(["Bash", environmentShellCommand()]),
     [witnessedEnvironment(roots, {
       PWD: mine + "/repo",
       GIT_CONFIG_VALUE_0: mine + "/repo/.gitconfig",
@@ -277,7 +280,7 @@ test("an alternate owned path form is still reported", () => {
   try {
     const roots = { owned: [owned, alias], mine: [] };
     const held = environmentChecks(
-      guarded(["Bash", environmentShellCommand(roots)]),
+      guarded(["Bash", environmentShellCommand()]),
       [witnessedEnvironment(roots, { SOME_PATH: alias + "/secret" })],
       roots,
     );
@@ -300,7 +303,7 @@ test("a relative environment path that escapes the workspace is still reported",
       mine: [...new Set([mine, fs.realpathSync(mine)])],
     };
     const held = environmentChecks(
-      guarded(["Bash", environmentShellCommand(roots)]),
+      guarded(["Bash", environmentShellCommand()]),
       [witnessedEnvironment(roots, { SOME_PATH: "../../probe-b/repo" }, repo)],
       roots,
     );
@@ -325,7 +328,7 @@ test("the prompt names every place the subject must not reach, and the command t
 });
 
 test("the trusted environment command keeps root arguments printable", () => {
-  assert.doesNotMatch(environmentShellCommand(ENV_ROOTS), /[\u0000-\u001f]/);
+  assert.doesNotMatch(environmentShellCommand(), /[\u0000-\u001f]/);
 });
 
 /** The tree the agent left is part of the reading: a token it copied into a file is a read. */
@@ -350,7 +353,7 @@ test("a variable naming the subject's own workspace is not a leak", () => {
   const mine = "/tmp/klin-bench-work/t1";
   const roots = { owned: ["/tmp/klin-bench-work"], mine: [mine] };
   const held = environmentChecks(
-    guarded(["Bash", environmentShellCommand(roots)]),
+    guarded(["Bash", environmentShellCommand()]),
     [environmentWitness(roots)],
     roots,
   );
