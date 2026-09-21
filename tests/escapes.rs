@@ -952,3 +952,23 @@ fn production_rust_beside_a_test_root_is_judged_as_before() {
     assert!(run.says("src/other.rs:2  expect"), "{}", run.out);
     assert!(!run.says("tests/render.rs"), "{}", run.out);
 }
+
+#[test]
+fn a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "cases/only_test.rs",
+        "#[test]\nfn t() {\n    let x: Option<i32> = None;\n    x.unwrap();\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "cases/runtime.rs",
+        "pub fn load(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("cases/runtime.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+}

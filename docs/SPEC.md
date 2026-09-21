@@ -1217,8 +1217,9 @@ its matches to the same site rather than opening another. `escapes` reads
 the text as written, so a pattern inside a string literal is a match. Unless
 `skip_rust_tests` is `false`, it leaves `unwrap` and `expect` out of Rust test
 code, which is an inline `#[cfg(test)]` module or a `.rs` file under a test
-root the survey found (5.4), and counts them on the coverage line as skipped
-in Rust tests. Every other row is judged in a test as anywhere else, so a
+root the survey finds in the tree being read (5.4), so each tree is classified
+over its own files and a root that stops being test-only has its production
+sites judged, and counts them on the coverage line as skipped in Rust tests. Every other row is judged in a test as anywhere else, so a
 `#[ignore]`, an `#[allow(...)]` or an `unsafe { }` inside a test is a site
 (ADR 0049). Pinned by
 `a_site_inside_a_cfg_test_module_is_not_a_production_site`,
@@ -1228,7 +1229,8 @@ in Rust tests. Every other row is judged in a test as anywhere else, so a
 `a_skipped_test_inside_an_inline_test_module_is_still_an_escape`,
 `allow_and_unsafe_in_rust_tests_remain_escapes`,
 `skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too` and
-`production_rust_beside_a_test_root_is_judged_as_before` in
+`production_rust_beside_a_test_root_is_judged_as_before` and
+`a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged` in
 `tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
 line, judges a test module like any other code, and refuses the key. Pinned by

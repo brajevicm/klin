@@ -438,7 +438,7 @@
               "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
             },
             "skip_rust_tests": {
-              "description": "whether an inline Rust test module is left out",
+              "description": "whether `unwrap` and `expect` inside Rust test code are left out",
               "type": "boolean"
             }
           },

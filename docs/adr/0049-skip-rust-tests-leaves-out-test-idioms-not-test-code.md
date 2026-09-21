@@ -27,7 +27,10 @@ an agent shortcut.
 **`skip_rust_tests` leaves out `unwrap` and `expect` inside Rust test code,
 and nothing else.** Rust test code is an inline `#[cfg(test)]` module, which
 the syntax convention classifier already finds, and a `.rs` file under a test
-root the survey found (spec 5.4). Both contexts follow one rule. `#[ignore]`,
+root the survey finds in the tree being read (spec 5.4). Each tree is
+classified over its own files, not over the union of 4.3, because that union
+keeps a root that was test-only at the derivation commit after production code
+joined it, and would hide the production sites. Both contexts follow one rule. `#[ignore]`,
 `#[allow(...)]` and `unsafe { }` inside either are findings, as they are
 anywhere. With `skip_rust_tests: false`, `unwrap` and `expect` are judged in
 test code too. Nothing changes for another language, for production Rust, or

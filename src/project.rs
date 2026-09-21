@@ -127,6 +127,11 @@ impl Tree {
         &self.extracted
     }
 
+    /// The test roots of this tree alone, off its one file list. Spec 5.4.
+    pub fn test_roots(&self) -> Vec<String> {
+        survey::test_roots_of(self)
+    }
+
     /// Every file, read on the first call and held for the run. A directory the walk could not
     /// read is an error naming it, as it was for every walk before. Spec 4.3, 14.
     pub fn files(&self) -> Result<&[String], Error> {

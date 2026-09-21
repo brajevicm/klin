@@ -109,6 +109,13 @@ pub(crate) fn listed(root: &Path, commit: &str) -> Option<Vec<String>> {
     Some(listed.into_iter().filter(|path| surveyed(path)).collect())
 }
 
+/// The test roots of one tree, classified over that tree alone. A root that was test-only at
+/// the derivation commit and holds production code now is not one here, where `found` would
+/// still carry it by the union rule of 4.3. Spec 5.4.
+pub fn test_roots_of(tree: &Tree) -> Vec<String> {
+    walked(tree).test_roots
+}
+
 /// Every path the working tree holds that a survey reads, off the tree's one file list.
 fn walked(tree: &Tree) -> Survey {
     let files = tree.files().unwrap_or_default();

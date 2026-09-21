@@ -117,8 +117,6 @@ struct Search {
     sets: Vec<Set>,
     scope: Scope,
     skip_rust_tests: bool,
-    /// The survey's test roots, under which a whole Rust file is test code. Spec 5.4.
-    test_roots: Vec<String>,
 }
 
 /// What one file says about where a test idiom does not count: the whole file when it sits
@@ -144,6 +142,17 @@ struct Tally {
     name: String,
     remedy: String,
     count: u64,
+}
+
+/// What one tree walk accumulates across its files: the sites, what each file said about where
+/// a match does not count, the files whose shapes were read, and the tally of idioms left out.
+struct Walk {
+    test_roots: Vec<String>,
+    seen: BTreeMap<(String, String), Tally>,
+    cache: BTreeMap<String, Skipped>,
+    shaped: BTreeSet<String>,
+    skipped: u64,
+    work: ContentCost,
 }
 
 pub fn run(kind: &Kind, args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -247,7 +256,7 @@ fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<
 
 fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
     let values = project.config.policy(kind.section, kind.keys)?;
-    let search = search(kind, project, &values)?;
+    let search = search(kind, &project.config, &values)?;
     if search.scope.has_in() && !applicable(kind, project.tree(), &search.scope)? {
         return Err(Error(format!(
             "{}: \"{}\" has an \"in\" scope with no applicable file",
@@ -271,13 +280,11 @@ fn list_languages(kind: &Kind, out: &mut String) {
     }
 }
 
-fn search(kind: &Kind, project: &Project, section: &Values) -> Result<Search, Error> {
-    let config = &project.config;
+fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Error> {
     Ok(Search {
         sets: language_sets(kind, config)?,
         scope: Scope::read(config, kind.section, section)?,
         skip_rust_tests: skips_tests(kind, config, section)?,
-        test_roots: project.facts().found.test_roots.clone(),
     })
 }
 
@@ -356,13 +363,9 @@ fn findings(
     repo_root: &Path,
     changes: Option<&[Change]>,
 ) -> Result<Read, Error> {
-    let mut seen: BTreeMap<(String, String), Tally> = BTreeMap::new();
-    let mut cache: BTreeMap<String, Skipped> = BTreeMap::new();
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
-    let mut shaped: BTreeSet<String> = BTreeSet::new();
-    let mut skipped = 0;
-    let mut work = ContentCost::default();
+    let mut walk = Walk::over(tree);
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search
@@ -390,23 +393,13 @@ fn findings(
         {
             continue;
         }
-        let (file_skipped, file_work) = read_file(
-            kind,
-            search,
-            &file,
-            &rel,
-            &mut cache,
-            &mut seen,
-            &mut shaped,
-        )?;
-        skipped += file_skipped;
-        work = work + file_work;
+        walk.read(kind, search, &file, &rel)?;
     }
     Ok(Read {
-        findings: collected(kind, seen),
-        skipped,
+        findings: collected(kind, walk.seen),
+        skipped: walk.skipped,
         files: covered(measured, excluded),
-        work,
+        work: walk.work,
     })
 }
 
@@ -419,38 +412,45 @@ fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>) -> Files {
     }
 }
 
-fn read_file(
-    kind: &Kind,
-    search: &Search,
-    file: &std::path::Path,
-    rel: &str,
-    cache: &mut BTreeMap<String, Skipped>,
-    seen: &mut BTreeMap<(String, String), Tally>,
-    shaped: &mut BTreeSet<String>,
-) -> Result<(u64, ContentCost), Error> {
-    let bytes = std::fs::read(file).map_err(|why| Error::unreadable(file, why))?;
-    let mut work = ContentCost {
-        reads: 1,
-        parses: 0,
-    };
-    let mut skipped = 0;
-    let text = String::from_utf8_lossy(&bytes).to_string();
-    if skips_rust_tests(kind, search, rel) {
-        work.parses += 1;
-    }
-    let past = cached(kind, search, rel, &text, cache);
-    for set in search
-        .sets
-        .iter()
-        .filter(|set| set.suffixes.iter().any(|end| rel.ends_with(end)))
-    {
-        skipped += tally(set, rel, &text, &past, seen);
-        if set.shapes && shaped.insert(rel.to_string()) {
-            work.parses += 1;
-            shapes(rel, &text, seen);
+impl Walk {
+    fn over(tree: &Tree) -> Walk {
+        Walk {
+            test_roots: tree.test_roots(),
+            seen: BTreeMap::new(),
+            cache: BTreeMap::new(),
+            shaped: BTreeSet::new(),
+            skipped: 0,
+            work: ContentCost::default(),
         }
     }
-    Ok((skipped, work))
+
+    fn read(
+        &mut self,
+        kind: &Kind,
+        search: &Search,
+        file: &std::path::Path,
+        rel: &str,
+    ) -> Result<(), Error> {
+        let bytes = std::fs::read(file).map_err(|why| Error::unreadable(file, why))?;
+        self.work.reads += 1;
+        let text = String::from_utf8_lossy(&bytes).to_string();
+        if skips_rust_tests(kind, search, rel) {
+            self.work.parses += 1;
+        }
+        let past = cached(kind, search, &self.test_roots, rel, &text, &mut self.cache);
+        for set in search
+            .sets
+            .iter()
+            .filter(|set| set.suffixes.iter().any(|end| rel.ends_with(end)))
+        {
+            self.skipped += tally(set, rel, &text, &past, &mut self.seen);
+            if set.shapes && self.shaped.insert(rel.to_string()) {
+                self.work.parses += 1;
+                shapes(rel, &text, &mut self.seen);
+            }
+        }
+        Ok(())
+    }
 }
 
 fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {
@@ -473,6 +473,7 @@ fn shapes(rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
 fn cached(
     kind: &Kind,
     search: &Search,
+    test_roots: &[String],
     rel: &str,
     text: &str,
     cache: &mut BTreeMap<String, Skipped>,
@@ -482,8 +483,7 @@ fn cached(
         .or_insert_with(|| {
             let rust_tests = skips_rust_tests(kind, search, rel);
             Skipped {
-                test_file: rust_tests
-                    && search.test_roots.iter().any(|root| under_or_at(rel, root)),
+                test_file: rust_tests && test_roots.iter().any(|root| under_or_at(rel, root)),
                 tests: match rust_tests {
                     true => syntax::convention::test_module_ranges(rel, text),
                     false => Vec::new(),
