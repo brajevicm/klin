@@ -38,9 +38,12 @@ pub struct Kind {
     pub keys: &'static [Key],
     /// The values key a matched row's name is recorded under.
     pub label: &'static str,
-    /// Whether a site inside an inline Rust test module is one the config may skip. A stub in a
-    /// test is the case the spec names, so `stubs` never skips one.
+    /// Whether a test idiom inside Rust test code is one the config may skip. A stub in a test
+    /// is the case the spec names, so `stubs` never skips one.
     pub skips_tests: bool,
+    /// The row names `skip_rust_tests` leaves out inside Rust test code: the fail-fast idioms a
+    /// test writes on purpose. Every other row is judged in a test like anywhere else. #279.
+    pub test_idioms: &'static [&'static str],
     /// Whether a match that lies inside a string literal is thrown away.
     pub skips_literals: bool,
     /// Whether the function walk judges body shapes too, which only a parser can see. #114.
@@ -48,11 +51,11 @@ pub struct Kind {
     pub evaluator: Evaluator<'static>,
 }
 
-/// The key only a kind that may skip them reads. A kind whose check judges an inline test module
+/// The key only a kind that may skip them reads. A kind whose check judges Rust test code
 /// either way refuses it, so nothing turns it on and measures the same set in silence.
 pub const SKIP_RUST_TESTS: Key = Key {
     name: "skip_rust_tests",
-    holds: "whether an inline Rust test module is left out",
+    holds: "whether `unwrap` and `expect` inside Rust test code are left out",
     required: false,
     rule: None,
     default: "`true`",
@@ -92,6 +95,8 @@ struct Pattern {
     name: String,
     regex: Regex,
     remedy: String,
+    /// Whether `skip_rust_tests` leaves a match of this row out inside Rust test code.
+    test_idiom: bool,
 }
 
 #[derive(Clone)]
@@ -112,17 +117,20 @@ struct Search {
     sets: Vec<Set>,
     scope: Scope,
     skip_rust_tests: bool,
+    /// The survey's test roots, under which a whole Rust file is test code. Spec 5.4.
+    test_roots: Vec<String>,
 }
 
-/// What one file says about where a match does not count: the inline test modules, and the
-/// quoted spans.
+/// What one file says about where a test idiom does not count: the whole file when it sits
+/// under a test root, the inline test modules, and where a quoted span hides any match.
 #[derive(Default, Clone)]
 struct Skipped {
+    test_file: bool,
     tests: Vec<(u64, u64)>,
     literals: Vec<(usize, usize)>,
 }
 
-/// One tree read: the sites, how many an inline test module took out of the count, and the
+/// One tree read: the sites, how many test idioms Rust test code took out of the count, and the
 /// files the walk reached, which is what the gate's coverage counts.
 struct Read {
     findings: Vec<Finding>,
@@ -177,7 +185,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let sites = ratchet::scoped(&read.findings, at.only);
     let aside = match read.skipped {
         0 => String::new(),
-        count => format!(" ({count} in inline Rust tests skipped)"),
+        count => format!(" ({count} in Rust tests skipped)"),
     };
     let unit = kind.evaluator.unit;
     let said = read.files.coverage(at.only).said(out);
@@ -239,7 +247,8 @@ fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<
 
 fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
     let values = project.config.policy(kind.section, kind.keys)?;
-    let search = search(kind, &project.config, &values)?;
+    let mut search = search(kind, &project.config, &values)?;
+    search.test_roots = project.facts().found.test_roots.clone();
     if search.scope.has_in() && !applicable(kind, project.tree(), &search.scope)? {
         return Err(Error(format!(
             "{}: \"{}\" has an \"in\" scope with no applicable file",
@@ -268,6 +277,7 @@ fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Erro
         sets: language_sets(kind, config)?,
         scope: Scope::read(config, kind.section, section)?,
         skip_rust_tests: skips_tests(kind, config, section)?,
+        test_roots: Vec::new(),
     })
 }
 
@@ -299,6 +309,7 @@ fn compiled(
         .map(|(name, regex, remedy)| {
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
+                    test_idiom: kind.test_idioms.contains(&name.as_str()),
                     name: name.clone(),
                     regex: compiled,
                     remedy,
@@ -314,8 +325,9 @@ fn compiled(
         .collect()
 }
 
-/// Whether this run leaves the inline Rust test modules out. A section whose check judges them
-/// either way is refused the key, so nothing turns it on and measures the same set in silence.
+/// Whether this run leaves the test idioms of Rust test code out. A section whose check judges
+/// them either way is refused the key, so nothing turns it on and measures the same set in
+/// silence.
 fn skips_tests(kind: &Kind, config: &Config, section: &Values) -> Result<bool, Error> {
     let key = SKIP_RUST_TESTS.name;
     match section.get(key) {
@@ -462,15 +474,23 @@ fn cached(
 ) -> Skipped {
     cache
         .entry(rel.to_string())
-        .or_insert_with(|| Skipped {
-            tests: match kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
-                true => syntax::convention::test_module_ranges(rel, text),
-                false => Vec::new(),
-            },
-            literals: match kind.skips_literals {
-                true => literals(text),
-                false => Vec::new(),
-            },
+        .or_insert_with(|| {
+            let rust_tests = kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs");
+            Skipped {
+                test_file: rust_tests
+                    && search
+                        .test_roots
+                        .iter()
+                        .any(|root| crate::scope::under_or_at(rel, root)),
+                tests: match rust_tests {
+                    true => syntax::convention::test_module_ranges(rel, text),
+                    false => Vec::new(),
+                },
+                literals: match kind.skips_literals {
+                    true => literals(text),
+                    false => Vec::new(),
+                },
+            }
         })
         .clone()
 }
@@ -490,10 +510,12 @@ fn tally(
                 continue;
             }
             let line = text[..found.start()].matches('\n').count() as u64 + 1;
-            if past
-                .tests
-                .iter()
-                .any(|(from, to)| *from <= line && line <= *to)
+            if pattern.test_idiom
+                && (past.test_file
+                    || past
+                        .tests
+                        .iter()
+                        .any(|(from, to)| *from <= line && line <= *to))
             {
                 skipped += 1;
                 continue;

@@ -124,6 +124,7 @@ pub const KIND: Kind = Kind {
     keys: KEYS,
     label: LABEL,
     skips_tests: true,
+    test_idioms: &["unwrap", "expect"],
     skips_literals: false,
     reads_shapes: false,
     evaluator: Evaluator {

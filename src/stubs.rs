@@ -80,6 +80,7 @@ pub const KIND: Kind = Kind {
     keys: KEYS,
     label: LABEL,
     skips_tests: false,
+    test_idioms: &[],
     skips_literals: true,
     reads_shapes: true,
     evaluator: Evaluator {

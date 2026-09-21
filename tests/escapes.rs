@@ -482,11 +482,7 @@ fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
     tree.base();
     let rerun = tree.run(&["escapes"]);
     assert_eq!(rerun.code, 0, "{}", rerun.out);
-    assert!(
-        rerun.says("(2 in inline Rust tests skipped)"),
-        "{}",
-        rerun.out
-    );
+    assert!(rerun.says("(2 in Rust tests skipped)"), "{}", rerun.out);
 }
 
 #[test]
@@ -502,7 +498,7 @@ fn skip_rust_tests_turned_off_judges_the_test_module_too() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:11"), "{}", run.out);
     assert!(run.says("src/lib.rs:12"), "{}", run.out);
-    assert!(!run.says("in inline Rust tests skipped"), "{}", run.out);
+    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
 }
 
 #[test]
@@ -561,8 +557,10 @@ fn a_cfg_test_module_behind_stacked_attributes_is_still_a_test_module() {
     );
 
     let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("(2 in inline Rust tests skipped)"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  allow"), "{}", run.out);
+    assert!(!run.says("src/lib.rs:5"), "{}", run.out);
 }
 
 #[test]
@@ -575,7 +573,7 @@ fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("(1 in inline Rust tests skipped)"), "{}", run.out);
+    assert!(run.says("(1 in Rust tests skipped)"), "{}", run.out);
 }
 
 #[test]
@@ -820,4 +818,137 @@ fn a_live_row_of_another_language_is_not_read_as_the_retired_one() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(!run.says("is a row klin"), "{}", run.out);
+}
+
+const INTEGRATION_TEST: &str = r#"use demo::wrap;
+
+#[test]
+fn keeps() {
+    let lines = wrap("ab");
+    assert_eq!(lines.last().unwrap(), "ab");
+    lines.first().expect("one line");
+}
+"#;
+
+#[test]
+fn unwrap_and_expect_in_a_file_under_a_test_root_are_left_out_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        "pub fn wrap(t: &str) -> Vec<String> { vec![t.to_string()] }\n",
+    );
+    tree.write("tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(2 in Rust tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn a_skipped_test_under_a_test_root_is_still_an_escape() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("src/lib.rs", "pub fn wrap() {}\n");
+    tree.write(
+        "tests/render.rs",
+        concat!(
+            "#[test]\n#[ign",
+            "ore]\nfn slow() {\n    let x: Option<i32> = None;\n    x.unwrap();\n}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("tests/render.rs:2  skipped test"), "{}", run.out);
+    assert!(!run.says("tests/render.rs:5"), "{}", run.out);
+}
+
+#[test]
+fn a_skipped_test_inside_an_inline_test_module_is_still_an_escape() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[cfg(test)]\nmod tests {\n    #[test]\n    #[ign",
+            "ore]\n    fn t() {\n        x.unwrap();\n    }\n}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:4  skipped test"), "{}", run.out);
+    assert!(!run.says("src/lib.rs:6"), "{}", run.out);
+}
+
+#[test]
+fn allow_and_unsafe_in_rust_tests_remain_escapes() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[cfg(test)]\nmod tests {\n    #[all",
+            "ow(dead_code)]\n    fn t() {\n        unsa",
+            "fe { raw() }\n    }\n}\n"
+        ),
+    );
+    tree.write(
+        "tests/render.rs",
+        concat!(
+            "#[test]\n#[all",
+            "ow(unused)]\nfn t() {\n    unsa",
+            "fe { raw() }\n}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("4 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:3  allow"), "{}", run.out);
+    assert!(run.says("src/lib.rs:5  unsafe"), "{}", run.out);
+    assert!(run.says("tests/render.rs:2  allow"), "{}", run.out);
+    assert!(run.says("tests/render.rs:4  unsafe"), "{}", run.out);
+}
+
+#[test]
+fn skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "skip_rust_tests": false } }"#,
+    );
+    tree.write("src/lib.rs", CFG_TEST);
+    tree.write("tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("6 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11  unwrap"), "{}", run.out);
+    assert!(run.says("tests/render.rs:6  unwrap"), "{}", run.out);
+    assert!(run.says("tests/render.rs:7  expect"), "{}", run.out);
+    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn production_rust_beside_a_test_root_is_judged_as_before() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write(
+        "src/other.rs",
+        "pub fn g(x: Option<i32>) -> i32 {\n    x.expect(\"g\")\n}\n",
+    );
+    tree.write("tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("src/other.rs:2  expect"), "{}", run.out);
+    assert!(!run.says("tests/render.rs"), "{}", run.out);
 }

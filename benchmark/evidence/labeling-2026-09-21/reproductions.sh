@@ -25,7 +25,8 @@ expect() {
 fresh && git commit -q --allow-empty -m base && mkdir -p src tests && echo '{}' > klin.json
 printf 'pub fn wrap(t: &str) -> Vec<String> { vec![t.to_string()] }\n' > src/lib.rs
 printf 'use demo::wrap;\n#[test]\nfn keeps() {\n    let lines = wrap("ab");\n    assert_eq!(lines.last().unwrap(), "ab");\n}\n' > tests/render.rs
-expect "escapes flags unwrap in a Rust integration test (#279)" 1 '^FAIL: 1 new escape site' escapes
+# At 6d41e32 this case failed with one new escape site, which is the #279 gap. ADR 0049 fixed it.
+expect "escapes leaves unwrap in a Rust integration test out (#279, ADR 0049)" 0 'in Rust tests skipped' escapes
 
 fresh && cp -R "$FIXTURE/." . && git add -A && git commit -q -m base && git checkout -q -b work
 sed -i.bak 's/add_command::run_add, //; /"add" => run_add(rest, store),/d' src/registry.rs
