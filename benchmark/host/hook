@@ -52,9 +52,14 @@ payload=$(cat)
 
 out=$(mktemp)
 err=$(mktemp)
+report=$(mktemp)
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+if [ "${1-}" = "gate" ]; then
+    export KLIN_HOOK_REPORT="$report"
+fi
 printf '%s' "$payload" | "$klin" "$@" >"$out" 2>"$err"
 status=$?
+unset KLIN_HOOK_REPORT
 ended=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 mkdir -p "$hooks"
@@ -70,12 +75,13 @@ printf '%s\n' "$started" >"$kept/started"
 printf '%s\n' "$ended" >"$kept/ended"
 cp "$out" "$kept/stdout"
 cp "$err" "$kept/stderr"
+cp "$report" "$kept/report.json"
 
 if [ "$deliver" = "1" ]; then
     cat "$out"
     cat "$err" >&2
-    rm -f "$out" "$err"
+    rm -f "$out" "$err" "$report"
     exit "$status"
 fi
-rm -f "$out" "$err"
+rm -f "$out" "$err" "$report"
 exit 0

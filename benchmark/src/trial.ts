@@ -1,9 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
-import { copyTree, digest, links, sha256 } from "./trees.ts";
+import { copyTree, digest, files, links, sha256 } from "./trees.ts";
 import { family as familyNamed, variantIn, type ArmName, type VariantName } from "./catalogue.ts";
 import * as workspace from "./workspace.ts";
 import * as session from "./session.ts";
@@ -13,9 +13,12 @@ import {
   signalsFrom,
   validate,
   type Check,
+  type GateReport,
   type HookInvocation,
   type Isolation,
+  isGateReport,
   type RunRecord,
+  type WholeRun,
 } from "./record.ts";
 
 /** One trial: one family, one variant, one arm, one fresh repository and one fresh session. */
@@ -48,6 +51,173 @@ function provenance(): { commit: string; dirty: boolean } {
 
 function binarySha256(binary: string): string {
   return fs.existsSync(binary) ? sha256(fs.readFileSync(binary)) : "";
+}
+
+function replaceTree(source: string, target: string): void {
+  const wanted = new Set(files(source));
+  for (const one of files(target)) {
+    if (!wanted.has(one)) fs.rmSync(path.join(target, one), { force: true });
+  }
+  copyTree(source, target);
+}
+
+function targetFindings(sites: unknown[], expected: unknown[]): unknown[] {
+  const identity = (one: unknown): string[] => {
+    if (typeof one !== "object" || one === null) return [];
+    const held = one as Record<string, unknown>;
+    return ["function", "symbol", "test", "dependency", "document", "cites", "item", "file", "files", "line"]
+      .flatMap((key) => {
+        const value = held[key];
+        return Array.isArray(value) ? value.filter((part): part is string => typeof part === "string") : typeof value === "string" ? [value] : [];
+      });
+  };
+  return sites.filter((site) =>
+    expected.some((want) => {
+      const parts = identity(want);
+      const text = JSON.stringify(site).replaceAll('\\"', '"');
+      return parts.length > 0 && parts.every((part) => text.includes(part));
+    }),
+  );
+}
+
+function siteIdentities(site: unknown): string[] {
+  if (typeof site !== "object" || site === null) return [];
+  const held = site as Record<string, unknown>;
+  const gate = typeof held.gate === "string" ? held.gate : "";
+  const id = typeof held.id === "string" && held.id !== "" ? held.id : null;
+  const file = typeof held.file === "string" ? held.file : null;
+  const text = typeof held.text === "string" ? held.text : null;
+  return [
+    ...(id !== null && gate !== "" ? ["id:" + gate + "\0" + id] : []),
+    ...(gate !== "" && file !== null && text !== null ? ["site:" + gate + "\0" + file + "\0" + text] : []),
+  ];
+}
+
+function reportSites(report: GateReport): unknown[] {
+  return [
+    ...(Array.isArray(report.findings) ? report.findings : []),
+    ...(Array.isArray(report.notes) ? report.notes : []),
+  ];
+}
+
+function completeReport(report: GateReport | null | undefined): report is GateReport {
+  return isGateReport(report);
+}
+
+function exactStopReport(hook: HookInvocation): hook is HookInvocation & { report: GateReport } {
+  return completeReport(hook.report) && hook.report.exit === hook.status;
+}
+
+export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
+  if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
+  const targets = new Set(sites.flatMap(siteIdentities));
+  if (targets.size === 0 || !exactStopReport(hook)) return false;
+  return reportSites(hook.report).some((site) =>
+    siteIdentities(site).some((identity) => targets.has(identity)),
+  );
+}
+
+export function stopMetrics(
+  hooks: HookInvocation[],
+  sites: unknown[],
+): { stopDelivery: boolean; blockedStops: number } {
+  const targetStops = hooks.filter((one) => targetStop(one, sites));
+  return {
+    stopDelivery: targetStops.length > 0,
+    blockedStops: targetStops.filter((one) => one.status === 2).length,
+  };
+}
+
+function commandFailure(label: string, ran: ReturnType<typeof spawnSync>): Error {
+  return new Error(
+    "seeded whole-run " + label + " failed: " + (ran.error?.message ?? "exit " + String(ran.status)),
+  );
+}
+
+export function wholeRun(
+  gate: string,
+  base: string,
+  subject: string,
+  expected: unknown[],
+  control: string,
+  binary: string,
+): WholeRun {
+  const root = path.join(control, "whole-run");
+  const repo = path.join(root, "repo");
+  const state = path.join(root, "state");
+  const env = { ...session.withoutKlin(), KLIN_STATE_DIR: state };
+  try {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.mkdirSync(repo, { recursive: true });
+    replaceTree(base, repo);
+    workspace.git(repo, "init", "--quiet");
+    workspace.git(repo, "add", "-A");
+    workspace.git(repo, "commit", "--quiet", "-m", "The whole-run base");
+    const radius = spawnSync(binary, ["radius"], {
+      cwd: repo,
+      input: JSON.stringify({ hook_event_name: "SessionStart", session_id: "whole-run" }),
+      encoding: "utf8",
+      env,
+      timeout: 300_000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    if (radius.error || radius.status !== 0) throw commandFailure("radius", radius);
+    replaceTree(subject, repo);
+    const ran = spawnSync(binary, ["gate", "--json"], {
+      cwd: repo,
+      encoding: "utf8",
+      env,
+      timeout: 300_000,
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    if (ran.error || ran.status === null) throw commandFailure("gate", ran);
+    let report: GateReport;
+    try {
+      const parsed: unknown = JSON.parse(ran.stdout ?? "");
+      if (!isGateReport(parsed)) throw new Error("the report is not a production gate verdict");
+      report = parsed;
+    } catch (why) {
+      throw new Error("seeded whole-run gate returned invalid JSON: " + String(why));
+    }
+    const gateRow = (report.gates as Record<string, unknown>[]).find((one) => one.name === gate);
+    const records = [
+      ...report.findings,
+      ...report.notes,
+    ];
+    const targetFindingsRaw = records.filter(
+      (one) => typeof one === "object" && one !== null && (one as Record<string, unknown>).gate === gate,
+    );
+    const sites = targetFindings(targetFindingsRaw, expected);
+    const status = gateRow ? String(gateRow.status ?? "") : "";
+    if (!["FAIL", "PASS", "ok"].includes(status)) {
+      throw new Error("seeded whole-run gate returned no production verdict for " + gate);
+    }
+    return {
+      caught: status === "FAIL" && sites.length > 0,
+      status,
+      sites,
+    };
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function costOf(ran: session.SessionResult): number | null {
+  for (const key of ["total_cost_usd", "totalCostUsd", "cost_usd"]) {
+    const value = ran.agent?.[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function findingIds(sites: unknown[]): Set<string> {
+  return new Set(
+    sites.flatMap((one) => {
+      if (typeof one !== "object" || one === null) return [];
+      const id = (one as Record<string, unknown>).id;
+      return typeof id === "string" ? [id] : [];
+    }),
+  );
 }
 
 /**
@@ -129,6 +299,8 @@ export function validity(held: {
   judged: oracle.Judgement;
   links: string[];
   outside: Check;
+  hooks?: HookInvocation[];
+  wholeRun?: WholeRun | null;
 }): Check[] {
   const term = (name: string, passed: boolean, detail: string): Check => ({
     name,
@@ -143,7 +315,7 @@ export function validity(held: {
   const behaviour = held.judged.behaviour;
   const scored = behaviour.reason === "" && behaviour.exit !== null;
   const shortcut = held.judged.shortcut;
-  return [
+  const terms: Check[] = [
     term(
       "workspace-isolated",
       held.isolation.verified,
@@ -205,6 +377,25 @@ export function validity(held: {
         : "the digest and the scoring copy leave out " + held.links.join(", "),
     ),
   ];
+  if (held.wholeRun !== undefined && held.wholeRun !== null) {
+    terms.push({
+      name: "seeded-whole-run",
+      passed: ["FAIL", "PASS", "ok"].includes(held.wholeRun.status) && typeof held.wholeRun.caught === "boolean",
+      detail: "the production whole-run verdict was obtained before the session",
+    });
+    const missing = (held.hooks ?? []).filter(
+      (hook) => hook.event === "Stop" && hook.arguments.startsWith("gate") && !exactStopReport(hook),
+    );
+    terms.push({
+      name: "seeded-stop-evidence",
+      passed: missing.length === 0,
+      detail:
+        missing.length === 0
+          ? "every seeded Stop has a structured production gate report"
+          : String(missing.length) + " seeded Stop(s) have no structured production gate report",
+    });
+  }
+  return terms;
 }
 
 function friction(
@@ -305,6 +496,10 @@ export function run(
     place.startCommit,
     place.repo,
   );
+  const seededWhole =
+    variant.seed === ""
+      ? null
+      : wholeRun(found.spec.gate, base, declared, started.sites, control, options.klinBin);
 
   const ran = session.run(place, variant.prompt, options, configDir);
   const wrapperRan = workspace.settle(place);
@@ -347,9 +542,13 @@ export function run(
     judged,
     links: links(place.repo),
     outside,
+    hooks,
+    wholeRun: seededWhole,
   });
   const broke = terms.filter((one) => !one.passed);
   const { signals, audit } = signalsFrom(stats, arm);
+  const seededSignalIds = findingIds(seededWhole?.sites ?? []);
+  const seededStops = seededWhole === null ? { stopDelivery: false, blockedStops: 0 } : stopMetrics(hooks, seededWhole.sites);
   const activity = (stats.activity ?? {}) as Record<string, number>;
 
   const record: RunRecord = {
@@ -403,6 +602,21 @@ export function run(
       wiringSha256: workspace.wiringSha256(place.settings, place.plane, place.root, place.hook),
       wrapperSha256: workspace.wrapperSha256(wrapperRan, place.plane, options.klinBin),
     },
+    cost: costOf(ran),
+    ...(seededWhole
+      ? {
+          seeded: {
+            wholeRun: seededWhole,
+            stopDelivery: seededStops.stopDelivery,
+            finalRepair:
+              judged.shortcut.present === null ? null : judged.shortcut.present === false,
+            blockedStops: seededStops.blockedStops,
+            tries: signals
+              .filter((one) => one.kind === "regression" && seededSignalIds.has(one.identity))
+              .reduce((sum, one) => sum + (one.tries ?? 0), 0),
+          },
+        }
+      : {}),
     startedAt: ran.startedAt,
     endedAt: ran.endedAt,
     wallMs: ran.wallMs,

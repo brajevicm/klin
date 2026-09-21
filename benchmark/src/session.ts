@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { sha256 } from "./trees.ts";
 import * as paths from "./paths.ts";
-import type { HookInvocation } from "./record.ts";
+import { isGateReport, type GateReport, type HookInvocation } from "./record.ts";
 import type { Workspace } from "./workspace.ts";
 
 /**
@@ -320,6 +320,15 @@ function slurp(file: string): string {
   return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
 }
 
+function reportOf(text: string): GateReport | null {
+  try {
+    const held = JSON.parse(text);
+    return isGateReport(held) ? held : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The hook evidence the wrapper left, in order.
  *
@@ -348,8 +357,9 @@ export function hookEvidence(directory: string): HookInvocation[] {
         arguments: slurp(path.join(kept, "arguments")).trim(),
         status: Number(status),
         delivered: slurp(path.join(kept, "deliver")).trim() === "1",
-        stdout: slurp(path.join(kept, "stdout")).slice(0, 20_000),
-        stderr: slurp(path.join(kept, "stderr")).slice(0, 20_000),
+        stdout: slurp(path.join(kept, "stdout")),
+        stderr: slurp(path.join(kept, "stderr")),
+        report: reportOf(slurp(path.join(kept, "report.json"))),
         started: slurp(path.join(kept, "started")).trim(),
         ended: slurp(path.join(kept, "ended")).trim(),
         stdinClosed: payload.length > 0 && status.length > 0,

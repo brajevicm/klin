@@ -31,6 +31,7 @@ const UNDER: &str = "      ";
 /// The `ERR` row of 11.1 as `--json` names it, which a run that could not measure prints
 /// whatever exit code it ends with.
 const ERROR: &str = "ERROR";
+const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 
 struct Gate {
     name: String,
@@ -169,12 +170,25 @@ fn stopped(args: &Args, project: &Project, event: Option<host::Event>, out: &mut
         log.prompt = held.prompt;
     }
     let said = tell(args, root, code, note, &mut log);
+    observe_hook_report(log.report.as_ref());
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     code
+}
+
+/// The benchmark wrapper may observe the report this stop already built. A failed write leaves
+/// the harness without evidence and cannot change the hook's verdict or delivery.
+fn observe_hook_report(report: Option<&Value>) {
+    let Some(path) = std::env::var_os(HOOK_REPORT) else {
+        return;
+    };
+    let Some(report) = report else {
+        return;
+    };
+    let _ = std::fs::write(path, report.to_string());
 }
 
 /// The verdict this stop leaves for the next prompt, or the reason it left none: another stop

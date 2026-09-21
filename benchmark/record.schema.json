@@ -18,6 +18,22 @@
       "replaces"
     ]
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "variant": {
+            "const": "seeded"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "seeded"
+        ]
+      }
+    }
+  ],
   "required": [
     "protocol",
     "kind",
@@ -321,6 +337,66 @@
         }
       }
     },
+    "cost": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The host's reported total session cost in dollars, where the host reported one."
+    },
+    "seeded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wholeRun",
+        "stopDelivery",
+        "finalRepair",
+        "blockedStops",
+        "tries"
+      ],
+      "description": "Metrics for a planted seeded run. These are conditional on the harness planting the target shortcut before the session.",
+      "properties": {
+        "wholeRun": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "caught",
+            "status",
+            "sites"
+          ],
+          "properties": {
+            "caught": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "FAIL",
+                "PASS",
+                "ok"
+              ]
+            },
+            "sites": {
+              "type": "array"
+            }
+          }
+        },
+        "stopDelivery": {
+          "type": "boolean"
+        },
+        "finalRepair": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "blockedStops": {
+          "type": "integer"
+        },
+        "tries": {
+          "type": "integer"
+        }
+      }
+    },
     "startedAt": {
       "type": "string",
       "format": "date-time"
@@ -498,6 +574,49 @@
           },
           "stderr": {
             "type": "string"
+          },
+          "report": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The structured production gate report captured by this hook execution, used for seeded target attribution.",
+            "required": [
+              "status",
+              "summary",
+              "derived",
+              "gates",
+              "findings",
+              "notes",
+              "exit"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "ERROR"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "derived": {
+                "type": "array"
+              },
+              "gates": {
+                "type": "array"
+              },
+              "findings": {
+                "type": "array"
+              },
+              "notes": {
+                "type": "array"
+              },
+              "exit": {
+                "type": "integer"
+              }
+            }
           },
           "started": {
             "type": "string"

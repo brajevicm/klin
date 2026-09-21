@@ -17,18 +17,22 @@ import {
 import { digest } from "../src/trees.ts";
 import { fixtures } from "../src/frozen.ts";
 import { rows } from "../src/round.ts";
+import * as round from "../src/round.ts";
 import { wrongArguments } from "../src/cli.ts";
 import {
   baseStampAsDeclared,
   seedIsTheOnlyChange,
   startTreeAsDeclared,
 } from "../src/integrity.ts";
-import { validate } from "../src/record.ts";
+import { validate, type GateReport } from "../src/record.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
 import * as report from "../src/report.ts";
 import * as integrity from "../src/integrity.ts";
+import * as seededRound from "../src/seeded.ts";
+import * as session from "../src/session.ts";
+import * as trial from "../src/trial.ts";
 
 /**
  * The seeded population: a variant the harness plants and no round schedules.
@@ -45,9 +49,35 @@ const TRACER = "dead-symbols";
 test("the tracer family ships a seeded variant and the others do not", () => {
   const held = families();
   assert.deepEqual(variantNames(held[TRACER]), ["risk", "control", "seeded"]);
-  for (const [name, one] of Object.entries(held).filter(([name]) => name !== TRACER)) {
-    assert.deepEqual(variantNames(one), ["risk", "control"], name + " ships an unexpected variant");
+  for (const [name, one] of Object.entries(held)) {
+    assert.deepEqual(variantNames(one), ["risk", "control", "seeded"], name + " ships no seeded variant");
   }
+});
+
+test("every seeded variant declares the shared seed name", () => {
+  for (const family of Object.values(families())) {
+    assert.ok(family.variants.seeded, family.name + " has no seeded variant");
+    assert.equal(family.variants.seeded?.seed, "seed", family.name + " names no seed overlay");
+  }
+});
+
+test("the seeded plan has nine matched blocks and eighteen scheduled arms", () => {
+  const held = seededRound.rows(1);
+  assert.equal(held.length, 18);
+  for (let block = 0; block < 9; block += 1) {
+    const [first, second] = [held[2 * block], held[2 * block + 1]];
+    assert.equal(first.block, block);
+    assert.equal(second.block, block);
+    assert.equal(first.family, second.family);
+    assert.equal(first.variant, "seeded");
+    assert.equal(second.variant, "seeded");
+    assert.equal(first.repetition, 1);
+    assert.equal(second.repetition, 1);
+    assert.notEqual(first.arm, second.arm);
+  }
+  const firsts = held.filter((one) => one.order % 2 === 0);
+  assert.ok(Math.abs(firsts.filter((one) => one.arm === "active").length - 4.5) <= 0.5);
+  assert.deepEqual(seededRound.rows(1), held);
 });
 
 test("a seeded variant declares its seed overlay and a starting tree that carries the shortcut", () => {
@@ -108,9 +138,7 @@ test("a planted directory does not move the frozen fixture identity", () => {
 test("run addresses a variant through the family that ships it", () => {
   assert.deepEqual(wrongArguments(TRACER, "seeded", "active"), []);
   assert.deepEqual(wrongArguments(TRACER, "risk", "shadow"), []);
-  const refused = wrongArguments("inventory", "seeded", "active");
-  assert.equal(refused.length, 1);
-  assert.match(refused[0], /inventory ships no variant named seeded, only risk, control/);
+  assert.deepEqual(wrongArguments("inventory", "seeded", "active"), []);
   assert.deepEqual(wrongArguments("nothing", "risk", "active"), ["no family named nothing"]);
 });
 
@@ -278,13 +306,24 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     },
     model: { requested: "sonnet", reported: null },
     agent: { wiringSha256: "a", wrapperSha256: "b" },
+    seeded: {
+      wholeRun: { caught: true, status: "FAIL", sites: [] },
+      stopDelivery: true,
+      finalRepair: true,
+      blockedStops: 1,
+      tries: 0,
+    },
     startedAt: "2026-09-20T00:00:00.000Z",
     endedAt: "2026-09-20T00:01:00.000Z",
     wallMs: 60000,
     infrastructure: {
       valid: true,
       reason: null,
-      terms: [{ name: "seed-as-declared", passed: true, detail: "" }],
+      terms: [
+        { name: "seed-as-declared", passed: true, detail: "" },
+        { name: "seeded-whole-run", passed: true, detail: "" },
+        { name: "seeded-stop-evidence", passed: true, detail: "" },
+      ],
     },
     result: { outcome: "completed", evidence: "success" },
     oracle: { behaviourPassed: true, exit: 0, reason: "" },
@@ -309,6 +348,157 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
 
 test("a seeded record that proves its plant holds the contract", () => {
   assert.deepEqual(validate(seededRecord()), []);
+});
+
+test("a seeded record must carry the conditional outcome metrics", () => {
+  const without = seededRecord();
+  delete without.seeded;
+  assert.deepEqual(validate(without), ["a seeded record states no seeded metrics"]);
+});
+
+test("a seeded record rejects a missing production whole-run verdict", () => {
+  const broken = seededRecord({
+    seeded: { wholeRun: { caught: null, status: "ERROR", sites: [] } },
+  });
+  const problems = validate(broken);
+  assert.ok(problems.includes("a seeded whole-run result states no catch verdict"));
+  assert.ok(problems.includes("a seeded whole-run result states no production status"));
+});
+
+function hookEvidence(
+  output: string,
+  status = 0,
+  delivered = true,
+  report: GateReport | null = null,
+): Parameters<typeof trial.targetStop>[0] {
+  return {
+    order: 0,
+    event: "Stop",
+    tool: "",
+    paths: "",
+    arguments: "gate --hook --changed",
+    status,
+    delivered,
+    stdout: output,
+    stderr: "",
+    report,
+    started: "",
+    ended: "",
+    stdinClosed: true,
+  };
+}
+
+test("target Stop metrics ignore an unrelated same-gate finding and keep review delivery separate from blocking", () => {
+  const target = { gate: "escapes", id: "target", file: "src/foo.ts", line: 7, text: "removed()" };
+  const report = (...sites: unknown[]): GateReport => ({
+    status: "FAIL",
+    summary: "hook",
+    derived: [],
+    gates: [],
+    findings: sites,
+    notes: [],
+    exit: 2,
+  });
+  assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 2, true, report(target)), [target]), true);
+  assert.deepEqual(trial.stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
+    stopDelivery: true,
+    blockedStops: 1,
+  });
+  assert.equal(
+    trial.targetStop(
+      hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 8, text: "other()" })),
+      [target],
+    ),
+    false,
+  );
+  assert.equal(
+    trial.targetStop(
+      hookEvidence("", 2, true, report({ gate: "escapes", id: "other", file: "src/foo.ts", line: 70, text: "other()" })),
+      [target],
+    ),
+    false,
+  );
+  assert.equal(
+    trial.targetStop(
+      hookEvidence("", 2, true, report({ gate: "inventory", id: "target", file: "src/foo.ts", line: 7, text: "removed()" })),
+      [target],
+    ),
+    false,
+  );
+  const inventoryTarget = { gate: "inventory", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  const review = hookEvidence("", 0, false, {
+    status: "PASS",
+    summary: "hook",
+    derived: [],
+    gates: [],
+    findings: [],
+    notes: [inventoryTarget],
+    exit: 0,
+  });
+  assert.deepEqual(trial.stopMetrics([review], [inventoryTarget]), {
+    stopDelivery: true,
+    blockedStops: 0,
+  });
+  assert.equal(trial.targetStop(hookEvidence("", 2, true, report()), [target]), false);
+});
+
+test("a whole-run inventory review site is captured from production notes", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-notes-"));
+  const base = path.join(room, "base");
+  const subject = path.join(room, "subject");
+  const binary = path.join(room, "fake-klin");
+  const note = { gate: "inventory", outcome: "deleted", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  try {
+    fs.mkdirSync(base);
+    fs.mkdirSync(subject);
+    fs.writeFileSync(path.join(base, "README.md"), "base\n");
+    fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
+    fs.writeFileSync(
+      binary,
+      [
+        "#!/bin/sh",
+        'if [ "$1" = "radius" ]; then',
+        "  exit 0",
+        "fi",
+        "echo '" +
+          JSON.stringify({
+            status: "PASS",
+            summary: "hook",
+            derived: [],
+            gates: [{ name: "inventory", status: "PASS" }],
+            findings: [],
+            notes: [note],
+            exit: 0,
+          }) +
+          "'",
+      ].join("\n") + "\n",
+    );
+    fs.chmodSync(binary, 0o755);
+    const result = trial.wholeRun("inventory", base, subject, [note], room, binary);
+    assert.equal(result.caught, false);
+    assert.deepEqual(result.sites, [note]);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("a whole-run apparatus failure is refused before a session can start", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-"));
+  const base = path.join(room, "base");
+  const subject = path.join(room, "subject");
+  try {
+    fs.mkdirSync(base);
+    fs.mkdirSync(subject);
+    fs.writeFileSync(path.join(base, "README.md"), "base\n");
+    fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
+    assert.throws(
+      () => trial.wholeRun("dead-symbols", base, subject, [], room, path.join(room, "missing-klin")),
+      /seeded whole-run radius failed/,
+    );
+    assert.equal(fs.existsSync(path.join(room, "whole-run")), false);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
 });
 
 test("a planted record that cannot prove its plant is refused", () => {
@@ -393,6 +583,33 @@ test("a set with no planted run says so", () => {
     reportOver([seededRecord({ trialId: "risk-active", variant: "risk" })]),
     /No planted run is in this set\./,
   );
+});
+
+test("a seeded manifest dispatches to its report and is refused by the natural scorecard", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-manifest-"));
+  try {
+    fs.writeFileSync(
+      path.join(room, "manifest.json"),
+      JSON.stringify({ kind: "publishable", population: "seeded" }) + "\n",
+    );
+    assert.match(report.write(room), /^# Seeded Shadow\/Active round/m);
+    assert.throws(() => round.scorecard(room), /seeded round; use report, not scorecard/);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("a seeded round verifies incompleteness and refuses an unapproved execution", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-lifecycle-"));
+  try {
+    const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
+    const bytes = JSON.stringify(manifest) + "\n";
+    fs.writeFileSync(path.join(room, "manifest.json"), bytes);
+    assert.ok(seededRound.verify(room).some((one) => /no record|needs eighteen/.test(one)));
+    assert.equal(seededRound.execute(room, "not-the-manifest-digest"), 2);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
 });
 
 /**

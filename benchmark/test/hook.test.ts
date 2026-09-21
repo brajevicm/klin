@@ -41,6 +41,35 @@ function stub(into: string, exit: number): string {
   return file;
 }
 
+function reportStub(into: string): string {
+  const file = path.join(into, "report-stub");
+  const calls = path.join(into, "report-calls");
+  fs.writeFileSync(
+    file,
+    [
+      "#!/bin/sh",
+      'if [ -n "${KLIN_HOOK_REPORT-}" ]; then',
+      "  printf '%s' '{\"status\":\"PASS\",\"summary\":\"hook\",\"derived\":[],\"gates\":[],\"findings\":[],\"notes\":[],\"exit\":0}' >\"$KLIN_HOOK_REPORT\"",
+      "fi",
+      "printf '%s\\n' \"$*\" >> " + JSON.stringify(calls),
+      "printf '%s' 'hook'",
+    ].join("\n") + "\n",
+  );
+  fs.chmodSync(file, 0o755);
+  return file;
+}
+
+function noisyStub(into: string): string {
+  const file = path.join(into, "noisy-stub");
+  const output = "x".repeat(20_001) + "target";
+  fs.writeFileSync(
+    file,
+    ["#!/bin/sh", "cat >/dev/null", "printf '" + output + "'"].join("\n") + "\n",
+  );
+  fs.chmodSync(file, 0o755);
+  return file;
+}
+
 /**
  * One trial's wrapper, written the way `materialize` writes it.
  *
@@ -76,6 +105,43 @@ test("the active arm passes klin's answer and exit status through", () => {
   assert.match(ran.stderr, /why:gate --hook --changed/);
   assert.equal(evidence[0].delivered, true);
   assert.equal(evidence[0].status, 2);
+  fs.rmSync(into, { recursive: true, force: true });
+});
+
+test("the wrapper keeps a structured production report for each gate hook", () => {
+  const into = room();
+  const plane = path.join(into, "plane");
+  spawnSync(laid(into, plane, reportStub(into), true), ["gate", "--hook", "--changed"], {
+    input: PAYLOAD,
+    encoding: "utf8",
+    timeout: 20_000,
+    env: process.env,
+  });
+  assert.deepEqual(hookEvidence(path.join(plane, "hooks"))[0].report, {
+    status: "PASS",
+    summary: "hook",
+    derived: [],
+    gates: [],
+    findings: [],
+    notes: [],
+    exit: 0,
+  });
+  assert.equal(fs.readFileSync(path.join(into, "report-calls"), "utf8"), "gate --hook --changed\n");
+  fs.rmSync(into, { recursive: true, force: true });
+});
+
+test("hook evidence keeps output after the old 20KB prefix", () => {
+  const into = room();
+  const plane = path.join(into, "plane");
+  const ran = spawnSync(laid(into, plane, noisyStub(into), true), ["gate", "--hook", "--changed"], {
+    input: PAYLOAD,
+    encoding: "utf8",
+    timeout: 20_000,
+    env: process.env,
+  });
+  const output = "x".repeat(20_001) + "target";
+  assert.equal(ran.status, 0);
+  assert.equal(hookEvidence(path.join(plane, "hooks"))[0].stdout, output);
   fs.rmSync(into, { recursive: true, force: true });
 });
 

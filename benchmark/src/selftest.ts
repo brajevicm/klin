@@ -434,7 +434,7 @@ function configurations(found: Record<string, Family>): Map<string, string> {
   return held;
 }
 
-export function run(only: string[]): Case[] {
+export function run(only: string[], population: "all" | "seeded" = "all"): Case[] {
   const found = families();
   const chosen = only.length > 0 ? only : Object.keys(found).sort();
   const shared = integrity.sameConfiguration(configurations(found));
@@ -465,7 +465,7 @@ export function run(only: string[]): Case[] {
     if (!family) {
       throw new Error("no fixture family named " + name);
     }
-    for (const variantName of variantNames(family)) {
+    for (const variantName of variantNames(family).filter((one) => population === "all" || one === "seeded")) {
       const room = scratch(name + "-" + variantName);
       try {
         cases.push(...casesFor(family, variantIn(family, variantName), room));
