@@ -1221,6 +1221,8 @@ root the survey found (5.4), and counts them on the coverage line as skipped
 in Rust tests. Every other row is judged in a test as anywhere else, so a
 `#[ignore]`, an `#[allow(...)]` or an `unsafe { }` inside a test is a site
 (ADR 0049). Pinned by
+`a_site_inside_a_cfg_test_module_is_not_a_production_site`,
+`skip_rust_tests_turned_off_judges_the_test_module_too`,
 `unwrap_and_expect_in_a_file_under_a_test_root_are_left_out_by_default`,
 `a_skipped_test_under_a_test_root_is_still_an_escape`,
 `a_skipped_test_inside_an_inline_test_module_is_still_an_escape`,

@@ -14,7 +14,7 @@ use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::{self, Key};
-use crate::scope::Scope;
+use crate::scope::{Scope, under_or_at};
 use crate::syntax;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
@@ -247,8 +247,7 @@ fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<
 
 fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
     let values = project.config.policy(kind.section, kind.keys)?;
-    let mut search = search(kind, &project.config, &values)?;
-    search.test_roots = project.facts().found.test_roots.clone();
+    let search = search(kind, project, &values)?;
     if search.scope.has_in() && !applicable(kind, project.tree(), &search.scope)? {
         return Err(Error(format!(
             "{}: \"{}\" has an \"in\" scope with no applicable file",
@@ -272,13 +271,19 @@ fn list_languages(kind: &Kind, out: &mut String) {
     }
 }
 
-fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Error> {
+fn search(kind: &Kind, project: &Project, section: &Values) -> Result<Search, Error> {
+    let config = &project.config;
     Ok(Search {
         sets: language_sets(kind, config)?,
         scope: Scope::read(config, kind.section, section)?,
         skip_rust_tests: skips_tests(kind, config, section)?,
-        test_roots: Vec::new(),
+        test_roots: project.facts().found.test_roots.clone(),
     })
+}
+
+/// Whether this file's Rust test code has its test idioms left out.
+fn skips_rust_tests(kind: &Kind, search: &Search, rel: &str) -> bool {
+    kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs")
 }
 
 fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
@@ -430,7 +435,7 @@ fn read_file(
     };
     let mut skipped = 0;
     let text = String::from_utf8_lossy(&bytes).to_string();
-    if kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs") {
+    if skips_rust_tests(kind, search, rel) {
         work.parses += 1;
     }
     let past = cached(kind, search, rel, &text, cache);
@@ -475,13 +480,10 @@ fn cached(
     cache
         .entry(rel.to_string())
         .or_insert_with(|| {
-            let rust_tests = kind.skips_tests && search.skip_rust_tests && rel.ends_with(".rs");
+            let rust_tests = skips_rust_tests(kind, search, rel);
             Skipped {
                 test_file: rust_tests
-                    && search
-                        .test_roots
-                        .iter()
-                        .any(|root| crate::scope::under_or_at(rel, root)),
+                    && search.test_roots.iter().any(|root| under_or_at(rel, root)),
                 tests: match rust_tests {
                     true => syntax::convention::test_module_ranges(rel, text),
                     false => Vec::new(),
