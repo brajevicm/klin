@@ -770,6 +770,8 @@ node benchmark/src/cli.ts audit benchmark/evidence/<set> --archive /path/to/<set
 node benchmark/src/cli.ts label-prepare benchmark/evidence/<v1-set> benchmark/evidence/<v2-set> \
   --archive-v1 /path/to/<v1-set>-raw.tar.gz --archive-v2 /path/to/<v2-set>-raw.tar.gz \
   --into benchmark/evidence/labeling-<date>
+node benchmark/src/cli.ts label-synthesize benchmark/evidence/labeling-<date> \
+  benchmark/evidence/<v1-set> benchmark/evidence/<v2-set>
 
 node benchmark/src/cli.ts seeded-plan --seed 1             # nine planted blocks, eighteen runs
 node benchmark/src/cli.ts seeded-execute benchmark/runs/seeded-<stamp> --manifest-sha256 <digest>
@@ -792,6 +794,15 @@ resolved only when every signal in the row has one of those outcomes, and an
 archives, reconstructs only signal-time context from each frozen base tree,
 and writes a blinded worksheet plus a sealed join. It stops before human labels,
 synthesis and issue filing.
+
+`label-synthesize` runs after a person has labeled every row and locked the
+file. It refuses to open the sealed join unless `labels.locked.json` is
+canonical and its SHA-256 equals both the committed sidecar and the hash the
+code records, then writes `synthesis.json` and `synthesis.md` beside them: the
+site-level label counts per gate with occurrence counts, and the run-level
+intervention view per round, Active and Shadow apart, with the manifests as
+the run denominators. A label edited after unblinding fails the hash, so a
+changed analysis needs a new versioned lock.
 
 `protocols/shadow-active-v2/protocol.json` is the treatment-independent design
 for the repaired round, committed before run 1: the protocol number, the frozen seed, the sample plan,
