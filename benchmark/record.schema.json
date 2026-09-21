@@ -580,7 +580,43 @@
               "object",
               "null"
             ],
-            "description": "The structured production gate report captured after this hook, used for seeded target attribution."
+            "description": "The structured production gate report captured by this hook execution, used for seeded target attribution.",
+            "required": [
+              "status",
+              "summary",
+              "derived",
+              "gates",
+              "findings",
+              "notes",
+              "exit"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "PASS",
+                  "FAIL",
+                  "ERROR"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "derived": {
+                "type": "array"
+              },
+              "gates": {
+                "type": "array"
+              },
+              "findings": {
+                "type": "array"
+              },
+              "notes": {
+                "type": "array"
+              },
+              "exit": {
+                "type": "integer"
+              }
+            }
           },
           "started": {
             "type": "string"

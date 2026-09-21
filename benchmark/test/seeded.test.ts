@@ -24,7 +24,7 @@ import {
   seedIsTheOnlyChange,
   startTreeAsDeclared,
 } from "../src/integrity.ts";
-import { validate } from "../src/record.ts";
+import { validate, type GateReport } from "../src/record.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
@@ -369,7 +369,7 @@ function hookEvidence(
   output: string,
   status = 0,
   delivered = true,
-  report: Record<string, unknown> | null = null,
+  report: GateReport | null = null,
 ): Parameters<typeof trial.targetStop>[0] {
   return {
     order: 0,
@@ -390,8 +390,16 @@ function hookEvidence(
 
 test("target Stop metrics ignore an unrelated same-gate finding and keep review delivery separate from blocking", () => {
   const target = { gate: "escapes", id: "target", file: "src/foo.ts", line: 7, text: "removed()" };
-  const report = (...sites: unknown[]) => ({ gates: [], findings: sites, notes: [] });
-  assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 0, true, report(target)), [target]), true);
+  const report = (...sites: unknown[]): GateReport => ({
+    status: "FAIL",
+    summary: "hook",
+    derived: [],
+    gates: [],
+    findings: sites,
+    notes: [],
+    exit: 2,
+  });
+  assert.equal(trial.targetStop(hookEvidence("x".repeat(20_001), 2, true, report(target)), [target]), true);
   assert.deepEqual(trial.stopMetrics([hookEvidence("", 2, true, report({ ...target, line: 10 }))], [target]), {
     stopDelivery: true,
     blockedStops: 1,
@@ -418,7 +426,15 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
     false,
   );
   const inventoryTarget = { gate: "inventory", file: "tests/split.rs", line: 7, text: "fn removed()" };
-  const review = hookEvidence("", 0, false, { gates: [], findings: [], notes: [inventoryTarget] });
+  const review = hookEvidence("", 0, false, {
+    status: "PASS",
+    summary: "hook",
+    derived: [],
+    gates: [],
+    findings: [],
+    notes: [inventoryTarget],
+    exit: 0,
+  });
   assert.deepEqual(trial.stopMetrics([review], [inventoryTarget]), {
     stopDelivery: true,
     blockedStops: 0,
@@ -444,7 +460,17 @@ test("a whole-run inventory review site is captured from production notes", () =
         'if [ "$1" = "radius" ]; then',
         "  exit 0",
         "fi",
-        "echo '" + JSON.stringify({ gates: [{ name: "inventory", status: "PASS" }], findings: [], notes: [note] }) + "'",
+        "echo '" +
+          JSON.stringify({
+            status: "PASS",
+            summary: "hook",
+            derived: [],
+            gates: [{ name: "inventory", status: "PASS" }],
+            findings: [],
+            notes: [note],
+            exit: 0,
+          }) +
+          "'",
       ].join("\n") + "\n",
     );
     fs.chmodSync(binary, 0o755);

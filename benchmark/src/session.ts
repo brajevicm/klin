@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { sha256 } from "./trees.ts";
 import * as paths from "./paths.ts";
-import type { GateReport, HookInvocation } from "./record.ts";
+import { isGateReport, type GateReport, type HookInvocation } from "./record.ts";
 import type { Workspace } from "./workspace.ts";
 
 /**
@@ -323,14 +323,7 @@ function slurp(file: string): string {
 function reportOf(text: string): GateReport | null {
   try {
     const held = JSON.parse(text);
-    return held !== null &&
-      typeof held === "object" &&
-      !Array.isArray(held) &&
-      Array.isArray(held.gates) &&
-      Array.isArray(held.findings) &&
-      Array.isArray(held.notes)
-      ? (held as GateReport)
-      : null;
+    return isGateReport(held) ? held : null;
   } catch {
     return null;
   }

@@ -78,9 +78,25 @@ export interface HookInvocation {
 }
 
 export interface GateReport {
-  gates?: unknown;
-  findings?: unknown;
-  notes?: unknown;
+  status: "PASS" | "FAIL" | "ERROR";
+  summary: string;
+  derived: unknown[];
+  gates: unknown[];
+  findings: unknown[];
+  notes: unknown[];
+  exit: number;
+}
+
+export function isGateReport(value: unknown): value is GateReport {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const held = value as Record<string, unknown>;
+  return ["PASS", "FAIL", "ERROR"].includes(String(held.status)) &&
+    typeof held.summary === "string" &&
+    Number.isInteger(held.exit) &&
+    Array.isArray(held.derived) &&
+    Array.isArray(held.gates) &&
+    Array.isArray(held.findings) &&
+    Array.isArray(held.notes);
 }
 
 export interface WholeRun {

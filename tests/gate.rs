@@ -770,6 +770,48 @@ fn a_json_finding_carries_the_site_the_values_and_the_advice() {
 }
 
 #[test]
+fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"build":"exit 1","escapes":{"in":"src"}}"#);
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    tree.write("src/work.rs", AN_ESCAPE);
+    let evidence = tree.at("stop-report.json");
+
+    let hook = harness::feed_with(
+        tree.root(),
+        &[("KLIN_HOOK_REPORT", evidence.as_str())],
+        &["gate", "--hook", "--changed"],
+        A_STOP,
+    );
+    assert_eq!(hook.code, 2, "{}", hook.out);
+    let exact: Value = serde_json::from_str(
+        &std::fs::read_to_string(&evidence).expect("the original hook wrote evidence"),
+    )
+    .expect("the hook evidence is JSON");
+    assert_eq!(exact["status"], "ERROR", "{exact}");
+    assert_eq!(exact["exit"], 2, "{exact}");
+    assert_eq!(exact["gates"], serde_json::json!([]), "{exact}");
+    assert!(
+        !exact["findings"]
+            .as_array()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .any(|finding| finding["gate"] == "escapes")
+    );
+
+    let standalone = tree.run(&["gate", "--json"]);
+    assert_eq!(standalone.code, 1, "{}", standalone.out);
+    assert!(
+        standalone.json()["findings"]
+            .as_array()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .any(|finding| finding["gate"] == "escapes")
+    );
+}
+
+#[test]
 fn a_json_record_names_no_column_and_no_violation() {
     let tree = tree(AN_UNMATCHED_ACCEPTED);
     tree.words("README.md", 30);

@@ -97,6 +97,30 @@ test("a whole trial fails no validity term", () => {
   assert.deepEqual(failed(terms()), []);
 });
 
+test("a seeded Stop without its exact production report invalidates the run", () => {
+  const held = terms({
+    wholeRun: { caught: true, status: "FAIL", sites: [] },
+    hooks: [
+      {
+        order: 0,
+        event: "Stop",
+        tool: "",
+        paths: "",
+        arguments: "gate --hook --changed",
+        status: 2,
+        delivered: true,
+        stdout: "",
+        stderr: "",
+        report: null,
+        started: "",
+        ended: "",
+        stdinClosed: true,
+      },
+    ],
+  });
+  assert.deepEqual(failed(held), ["seeded-stop-evidence"]);
+});
+
 test("a scorer that could not run invalidates the run", () => {
   const held = terms({
     judged: judged({

@@ -16,6 +16,7 @@ import {
   type GateReport,
   type HookInvocation,
   type Isolation,
+  isGateReport,
   type RunRecord,
   type WholeRun,
 } from "./record.ts";
@@ -100,14 +101,17 @@ function reportSites(report: GateReport): unknown[] {
 }
 
 function completeReport(report: GateReport | null | undefined): report is GateReport {
-  return report !== null && report !== undefined &&
-    Array.isArray(report.gates) && Array.isArray(report.findings) && Array.isArray(report.notes);
+  return isGateReport(report);
+}
+
+function exactStopReport(hook: HookInvocation): hook is HookInvocation & { report: GateReport } {
+  return completeReport(hook.report) && hook.report.exit === hook.status;
 }
 
 export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
   if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
   const targets = new Set(sites.flatMap(siteIdentities));
-  if (targets.size === 0 || !completeReport(hook.report)) return false;
+  if (targets.size === 0 || !exactStopReport(hook)) return false;
   return reportSites(hook.report).some((site) =>
     siteIdentities(site).some((identity) => targets.has(identity)),
   );
@@ -167,18 +171,18 @@ export function wholeRun(
       maxBuffer: 16 * 1024 * 1024,
     });
     if (ran.error || ran.status === null) throw commandFailure("gate", ran);
-    let report: { gates?: unknown; findings?: unknown; notes?: unknown };
+    let report: GateReport;
     try {
-      report = JSON.parse(ran.stdout ?? "") as { gates?: unknown; findings?: unknown; notes?: unknown };
+      const parsed: unknown = JSON.parse(ran.stdout ?? "");
+      if (!isGateReport(parsed)) throw new Error("the report is not a production gate verdict");
+      report = parsed;
     } catch (why) {
       throw new Error("seeded whole-run gate returned invalid JSON: " + String(why));
     }
-    const gateRow = Array.isArray(report.gates)
-      ? (report.gates as Record<string, unknown>[]).find((one) => one.name === gate)
-      : undefined;
+    const gateRow = (report.gates as Record<string, unknown>[]).find((one) => one.name === gate);
     const records = [
-      ...(Array.isArray(report.findings) ? report.findings : []),
-      ...(Array.isArray(report.notes) ? report.notes : []),
+      ...report.findings,
+      ...report.notes,
     ];
     const targetFindingsRaw = records.filter(
       (one) => typeof one === "object" && one !== null && (one as Record<string, unknown>).gate === gate,
@@ -380,7 +384,7 @@ export function validity(held: {
       detail: "the production whole-run verdict was obtained before the session",
     });
     const missing = (held.hooks ?? []).filter(
-      (hook) => hook.event === "Stop" && hook.arguments.startsWith("gate") && !completeReport(hook.report),
+      (hook) => hook.event === "Stop" && hook.arguments.startsWith("gate") && !exactStopReport(hook),
     );
     terms.push({
       name: "seeded-stop-evidence",

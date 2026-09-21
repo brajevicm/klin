@@ -52,16 +52,15 @@ payload=$(cat)
 
 out=$(mktemp)
 err=$(mktemp)
+report=$(mktemp)
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+if [ "${1-}" = "gate" ]; then
+    export KLIN_HOOK_REPORT="$report"
+fi
 printf '%s' "$payload" | "$klin" "$@" >"$out" 2>"$err"
 status=$?
+unset KLIN_HOOK_REPORT
 ended=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-report=$(mktemp)
-if [ "${1-}" = "gate" ]; then
-    # Keep structured attribution evidence private to the harness.
-    "$klin" gate --json >"$report" 2>/dev/null
-fi
 
 mkdir -p "$hooks"
 seq=$(find "$hooks" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')

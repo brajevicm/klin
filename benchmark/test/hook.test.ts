@@ -43,15 +43,16 @@ function stub(into: string, exit: number): string {
 
 function reportStub(into: string): string {
   const file = path.join(into, "report-stub");
+  const calls = path.join(into, "report-calls");
   fs.writeFileSync(
     file,
     [
       "#!/bin/sh",
-      'if [ "$1" = "gate" ] && [ "$2" = "--json" ]; then',
-      "  printf '%s' '{\"gates\":[],\"findings\":[],\"notes\":[]}'",
-      "else",
-      "  printf '%s' 'hook'",
+      'if [ -n "${KLIN_HOOK_REPORT-}" ]; then',
+      "  printf '%s' '{\"status\":\"PASS\",\"summary\":\"hook\",\"derived\":[],\"gates\":[],\"findings\":[],\"notes\":[],\"exit\":0}' >\"$KLIN_HOOK_REPORT\"",
       "fi",
+      "printf '%s\\n' \"$*\" >> " + JSON.stringify(calls),
+      "printf '%s' 'hook'",
     ].join("\n") + "\n",
   );
   fs.chmodSync(file, 0o755);
@@ -117,10 +118,15 @@ test("the wrapper keeps a structured production report for each gate hook", () =
     env: process.env,
   });
   assert.deepEqual(hookEvidence(path.join(plane, "hooks"))[0].report, {
+    status: "PASS",
+    summary: "hook",
+    derived: [],
     gates: [],
     findings: [],
     notes: [],
+    exit: 0,
   });
+  assert.equal(fs.readFileSync(path.join(into, "report-calls"), "utf8"), "gate --hook --changed\n");
   fs.rmSync(into, { recursive: true, force: true });
 });
 
