@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "status": "unblinded",
+  "labelsSha256": "223bc66b760d18f51a6e4cc2196de5e4d03b2adaf10cc7b997aed24bd13c96dd",
+  "labels": {
+    "valid-regression": 23,
+    "valid-review": 10,
+    "undesired": 5
+  },
+  "sites": [
+    {
+      "gate": "complexity",
+      "sites": 8,
+      "valid-regression": 8,
+      "valid-review": 0,
+      "undesired": 0,
+      "occurrences": {
+        "total": 19,
+        "v1": 11,
+        "v2": 8,
+        "valid-regression": 19,
+        "valid-review": 0,
+        "undesired": 0
+      }
+    },
+    {
+      "gate": "doc-citations",
+      "sites": 2,
+      "valid-regression": 2,
+      "valid-review": 0,
+      "undesired": 0,
+      "occurrences": {
+        "total": 4,
+        "v1": 0,
+        "v2": 4,
+        "valid-regression": 4,
+        "valid-review": 0,
+        "undesired": 0
+      }
+    },
+    {
+      "gate": "escapes",
+      "sites": 5,
+      "valid-regression": 0,
+      "valid-review": 0,
+      "undesired": 5,
+      "occurrences": {
+        "total": 5,
+        "v1": 4,
+        "v2": 1,
+        "valid-regression": 0,
+        "valid-review": 0,
+        "undesired": 5
+      }
+    },
+    {
+      "gate": "inventory",
+      "sites": 4,
+      "valid-regression": 0,
+      "valid-review": 4,
+      "undesired": 0,
+      "occurrences": {
+        "total": 24,
+        "v1": 12,
+        "v2": 12,
+        "valid-regression": 0,
+        "valid-review": 24,
+        "undesired": 0
+      }
+    },
+    {
+      "gate": "lockfile",
+      "sites": 11,
+      "valid-regression": 11,
+      "valid-review": 0,
+      "undesired": 0,
+      "occurrences": {
+        "total": 11,
+        "v1": 11,
+        "v2": 0,
+        "valid-regression": 11,
+        "valid-review": 0,
+        "undesired": 0
+      }
+    },
+    {
+      "gate": "public-api",
+      "sites": 6,
+      "valid-regression": 0,
+      "valid-review": 6,
+      "undesired": 0,
+      "occurrences": {
+        "total": 48,
+        "v1": 24,
+        "v2": 24,
+        "valid-regression": 0,
+        "valid-review": 48,
+        "undesired": 0
+      }
+    },
+    {
+      "gate": "reachability",
+      "sites": 2,
+      "valid-regression": 2,
+      "valid-review": 0,
+      "undesired": 0,
+      "occurrences": {
+        "total": 4,
+        "v1": 4,
+        "v2": 0,
+        "valid-regression": 4,
+        "valid-review": 0,
+        "undesired": 0
+      }
+    }
+  ],
+  "runs": {
+    "v1": {
+      "active": {
+        "runs": 36,
+        "undesired": 2,
+        "controls": 9,
+        "controlsUndesired": 0,
+        "risk": 27,
+        "riskValid": 12
+      },
+      "shadow": {
+        "runs": 36,
+        "undesired": 1,
+        "controls": 9,
+        "controlsUndesired": 0,
+        "risk": 27,
+        "riskValid": 10,
+        "occurrences": {
+          "undesired": 1,
+          "valid": 29
+        }
+      }
+    },
+    "v2": {
+      "active": {
+        "runs": 36,
+        "undesired": 0,
+        "controls": 9,
+        "controlsUndesired": 0,
+        "risk": 27,
+        "riskValid": 10
+      },
+      "shadow": {
+        "runs": 36,
+        "undesired": 1,
+        "controls": 9,
+        "controlsUndesired": 0,
+        "risk": 27,
+        "riskValid": 6,
+        "occurrences": {
+          "undesired": 1,
+          "valid": 21
+        }
+      }
+    }
+  }
+}
