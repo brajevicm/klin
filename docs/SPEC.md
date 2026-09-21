@@ -1216,10 +1216,11 @@ the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
 the text as written, so a pattern inside a string literal is a match. Unless
 `skip_rust_tests` is `false`, it leaves `unwrap` and `expect` out of Rust test
-code, which is an inline `#[cfg(test)]` module or a `.rs` file under a test
-root the survey finds in the tree being read (5.4), so each tree is classified
-over its own files and a root that stops being test-only has its production
-sites judged, and counts them on the coverage line as skipped in Rust tests. Every other row is judged in a test as anywhere else, so a
+code and counts them on the coverage line as skipped in Rust tests. Rust test
+code is an inline `#[cfg(test)]` module or a `.rs` file under a test root the
+survey finds in the tree being read (5.4). Each tree is classified over its
+own files, so a root that stops being test-only has its production sites
+judged. Every other row is judged in a test as anywhere else, so a
 `#[ignore]`, an `#[allow(...)]` or an `unsafe { }` inside a test is a site
 (ADR 0049). Pinned by
 `a_site_inside_a_cfg_test_module_is_not_a_production_site`,
