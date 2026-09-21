@@ -70,7 +70,7 @@ function json<T>(file: string): T {
 }
 
 function canonical(labels: Record<string, string>): string {
-  return JSON.stringify(Object.fromEntries(Object.entries(labels).sort(([left], [right]) => left.localeCompare(right)))) + "\n";
+  return JSON.stringify(Object.fromEntries(Object.entries(labels).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)))) + "\n";
 }
 
 function lockedLabels(directory: string, expected: string): { labels: Record<string, Label>; sha256: string } {
@@ -150,9 +150,15 @@ function runViews(
       if (one.arm === "shadow") shadowOccurrences[valid(label) ? "valid" : "undesired"] += 1;
     }
   }
-  const known = new Set(runs.map((one) => one.trialId));
-  for (const trialId of seen.keys()) {
-    if (!known.has(trialId)) fail(round + " joins a run the manifest does not schedule: " + trialId);
+  const scheduled = new Map(runs.map((one) => [one.trialId, one]));
+  for (const row of rows) {
+    for (const one of row.occurrences) {
+      if (one.round !== round) continue;
+      const run = scheduled.get(one.trialId) ?? fail(round + " joins a run the manifest does not schedule: " + one.trialId);
+      if (run.arm !== one.arm || run.variant !== one.variant) {
+        fail(round + " joins " + one.trialId + " as " + one.arm + "/" + one.variant + " but the manifest schedules " + run.arm + "/" + run.variant);
+      }
+    }
   }
   const view = (arm: "active" | "shadow"): ArmView => {
     const mine = runs.filter((one) => one.arm === arm);
