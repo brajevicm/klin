@@ -14,7 +14,8 @@ import {
   variantIn,
   variantNames,
 } from "../src/catalogue.ts";
-import { digest } from "../src/trees.ts";
+import { digest, sha256 } from "../src/trees.ts";
+import * as forensic from "../src/forensic.ts";
 import { fixtures } from "../src/frozen.ts";
 import { rows } from "../src/round.ts";
 import * as round from "../src/round.ts";
@@ -33,6 +34,7 @@ import * as integrity from "../src/integrity.ts";
 import * as seededRound from "../src/seeded.ts";
 import * as session from "../src/session.ts";
 import * as trial from "../src/trial.ts";
+import { probeOnDisk } from "./probe-fixture.ts";
 
 /**
  * The seeded population: a variant the harness plants and no round schedules.
@@ -45,6 +47,14 @@ import * as trial from "../src/trial.ts";
 const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", "klin");
 const available = fs.existsSync(KLIN);
 const TRACER = "dead-symbols";
+
+function cli(...args: string[]) {
+  return spawnSync(process.execPath, [path.join(paths.BENCHMARK, "src", "cli.ts"), ...args], {
+    cwd: paths.REPO,
+    encoding: "utf8",
+    timeout: 60_000,
+  });
+}
 
 test("the tracer family ships a seeded variant and the others do not", () => {
   const held = families();
@@ -609,6 +619,129 @@ test("a seeded round verifies incompleteness and refuses an unapproved execution
     assert.equal(seededRound.execute(room, "not-the-manifest-digest"), 2);
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("a seeded publishable set survives verification and durable evidence packaging", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-evidence-"));
+  const runs = path.join(root, "runs");
+  const evidence = path.join(root, "evidence", "seeded-test");
+  const archive = path.join(root, "seeded-test-raw.tar.gz");
+  try {
+    const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
+    manifest.frozen.klin.commit = "fixture-commit";
+    const probeRoot = path.join(runs, "probes");
+    const probes = [
+      ["probe-0000000a", "complexity", "typescript"],
+      ["probe-0000000b", "dead-symbols", "rust"],
+    ] as const;
+    for (const [id, family, language] of probes) {
+      probeOnDisk(probeRoot, id, language, true, manifest.frozen, "2026-09-19T10:00:00Z");
+      const directory = path.join(probeRoot, id);
+      manifest.probes = [
+        ...(manifest.probes ?? []),
+        {
+          trialId: id,
+          family,
+          language,
+          sha256: sha256(fs.readFileSync(path.join(directory, "probe.json"))),
+          filesSha256: forensic.digest(directory),
+        },
+      ];
+    }
+    fs.mkdirSync(runs, { recursive: true });
+    fs.writeFileSync(path.join(runs, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+    for (const row of manifest.order) {
+      const fixture = manifest.fixtures[row.family];
+      const record = seededRecord({
+        kind: "publishable",
+        publishable: true,
+        family: row.family,
+        gate: fixture.gate,
+        taskId: fixture.variant.taskId,
+        arm: row.arm,
+        trialId: row.trialId,
+        order: row.order,
+        repetition: row.repetition,
+        fixture: {
+          promptSha256: fixture.variant.promptSha256,
+          treeSha256: fixture.variant.treeSha256,
+          startTreeSha256: fixture.variant.startTreeSha256,
+          seed: fixture.variant.seed,
+          uncommitted: fixture.variant.seed,
+        },
+        harness: manifest.frozen.harness,
+        klin: manifest.frozen.klin,
+        host: {
+          name: manifest.frozen.host.name,
+          version: manifest.frozen.host.version,
+          flags: manifest.frozen.flags,
+          flagsSha256: "b",
+          isolatedConfiguration: manifest.frozen.isolatedConfiguration,
+          memory: manifest.frozen.memory,
+        },
+        model: { requested: manifest.frozen.model, reported: null },
+      });
+      const attempt = path.join(runs, row.trialId);
+      fs.mkdirSync(path.join(attempt, "state"), { recursive: true });
+      for (const directory of ["hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"]) {
+        fs.mkdirSync(path.join(attempt, directory), { recursive: true });
+      }
+      fs.writeFileSync(path.join(attempt, "record.json"), JSON.stringify(record) + "\n");
+      for (const name of ["agent.json", "behaviour.json", "stats-session.json", "settings.json"]) {
+        fs.writeFileSync(path.join(attempt, name), "{}\n");
+      }
+      fs.writeFileSync(path.join(attempt, "hook"), "#!/bin/sh\n");
+      fs.writeFileSync(path.join(attempt, "state", "journal"), "state\n");
+      fs.writeFileSync(path.join(attempt, "hooks", "invocation"), "hook\n");
+      for (const directory of ["fixtures/base", "fixtures/final", "fixtures/scoring"]) {
+        fs.writeFileSync(path.join(attempt, directory, "README.md"), directory + "\n");
+      }
+    }
+
+    const verified = cli("verify", runs);
+    assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+
+    const prepared = cli("evidence-prepare", runs, "--into", evidence, "--archive", archive);
+    assert.equal(prepared.status, 0, prepared.stdout + prepared.stderr);
+    for (const name of ["manifest.json", "evidence.json", "files.sha256"]) {
+      assert.ok(fs.existsSync(path.join(evidence, name)), name);
+    }
+    assert.ok(fs.existsSync(path.join(evidence, "attempts", manifest.order[0].trialId, "record.json")));
+    assert.ok(fs.existsSync(archive));
+    assert.equal(
+      (JSON.parse(fs.readFileSync(path.join(evidence, "manifest.json"), "utf8")) as { population?: string }).population,
+      "seeded",
+    );
+    const descriptor = JSON.parse(fs.readFileSync(path.join(evidence, "evidence.json"), "utf8")) as {
+      kind?: string;
+      attempts?: number;
+      scheduledValidRuns?: number;
+    };
+    assert.equal(descriptor.kind, "publishable");
+    assert.equal(descriptor.attempts, manifest.order.length);
+    assert.equal(descriptor.scheduledValidRuns, manifest.order.length);
+
+    const listed = spawnSync("tar", ["-tzf", archive], { encoding: "utf8" });
+    assert.equal(listed.status, 0, listed.stderr);
+    assert.match(listed.stdout, new RegExp(manifest.order[0].trialId + "/state/journal"));
+    const intact = cli("evidence-verify", evidence, "--archive", archive);
+    assert.equal(intact.status, 0, intact.stdout + intact.stderr);
+
+    const slimRecord = path.join(evidence, "attempts", manifest.order[0].trialId, "record.json");
+    const original = fs.readFileSync(slimRecord);
+    fs.appendFileSync(slimRecord, "tampered\n");
+    const slimTamper = cli("evidence-verify", evidence, "--archive", archive);
+    assert.equal(slimTamper.status, 1, slimTamper.stdout + slimTamper.stderr);
+    assert.match(slimTamper.stdout, /slim .*record\.json differs from the raw archive/);
+    fs.writeFileSync(slimRecord, original);
+
+    fs.appendFileSync(archive, "tampered\n");
+    const archiveTamper = cli("evidence-verify", evidence, "--archive", archive);
+    assert.equal(archiveTamper.status, 1, archiveTamper.stdout + archiveTamper.stderr);
+    assert.match(archiveTamper.stdout, /raw archive has the wrong SHA-256/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
