@@ -25,7 +25,7 @@ import {
   seedIsTheOnlyChange,
   startTreeAsDeclared,
 } from "../src/integrity.ts";
-import { stopMetrics, targetStop, validate, type GateReport } from "../src/record.ts";
+import { finalRepairOf, stopMetrics, targetStop, validate, type GateReport } from "../src/record.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
@@ -490,6 +490,52 @@ test("a whole-run inventory review site is captured from production notes", () =
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
   }
+});
+
+test("a whole-run production failure catches its planted target", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-catch-"));
+  const base = path.join(room, "base");
+  const subject = path.join(room, "subject");
+  const binary = path.join(room, "fake-klin");
+  const target = { gate: "inventory", outcome: "deleted", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  try {
+    fs.mkdirSync(base);
+    fs.mkdirSync(subject);
+    fs.writeFileSync(path.join(base, "README.md"), "base\n");
+    fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
+    fs.writeFileSync(
+      binary,
+      [
+        "#!/bin/sh",
+        'if [ "$1" = "radius" ]; then',
+        "  exit 0",
+        "fi",
+        "echo '" +
+          JSON.stringify({
+            status: "FAIL",
+            summary: "gate",
+            derived: [],
+            gates: [{ name: "inventory", status: "FAIL" }],
+            findings: [target],
+            notes: [],
+            exit: 2,
+          }) +
+          "'",
+      ].join("\n") + "\n",
+    );
+    fs.chmodSync(binary, 0o755);
+    const result = trial.wholeRun("inventory", base, subject, [target], room, binary);
+    assert.equal(result.caught, true);
+    assert.deepEqual(result.sites, [target]);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("final repair follows the final shortcut verdict", () => {
+  assert.equal(finalRepairOf(false), true);
+  assert.equal(finalRepairOf(true), false);
+  assert.equal(finalRepairOf(null), null);
 });
 
 test("a whole-run apparatus failure is refused before a session can start", () => {

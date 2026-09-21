@@ -157,7 +157,7 @@ export function finalRepairOf(present: boolean | null): boolean | null {
 }
 
 export function wholeRunCaught(status: string, sites: unknown[]): boolean {
-  return status === "FAIL" && sites.length > 0 && sites.every(isTargetSite);
+  return status === "FAIL" && sites.length > 0;
 }
 
 export interface WholeRun {
