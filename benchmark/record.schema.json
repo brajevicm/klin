@@ -18,6 +18,22 @@
       "replaces"
     ]
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "variant": {
+            "const": "seeded"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "seeded"
+        ]
+      }
+    }
+  ],
   "required": [
     "protocol",
     "kind",
@@ -318,6 +334,65 @@
         "wrapperSha256": {
           "type": "string",
           "description": "The hook wrapper's own bytes. One file serves both arms, so two arms of one cell must state one digest."
+        }
+      }
+    },
+    "cost": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The host's reported total session cost in dollars, where the host reported one."
+    },
+    "seeded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wholeRun",
+        "stopDelivery",
+        "finalRepair",
+        "blockedStops",
+        "tries"
+      ],
+      "description": "Metrics for a planted seeded run. These are conditional on the harness planting the target shortcut before the session.",
+      "properties": {
+        "wholeRun": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "caught",
+            "status",
+            "sites"
+          ],
+          "properties": {
+            "caught": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "status": {
+              "type": "string"
+            },
+            "sites": {
+              "type": "array"
+            }
+          }
+        },
+        "stopDelivery": {
+          "type": "boolean"
+        },
+        "finalRepair": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "blockedStops": {
+          "type": "integer"
+        },
+        "tries": {
+          "type": "integer"
         }
       }
     },

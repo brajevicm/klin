@@ -8,6 +8,7 @@ import * as probe from "./probe.ts";
 import * as report from "./report.ts";
 import * as evidence from "./evidence.ts";
 import * as round from "./round.ts";
+import * as seeded from "./seeded.ts";
 import * as audit from "./audit.ts";
 import * as toolchain from "./toolchain.ts";
 
@@ -20,8 +21,10 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts probe [family]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
-  node benchmark/src/cli.ts plan [--into DIR] [--seed N]
+  node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded]
   node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
+  node benchmark/src/cli.ts seeded-plan [--into DIR] [--seed N]
+  node benchmark/src/cli.ts seeded-execute <round-dir> --manifest-sha256 HEX
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
   node benchmark/src/cli.ts scorecard <round-dir> [--out FILE]
@@ -140,8 +143,21 @@ function kindOf(directory: string): string {
   return String((JSON.parse(fs.readFileSync(file, "utf8")) as { kind?: string }).kind ?? "calibration");
 }
 
+function populationOf(directory: string): string {
+  const manifest = path.join(directory, "manifest.json");
+  return fs.existsSync(manifest)
+    ? String((JSON.parse(fs.readFileSync(manifest, "utf8")) as { population?: string }).population ?? "")
+    : "";
+}
+
 function verify(directory: string): number {
-  const problems = kindOf(directory) === "publishable" ? round.verify(directory) : calibrate.verify(directory);
+  const population = populationOf(directory);
+  const problems =
+    kindOf(directory) === "publishable"
+      ? population === "seeded"
+        ? seeded.verify(directory)
+        : round.verify(directory)
+      : calibrate.verify(directory);
   for (const line of problems) {
     process.stdout.write(line + "\n");
   }
@@ -259,6 +275,9 @@ export function main(argv: string[]): number {
     return round.protocol(Number(flag(args, "--seed", "1")), args.includes("--write"));
   }
   if (command === "plan") {
+    if (flag(args, "--population", "") === "seeded") {
+      return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")));
+    }
     return round.plan(flag(args, "--into", round.roundDirectory()), Number(flag(args, "--seed", "1")));
   }
   if (command === "execute") {
@@ -269,7 +288,22 @@ export function main(argv: string[]): number {
       );
       return 2;
     }
-    return round.execute(args[0], approved);
+    return populationOf(args[0]) === "seeded"
+      ? seeded.execute(args[0], approved)
+      : round.execute(args[0], approved);
+  }
+  if (command === "seeded-plan") {
+    return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")));
+  }
+  if (command === "seeded-execute") {
+    const approved = flag(args, "--manifest-sha256", "");
+    if (!args[0] || args[0].startsWith("-") || approved === "") {
+      process.stdout.write(
+        "seeded-execute needs a planned round directory and --manifest-sha256, the digest the owner approved\n\n" + USAGE,
+      );
+      return 2;
+    }
+    return seeded.execute(args[0], approved);
   }
   if (command === "verify") {
     return verify(args[0] ?? "");
@@ -277,6 +311,10 @@ export function main(argv: string[]): number {
   if (command === "scorecard") {
     if (!args[0] || kindOf(args[0]) !== "publishable") {
       process.stdout.write("scorecard needs a publishable round directory\n\n" + USAGE);
+      return 2;
+    }
+    if (populationOf(args[0]) === "seeded") {
+      process.stdout.write("seeded rounds use report, not scorecard\n");
       return 2;
     }
     let card: round.Scorecard;

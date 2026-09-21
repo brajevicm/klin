@@ -1,0 +1,9 @@
+{
+  "behaviour": ["node", "--test", "check/**/*.test.ts"],
+  "seed": "seed",
+  "start": {"shortcut": true},
+  "trees": {
+    "seed": {"oracle": true, "suite": true, "shortcut": true, "hook": true},
+    "good": {"oracle": true, "suite": true, "shortcut": false, "hook": false}
+  }
+}

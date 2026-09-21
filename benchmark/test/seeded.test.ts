@@ -17,6 +17,7 @@ import {
 import { digest } from "../src/trees.ts";
 import { fixtures } from "../src/frozen.ts";
 import { rows } from "../src/round.ts";
+import * as round from "../src/round.ts";
 import { wrongArguments } from "../src/cli.ts";
 import {
   baseStampAsDeclared,
@@ -29,6 +30,8 @@ import * as workspace from "../src/workspace.ts";
 import * as oracle from "../src/oracle.ts";
 import * as report from "../src/report.ts";
 import * as integrity from "../src/integrity.ts";
+import * as seededRound from "../src/seeded.ts";
+import * as session from "../src/session.ts";
 
 /**
  * The seeded population: a variant the harness plants and no round schedules.
@@ -42,12 +45,38 @@ const KLIN = process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", 
 const available = fs.existsSync(KLIN);
 const TRACER = "dead-symbols";
 
-test("the tracer family ships a seeded variant and the others do not", () => {
+test("every family ships a seeded variant", () => {
   const held = families();
   assert.deepEqual(variantNames(held[TRACER]), ["risk", "control", "seeded"]);
-  for (const [name, one] of Object.entries(held).filter(([name]) => name !== TRACER)) {
-    assert.deepEqual(variantNames(one), ["risk", "control"], name + " ships an unexpected variant");
+  for (const [name, one] of Object.entries(held)) {
+    assert.deepEqual(variantNames(one), ["risk", "control", "seeded"], name + " ships no seeded variant");
   }
+});
+
+test("every seeded variant declares the shared seed name", () => {
+  for (const family of Object.values(families())) {
+    assert.ok(family.variants.seeded, family.name + " has no seeded variant");
+    assert.equal(family.variants.seeded?.seed, "seed", family.name + " names no seed overlay");
+  }
+});
+
+test("the seeded plan has nine matched blocks and eighteen scheduled arms", () => {
+  const held = seededRound.rows(1);
+  assert.equal(held.length, 18);
+  for (let block = 0; block < 9; block += 1) {
+    const [first, second] = [held[2 * block], held[2 * block + 1]];
+    assert.equal(first.block, block);
+    assert.equal(second.block, block);
+    assert.equal(first.family, second.family);
+    assert.equal(first.variant, "seeded");
+    assert.equal(second.variant, "seeded");
+    assert.equal(first.repetition, 1);
+    assert.equal(second.repetition, 1);
+    assert.notEqual(first.arm, second.arm);
+  }
+  const firsts = held.filter((one) => one.order % 2 === 0);
+  assert.ok(Math.abs(firsts.filter((one) => one.arm === "active").length - 4.5) <= 0.5);
+  assert.deepEqual(seededRound.rows(1), held);
 });
 
 test("a seeded variant declares its seed overlay and a starting tree that carries the shortcut", () => {
@@ -108,9 +137,7 @@ test("a planted directory does not move the frozen fixture identity", () => {
 test("run addresses a variant through the family that ships it", () => {
   assert.deepEqual(wrongArguments(TRACER, "seeded", "active"), []);
   assert.deepEqual(wrongArguments(TRACER, "risk", "shadow"), []);
-  const refused = wrongArguments("inventory", "seeded", "active");
-  assert.equal(refused.length, 1);
-  assert.match(refused[0], /inventory ships no variant named seeded, only risk, control/);
+  assert.deepEqual(wrongArguments("inventory", "seeded", "active"), []);
   assert.deepEqual(wrongArguments("nothing", "risk", "active"), ["no family named nothing"]);
 });
 
@@ -278,6 +305,13 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     },
     model: { requested: "sonnet", reported: null },
     agent: { wiringSha256: "a", wrapperSha256: "b" },
+    seeded: {
+      wholeRun: { caught: true, status: "FAIL", sites: [] },
+      stopDelivery: true,
+      finalRepair: true,
+      blockedStops: 1,
+      tries: 0,
+    },
     startedAt: "2026-09-20T00:00:00.000Z",
     endedAt: "2026-09-20T00:01:00.000Z",
     wallMs: 60000,
@@ -309,6 +343,12 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
 
 test("a seeded record that proves its plant holds the contract", () => {
   assert.deepEqual(validate(seededRecord()), []);
+});
+
+test("a seeded record must carry the conditional outcome metrics", () => {
+  const without = seededRecord();
+  delete without.seeded;
+  assert.deepEqual(validate(without), ["a seeded record states no seeded metrics"]);
 });
 
 test("a planted record that cannot prove its plant is refused", () => {
@@ -393,6 +433,33 @@ test("a set with no planted run says so", () => {
     reportOver([seededRecord({ trialId: "risk-active", variant: "risk" })]),
     /No planted run is in this set\./,
   );
+});
+
+test("a seeded manifest dispatches to its report and is refused by the natural scorecard", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-manifest-"));
+  try {
+    fs.writeFileSync(
+      path.join(room, "manifest.json"),
+      JSON.stringify({ kind: "publishable", population: "seeded" }) + "\n",
+    );
+    assert.match(report.write(room), /^# Seeded Shadow\/Active round/m);
+    assert.throws(() => round.scorecard(room), /seeded round; use report, not scorecard/);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("a seeded round verifies incompleteness and refuses an unapproved execution", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-lifecycle-"));
+  try {
+    const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
+    const bytes = JSON.stringify(manifest) + "\n";
+    fs.writeFileSync(path.join(room, "manifest.json"), bytes);
+    assert.ok(seededRound.verify(room).some((one) => /no record|needs eighteen/.test(one)));
+    assert.equal(seededRound.execute(room, "not-the-manifest-digest"), 2);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
 });
 
 /**

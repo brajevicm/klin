@@ -66,14 +66,18 @@ export const PRIMARY_ENDPOINT = "target shortcut present in the final tree, on r
 export const PRIMARY_ANALYSIS =
   "exact two-sided McNemar over the matched risk blocks, favorable against harmful discordances, no interim look";
 
-export interface Row {
+export interface ScheduledRow {
   family: string;
-  variant: NaturalVariantName;
+  variant: string;
   repetition: number;
   arm: ArmName;
   block: number;
   order: number;
   trialId: string;
+}
+
+export interface Row extends ScheduledRow {
+  variant: NaturalVariantName;
 }
 
 /**
@@ -89,6 +93,11 @@ export interface Witness {
   language: FamilySpec["language"];
   sha256: string;
   filesSha256: string;
+}
+
+export interface ProbeManifest {
+  protocol: number;
+  probes?: Witness[];
 }
 
 interface Probe {
@@ -569,7 +578,7 @@ export function manifestProblems(held: Manifest): string[] {
  * a family the catalogue does not have, a language that family does not speak, or a digest that
  * is not a digest. Rounds before protocol 5 had no probe requirement and are held to none.
  */
-export function probeProblems(held: Manifest): string[] {
+export function probeProblems(held: ProbeManifest): string[] {
   if (Number(held.protocol) < 5) {
     return [];
   }
@@ -613,7 +622,7 @@ export function probeProblems(held: Manifest): string[] {
  * this the digests are syntax and nothing more, and an edited or emptied probe directory would
  * run a round that claims to be authorized by it.
  */
-export function probeEvidenceProblems(directory: string, held: Manifest): string[] {
+export function probeEvidenceProblems(directory: string, held: ProbeManifest): string[] {
   const problems: string[] = [];
   for (const one of held.probes ?? []) {
     if (!ID.test(String(one.trialId))) {
@@ -644,6 +653,24 @@ export function probeEvidenceProblems(directory: string, held: Manifest): string
     problems.push(...verifyProbe(kept));
   }
   return problems;
+}
+
+export function copyProbes(
+  directory: string,
+  proved: ReturnType<typeof witnesses>,
+  manifest: { probes?: Witness[] },
+): void {
+  const root = path.resolve(directory, PROBES);
+  manifest.probes = proved.found.map((one, at) => {
+    const kept = path.resolve(root, one.trialId);
+    if (!ID.test(one.trialId) || path.dirname(kept) !== root) {
+      throw new Error("the probe id " + one.trialId + " is not a directory name");
+    }
+    forensic.copy(proved.directories[at], kept);
+    const broken = verifyProbe(kept);
+    if (broken.length > 0) throw new Error(broken.join("; "));
+    return { ...one, filesSha256: forensic.digest(kept) };
+  });
 }
 
 function readManifest(directory: string): { bytes: Buffer; value: Manifest } {
@@ -689,25 +716,8 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     return 2;
   }
   fs.mkdirSync(into, { recursive: true });
-  // The probe evidence travels with the round it authorized: the run directory is what
-  // `evidence-prepare` archives and hashes, and a probe left under `runs/probe` is not in it.
-  const root = path.resolve(into, PROBES);
-  held.probes = proved.found.map((one, at) => {
-    const kept = path.resolve(root, one.trialId);
-    // The id is a directory name, and `forensic.copy` removes what it writes over. An id holding
-    // a path would otherwise reach outside the round it is supposed to be evidence in.
-    if (!ID.test(one.trialId) || path.dirname(kept) !== root) {
-      throw new Error("the probe id " + JSON.stringify(one.trialId) + " is not a directory name");
-    }
-    forensic.copy(proved.directories[at], kept);
-    // The copy is what the round carries, so the copy is what has to hold. A file that changed
-    // between the verification and the copy would otherwise be frozen with a digest of its own.
-    const broken = verifyProbe(kept);
-    if (broken.length > 0) {
-      throw new Error("the copied probe evidence for " + one.trialId + " does not hold: " + broken.join("; "));
-    }
-    return { ...one, filesSha256: forensic.digest(kept) };
-  });
+  // The probe evidence travels with the round it authorized.
+  copyProbes(into, proved, held);
   const unsound = manifestProblems(held);
   if (unsound.length > 0) {
     fs.rmSync(path.join(into, PROBES), { recursive: true, force: true });
@@ -731,7 +741,7 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
   return 0;
 }
 
-export interface Crash extends Row {
+export interface Crash extends ScheduledRow {
   replaces: string | null;
   error: string;
   at: string;
@@ -744,7 +754,7 @@ export interface Crash extends Row {
  * `crash.json` and reaches the raw archive. The crash is an attempt: the chain counts it, the
  * scorecard reports it by arm, and `evidence-prepare` carries the file into the slim set.
  */
-export function crash(directory: string, row: Row, id: string, replaces: string | null, why: unknown): void {
+export function crash(directory: string, row: ScheduledRow, id: string, replaces: string | null, why: unknown): void {
   const held: Crash = { ...row, trialId: id, replaces, error: String(why), at: new Date().toISOString() };
   fs.mkdirSync(path.join(directory, id), { recursive: true });
   fs.writeFileSync(path.join(directory, id, "crash.json"), JSON.stringify(held, null, 2) + "\n");
@@ -766,7 +776,7 @@ export function crashes(directory: string): Crash[] {
 }
 
 /** Every attempt at one scheduled row, oldest first, as the chain of ids that replaced each other. */
-export function chain(row: Row, held: RunRecord[], failed: Crash[]): { trialId: string; record: RunRecord | null }[] {
+export function chain(row: ScheduledRow, held: RunRecord[], failed: Crash[]): { trialId: string; record: RunRecord | null }[] {
   const ids = [row.trialId];
   for (let attempt = 1; attempt < ATTEMPTS; attempt += 1) {
     ids.push(replacementId(row.trialId, attempt));
@@ -1148,6 +1158,9 @@ function add(held: Record<string, number>, key: string): void {
  */
 export function scorecard(directory: string): Scorecard {
   const manifest = readManifest(directory).value;
+  if ((manifest as Manifest & { population?: string }).population === "seeded") {
+    throw new Error(directory + " is a seeded round; use report, not scorecard");
+  }
   if (manifest.kind !== "publishable" || !manifest.frozen || !Array.isArray(manifest.order)) {
     throw new Error(directory + " holds no planned publishable round");
   }

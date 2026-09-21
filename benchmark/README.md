@@ -359,20 +359,22 @@ what `cells()` gives a calibration and what `rows()` gives a round's 72 runs.
 Nothing was added to either list.
 
 A **planted** variant is a fixture the harness exposes on purpose. `seeded` is
-the one planted variant there is, and `dead-symbols` is the one family that
-ships it. A round's planner never iterates it. The only way to address one is
-by name:
+the planted variant, and every family ships one. A natural round's planner
+never iterates it. The separate seeded experiment freezes one adjacent pair
+per family: nine blocks and eighteen valid runs. Plan it, review the printed
+digest, then execute exactly that manifest:
 
 ```sh
-node benchmark/src/cli.ts run dead-symbols seeded active --into benchmark/runs/seeded
-node benchmark/src/cli.ts run dead-symbols seeded shadow --into benchmark/runs/seeded
-node benchmark/src/cli.ts report benchmark/runs/seeded
+node benchmark/src/cli.ts seeded-plan --seed 1
+node benchmark/src/cli.ts seeded-execute benchmark/runs/seeded-<stamp> --manifest-sha256 <digest>
+node benchmark/src/cli.ts verify benchmark/runs/seeded-<stamp>
+node benchmark/src/cli.ts report benchmark/runs/seeded-<stamp>
 ```
 
-Both runs go into one directory, so `verify` holds the pair to every frozen
-variable and to both trees. That directory carries no manifest, because
-nothing scheduled it, so `verify` says the manifest states no selected
-families and reports the pair beside it.
+The generic `plan` accepts `--population seeded`, and `execute` detects the
+population from the manifest. Both forms use the same frozen provenance and
+retry contract as the natural round; seeded results never enter its risk,
+control or challenge tables.
 
 A planted variant states itself in `<family>/seeded/variant.json` rather than
 in `family.json`, and the frozen fixture identity digests the family directory
@@ -465,10 +467,11 @@ deletion nobody declared pass.
 
 ### What a seeded run measures, and what it does not
 
-Every seeded report states that the exposure was planted. The calibration
-report keeps seeded runs out of the natural table and out of the exposure
-counts, and prints them under **Runs whose exposure was planted** with the
-starting shortcut beside the final one.
+Every seeded report states that the exposure was planted. Its per-run table
+keeps seed presence, whole-run catch, Stop delivery, final repair, blocked
+Stops, tries, external oracle/task outcome, final shortcut presence and cost
+explicit. These are conditional planted-exposure results, not a natural
+shortcut frequency.
 
 A seeded run measures catch, delivery and repair after exposure. It measures
 no natural shortcut rate, because the harness put the shortcut there.
@@ -763,6 +766,10 @@ node benchmark/src/cli.ts verify    benchmark/runs/publishable-<stamp>
 node benchmark/src/cli.ts scorecard benchmark/runs/publishable-<stamp> --out docs/round-<date>.md
 node benchmark/src/cli.ts audit benchmark/evidence/<set> --archive /path/to/<set>-raw.tar.gz \
   --out docs/benchmark-audit-<date>.md
+
+node benchmark/src/cli.ts seeded-plan --seed 1             # nine planted blocks, eighteen runs
+node benchmark/src/cli.ts seeded-execute benchmark/runs/seeded-<stamp> --manifest-sha256 <digest>
+node benchmark/src/cli.ts report benchmark/runs/seeded-<stamp> --out docs/seeded-<date>.md
 ```
 
 `audit` verifies the slim evidence and raw archive, then runs the production

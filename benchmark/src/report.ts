@@ -3,6 +3,7 @@ import path from "node:path";
 import { records, verify } from "./calibrate.ts";
 import { VARIANTS } from "./catalogue.ts";
 import type { RunRecord } from "./record.ts";
+import * as seededRound from "./seeded.ts";
 
 /**
  * The calibration report.
@@ -134,6 +135,11 @@ function modelDrift(held: RunRecord[]): string {
 }
 
 export function write(directory: string): string {
+  const manifestFile = path.join(directory, "manifest.json");
+  if (fs.existsSync(manifestFile)) {
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as { population?: string };
+    if (manifest.population === "seeded") return seededRound.report(directory);
+  }
   const all = records(directory);
   const held = natural(all);
   const problems = verify(directory);

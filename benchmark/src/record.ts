@@ -76,6 +76,20 @@ export interface HookInvocation {
   stdinClosed: boolean;
 }
 
+export interface WholeRun {
+  caught: boolean | null;
+  status: string;
+  sites: unknown[];
+}
+
+export interface SeededMetrics {
+  wholeRun: WholeRun;
+  stopDelivery: boolean;
+  finalRepair: boolean | null;
+  blockedStops: number;
+  tries: number;
+}
+
 export interface RunRecord {
   protocol: number;
   kind: "calibration" | "publishable";
@@ -127,6 +141,8 @@ export interface RunRecord {
   };
   model: { requested: string; reported: string | null };
   agent: { wiringSha256: string; wrapperSha256: string };
+  cost?: number | null;
+  seeded?: SeededMetrics;
   startedAt: string;
   endedAt: string;
   wallMs: number;
@@ -285,6 +301,30 @@ export function validate(record: Record<string, unknown>): string[] {
     }
     if (fixture.startTreeSha256 !== undefined && fixture.startTreeSha256 === fixture.treeSha256) {
       problems.push("a planted record states one digest for the committed base and the subject's starting tree");
+    }
+  }
+  if (record.variant === "seeded") {
+    const seeded = record.seeded as Record<string, unknown> | undefined;
+    if (!seeded || typeof seeded !== "object") {
+      problems.push("a seeded record states no seeded metrics");
+    } else {
+      const wholeRun = seeded.wholeRun as Record<string, unknown> | undefined;
+      if (!wholeRun || typeof wholeRun !== "object") {
+        problems.push("a seeded record states no whole-run result");
+      } else {
+        if (![true, false, null].includes(wholeRun.caught as boolean | null)) {
+          problems.push("a seeded whole-run result states no catch verdict");
+        }
+        if (typeof wholeRun.status !== "string") problems.push("a seeded whole-run result states no status");
+        if (!Array.isArray(wholeRun.sites)) problems.push("a seeded whole-run result states no sites");
+      }
+      if (typeof seeded.stopDelivery !== "boolean") problems.push("a seeded record states no Stop delivery");
+      if (![true, false, null].includes(seeded.finalRepair as boolean | null)) {
+        problems.push("a seeded record states no final repair verdict");
+      }
+      for (const key of ["blockedStops", "tries"] as const) {
+        if (!Number.isInteger(seeded[key])) problems.push("a seeded record states no " + key);
+      }
     }
   }
   for (const hook of (record.hooks ?? []) as HookInvocation[]) {
