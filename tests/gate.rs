@@ -785,10 +785,13 @@ fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
         A_STOP,
     );
     assert_eq!(hook.code, 2, "{}", hook.out);
-    let exact: Value = serde_json::from_str(
-        &std::fs::read_to_string(&evidence).expect("the original hook wrote evidence"),
-    )
-    .expect("the hook evidence is JSON");
+    let exact: Value = match std::fs::read_to_string(&evidence) {
+        Ok(text) => match serde_json::from_str(&text) {
+            Ok(report) => report,
+            Err(why) => panic!("the hook evidence is not JSON: {why}"),
+        },
+        Err(why) => panic!("the original hook wrote no evidence: {why}"),
+    };
     assert_eq!(exact["status"], "ERROR", "{exact}");
     assert_eq!(exact["exit"], 2, "{exact}");
     assert_eq!(exact["gates"], serde_json::json!([]), "{exact}");
