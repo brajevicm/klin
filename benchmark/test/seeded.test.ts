@@ -32,6 +32,7 @@ import * as report from "../src/report.ts";
 import * as integrity from "../src/integrity.ts";
 import * as seededRound from "../src/seeded.ts";
 import * as session from "../src/session.ts";
+import * as trial from "../src/trial.ts";
 
 /**
  * The seeded population: a variant the harness plants and no round schedules.
@@ -318,7 +319,10 @@ function seededRecord(over: Record<string, unknown> = {}): Record<string, unknow
     infrastructure: {
       valid: true,
       reason: null,
-      terms: [{ name: "seed-as-declared", passed: true, detail: "" }],
+      terms: [
+        { name: "seed-as-declared", passed: true, detail: "" },
+        { name: "seeded-whole-run", passed: true, detail: "" },
+      ],
     },
     result: { outcome: "completed", evidence: "success" },
     oracle: { behaviourPassed: true, exit: 0, reason: "" },
@@ -349,6 +353,100 @@ test("a seeded record must carry the conditional outcome metrics", () => {
   const without = seededRecord();
   delete without.seeded;
   assert.deepEqual(validate(without), ["a seeded record states no seeded metrics"]);
+});
+
+test("a seeded record rejects a missing production whole-run verdict", () => {
+  const broken = seededRecord({
+    seeded: { wholeRun: { caught: null, status: "ERROR", sites: [] } },
+  });
+  const problems = validate(broken);
+  assert.ok(problems.includes("a seeded whole-run result states no catch verdict"));
+  assert.ok(problems.includes("a seeded whole-run result states no production status"));
+});
+
+function hookEvidence(output: string, status = 0, delivered = true): Parameters<typeof trial.targetStop>[0] {
+  return {
+    order: 0,
+    event: "Stop",
+    tool: "",
+    paths: "",
+    arguments: "gate --hook --changed",
+    status,
+    delivered,
+    stdout: output,
+    stderr: "",
+    started: "",
+    ended: "",
+    stdinClosed: true,
+  };
+}
+
+test("target Stop metrics ignore an unrelated same-gate finding and keep review delivery separate from blocking", () => {
+  const target = { id: "target", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  const unrelated = hookEvidence("  FAIL  inventory\ntests/split.rs:8  missing 1, was missing 0", 2);
+  const review = hookEvidence(
+    "NOTE: 1 test site(s) the base holds went in this window:\ntests/split.rs:7  fn removed()",
+    0,
+    false,
+  );
+  assert.equal(trial.targetStop(unrelated, [target]), false);
+  assert.deepEqual(trial.stopMetrics([unrelated, review], [target]), {
+    stopDelivery: true,
+    blockedStops: 0,
+  });
+  assert.deepEqual(trial.stopMetrics([hookEvidence("tests/split.rs:7", 2)], [target]), {
+    stopDelivery: true,
+    blockedStops: 1,
+  });
+});
+
+test("a whole-run inventory review site is captured from production notes", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-notes-"));
+  const base = path.join(room, "base");
+  const subject = path.join(room, "subject");
+  const binary = path.join(room, "fake-klin");
+  const note = { gate: "inventory", outcome: "deleted", file: "tests/split.rs", line: 7, text: "fn removed()" };
+  try {
+    fs.mkdirSync(base);
+    fs.mkdirSync(subject);
+    fs.writeFileSync(path.join(base, "README.md"), "base\n");
+    fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
+    fs.writeFileSync(
+      binary,
+      [
+        "#!/bin/sh",
+        'if [ "$1" = "radius" ]; then',
+        "  exit 0",
+        "fi",
+        "echo '" + JSON.stringify({ gates: [{ name: "inventory", status: "PASS" }], findings: [], notes: [note] }) + "'",
+      ].join("\n") + "\n",
+    );
+    fs.chmodSync(binary, 0o755);
+    const result = trial.wholeRun("inventory", base, subject, [note], room, binary);
+    assert.equal(result.caught, false);
+    assert.deepEqual(result.sites, [note]);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
+});
+
+test("a whole-run apparatus failure is refused before a session can start", () => {
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-"));
+  const base = path.join(room, "base");
+  const subject = path.join(room, "subject");
+  try {
+    fs.mkdirSync(base);
+    fs.mkdirSync(subject);
+    fs.writeFileSync(path.join(base, "README.md"), "base\n");
+    fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
+    assert.throws(
+      () => trial.wholeRun("dead-symbols", base, subject, [], room, path.join(room, "missing-klin")),
+      /seeded whole-run radius failed/,
+    );
+    assert.equal(fs.existsSync(path.join(room, "whole-run")), false);
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
+  }
 });
 
 test("a planted record that cannot prove its plant is refused", () => {

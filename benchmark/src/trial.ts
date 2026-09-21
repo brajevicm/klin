@@ -78,7 +78,40 @@ function targetFindings(sites: unknown[], expected: unknown[]): unknown[] {
   );
 }
 
-function wholeRun(
+function targetNeedles(site: unknown): string[] {
+  if (typeof site !== "object" || site === null) return [];
+  const held = site as Record<string, unknown>;
+  const file = [held.file, held.document, held.path].find((one): one is string => typeof one === "string");
+  const line = typeof held.line === "number" ? held.line : null;
+  if (file !== undefined && line !== null) return [file + ":" + String(line)];
+  return [held.id, held.text, held.test, held.symbol, held.function, held.dependency, held.item, held.cites]
+    .filter((one): one is string => typeof one === "string" && one !== "");
+}
+
+export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
+  if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
+  const output = hook.stdout + hook.stderr;
+  return sites.some((site) => targetNeedles(site).some((needle) => output.includes(needle)));
+}
+
+export function stopMetrics(
+  hooks: HookInvocation[],
+  sites: unknown[],
+): { stopDelivery: boolean; blockedStops: number } {
+  const targetStops = hooks.filter((one) => targetStop(one, sites));
+  return {
+    stopDelivery: targetStops.length > 0,
+    blockedStops: targetStops.filter((one) => one.status === 2).length,
+  };
+}
+
+function commandFailure(label: string, ran: ReturnType<typeof spawnSync>): Error {
+  return new Error(
+    "seeded whole-run " + label + " failed: " + (ran.error?.message ?? "exit " + String(ran.status)),
+  );
+}
+
+export function wholeRun(
   gate: string,
   base: string,
   subject: string,
@@ -105,7 +138,7 @@ function wholeRun(
       timeout: 300_000,
       maxBuffer: 8 * 1024 * 1024,
     });
-    if (radius.status !== 0) return { caught: null, status: "ERROR", sites: [] };
+    if (radius.error || radius.status !== 0) throw commandFailure("radius", radius);
     replaceTree(subject, repo);
     const ran = spawnSync(binary, ["gate", "--json"], {
       cwd: repo,
@@ -114,26 +147,33 @@ function wholeRun(
       timeout: 300_000,
       maxBuffer: 16 * 1024 * 1024,
     });
-    const report = JSON.parse(ran.stdout ?? "") as {
-      gates?: unknown;
-      findings?: unknown;
-    };
+    if (ran.error || ran.status === null) throw commandFailure("gate", ran);
+    let report: { gates?: unknown; findings?: unknown; notes?: unknown };
+    try {
+      report = JSON.parse(ran.stdout ?? "") as { gates?: unknown; findings?: unknown; notes?: unknown };
+    } catch (why) {
+      throw new Error("seeded whole-run gate returned invalid JSON: " + String(why));
+    }
     const gateRow = Array.isArray(report.gates)
       ? (report.gates as Record<string, unknown>[]).find((one) => one.name === gate)
       : undefined;
-    const findings = Array.isArray(report.findings) ? report.findings : [];
-    const targetFindingsRaw = findings.filter(
+    const records = [
+      ...(Array.isArray(report.findings) ? report.findings : []),
+      ...(Array.isArray(report.notes) ? report.notes : []),
+    ];
+    const targetFindingsRaw = records.filter(
       (one) => typeof one === "object" && one !== null && (one as Record<string, unknown>).gate === gate,
     );
     const sites = targetFindings(targetFindingsRaw, expected);
-    const status = gateRow ? String(gateRow.status ?? "ERROR") : "ERROR";
+    const status = gateRow ? String(gateRow.status ?? "") : "";
+    if (!["FAIL", "PASS", "ok"].includes(status)) {
+      throw new Error("seeded whole-run gate returned no production verdict for " + gate);
+    }
     return {
-      caught: status === "FAIL" ? sites.length > 0 : status === "PASS" || status === "ok" ? false : null,
+      caught: status === "FAIL" && sites.length > 0,
       status,
       sites,
     };
-  } catch {
-    return { caught: null, status: "ERROR", sites: [] };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -154,14 +194,6 @@ function findingIds(sites: unknown[]): Set<string> {
       const id = (one as Record<string, unknown>).id;
       return typeof id === "string" ? [id] : [];
     }),
-  );
-}
-
-function targetStop(hook: HookInvocation, gate: string): boolean {
-  if (!hook.arguments.startsWith("gate") || hook.status !== 2) return false;
-  const safe = gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp("^\\s{2}(?:FAIL|ERR)\\s+" + safe + "\\s*$", "m").test(
-    hook.stdout + hook.stderr,
   );
 }
 
@@ -244,6 +276,7 @@ export function validity(held: {
   judged: oracle.Judgement;
   links: string[];
   outside: Check;
+  wholeRun?: WholeRun | null;
 }): Check[] {
   const term = (name: string, passed: boolean, detail: string): Check => ({
     name,
@@ -258,7 +291,7 @@ export function validity(held: {
   const behaviour = held.judged.behaviour;
   const scored = behaviour.reason === "" && behaviour.exit !== null;
   const shortcut = held.judged.shortcut;
-  return [
+  const terms: Check[] = [
     term(
       "workspace-isolated",
       held.isolation.verified,
@@ -320,6 +353,14 @@ export function validity(held: {
         : "the digest and the scoring copy leave out " + held.links.join(", "),
     ),
   ];
+  if (held.wholeRun !== undefined && held.wholeRun !== null) {
+    terms.push({
+      name: "seeded-whole-run",
+      passed: ["FAIL", "PASS", "ok"].includes(held.wholeRun.status) && typeof held.wholeRun.caught === "boolean",
+      detail: "the production whole-run verdict was obtained before the session",
+    });
+  }
+  return terms;
 }
 
 function friction(
@@ -466,10 +507,12 @@ export function run(
     judged,
     links: links(place.repo),
     outside,
+    wholeRun: seededWhole,
   });
   const broke = terms.filter((one) => !one.passed);
   const { signals, audit } = signalsFrom(stats, arm);
   const seededSignalIds = findingIds(seededWhole?.sites ?? []);
+  const seededStops = seededWhole === null ? { stopDelivery: false, blockedStops: 0 } : stopMetrics(hooks, seededWhole.sites);
   const activity = (stats.activity ?? {}) as Record<string, number>;
 
   const record: RunRecord = {
@@ -528,10 +571,10 @@ export function run(
       ? {
           seeded: {
             wholeRun: seededWhole,
-            stopDelivery: hooks.some((one) => targetStop(one, found.spec.gate)),
+            stopDelivery: seededStops.stopDelivery,
             finalRepair:
               judged.shortcut.present === null ? null : judged.shortcut.present === false,
-            blockedStops: hooks.filter((one) => targetStop(one, found.spec.gate)).length,
+            blockedStops: seededStops.blockedStops,
             tries: signals
               .filter((one) => one.kind === "regression" && seededSignalIds.has(one.identity))
               .reduce((sum, one) => sum + (one.tries ?? 0), 0),

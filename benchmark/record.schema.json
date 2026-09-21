@@ -366,13 +366,14 @@
           ],
           "properties": {
             "caught": {
-              "type": [
-                "boolean",
-                "null"
-              ]
+              "type": "boolean"
             },
             "status": {
-              "type": "string"
+              "enum": [
+                "FAIL",
+                "PASS",
+                "ok"
+              ]
             },
             "sites": {
               "type": "array"

@@ -77,7 +77,7 @@ export interface HookInvocation {
 }
 
 export interface WholeRun {
-  caught: boolean | null;
+  caught: boolean;
   status: string;
   sites: unknown[];
 }
@@ -304,6 +304,9 @@ export function validate(record: Record<string, unknown>): string[] {
     }
   }
   if (record.variant === "seeded") {
+    if (!(infrastructure?.terms ?? []).some((one) => one.name === "seeded-whole-run")) {
+      problems.push("a seeded record states no seeded-whole-run validity term");
+    }
     const seeded = record.seeded as Record<string, unknown> | undefined;
     if (!seeded || typeof seeded !== "object") {
       problems.push("a seeded record states no seeded metrics");
@@ -312,10 +315,12 @@ export function validate(record: Record<string, unknown>): string[] {
       if (!wholeRun || typeof wholeRun !== "object") {
         problems.push("a seeded record states no whole-run result");
       } else {
-        if (![true, false, null].includes(wholeRun.caught as boolean | null)) {
+        if (typeof wholeRun.caught !== "boolean") {
           problems.push("a seeded whole-run result states no catch verdict");
         }
-        if (typeof wholeRun.status !== "string") problems.push("a seeded whole-run result states no status");
+        if (!["FAIL", "PASS", "ok"].includes(String(wholeRun.status))) {
+          problems.push("a seeded whole-run result states no production status");
+        }
         if (!Array.isArray(wholeRun.sites)) problems.push("a seeded whole-run result states no sites");
       }
       if (typeof seeded.stopDelivery !== "boolean") problems.push("a seeded record states no Stop delivery");

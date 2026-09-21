@@ -629,6 +629,7 @@ a fact about the agent.
 | `seed-as-declared` | the only uncommitted change before the session was the variant's declared seed, at the fixture's own bytes |
 | `start-tree-as-declared` | the tree the subject started from carried what the variant declared |
 | `base-stamp-as-declared` | the stamp klin measures a seeded turn against was really taken over the committed base |
+| `seeded-whole-run` | the production whole-run verdict was obtained before the session |
 
 The five terms after the first two are why an apparatus failure can never
 reach the scorecard as a product outcome. A scorer that could not run, a
