@@ -45,10 +45,10 @@ const REMEDY: &str = "Keep the surface, the item or the declared contract the ba
                       commit, and until then CI refuses it.";
 const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract the base had where \
                            the task allows it. Do not change what the task asked for only to \
-                           satisfy this gate. If the break is intended, say so in your reply and \
-                           stop again, and that stop ends the turn. Your reply does not accept \
-                           the break: a person accepts it with an accepted entry in a reviewed \
-                           commit, and until then CI refuses it.";
+                           satisfy this gate. If this stop blocked on a break the task intends, say \
+                           so in your reply and stop again, and the next stop may then end the \
+                           turn. Your reply does not accept the break: a person accepts it with \
+                           an accepted entry in a reviewed commit, and until then CI refuses it.";
 
 #[derive(clap::Args)]
 pub struct Args {

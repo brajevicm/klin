@@ -1958,11 +1958,14 @@ measured. Each break carries `break` at 1 with the surface as its file and
 that identity, and the base holds no break by construction. The remedy keeps
 the base's contract only where the task allows it and tells the agent not to
 change what the task asked for only to satisfy the gate. In the hook it adds
-that an intended break is said in the reply and followed by another stop,
-which the block-once policy of 9.3 lets end, and that the reply accepts
-nothing: a person accepts the break with an accepted entry in a reviewed
-commit, and CI refuses it until then. Outside the hook the remedy names only
-the person's accepted entry and CI, and no second stop. Pinned by
+that a stop blocked on a break the task intends is answered in the reply and
+followed by another stop, which the block-once policy of 9.3 may let end, and
+that the reply accepts nothing: a person accepts the break with an accepted
+entry in a reviewed commit, and CI refuses it until then. Every stop prints
+the same wording, so a stop that passes does not claim it blocked, and the
+wording promises no end, because a build failure still blocks under 9.3.
+Outside the hook the remedy names only the person's accepted entry and CI,
+and no second stop. Pinned by
 `a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_a_person`
 and `a_break_by_hand_names_person_acceptance_and_no_second_stop`. A glob over
 another crate, a star export of another package, a name two globs or two

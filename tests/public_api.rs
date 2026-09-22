@@ -406,7 +406,9 @@ fn a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_
         first.out
     );
     assert!(
-        first.says("If the break is intended, say so in your reply and stop again, and that stop ends the turn"),
+        first.says(
+            "If this stop blocked on a break the task intends, say so in your reply and stop again"
+        ) && first.says("the next stop may then end the turn"),
         "{}",
         first.out
     );
@@ -418,6 +420,13 @@ fn a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_
         first.out
     );
     assert_eq!(second.code, 0, "{}", second.out);
+    assert!(second.says("parse (function)"), "{}", second.out);
+    assert!(
+        second.says("If this stop blocked on a break the task intends")
+            && !second.says("stop ends the turn"),
+        "{}",
+        second.out
+    );
 }
 
 #[test]
