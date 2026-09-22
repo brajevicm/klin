@@ -807,6 +807,7 @@ fn a_plug_and_play_checkout_with_no_yarn_is_unmeasured() {
     tree.write("klin.json", "{}");
     typescript(&tree, "");
     tree.write(".pnp.js", "// a Yarn 2.0 Plug'n'Play checkout\n");
+    tree.write(".yarnrc.yml", "nodeLinker: pnp\n");
     tree.base();
     let path = toolchain(&tree);
     tree.write("src/index.ts", "export const a = 2;\n");
@@ -871,4 +872,150 @@ fn a_plug_and_play_checkout_whose_yarn_holds_no_tool_fails_its_own_build() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("Couldn't find a binary named tsc"), "{}", run.out);
     assert_eq!(ran(&tree), "", "{}", run.out);
+}
+
+/// A marker an old install model left beside the manifest does not take the run from a tool
+/// installed above it: the whole chain is searched for an installed tool first. Spec 9.3.
+#[test]
+fn a_nearer_marker_does_not_take_the_run_from_a_tool_installed_above_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "packages/app/");
+    tree.write(
+        "packages/app/.pnp.cjs",
+        "// a marker an old install model left\n",
+    );
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the hoisted tool\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("packages/app/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "the hoisted tool\n", "{}", run.out);
+}
+
+/// Yarn Classic writes the same `.pnp.js` and has no binaries-only form of `yarn run`, so a
+/// Classic checkout is no model klin resolves and the tool on `PATH` runs. Spec 9.3.
+#[test]
+fn a_yarn_classic_checkout_is_not_resolved_through_yarn() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.js", "// a Yarn Classic Plug'n'Play checkout\n");
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
+}
+
+/// A repository inside a tree, with a base commit and a branch, as the harness makes for a whole
+/// tree. This fixture needs the repository below the temporary directory, so that a compiler
+/// outside the repository still sits inside the directory the test owns.
+fn repository(at: &std::path::Path) {
+    let git = |args: &[&str]| {
+        let done = std::process::Command::new("git")
+            .arg("-C")
+            .arg(at)
+            .args(args)
+            .output();
+        match done {
+            Ok(done) if done.status.success() => (),
+            other => panic!("git {}: {other:?}", args.join(" ")),
+        }
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["add", "-A"]);
+    let who = [
+        "-c",
+        "user.name=klin",
+        "-c",
+        "user.email=klin@example.com",
+        "-c",
+        "commit.gpgsign=false",
+    ];
+    git(&[&who[..], &["commit", "-q", "-m", "the base"]].concat());
+    git(&["checkout", "-q", "-B", "work"]);
+    git(&[
+        &who[..],
+        &["commit", "-q", "--allow-empty", "-m", "on the branch"],
+    ]
+    .concat());
+}
+
+/// Resolution never walks above the repository the configuration sits in, so a compiler outside
+/// that repository is not the project's. Spec 5.1, 9.3.
+#[test]
+fn a_derived_build_does_not_reach_a_compiler_above_the_repository() {
+    let tree = Tree::bare();
+    tree.write("repo/klin.json", "{}");
+    typescript(&tree, "repo/");
+    installed(&tree, "node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n");
+    repository(&tree.path("repo"));
+    tree.write("repo/src/index.ts", "export const a = 2;\n");
+
+    let run = harness::feed_with(
+        &tree.path("repo"),
+        &[("PATH", "/usr/bin:/bin")],
+        &["gate", "--hook"],
+        A_STOP,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the build `tsc --noEmit` could not run"),
+        "{}",
+        run.out
+    );
+}
+
+/// The call klin makes between two states no file tells apart: a `node_modules` a move to
+/// Plug'n'Play left behind still wins over the marker, because a binary is evidence that the
+/// tool is there to run. Spec 9.3.
+#[test]
+fn a_node_modules_left_behind_by_a_move_to_plug_and_play_still_wins() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "packages/app/");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write(".yarnrc.yml", "nodeLinker: pnp\n");
+    installed(
+        &tree,
+        "packages/app/node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the tool left behind\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("packages/app/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "the tool left behind\n", "{}", run.out);
 }

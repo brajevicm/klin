@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use serde_json::Value;
@@ -192,39 +192,57 @@ enum How {
     Yarn,
 }
 
-/// How the checkout runs one tool of a JavaScript project, and whether that command is the
-/// project's own tool, which a broken install leaves unable to run. `None` is a checkout that
-/// installed none, which leaves the tool on `PATH`.
+/// How the checkout runs one tool of a JavaScript project, and `None` when the checkout
+/// installed none in a model klin reads, which leaves the tool on `PATH`. The whole chain is
+/// searched for an installed binary before a Plug'n'Play checkout is considered, so a marker an
+/// old install model left behind cannot take the run from a compiler hoisted above it. A
+/// `node_modules` a move to Plug'n'Play left behind wins the same way, which no file can tell
+/// from the first state: a binary is evidence that the tool is there to run, and a marker is
+/// evidence about an install model alone. Spec 9.3.
 fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, How)> {
+    let chain = chain(root, at);
+    let nearest = chain
+        .iter()
+        .find(|(here, _)| here.join(BIN).join(tool).symlink_metadata().is_ok());
+    if let Some((_, up)) = nearest {
+        return Some((format!("{up}{BIN}/{tool}"), How::Installed));
+    }
+    let berry = chain.iter().any(|(here, _)| berry(here));
+    berry.then(|| (format!("{} {tool}", YARN), How::Yarn))
+}
+
+/// Each directory from the one an entry runs in up to the root klin measures, and the prefix
+/// that names it from that directory. The root is searched and nothing above it is.
+fn chain(root: &Path, at: &Path) -> Vec<(PathBuf, String)> {
     let mut here = at.to_path_buf();
     let mut up = String::new();
+    let mut all = Vec::new();
     loop {
-        if here
-            .join("node_modules/.bin")
-            .join(tool)
-            .symlink_metadata()
-            .is_ok()
-        {
-            return Some((format!("{up}node_modules/.bin/{tool}"), How::Installed));
-        }
-        if PNP.iter().any(|name| here.join(name).is_file()) {
-            return Some((format!("{} {tool}", YARN), How::Yarn));
-        }
+        all.push((here.clone(), up.clone()));
         match here.parent() {
             Some(parent) if here != root => here = parent.to_path_buf(),
-            _ => return None,
+            _ => return all,
         }
         up.push_str("../");
     }
 }
 
+/// Whether one directory is the Plug'n'Play checkout of a Yarn whose command line klin knows.
+/// Yarn 2.4 and later write `.pnp.cjs`. Yarn 2.0 to 2.3 wrote `.pnp.js`, which Yarn Classic
+/// writes as well, and only the later Yarn keeps a `.yarnrc.yml` beside it. A Classic checkout
+/// is no model klin resolves, because Yarn Classic has no binaries-only form of `yarn run`.
+/// Spec 9.3.
+fn berry(here: &Path) -> bool {
+    here.join(".pnp.cjs").is_file()
+        || (here.join(".pnp.js").is_file() && here.join(".yarnrc.yml").is_file())
+}
+
+/// The directory a JavaScript package manager installs the tools of one project into.
+const BIN: &str = "node_modules/.bin";
+
 /// How Yarn runs a tool of the project it installed. `-B` is Yarn's binaries-only form, so a
 /// script a person named after the tool cannot stand in for the tool. Spec 9.3.
 const YARN: &str = "yarn run -B";
-
-/// The files a Yarn Plug'n'Play checkout holds in place of a `node_modules` directory. Yarn 2.0
-/// to 2.3 wrote the first name and every later Yarn writes the second.
-const PNP: &[&str] = &[".pnp.js", ".pnp.cjs"];
 
 /// The manifest a derived command came from, as the `derived:` line and a failing build name it.
 fn origin(path: &str, beside: &str) -> String {
