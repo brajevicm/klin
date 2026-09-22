@@ -632,6 +632,16 @@ Each check documents its rule. The rules for the shipped checks:
   fails, so a derived command never reaches the agent with no origin (ADR
   0040, ADR 0048). Manifests are a path set. A manifest the derivation commit
   lacks gets its entry from the fixed table on the turn that adds it.
+  The derived value is the command the table names, such as `tsc --noEmit`,
+  and it stays a function of the derivation commit. Which tool a checkout
+  runs that command with is resolved when the build runs, per 9.3, and
+  reaches neither the derived value nor the order the entries run in. A run
+  that resolved a command against the checkout prints one `resolved:` line
+  per such entry in its text report, beside the `derived:` line and above the
+  gates, so the report names what ran. A `resolved:` line is a fact of the
+  checkout and no derivation, so neither the journal nor the `--json` object
+  carries it. klin never invokes `npx`, `npm exec` or any other command that
+  could fetch a tool. A `build` a person wrote runs exactly as written.
 
 A derived ceiling is not monotone. A percentile falls when simple functions
 arrive and rises when simple functions leave. A tree of 96 simple functions
@@ -2442,6 +2452,24 @@ stop writes a RED verdict before it blocks, so the next prompt does not move
 the turn stamp over a tree that does not build. Each block names its number
 in the turn, and a failing build's report opens with the `derived:` line of
 5.4 when the command was derived.
+
+A derived build for a JavaScript project runs the tool that project
+installed. From the directory the entry runs in, and then each directory
+above it up to the root klin measures and never above it, the nearest
+`node_modules/.bin` that holds the tool names it, written relative to the
+directory the entry runs in. The tool on `PATH` runs when the checkout
+installed none.
+
+A tool the project installed is there even when it cannot run, so a broken
+install, such as one whose link points nowhere or one the host cannot
+execute, fails its own build and klin does not quietly compile with another:
+the 127 of ADR 0048 is an absent tool only for a command klin did not resolve
+to a binary in the checkout. klin never invokes `npx`, `npm exec` or any
+other command that could fetch a tool, and it starts no package manager. This
+applies to a derived JavaScript command alone: a derived `cargo` or `go`
+command, and every command a person wrote, run exactly as they read, in the
+environment the hook itself was given. A tool a project installed but did not
+put on `PATH` is therefore found, and the NOTE below is not told for it.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook

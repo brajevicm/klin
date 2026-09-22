@@ -639,11 +639,13 @@ fn built(
         return Ok((None, plan.said));
     }
     let changes = scoped(args, project, &plan.entries, window)?;
-    let failure = build::failure(
+    let (failure, resolved) = build::failure(
         project.root(),
         &build::wanted(&plan.entries, changes.as_deref()),
     );
-    Ok((failure, plan.said))
+    let mut said = plan.said;
+    said.extend(resolved);
+    Ok((failure, said))
 }
 
 /// The changed set the build is narrowed to, which is the one the gates read after it. Spec 9.

@@ -24,6 +24,10 @@ const MANIFESTS: &[(&str, &str, &str)] = &[
     ("tsconfig.json", "", ""),
 ];
 
+/// The manifest whose tool a JavaScript package manager installs into the tree, which is the one
+/// derived command klin resolves against the checkout before it runs. Spec 9.3.
+const NODE: &str = "package.json";
+
 const RULE: &str = "one command per manifest";
 
 /// One command that builds part of the tree. An entry with no root covers the whole tree.
@@ -31,6 +35,9 @@ const RULE: &str = "one command per manifest";
 pub struct Entry {
     pub root: Option<String>,
     pub run: String,
+    /// Whether a JavaScript package manager installs this entry's tool into the tree, so the run
+    /// resolves the installed tool before it runs. A command a person wrote never does. Spec 9.3.
+    pub node: bool,
 }
 
 /// Why a build did not pass. `Failed` is the output of the first entry that did not build.
@@ -67,6 +74,7 @@ pub fn plan(project: &Project) -> Result<Plan, Error> {
         Some(Value::String(run)) => vec![Entry {
             root: None,
             run: run.clone(),
+            node: false,
         }],
         Some(Value::Array(items)) => items
             .iter()
@@ -93,6 +101,7 @@ fn entry(config: &Config, item: &serde_json::Map<String, Value>) -> Result<Entry
     Ok(Entry {
         root,
         run: run.to_string(),
+        node: false,
     })
 }
 
@@ -138,11 +147,11 @@ impl Entry {
 fn command(manifests: &[String], path: &str) -> Option<(Entry, String)> {
     let name = path.rsplit_once('/').map_or(path, |(_, name)| name);
     let (_, beside, run) = MANIFESTS.iter().find(|(held, _, _)| name == *held)?;
-    let root = match survey::parent(path) {
+    let at = match survey::parent(path) {
         at if at == scope::ROOT => None,
         at => Some(at),
     };
-    let companion = match &root {
+    let companion = match &at {
         None => beside.to_string(),
         Some(at) => format!("{at}/{beside}"),
     };
@@ -150,13 +159,60 @@ fn command(manifests: &[String], path: &str) -> Option<(Entry, String)> {
     (!run.is_empty() && whole).then(|| {
         (
             Entry {
-                root,
+                root: at,
                 run: run.to_string(),
+                node: name == NODE,
             },
             origin(path, beside),
         )
     })
 }
+
+/// The command one entry runs in this checkout, and whether it is the tool the project
+/// installed. A derived JavaScript entry runs the tool its package manager installed, which the
+/// table's command names by itself only when the project put that tool on `PATH`. Nothing here
+/// downloads a tool. The derived value is the command of 5.4 and this resolution is no part of
+/// it, so nothing a checkout installs reaches the journal or the build order. Spec 5.4, 9.3.
+fn runs(root: &Path, at: &Path, entry: &Entry) -> (String, How) {
+    let (tool, args) = entry.run.split_once(' ').unwrap_or((&entry.run, ""));
+    let Some(found) = entry.node.then(|| installed(root, at, tool)).flatten() else {
+        return (entry.run.clone(), How::Wrote);
+    };
+    (
+        format!("{found} {args}").trim_end().to_string(),
+        How::Installed,
+    )
+}
+
+/// Where the command one entry runs came from: as the table or a person wrote it, or as the
+/// binary the project installed. Spec 9.3.
+#[derive(PartialEq)]
+enum How {
+    Wrote,
+    Installed,
+}
+
+/// The tool the project installed, named from the directory the entry runs in, and `None` when
+/// the checkout installed none, which leaves the tool on `PATH`. From that directory, and then
+/// each directory above it up to the root klin measures and never above it, the nearest
+/// `node_modules/.bin` that holds the tool names it. Spec 9.3.
+fn installed(root: &Path, at: &Path, tool: &str) -> Option<String> {
+    let mut here = at.to_path_buf();
+    let mut up = String::new();
+    loop {
+        if here.join(BIN).join(tool).symlink_metadata().is_ok() {
+            return Some(format!("{up}{BIN}/{tool}"));
+        }
+        match here.parent() {
+            Some(parent) if here != root => here = parent.to_path_buf(),
+            _ => return None,
+        }
+        up.push_str("../");
+    }
+}
+
+/// The directory a JavaScript package manager installs the tools of one project into.
+const BIN: &str = "node_modules/.bin";
 
 /// The manifest a derived command came from, as the `derived:` line and a failing build name it.
 fn origin(path: &str, beside: &str) -> String {
@@ -208,35 +264,73 @@ fn holds(entry: &Entry, path: &str) -> bool {
 }
 
 /// The first entry that failed, or the first whose command the shell could not find when every
-/// entry that ran passed, or None when every entry built. An absent tool skips its own entry
-/// and no other, so a compile error behind it still blocks.
-pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<Failure> {
+/// entry that ran passed, or None when every entry built, and the line each entry klin resolved
+/// against the checkout says it ran. An absent tool skips its own entry and no other, so a
+/// compile error behind it still blocks. Spec 9.3.
+pub fn failure(root: &Path, wanted: &[&Entry]) -> (Option<Failure>, Vec<Said>) {
     let mut missing = None;
+    let mut said = Vec::new();
+    let mut failed = None;
     for entry in wanted {
-        let at = match &entry.root {
-            Some(under) => root.join(under),
-            None => root.to_path_buf(),
-        };
-        let done = Command::new("sh")
-            .arg("-c")
-            .arg(&entry.run)
-            .current_dir(&at)
-            .output();
-        match done {
-            Err(why) => return Some(Failure::Failed(format!("{}: {why}\n", entry.run))),
-            Ok(done) if done.status.code() == Some(MISSING) => {
-                missing.get_or_insert(Failure::Missing {
-                    run: entry.run.clone(),
-                    output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
-                });
+        let (why, line) = built(root, entry);
+        said.extend(line.map(|line| (line, None)));
+        match why {
+            None => (),
+            Some(found @ Failure::Missing { .. }) => {
+                missing.get_or_insert(found);
             }
-            Ok(done) if !done.status.success() => {
-                let mut text = String::from_utf8_lossy(&done.stdout).into_owned();
-                text.push_str(&String::from_utf8_lossy(&done.stderr));
-                return Some(Failure::Failed(format!("$ {}\n{text}", entry.run)));
+            Some(found) => {
+                failed = Some(found);
+                break;
             }
-            Ok(_) => (),
         }
     }
-    missing
+    (failed.or(missing), said)
+}
+
+/// Why one entry did not build, or None when it built, and the line that says what it ran when
+/// klin resolved the command against the checkout. A tool the project installed is not an absent
+/// tool: a broken install fails its own build rather than leaving the tree unmeasured. Spec 9.3.
+fn built(root: &Path, entry: &Entry) -> (Option<Failure>, Option<String>) {
+    let at = match &entry.root {
+        Some(under) => root.join(under),
+        None => root.to_path_buf(),
+    };
+    let (run, how) = runs(root, &at, entry);
+    let line = (run != entry.run).then(|| match &entry.root {
+        Some(under) => format!("resolved: {BUILD} {run} in {under}"),
+        None => format!("resolved: {BUILD} {run}"),
+    });
+    (ran(&at, &run, how), line)
+}
+
+/// One command in the shell, at the directory it runs in, in the environment the hook itself
+/// was given. Spec 9.3.
+fn shell(at: &Path, run: &str) -> std::io::Result<std::process::Output> {
+    Command::new("sh")
+        .arg("-c")
+        .arg(run)
+        .current_dir(at)
+        .output()
+}
+
+/// What the shell made of one command, which is the whole test klin applies: it reads no shell
+/// message and guesses no tool name. ADR 0048.
+fn ran(at: &Path, run: &str, how: How) -> Option<Failure> {
+    let done = match shell(at, run) {
+        Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
+        Ok(done) => done,
+    };
+    match done.status.code() {
+        Some(0) => None,
+        Some(MISSING) if how == How::Wrote => Some(Failure::Missing {
+            run: run.to_string(),
+            output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
+        }),
+        _ => {
+            let mut text = String::from_utf8_lossy(&done.stdout).into_owned();
+            text.push_str(&String::from_utf8_lossy(&done.stderr));
+            Some(Failure::Failed(format!("$ {run}\n{text}")))
+        }
+    }
 }
