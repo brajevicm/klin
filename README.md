@@ -140,7 +140,7 @@ While the coding agent works, klin returns regressions while the change is still
 GitHub Actions, after checkout:
 
 ```yaml
-- uses: brajevicm/klin@v0.2.1
+- uses: brajevicm/klin@v0.3.0
 ```
 
 Other CI, after installing klin:
