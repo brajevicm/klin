@@ -502,10 +502,23 @@ fn array<'a>(
 
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
-/// would otherwise see a failed hook on every event of every session. Section 19.3.
+/// would otherwise see a failed hook on every event of every session. The stop of a repository
+/// that opted in says how to install it instead, in the one object every host shows, so a
+/// teammate who cloned the committed hooks learns what they are for. Section 19.3.
 fn line(arguments: &str) -> String {
-    format!("command -v klin > /dev/null 2>&1 || exit 0; klin {arguments}")
+    let missing = match arguments.starts_with("gate") {
+        true => format!(
+            "{{ [ -f \"${{CLAUDE_PROJECT_DIR:-.}}/klin.json\" ] && echo \
+             '{{\"systemMessage\":\"{MISSING}\",\"followup_message\":\"{MISSING}\"}}'; exit 0; }}"
+        ),
+        false => "exit 0".to_string(),
+    };
+    format!("command -v klin > /dev/null 2>&1 || {missing}; klin {arguments}")
 }
+
+const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \
+                       -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
+                       klin-installer.sh | sh";
 
 /// What one entry filters by, in the host's matcher syntax: nothing, or the tools the guard
 /// reads. The hook table says which, per event.
