@@ -694,6 +694,7 @@ fn a_plug_and_play_checkout_runs_the_compiler_through_yarn() {
     tree.write("klin.json", "{}");
     typescript(&tree, "");
     tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write("yarn.lock", "# yarn lockfile v1\n");
     tree.base();
     let path = toolchain(&tree);
     installed(
@@ -859,6 +860,7 @@ fn a_plug_and_play_checkout_whose_yarn_holds_no_tool_fails_its_own_build() {
     tree.write("klin.json", "{}");
     typescript(&tree, "");
     tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write("yarn.lock", "# yarn lockfile v1\n");
     tree.base();
     let path = toolchain(&tree);
     installed(
@@ -988,16 +990,16 @@ fn a_derived_build_does_not_reach_a_compiler_above_the_repository() {
     );
 }
 
-/// The call klin makes between two states no file tells apart: a `node_modules` a move to
-/// Plug'n'Play left behind still wins over the marker, because a binary is evidence that the
-/// tool is there to run. Spec 9.3.
+/// The call klin makes between two states no file tells apart, where no configuration names the
+/// model: a `node_modules` a move to Plug'n'Play left behind still wins over the marker, because
+/// a binary is evidence that the tool is there to run. Spec 9.3.
 #[test]
 fn a_node_modules_left_behind_by_a_move_to_plug_and_play_still_wins() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     typescript(&tree, "packages/app/");
     tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
-    tree.write(".yarnrc.yml", "nodeLinker: pnp\n");
+    tree.write("yarn.lock", "# yarn lockfile v1\n");
     installed(
         &tree,
         "packages/app/node_modules/.bin/tsc",
@@ -1018,4 +1020,177 @@ fn a_node_modules_left_behind_by_a_move_to_plug_and_play_still_wins() {
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "the tool left behind\n", "{}", run.out);
+}
+
+/// A `.pnp.cjs` says how a project installs its tools and not whose project it is. A pnpm
+/// checkout runs the tool through pnpm, and Yarn is never called. Spec 9.3.
+#[test]
+fn a_pnpm_plug_and_play_checkout_runs_the_tool_through_pnpm() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write("pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
+    tree.base();
+    let path = toolchain(&tree);
+    for manager in ["yarn", "pnpm"] {
+        installed(
+            &tree,
+            &format!("toolchain/{manager}"),
+            &format!(
+                "#!/bin/sh\necho \"{manager} $*\" >> \"{}\"\n",
+                tree.at("ran")
+            ),
+        );
+    }
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "pnpm exec tsc --noEmit\n", "{}", run.out);
+}
+
+/// A configuration that names the Plug'n'Play linker is the authority on the model, so a
+/// `node_modules` an older model left behind does not take the run. Spec 9.3.
+#[test]
+fn a_named_plug_and_play_linker_wins_over_a_node_modules_left_behind() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "packages/app/");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write(".yarnrc.yml", "nodeLinker: pnp\n");
+    installed(
+        &tree,
+        "packages/app/node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the tool left behind\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("packages/app/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "yarn run -B tsc --noEmit\n", "{}", run.out);
+}
+
+/// A configuration that names the `node_modules` linker is the authority the other way: a marker
+/// an older model left behind does not send the run through the package manager. Spec 9.3.
+#[test]
+fn a_named_node_modules_linker_wins_over_a_marker_left_behind() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.cjs", "// a marker an older model left\n");
+    tree.write(".yarnrc.yml", "nodeLinker: node-modules\n");
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the installed tool\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "the installed tool\n", "{}", run.out);
+}
+
+/// A linker a person wrote with a comment or quotation marks beside it still names the model.
+/// Spec 9.3.
+#[test]
+fn a_named_linker_is_read_without_its_comment_or_quotation_marks() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write(".yarnrc.yml", "nodeLinker: \"pnp\" # zero installs\n");
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "yarn run -B tsc --noEmit\n", "{}", run.out);
+}
+
+/// A manifest that pins a manager klin has no Plug'n'Play form for says the checkout is neither
+/// Yarn's nor pnpm's, whatever lockfile an older manager left. Spec 9.3.
+#[test]
+fn a_pinned_manager_klin_does_not_read_leaves_the_tool_on_the_path() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "package.json",
+        "{\"name\": \"web\", \"packageManager\": \"npm@10.9.0\"}\n",
+    );
+    tree.write("tsconfig.json", "{}\n");
+    tree.write("src/index.ts", "export const a = 1;\n");
+    tree.write(".pnp.cjs", "// a marker an older manager left\n");
+    tree.write("yarn.lock", "# yarn lockfile v1\n");
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
+}
+
+/// The manager is read from the directory that holds the marker and upward, so a lockfile an
+/// older manager left in a package below it does not name the run. Spec 9.3.
+#[test]
+fn a_lockfile_below_the_marker_does_not_name_the_manager() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "packages/app/");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.write("pnpm-lock.yaml", "lockfileVersion: '9.0'\n");
+    tree.write(
+        "packages/app/yarn.lock",
+        "# a lockfile an older manager left\n",
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    for manager in ["yarn", "pnpm"] {
+        installed(
+            &tree,
+            &format!("toolchain/{manager}"),
+            &format!(
+                "#!/bin/sh\necho \"{manager} $*\" >> \"{}\"\n",
+                tree.at("ran")
+            ),
+        );
+    }
+    tree.write("packages/app/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "pnpm exec tsc --noEmit\n", "{}", run.out);
 }

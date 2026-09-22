@@ -184,31 +184,72 @@ fn runs(root: &Path, at: &Path, entry: &Entry) -> (String, How) {
 }
 
 /// Where the command one entry runs came from: as the table or a person wrote it, as the binary
-/// the project installed, or through the Yarn of a Plug'n'Play checkout. Spec 9.3.
+/// the project installed, or through the package manager of a Plug'n'Play checkout. Spec 9.3.
 #[derive(PartialEq)]
 enum How {
     Wrote,
     Installed,
-    Yarn,
+    Manager,
 }
 
-/// How the checkout runs one tool of a JavaScript project, and `None` when the checkout
-/// installed none in a model klin reads, which leaves the tool on `PATH`. The whole chain is
-/// searched for an installed binary before a Plug'n'Play checkout is considered, so a marker an
-/// old install model left behind cannot take the run from a compiler hoisted above it. A
-/// `node_modules` a move to Plug'n'Play left behind wins the same way, which no file can tell
-/// from the first state: a binary is evidence that the tool is there to run, and a marker is
-/// evidence about an install model alone. Spec 9.3.
+/// A JavaScript package manager whose command line klin knows, and how it runs a tool of the
+/// project it installed. Yarn's `-B` and pnpm's `exec` run a binary the project holds, so a
+/// script a person named after the tool cannot stand in for the tool. Spec 9.3.
+#[derive(Clone, Copy, PartialEq)]
+enum Manager {
+    Yarn,
+    Pnpm,
+}
+
+impl Manager {
+    fn runs(self, tool: &str) -> String {
+        match self {
+            Manager::Yarn => format!("yarn run -B {tool}"),
+            Manager::Pnpm => format!("pnpm exec {tool}"),
+        }
+    }
+}
+
+/// What a checkout says about the model it installs a project's tools in. A package manager's
+/// own configuration is the one authority on that, so it decides against any file left over
+/// from another model. Spec 9.3.
+enum Model {
+    Play(Manager),
+    Modules,
+}
+
+/// How the checkout runs one tool of a JavaScript project, and `None` when no model klin reads
+/// installs it, which leaves the tool on `PATH`. A configuration that names the model decides.
+/// Without one, the whole chain is searched for an installed binary before a Plug'n'Play marker
+/// is read, so a marker an old model left behind cannot take the run from a binary installed
+/// above it, and a binary an old model left behind wins the same way: no file tells those two
+/// states apart, and a binary is evidence that the tool is there to run. Spec 9.3.
 fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, How)> {
     let chain = chain(root, at);
-    let nearest = chain
-        .iter()
-        .find(|(here, _)| here.join(BIN).join(tool).symlink_metadata().is_ok());
-    if let Some((_, up)) = nearest {
-        return Some((format!("{up}{BIN}/{tool}"), How::Installed));
+    match chain.iter().find_map(|(here, _)| model(here)) {
+        Some(Model::Play(manager)) => Some((manager.runs(tool), How::Manager)),
+        Some(Model::Modules) => bin(&chain, tool),
+        None => bin(&chain, tool).or_else(|| through(&chain, tool)),
     }
-    let berry = chain.iter().any(|(here, _)| berry(here));
-    berry.then(|| (format!("{} {tool}", YARN), How::Yarn))
+}
+
+/// The nearest `node_modules/.bin` of the chain that holds the tool, named from the directory
+/// the entry runs in.
+fn bin(chain: &[(PathBuf, String)], tool: &str) -> Option<(String, How)> {
+    let (_, up) = chain
+        .iter()
+        .find(|(here, _)| here.join(BIN).join(tool).symlink_metadata().is_ok())?;
+    Some((format!("{up}{BIN}/{tool}"), How::Installed))
+}
+
+/// The package manager of a Plug'n'Play checkout no configuration names, and `None` when the
+/// chain holds no marker or nothing says whose checkout it is. A marker says how a project
+/// installs its tools and not whose project it is, so the manager is read from the directory
+/// that holds the marker and then upward, and never from a directory below it. Spec 9.3.
+fn through(chain: &[(PathBuf, String)], tool: &str) -> Option<(String, How)> {
+    let at = chain.iter().position(|(here, _)| marker(here))?;
+    let manager = chain[at..].iter().find_map(|(here, _)| manager(here))?;
+    Some((manager.runs(tool), How::Manager))
 }
 
 /// Each directory from the one an entry runs in up to the root klin measures, and the prefix
@@ -227,22 +268,65 @@ fn chain(root: &Path, at: &Path) -> Vec<(PathBuf, String)> {
     }
 }
 
-/// Whether one directory is the Plug'n'Play checkout of a Yarn whose command line klin knows.
-/// Yarn 2.4 and later write `.pnp.cjs`. Yarn 2.0 to 2.3 wrote `.pnp.js`, which Yarn Classic
-/// writes as well, and only the later Yarn keeps a `.yarnrc.yml` beside it. A Classic checkout
-/// is no model klin resolves, because Yarn Classic has no binaries-only form of `yarn run`.
-/// Spec 9.3.
-fn berry(here: &Path) -> bool {
+/// The model one directory's package-manager configuration names: Yarn's `nodeLinker` in
+/// `.yarnrc.yml`, or pnpm's `node-linker` in `.npmrc`. A value neither manager defines names no
+/// model, which leaves the checkout to say what it installed. Spec 9.3.
+fn model(here: &Path) -> Option<Model> {
+    let named = match value(here, ".yarnrc.yml", "nodeLinker") {
+        Some(named) => (named, Manager::Yarn),
+        None => (value(here, ".npmrc", "node-linker")?, Manager::Pnpm),
+    };
+    match named.0.as_str() {
+        "pnp" => Some(Model::Play(named.1)),
+        "node-modules" | "isolated" | "hoisted" => Some(Model::Modules),
+        _ => None,
+    }
+}
+
+/// What one key of a configuration file holds, without the comment or the quotation marks a
+/// person may write around it. The key is read where the file begins a line, and the last one
+/// the file holds is the one it means.
+fn value(here: &Path, file: &str, key: &str) -> Option<String> {
+    let text = std::fs::read_to_string(here.join(file)).ok()?;
+    let held = text
+        .lines()
+        .filter(|line| !line.starts_with(char::is_whitespace))
+        .filter_map(|line| line.split_once([':', '=']))
+        .rfind(|(named, _)| named.trim_end() == key)?
+        .1;
+    let held = held.split('#').next().unwrap_or_default();
+    Some(held.trim().trim_matches(['"', '\'']).to_string())
+}
+
+/// Whether one directory holds the file a Plug'n'Play install writes in place of a
+/// `node_modules` directory. Yarn 2.4 and later, and pnpm, write `.pnp.cjs`. Yarn 2.0 to 2.3
+/// wrote `.pnp.js`, which Yarn Classic writes as well, and only the later Yarn keeps a
+/// `.yarnrc.yml` beside it. A Classic checkout is no model klin resolves, because Yarn Classic
+/// has no binaries-only form of `yarn run`. Spec 9.3.
+fn marker(here: &Path) -> bool {
     here.join(".pnp.cjs").is_file()
         || (here.join(".pnp.js").is_file() && here.join(".yarnrc.yml").is_file())
 }
 
+/// Whose checkout one directory is, by the manager it pins, the lockfile it holds, or the
+/// configuration file only one manager writes. A pin that names another manager is the answer
+/// too: it says the checkout is neither, whatever files an older manager left. Spec 9.3.
+fn manager(here: &Path) -> Option<Manager> {
+    let held = std::fs::read_to_string(here.join(NODE)).unwrap_or_default();
+    let held: Value = serde_json::from_str(&held).unwrap_or_default();
+    let holds = |name: &str| here.join(name).is_file();
+    match held.get("packageManager").and_then(Value::as_str) {
+        Some(pinned) if pinned.starts_with("yarn") => Some(Manager::Yarn),
+        Some(pinned) if pinned.starts_with("pnpm") => Some(Manager::Pnpm),
+        Some(_) => None,
+        None if holds("pnpm-lock.yaml") => Some(Manager::Pnpm),
+        None if holds("yarn.lock") || holds(".yarnrc.yml") => Some(Manager::Yarn),
+        None => None,
+    }
+}
+
 /// The directory a JavaScript package manager installs the tools of one project into.
 const BIN: &str = "node_modules/.bin";
-
-/// How Yarn runs a tool of the project it installed. `-B` is Yarn's binaries-only form, so a
-/// script a person named after the tool cannot stand in for the tool. Spec 9.3.
-const YARN: &str = "yarn run -B";
 
 /// The manifest a derived command came from, as the `derived:` line and a failing build name it.
 fn origin(path: &str, beside: &str) -> String {
@@ -339,7 +423,7 @@ fn built(root: &Path, entry: &Entry) -> (Option<Failure>, Option<String>) {
 fn ran(at: &Path, run: &str, how: How) -> Option<Failure> {
     let mut shell = Command::new("sh");
     shell.arg("-c").arg(run).current_dir(at);
-    if how == How::Yarn {
+    if how == How::Manager {
         shell.env("COREPACK_ENABLE_NETWORK", "0");
     }
     let done = match shell.output() {

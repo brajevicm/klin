@@ -2454,39 +2454,52 @@ the turn stamp over a tree that does not build. Each block names its number
 in the turn, and a failing build's report opens with the `derived:` line of
 5.4 when the command was derived.
 
-A derived build for a JavaScript project runs the tool that project's
-package manager installed. From the directory the entry runs in, and then
-each directory above it up to the root klin measures and never above it, the
-nearest `node_modules/.bin` that holds the tool names it, written relative to
-that directory. That whole chain is searched before a Plug'n'Play checkout,
-which installs no `node_modules`, is considered, so a marker left behind by a
-move away from Plug'n'Play cannot take the run from a tool installed above
-it. A Plug'n'Play checkout runs the tool as `yarn run -B <tool>`, Yarn's
-binaries-only form, so a script a person named after the tool cannot stand in
-for it. An installed binary therefore wins over a marker wherever each sits,
-which is the one call klin makes between two states no file can tell apart: a
-marker a move away from Plug'n'Play left behind, and a `node_modules` a move
-to Plug'n'Play left behind. A binary is evidence that the tool is there to
-run, and a marker is evidence about an install model alone, so the binary
-decides. A `.pnp.cjs` is such a checkout. A `.pnp.js` is one only with a
-`.yarnrc.yml` beside it, because Yarn Classic writes that same file and has
-no binaries-only form of `yarn run`; a Classic checkout is no model klin
-resolves and leaves the tool on `PATH`. klin runs Yarn with Corepack's network
-disabled, so a Yarn version this host does not already hold cannot be
-fetched: that run fails or is unmeasured by its exit code, as every other
-build is. The tool on `PATH`
-runs when the checkout installed none. A candidate that is there and cannot
-run is still the project's tool, so a broken install, such as one whose link
-points nowhere, fails its own build and klin does not quietly compile with
-another: the 127 of ADR 0048 is an absent tool only for a command klin did
-not resolve to a binary in the checkout. A Plug'n'Play checkout with no Yarn on the
-hook's `PATH` is unmeasured under that rule and tells the NOTE. klin never invokes
-`npx`, `npm exec`, `yarn dlx` or any other command that could fetch a tool,
-and it runs no command that a package manager could turn into a download. This applies
-to a derived JavaScript command alone: a derived `cargo` or `go` command, and
-every command a person wrote, run exactly as they read. A tool a project
-installed but did not put on `PATH` is therefore found, and the NOTE below is
-not told for it.
+A derived build for a JavaScript project runs the tool that project
+installed, in the install models klin reads. A package manager's own
+configuration is the one authority on the model: Yarn's `nodeLinker` in
+`.yarnrc.yml`, and pnpm's `node-linker` in `.npmrc`, from the directory the
+entry runs in up to the root klin measures and never above it. A named
+Plug'n'Play linker runs the tool through that manager, and a named
+`node_modules` linker runs the binary the project installed, whatever files
+another model left behind.
+
+Where no configuration names the model, the chain is searched for a
+`node_modules/.bin` that holds the tool. The nearest one names the tool,
+written relative to the directory the entry runs in. Only when the whole
+chain holds none is a Plug'n'Play marker read, so a marker an old model left
+behind cannot take the run from a binary installed above it, and a binary an
+old model left behind wins the same way: no file tells those two states
+apart, and a binary is evidence that the tool is there to run.
+
+A marker is `.pnp.cjs`, or `.pnp.js` with a `.yarnrc.yml` beside it. Yarn
+Classic writes `.pnp.js` as well and has no binaries-only form of `yarn run`,
+so a Classic checkout is no model klin resolves and leaves the tool on
+`PATH`. A marker says how a project installs its tools and not whose project
+it is, so the manager is read from the directory that holds the marker and
+then upward, never from one below it, as the `packageManager` it pins, or as
+the lockfile or the `.yarnrc.yml` it holds. A pin that names a manager klin
+has no Plug'n'Play form for is the answer too: the checkout is neither
+manager's, whatever an older one left behind. A value neither manager defines
+for its linker names no model, and a comment or quotation marks around a
+value it does define do not hide it. Yarn runs the tool as `yarn run -B
+<tool>` and pnpm as `pnpm exec <tool>`, each a form that runs a binary the
+project holds, so a script a person named after the tool cannot stand in for
+it.
+
+The tool on `PATH` runs when no model klin reads installs it. A tool the
+project installed is there even when it cannot run, so a broken install, such
+as one whose link points nowhere, fails its own build and klin does not
+quietly compile with another: the 127 of ADR 0048 is an absent tool only for
+a command klin did not resolve to a binary in the checkout. A Plug'n'Play
+checkout whose manager is not on the hook's `PATH` is unmeasured under that
+rule and tells the NOTE. klin runs a package manager with Corepack's network
+disabled, so a manager version this host does not already hold cannot be
+fetched. klin never invokes `npx`, `npm exec`, `yarn dlx` or any other
+command that could fetch a tool, and it runs no command that a package
+manager could turn into a download. This applies to a derived JavaScript
+command alone: a derived `cargo` or `go` command, and every command a person
+wrote, run exactly as they read. A tool a project installed but did not put
+on `PATH` is therefore found, and the NOTE below is not told for it.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
