@@ -3,9 +3,10 @@ name: benchmark
 on:
   # `labeled` is not a default type, and the `benchmark` label needs a run of its own.
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
-  push:
-    branches: [main]
+    # types: [opened, synchronize, reopened, labeled]
+    types: [labeled]
+  # push:
+  # branches: [main]
 
 permissions:
   contents: read
