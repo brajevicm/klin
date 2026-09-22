@@ -65,7 +65,14 @@ const ECMASCRIPT_OPERATORS: &[&str] = &["&&", "||", "??"];
 
 const SUITE_CONTAINERS: &[&str] = &["describe", "context", "suite", "fdescribe", "xdescribe"];
 const SUITE_BASES: &[&str] = &["describe", "context", "suite"];
-const SUITE_MODIFIERS: &[&str] = &["each", "only", "skip"];
+const SUITE_DIRECT_METHODS: &[&str] = &["only", "skip"];
+const SUITE_CALLBACK_WRAPPERS: &[&str] = &[
+    "parenthesized_expression",
+    "as_expression",
+    "satisfies_expression",
+    "non_null_expression",
+    "type_assertion",
+];
 
 const ACCESSOR_HOLDERS: &[&str] = &[
     "computed_property",
@@ -941,7 +948,7 @@ fn suite_callback(node: Node, at: &Walked) -> bool {
     let mut callback = node;
     while let Some(parent) = callback
         .parent()
-        .filter(|parent| parent.kind() == "parenthesized_expression")
+        .filter(|parent| SUITE_CALLBACK_WRAPPERS.contains(&parent.kind()))
     {
         callback = parent;
     }
@@ -954,28 +961,47 @@ fn suite_callback(node: Node, at: &Walked) -> bool {
     arguments
         .parent()
         .filter(|parent| parent.kind() == "call_expression")
-        .and_then(|call| call.child_by_field_name("function"))
-        .is_some_and(|callee| suite_container(callee, at.source))
+        .is_some_and(|call| suite_call(call, at.source))
 }
 
-fn suite_container(node: Node, source: &str) -> bool {
-    let text = |node: Node| node.utf8_text(source.as_bytes()).unwrap_or_default();
-    match node.kind() {
-        "identifier" => SUITE_CONTAINERS.contains(&text(node)),
-        "member_expression" => node
-            .child_by_field_name("object")
-            .zip(node.child_by_field_name("property"))
-            .is_some_and(|(object, property)| {
-                SUITE_BASES.contains(&text(object)) && SUITE_MODIFIERS.contains(&text(property))
-            }),
-        "call_expression" => node
+fn suite_call(call: Node, source: &str) -> bool {
+    let Some(callee) = call.child_by_field_name("function") else {
+        return false;
+    };
+    let callee = unparenthesized(callee);
+    match callee.kind() {
+        "identifier" => {
+            SUITE_CONTAINERS.contains(&callee.utf8_text(source.as_bytes()).unwrap_or_default())
+        }
+        "member_expression" => suite_member(callee, SUITE_DIRECT_METHODS, source),
+        "call_expression" => callee
             .child_by_field_name("function")
-            .is_some_and(|function| suite_container(function, source)),
-        "parenthesized_expression" => node
-            .named_child(0)
-            .is_some_and(|inner| suite_container(inner, source)),
+            .is_some_and(|function| suite_member(function, &["each"], source)),
         _ => false,
     }
+}
+
+fn suite_member(node: Node, methods: &[&str], source: &str) -> bool {
+    let node = unparenthesized(node);
+    let Some(object) = node.child_by_field_name("object") else {
+        return false;
+    };
+    let Some(property) = node.child_by_field_name("property") else {
+        return false;
+    };
+    let object = unparenthesized(object);
+    SUITE_BASES.contains(&object.utf8_text(source.as_bytes()).unwrap_or_default())
+        && methods.contains(&property.utf8_text(source.as_bytes()).unwrap_or_default())
+}
+
+fn unparenthesized(mut node: Node) -> Node {
+    while node.kind() == "parenthesized_expression" {
+        let Some(inner) = node.named_child(0) else {
+            break;
+        };
+        node = inner;
+    }
+    node
 }
 
 fn decisions(node: Node, at: &Walked) -> u64 {

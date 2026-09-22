@@ -847,6 +847,46 @@ fn a_suite_callback_in_a_production_file_is_still_measured() {
 }
 
 #[test]
+fn a_call_returned_by_a_suite_name_is_not_a_suite_container() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    let fillers = "  void 0;\n".repeat(30);
+    for (file, call) in [
+        ("tests/returned.test.ts", "describe()"),
+        ("tests/returned-member.test.ts", "describe.only()"),
+    ] {
+        tree.write(
+            file,
+            &format!("{call}('not a suite', () => {{\n{fillers}}});\n"),
+        );
+    }
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("tests/returned.test.ts:1"), "{}", run.out);
+    assert!(run.says("tests/returned-member.test.ts:1"), "{}", run.out);
+}
+
+#[test]
+fn typescript_wrappers_do_not_change_suite_callback_classification() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    let fillers = "  void 0;\n".repeat(30);
+    tree.write(
+        "tests/wrapped.test.ts",
+        &format!(
+            "describe('as', (() => {{\n{fillers}}}) as () => void);\n\
+             describe('satisfies', (() => {{\n{fillers}}}) satisfies () => void);\n\
+             describe('non-null', (() => {{\n{fillers}}})!);\n\
+             describe('assertion', <() => void>(() => {{\n{fillers}}}));\n"
+        ),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
 fn go_functions_carry_their_hand_checked_numbers() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/knot.go", GO);

@@ -1579,14 +1579,19 @@ for each decision node and each boolean operator in the language's tables,
 walked through the function's body. A nested function is not walked: it is
 excluded from the count of the function around it and measured as a site of
 its own, at its own declaration line. A TypeScript or JavaScript callback
-passed to a suite container in a test file is not a function site: the exact
-calls are `describe`, `context`, `suite`, `fdescribe`, `xdescribe`, and
-`describe.each`, `describe.only`, `describe.skip`, `context.each`,
-`context.only`, `context.skip`, `suite.each`, `suite.only`, `suite.skip`.
-The suite callback is omitted from both trees' judged function population and
-from the derived `cc` and `lines` sample. Functions inside it remain measured,
-including `it` and `test` callbacks, hooks and helpers. The same callback in a
-file that is not a test file is measured as before. A test file is one that
+passed directly as an argument to a suite container call in a test file is not
+a function site. The calls are direct `describe`, `context`, `suite`,
+`fdescribe` and `xdescribe` calls; direct `.only` and `.skip` calls on
+`describe`, `context` and `suite`; and curried `.each` calls on those same
+three containers, in the form `describe.each(data)(name, callback)`. A callback
+may be wrapped in parentheses or a TypeScript `as`, `satisfies`, non-null or
+type assertion. Calling the value returned by `describe(...)` or
+`describe.only(...)` does not make that call a suite container. The suite
+callback is omitted from both trees' judged function population and from the
+derived `cc` and `lines` sample.
+Functions inside it remain measured, including `it` and `test` callbacks,
+hooks and helpers. The same callback in a file that is not a test file is
+measured as before. A test file is one that
 5.4 marks under a test root or by a test directory segment or test affix. The
 `default` arm of a Java or Swift
 `switch`, the `else` arm of a Kotlin `when`, and a single unguarded

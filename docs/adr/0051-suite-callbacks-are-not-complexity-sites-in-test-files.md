@@ -8,9 +8,13 @@ follows the project's test convention. Its length can also raise the derived
 ## Decision
 
 In a TypeScript or JavaScript test file as spec 5.4 defines it, a callback
-passed to `describe`, `context` or `suite` is not a complexity function site.
-The same applies to `fdescribe`, `xdescribe`, and the `.each`, `.only` and
-`.skip` variants of `describe`, `context` and `suite`.
+passed directly to `describe`, `context`, `suite`, `fdescribe` or `xdescribe`
+is not a complexity function site. The same applies to direct `.only` and
+`.skip` calls on `describe`, `context` and `suite`, and curried `.each(data)`
+calls on those same containers. Parentheses and TypeScript `as`, `satisfies`,
+non-null and type assertion wrappers around a callback are transparent. An
+invocation of a value returned by `describe(...)` or `describe.only(...)` is
+not a suite container call.
 
 The callback is omitted from both trees' judged function population and from
 the derived `cc` and `lines` sample. Functions inside it remain measured:
