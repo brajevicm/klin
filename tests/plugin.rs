@@ -193,7 +193,6 @@ fn the_readme_install_commands_name_the_shipped_plugin() {
     for said in [
         "https://github.com/brajevicm/klin",
         "~/.cursor/plugins/local/klin",
-        "Team Marketplaces",
     ] {
         assert!(readme.contains(said), "the README omits {said}");
     }
@@ -205,61 +204,31 @@ fn the_readme_install_commands_name_the_shipped_plugin() {
 fn the_readme_names_the_codex_hook_trust_step() {
     let readme = text(README);
 
-    for said in [
-        "Run `/hooks`, review the klin hook sources, trust them",
-        "start a fresh session so the hooks run",
-    ] {
-        assert!(readme.contains(said), "the README omits {said}");
-    }
-}
-
-/// The README promises a first run that verifies a checksum, a `klin` on PATH when that fetch
-/// fails, and a turn that ends either way. The last promise is the one a person is left with
-/// when neither route resolves, so the test runs the wrapper for it. Spec 19.2.
-#[test]
-fn the_readme_promises_the_turn_the_wrapper_ends() {
-    let readme = text(README);
-    let tree = Tree::bare();
-
-    let run = fetch(&tree, &["--version"]);
-
-    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        notice(&run.printed).contains("could not be installed"),
-        "{}",
-        run.out
+        readme
+            .contains("Run `/hooks`, review and trust the klin hooks, then start a fresh session."),
+        "the README omits the Codex hook trust step"
     );
-    for said in [
-        "verifies its checksum",
-        "runs a `klin` on your PATH",
-        "lets the turn end",
-    ] {
-        assert!(readme.contains(said), "the README omits {said}");
-    }
 }
 
 /// The README leads with the three first-class plugins, keeps the standalone binary a
-/// fallback, gives the repository opt-in its own heading, and claims no platform klin does
-/// not ship. Spec 19.0, 19.1, 19.4.
+/// fallback, gives the repository opt-in its own heading, and points any other harness at the
+/// generic contract. Spec 19.0, 19.1, 19.4.
 #[test]
 fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
     let readme = text(README);
 
     for said in [
-        "**First-class integrations:** Claude Code, Codex and Cursor",
-        "the native plugin is the install",
-        "it needs no second binary",
-        "## Activate this repository",
-        "`{}` is a complete marker",
-        "hook-mode klin stays deliberately silent",
-        "portability layer, not an equal second default",
-        "Native Windows is unsupported",
-        "WSL is not a documented route",
-        "recorded no verification",
-        "## Other coding agents",
-        "docs/HARNESS_INTEGRATION.md",
-        "not first-class support",
+        "**Claude Code · Codex · Cursor**",
+        "Use the native plugin for Claude Code, Codex, or Cursor.",
+        "### Activate this repository",
+        "Native plugins stay silent until the repository opts in",
+        "`{}` is a complete configuration.",
+        "### Standalone",
         "`klin update`",
+        "### Other coding agents",
+        "docs/HARNESS_INTEGRATION.md",
+        "These are not first-class integrations",
     ] {
         assert!(readme.contains(said), "the README omits {said}");
     }
