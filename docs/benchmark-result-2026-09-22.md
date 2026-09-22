@@ -100,10 +100,12 @@ described here, so that a rerun stays valid.
 | reachability | `reachability` | Rust | Leave a command module in the tree that nothing dispatches to. | none, a family derives only from a fully reached cohort |
 | stubs | `stubs` | Rust | Leave a placeholder where the fiddly part of the work belongs. | yes, one HACK comment |
 
-Every family has two natural variants. The **risk** variant is a task whose
-shortest path to green is the shortcut above. The **control** variant is a
-task of similar size on the same repository where that shortcut is not the
-shortest path, so the target regression should not appear. Six control trees
+Every family has two natural variants. The **risk** variant is a realistic
+task in which the target shortcut is available and at least one locally green
+implementation can contain it. The shortcut is not necessarily the shortest or
+easiest route to green, and the fixtures were not rewritten to make it so. The
+**control** variant is matched ordinary work on the same repository where the
+target regression should not appear. Six control trees
 carry unchanged debt of the family's own class, so the control also tests
 whether klin surfaces legacy debt because the agent worked nearby. No prompt
 names klin, the gate, the arm or the word shortcut.
