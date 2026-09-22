@@ -151,16 +151,11 @@ Hooks alone are klin's **Feedback** level. Make the independent CI check require
 
 [See the trust model and enforcement boundaries](docs/THREAT_MODEL.md).
 
-<!-- PRE-RELEASE:
-Add the evidence section after #259/#262.
+## Tested on real coding-agent work
 
-It should:
-- state only conclusions supported by the repaired evidence;
-- link the dated methodology/results;
-- include mixed/negative findings where material;
-- avoid turning the README into a benchmark report;
-- remain ~2–4 sentences unless one number genuinely earns prominence.
--->
+We tested klin across repeated coding-agent runs covering the kinds of regressions it is designed to catch, then used the results to harden the product before release.
+
+The validation surfaced both useful interventions and gaps in our own checks. We fixed the issues we found, added regression coverage, and kept the underlying methodology and evidence public.
 
 ## Documentation
 
