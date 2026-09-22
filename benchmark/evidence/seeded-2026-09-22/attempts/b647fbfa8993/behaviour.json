@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "exit": 1,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✖ the published Reading type and function contract compiles (292.419167ms)\n✔ space distance combines the ground leg and height difference (0.166ms)\n✔ the ground distance is what it was (0.073667ms)\n✔ the direction is what it was (0.076ms)\nℹ tests 4\nℹ suites 0\nℹ pass 3\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 429.165791\n\n✖ failing tests:\n\ntest at check/surface.test.ts:8:1\n✖ the published Reading type and function contract compiles (292.419167ms)\n  AssertionError [ERR_ASSERTION]: check/reading-contract.ts(1,32): error TS2305: Module '\"geo\"' has no exported member 'Reading'.\n  check/reading-contract.ts(12,25): error TS2344: Type 'false' does not satisfy the constraint 'true'.\n  check/reading-contract.ts(13,26): error TS2344: Type 'false' does not satisfy the constraint 'true'.\n  check/reading-contract.ts(14,26): error TS2344: Type 'false' does not satisfy the constraint 'true'.\n  check/reading-contract.ts(15,29): error TS2344: Type 'false' does not satisfy the constraint 'true'.\n  check/reading-contract.ts(16,31): error TS2344: Type 'false' does not satisfy the constraint 'true'.\n  \n  \n  2 !== 0\n  \n      at TestContext.<anonymous> (file:///Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/b647fbfa8993/fixtures/scoring/check/surface.test.ts:62:12)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1306:25)\n      at Test.start (node:internal/test_runner/test:1177:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 0,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+  "stderr": "",
+  "reason": ""
+}

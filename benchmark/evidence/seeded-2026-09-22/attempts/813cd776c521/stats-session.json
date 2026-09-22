@@ -1,0 +1,63 @@
+{
+  "activity": {
+    "klin_ms": 411,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1790064264,
+      "gate": "stubs",
+      "id": "142a8b99a62d52b0",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "stubs",
+        "line": 60,
+        "text": "// TODO: preserve original line endings in reports."
+      },
+      "label": "stub",
+      "last": 1790064264,
+      "line": 60,
+      "outcome": "open",
+      "prompt": "A teammate updated the formatter and had to hand the work over before landing it",
+      "remedy": "Do what the marker stands in for. A placeholder an agent left behind is not work, and accepting one is a decision for a person, in the config, in a reviewed commit.",
+      "text": "// TODO: preserve original line endings in reports.",
+      "time": 1790064264,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "remedy": "do the work the comment names, or record it in the tracker and delete the comment",
+        "stub": "comment marker"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

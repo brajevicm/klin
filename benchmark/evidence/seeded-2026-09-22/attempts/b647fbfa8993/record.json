@@ -1,0 +1,1500 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "public-api",
+  "gate": "public-api",
+  "taskId": "393f7b903c2ce84b",
+  "variant": "seeded",
+  "arm": "active",
+  "trialId": "b647fbfa8993",
+  "order": 1,
+  "repetition": 1,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "bce331cd92dba64ad6dc70d5e47e10fed13e3d8e",
+    "promptSha256": "2834c5dbcb4e05d7e9cf90a14c82f3100a535308f72e58afadd77ce4b4d45276",
+    "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27",
+    "startTreeSha256": "597f4e914308c57e1195a6da5cac5cd68a026ced9dbe7ba14f46c11d3c3b1ab5",
+    "seed": [
+      "src/index.ts"
+    ],
+    "uncommitted": [
+      "src/index.ts"
+    ],
+    "startShortcut": {
+      "present": true,
+      "detector": "contract_break",
+      "sites": [
+        {
+          "item": "Point",
+          "base": "export interface Point {lat: number; lon: number;}",
+          "final": "export interface Point {lat: number; lon: number; height: number;}"
+        }
+      ],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "c3739dfcb9d80de03233564ce3eb48f666080e66",
+    "dirty": false,
+    "treeSha256": "4b1ee89d1621bee130d14c6b4a8ee4a220b14b9ceb0548338d58a1c8713c58f9"
+  },
+  "klin": {
+    "commit": "c3739dfcb9d80de03233564ce3eb48f666080e66",
+    "version": "klin 0.2.1",
+    "binarySha256": "ae75684ab3fab0c769bf562795d18aacab4433dd5ec1a4df998018aa02e52f04"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.278 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/b647fbfa8993/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "9ad3a04e-77bf-4d2b-abb7-53592577fa33",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "b04aca9971bb104a62e83e28e24477af323f5134107a3f2c8c6a05f388f7d6f1",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.28973140000000003,
+  "seeded": {
+    "wholeRun": {
+      "caught": true,
+      "status": "FAIL",
+      "sites": [
+        {
+          "ceiling": null,
+          "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+          "file": "geo \".\"",
+          "fix_advice": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+          "gate": "public-api",
+          "id": "9454d129763966ef",
+          "line": 4,
+          "matched": null,
+          "outcome": "new",
+          "text": "Point (type)",
+          "values": {
+            "break": 1,
+            "kind": "changed",
+            "now": "interface Point { height: number; lat: number; lon: number }",
+            "origin": "src/index.ts:4",
+            "was": "interface Point { lat: number; lon: number }"
+          }
+        }
+      ]
+    },
+    "stopDelivery": true,
+    "finalRepair": false,
+    "blockedStops": 1,
+    "tries": 1
+  },
+  "startedAt": "2026-09-22T07:49:13.278Z",
+  "endedAt": "2026-09-22T07:50:21.229Z",
+  "wallMs": 67953,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the declared seed src/index.ts was the only uncommitted change, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found the target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "a red stamp over the committed base bce331cd92db stood in klin's state, with its ref resolved and no journal beside it"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 1"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      },
+      {
+        "name": "seeded-whole-run",
+        "passed": true,
+        "detail": "the production whole-run verdict was obtained before the session"
+      },
+      {
+        "name": "seeded-stop-evidence",
+        "passed": true,
+        "detail": "every seeded Stop has a structured production gate report"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": false,
+    "exit": 1,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": true,
+    "detector": "contract_break",
+    "sites": [
+      {
+        "item": "Point",
+        "base": "export interface Point {lat: number; lon: number;}",
+        "final": "export interface Point {lat: number; lon: number; height?: number;}"
+      }
+    ],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "9454d129763966ef",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "public-api",
+      "label": "broken public contract",
+      "file": "geo \".\"",
+      "line": 4,
+      "text": "Point (type)",
+      "values": {
+        "break": 1,
+        "kind": "changed",
+        "now": "interface Point { height: number; lat: number; lon: number }",
+        "origin": "src/index.ts:4",
+        "was": "interface Point { lat: number; lon: number }"
+      },
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "outcome": "open",
+      "tries": 1,
+      "decision": null,
+      "reason": null,
+      "time": 1790063395,
+      "delivery": "delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:14Z",
+      "ended": "2026-09-22T07:49:14Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:14Z",
+      "ended": "2026-09-22T07:49:14Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git status && echo \"---DIFF---\" && git diff",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:16Z",
+      "ended": "2026-09-22T07:49:16Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls; cat package.json 2>/dev/null; find . -name \"*.test.*\" -not -path \"./node_modules/*\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:19Z",
+      "ended": "2026-09-22T07:49:19Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --version; npm test 2>&1 | tail -50",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:33Z",
+      "ended": "2026-09-22T07:49:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls node_modules/.bin 2>/dev/null | grep -i tsc; cat tsconfig.json 2>/dev/null",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:34Z",
+      "ended": "2026-09-22T07:49:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b647fbfa8993/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:43Z",
+      "ended": "2026-09-22T07:49:43Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test 2>&1 | tail -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:44Z",
+      "ended": "2026-09-22T07:49:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git add src/index.ts && git diff --cached",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:46Z",
+      "ended": "2026-09-22T07:49:46Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git commit -m \"$(cat <<'EOF'\nAdd height to Point and a distanceInSpace helper\n\nExtends Point with a height field and adds distanceInSpace, which\ncombines the existing horizontal distance with the height delta to\ngive a straight-line distance between two points.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nEOF\n)\"\ngit status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:49:49Z",
+      "ended": "2026-09-22T07:49:49Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again:\n  window: turn — base 89db18a, the turn stamp, taken just now\n  changed: 1 file(s) against the base — the scoped gates judge those; CI judges everything\n  pinned: doc_size README.md 9999\n  ok    doc-size\n        OK: README.md is 28 words, ceiling 9999\n        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  ok    doc-citations\n        OK: 0 citation(s) resolve nowhere (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: lockfile manifests package.json, the manifests the survey found that klin can read a lockfile for\n  ok    lockfile\n        OK: 0 dependencies in 1 manifest(s), each locked and pinned (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    escapes\n        OK: 0 escape site(s) in the tree (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    stubs\n        OK: 0 stub site(s) in the tree (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    inventory\n        OK: 0 test site(s) the base holds (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  ok    complexity\n        OK: 3 function(s) judged, 0 over the gate (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    dead-symbols\n        OK: 2 declaration(s) judged, 0 dead symbol(s) (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    reachability\n        OK: 0 file(s) judged, 0 unreached, 0 measured with no eligible declaration (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  FAIL  public-api\n        FAIL: 1 new compatibility break(s) where an external surface or item the base exposed is gone or its declared contract changed, beyond the 0 the base holds:\n          geo \".\":4  changed, declared at src/index.ts:4, was `interface Point { lat: number; lon: number }`, now `interface Point { height: number; lat: number; lon: number }`  Point (type)  — nothing matched\n        Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.\nklin: 10 gate(s), 1 failed.\n",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "package.json"
+            ]
+          }
+        ],
+        "exit": 2,
+        "findings": [
+          {
+            "ceiling": null,
+            "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+            "file": "geo \".\"",
+            "fix_advice": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "gate": "public-api",
+            "id": "9454d129763966ef",
+            "line": 4,
+            "matched": null,
+            "outcome": "new",
+            "text": "Point (type)",
+            "values": {
+              "break": 1,
+              "kind": "changed",
+              "now": "interface Point { height: number; lat: number; lon: number }",
+              "origin": "src/index.ts:4",
+              "was": "interface Point { lat: number; lon: number }"
+            }
+          }
+        ],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 17,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 8,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 13,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 0,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 5,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 24,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 3,
+              "ms": 6,
+              "parses": 3,
+              "reads": 3,
+              "shared": 1,
+              "states": 4
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 75,
+              "declaration_text_bytes": 403,
+              "declarations": 11,
+              "export_leaves": 0,
+              "export_text_bytes": 0,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 0,
+              "files": 3,
+              "import_text_bytes": 182,
+              "imports": 3,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 41,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.6666666666666667,
+              "reference_canonical_allocation_ratio_milli": 1666,
+              "reference_canonical_allocations": 45,
+              "reference_canonical_bytes": 199,
+              "reference_distinct_names": 27,
+              "reference_name_bytes": 570,
+              "reference_representation_after_bytes": 2624,
+              "reference_representation_before_bytes": 5248,
+              "references": 164,
+              "signature_bytes": 390,
+              "signatures": 11,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 88,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 6,
+                "distinct_names": 28,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 6,
+                "query_ms": 0,
+                "references": 81
+              },
+              "base_ms": 81,
+              "before": {
+                "declarations": 5,
+                "distinct_names": 26,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 70
+              },
+              "layout": {
+                "cache_name_ms": 22,
+                "changes_ms": 0,
+                "ignored_ms": 7,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 21,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 20,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 4
+            },
+            "findings": 1,
+            "footprint": null,
+            "graph": {
+              "dependencies": 2,
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "edges": 2,
+              "modules": 4,
+              "ms": 0,
+              "sources": 4
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 0,
+            "status": "FAIL",
+            "surface": {
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "holes": 0,
+              "items": 7,
+              "measured": 7,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 2
+            },
+            "work": null
+          }
+        ],
+        "notes": [],
+        "status": "FAIL",
+        "summary": "klin: 10 gate(s), 1 failed.",
+        "window": {
+          "after": "the working tree",
+          "before": "89db18a658b2abcf9594ab38cb4a665d347d3e65",
+          "how": "the turn stamp, taken just now",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-22T07:49:55Z",
+      "ended": "2026-09-22T07:49:55Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 11,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b647fbfa8993/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:50:08Z",
+      "ended": "2026-09-22T07:50:08Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 12,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b647fbfa8993/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:50:11Z",
+      "ended": "2026-09-22T07:50:11Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 13,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test 2>&1 | tail -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:50:12Z",
+      "ended": "2026-09-22T07:50:12Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 14,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git add src/index.ts && git diff --cached",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:50:15Z",
+      "ended": "2026-09-22T07:50:15Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 15,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git commit -m \"$(cat <<'EOF'\nAdd optional height to Point and a distanceInSpace helper\n\nExtends Point with an optional height field and adds distanceInSpace,\nwhich combines the existing horizontal distance with the height delta\nto give a straight-line distance between two points. height is\noptional to keep the existing Point contract backward compatible.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nEOF\n)\"\ngit status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:50:17Z",
+      "ended": "2026-09-22T07:50:17Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 16,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": true,
+      "stdout": "{\"systemMessage\":\"1 regression still needs your attention. `klin stats --turn` shows it.\"}\n",
+      "stderr": "klin: a quality gate failed — still, after one round of fixes:\n  window: turn — base 89db18a, the turn stamp, taken 1 minute(s) ago\n  changed: 1 file(s) against the base — the scoped gates judge those; CI judges everything\n  pinned: doc_size README.md 9999\n  ok    doc-size\n        OK: README.md is 28 words, ceiling 9999\n        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  ok    doc-citations\n        OK: 0 citation(s) resolve nowhere (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  derived: lockfile manifests package.json, the manifests the survey found that klin can read a lockfile for\n  ok    lockfile\n        OK: 0 dependencies in 1 manifest(s), each locked and pinned (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    escapes\n        OK: 0 escape site(s) in the tree (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    stubs\n        OK: 0 stub site(s) in the tree (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    inventory\n        OK: 0 test site(s) the base holds (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  ok    complexity\n        OK: 3 function(s) judged, 0 over the gate (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    dead-symbols\n        OK: 2 declaration(s) judged, 0 dead symbol(s) (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)\n  ok    reachability\n        OK: 0 file(s) judged, 0 unreached, 0 measured with no eligible declaration (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)\n  FAIL  public-api\n        FAIL: 1 new compatibility break(s) where an external surface or item the base exposed is gone or its declared contract changed, beyond the 0 the base holds:\n          geo \".\":4  changed, declared at src/index.ts:4, was `interface Point { lat: number; lon: number }`, now `interface Point { height?: number; lat: number; lon: number }`  Point (type)  — nothing matched\n        Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.\nklin: 10 gate(s), 1 failed.\nklin: not blocking a second time; the window stays open until a person fixes, accepts or resets it.\n",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "package.json"
+            ]
+          }
+        ],
+        "exit": 0,
+        "findings": [
+          {
+            "ceiling": null,
+            "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+            "file": "geo \".\"",
+            "fix_advice": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+            "gate": "public-api",
+            "id": "9454d129763966ef",
+            "line": 4,
+            "matched": null,
+            "outcome": "new",
+            "text": "Point (type)",
+            "values": {
+              "break": 1,
+              "kind": "changed",
+              "now": "interface Point { height?: number; lat: number; lon: number }",
+              "origin": "src/index.ts:4",
+              "was": "interface Point { lat: number; lon: number }"
+            }
+          }
+        ],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 19,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 9,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 15,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 0,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 6,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 26,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 1,
+              "extracted": 2,
+              "ms": 5,
+              "parses": 2,
+              "reads": 2,
+              "shared": 1,
+              "states": 4
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 75,
+              "declaration_text_bytes": 403,
+              "declarations": 11,
+              "export_leaves": 0,
+              "export_text_bytes": 0,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 0,
+              "files": 3,
+              "import_text_bytes": 182,
+              "imports": 3,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 41,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.7777777777777777,
+              "reference_canonical_allocation_ratio_milli": 1777,
+              "reference_canonical_allocations": 48,
+              "reference_canonical_bytes": 209,
+              "reference_distinct_names": 27,
+              "reference_name_bytes": 570,
+              "reference_representation_after_bytes": 2624,
+              "reference_representation_before_bytes": 5248,
+              "references": 164,
+              "signature_bytes": 391,
+              "signatures": 11,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 101,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 6,
+                "distinct_names": 28,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 5,
+                "query_ms": 0,
+                "references": 81
+              },
+              "base_ms": 95,
+              "before": {
+                "declarations": 5,
+                "distinct_names": 26,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 70
+              },
+              "layout": {
+                "cache_name_ms": 23,
+                "changes_ms": 0,
+                "ignored_ms": 0,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 62,
+                "written": 6
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 4
+            },
+            "findings": 1,
+            "footprint": null,
+            "graph": {
+              "dependencies": 2,
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "edges": 2,
+              "modules": 4,
+              "ms": 0,
+              "sources": 4
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 0,
+            "status": "FAIL",
+            "surface": {
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "holes": 0,
+              "items": 7,
+              "measured": 7,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 2
+            },
+            "work": null
+          }
+        ],
+        "notes": [],
+        "status": "FAIL",
+        "summary": "klin: 10 gate(s), 1 failed.",
+        "window": {
+          "after": "the working tree",
+          "before": "89db18a658b2abcf9594ab38cb4a665d347d3e65",
+          "how": "the turn stamp, taken 1 minute(s) ago",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-22T07:50:20Z",
+      "ended": "2026-09-22T07:50:20Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 2,
+    "guardRefusals": 0,
+    "tries": 1,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 763,
+      "stops": 2
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 1,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 1,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "geo \".\"",
+        "first": 1790063395,
+        "gate": "public-api",
+        "id": "9454d129763966ef",
+        "key": {
+          "file": "geo \".\"",
+          "gate": "public-api",
+          "line": 4,
+          "text": "Point (type)"
+        },
+        "label": "broken public contract",
+        "last": 1790063420,
+        "line": 4,
+        "outcome": "open",
+        "prompt": "A teammate added height information to the point type and had to hand the work o",
+        "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+        "text": "Point (type)",
+        "time": 1790063395,
+        "tries": 1,
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "interface Point { height: number; lat: number; lon: number }",
+          "origin": "src/index.ts:4",
+          "was": "interface Point { lat: number; lon: number }"
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 2,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 763
+  },
+  "turns": 20,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b647fbfa8993/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/b647fbfa8993"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state holds this trial's own stamp over the committed base, 1 worktree entry(s), at /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/b647fbfa8993/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b647fbfa8993/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the declared seed src/index.ts was the only uncommitted change, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found the target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "a red stamp over the committed base bce331cd92db stood in klin's state, with its ref resolved and no journal beside it"
+    }
+  }
+}

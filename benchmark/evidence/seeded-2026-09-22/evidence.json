@@ -1,0 +1,15 @@
+{
+  "setId": "seeded-2026-09-22",
+  "recordProtocol": 5,
+  "kind": "publishable",
+  "archive": "seeded-2026-09-22-raw.tar.gz",
+  "archiveSha256": "c7590f367b47afc311d2446dcccb509f51b6ae92e87b20d686914b2959eba625",
+  "archiveBytes": 833383,
+  "attempts": 19,
+  "validRuns": 18,
+  "scheduledValidRuns": 18,
+  "runManifestSha256": "80afc30284a807a2dbd25ff83ea79fdb6cada567a3e543f944dec827a19a515c",
+  "rawFilesManifestSha256": "88166e8a28d4dbd046457ff4bbfee67befd3092dde4b3d760b12e28219210973",
+  "release": null,
+  "sigstoreBundle": null
+}

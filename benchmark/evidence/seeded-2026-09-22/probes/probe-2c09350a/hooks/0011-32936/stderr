@@ -1,0 +1,36 @@
+klin: a quality gate failed — fix what each names, then stop again:
+  window: turn — base 22acf1f, the turn stamp, taken 1 minute(s) ago
+  changed: 3 file(s) against the base — the scoped gates judge those; CI judges everything
+  derived: build cargo build --all-targets from Cargo.toml, one command per manifest
+  pinned: doc_size README.md 9999
+  NOTE: doc_size report.md is 1003 words and is not judged — it gets a ceiling when the stamp moves and the derivation commit holds it
+  ok    doc-size
+        OK: README.md is 26 words, ceiling 9999
+        OK: 1 document(s) judged (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)
+  derived: doc_citations README.md, report.md, every Markdown file at the tree root, resolved against it
+  FAIL  doc-citations
+        FAIL: 1 new citation(s) where a document cites a file that resolves nowhere, beyond the 0 the base holds:
+          report.md:89  no file of that name under the roots x2  settings.json  — nothing matched
+        Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.
+  derived: lockfile manifests Cargo.toml, the manifests the survey found that klin can read a lockfile for
+  ok    lockfile
+        OK: 0 dependencies in 1 manifest(s), each locked and pinned (1 file(s) found, 1 measured, 0 excluded, 0 unreadable)
+  ok    escapes
+        OK: 0 escape site(s) in the tree (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)
+  ok    stubs
+        OK: 0 stub site(s) in the tree (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)
+  derived: test roots tests, the roots that match a language's test convention
+  ok    inventory
+        OK: 0 test site(s) the base holds (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)
+  pinned: complexity cc 8
+  pinned: complexity lines 60
+  ok    complexity
+        OK: 0 function(s) judged, 0 over the gate (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)
+  ok    dead-symbols
+        OK: 0 declaration(s) judged, 0 dead symbol(s) (0 file(s) found, 0 measured, 0 excluded, 0 unreadable)
+  derived: reachability src/commands/*_command.rs, the file families the derivation commit proves reached
+  ok    reachability
+        OK: 3 file(s) judged, 0 unreached, 0 measured with no eligible declaration (3 file(s) found, 3 measured, 0 excluded, 0 unreadable)
+  ok    public-api
+        OK: 16 external item(s) on 1 surface(s) judged against the base, 10 measured, 6 opaque, no removal or contract change (1 file(s) found, 1 measured, 0 excluded, 0 unreadable); 1 Rust library target(s), 0 TypeScript entry point(s), 0 package(s) or target(s) with no supported surface
+klin: 10 gate(s), 1 failed.

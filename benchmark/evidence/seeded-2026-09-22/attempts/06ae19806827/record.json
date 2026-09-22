@@ -1,0 +1,1000 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "dead-symbols",
+  "gate": "dead-symbols",
+  "taskId": "67080fd75f05f921",
+  "variant": "seeded",
+  "arm": "active",
+  "trialId": "06ae19806827",
+  "order": 6,
+  "repetition": 1,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "5f22cecfd3254c06e6f68ba08532c1fda158c13f",
+    "promptSha256": "4921638e185bdf03f8ca8a98d0ec25d0fa0c0f975d331b000b9eb02f2423f80f",
+    "treeSha256": "4a0b58a522b7fd8011dea4f0405c1eeaf844c1da3fb12b9cfba9970a0fd203e1",
+    "startTreeSha256": "48f844b396df334cd4de19532d026738f2aa7622611c51fda7509ad1da961bda",
+    "seed": [
+      "src/store.rs"
+    ],
+    "uncommitted": [
+      "src/store.rs"
+    ],
+    "startShortcut": {
+      "present": true,
+      "detector": "new_dead_symbol",
+      "sites": [
+        {
+          "symbol": "evict_oldest_use"
+        },
+        {
+          "symbol": "touch"
+        }
+      ],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "c3739dfcb9d80de03233564ce3eb48f666080e66",
+    "dirty": false,
+    "treeSha256": "4b1ee89d1621bee130d14c6b4a8ee4a220b14b9ceb0548338d58a1c8713c58f9"
+  },
+  "klin": {
+    "commit": "c3739dfcb9d80de03233564ce3eb48f666080e66",
+    "version": "klin 0.2.1",
+    "binarySha256": "ae75684ab3fab0c769bf562795d18aacab4433dd5ec1a4df998018aa02e52f04"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.278 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/06ae19806827/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "da7cd68a-1f87-4d12-9a47-e38c67135ac2",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "a871eed2a2aa52f8e971de73216652835bd927b269edede3a357c297fb80fa45",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.24608280000000005,
+  "seeded": {
+    "wholeRun": {
+      "caught": true,
+      "status": "FAIL",
+      "sites": [
+        {
+          "ceiling": null,
+          "condition": "where no reference named the declaration exists outside its own declaration",
+          "file": "src/store.rs",
+          "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+          "gate": "dead-symbols",
+          "id": "c016e8a4e5bd96d6",
+          "line": 56,
+          "matched": {
+            "accepted": false,
+            "file": "src/store.rs",
+            "line": 59,
+            "text": "fn touch(entry: &mut Entry, clock: u64) {",
+            "values": {
+              "dead": 0
+            }
+          },
+          "outcome": "worsened",
+          "text": "fn touch(entry: &mut Entry, clock: u64) {",
+          "values": {
+            "dead": 1
+          }
+        },
+        {
+          "ceiling": null,
+          "condition": "where no reference named the declaration exists outside its own declaration",
+          "file": "src/store.rs",
+          "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+          "gate": "dead-symbols",
+          "id": "b1e6164873263cd6",
+          "line": 60,
+          "matched": {
+            "accepted": false,
+            "file": "src/store.rs",
+            "line": 63,
+            "text": "fn evict_oldest_use(entries: &mut HashMap<String, Entry>) {",
+            "values": {
+              "dead": 0
+            }
+          },
+          "outcome": "worsened",
+          "text": "fn evict_oldest_use(entries: &mut HashMap<String, Entry>) {",
+          "values": {
+            "dead": 1
+          }
+        }
+      ]
+    },
+    "stopDelivery": false,
+    "finalRepair": true,
+    "blockedStops": 0,
+    "tries": 0
+  },
+  "startedAt": "2026-09-22T07:54:47.202Z",
+  "endedAt": "2026-09-22T07:55:46.345Z",
+  "wallMs": 59144,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the declared seed src/store.rs was the only uncommitted change, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found the target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "a red stamp over the committed base 5f22cecfd325 stood in klin's state, with its ref resolved and no journal beside it"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      },
+      {
+        "name": "seeded-whole-run",
+        "passed": true,
+        "detail": "the production whole-run verdict was obtained before the session"
+      },
+      {
+        "name": "seeded-stop-evidence",
+        "passed": true,
+        "detail": "every seeded Stop has a structured production gate report"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "new_dead_symbol",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:54:48Z",
+      "ended": "2026-09-22T07:54:48Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:54:48Z",
+      "ended": "2026-09-22T07:54:48Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git status && echo --- && git diff",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:54:51Z",
+      "ended": "2026-09-22T07:54:51Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls && cat Cargo.toml 2>/dev/null && find . -name \"*.rs\" -not -path \"./target/*\" | xargs -I{} echo {} && find . -path ./target -prune -o -name \"*.yml\" -print -o -name \"*.yaml\" -print 2>/dev/null",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:54:58Z",
+      "ended": "2026-09-22T07:54:58Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo build 2>&1 | tail -60",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:04Z",
+      "ended": "2026-09-22T07:55:04Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo test 2>&1 | tail -40",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:12Z",
+      "ended": "2026-09-22T07:55:12Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/06ae19806827/repo/src/store.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:17Z",
+      "ended": "2026-09-22T07:55:17Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/06ae19806827/repo/src/store.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:20Z",
+      "ended": "2026-09-22T07:55:20Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/06ae19806827/repo/src/store.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:23Z",
+      "ended": "2026-09-22T07:55:23Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo build 2>&1 | tail -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:28Z",
+      "ended": "2026-09-22T07:55:28Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git show HEAD:src/store.rs | grep -n checksum",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:32Z",
+      "ended": "2026-09-22T07:55:32Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 11,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo test 2>&1 | tail -20 && echo ---DIFF--- && git diff",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:35Z",
+      "ended": "2026-09-22T07:55:35Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 12,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git add src/store.rs && git commit -m \"$(cat <<'EOF'\nSwitch store eviction from LRU to write-order (FIFO)\n\nRoom is now made by evicting the entry with the oldest write\ntimestamp instead of the oldest use, so reads no longer need to\nmutate entry state. Removes the now-unused used field, touch, and\nevict_oldest_use left behind by the policy change.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nEOF\n)\"\ngit status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-22T07:55:40Z",
+      "ended": "2026-09-22T07:55:40Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 13,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": true,
+      "stdout": "",
+      "stderr": "",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "one command per manifest",
+            "section": "build",
+            "value": "cargo build --all-targets"
+          },
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "Cargo.toml"
+            ]
+          },
+          {
+            "key": "test roots",
+            "rule": "the roots that match a language's test convention",
+            "section": "inventory",
+            "value": [
+              "tests"
+            ]
+          }
+        ],
+        "exit": 0,
+        "findings": [],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 16,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 8,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 9,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 24,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 2,
+              "reads": 2
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 4,
+              "ms": 3,
+              "parses": 4,
+              "reads": 4,
+              "shared": 2,
+              "states": 7
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 270,
+              "declaration_text_bytes": 936,
+              "declarations": 25,
+              "export_leaves": 0,
+              "export_text_bytes": 0,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 0,
+              "files": 4,
+              "import_text_bytes": 232,
+              "imports": 3,
+              "module_declarations": 1,
+              "module_text_bytes": 14,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 60,
+              "owners": 12,
+              "path_bytes": 48,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.7391304347826086,
+              "reference_canonical_allocation_ratio_milli": 1739,
+              "reference_canonical_allocations": 80,
+              "reference_canonical_bytes": 487,
+              "reference_distinct_names": 46,
+              "reference_name_bytes": 1457,
+              "reference_representation_after_bytes": 4192,
+              "reference_representation_before_bytes": 8384,
+              "references": 262,
+              "signature_bytes": 807,
+              "signatures": 25,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 1,
+            "ms": 88,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 14,
+                "distinct_names": 48,
+                "files": 3,
+                "index_ms": 0,
+                "measure_ms": 2,
+                "query_ms": 0,
+                "references": 140
+              },
+              "base_ms": 85,
+              "before": {
+                "declarations": 15,
+                "distinct_names": 50,
+                "files": 3,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 156
+              },
+              "layout": {
+                "cache_name_ms": 22,
+                "changes_ms": 0,
+                "ignored_ms": 8,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 25,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 1,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 18,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 6
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": {
+              "dependencies": 0,
+              "dispatches": {
+                "rust": 2,
+                "typescript": 0
+              },
+              "edges": 0,
+              "modules": 4,
+              "ms": 0,
+              "sources": 4
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": {
+              "dispatches": {
+                "rust": 2,
+                "typescript": 0
+              },
+              "holes": 0,
+              "items": 16,
+              "measured": 14,
+              "ms": 0,
+              "opaque": 2,
+              "surfaces": 2
+            },
+            "work": null
+          }
+        ],
+        "notes": [
+          {
+            "file": "",
+            "gate": "dead-symbols",
+            "outcome": "note",
+            "text": "1 dead symbol(s) the base already held:\n  src/store.rs:73  fn checksum(text: &str) -> u64 {"
+          }
+        ],
+        "status": "PASS",
+        "summary": "klin: 10 gate(s), all passed.",
+        "window": {
+          "after": "the working tree",
+          "before": "264e0809216b149e6ac89c2774054ea1889a0e1c",
+          "how": "the turn stamp, taken just now",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-22T07:55:45Z",
+      "ended": "2026-09-22T07:55:45Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 0,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 343,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 0,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 0,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 343
+  },
+  "turns": 15,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/06ae19806827/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/06ae19806827"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state holds this trial's own stamp over the committed base, 1 worktree entry(s), at /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/06ae19806827/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/06ae19806827/repo"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the declared seed src/store.rs was the only uncommitted change, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found the target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "a red stamp over the committed base 5f22cecfd325 stood in klin's state, with its ref resolved and no journal beside it"
+    }
+  }
+}

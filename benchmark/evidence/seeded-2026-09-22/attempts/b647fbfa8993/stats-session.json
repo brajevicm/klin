@@ -1,0 +1,65 @@
+{
+  "activity": {
+    "klin_ms": 763,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "geo \".\"",
+      "first": 1790063395,
+      "gate": "public-api",
+      "id": "9454d129763966ef",
+      "key": {
+        "file": "geo \".\"",
+        "gate": "public-api",
+        "line": 4,
+        "text": "Point (type)"
+      },
+      "label": "broken public contract",
+      "last": 1790063420,
+      "line": 4,
+      "outcome": "open",
+      "prompt": "A teammate added height information to the point type and had to hand the work o",
+      "remedy": "Restore the removed surface or item, or keep the declared contract it had at the base. A break a person means is an accepted entry, written in a reviewed commit.",
+      "text": "Point (type)",
+      "time": 1790063395,
+      "tries": 1,
+      "values": {
+        "break": 1,
+        "kind": "changed",
+        "now": "interface Point { height: number; lat: number; lon: number }",
+        "origin": "src/index.ts:4",
+        "was": "interface Point { lat: number; lon: number }"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

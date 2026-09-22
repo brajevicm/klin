@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--quiet",
+    "--test",
+    "oracle"
+  ],
+  "stdout": "\nrunning 3 tests\n...\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s\n\n",
+  "stderr": "",
+  "reason": ""
+}

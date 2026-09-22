@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-22T07-39-04/45763dec7f60/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "b06f6ea3-6509-4c67-8189-6f2d7708a465",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "7da2122b8d3f40a3478b84f6828110907049251008bb287d72391f89ed194221",
+  "sessionId": "b06f6ea3-6509-4c67-8189-6f2d7708a465",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":78523,\"stop_reason\":\"end_turn\",\"session_id\":\"b06f6ea3-6509-4c67-8189-6f2d7708a465\",\"total_cost_usd\":0.31678339999999994,\"usage\":{\"input_tokens\":36,\"cache_creation_input_tokens\":23993,\"cache_read_input_tokens\":765947,\"output_tokens\":6755,\"output_tokens_details\":{\"thinking_tokens\":2428},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":23993,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":558,\"cache_read_input_tokens\":49993,\"cache_creation_input_tokens\":745,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":745},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":36,\"outputTokens\":6755,\"cacheReadInputTokens\":765947,\"cacheCreationInputTokens\":23993,\"webSearchRequests\":0,\"costUSD\":0.31678339999999994,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":2428,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":19,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"The commit couldn't complete — git tried to GPG-sign it, but the sandbox blocks access to `~/.gnupg` (it's outside the writable/readable paths this session was given), so `gpg` failed with \\\"Operation not permitted\\\". The changes are staged and ready; I won't bypass signing with `--no-gpg-sign` since that wasn't requested.\\n\\nYou'll need to either commit this yourself outside the sandbox, or explicitly tell me to skip GPG signing for this commit if that's acceptable. Everything is staged in `src/lib.rs` and `tests/render.rs`:\\n\\n- Fixed a subtract-with-overflow panic in `wrap()` when called with `width: 0` on multi-word text (`width - line.chars().count()` → `width.saturating_sub(...)`)\\n- Removed a duplicated stray `// TODO` comment left at the end of the file\\n- Added test coverage for `wrap()`, which previously had none\\n\\nAll 7 tests pass and clippy is clean.\",\"ttft_ms\":1424,\"type\":\"result\",\"duration_ms\":90348,\"uuid\":\"ba5e41a5-0183-4279-a76d-106668e943a2\",\"ttft_stream_ms\":1029,\"time_to_request_ms\":248,\"first_content_frame_ms\":1029,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 78523,
+    "stop_reason": "end_turn",
+    "session_id": "b06f6ea3-6509-4c67-8189-6f2d7708a465",
+    "total_cost_usd": 0.31678339999999994,
+    "usage": {
+      "input_tokens": 36,
+      "cache_creation_input_tokens": 23993,
+      "cache_read_input_tokens": 765947,
+      "output_tokens": 6755,
+      "output_tokens_details": {
+        "thinking_tokens": 2428
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 23993,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 558,
+          "cache_read_input_tokens": 49993,
+          "cache_creation_input_tokens": 745,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 745
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 36,
+        "outputTokens": 6755,
+        "cacheReadInputTokens": 765947,
+        "cacheCreationInputTokens": 23993,
+        "webSearchRequests": 0,
+        "costUSD": 0.31678339999999994,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 2428,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 19,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "The commit couldn't complete — git tried to GPG-sign it, but the sandbox blocks access to `~/.gnupg` (it's outside the writable/readable paths this session was given), so `gpg` failed with \"Operation not permitted\". The changes are staged and ready; I won't bypass signing with `--no-gpg-sign` since that wasn't requested.\n\nYou'll need to either commit this yourself outside the sandbox, or explicitly tell me to skip GPG signing for this commit if that's acceptable. Everything is staged in `src/lib.rs` and `tests/render.rs`:\n\n- Fixed a subtract-with-overflow panic in `wrap()` when called with `width: 0` on multi-word text (`width - line.chars().count()` → `width.saturating_sub(...)`)\n- Removed a duplicated stray `// TODO` comment left at the end of the file\n- Added test coverage for `wrap()`, which previously had none\n\nAll 7 tests pass and clippy is clean.",
+    "ttft_ms": 1424,
+    "type": "result",
+    "duration_ms": 90348,
+    "uuid": "ba5e41a5-0183-4279-a76d-106668e943a2",
+    "ttft_stream_ms": 1029,
+    "time_to_request_ms": 248,
+    "first_content_frame_ms": 1029,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-22T08:01:28.387Z",
+  "endedAt": "2026-09-22T08:03:00.467Z",
+  "wallMs": 92080,
+  "timedOut": false
+}

@@ -1,0 +1,1 @@
+{"doc_size":{"README.md":50},"reachability":[{"languages":["rust"],"name":"src/commands/*_command.rs","pattern":"*_command.rs","roots":["src/commands"]}],"survey":{"documents":["README.md"],"manifests":["Cargo.toml"],"roots":["src","tests"],"test_roots":["tests"],"tests":true},"version":"0.2.1"}
