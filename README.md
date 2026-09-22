@@ -198,5 +198,6 @@ klin handles the deterministic quality-control loop around code changes. Humans 
 - [Trust model](docs/THREAT_MODEL.md)
 - [Porting klin to another harness](docs/HARNESS_INTEGRATION.md)
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
+- [Shadow/Active benchmark result, 2026-09-22](docs/benchmark-result-2026-09-22.md)
 
 Apache-2.0.
