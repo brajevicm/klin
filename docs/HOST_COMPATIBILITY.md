@@ -23,7 +23,7 @@ klin makes no compatibility promise for:
 - old or minimum-supported host versions,
 - cloud, remote, IDE or enterprise-managed surfaces of the same vendors,
 - historical host releases,
-- custom harnesses, which use the generic contract in
+- custom harness integrations, which implement the harness protocol in
   `docs/HARNESS_INTEGRATION.md`,
 - native Windows, where klin ships no binary.
 

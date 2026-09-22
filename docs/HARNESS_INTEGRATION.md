@@ -3,34 +3,48 @@
 This guide is for someone integrating klin with an agent harness klin does not
 maintain. It carries the worksheet you fill in, the lifecycle mapping, and the
 conformance level your answers land on. The wire shape lives beside the
-schemas, in [`integrations/generic/README.md`](../integrations/generic/README.md).
+schemas, in [`harness-protocol/README.md`](../harness-protocol/README.md).
 
 ## Where this sits
 
-klin ships three different things, and they are not three routes to one
-install. Section 19.0 of [the specification](SPEC.md) states the contract; this
-is the short form.
+Two questions place a harness, and they have separate answers. Section 19.0 of
+[the specification](SPEC.md) states them; this is the short form.
 
-Claude Code, Codex CLI and Cursor are **first-class**. klin maintains a native
-plugin for each, a built-in adapter in Rust, compatibility tests against the
-host's real payloads, and documentation it owns. Those three never route
-through this contract.
+The first is its **support status**: who keeps the integration working.
 
-Everything else is **custom**. You translate your harness's lifecycle into
-klin's generic event, run the klin binary, and translate the decision back.
-klin ships no adapter, no hook file and no skill placement for your harness,
-and a custom integration is outside the compatibility promise that covers the
-first-class plugins.
+- A **first-class integration** is a host klin maintains as part of its
+  compatibility promise, with a built-in adapter in Rust, compatibility tests
+  against the host's real payloads, and documentation klin owns. Today that is
+  Claude Code, Codex CLI and Cursor.
+- A **custom harness integration** is one you maintain, outside that promise.
+  It maps your harness into the harness protocol. Using the protocol does not
+  make your harness first-class.
+
+The second is the **delivery mechanism**: how klin reaches the host.
+
+- The **native plugin** is the host-managed plugin klin ships for a
+  first-class host.
+- The **standalone route** is the klin binary and `klin install`, which writes
+  explicit project or user hook files for a first-class host. It is a way to
+  deliver a first-class integration, not a tier of support of its own.
+- The **harness protocol** is klin's versioned event and decision contract,
+  in `harness-protocol/`. A custom harness integration implements it. The
+  first-class hosts never route through it.
+
+So everything outside the first-class three is custom. You translate your
+harness's lifecycle into a harness protocol event, run the klin binary, and
+translate the decision back. `klin install` does not connect your harness:
+klin ships no adapter, no hook file and no skill placement for it.
 
 The boundary is there for accuracy. A harness can reach a working integration
-through this contract today, and then say exactly what it enforces and what it
+through this protocol today, and then say exactly what it enforces and what it
 does not.
 
 ## What you are building
 
-A translation shim, and no second klin. The generic event normalizes into the
-same internal event the built-in adapters produce, and runs the same turn,
-guard and gate loop from there:
+A translation shim, and no second klin. A harness protocol event normalizes
+into the same internal event the built-in adapters produce, and runs the same
+turn, guard and gate loop from there:
 
 ```text
 Claude / Codex / Cursor native event
@@ -50,10 +64,10 @@ your harness's event
 your translation shim
        |
        v
- generic event, version 1
+ harness protocol event, version 1
        |
        v
- generic adapter -> internal event -> klin
+ protocol adapter -> internal event -> klin
 ```
 
 Your shim is the whole port. It is small on purpose: read the harness event,
@@ -90,10 +104,10 @@ happened, and klin allows every call it carries.
 | End a turn, and be blocked | Run every gate over the turn's window, and return the report | `klin gate --hook --changed` |
 | Load agent skills or instructions | Carry klin's canonical skill | see [The skill](#the-skill) |
 
-Each command reads one generic event on stdin. You do not need `--host`: the
-`klin_protocol` field places the event. `--host generic` exists as an override
-for `klin guard` and `klin gate`, and it refuses any payload that carries no
-version of this contract.
+Each command reads one harness protocol event on stdin. You do not need
+`--host`: the `klin_protocol` field places the event. `--host harness` exists as
+an override for `klin guard` and `klin gate`, and it refuses any payload that
+carries no version of this protocol.
 
 You do not have to support every row. You do have to say which rows you support.
 
@@ -113,9 +127,9 @@ The harness has all four:
   can repair the failure in the same turn.
 
 This is the closest a custom integration comes to the first-class agent loop.
-One difference remains and cannot be closed through this contract: klin's
+One difference remains and cannot be closed through this protocol: klin's
 `ask` decision. On Claude Code an ambiguous call becomes a question a person
-answers. Here it becomes a refusal, because nothing in this contract proves
+answers. Here it becomes a refusal, because nothing in this protocol proves
 your harness enforces a question. Fail closed and say so; do not weaken it to
 an allow.
 
@@ -171,7 +185,7 @@ documentation that an agent can still end its turn over a red gate.
 
 ## Promotion to first-class
 
-Using this contract does not make a harness first-class, and klin claims no
+Using this protocol does not make a harness first-class, and klin claims no
 first-class support for a harness on the strength of a shim. A harness becomes
 first-class only through its own ticket, which:
 

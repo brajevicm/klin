@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/brajevicm/klin/integrations/generic/event.schema.json",
-  "title": "klin generic harness event, version 1",
+  "$id": "https://github.com/brajevicm/klin/harness-protocol/event.schema.json",
+  "title": "klin harness protocol event, version 1",
   "description": "One lifecycle event a harness klin does not maintain sends klin on stdin. A harness sends only the evidence it can prove; a field it cannot prove is left out.",
   "type": "object",
   "required": ["klin_protocol", "event"],
   "additionalProperties": true,
   "properties": {
     "klin_protocol": {
-      "description": "The version of this contract. klin speaks version 1 and refuses every other version.",
+      "description": "The version of the harness protocol. klin speaks version 1 and refuses every other version.",
       "const": 1
     },
     "event": {

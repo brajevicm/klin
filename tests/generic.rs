@@ -224,15 +224,68 @@ fn a_named_generic_host_without_a_version_is_refused() {
     assert!(run.says("no version"), "{}", run.out);
 }
 
+#[test]
+fn a_named_harness_host_without_a_version_is_refused() {
+    let tree = failing();
+    let payload = json!({"event": "pre_tool", "file_paths": ["src/main.rs"]});
+
+    let run = feed(
+        tree.root(),
+        &["guard", "--host", "harness"],
+        &payload.to_string(),
+    );
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no version"), "{}", run.out);
+    assert!(run.says("harness protocol"), "{}", run.out);
+}
+
+/// `--host generic` shipped in 0.2.0, so a released shim that names it still reaches the
+/// harness protocol rather than a first-class host's shape. Spec 9.7.
+#[test]
+fn the_generic_host_name_still_names_the_harness_protocol() {
+    let tree = failing();
+    let event = event(
+        "pre_tool",
+        tree.root(),
+        json!({"tool": "write_file", "file_paths": ["klin.json"]}),
+    );
+
+    let run = feed(tree.root(), &["guard", "--host", "generic"], &event);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(!run.says("reading it as"), "{}", run.out);
+    assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
+}
+
+#[test]
+fn the_journal_names_a_protocol_event_the_harness_host() {
+    let tree = failing();
+    let run = feed(
+        tree.root(),
+        &["gate", "--hook", "--changed"],
+        &event("stop", tree.root(), json!({})),
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+
+    let lines = journal(&tree);
+    assert!(
+        lines
+            .iter()
+            .any(|line| line["kind"] == "stop" && line["host"] == "harness"),
+        "{lines:?}"
+    );
+}
+
 /// The shipped fixtures are the contract a port reads first, so every one of them must place as
 /// a generic event rather than fall back to a host's shape.
 #[test]
 fn every_shipped_fixture_places_as_a_generic_event() {
     let tree = failing();
-    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("integrations/generic/fixtures");
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("harness-protocol/fixtures");
     let Ok(entries) = std::fs::read_dir(&fixtures) else {
         panic!(
-            "the porting kit ships no fixtures at {}",
+            "the harness protocol ships no fixtures at {}",
             fixtures.display()
         );
     };
@@ -252,6 +305,6 @@ fn every_shipped_fixture_places_as_a_generic_event() {
     }
     assert!(
         read >= 5,
-        "the porting kit ships fewer fixtures than its README names"
+        "the harness protocol ships fewer fixtures than its README names"
     );
 }

@@ -213,7 +213,7 @@ fn the_readme_names_the_codex_hook_trust_step() {
 
 /// The README leads with the three first-class plugins, keeps the standalone binary a
 /// fallback, gives the repository opt-in its own heading, and points any other harness at the
-/// generic contract. Spec 19.0, 19.1, 19.4.
+/// harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1, 19.4.
 #[test]
 fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
     let readme = text(README);
@@ -228,7 +228,9 @@ fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
         "`klin update`",
         "### Other coding agents",
         "docs/HARNESS_INTEGRATION.md",
-        "These are not first-class integrations",
+        "harness protocol",
+        "Installing the klin binary alone does not connect another harness.",
+        "does not make that harness first-class",
     ] {
         assert!(readme.contains(said), "the README omits {said}");
     }

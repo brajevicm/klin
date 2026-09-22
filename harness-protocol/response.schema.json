@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/brajevicm/klin/integrations/generic/response.schema.json",
-  "title": "klin generic harness decision, version 1",
-  "description": "The one JSON object klin prints on stdout in answer to a generic event. The integration translates it back into its own host protocol. klin's exit code carries the same answer: 0 for allow and tell, 2 for deny and block.",
+  "$id": "https://github.com/brajevicm/klin/harness-protocol/response.schema.json",
+  "title": "klin harness protocol decision, version 1",
+  "description": "The one JSON object klin prints on stdout in answer to a harness protocol event. The integration translates it back into its own host protocol. klin's exit code carries the same answer: 0 for allow and tell, 2 for deny and block.",
   "type": "object",
   "required": ["action"],
   "additionalProperties": false,

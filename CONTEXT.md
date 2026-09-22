@@ -119,3 +119,23 @@ _Avoid_: catch, prevention
 The per-worktree record of each stop, guard refusal and reset, written
 best-effort and read by `klin stats`.
 _Avoid_: log, telemetry
+
+**First-class integration**:
+A host klin maintains as part of its compatibility promise: Claude Code,
+Codex CLI and Cursor. It is a support status, not a delivery mechanism.
+_Avoid_: supported harness, native integration
+
+**Custom harness integration**:
+A harness-specific integration kept outside klin's compatibility promise,
+which implements the harness protocol.
+_Avoid_: generic integration, community host
+
+**Standalone route**:
+The klin binary and `klin install`, delivering a first-class integration
+through explicit hook files.
+_Avoid_: standalone integration
+
+**Harness protocol**:
+klin's versioned event and decision contract in `harness-protocol/`, which a
+custom harness integration implements.
+_Avoid_: generic contract, universal adapter, SDK

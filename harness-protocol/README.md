@@ -1,15 +1,16 @@
-# The generic harness contract, version 1
+# The harness protocol, version 1
 
 klin maintains a native integration for Claude Code, Codex CLI and Cursor.
 Those three are first-class: they get built-in adapters, native plugins,
 compatibility tests and klin's own documentation.
 
-Every other harness integrates through the contract in this directory. You
-translate your harness's lifecycle into klin's event shape, run the klin
-binary, and translate the decision back. klin ships no adapter for your
-harness, and using this contract does not make it first-class.
+Every other harness needs a custom harness integration that implements the
+protocol in this directory. You translate your harness's lifecycle into klin's
+event shape, run the klin binary, and translate the decision back. klin ships
+no adapter for your harness, and using this protocol does not make it
+first-class.
 
-Start with [the porting guide](../../docs/HARNESS_INTEGRATION.md). It carries
+Start with [the porting guide](../docs/HARNESS_INTEGRATION.md). It carries
 the worksheet, the lifecycle mapping and the conformance levels. This file is
 the wire shape alone.
 
@@ -19,7 +20,7 @@ the wire shape alone.
 | --- | --- |
 | `event.schema.json` | The event your integration sends klin on stdin |
 | `response.schema.json` | The decision klin prints on stdout |
-| `adapter.sh` | A reference shim: event in, klin command, decision out |
+| `reference-adapter.sh` | A minimal reference of the boundary: event in, klin command, decision out. It integrates no host. |
 | `fixtures/` | One event of each kind, to run your integration against |
 
 ## The event
@@ -37,7 +38,7 @@ Your integration writes one JSON object to klin's stdin:
 }
 ```
 
-`klin_protocol` is the version of this contract, and it is what tells klin the
+`klin_protocol` is the version of this protocol, and it is what tells klin the
 event is yours rather than a host's. klin speaks version 1. Any other version
 is refused with a message naming the version klin does speak; it is never read
 as some other harness's event.
@@ -95,14 +96,14 @@ stdout. If you can read only one channel, read the exit code: nothing but a 0
 lets a call or a stop through.
 
 There is no `ask`. klin asks a question on hosts that enforce one, and this
-contract has no way to prove your harness does, so the class of call that would
+protocol has no way to prove your harness does, so the class of call that would
 be a question is refused instead. That is a real capability difference from the
 first-class hosts, and the porting guide says how to record it.
 
 ## Trying it
 
 ```bash
-integrations/generic/adapter.sh < integrations/generic/fixtures/pre-tool-path.json
+harness-protocol/reference-adapter.sh < harness-protocol/fixtures/pre-tool-path.json
 ```
 
 The fixtures name `/repo`, so change `root` to a repository of your own that

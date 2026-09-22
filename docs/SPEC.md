@@ -2378,10 +2378,10 @@ the existing adapters fill the new method with what they already did.
 
 A program-hook host loads a module in its own process and has no shell hook.
 OpenCode and Pi are this kind, and klin cannot be the hook. A shim outside
-this crate translates the host's event into the generic contract of 9.7,
+this crate translates the host's event into the harness protocol of 9.7,
 spawns the same `klin` command, and translates the answer back. The shim is
 the whole port, and klin gains no variant for it. A shim MUST NOT fabricate a
-first-class host's payload to reach klin: the generic contract exists so that
+first-class host's payload to reach klin: the harness protocol exists so that
 a harness klin does not maintain speaks as itself.
 
 Two facts shape both kinds. The stop answer is the report text, and the
@@ -2697,22 +2697,25 @@ costs the record and nothing else, by the rule of 14. The hook never prunes
 the file, and `cache clean` leaves it alone (7.4). Only the reader of 11.4
 tolerates what an interrupted writer can leave: a truncated last line.
 
-### 9.7 The generic contract
+### 9.7 The harness protocol
 
 A harness klin does not maintain speaks klin's own event shape rather than
 another host's, so no port has to fabricate a first-class host's payload.
 `klin_protocol` names the version, and it is the field that places the event:
-no host klin maintains sends it, so the generic adapter is tried before all of
-them. `--host generic` overrides detection, and refuses a payload that carries
-no version of this contract.
+no host klin maintains sends it, so the protocol's adapter is tried before all
+of them. `--host harness` overrides detection, and refuses a payload that
+carries no version of this protocol. `--host generic` names the same adapter,
+because klin 0.2.0 shipped the protocol under that name, and a shim built then
+MUST NOT have its event read as a first-class host's. The adapter's name, and
+so the `host` of a journal line (11.4), is `harness`.
 
 Version 1 carries `event`, one of `session`, `prompt`, `pre_tool` and `stop`,
 and then `root`, `session`, `prompt`, `tool`, `file_paths`, `command` and
-`blocked_before`. `integrations/generic/event.schema.json` is the checked-in
+`blocked_before`. `harness-protocol/event.schema.json` is the checked-in
 schema. The adapter maps these onto the one internal record of 9.1 and nothing
 further: klin gains no second turn, guard or gate engine for a custom harness.
 
-The contract carries only evidence the harness proves. `file_paths` holds the
+The protocol carries only evidence the harness proves. `file_paths` holds the
 paths the harness can prove the call will touch, and `command` holds a command
 only where the harness knows the one the agent is about to run. Missing
 evidence stays missing: klin MUST NOT read a file write out of a tool name or
@@ -2720,14 +2723,14 @@ out of opaque tool arguments, and a call that proves neither a path nor a
 command is allowed.
 
 The decision is one JSON object on stdout, under
-`integrations/generic/response.schema.json`: `allow`, `deny` with a `reason`,
+`harness-protocol/response.schema.json`: `allow`, `deny` with a `reason`,
 `block` with the report as its `message`, or `tell` with a note as its
 `message`. Exit 0 carries `allow` and `tell`, exit 2 carries `deny` and
 `block`, and a refusal also goes to stderr so it holds where stdout goes
 unread. At most one decision is printed, on a line of its own, beside the
 report text a blocked stop also prints. A stop that passes prints no decision,
 as it does on every other host, so exit 0 with no decision ends the turn. No host-specific field of Claude Code, Codex CLI or Cursor appears in
-this contract. There is no `ask`: nothing here proves a question the harness
+this protocol. There is no `ask`: nothing here proves a question the harness
 enforces, so the ambiguous class of 9.4 fails closed as it does on Codex and
 Cursor, and 19.4 has the integrator record that difference.
 
@@ -4115,7 +4118,7 @@ Distribution, in this order, because each step depends on the one before:
 - [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
 - [x] Explicit hooks for Codex and its host adapter (#68)
 - [x] Explicit hooks for Cursor and its host adapter (#67)
-- [x] `klin install`, the standalone integration reconciler (#216)
+- [x] `klin install`, the standalone route's reconciler (#216)
 - [x] The standalone agent skill and its project/user reconciliation contract (#217)
 - [x] The GitHub Action
 - [ ] Homebrew tap, `cargo install`, npm wrapper (#64). None of them ships,
@@ -4141,29 +4144,50 @@ Before calling it 1.0:
 
 ## 19. Installation and Distribution
 
-### 19.0 Three product roles, and the words for a scope
+### 19.0 Support status, delivery, and the words for a scope
 
-klin ships three different things, and they are not interchangeable routes to
-one install:
+Two separate axes place a host. Support status says who keeps an integration
+working. Delivery says how klin reaches the host. A first-class host is
+reached by either of two delivery mechanisms, so the axes do not collapse into
+one list of integration types.
 
-1. **The first-class native plugin.** klin maintains one for Claude Code, one
-   for Codex CLI and one for Cursor. It is the preferred local product
-   experience on those hosts and part of klin's compatibility promise. It
-   carries the host hooks, the klin skill and a pinned wrapper that fetches a
-   pinned runtime. Section 19.2.
-2. **The standalone binary.** It is the portability and reconciliation layer.
-   It owns explicit hook files a repository or a person commits or keeps,
-   standalone skill placement, managed and manual installations, and every
-   host that has no native plugin surface. Sections 19.1 and 19.3.
-3. **A custom harness integration.** A harness klin does not maintain that
-   translates its own lifecycle into the hook contract of section 9. klin
-   states the contract; it ships no adapter for such a harness.
+Support status:
+
+1. **First-class integration.** A host klin maintains as part of its
+   compatibility promise: Claude Code, Codex CLI and Cursor. Each has a
+   built-in adapter, compatibility evidence klin owns
+   (`docs/HOST_COMPATIBILITY.md`), and the native plugin and standalone routes
+   klin supports for it.
+2. **Custom harness integration.** A harness-specific integration maintained
+   outside klin's compatibility promise, which maps its harness into the
+   harness protocol (9.7, 19.4). Using the protocol does not make a host
+   first-class.
+
+Delivery and interoperability:
+
+1. **Native plugin.** The host-managed plugin klin ships for a first-class
+   host. It is the preferred local product experience on that host. It carries
+   the host hooks, the klin skill and a pinned wrapper that fetches a pinned
+   runtime. Section 19.2.
+2. **Standalone route.** The klin binary and `klin install`, for a first-class
+   host or surface where explicit hook reconciliation fits. It owns explicit
+   hook files a repository or a person commits or keeps, standalone skill
+   placement, managed and manual installations, and every first-class host
+   surface that has no native plugin. Sections 19.1 and 19.3.
+3. **Harness protocol.** klin's versioned event and decision contract of 9.7,
+   which a custom harness integration implements. klin states the protocol and
+   ships a reference adapter for it in `harness-protocol/`; it ships no adapter
+   for any particular harness.
+
+"Standalone integration" is not a category: the standalone route delivers a
+first-class integration and is not a tier of support.
 
 A person on a first-class host installs the plugin alone. The plugin is not
 half of an install that a second standalone binary completes: the wrapper it
-carries fetches the runtime. The standalone binary is for the person who
+carries fetches the runtime. The standalone route is for the person who
 deliberately does not use a plugin, for a host surface that loads no plugin,
-and for a managed or custom environment that needs explicit files.
+and for a managed environment that needs explicit files. A custom harness
+integration uses the binary of 19.1 and not this route (19.4).
 
 No route gates a repository by itself. Under `--hook` a `klin.json` at the
 repository root is the marker that the repository opted in, and a tree without
@@ -4179,8 +4203,8 @@ The contract uses five scope words, and no others:
   remote agent.
 - **plugin** — a first-class integration the host manages and klin maintains.
 - **managed** — host policy or configuration an organization controls.
-- **custom** — a harness that is not first-class and uses the public
-  integration contract of section 9.
+- **custom** — a harness that is not first-class and implements the harness
+  protocol of 9.7.
 
 `global` is too broad a word for a user-scope install, so this contract does
 not use it for one. The CLI uses the same word: `klin install --user` writes
@@ -4482,30 +4506,34 @@ from an agent exactly as it refuses `klin init` and `klin turn reset`.
 
 ### 19.4 A custom harness
 
-A harness klin does not maintain integrates through the generic contract of
+A harness klin does not maintain integrates through the harness protocol of
 9.7: klin's own versioned event on stdin, klin's own decision on stdout, and
 the same three commands. It supplies the binary from 19.1 and translates its
-own lifecycle into that contract. klin ships no adapter, no hook file and no
-skill placement for such a harness, and a custom integration is not part of the
-compatibility promise that covers the first-class plugins. The contract is a
-portability seam, not a second engine: a generic event normalizes into the one
+own lifecycle into that protocol. klin ships no adapter, no hook file and no
+skill placement for such a harness, `klin install` connects none, and a
+custom integration is not part of the compatibility promise that covers the
+first-class plugins. The protocol is a
+portability seam, not a second engine: a protocol event normalizes into the one
 internal event of 9.1 and runs the same turn, guard and gate loop.
 
 Claude Code, Codex CLI and Cursor are first-class and MUST NOT route through
-the generic contract in production. Each keeps its built-in adapter, its native
-plugin, its compatibility tests and its own documentation. A generic
-integration is custom until a separate ticket promotes the harness: that ticket
-proves the host's current official semantics, adds a built-in adapter or native
-plugin, adds adversarial compatibility fixtures, defines install, update and
-trust behavior, and moves the harness into the first-class matrix. Speaking the
-generic contract alone MUST NOT be described as first-class support.
+the harness protocol in production. Each keeps its built-in adapter, its native
+plugin, its compatibility tests and its own documentation. A custom harness
+integration stays custom until a separate ticket promotes the harness: that
+ticket proves the host's current official semantics, adds a built-in adapter or
+native plugin, adds adversarial compatibility fixtures, defines install, update
+and trust behavior, and moves the harness into the first-class matrix.
+Speaking the harness protocol alone MUST NOT be described as first-class
+support.
 
-**The porting kit.** `integrations/generic/` carries the two schemas, one
-fixture per event kind and a reference shim; `docs/HARNESS_INTEGRATION.md`
-carries the worksheet, the lifecycle mapping and the conformance levels. The
-kit MUST be enough to port a harness without reading klin's Rust adapters. The
-shim stays small and dependency-light: it demonstrates the translation and is
-not a second supported host runtime. The kit MUST NOT hold a copy of the skill.
+**The protocol directory and the guide.** `harness-protocol/` carries the two
+schemas, one fixture per event kind and `reference-adapter.sh`, a minimal
+reference of the protocol boundary that integrates no host;
+`docs/HARNESS_INTEGRATION.md` carries the worksheet, the lifecycle mapping and
+the conformance levels. The two MUST be enough to port a harness without
+reading klin's Rust adapters. The reference adapter stays small and
+dependency-light: it demonstrates the translation and is not a second
+supported host runtime. `harness-protocol/` MUST NOT hold a copy of the skill.
 klin's canonical skill is the one authored text of 19.3, and the guide points a
 custom integration at it.
 
@@ -4515,7 +4543,7 @@ is missing rather than claiming equivalence with a native one.
 - **Full** — session or prompt lifecycle, pre-tool interception with proven
   evidence, an end-of-turn hook, and a block that returns the report to the
   agent. One difference from a first-class host remains: klin's `ask` has no
-  channel this contract can prove, so the ambiguous class of 9.4 is refused
+  channel this protocol can prove, so the ambiguous class of 9.4 is refused
   (9.7).
 - **Gate** — an end-of-turn check that reports a failure, missing one or more
   of the pre-tool and turn-feedback capabilities. The missing ones are named.

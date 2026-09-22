@@ -99,7 +99,7 @@ pub trait Adapter: Sync {
     /// write must then stay as it is. Section 19.3.
     fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf>;
     /// The host's own name for the event this payload is. Every host klin maintains sends it
-    /// under `hook_event_name`; the generic contract of 19.4 names its own field.
+    /// under `hook_event_name`; the harness protocol of 9.7 names its own field.
     fn event_name(&self, payload: &Value) -> String {
         text(payload.get("hook_event_name"))
     }

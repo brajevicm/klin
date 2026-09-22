@@ -80,13 +80,11 @@ klin install
 
 ### Other coding agents
 
-Other coding-agent harnesses can integrate through klin's versioned [generic harness contract](docs/HARNESS_INTEGRATION.md).
+Claude Code, Codex, and Cursor are the first-class integrations. Any other coding-agent harness can use klin through its versioned [harness protocol](harness-protocol/), but somebody has to build that integration for the harness.
 
-These are not first-class integrations: installing the klin binary alone does not connect another harness. The harness must translate its lifecycle events into klin's generic protocol.
+Installing the klin binary alone does not connect another harness. The harness has to send its lifecycle events to klin in the protocol's format and turn klin's decisions back into its own answers. Using the protocol does not make that harness first-class.
 
-See [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md).
-
-<!-- PRE-RELEASE: #271 is exploring clearer naming/taxonomy for the generic harness contract and its repository path. Update this subsection after that decision lands. -->
+Start with [the porting guide](docs/HARNESS_INTEGRATION.md).
 
 ## Why klin
 

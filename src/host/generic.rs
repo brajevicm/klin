@@ -9,12 +9,14 @@ use super::{Adapter, Decision, Event, Hook, Stop, flag, refused, text};
 pub const PROTOCOL: &str = "klin_protocol";
 pub const VERSION: u64 = 1;
 
-const NAME: &str = "generic";
-/// The generic contract's own name for the event a person's prompt raises.
+const NAME: &str = "harness";
+/// The name `--host` took before the protocol had its own, kept because 0.2.0 shipped it.
+const ALIAS: &str = "generic";
+/// The harness protocol's own name for the event a person's prompt raises.
 const PROMPT_EVENT: &str = "prompt";
 
-const UNSUPPORTED: &str = "klin: refused — this event names a version of klin's generic \
-    integration contract that this klin does not speak. Send version 1, or upgrade klin.";
+const UNSUPPORTED: &str = "klin: refused — this event names a version of klin's harness \
+    protocol that this klin does not speak. Send version 1, or upgrade klin.";
 
 /// A harness klin does not maintain, speaking klin's own versioned event shape rather than
 /// another host's. `spoken` says whether the event names the version klin speaks: an event of
@@ -31,7 +33,7 @@ const REFUSES: &dyn Adapter = &Generic { spoken: false };
 pub fn placed(named: Option<&str>, payload: &Value) -> Option<&'static dyn Adapter> {
     let held = payload.get(PROTOCOL);
     let mine = match named {
-        Some(name) => name == NAME,
+        Some(name) => name == NAME || name == ALIAS,
         None => held.is_some(),
     };
     if !mine {
@@ -51,8 +53,8 @@ fn told(held: Option<&Value>) -> &'static dyn Adapter {
         None => "no version".to_string(),
     };
     eprintln!(
-        "klin: NOTE: this event names {named} of klin's generic integration contract, and klin \
-         speaks version {VERSION} — so klin refuses the event rather than guessing its shape."
+        "klin: NOTE: this event names {named} of klin's harness protocol, and klin speaks version \
+         {VERSION} — so klin refuses the event rather than guessing its shape."
     );
     REFUSES
 }
@@ -89,7 +91,7 @@ impl Adapter for Generic {
         PROMPT_EVENT
     }
 
-    /// The generic contract names its own event kinds under `event`. Every host klin maintains
+    /// The harness protocol names its own event kinds under `event`. Every host klin maintains
     /// sends `hook_event_name`. A version klin does not speak names no event either, so a prompt
     /// klin refused to read moves no prompt counter and no mark. Spec 6.2.1, 9.7.
     fn event_name(&self, payload: &Value) -> String {

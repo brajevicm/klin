@@ -1,5 +1,12 @@
 # A versioned generic contract for a custom harness
 
+> Renamed on 2026-09-22 by #271, with the wire shape unchanged. The contract is
+> now the harness protocol, in `harness-protocol/`, where `adapter.sh` became
+> `reference-adapter.sh` and the schema `$id` values moved with the path.
+> `--host harness` is the override, and `--host generic` still names the same
+> adapter because klin 0.2.0 shipped it. The text below records the decision
+> as it was made.
+
 klin maintains a native integration for Claude Code, Codex CLI and Cursor.
 ADR 0023, ADR 0030, ADR 0045 and ADR 0046 decided how those three are built and
 installed, and nothing here changes any of it.
