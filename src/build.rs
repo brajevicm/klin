@@ -208,7 +208,7 @@ fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, How)> {
             return Some((format!("{up}node_modules/.bin/{tool}"), How::Installed));
         }
         if PNP.iter().any(|name| here.join(name).is_file()) {
-            return Some((format!("{YARN} {tool}"), How::Yarn));
+            return Some((format!("{} {tool}", YARN), How::Yarn));
         }
         match here.parent() {
             Some(parent) if here != root => here = parent.to_path_buf(),
