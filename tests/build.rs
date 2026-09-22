@@ -572,12 +572,16 @@ fn a_derived_build_runs_the_compiler_installed_beside_the_manifest() {
     let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the-project-compiler-spoke"), "{}", run.out);
-    assert!(run.says("node_modules/.bin/tsc --noEmit"), "{}", run.out);
+    assert!(
+        run.says("resolved: build node_modules/.bin/tsc --noEmit"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("could not run"), "{}", run.out);
 }
 
-/// Of two installed compilers the nearest one above the manifest runs, and a passing compile
-/// prints no NOTE. Spec 9.3.
+/// Of two installed compilers the nearest one above the manifest runs, and the report names the
+/// command it resolved, relative to the directory that entry runs in. Spec 5.4, 9.3.
 #[test]
 fn a_derived_build_runs_the_nearest_compiler_above_the_manifest() {
     let tree = Tree::new();
@@ -587,15 +591,23 @@ fn a_derived_build_runs_the_nearest_compiler_above_the_manifest() {
         installed(
             &tree,
             &format!("{at}/.bin/tsc"),
-            &format!("#!/bin/sh\necho \"{at}\" >> \"{}\"\n", tree.at("ran")),
+            &format!(
+                "#!/bin/sh\necho \"{at}\" >> \"{}\"\nexit 1\n",
+                tree.at("ran")
+            ),
         );
     }
     tree.base();
     tree.write("web/app/src/index.ts", "export const a = 2;\n");
 
     let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert_eq!(ran(&tree), "web/node_modules\n", "{}", run.out);
+    assert!(
+        run.says("resolved: build ../node_modules/.bin/tsc --noEmit in web/app"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("could not run"), "{}", run.out);
 }
 
@@ -687,13 +699,16 @@ fn a_plug_and_play_checkout_runs_the_compiler_through_yarn() {
     installed(
         &tree,
         "toolchain/yarn",
-        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+        &format!(
+            "#!/bin/sh\necho \"yarn $* $COREPACK_ENABLE_NETWORK\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
     );
     tree.write("src/index.ts", "export const a = 2;\n");
 
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(ran(&tree), "yarn exec tsc --noEmit\n", "{}", run.out);
+    assert_eq!(ran(&tree), "yarn run -B tsc --noEmit 0\n", "{}", run.out);
 }
 
 /// Resolution is for the tool a JavaScript package manager installs alone. A `node_modules/.bin`
@@ -799,5 +814,61 @@ fn a_plug_and_play_checkout_with_no_yarn_is_unmeasured() {
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("could not run"), "{}", run.out);
+    assert_eq!(ran(&tree), "", "{}", run.out);
+}
+
+/// A `node_modules` that holds the tool wins over a Plug'n'Play marker beside it, so a marker a
+/// move away from Plug'n'Play left behind does not take the run. Spec 9.3.
+#[test]
+fn an_installed_tool_wins_over_a_plug_and_play_marker_beside_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(
+        ".pnp.cjs",
+        "// a marker a move away from Plug'n'Play left\n",
+    );
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the installed tool\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "the installed tool\n", "{}", run.out);
+}
+
+/// A Plug'n'Play checkout whose Yarn holds no such binary fails its own build, and klin does not
+/// compile with the tool on `PATH` instead. Spec 9.3.
+#[test]
+fn a_plug_and_play_checkout_whose_yarn_holds_no_tool_fails_its_own_build() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        "#!/bin/sh\necho 'Usage Error: Couldn'\\''t find a binary named tsc' >&2\nexit 1\n",
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("Couldn't find a binary named tsc"), "{}", run.out);
     assert_eq!(ran(&tree), "", "{}", run.out);
 }

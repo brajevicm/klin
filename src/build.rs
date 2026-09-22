@@ -175,18 +175,27 @@ fn command(manifests: &[String], path: &str) -> Option<(Entry, String)> {
 /// checkout, which installs no `node_modules`, runs it through Yarn's own binary. Nothing here
 /// downloads a tool. The derived value is the command of 5.4 and this resolution is no part of
 /// it, so nothing a checkout installs reaches the journal or the build order. Spec 5.4, 9.3.
-fn runs(root: &Path, at: &Path, entry: &Entry) -> (String, bool) {
+fn runs(root: &Path, at: &Path, entry: &Entry) -> (String, How) {
     let (tool, args) = entry.run.split_once(' ').unwrap_or((&entry.run, ""));
-    let Some((found, own)) = entry.node.then(|| installed(root, at, tool)).flatten() else {
-        return (entry.run.clone(), false);
+    let Some((found, how)) = entry.node.then(|| installed(root, at, tool)).flatten() else {
+        return (entry.run.clone(), How::Wrote);
     };
-    (format!("{found} {args}").trim_end().to_string(), own)
+    (format!("{found} {args}").trim_end().to_string(), how)
+}
+
+/// Where the command one entry runs came from: as the table or a person wrote it, as the binary
+/// the project installed, or through the Yarn of a Plug'n'Play checkout. Spec 9.3.
+#[derive(PartialEq)]
+enum How {
+    Wrote,
+    Installed,
+    Yarn,
 }
 
 /// How the checkout runs one tool of a JavaScript project, and whether that command is the
 /// project's own tool, which a broken install leaves unable to run. `None` is a checkout that
 /// installed none, which leaves the tool on `PATH`.
-fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, bool)> {
+fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, How)> {
     let mut here = at.to_path_buf();
     let mut up = String::new();
     loop {
@@ -196,10 +205,10 @@ fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, bool)> {
             .symlink_metadata()
             .is_ok()
         {
-            return Some((format!("{up}node_modules/.bin/{tool}"), true));
+            return Some((format!("{up}node_modules/.bin/{tool}"), How::Installed));
         }
         if PNP.iter().any(|name| here.join(name).is_file()) {
-            return Some((format!("yarn exec {tool}"), false));
+            return Some((format!("{YARN} {tool}"), How::Yarn));
         }
         match here.parent() {
             Some(parent) if here != root => here = parent.to_path_buf(),
@@ -208,6 +217,10 @@ fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, bool)> {
         up.push_str("../");
     }
 }
+
+/// How Yarn runs a tool of the project it installed. `-B` is Yarn's binaries-only form, so a
+/// script a person named after the tool cannot stand in for the tool. Spec 9.3.
+const YARN: &str = "yarn run -B";
 
 /// The files a Yarn Plug'n'Play checkout holds in place of a `node_modules` directory. Yarn 2.0
 /// to 2.3 wrote the first name and every later Yarn writes the second.
@@ -263,44 +276,62 @@ fn holds(entry: &Entry, path: &str) -> bool {
 }
 
 /// The first entry that failed, or the first whose command the shell could not find when every
-/// entry that ran passed, or None when every entry built. An absent tool skips its own entry
-/// and no other, so a compile error behind it still blocks. Spec 9.3.
-pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<Failure> {
+/// entry that ran passed, or None when every entry built, and the line each entry klin resolved
+/// against the checkout says it ran. An absent tool skips its own entry and no other, so a
+/// compile error behind it still blocks. Spec 9.3.
+pub fn failure(root: &Path, wanted: &[&Entry]) -> (Option<Failure>, Vec<Said>) {
     let mut missing = None;
+    let mut said = Vec::new();
+    let mut failed = None;
     for entry in wanted {
-        match built(root, entry) {
+        let (why, line) = built(root, entry);
+        said.extend(line.map(|line| (line, None)));
+        match why {
             None => (),
             Some(found @ Failure::Missing { .. }) => {
                 missing.get_or_insert(found);
             }
-            Some(failed) => return Some(failed),
+            Some(found) => {
+                failed = Some(found);
+                break;
+            }
         }
     }
-    missing
+    (failed.or(missing), said)
 }
 
-/// Why one entry did not build, or None when it built. A tool the project installed is not an
-/// absent tool: a broken install fails its own build rather than leaving the tree unmeasured.
-/// Spec 9.3.
-fn built(root: &Path, entry: &Entry) -> Option<Failure> {
+/// Why one entry did not build, or None when it built, and the line that says what it ran when
+/// klin resolved the command against the checkout. A tool the project installed is not an absent
+/// tool: a broken install fails its own build rather than leaving the tree unmeasured. Spec 9.3.
+fn built(root: &Path, entry: &Entry) -> (Option<Failure>, Option<String>) {
     let at = match &entry.root {
         Some(under) => root.join(under),
         None => root.to_path_buf(),
     };
-    let (run, own) = runs(root, &at, entry);
-    let done = match Command::new("sh")
-        .arg("-c")
-        .arg(&run)
-        .current_dir(&at)
-        .output()
-    {
+    let (run, how) = runs(root, &at, entry);
+    let line = (run != entry.run).then(|| match &entry.root {
+        Some(under) => format!("resolved: {BUILD} {run} in {under}"),
+        None => format!("resolved: {BUILD} {run}"),
+    });
+    (ran(&at, &run, how), line)
+}
+
+/// What the shell made of one command, which is the whole test klin applies: it reads no shell
+/// message and guesses no tool name. ADR 0048.
+fn ran(at: &Path, run: &str, how: How) -> Option<Failure> {
+    let mut shell = Command::new("sh");
+    shell.arg("-c").arg(run).current_dir(at);
+    if how == How::Yarn {
+        shell.env("COREPACK_ENABLE_NETWORK", "0");
+    }
+    let done = match shell.output() {
         Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
         Ok(done) => done,
     };
     match done.status.code() {
         Some(0) => None,
-        Some(MISSING) if !own => Some(Failure::Missing {
-            run,
+        Some(MISSING) if how != How::Installed => Some(Failure::Missing {
+            run: run.to_string(),
             output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
         }),
         _ => {

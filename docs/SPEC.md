@@ -635,7 +635,12 @@ Each check documents its rule. The rules for the shipped checks:
   The derived value is the command the table names, such as `tsc --noEmit`,
   and it stays a function of the derivation commit. Which tool a checkout
   runs that command with is resolved when the build runs, per 9.3, and
-  reaches neither the derived value nor the order the entries run in. klin never invokes `npx`, `npm
+  reaches neither the derived value nor the order the entries run in. A run
+  that resolved a command against the checkout prints one `resolved:` line
+  per such entry in its text report, beside the `derived:` line and above the
+  gates, so the report names what ran. A `resolved:` line is a fact of the
+  checkout and no derivation, so neither the journal nor the `--json` object
+  carries it. klin never invokes `npx`, `npm
   exec` or any other command that could fetch a tool. A `build` a person
   wrote runs exactly as written.
 
@@ -2454,14 +2459,22 @@ package manager installed. From the directory the entry runs in, and then
 each directory above it up to the root klin measures and never above it, the
 nearest `node_modules/.bin` that holds the tool names it, written relative to
 that directory, and a Plug'n'Play checkout, which installs no
-`node_modules`, runs the tool through Yarn's own binary. The tool on `PATH`
+`node_modules`, runs the tool as `yarn run -B <tool>`, which is Yarn's
+binaries-only form, so a script a person named after the tool cannot stand in
+for it. A `node_modules` that holds the tool wins over a Plug'n'Play marker
+in the same directory, so a marker left behind by a move away from
+Plug'n'Play does not take the run. klin runs Yarn with Corepack's network
+disabled, so a Yarn version this host does not already hold cannot be
+fetched: that run fails or is unmeasured by its exit code, as every other
+build is. The tool on `PATH`
 runs when the checkout installed none. A candidate that is there and cannot
 run is still the project's tool, so a broken install, such as one whose link
 points nowhere, fails its own build and klin does not quietly compile with
 another: the 127 of ADR 0048 is an absent tool only for a command klin did
 not resolve against the checkout. A Plug'n'Play checkout with no Yarn on the
-hook's `PATH` is unmeasured under that rule and tells the NOTE. klin never invokes `npx`, `npm
-exec`, `yarn dlx` or any other command that could fetch a tool. This applies
+hook's `PATH` is unmeasured under that rule and tells the NOTE. klin never invokes
+`npx`, `npm exec`, `yarn dlx` or any other command that could fetch a tool,
+and it runs no command that a package manager could turn into a download. This applies
 to a derived JavaScript command alone: a derived `cargo` or `go` command, and
 every command a person wrote, run exactly as they read. A tool a project
 installed but did not put on `PATH` is therefore found, and the NOTE below is
