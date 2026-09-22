@@ -741,6 +741,8 @@ The reference MUST also state what the key tables alone do not say:
   sections reject
 - the path-to-ceiling shape of `doc_size` and the built-in citation extensions
   of `doc_citations`
+- that `publish = false` and `"private": true` do not make a package not
+  applicable to `public_api` (ADR 0050)
 - that a file which leaves compact scope is reported as lost coverage under
   the base-era scope rule of 8.6
 
@@ -1854,16 +1856,21 @@ its conditions, and, without `exports`, the first of `types`, `typings`,
 `main` and `module` that names one. Generated JavaScript is never mapped back
 to source, `src/index.ts` is never guessed, and a package none of whose
 entries names a supported source is not applicable and is said so on a
-`NOTE:` line, not a hole.
+`NOTE:` line, not a hole. Publication metadata does not decide a surface: a
+Cargo package with `publish = false` and an npm package with
+`"private": true` keep their surfaces, because a workspace sibling, a path
+dependency or a git dependency can still consume them (ADR 0050).
 
 An *item* is what a consumer names under a surface, and its identity is the
 surface, the exported path or name and the item's kind, never the file that
-declares it. From a Rust root the check follows every plain `pub` declaration,
-every `pub mod`, and every `pub use` leaf: an alias renames the item, a glob
-exposes every public item of the module it reaches less the names the
-globbing module exposes itself, a re-export of a module exposes everything
-under it, and a plain `pub` item inside a private module is external only
-where a `pub use` exposes it. `pub(crate)`, `pub(super)`, `pub(self)` and
+declares it. In this check, *external* means outside the crate or package
+that declares the item, including a sibling in the same repository, and never
+means published. The check judges only external items. From a Rust root the check follows
+every plain `pub` declaration, every `pub mod`, and every `pub use` leaf: an
+alias renames the item, a glob exposes every public item of the module it
+reaches less the names the globbing module exposes itself, a re-export of a
+module exposes everything under it, and a plain `pub` item inside a private
+module is external only where a `pub use` exposes it. `pub(crate)`, `pub(super)`, `pub(self)` and
 `pub(in ...)` are never external. A public inherent method is an item under
 its type. From a TypeScript entry file the check follows exported
 declarations, default exports, local export clauses, and named, aliased,

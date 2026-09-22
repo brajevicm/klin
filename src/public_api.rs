@@ -28,6 +28,7 @@ use crate::syntax::{self, structural};
 pub const SECTION: &str = "public_api";
 pub const NAME: &str = "public-api";
 pub const KEYS: &[Key] = &[];
+pub const REFERENCE_TEXT: &str = "A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050).";
 
 const BREAK: &str = "break";
 const KIND: &str = "kind";

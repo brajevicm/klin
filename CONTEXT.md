@@ -102,6 +102,13 @@ The host's grouping of turns under one id, which klin records and never
 judges. A host with no id leaves the session empty.
 _Avoid_: conversation, run
 
+**External**:
+In `public-api`, outside the crate or package that declares an item,
+including a sibling in the same repository. The gate judges what is
+external. Registry publication does not decide it: `publish = false` and
+`"private": true` change nothing.
+_Avoid_: published, outside the repository
+
 **Intervention**:
 One gate failure on a stop that spent the prompt's gate block. A later failure,
 once that block is spent, is an observation. It is the hook's unit, not the
