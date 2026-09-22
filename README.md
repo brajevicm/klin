@@ -171,8 +171,6 @@ It should:
 - [Trust and enforcement](docs/THREAT_MODEL.md)
 - [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md)
 
-## Contributing
-
 Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
 Security issue? [Follow the private reporting instructions](SECURITY.md).
 
