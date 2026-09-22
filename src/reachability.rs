@@ -34,7 +34,11 @@ const LABEL: &str = "file";
 /// The fewest members a family may be derived from. Spec 5.4.
 const MEMBERS: usize = 3;
 const REMEDY: &str = "Wire this file into the application through a real source reference, or \
-                      delete it if the implementation is unused.";
+                      delete it if the implementation is unused. If a public-api break names what \
+                      an unreached file held, decide the two separately: restore the public \
+                      contract where the task keeps it, or leave the break for a person to accept \
+                      where the task removes it, and keep and wire the implementation if it is \
+                      still needed, and delete it only if it is unused.";
 
 pub const NAME: Key = Key {
     name: "name",

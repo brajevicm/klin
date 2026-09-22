@@ -1507,8 +1507,19 @@ and is neither unreached nor unsupported. A file that leaves the tree is
 member that loses its last external reference is `worsened`, and one
 unreached in both trees is one NOTE. The remedy names the first proven
 reached sibling of the family in path order, and none when every sibling is
-unreached or reached only through a shared name. The check does not resolve
-imports, `mod foo;`, side-effect imports, re-exports, string registries,
+unreached or reached only through a shared name. The remedy also names the
+conflict with a public-api break over what an unreached member held, on
+every unreached finding because a check reads no other gate's findings, and
+keeps the two decisions apart. The task decides the public contract: it is
+restored where the task keeps it, and the break is left for a person to
+accept where the task removes it. Whether the implementation is still needed
+decides the file: it is kept and wired in, or deleted only if unused. A
+public-api identity names no file, and an unreached member may still be live
+through a caller this check does not resolve, so neither decision implies the
+other. Pinned by
+`an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete`.
+The check does not resolve imports, `mod foo;`, side-effect imports,
+re-exports, string registries,
 dependency injection, framework discovery by name or attribute, macro or
 build-generated callers, or callers outside the tree, which belong to the
 module graph of `layering` or to no V1 check; a family wired that way is narrowed by path or accepted by a
@@ -1948,7 +1959,19 @@ fails, an opaque clause that changed fails, and everything else passes: a new
 surface, a new item, a widened visibility, an opaque item that became
 measured. Each break carries `break` at 1 with the surface as its file and
 `NAME (KIND)` as its text, so an intentional break is an accepted entry under
-that identity, and the base holds no break by construction. A glob over
+that identity, and the base holds no break by construction. The remedy keeps
+the base's contract only where the task allows it and tells the agent not to
+change what the task asked for only to satisfy the gate. In the hook it adds
+that a stop blocked on a break the task intends is answered in the reply and
+followed by another stop, which the block-once policy of 9.3 may let end, and
+that the reply accepts nothing: a person accepts the break with an accepted
+entry in a reviewed commit, and CI refuses it until then. Every stop prints
+the same wording, so a stop that passes does not claim it blocked, and the
+wording promises no end, because a build failure still blocks under 9.3.
+Outside the hook the remedy names only the person's accepted entry and CI,
+and no second stop. Pinned by
+`a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_a_person`
+and `a_break_by_hand_names_person_acceptance_and_no_second_stop`. A glob over
 another crate, a star export of another package, a name two globs or two
 stars provide, an export form klin recognizes and cannot list, a path through
 a module no file answers, and an unresolved module or specifier inside a

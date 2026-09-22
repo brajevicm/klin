@@ -661,3 +661,73 @@ fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
     assert_eq!(row["notes"], 1, "{last}");
     assert_eq!(row["findings"], 0, "{last}");
 }
+
+fn a_library_of_four_commands(tree: &Tree) -> String {
+    tree.write("klin.json", r#"{"build": []}"#);
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"core\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    let names = ["alpha", "beta", "gamma", "delta"];
+    let mut lib = String::from("mod commands;\n");
+    let mut commands = String::new();
+    for name in names {
+        tree.write(
+            &format!("src/commands/{name}_command.rs"),
+            &format!("pub fn run_{name}() {{}}\n"),
+        );
+        lib.push_str(&format!("pub use commands::{name}_command::run_{name};\n"));
+        commands.push_str(&format!("pub mod {name}_command;\n"));
+    }
+    tree.write("src/commands/mod.rs", &commands);
+    tree.write("src/lib.rs", &lib);
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); run_delta(); }\n",
+    );
+    tree.base();
+    lib
+}
+
+#[test]
+fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete() {
+    let tree = Tree::new();
+    let lib = a_library_of_four_commands(&tree);
+    tree.write(
+        "src/lib.rs",
+        &lib.replace("pub use commands::delta_command::run_delta;\n", ""),
+    );
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
+    );
+
+    let run = tree.run(&["gate", "--changed"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("FAIL  public-api")
+            && run
+                .says("removed, declared at src/commands/delta_command.rs:1  run_delta (function)"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("FAIL  reachability") && run.says("src/commands/delta_command.rs:0  unreached"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("If a public-api break names what an unreached file held, decide the two separately")
+            && run.says("restore the public contract where the task keeps it")
+            && run.says("leave the break for a person to accept where the task removes it")
+            && run.says("keep and wire the implementation if it is still needed, and delete it only if it is unused"),
+        "{}",
+        run.out
+    );
+    assert!(
+        !run.says("delete the file and leave the break"),
+        "{}",
+        run.out
+    );
+}
