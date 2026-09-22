@@ -10,8 +10,6 @@ pub const PROTOCOL: &str = "klin_protocol";
 pub const VERSION: u64 = 1;
 
 const NAME: &str = "harness";
-/// The name `--host` took before the protocol had its own, kept because 0.2.0 shipped it.
-const ALIAS: &str = "generic";
 /// The harness protocol's own name for the event a person's prompt raises.
 const PROMPT_EVENT: &str = "prompt";
 
@@ -33,7 +31,7 @@ const REFUSES: &dyn Adapter = &Generic { spoken: false };
 pub fn placed(named: Option<&str>, payload: &Value) -> Option<&'static dyn Adapter> {
     let held = payload.get(PROTOCOL);
     let mine = match named {
-        Some(name) => name == NAME || name == ALIAS,
+        Some(name) => name == NAME,
         None => held.is_some(),
     };
     if !mine {

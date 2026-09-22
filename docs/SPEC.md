@@ -2704,10 +2704,9 @@ another host's, so no port has to fabricate a first-class host's payload.
 `klin_protocol` names the version, and it is the field that places the event:
 no host klin maintains sends it, so the protocol's adapter is tried before all
 of them. `--host harness` overrides detection, and refuses a payload that
-carries no version of this protocol. `--host generic` names the same adapter,
-because klin 0.2.0 shipped the protocol under that name, and a shim built then
-MUST NOT have its event read as a first-class host's. The adapter's name, and
-so the `host` of a journal line (11.4), is `harness`.
+carries no version of this protocol. The adapter's name, and so the `host` of
+a journal line (11.4), is `harness`. Before 1.0 the protocol was called
+`generic`, and that name names no host now.
 
 Version 1 carries `event`, one of `session`, `prompt`, `pre_tool` and `stop`,
 and then `root`, `session`, `prompt`, `tool`, `file_paths`, `command` and

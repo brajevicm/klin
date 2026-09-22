@@ -210,21 +210,6 @@ fn journal(tree: &Tree) -> Vec<Value> {
 }
 
 #[test]
-fn a_named_generic_host_without_a_version_is_refused() {
-    let tree = failing();
-    let payload = json!({"event": "pre_tool", "file_paths": ["src/main.rs"]});
-
-    let run = feed(
-        tree.root(),
-        &["guard", "--host", "generic"],
-        &payload.to_string(),
-    );
-
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("no version"), "{}", run.out);
-}
-
-#[test]
 fn a_named_harness_host_without_a_version_is_refused() {
     let tree = failing();
     let payload = json!({"event": "pre_tool", "file_paths": ["src/main.rs"]});
@@ -240,22 +225,19 @@ fn a_named_harness_host_without_a_version_is_refused() {
     assert!(run.says("harness protocol"), "{}", run.out);
 }
 
-/// `--host generic` shipped in 0.2.0, so a released shim that names it still reaches the
-/// harness protocol rather than a first-class host's shape. Spec 9.7.
+/// The protocol's name is `harness`. `generic` was its name before 1.0 and names no host now.
 #[test]
-fn the_generic_host_name_still_names_the_harness_protocol() {
+fn the_generic_host_name_names_no_host() {
     let tree = failing();
-    let event = event(
-        "pre_tool",
-        tree.root(),
-        json!({"tool": "write_file", "file_paths": ["klin.json"]}),
-    );
+    let event = event("pre_tool", tree.root(), json!({"tool": "write_file"}));
 
     let run = feed(tree.root(), &["guard", "--host", "generic"], &event);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(!run.says("reading it as"), "{}", run.out);
-    assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
+    assert!(
+        run.says("--host generic names no host klin knows"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
