@@ -1508,11 +1508,15 @@ member that loses its last external reference is `worsened`, and one
 unreached in both trees is one NOTE. The remedy names the first proven
 reached sibling of the family in path order, and none when every sibling is
 unreached or reached only through a shared name. The remedy also names the
-conflict with a public-api break over what the member held, on every
-unreached finding because a check reads no other gate's findings, and lets
-the task decide: a kept surface is restored and the file wired in, and a removed one
-leaves the file deleted and the break for a person to accept, so one report
-never says only "delete this" beside "restore this". Pinned by
+conflict with a public-api break over what an unreached member held, on
+every unreached finding because a check reads no other gate's findings, and
+keeps the two decisions apart. The task decides the public contract: it is
+restored where the task keeps it, and the break is left for a person to
+accept where the task removes it. Whether the implementation is still needed
+decides the file: it is kept and wired in, or deleted only if unused. A
+public-api identity names no file, and an unreached member may still be live
+through a caller this check does not resolve, so neither decision implies the
+other. Pinned by
 `an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete`.
 The check does not resolve imports, `mod foo;`, side-effect imports,
 re-exports, string registries,

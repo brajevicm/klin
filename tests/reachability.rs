@@ -700,10 +700,28 @@ fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_b
     let run = tree.run(&["gate", "--changed"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("run_delta (function)"), "{}", run.out);
-    assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
     assert!(
-        run.says("If a public-api break names what this file held, the two remedies conflict"),
+        run.says("FAIL  public-api")
+            && run
+                .says("removed, declared at src/commands/delta_command.rs:1  run_delta (function)"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("FAIL  reachability") && run.says("src/commands/delta_command.rs:0  unreached"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("If a public-api break names what an unreached file held, decide the two separately")
+            && run.says("restore the public contract where the task keeps it")
+            && run.says("leave the break for a person to accept where the task removes it")
+            && run.says("keep and wire the implementation if it is still needed, and delete it only if it is unused"),
+        "{}",
+        run.out
+    );
+    assert!(
+        !run.says("delete the file and leave the break"),
         "{}",
         run.out
     );
