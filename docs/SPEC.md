@@ -4319,12 +4319,21 @@ plugin. ADR 0030 records the decision.
 The wrapper is a shell script. It reads the version from the plugin manifest
 beside it, so the plugin carries one pin. On first run it downloads that
 release into `~/.cache/klin/bin/<version>/klin`, verifies the checksum, and
-executes it. That install removes every other version from the cache, so the
-cache holds one binary. Every later run executes the cached binary with no
-network call. When the download fails, the wrapper runs a `klin` that PATH
+executes it. That install removes every other version that no session ran
+for seven days: another host's plugin may pin another version into the same
+cache, and removing it at once would make the two fetch in turn. A `radius`
+run touches its version to mark it used. Every later run executes the cached
+binary with no network call. When the download fails, the wrapper runs a `klin` that PATH
 resolves if there is one, and otherwise prints one line saying so and exits 0,
 so a turn is never blocked by a missing network. This is the one place klin
 touches the network, and it is install, not measurement.
+
+The plugin never installs a `klin` command for the person (19.0). Once per
+machine, at the first `radius` run that printed nothing, the wrapper says in
+one `systemMessage` that the CLI exists and names the command that installs
+it. It says nothing where PATH resolves a `klin` other than the wrapper
+itself, and nothing under Cursor, which shows no message at a prompt. A file
+beside the cache records that the hint was given.
 
 Every line the wrapper or a hook prints on exit 0 is a JSON object with a
 `systemMessage`, and the same object carries `followup_message` with the same

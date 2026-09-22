@@ -494,21 +494,80 @@ fn a_download_that_fails_runs_a_klin_on_path_instead() {
 }
 
 /// A plugin update pins a new version, and the fetch that installs it removes the ones before
-/// it, so the cache holds one binary. Spec 19.2.
+/// it that nothing ran for a week. Another host's plugin may pin another version into the same
+/// cache, and a version it ran this week stays, so the two do not fetch in turn. Spec 19.2.
 #[test]
-fn a_fetch_removes_the_other_cached_versions() {
+fn a_fetch_removes_the_other_cached_versions_nothing_ran_this_week() {
     let tree = Tree::bare();
     release(&tree, "the-fetched-binary");
     tree.write("cache/bin/0.0.1/klin", "#!/bin/sh\necho stale\n");
+    tree.write("cache/bin/0.0.2/klin", "#!/bin/sh\necho recent\n");
+    let aged = ran(
+        "touch",
+        &[
+            "-t",
+            "202001010000",
+            &tree.path("cache/bin/0.0.1").display().to_string(),
+        ],
+        tree.root(),
+        &[],
+    );
+    assert_eq!(aged.code, 0, "{}", aged.out);
 
     let run = fetch(&tree, &["--version"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         held(&tree),
-        PINNED,
-        "the cache holds more than the pinned version"
+        format!("0.0.2 {PINNED}"),
+        "the cache kept a stale version"
     );
+}
+
+/// A plugin user with no `klin` of their own hears once that the CLI exists, at the first turn
+/// whose radius printed nothing, and never again on that machine. Spec 19.2.
+#[test]
+fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
+    let tree = Tree::bare();
+    release_running(&tree, "true");
+
+    let first = fetch(&tree, &["radius"]);
+    let second = fetch(&tree, &["radius"]);
+
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(
+        notice(&first.printed).contains("klin-installer.sh"),
+        "{}",
+        first.out
+    );
+    assert_eq!(second.printed, "", "the hint came twice");
+}
+
+/// The hint never displaces what radius printed, and a person who has a `klin` of their own
+/// never hears it.
+#[test]
+fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
+    let tree = Tree::bare();
+    release(&tree, "the-radius-note");
+    let spoke = fetch(&tree, &["radius"]);
+    assert_eq!(spoke.printed.trim(), "the-radius-note", "{}", spoke.out);
+
+    let decoy = tree.write("path/klin", "#!/bin/sh\n");
+    executable(&decoy);
+    release_running(&tree, "true");
+    let base = format!("file://{}", tree.path("release").display());
+    let path = format!("{}:{SYSTEM_PATH}", tree.path("path").display());
+    let own = ran(
+        &at(WRAPPER).display().to_string(),
+        &["radius"],
+        tree.root(),
+        &[
+            ("PATH", &path),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &tree.path("fresh").display().to_string()),
+        ],
+    );
+    assert_eq!(own.printed, "", "{}", own.out);
 }
 
 /// The hook runs the plugin's own wrapper before any `klin` on PATH, so the version the plugin
@@ -560,7 +619,12 @@ fn without_klin(tree: &Tree) -> Ran {
 /// A release the wrapper can fetch over `file://`: one archive holding a `klin` that prints
 /// `says`, and the checksum file beside it.
 fn release(tree: &Tree, says: &str) -> PathBuf {
-    let written = tree.write("release/stage/klin", &format!("#!/bin/sh\necho {says}\n"));
+    release_running(tree, &format!("echo {says}"))
+}
+
+/// A release whose `klin` runs `body`.
+fn release_running(tree: &Tree, body: &str) -> PathBuf {
+    let written = tree.write("release/stage/klin", &format!("#!/bin/sh\n{body}\n"));
     let stage = written
         .parent()
         .unwrap_or(tree.root())
