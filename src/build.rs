@@ -193,8 +193,9 @@ enum How {
 }
 
 /// A JavaScript package manager whose command line klin knows, and how it runs a tool of the
-/// project it installed. Yarn's `-B` and pnpm's `exec` run a binary the project holds, so a
-/// script a person named after the tool cannot stand in for the tool. Spec 9.3.
+/// project it installed. Yarn's `-B` is its binaries-only form, so a script a person named after
+/// the tool cannot stand in for the tool. pnpm's `exec` runs a command with the project's own
+/// binaries before any other, which is as near as pnpm states. Spec 9.3.
 #[derive(Clone, Copy, PartialEq)]
 enum Manager {
     Yarn,
@@ -208,28 +209,61 @@ impl Manager {
             Manager::Pnpm => format!("pnpm exec {tool}"),
         }
     }
+
+    /// Whether this checkout holds the tool, asked of the manager itself and answered by its
+    /// exit code alone. Yarn names a binary without running it, and answers that it holds none
+    /// with the 1 of its usage error. Any other code is a Yarn that could not answer, so the
+    /// build runs through it and its own exit decides. pnpm states no such question, so its
+    /// checkout is taken at its word. Spec 9.3.
+    fn holds(self, at: &Path, tool: &str) -> bool {
+        match self {
+            Manager::Pnpm => true,
+            Manager::Yarn => shell(at, &format!("yarn bin {tool}"))
+                .map(|done| done.status.code() != Some(1))
+                .unwrap_or(true),
+        }
+    }
+
+    /// The file this manager writes its own settings in, and the key that names the model.
+    fn settings(self) -> &'static [(&'static str, &'static str)] {
+        match self {
+            Manager::Yarn => &[(".yarnrc.yml", "nodeLinker")],
+            Manager::Pnpm => &[
+                ("pnpm-workspace.yaml", "nodeLinker"),
+                (".npmrc", "node-linker"),
+            ],
+        }
+    }
 }
 
-/// What a checkout says about the model it installs a project's tools in. A package manager's
-/// own configuration is the one authority on that, so it decides against any file left over
-/// from another model. Spec 9.3.
+/// What a checkout says about the model it installs a project's tools in. The manager that owns
+/// the checkout is the one authority on that, so its settings decide against any file another
+/// model left behind. Spec 9.3.
 enum Model {
-    Play(Manager),
+    Play,
     Modules,
 }
 
 /// How the checkout runs one tool of a JavaScript project, and `None` when no model klin reads
-/// installs it, which leaves the tool on `PATH`. A configuration that names the model decides.
-/// Without one, the whole chain is searched for an installed binary before a Plug'n'Play marker
-/// is read, so a marker an old model left behind cannot take the run from a binary installed
-/// above it, and a binary an old model left behind wins the same way: no file tells those two
-/// states apart, and a binary is evidence that the tool is there to run. Spec 9.3.
+/// holds it, which leaves the tool on `PATH`. The manager that owns the checkout is read first,
+/// then that manager's own settings, both from the directory that holds a Plug'n'Play marker
+/// and upward, because a marker says how a project installs its tools and a file below it
+/// belongs to another project. Where its settings name no model, the whole chain is
+/// searched for an installed binary before a Plug'n'Play marker is read, so a marker an old
+/// model left behind cannot take the run from a binary installed above it, and a binary an old
+/// model left behind wins the same way: no file tells those two states apart, and a binary is
+/// evidence that the tool is there to run. A Plug'n'Play checkout that holds no such tool is a
+/// checkout with no project compiler, so the tool on `PATH` runs. Spec 9.3.
 fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, How)> {
     let chain = chain(root, at);
-    match chain.iter().find_map(|(here, _)| model(here)) {
-        Some(Model::Play(manager)) => Some((manager.runs(tool), How::Manager)),
+    let marked = chain.iter().position(|(here, _)| marker(here));
+    let owns = &chain[marked.unwrap_or_default()..];
+    let manager = owns.iter().find_map(|(here, _)| manager(here)).flatten();
+    let model = manager.and_then(|manager| owns.iter().find_map(|(here, _)| model(here, manager)));
+    match model {
+        Some(Model::Play) => through(at, manager?, tool),
         Some(Model::Modules) => bin(&chain, tool),
-        None => bin(&chain, tool).or_else(|| through(&chain, tool)),
+        None => bin(&chain, tool).or_else(|| marked.and_then(|_| through(at, manager?, tool))),
     }
 }
 
@@ -242,14 +276,12 @@ fn bin(chain: &[(PathBuf, String)], tool: &str) -> Option<(String, How)> {
     Some((format!("{up}{BIN}/{tool}"), How::Installed))
 }
 
-/// The package manager of a Plug'n'Play checkout no configuration names, and `None` when the
-/// chain holds no marker or nothing says whose checkout it is. A marker says how a project
-/// installs its tools and not whose project it is, so the manager is read from the directory
-/// that holds the marker and then upward, and never from a directory below it. Spec 9.3.
-fn through(chain: &[(PathBuf, String)], tool: &str) -> Option<(String, How)> {
-    let at = chain.iter().position(|(here, _)| marker(here))?;
-    let manager = chain[at..].iter().find_map(|(here, _)| manager(here))?;
-    Some((manager.runs(tool), How::Manager))
+/// How one manager runs the tool of its own Plug'n'Play checkout, and `None` when the checkout
+/// holds no such tool, which is a checkout with no project compiler. Spec 9.3.
+fn through(at: &Path, manager: Manager, tool: &str) -> Option<(String, How)> {
+    manager
+        .holds(at, tool)
+        .then(|| (manager.runs(tool), How::Manager))
 }
 
 /// Each directory from the one an entry runs in up to the root klin measures, and the prefix
@@ -268,16 +300,16 @@ fn chain(root: &Path, at: &Path) -> Vec<(PathBuf, String)> {
     }
 }
 
-/// The model one directory's package-manager configuration names: Yarn's `nodeLinker` in
-/// `.yarnrc.yml`, or pnpm's `node-linker` in `.npmrc`. A value neither manager defines names no
-/// model, which leaves the checkout to say what it installed. Spec 9.3.
-fn model(here: &Path) -> Option<Model> {
-    let named = match value(here, ".yarnrc.yml", "nodeLinker") {
-        Some(named) => (named, Manager::Yarn),
-        None => (value(here, ".npmrc", "node-linker")?, Manager::Pnpm),
-    };
-    match named.0.as_str() {
-        "pnp" => Some(Model::Play(named.1)),
+/// The model one directory's settings name, read from the files that manager writes and no
+/// other. A value the manager does not define names no model, which leaves the checkout to say
+/// what it installed. Spec 9.3.
+fn model(here: &Path, manager: Manager) -> Option<Model> {
+    let named = manager
+        .settings()
+        .iter()
+        .find_map(|(file, key)| value(here, file, key))?;
+    match named.as_str() {
+        "pnp" => Some(Model::Play),
         "node-modules" | "isolated" | "hoisted" => Some(Model::Modules),
         _ => None,
     }
@@ -309,18 +341,19 @@ fn marker(here: &Path) -> bool {
 }
 
 /// Whose checkout one directory is, by the manager it pins, the lockfile it holds, or the
-/// configuration file only one manager writes. A pin that names another manager is the answer
-/// too: it says the checkout is neither, whatever files an older manager left. Spec 9.3.
-fn manager(here: &Path) -> Option<Manager> {
+/// configuration file only one manager writes. A pin that names a manager klin has no
+/// Plug'n'Play form for answers as well: that directory says the checkout is neither manager's,
+/// and nothing above it is asked. `None` is a directory that says nothing. Spec 9.3.
+fn manager(here: &Path) -> Option<Option<Manager>> {
     let held = std::fs::read_to_string(here.join(NODE)).unwrap_or_default();
     let held: Value = serde_json::from_str(&held).unwrap_or_default();
     let holds = |name: &str| here.join(name).is_file();
     match held.get("packageManager").and_then(Value::as_str) {
-        Some(pinned) if pinned.starts_with("yarn") => Some(Manager::Yarn),
-        Some(pinned) if pinned.starts_with("pnpm") => Some(Manager::Pnpm),
-        Some(_) => None,
-        None if holds("pnpm-lock.yaml") => Some(Manager::Pnpm),
-        None if holds("yarn.lock") || holds(".yarnrc.yml") => Some(Manager::Yarn),
+        Some(pinned) if pinned.starts_with("yarn") => Some(Some(Manager::Yarn)),
+        Some(pinned) if pinned.starts_with("pnpm") => Some(Some(Manager::Pnpm)),
+        Some(_) => Some(None),
+        None if holds("pnpm-lock.yaml") => Some(Some(Manager::Pnpm)),
+        None if holds("yarn.lock") || holds(".yarnrc.yml") => Some(Some(Manager::Yarn)),
         None => None,
     }
 }
@@ -418,15 +451,22 @@ fn built(root: &Path, entry: &Entry) -> (Option<Failure>, Option<String>) {
     (ran(&at, &run, how), line)
 }
 
+/// One command in the shell, at the directory it runs in, with Corepack's network disabled so
+/// that no package manager klin starts can fetch a version this host does not already hold.
+/// Spec 9.3.
+fn shell(at: &Path, run: &str) -> std::io::Result<std::process::Output> {
+    Command::new("sh")
+        .arg("-c")
+        .arg(run)
+        .current_dir(at)
+        .env("COREPACK_ENABLE_NETWORK", "0")
+        .output()
+}
+
 /// What the shell made of one command, which is the whole test klin applies: it reads no shell
 /// message and guesses no tool name. ADR 0048.
 fn ran(at: &Path, run: &str, how: How) -> Option<Failure> {
-    let mut shell = Command::new("sh");
-    shell.arg("-c").arg(run).current_dir(at);
-    if how == How::Manager {
-        shell.env("COREPACK_ENABLE_NETWORK", "0");
-    }
-    let done = match shell.output() {
+    let done = match shell(at, run) {
         Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
         Ok(done) => done,
     };

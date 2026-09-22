@@ -709,7 +709,12 @@ fn a_plug_and_play_checkout_runs_the_compiler_through_yarn() {
 
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(ran(&tree), "yarn run -B tsc --noEmit 0\n", "{}", run.out);
+    assert_eq!(
+        ran(&tree),
+        "yarn bin tsc 0\nyarn run -B tsc --noEmit 0\n",
+        "{}",
+        run.out
+    );
 }
 
 /// Resolution is for the tool a JavaScript package manager installs alone. A `node_modules/.bin`
@@ -800,8 +805,9 @@ fn a_broken_install_fails_its_own_build_and_is_not_an_absent_tool() {
     assert_eq!(ran(&tree), "", "{}", run.out);
 }
 
-/// A Plug'n'Play checkout with no Yarn on the hook's `PATH` is unmeasured, and klin does not
-/// compile with another compiler instead. Spec 9.3.
+/// A Yarn that cannot run answers nothing about the checkout, so the build runs through it and
+/// its own exit decides: the tree is unmeasured and klin compiles with no other compiler.
+/// Spec 9.3.
 #[test]
 fn a_plug_and_play_checkout_with_no_yarn_is_unmeasured() {
     let tree = Tree::new();
@@ -852,10 +858,10 @@ fn an_installed_tool_wins_over_a_plug_and_play_marker_beside_it() {
     assert_eq!(ran(&tree), "the installed tool\n", "{}", run.out);
 }
 
-/// A Plug'n'Play checkout whose Yarn holds no such binary fails its own build, and klin does not
-/// compile with the tool on `PATH` instead. Spec 9.3.
+/// A Plug'n'Play checkout whose Yarn holds no such binary is a checkout with no project
+/// compiler, so the compiler on `PATH` runs. #285, Spec 9.3.
 #[test]
-fn a_plug_and_play_checkout_whose_yarn_holds_no_tool_fails_its_own_build() {
+fn a_plug_and_play_checkout_whose_yarn_holds_no_tool_falls_back_to_the_path() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     typescript(&tree, "");
@@ -871,9 +877,8 @@ fn a_plug_and_play_checkout_whose_yarn_holds_no_tool_fails_its_own_build() {
     tree.write("src/index.ts", "export const a = 2;\n");
 
     let run = derived(&tree, &path, &["gate", "--hook"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("Couldn't find a binary named tsc"), "{}", run.out);
-    assert_eq!(ran(&tree), "", "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
 }
 
 /// A marker an old install model left beside the manifest does not take the run from a tool
@@ -1078,7 +1083,12 @@ fn a_named_plug_and_play_linker_wins_over_a_node_modules_left_behind() {
 
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(ran(&tree), "yarn run -B tsc --noEmit\n", "{}", run.out);
+    assert_eq!(
+        ran(&tree),
+        "yarn bin tsc\nyarn run -B tsc --noEmit\n",
+        "{}",
+        run.out
+    );
 }
 
 /// A configuration that names the `node_modules` linker is the authority the other way: a marker
@@ -1132,7 +1142,12 @@ fn a_named_linker_is_read_without_its_comment_or_quotation_marks() {
 
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(ran(&tree), "yarn run -B tsc --noEmit\n", "{}", run.out);
+    assert_eq!(
+        ran(&tree),
+        "yarn bin tsc\nyarn run -B tsc --noEmit\n",
+        "{}",
+        run.out
+    );
 }
 
 /// A manifest that pins a manager klin has no Plug'n'Play form for says the checkout is neither
@@ -1193,4 +1208,110 @@ fn a_lockfile_below_the_marker_does_not_name_the_manager() {
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "pnpm exec tsc --noEmit\n", "{}", run.out);
+}
+
+/// pnpm names its model in `pnpm-workspace.yaml`, and that naming decides against a
+/// `node_modules` an older model left behind. Spec 9.3.
+#[test]
+fn a_pnpm_workspace_names_the_model_over_a_node_modules_left_behind() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "package.json",
+        "{\"name\": \"web\", \"packageManager\": \"pnpm@12.0.0\"}\n",
+    );
+    tree.write("tsconfig.json", "{}\n");
+    tree.write("src/index.ts", "export const a = 1;\n");
+    tree.write("pnpm-workspace.yaml", "nodeLinker: pnp\n");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the tool left behind\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/pnpm",
+        &format!("#!/bin/sh\necho \"pnpm $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "pnpm exec tsc --noEmit\n", "{}", run.out);
+}
+
+/// klin reads the settings of the manager that owns the checkout and no other, so a `.yarnrc.yml`
+/// an older manager left behind names no model and Yarn is never called. Spec 9.3.
+#[test]
+fn a_yarnrc_left_behind_does_not_name_the_model_of_a_pnpm_checkout() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "package.json",
+        "{\"name\": \"web\", \"packageManager\": \"pnpm@12.0.0\"}\n",
+    );
+    tree.write("tsconfig.json", "{}\n");
+    tree.write("src/index.ts", "export const a = 1;\n");
+    tree.write(".yarnrc.yml", "nodeLinker: pnp\n");
+    tree.write("pnpm-workspace.yaml", "nodeLinker: isolated\n");
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        &format!(
+            "#!/bin/sh\necho \"the installed tool\" >> \"{}\"\n",
+            tree.at("ran")
+        ),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    for manager in ["yarn", "pnpm"] {
+        installed(
+            &tree,
+            &format!("toolchain/{manager}"),
+            &format!(
+                "#!/bin/sh\necho \"{manager} $*\" >> \"{}\"\n",
+                tree.at("ran")
+            ),
+        );
+    }
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "the installed tool\n", "{}", run.out);
+}
+
+/// A manifest that pins a manager klin has no Plug'n'Play form for answers for its own
+/// directory, so a manager named above it does not take the run. Spec 9.3.
+#[test]
+fn a_pinned_manager_klin_does_not_read_stops_the_search_above_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "packages/app/package.json",
+        "{\"name\": \"app\", \"packageManager\": \"npm@10.9.0\"}\n",
+    );
+    tree.write("packages/app/tsconfig.json", "{}\n");
+    tree.write("packages/app/src/index.ts", "export const a = 1;\n");
+    tree.write("package.json", "{\"name\": \"root\"}\n");
+    tree.write("yarn.lock", "# yarn lockfile v1\n");
+    tree.write(".yarnrc.yml", "nodeLinker: pnp\n");
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("packages/app/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
 }
