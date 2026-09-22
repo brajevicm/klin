@@ -4165,11 +4165,12 @@ Support status:
 Delivery and interoperability:
 
 1. **Native plugin.** The host-managed plugin klin ships for a first-class
-   host. It is the preferred local product experience on that host. It carries
+   host. It is the host-managed alternative to the standalone route. It carries
    the host hooks, the klin skill and a pinned wrapper that fetches a pinned
    runtime. Section 19.2.
-2. **Standalone route.** The klin binary and `klin install`, for a first-class
-   host or surface where explicit hook reconciliation fits. It owns explicit
+2. **Standalone route.** The klin binary and `klin install`, the route
+   documents lead with on every first-class host, because it alone gives the
+   person the `klin` command. It owns explicit
    hook files a repository or a person commits or keeps, standalone skill
    placement, managed and manual installations, and every first-class host
    surface that has no native plugin. Sections 19.1 and 19.3.
@@ -4181,12 +4182,13 @@ Delivery and interoperability:
 "Standalone integration" is not a category: the standalone route delivers a
 first-class integration and is not a tier of support.
 
-A person on a first-class host installs the plugin alone. The plugin is not
-half of an install that a second standalone binary completes: the wrapper it
-carries fetches the runtime. The standalone route is for the person who
-deliberately does not use a plugin, for a host surface that loads no plugin,
-and for a managed environment that needs explicit files. A custom harness
-integration uses the binary of 19.1 and not this route (19.4).
+A person on a first-class host takes either route, and documents lead with the
+standalone route: the installer, then `klin install` (ADR 0053). A plugin is
+self-sufficient. The wrapper it carries fetches the runtime, so a plugin user
+installs no binary for the hooks to work. It gives the person no `klin`
+command, and it MUST NOT install one: the wrapper names the command that does,
+once (19.2). A custom harness integration uses the binary of 19.1 and not this
+route (19.4).
 
 No route gates a repository by itself. Under `--hook` a `klin.json` at the
 repository root is the marker that the repository opted in, and a tree without
@@ -4264,12 +4266,12 @@ user MUST NOT be told to install the standalone binary of 19.1 to make the
 plugin work. The one exception is the managed case below, where the host gives
 the plugin no usable `bin/`.
 
-**Claude Code.** klin maintains a native Claude Code plugin, and it is the
-first-class route. The project route of 19.3, under `.claude/`, stays the
-portable and manual alternative, and it is what a person takes where user
-settings are not available. A plugin a person installed, and the settings that
-enable it, live on that person's machine. This document MUST NOT claim that
-they exist in a remote or cloud environment.
+**Claude Code.** klin maintains a native Claude Code plugin, the host-managed
+route. The project route of 19.3, under `.claude/`, stays the portable and
+manual alternative, and it is what a person takes where user settings are not
+available. A plugin a person installed, and the settings that enable it, live
+on that person's machine. This document MUST NOT claim that they exist in a
+remote or cloud environment.
 
 **Codex CLI.** klin maintains a native Codex plugin for the Codex surfaces
 that load plugins. Codex CLI reads the same manifest and the same `hooks.json`
@@ -4365,9 +4367,10 @@ They exist so a CLI test can fetch a release of its own over `file://` and
 prove the two paths that a real release cannot: the first run that installs,
 and the failure that installs nothing.
 
-Installing the plugin is the whole install for the host. It is not the whole
-install for a repository: no `init` runs, and the repository opts in through
-its own `klin.json` (5.1). Once it has one, the first stop is gated.
+Installing the plugin is the whole install of the hooks for the host. It is
+not an install of the `klin` command, and it is not the install for a
+repository: no `init` runs, and the repository opts in through its own
+`klin.json` (5.1). Once it has one, the first stop is gated.
 
 This reverses ADR 0002. Its first reason, a version pin beside committed
 baselines, went with ADR 0009. Its second reason is handled by the PATH
@@ -4376,12 +4379,13 @@ binary is a NOTE per 5.2, not a failure.
 
 ### 19.3 The standalone route: `klin install`
 
-A team may prefer hooks that are committed and covered by CODEOWNERS over the
-plugin of 19.2, and a host surface that loads no plugin has no other route. On
-this route the binary comes from 19.1, and `klin install` is the one command
-that installs and repairs the integration. It is not a second step after a
-native plugin install: a plugin user opts a repository in by committing a
-`klin.json` and installs no binary. ADR 0046 records the decision.
+The standalone route is the one documents lead with (19.0, ADR 0053). On this
+route the binary comes from 19.1, and `klin install` is the one command that
+installs and repairs the integration. It serves the person who wants the
+`klin` command, a team that wants hooks committed and covered by CODEOWNERS,
+and a host surface that loads no plugin. A plugin user may take it later for
+the command alone: plugin ownership below keeps it from writing a second copy
+of the hooks. ADR 0046 records the command.
 
 `klin install` does three things in one run: it opts the repository in, it
 selects the hosts to serve, and it reconciles the explicit hook files klin

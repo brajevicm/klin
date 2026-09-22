@@ -211,20 +211,27 @@ fn the_readme_names_the_codex_hook_trust_step() {
     );
 }
 
-/// The README leads with the three first-class plugins, keeps the standalone binary a
-/// fallback, gives the repository opt-in its own heading, and points any other harness at the
-/// harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1, 19.4.
+/// The README leads with the installer and `klin install`, which give the person the `klin`
+/// command on every first-class host, offers the three plugins after them as the host-managed
+/// alternative, gives the repository opt-in a plugin user takes, and points any other harness at
+/// the harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1,
+/// 19.4, ADR 0053.
 #[test]
-fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
+fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     let readme = text(README);
+    let installer = readme.find("klin-installer.sh | sh").unwrap_or(usize::MAX);
+    let plugin = readme.find("/plugin install").unwrap_or(0);
 
+    assert!(
+        installer < plugin,
+        "the README does not lead with the installer"
+    );
     for said in [
         "**Claude Code · Codex · Cursor**",
-        "Use the native plugin for Claude Code, Codex, or Cursor.",
-        "### Activate this repository",
+        "cd your-repo && klin install",
+        "### Or use your host's plugin",
         "Native plugins stay silent until the repository opts in",
         "`{}` is a complete configuration.",
-        "### Standalone",
         "`klin update`",
         "### Other coding agents",
         "docs/HARNESS_INTEGRATION.md",

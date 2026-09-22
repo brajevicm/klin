@@ -16,16 +16,35 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 ## Install
 
-Use the native plugin for Claude Code, Codex, or Cursor.
+Install klin, then turn it on in your repository:
 
-### Claude Code
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+cd your-repo && klin install
+```
+
+`klin install` writes `klin.json` at the repository root, plus the hooks and skill for whichever of Claude Code, Codex, and Cursor it finds. Commit them so your teammates get the same checks. If your shell can't find `klin` yet, open a new terminal.
+
+Codex asks you to trust new hooks first. Run `/hooks`, review and trust the klin hooks, then start a fresh session. Reload Cursor afterward.
+
+`{}` is a complete configuration. klin discovers repository facts automatically; `klin.json` contains only the policy you choose to configure.
+
+**Configure policy, not your repository.**
+
+**Updating:** run `klin update`, then `klin install` again.
+
+### Or use your host's plugin
+
+The native plugins install and update through your host. They carry the hooks and fetch klin on their own, but they don't give you a `klin` command. Install it as shown above if you want one.
+
+#### Claude Code
 
 ```text
 /plugin marketplace add brajevicm/klin
 /plugin install klin@klin
 ```
 
-### Codex
+#### Codex
 
 ```sh
 codex plugin marketplace add brajevicm/klin
@@ -34,7 +53,7 @@ codex plugin add klin@klin
 
 Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
-### Cursor
+#### Cursor
 
 <details>
 <summary>Install the local plugin</summary>
@@ -51,32 +70,11 @@ Reload Cursor after installation.
 
 </details>
 
-### Activate this repository
-
-Native plugins stay silent until the repository opts in:
+Native plugins stay silent until the repository opts in. Run `klin init` if you have the command, or run this at the repository root:
 
 ```sh
 echo '{}' > klin.json
 ```
-
-`{}` is a complete configuration. klin discovers repository facts automatically; `klin.json` contains only the policy you choose to configure.
-
-**Configure policy, not your repository.**
-
-<!-- PRE-RELEASE: #268 is exploring a more intentional user-owned native activation flow. Until something better ships and is verified, keep the explicit klin.json marker. -->
-
-### Standalone
-
-Need committed project hooks or an environment where the native plugin isn't available? Install the binary:
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-klin install
-```
-
-`klin install` configures the supported Claude Code, Codex, and Cursor integrations it can prove are present.
-
-**Updating:** update native plugins through the host's plugin mechanism. Standalone users can run `klin update` followed by `klin install`.
 
 ### Other coding agents
 
