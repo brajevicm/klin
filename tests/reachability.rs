@@ -662,9 +662,7 @@ fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
     assert_eq!(row["findings"], 0, "{last}");
 }
 
-#[test]
-fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete() {
-    let tree = Tree::new();
+fn a_library_of_four_commands(tree: &Tree) -> String {
     tree.write("klin.json", r#"{"build": []}"#);
     tree.write(
         "Cargo.toml",
@@ -688,6 +686,13 @@ fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_b
         "fn main() { run_alpha(); run_beta(); run_gamma(); run_delta(); }\n",
     );
     tree.base();
+    lib
+}
+
+#[test]
+fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete() {
+    let tree = Tree::new();
+    let lib = a_library_of_four_commands(&tree);
     tree.write(
         "src/lib.rs",
         &lib.replace("pub use commands::delta_command::run_delta;\n", ""),
