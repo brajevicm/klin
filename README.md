@@ -1,10 +1,10 @@
-`<picture>`{=html}
-`<source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">`{=html}
-`<source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">`{=html}
-`<img src="assets/klin-logo-light.svg" alt="klin" width="190">`{=html}
-`</picture>`{=html}
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">
+  <img src="assets/klin-logo-light.svg" alt="klin" width="190">
+</picture>
 
-# Catch regressions while the agent can still fix them.
+# Catch regressions while the agent can still fix them
 
 **Deterministic quality control for coding agents.**
 
