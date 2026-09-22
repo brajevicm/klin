@@ -746,6 +746,107 @@ fn typescript_functions_carry_their_hand_checked_numbers() {
 }
 
 #[test]
+fn a_growing_suite_callback_in_a_test_file_is_not_a_complexity_finding() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    let fillers = "  void 0;\n".repeat(30);
+    let containers = [
+        "describe('suite',",
+        "describe.each([1])('suite',",
+        "describe.only('suite',",
+        "describe.skip('suite',",
+        "context('suite',",
+        "context.each([1])('suite',",
+        "context.only('suite',",
+        "context.skip('suite',",
+        "suite('suite',",
+        "suite.each([1])('suite',",
+        "suite.only('suite',",
+        "suite.skip('suite',",
+        "fdescribe('suite',",
+        "xdescribe('suite',",
+    ];
+    let mut source = containers
+        .iter()
+        .enumerate()
+        .map(|(at, container)| {
+            format!("{container} () => {{\n{fillers}  it('existing {at}', () => {{}});\n}});\n")
+        })
+        .collect::<String>();
+    tree.write("tests/suites.ts", &source);
+    let mut javascript =
+        format!("describe('javascript', () => {{\n{fillers}  it('existing', () => {{}});\n}});\n");
+    tree.write("tests/suites.js", &javascript);
+    tree.base();
+
+    let added = source.rfind("});").expect("last suite closes");
+    source.insert_str(added, "  it('added', () => {});\n");
+    tree.write("tests/suites.ts", &source);
+    let added = javascript.rfind("});").expect("javascript suite closes");
+    javascript.insert_str(added, "  it('added', () => {});\n");
+    tree.write("tests/suites.js", &javascript);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("17 function(s) judged"), "{}", run.out);
+}
+
+#[test]
+fn a_long_test_callback_inside_a_suite_is_still_measured() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    let fillers = "    void 0;\n".repeat(30);
+    tree.write(
+        "src/suite.test.ts",
+        &format!("describe('suite', () => {{\n  it('long', () => {{\n{fillers}  }});\n}});\n"),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/suite.test.ts:2"), "{}", run.out);
+    assert!(run.says("it('long', () => {"), "{}", run.out);
+}
+
+#[test]
+fn suite_callbacks_do_not_raise_the_derived_lines_ceiling() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let mut source = String::from("describe('short tests', () => {\n");
+    for at in 0..47 {
+        source.push_str(&format!("  it('case {at}', () => {{}});\n"));
+    }
+    source.push_str("});\n");
+    let fillers = "  void 0;\n".repeat(30);
+    for at in 0..3 {
+        source.push_str(&format!(
+            "describe('long suite {at}', () => {{\n{fillers}}});\n"
+        ));
+    }
+    tree.write("tests/suites.test.ts", &source);
+    tree.base();
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: complexity lines 25"), "{}", run.out);
+    assert!(run.says("over 47 function(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_suite_callback_in_a_production_file_is_still_measured() {
+    let tree = tree(r#"{"cc":8,"lines":25}"#);
+    let fillers = "  void 0;\n".repeat(30);
+    tree.write(
+        "src/suites.ts",
+        &format!("describe('suite', () => {{\n{fillers}}});\n"),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/suites.ts:1"), "{}", run.out);
+    assert!(run.says("describe('suite', () => {"), "{}", run.out);
+}
+
+#[test]
 fn go_functions_carry_their_hand_checked_numbers() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/knot.go", GO);

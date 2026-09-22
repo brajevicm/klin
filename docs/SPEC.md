@@ -588,7 +588,8 @@ Each check documents its rule. The rules for the shipped checks:
   `Cargo.toml`, `package.json` and `go.mod`.
 - `complexity.cc` and `complexity.lines`: the 95th percentile of each measure
   over every supported function selected by the compact scope recorded at the
-  derivation commit,
+  derivation commit, with the TypeScript and JavaScript suite callbacks in test
+  files omitted as 8.2.1 states,
   rounded up to the next whole number, with a floor of `cc 5` and `lines 25`
   so a small clean tree is not held to a ceiling of 1. Below 50 functions the
   floor is the ceiling. A function found only in `after` never enters the
@@ -1577,7 +1578,17 @@ as a function of its own. Cyclomatic complexity starts at one and adds one
 for each decision node and each boolean operator in the language's tables,
 walked through the function's body. A nested function is not walked: it is
 excluded from the count of the function around it and measured as a site of
-its own, at its own declaration line. The `default` arm of a Java or Swift
+its own, at its own declaration line. A TypeScript or JavaScript callback
+passed to a suite container in a test file is not a function site: the exact
+calls are `describe`, `context`, `suite`, `fdescribe`, `xdescribe`, and
+`describe.each`, `describe.only`, `describe.skip`, `context.each`,
+`context.only`, `context.skip`, `suite.each`, `suite.only`, `suite.skip`.
+The suite callback is omitted from both trees' judged function population and
+from the derived `cc` and `lines` sample. Functions inside it remain measured,
+including `it` and `test` callbacks, hooks and helpers. The same callback in a
+file that is not a test file is measured as before. A test file is one that
+5.4 marks under a test root or by a test directory segment or test affix. The
+`default` arm of a Java or Swift
 `switch`, the `else` arm of a Kotlin `when`, and a single unguarded
 catch-all arm of a `match` or `case` add nothing. `lines` is the
 count of source lines from the first line of the declaration to the last
@@ -1588,7 +1599,11 @@ Go, Java, Ruby, Swift and Kotlin, with
 `a_nested_function_is_measured_on_its_own_not_folded_into_the_one_around_it`,
 `a_fall_through_arm_is_not_a_decision`,
 `a_guarded_catch_all_arm_is_still_a_decision` and
-`an_accessor_or_initializer_body_is_measured_like_any_other_function` in
+`an_accessor_or_initializer_body_is_measured_like_any_other_function`,
+`a_growing_suite_callback_in_a_test_file_is_not_a_complexity_finding`,
+`a_long_test_callback_inside_a_suite_is_still_measured`,
+`suite_callbacks_do_not_raise_the_derived_lines_ceiling` and
+`a_suite_callback_in_a_production_file_is_still_measured` in
 `tests/complexity.rs`. Known limit: which grammar nodes are decisions is per
 language and fixed in the binary. Two languages that express one construct
 differently may count it differently, and the fixtures are the record of
