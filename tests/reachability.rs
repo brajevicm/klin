@@ -615,7 +615,7 @@ fn a_changed_run_reports_one_surface_the_whole_run_reports_too() {
 }
 
 #[test]
-fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
+fn reachability_on_its_own_derives_its_families_from_the_base_as_the_gate_does() {
     let tree = three_reached_commands();
     tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
     tree.base();
@@ -623,24 +623,41 @@ fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
         "src/main.rs",
         "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
     );
-    tree.commit("alpha wired again");
+    tree.commit("a change that would prove the family it is judged by");
+
+    let gate = tree.run(&["gate", "--gate", "reachability"]);
+    let alone = tree.run(&["reachability"]);
+
+    assert!(gate.says("0 file(s) judged"), "{}", gate.out);
+    assert!(alone.says("0 file(s) judged"), "{}", alone.out);
+}
+
+#[test]
+fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
     let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     tree.write("src/other.rs", "pub fn other() { run_beta(); }\n");
 
     let stop = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
-    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
 
     assert_eq!(stop.code, 0, "{}", stop.out);
-    assert_eq!(changed.code, 0, "{}", changed.out);
-    assert!(
-        changed.says("3 file(s) judged, 0 unreached"),
-        "{}",
-        changed.out
-    );
-    assert!(
-        changed.says("NOTE: 1 unreached file(s) the base already held"),
-        "{}",
-        changed.out
-    );
+    let text = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let last: Value = text
+        .lines()
+        .last()
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    let row = last["gates"]
+        .as_array()
+        .and_then(|gates| gates.iter().find(|gate| gate["name"] == "reachability"))
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(row["status"], "ok", "{last}");
+    assert_eq!(row["coverage"]["found"], 3, "{last}");
+    assert_eq!(row["held"], 1, "{last}");
+    assert_eq!(row["notes"], 1, "{last}");
+    assert_eq!(row["findings"], 0, "{last}");
 }

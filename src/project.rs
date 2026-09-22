@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
 use std::path::{Path, PathBuf};
 
-use crate::base::{self, Prior};
+use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error};
 use crate::syntax::structural::Extracted;
@@ -203,6 +203,8 @@ pub struct Project {
     changes: OnceCell<(String, Vec<Change>)>,
     whole_base: OnceCell<(String, Prior)>,
     facts: OnceCell<survey::Facts>,
+    derivation: OnceCell<Option<String>>,
+    by_hand: bool,
 }
 
 impl Project {
@@ -210,7 +212,10 @@ impl Project {
     /// root with nothing read yet. Spec 5.1, 14.
     pub fn load(explicit: Option<&Path>, start: &Path) -> Result<Project, Error> {
         let config = Config::load(explicit, start)?;
-        Ok(Project::of(config, start))
+        Ok(Project {
+            by_hand: true,
+            ..Project::of(config, start)
+        })
     }
 
     /// A run over a configuration already loaded.
@@ -222,6 +227,8 @@ impl Project {
             changes: OnceCell::new(),
             whole_base: OnceCell::new(),
             facts: OnceCell::new(),
+            derivation: OnceCell::new(),
+            by_hand: false,
         }
     }
 
@@ -243,7 +250,27 @@ impl Project {
     /// What the derivation commit and the working tree say about the repository, read on the
     /// first call and held for the run. Spec 4.3.
     pub fn facts(&self) -> &survey::Facts {
-        self.facts.get_or_init(|| survey::facts(&self.tree))
+        self.facts
+            .get_or_init(|| survey::facts(&self.tree, self.derivation().as_deref()))
+    }
+
+    fn derivation(&self) -> &Option<String> {
+        self.derivation.get_or_init(|| {
+            self.by_hand
+                .then(|| base::choose(self.root(), false).ok())
+                .flatten()
+                .and_then(|window| window.derives)
+                .or_else(|| survey::unwindowed(self.root()))
+        })
+    }
+
+    pub fn bind(&mut self, window: &Window) {
+        let commit = window
+            .derives
+            .clone()
+            .or_else(|| survey::unwindowed(self.root()));
+        self.derivation = OnceCell::from(commit);
+        self.facts.take();
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives
