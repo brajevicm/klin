@@ -25,7 +25,9 @@ alternative for a person who wants one click and host-managed updates. A
 plugin still fetches its own pinned runtime and needs no binary for its hooks.
 
 The plugin does not install the CLI. Once per machine the wrapper names the
-command that installs it, and the person runs it.
+command that installs it, and the person runs it. An install hint is never a
+`followup_message`, because Cursor submits one as the next prompt and would
+hand the installer to the agent.
 
 ## Rejected options
 
@@ -34,11 +36,13 @@ command that installs it, and the person runs it.
   files, Codex hides hooks behind trust for this reason, and Cursor's
   marketplace says it ships no binaries. klin would maintain a package
   manager inside three hosts.
-- A host activation command on each host (#298, #299, #300). It serves
-  activation alone, it adds a vendor contract per host to canary, and Codex's
+- A host activation command on each host (#299, #300). It serves activation
+  alone, it adds a vendor contract per host to canary, and Codex's
   `UserPromptSubmit` prompt drops a skill the person picked from a menu, so
   its signal is unreliable. `klin install` and `klin init`, which a person
-  runs, already activate a repository.
+  runs, already activate a repository. Claude Code's `/klin:init` (#298) is
+  built and verified on its own branch and is deferred, not rejected: it
+  ships only if plugin-only users turn out to stop at activation.
 - Dropping the plugins. A plugin in the host's own directory is how a person
   finds klin and trusts that it is native to the host.
 
@@ -47,7 +51,7 @@ command that installs it, and the person runs it.
 The Homebrew and npm channels would make the first command shorter and would
 edit no shell startup file. Spec 19.1 forbids an install command for a channel
 that has not shipped, and both would download from release assets that are
-not public yet, so they stay deferred (#64).
+not public yet, so they wait for #315.
 
 A person may take both routes. `klin install` then writes no hooks the plugin
 already supplies (19.3), so the CLI arrives without a second copy of the

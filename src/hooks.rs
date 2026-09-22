@@ -503,13 +503,14 @@ fn array<'a>(
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
 /// would otherwise see a failed hook on every event of every session. The stop of a repository
-/// that opted in says how to install it instead, in the one object every host shows, so a
-/// teammate who cloned the committed hooks learns what they are for. Section 19.3.
+/// that opted in says how to install it instead, so a teammate who cloned the committed hooks
+/// learns what they are for. It is a `systemMessage` alone: Cursor submits a `followup_message`
+/// as the next prompt, which would hand the installer to the agent. Section 19.3.
 fn line(arguments: &str) -> String {
     let missing = match arguments.starts_with("gate") {
         true => format!(
             "{{ [ -f \"${{CLAUDE_PROJECT_DIR:-.}}/klin.json\" ] && echo \
-             '{{\"systemMessage\":\"{MISSING}\",\"followup_message\":\"{MISSING}\"}}'; exit 0; }}"
+             '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
         ),
         false => "exit 0".to_string(),
     };

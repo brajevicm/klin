@@ -4033,7 +4033,8 @@ green, because deterministic detection is not correct judgement:
   of klin's is removed, an entry of klin's on an event klin no longer writes is
   removed, another tool's entries survive, a second complete run writes no
   file, an unreadable host file leaves every file untouched, a written line
-  exits 0 when no binary resolves, `--user` writes the person's own file and
+  exits 0 when no binary resolves and only the stop of an opted-in tree says
+  how to install it, `--user` writes the person's own file and
   no home-directory `klin.json`, and the project form outside a repository is
   refused.
 - State: default under the git directory, per worktree, `KLIN_STATE_DIR`
@@ -4240,7 +4241,8 @@ No other channel ships. There is no Homebrew tap, no npm package and no
 published crate, and this document MUST NOT print an install command for one.
 Each of them is a distribution channel with its own release obligations, and
 none is required to make klin work on a supported platform, so each stays
-deferred (#64). A future channel is added here only once it ships.
+deferred (#64). #315 ships Homebrew and npm once releases are public. A future
+channel is added here only once it ships.
 
 The supported binary targets are macOS and Linux, on x86_64 and arm64. The
 plugin wrapper resolves that same set, so the public contract and the release
@@ -4333,15 +4335,18 @@ touches the network, and it is install, not measurement.
 The plugin never installs a `klin` command for the person (19.0). Once per
 machine, at the first `radius` run that printed nothing, the wrapper says in
 one `systemMessage` that the CLI exists and names the command that installs
-it. It says nothing where PATH resolves a `klin` other than the wrapper
+it. The hint is never a `followup_message`: Cursor submits a stop's
+`followup_message` as the next prompt, which would hand the installer to the
+agent. It says nothing where PATH resolves a `klin` other than the wrapper
 itself, and nothing under Cursor, which shows no message at a prompt. A file
 beside the cache records that the hint was given.
 
 Every line the wrapper or a hook prints on exit 0 is a JSON object with a
-`systemMessage`, and the same object carries `followup_message` with the same
-text. Claude Code and Codex show `systemMessage`. Cursor's native stop shows
-`followup_message`. Codex rejects plain text on a Stop that exits 0, and
-Claude Code writes it to the debug log alone.
+`systemMessage`. A notice carries `followup_message` with the same text too,
+except a notice that names an install command, which carries `systemMessage`
+alone for the reason above. Claude Code and Codex show `systemMessage`.
+Cursor's native stop shows `followup_message`. Codex rejects plain text on a
+Stop that exits 0, and Claude Code writes it to the debug log alone.
 
 Each hook line runs `${CLAUDE_PLUGIN_ROOT}/bin/klin` when that file is
 executable, and otherwise the `klin` that PATH resolves. Claude Code appends
@@ -4468,7 +4473,12 @@ a hook file by hand.
 Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
 who never installed the binary, or who removed it, sees nothing rather than a
-failed hook on every event.
+failed hook on every event. The one exception is the stop of a repository that
+holds a `klin.json`: there the line names the install command in a
+`systemMessage` alone, so a teammate who cloned the committed hooks learns
+what they are for. Codex skips a project hook file's hooks until the person
+trusts them through `/hooks`, as it does a plugin's (19.2), so a document that
+gives the standalone route for Codex names that step.
 
 **Standalone skill.** The standalone route writes the exact text authored at `plugins/klin/skills/klin/SKILL.md`; the binary embeds that source so the plugin and standalone copies cannot drift.
 

@@ -17,7 +17,7 @@ fi
 BASE="${KLIN_RELEASE_BASE_URL:-https://github.com/brajevicm/klin/releases/download/v$VERSION}"
 CACHE="${KLIN_CACHE_DIR:-$HOME/.cache/klin}/bin"
 BINARY="$CACHE/$VERSION/klin"
-HINTED="$CACHE/../hinted"
+HINTED="${KLIN_CACHE_DIR:-$HOME/.cache/klin}/hinted"
 CLI="klin: this plugin runs klin's hooks. For the klin command itself, such as klin init, install it: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh"
 
 target() {
@@ -80,7 +80,7 @@ if [ ! -x "$BINARY" ]; then
 	rm -rf "$scratch"
 	if [ "$outcome" -ne 0 ]; then
 		# A binary a person installed by another route is better than no check at all.
-		if on_path=$(command -v klin) && [ "$on_path" != "$0" ]; then
+		if on_path=$(command -v klin) && ! [ "$on_path" -ef "$0" ]; then
 			exec "$on_path" "$@"
 		fi
 		said "klin: the pinned release $VERSION could not be installed, so nothing was checked."
@@ -89,7 +89,8 @@ if [ ! -x "$BINARY" ]; then
 fi
 
 # A person without a klin of their own hears once that the CLI exists. Cursor shows no message at
-# a prompt, so the hint waits for another host.
+# a prompt, so the hint waits for another host. It is never a followup_message, which Cursor would
+# submit as a prompt that hands the installer to the agent.
 if [ "${1:-}" = radius ]; then
 	touch "$CACHE/$VERSION" 2>/dev/null
 	if [ ! -e "$HINTED" ] && [ -z "${CURSOR_VERSION:-}" ] &&
@@ -100,8 +101,7 @@ if [ "${1:-}" = radius ]; then
 			[ -z "$printed" ] || printf '%s\n' "$printed"
 			exit "$outcome"
 		fi
-		: >"$HINTED" 2>/dev/null
-		said "$CLI"
+		: >"$HINTED" 2>/dev/null && printf '{"systemMessage":"%s"}\n' "$CLI"
 		exit 0
 	fi
 fi

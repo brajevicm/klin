@@ -50,7 +50,7 @@ fn line(arguments: &str) -> String {
     let missing = match arguments.starts_with("gate") {
         true => format!(
             "{{ [ -f \"${{CLAUDE_PROJECT_DIR:-.}}/klin.json\" ] && echo \
-             '{{\"systemMessage\":\"{MISSING}\",\"followup_message\":\"{MISSING}\"}}'; exit 0; }}"
+             '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
         ),
         false => "exit 0".to_string(),
     };
@@ -116,7 +116,9 @@ const ANOTHER_TOOL: &str = r#"{"hooks": {"Stop": [{"hooks": [{"type": "command",
   "command": "cargo fmt"}]}]}}"#;
 
 /// A teammate who clones a repository with klin's committed hooks and has no klin on PATH hears
-/// at the stop how to install it. A tree that never opted in stays silent. Spec 19.3.
+/// at the stop how to install it. The notice is never a `followup_message`, which Cursor submits
+/// as the next prompt and would hand the installer to the agent. A tree that never opted in
+/// stays silent. Spec 19.3.
 #[test]
 fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
     let tree = a_repository();
@@ -144,10 +146,7 @@ fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
                 .is_some_and(|text| text.contains("klin-installer.sh")),
             "{said}"
         );
-        assert_eq!(
-            notice["systemMessage"], notice["followup_message"],
-            "{said}"
-        );
+        assert!(notice.get("followup_message").is_none(), "{said}");
     }
     std::fs::remove_file(tree.path("klin.json")).unwrap_or_else(|why| panic!("{why}"));
     for stop in &stops {

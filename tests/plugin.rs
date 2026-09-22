@@ -448,6 +448,16 @@ fn the_cursor_hook_lines_name_the_cursor_plugin_root() {
     }
 }
 
+/// Cursor submits a stop's `followup_message` as the next prompt, so the install hint in the
+/// Cursor stop line is never one: it would hand the installer to the agent. Spec 19.2.
+#[test]
+fn the_cursor_stop_hands_the_installer_to_no_agent() {
+    let line = cursor_hook("stop");
+
+    assert!(line.contains("klin-installer.sh"), "{line}");
+    assert!(!line.contains("followup_message"), "{line}");
+}
+
 /// The `systemMessage` of a JSON notice on stdout, or a panic naming what was printed instead.
 fn notice(printed: &str) -> String {
     let Ok(held) = serde_json::from_str::<serde_json::Value>(printed.trim()) else {
@@ -547,7 +557,57 @@ fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
         "{}",
         first.out
     );
+    assert!(!first.printed.contains("followup_message"), "{}", first.out);
     assert_eq!(second.printed, "", "the hint came twice");
+}
+
+/// Cursor shows no message at a prompt, so under Cursor the hint waits for another host.
+#[test]
+fn the_wrapper_names_the_cli_to_nobody_under_cursor() {
+    let tree = Tree::bare();
+    release_running(&tree, "true");
+    let base = format!("file://{}", tree.path("release").display());
+
+    let run = ran(
+        &at(WRAPPER).display().to_string(),
+        &["radius"],
+        tree.root(),
+        &[
+            ("PATH", SYSTEM_PATH),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &tree.path("cache").display().to_string()),
+            ("CURSOR_VERSION", "3.20.21"),
+        ],
+    );
+
+    assert_eq!(run.printed, "", "{}", run.out);
+}
+
+/// A radius run marks its version as used, so a later fetch of another pin keeps it.
+#[test]
+fn a_radius_run_keeps_its_version_in_the_cache() {
+    let tree = Tree::bare();
+    release(&tree, "the-fetched-binary");
+    assert_eq!(fetch(&tree, &["--version"]).code, 0);
+    let pinned = tree.path(&format!("cache/bin/{PINNED}"));
+    let aged = ran(
+        "touch",
+        &["-t", "202001010000", &pinned.display().to_string()],
+        tree.root(),
+        &[],
+    );
+    assert_eq!(aged.code, 0, "{}", aged.out);
+
+    assert_eq!(fetch(&tree, &["radius"]).code, 0);
+
+    let used = fs::metadata(&pinned)
+        .and_then(|held| held.modified())
+        .unwrap_or_else(|why| panic!("{why}"));
+    let week = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+    assert!(
+        used.elapsed().is_ok_and(|age| age < week),
+        "the radius run left its version looking unused"
+    );
 }
 
 /// The hint never displaces what radius printed, and a person who has a `klin` of their own
@@ -842,6 +902,7 @@ fn ran(program: &str, args: &[&str], cwd: &Path, environment: &[(&str, &str)]) -
     let done = Command::new(program)
         .args(args)
         .current_dir(cwd)
+        .env_remove("CURSOR_VERSION")
         .envs(environment.iter().copied())
         .output();
     match done {

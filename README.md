@@ -20,10 +20,10 @@ Install klin, then turn it on in your repository:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-cd your-repo && klin install
+cd your-repo && klin install --host claude
 ```
 
-`klin install` writes `klin.json` at the repository root, plus the hooks and skill for whichever of Claude Code, Codex, and Cursor it finds. Commit them so your teammates get the same checks. If your shell can't find `klin` yet, open a new terminal.
+Name the host you use: `claude`, `codex`, or `cursor`, and repeat `--host` for more than one. `klin install` writes `klin.json` at the repository root, plus that host's hooks and the klin skill. Commit them so your teammates get the same checks. If your shell can't find `klin` yet, open a new terminal.
 
 Codex asks you to trust new hooks first. Run `/hooks`, review and trust the klin hooks, then start a fresh session. Reload Cursor afterward.
 
