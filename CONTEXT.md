@@ -103,10 +103,10 @@ judges. A host with no id leaves the session empty.
 _Avoid_: conversation, run
 
 **External**:
-Outside the crate or package that declares an item, including a sibling in
-the same repository. `public-api` judges what is external. Registry
-publication does not decide it: `publish = false` and `"private": true`
-change nothing.
+In `public-api`, outside the crate or package that declares an item,
+including a sibling in the same repository. The gate judges what is
+external. Registry publication does not decide it: `publish = false` and
+`"private": true` change nothing.
 _Avoid_: published, outside the repository
 
 **Intervention**:

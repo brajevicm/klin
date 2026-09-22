@@ -91,7 +91,9 @@ No keys: the section is absent, or `false` to exclude the gate.
 
 ### `public_api`
 
-No keys: the section is absent, or `false` to exclude the gate. A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `"private": true` do not make a package not applicable (ADR 0050).
+No keys: the section is absent, or `false` to exclude the gate.
+
+A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `"private": true` do not make a package not applicable (ADR 0050).
 
 ### `conventions`
 

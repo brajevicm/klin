@@ -64,6 +64,10 @@ fn every_key_says_whether_it_is_required_and_where_its_value_comes_from() {
         out.contains("### `doc_citations`\n\nNo keys: the section is absent, or `false`"),
         "no keyless doc_citations section in: {out}"
     );
+    assert!(
+        out.contains("`publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050)"),
+        "no public_api publication rule in: {out}"
+    );
 }
 
 #[test]

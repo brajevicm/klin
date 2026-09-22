@@ -407,6 +407,9 @@ fn sections(out: &mut String) {
             }
             false => table(spec.keys, out),
         }
+        if let Some(text) = spec.reference_text {
+            let _ = writeln!(out, "\n{text}");
+        }
     }
 }
 

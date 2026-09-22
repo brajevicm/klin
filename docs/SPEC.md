@@ -741,6 +741,8 @@ The reference MUST also state what the key tables alone do not say:
   sections reject
 - the path-to-ceiling shape of `doc_size` and the built-in citation extensions
   of `doc_citations`
+- that `publish = false` and `"private": true` do not make a package not
+  applicable to `public_api` (ADR 0050)
 - that a file which leaves compact scope is reported as lost coverage under
   the base-era scope rule of 8.6
 
@@ -1861,9 +1863,9 @@ dependency or a git dependency can still consume them (ADR 0050).
 
 An *item* is what a consumer names under a surface, and its identity is the
 surface, the exported path or name and the item's kind, never the file that
-declares it. *External* means outside the crate or package that declares the
-item, including a sibling in the same repository, and never means published.
-The check judges only external items. From a Rust root the check follows
+declares it. In this check, *external* means outside the crate or package
+that declares the item, including a sibling in the same repository, and never
+means published. The check judges only external items. From a Rust root the check follows
 every plain `pub` declaration, every `pub mod`, and every `pub use` leaf: an
 alias renames the item, a glob exposes every public item of the module it
 reaches less the names the globbing module exposes itself, a re-export of a
