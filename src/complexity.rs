@@ -63,6 +63,17 @@ const ECMASCRIPT_DECISIONS: &[&str] = &[
 
 const ECMASCRIPT_OPERATORS: &[&str] = &["&&", "||", "??"];
 
+const SUITE_CONTAINERS: &[&str] = &["describe", "context", "suite", "fdescribe", "xdescribe"];
+const SUITE_BASES: &[&str] = &["describe", "context", "suite"];
+const SUITE_DIRECT_METHODS: &[&str] = &["only", "skip"];
+const SUITE_CALLBACK_WRAPPERS: &[&str] = &[
+    "parenthesized_expression",
+    "as_expression",
+    "satisfies_expression",
+    "non_null_expression",
+    "type_assertion",
+];
+
 const ACCESSOR_HOLDERS: &[&str] = &[
     "computed_property",
     "subscript_declaration",
@@ -862,6 +873,7 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
     let at = Walked {
         language: file.language,
         metrics: metrics(file.language.id),
+        test_file: survey::marked(file.path),
         file: file.path,
         source: file.source,
         lines: file.lines(),
@@ -898,13 +910,17 @@ pub fn measured(path: &str, source: &str) -> Vec<Measured> {
 struct Walked<'a> {
     language: &'static Language,
     metrics: &'static Metrics,
+    test_file: bool,
     file: &'a str,
     source: &'a str,
     lines: Vec<&'a str>,
 }
 
 fn collect(node: Node, at: &Walked, out: &mut Vec<Function>) {
-    if at.language.functions.contains(&node.kind()) && !holds_a_body(node, at.language) {
+    if at.language.functions.contains(&node.kind())
+        && !holds_a_body(node, at.language)
+        && !suite_callback(node, at)
+    {
         out.push(Function {
             file: at.file.to_string(),
             line: node.start_position().row as u64 + 1,
@@ -918,6 +934,74 @@ fn collect(node: Node, at: &Walked, out: &mut Vec<Function>) {
     for child in node.children(&mut cursor) {
         collect(child, at, out);
     }
+}
+
+fn suite_callback(node: Node, at: &Walked) -> bool {
+    if !at.test_file
+        || !matches!(
+            at.language.id,
+            LanguageId::TypeScript | LanguageId::JavaScript
+        )
+    {
+        return false;
+    }
+    let mut callback = node;
+    while let Some(parent) = callback
+        .parent()
+        .filter(|parent| SUITE_CALLBACK_WRAPPERS.contains(&parent.kind()))
+    {
+        callback = parent;
+    }
+    let Some(arguments) = callback
+        .parent()
+        .filter(|parent| parent.kind() == "arguments")
+    else {
+        return false;
+    };
+    arguments
+        .parent()
+        .filter(|parent| parent.kind() == "call_expression")
+        .is_some_and(|call| suite_call(call, at.source))
+}
+
+fn suite_call(call: Node, source: &str) -> bool {
+    let Some(callee) = call.child_by_field_name("function") else {
+        return false;
+    };
+    let callee = unparenthesized(callee);
+    match callee.kind() {
+        "identifier" => {
+            SUITE_CONTAINERS.contains(&callee.utf8_text(source.as_bytes()).unwrap_or_default())
+        }
+        "member_expression" => suite_member(callee, SUITE_DIRECT_METHODS, source),
+        "call_expression" => callee
+            .child_by_field_name("function")
+            .is_some_and(|function| suite_member(function, &["each"], source)),
+        _ => false,
+    }
+}
+
+fn suite_member(node: Node, methods: &[&str], source: &str) -> bool {
+    let node = unparenthesized(node);
+    let Some(object) = node.child_by_field_name("object") else {
+        return false;
+    };
+    let Some(property) = node.child_by_field_name("property") else {
+        return false;
+    };
+    let object = unparenthesized(object);
+    SUITE_BASES.contains(&object.utf8_text(source.as_bytes()).unwrap_or_default())
+        && methods.contains(&property.utf8_text(source.as_bytes()).unwrap_or_default())
+}
+
+fn unparenthesized(mut node: Node) -> Node {
+    while node.kind() == "parenthesized_expression" {
+        let Some(inner) = node.named_child(0) else {
+            break;
+        };
+        node = inner;
+    }
+    node
 }
 
 fn decisions(node: Node, at: &Walked) -> u64 {
