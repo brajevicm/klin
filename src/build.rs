@@ -102,7 +102,7 @@ fn derived(project: &Project) -> Plan {
     let manifests = &project.facts().found.manifests;
     let mut found: Vec<(Entry, String)> = manifests
         .iter()
-        .filter_map(|path| command(manifests, path))
+        .filter_map(|path| command(project.root(), manifests, path))
         .collect();
     found.sort();
     let Some((first, _)) = found.first() else {
@@ -135,27 +135,63 @@ impl Entry {
 
 /// The command a manifest the table names builds with, and the manifest it came from, or
 /// nothing for one that builds no project of its own or whose companion file is not beside it.
-fn command(manifests: &[String], path: &str) -> Option<(Entry, String)> {
+fn command(root: &Path, manifests: &[String], path: &str) -> Option<(Entry, String)> {
     let name = path.rsplit_once('/').map_or(path, |(_, name)| name);
     let (_, beside, run) = MANIFESTS.iter().find(|(held, _, _)| name == *held)?;
-    let root = match survey::parent(path) {
+    let at = match survey::parent(path) {
         at if at == scope::ROOT => None,
         at => Some(at),
     };
-    let companion = match &root {
+    let companion = match &at {
         None => beside.to_string(),
         Some(at) => format!("{at}/{beside}"),
     };
     let whole = beside.is_empty() || manifests.contains(&companion);
     (!run.is_empty() && whole).then(|| {
-        (
-            Entry {
-                root,
-                run: run.to_string(),
-            },
-            origin(path, beside),
-        )
+        let run = installed(root, at.as_deref(), run);
+        (Entry { root: at, run }, origin(path, beside))
     })
+}
+
+/// A derived command runs the tool the project installed when one sits in a `node_modules/.bin`
+/// at the manifest's directory or above it, up to the root klin measures and never beyond it,
+/// and the tool on `PATH` when the project installed none. The path is relative to the directory the
+/// entry runs in, so no derived string carries where the tree sits. Nothing here resolves or
+/// downloads a tool over the network. Spec 5.4, 9.3.
+fn installed(root: &Path, at: Option<&str>, run: &str) -> String {
+    let (tool, args) = run.split_once(' ').unwrap_or((run, ""));
+    let mut up = String::new();
+    let mut here = at.map_or_else(|| root.to_path_buf(), |at| root.join(at));
+    loop {
+        if runnable(&here.join("node_modules/.bin").join(tool)) {
+            return format!("{up}node_modules/.bin/{tool} {args}")
+                .trim_end()
+                .to_string();
+        }
+        match here.parent() {
+            Some(parent) if here != root => here = parent.to_path_buf(),
+            _ => return run.to_string(),
+        }
+        up.push_str("../");
+    }
+}
+
+/// Whether a path is a file this host can execute. A file without the bit is not the tool: a
+/// shell that cannot run it exits 126, which ADR 0048 does not read as an absent tool, so the
+/// `PATH` tool is the better command.
+fn runnable(at: &Path) -> bool {
+    let Ok(held) = at.metadata() else {
+        return false;
+    };
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        held.is_file() && held.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        held.is_file()
+    }
 }
 
 /// The manifest a derived command came from, as the `derived:` line and a failing build name it.

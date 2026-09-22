@@ -536,3 +536,138 @@ fn a_pinned_command_replaces_the_derived_one() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "pinned\n", "{}", run.out);
 }
+
+/// An executable script in the tree, as an installed compiler is.
+fn installed(tree: &Tree, path: &str, body: &str) {
+    tree.write(path, body);
+    let at = tree.path(path);
+    let Ok(held) = std::fs::metadata(&at) else {
+        panic!("no {}", at.display())
+    };
+    let mut mode = held.permissions();
+    std::os::unix::fs::PermissionsExt::set_mode(&mut mode, 0o755);
+    assert!(std::fs::set_permissions(&at, mode).is_ok());
+}
+
+fn typescript(tree: &Tree, at: &str) {
+    tree.write(&format!("{at}package.json"), "{\"name\": \"web\"}\n");
+    tree.write(&format!("{at}tsconfig.json"), "{}\n");
+    tree.write(&format!("{at}src/index.ts"), "export const a = 1;\n");
+}
+
+/// A derived TypeScript build runs the compiler the project installed beside its manifest, with
+/// no compiler on `PATH`, and a compile error blocks the stop. Spec 5.4, 9.3.
+#[test]
+fn a_derived_build_runs_the_compiler_installed_beside_the_manifest() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        "#!/bin/sh\necho the-project-compiler-spoke\nexit 1\n",
+    );
+    tree.base();
+
+    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the-project-compiler-spoke"), "{}", run.out);
+    assert!(run.says("node_modules/.bin/tsc --noEmit"), "{}", run.out);
+    assert!(!run.says("could not run"), "{}", run.out);
+}
+
+/// A nested manifest whose compiler is hoisted to an ancestor `node_modules/.bin` inside the
+/// repository runs that compiler, and a passing compile prints no NOTE. Spec 5.4, 9.3.
+#[test]
+fn a_derived_build_runs_the_nearest_compiler_above_the_manifest() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "web/");
+    installed(
+        &tree,
+        "node_modules/.bin/tsc",
+        &format!("#!/bin/sh\necho \"$PWD\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.base();
+    tree.write("web/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).trim().ends_with("/web"), "{}", ran(&tree));
+    assert!(!run.says("could not run"), "{}", run.out);
+}
+
+/// With no compiler installed in the tree, a compiler on `PATH` still runs. Spec 5.4.
+#[test]
+fn a_derived_build_falls_back_to_the_compiler_on_the_path() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
+}
+
+/// A person's `build` string runs exactly as written, whatever the tree installed. Spec 5.2.
+#[test]
+fn a_configured_build_is_not_rewritten_by_an_installed_compiler() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"build": "tsc --noEmit"}"#);
+    typescript(&tree, "");
+    installed(&tree, "node_modules/.bin/tsc", "#!/bin/sh\nexit 1\n");
+    tree.base();
+
+    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the build `tsc --noEmit` could not run"),
+        "{}",
+        run.out
+    );
+}
+
+/// Resolution stops at the root klin measures: a compiler above that root is not the project's.
+/// Spec 5.4.
+#[test]
+fn a_derived_build_does_not_reach_a_compiler_above_the_root() {
+    let tree = Tree::new();
+    tree.write("app/klin.json", "{}");
+    typescript(&tree, "app/");
+    installed(&tree, "node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n");
+    tree.base();
+    tree.write("app/src/index.ts", "export const a = 2;\n");
+
+    let run = harness::feed_with(
+        &tree.path("app"),
+        &[("PATH", "/usr/bin:/bin")],
+        &["gate", "--hook"],
+        A_STOP,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("the build `tsc --noEmit` could not run"),
+        "{}",
+        run.out
+    );
+}
+
+/// A file without the executable bit is not the project's compiler, so the `PATH` tool runs.
+/// Spec 5.4.
+#[test]
+fn a_compiler_that_cannot_be_executed_is_not_the_derived_command() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write("node_modules/.bin/tsc", "#!/bin/sh\nexit 1\n");
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
+}
