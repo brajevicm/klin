@@ -3,6 +3,7 @@ mod harness;
 use harness::{Run, Tree};
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
+const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 const PACKAGE: &str = "[package]\nname = \"core\"\nversion = \"0.1.0\"\nedition = \"2024\"\n";
 const CLIENT: &str = "pub struct Client {\n    pub name: String,\n    secret: u8,\n}\n\nimpl Client {\n    pub fn new(name: &str) -> Client {\n        Client { name: name.to_string(), secret: 0 }\n    }\n\n    fn hidden(&self) -> u8 {\n        self.secret\n    }\n}\n";
 const LIB: &str = "mod client;\npub mod model;\nmod hidden;\npub use client::Client;\npub(crate) fn internal() -> u8 {\n    1\n}\npub fn parse(input: &str) -> u8 {\n    input.len() as u8\n}\n";
@@ -385,6 +386,60 @@ fn an_accepted_break_is_held_by_surface_and_item_identity() {
     let run = by_hand(&tree);
 
     assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_a_person() {
+    let tree = Tree::new();
+    library(&tree);
+    tree.write("klin.json", r#"{"build": []}"#);
+    tree.base();
+    tree.write("src/lib.rs", &LIB.replace("pub fn parse", "pub fn read"));
+
+    let first = hook(&tree);
+    let second = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_SECOND_STOP);
+
+    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(
+        first.says("Do not change what the task asked for only to satisfy this gate"),
+        "{}",
+        first.out
+    );
+    assert!(
+        first.says("If the break is intended, say so in your reply and stop again, and that stop ends the turn"),
+        "{}",
+        first.out
+    );
+    assert!(
+        first.says("Your reply does not accept the break")
+            && first.says("a person accepts it with an accepted entry in a reviewed commit")
+            && first.says("CI refuses it"),
+        "{}",
+        first.out
+    );
+    assert_eq!(second.code, 0, "{}", second.out);
+}
+
+#[test]
+fn a_break_by_hand_names_person_acceptance_and_no_second_stop() {
+    let tree = Tree::new();
+    library(&tree);
+    tree.write("src/lib.rs", &LIB.replace("pub fn parse", "pub fn read"));
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("Do not change what the task asked for only to satisfy this gate"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("a person accepts it with an accepted entry in a reviewed commit"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("stop again"), "{}", run.out);
 }
 
 #[test]

@@ -39,8 +39,16 @@ const REMOVED_SURFACE: &str = "removed surface";
 const REMOVED: &str = "removed";
 const CHANGED: &str = "changed";
 const SURFACE_TEXT: &str = "(surface)";
-const REMEDY: &str = "Restore the removed surface or item, or keep the declared contract it had at the base. \
-                      A break a person means is an accepted entry, written in a reviewed commit.";
+const REMEDY: &str = "Keep the surface, the item or the declared contract the base had where the task \
+                      allows it. Do not change what the task asked for only to satisfy this gate. If the \
+                      break is intended, a person accepts it with an accepted entry in a reviewed \
+                      commit, and until then CI refuses it.";
+const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract the base had where \
+                           the task allows it. Do not change what the task asked for only to \
+                           satisfy this gate. If the break is intended, say so in your reply and \
+                           stop again, and that stop ends the turn. Your reply does not accept \
+                           the break: a person accepts it with an accepted entry in a reviewed \
+                           commit, and until then CI refuses it.";
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -260,7 +268,7 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
         cost.items, cost.surfaces, cost.measured, cost.opaque
     );
     let tail = format!("{said}; {}", discovered(&now.derived));
-    let evaluator = evaluator();
+    let evaluator = evaluator(at.hook());
     Ok(evaluator.evaluate(
         findings,
         Vec::new(),
@@ -288,12 +296,12 @@ fn discovered(derived: &Derived) -> String {
     )
 }
 
-fn evaluator() -> Evaluator<'static> {
+fn evaluator(hook: bool) -> Evaluator<'static> {
     Evaluator {
         metrics: &[BREAK],
         unit: "compatibility break(s)",
         condition: "where an external surface or item the base exposed is gone or its declared contract changed",
-        fix_advice: REMEDY,
+        fix_advice: if hook { HOOK_REMEDY } else { REMEDY },
         ceiling: None,
         format_metrics: show,
     }

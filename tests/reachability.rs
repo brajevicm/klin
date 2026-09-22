@@ -661,3 +661,50 @@ fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
     assert_eq!(row["notes"], 1, "{last}");
     assert_eq!(row["findings"], 0, "{last}");
 }
+
+#[test]
+fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"build": []}"#);
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"core\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    let names = ["alpha", "beta", "gamma", "delta"];
+    let mut lib = String::from("mod commands;\n");
+    let mut commands = String::new();
+    for name in names {
+        tree.write(
+            &format!("src/commands/{name}_command.rs"),
+            &format!("pub fn run_{name}() {{}}\n"),
+        );
+        lib.push_str(&format!("pub use commands::{name}_command::run_{name};\n"));
+        commands.push_str(&format!("pub mod {name}_command;\n"));
+    }
+    tree.write("src/commands/mod.rs", &commands);
+    tree.write("src/lib.rs", &lib);
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); run_delta(); }\n",
+    );
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        &lib.replace("pub use commands::delta_command::run_delta;\n", ""),
+    );
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
+    );
+
+    let run = tree.run(&["gate", "--changed"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("run_delta (function)"), "{}", run.out);
+    assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
+    assert!(
+        run.says("If a public-api break names what this file held, the two remedies conflict"),
+        "{}",
+        run.out
+    );
+}
