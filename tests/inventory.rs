@@ -449,6 +449,21 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
         "{}",
         third.out
     );
+
+    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    let later = stop(&tree);
+    assert_eq!(later.code, 2, "{}", later.out);
+    assert!(later.says("gate block 1 of 2"), "{}", later.out);
+    assert!(
+        later.says("tests/test_three.py:0  missing 1, was missing 0"),
+        "{}",
+        later.out
+    );
+    assert!(
+        !later.says("tests/test_two.py:0  missing 1, was missing 0"),
+        "{}",
+        later.out
+    );
 }
 
 #[test]

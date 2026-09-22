@@ -133,6 +133,22 @@ test("a stop klin let through is the gate not firing, and every other answer is 
   );
   assert.equal(hookVerdict(ran({ stderr: "  ERR   dead-symbols\n" }), "dead-symbols").passed, null);
   assert.equal(hookVerdict(ran({ stderr: "  FAIL  stubs\n" }), "dead-symbols").passed, null);
+  const report = JSON.stringify({
+    gates: [
+      { name: "dead-symbols", status: "ok" },
+      { name: "stubs", status: "FAIL" },
+    ],
+  });
+  assert.equal(
+    hookVerdict(ran({ stderr: "  FAIL  stubs\n", report }), "dead-symbols").passed,
+    false,
+    "the report object holds the passing gate the focused text leaves out",
+  );
+  assert.equal(
+    hookVerdict(ran({ stderr: "  FAIL  stubs\n", report }), "stubs").passed,
+    true,
+  );
+  assert.equal(hookVerdict(ran({ report: "not json" }), "dead-symbols").passed, null);
   assert.equal(hookVerdict(ran({ status: 1 }), "dead-symbols").passed, null);
   assert.equal(hookVerdict(ran({ error: new Error("ENOENT") }), "dead-symbols").passed, null);
   assert.equal(hookVerdict(ran({ signal: "SIGKILL" }), "dead-symbols").passed, null);

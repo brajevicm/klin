@@ -57,10 +57,13 @@ A record an older klin wrote names one `gate_spent` flag and no gate tree. It
 reads as one gate block spent over an unknown tree, so it can never prove a
 second block.
 
-**A host-generated follow-up refreshes nothing.** Cursor submits a block report
-as the next prompt (spec 9.3, ADR 0045). That prompt is consumed without
-raising the prompt counter, so the stop after it still holds the budget that
-the report came from. A genuine later prompt raises the counter and gets a
+**A host-generated follow-up refreshes nothing.** Cursor submits a block
+report, and any message a stop tells the person, as the next prompt (spec 9.1,
+9.3, ADR 0045). klin records both before delivery, so that prompt is consumed
+without raising the prompt counter, and the stop after it still holds the
+budget the report came from. A told message was not recorded before this
+decision, so a red turn on Cursor gained a fresh gate block from each turn-end
+message it told. A genuine later prompt raises the counter and gets a
 fresh budget of two gate blocks and eight build blocks.
 
 **ADR 0031 keeps its precedence.** A deleted test already asked about stays

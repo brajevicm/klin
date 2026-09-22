@@ -351,8 +351,9 @@ fn a_codex_continuation_over_a_changed_tree_spends_the_second_gate_block() {
     assert!(third.says("has blocked 2 stops"), "{}", third.out);
 }
 
-/// Cursor submits each block report as the next prompt. klin consumes that prompt without a
-/// fresh gate budget, so the stop after it spends the prompt's second block and no more.
+/// Cursor submits each block report, and each message a stop tells, as the next prompt. klin
+/// consumes that prompt without a fresh gate budget, so the stops after it spend the prompt's
+/// second block and no more.
 #[test]
 fn a_cursor_followup_gains_no_fresh_gate_budget() {
     let tree = Tree::new();
@@ -371,6 +372,11 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
     let first = stop(&tree, A_CURSOR_STOP, &[]);
     assert_eq!(first.code, 2, "{}", first.out);
     echo_followup(&tree, &first);
+
+    let told = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(told.code, 0, "{}", told.out);
+    assert!(told.says(r#""followup_message":"#), "{}", told.out);
+    echo_followup(&tree, &told);
 
     tree.words("README.md", 31);
     let second = stop(&tree, A_CURSOR_STOP, &[]);

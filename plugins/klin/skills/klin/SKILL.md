@@ -11,8 +11,9 @@ klin names is a finding this turn created, and what it names is code to fix.
 
 ## How to read a failure
 
-The stop hook prints a lead line, then each failing gate's own output, then
-the derived values the run used. In the hook the exit code is the host's
+The stop hook prints a lead line, then each gate that did not pass, with the
+derived values it used above its row and its own output below. A gate that
+passed prints only when it left a note you should read. In the hook the exit code is the host's
 protocol and not the verdict: exit 2 means "block this stop", and it does not
 mean that klin failed to run.
 
@@ -21,9 +22,12 @@ mean that klin failed to run.
 2. Fix the code at that site.
 3. Run `klin gate --changed` to see whether the fix holds.
 
-A gate failure blocks one stop per turn. The second stop reports the same
-failure and lets the turn end, so a turn that ends is not a turn that passed.
-The failure stands, and CI refuses it.
+A gate failure blocks at most two stops per turn, and each block names its
+number. After the first, a stop over a tree you did not change reports the
+same failure and lets the turn end. A stop over a changed tree that still
+fails blocks a second time, and after that no gate failure blocks again. A
+turn that ends is not a turn that passed. The failure stands, and CI refuses
+it.
 
 A build failure is separate. It blocks a stop only after you changed the
 tree, up to eight in one turn, and a stop over an unchanged tree is reported

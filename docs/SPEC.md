@@ -849,8 +849,8 @@ stop, a prompt counter, the prompt mark of 6.2.1, and the `asked` record of
 8.2. `klin gate --hook` writes the verdict and adds to `asked`. A fresh stamp
 holds an empty `asked`, so the record goes whenever the stamp moves. `klin radius` applies the rule above and raises the
 counter by one on every session start and prompt submitted, whether or not
-the stamp moved. The counter is what makes "once per turn" in 9.3 literal,
-because the stamp itself moves only after a green stop. The state directory
+the stamp moved. The counter is what makes the per-turn block budget of 9.3
+literal, because the stamp itself moves only after a green stop. The state directory
 the stamp sits in is guarded (9.4).
 
 #### 6.2.1 The prompt mark
@@ -2423,7 +2423,7 @@ event rather than under `tool_input`; klin reads a top-level `command` on
 that event alone, because `beforeMCPExecution` carries the MCP server's own
 launch command there and the agent did not run it. `conversation_id` is the
 session. Cursor sends no `stop_hook_active`, so `blocked_before` is always
-false and klin's own gate-spent record bounds the block (9.3). `loop_count`
+false and klin's own gate block count and gate tree bound the blocks (9.3). `loop_count`
 counts the follow-ups one conversation has already taken and MUST NOT be
 read as `blocked_before`. Guard decisions that refuse go out as `permission`
 on stdout: both a deny and an ask carry `deny` and the reason in
@@ -2437,7 +2437,8 @@ exit 2, so the agent sees the report and the refusal holds where that answer
 goes unread — the same pairing as a deny. A stop that tells the
 person writes a JSON `followup_message` on stdout under exit 0. Cursor submits
 that follow-up as the next user prompt. Before delivery, klin records a hash
-of the exact report in the turn stamp. A prompt with that hash consumes the
+of the exact report or message in the turn stamp, for a block and a told
+stop alike. A prompt with that hash consumes the
 record and moves neither the prompt counter nor the mark. Every different
 prompt, including one that starts with `klin:`, clears the record and opens a
 turn normally. A prose prefix is not a protocol marker. ADR 0045.
@@ -2483,7 +2484,7 @@ that reads a host's JSON.
 | session start | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
 | pre-tool | `klin guard` | deny or ask | nothing |
 | prompt submitted | `klin radius` | never | `turn` per 6.2, its prompt counter, and the mark of 6.2.1 |
-| stop | `klin gate --hook --changed` | each stop that changed the tree while the build fails, up to eight per turn, and once per turn for gates | `build-blocked`, and the verdict in `turn` |
+| stop | `klin gate --hook --changed` | each stop that changed the tree while the build fails, up to eight per turn, and for gates the first failing stop and one more over a changed tree | `build-blocked`, and the verdict in `turn` |
 
 The shared hook lines call `klin` from PATH:
 
@@ -3596,9 +3597,9 @@ the agent's environment, and where the boundaries end. It states this section,
 
 ### 15.1 Feedback level
 
-Hooks only. klin puts every failure in front of the agent once per turn, keeps
-the window open until the failure is fixed, accepted or reset by a person,
-and refuses its edits to the config. The config and klin's own state
+Hooks only. klin puts every failure in front of the agent, blocks on a gate
+failure at most twice per turn (9.3), keeps the window open until the failure
+is fixed, accepted or reset by a person, and refuses its edits to the config. The config and klin's own state
 directory are the guarded set (9.4).
 Nothing prevents a PATH
 shim or a `chmod -x`, and the guard sees only the tool calls the host shows
@@ -3777,7 +3778,7 @@ hook(event):
 
 pass_through(why):
   report(); say(why)
-  if event.session and no_prompt_line(event.session):
+  if count.gate_blocks > 0 and event.session and no_prompt_line(event.session):
     systemMessage("klin: no prompt event reached this session; klin grants no fresh gate blocks until `klin radius` runs on session start and on prompt submitted.")
     flags += "no-prompt-event"
 ```
@@ -4071,9 +4072,11 @@ green, because deterministic detection is not correct judgement:
   command the shell cannot find is a NOTE and the gates run, a derived
   build's failure names its command and its manifest, a new prompt
   restores the eight, a build failure writes a red verdict and the next
-  prompt does not move the stamp, gate failure blocks once, the stamp hands
-  the second stop an unspent block, a second session's prompt in the same
-  worktree does not spend it, unreadable event never blocks, the verdict is
+  prompt does not move the stamp, a gate failure blocks once and a second
+  time only over a changed tree and never a third, a build block leaves the
+  gate's tree alone, a host flag alone spends no second gate block, a
+  follow-up prompt a host submits brings no fresh budget, a second
+  session's prompt in the same worktree does not spend it, unreadable event never blocks, the verdict is
   written.
 
 - Guard: one test per deny route including `init`, `install` and `turn reset`, one per

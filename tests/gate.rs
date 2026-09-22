@@ -772,6 +772,30 @@ fn the_gate_blocks_twice_under_each_prompt_and_only_over_a_changed_tree() {
     assert!(after.says("gate block 1 of 2"), "{}", after.out);
 }
 
+#[test]
+fn a_second_gate_block_klin_cannot_record_is_reported_and_blocks_nothing() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let staging = tree.path(".git/klin/build-blocked.writing");
+    assert!(
+        std::fs::create_dir_all(&staging).is_ok(),
+        "{}",
+        staging.display()
+    );
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(
+        second.says("klin could not record a second gate block"),
+        "{}",
+        second.out
+    );
+}
+
 /// A record an older klin wrote names one spent gate block and no gate tree, so it can never
 /// prove the tree changed. Spec 16.3.
 #[test]

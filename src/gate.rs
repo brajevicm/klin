@@ -189,7 +189,11 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
-        host::answering(event.as_ref()).stop(&Stop::Tell(said));
+        let host = host::answering(event.as_ref());
+        if host.follows_up() {
+            turn::expect_followup(root, &said);
+        }
+        host.stop(&Stop::Tell(said));
     }
     code
 }
@@ -1133,7 +1137,9 @@ fn working_tree(root: &Path, at: &Path) -> Option<String> {
     turn::tree_through(root, &at.join(BUILD_INDEX))
 }
 
-/// Record the exact report a follow-up host will echo, then deliver the block. Spec 9.1, 9.3.
+/// Record the exact report a follow-up host will echo, then deliver the block. A stop that tells
+/// records its message the same way, so neither echo opens a turn or a fresh gate budget.
+/// Spec 9.1, 9.3.
 fn block(root: &Path, host: &dyn host::Adapter, said: String) -> u8 {
     if host.follows_up() {
         turn::expect_followup(root, &said);

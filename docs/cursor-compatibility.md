@@ -18,7 +18,7 @@ against a measured host rather than a guess.
 | Stop block | `followup_message` and exit 2 | stderr still holds the report; native stop has no other channel |
 | Stop note | `followup_message` | not `systemMessage` |
 | klin's own follow-up | exact report hash recorded and consumed once | **klin implementation**, not a measured host fact. Whether `beforeSubmitPrompt` fires on an automatic `followup_message` was **not measured** on 3.20.21; the hash exists so a firing cannot refresh the block budget |
-| repeated follow-up bound | klin's gate-spent record; `loop_count` ignored | **unmeasured** whether `loop_count` resets on a person's message; conversation-wide counter is what the docs say, and Cursor sends no `stop_hook_active` |
+| repeated follow-up bound | klin's gate block count and gate tree; `loop_count` ignored | **unmeasured** whether `loop_count` resets on a person's message; conversation-wide counter is what the docs say, and Cursor sends no `stop_hook_active` |
 | no `klin.json` silence | hook-mode gate exits 0 with no output; guard allow is exit 0 with no stdout | ADR 0028; CLI fixtures cover both. A deny of a write to the `klin.json` path still speaks, as on every host |
 | Team Marketplace import | **unverified** | README documents Dashboard → Plugins → Team Marketplaces → import; this matrix has no recorded result for that route. Local `plugins/local/<name>` and marketplace cache detection are covered by CLI fixtures |
 
