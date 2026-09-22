@@ -100,7 +100,7 @@ export function flagsFor(workspace: Workspace, sessionId: string, options: Sessi
  */
 function owned(): string[] {
   const held = new Set<string>();
-  for (const one of [paths.REPO, paths.workRoot()]) {
+  for (const one of [paths.REPO, paths.workRoot(), paths.ENVIRONMENT]) {
     held.add(one);
     try {
       held.add(fs.realpathSync(one));

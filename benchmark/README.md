@@ -132,7 +132,11 @@ carries it:
   because the sandbox already refuses every write outside the working directory,
   which is what keeps one trial out of another trial's workspace;
 - `permissions.blockReadsOutsideWorkingDirectories`, because `Read`, `Glob` and
-  `Grep` are the host's own file tools and no sandbox holds them.
+  `Grep` are the host's own file tools and no sandbox holds them; the settings
+  also deny host-side `Edit` and `Write` access to the helper directory with
+  absolute `Edit(//.../**)` rules. The helper directory is mode `0555` during
+  the session, so neither host file tools nor sandboxed `Bash` can replace the
+  bytes whose post-session hash is retained.
 
 Two openings are deliberate.
 
