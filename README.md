@@ -1,5 +1,8 @@
-<!-- PRE-RELEASE: Replace this logo reference with the finalized self-contained logo asset once it is committed. -->
-<img src="assets/klin-logo.svg" alt="klin" width="190">
+`<picture>`{=html}
+`<source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">`{=html}
+`<source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">`{=html}
+`<img src="assets/klin-logo-light.svg" alt="klin" width="190">`{=html}
+`</picture>`{=html}
 
 # Catch regressions while the agent can still fix them.
 
@@ -167,6 +170,8 @@ It should:
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
 - [Trust and enforcement](docs/THREAT_MODEL.md)
 - [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md)
+
+## Contributing
 
 Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
 Security issue? [Follow the private reporting instructions](SECURITY.md).
