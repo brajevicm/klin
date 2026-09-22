@@ -1963,7 +1963,7 @@ that identity, and the base holds no break by construction. The remedy keeps
 the base's contract only where the task allows it and tells the agent not to
 change what the task asked for only to satisfy the gate. In the hook it adds
 that a stop blocked on a break the task intends is answered in the reply and
-followed by another stop, which the block-once policy of 9.3 may let end, and
+followed by another stop, which the block policy of 9.3 may let end, and
 that the reply accepts nothing: a person accepts the break with an accepted
 entry in a reviewed commit, and CI refuses it until then. Every stop prints
 the same wording, so a stop that passes does not claim it blocked, and the
@@ -2499,21 +2499,42 @@ needed in the hook line. `--host NAME` overrides detection.
 A stop in a tree that holds no `klin.json` prints nothing and blocks
 nothing, per 5.1.
 
-### 9.3 The block-once policy
+### 9.3 The block policy
 
 ADR 0004 and ADR 0012 hold in policy. A build failure blocks each stop until
-the tree builds. A gate failure blocks the first stop and reports on the
-second. The build stamp in the state directory carries the fact between the
-two processes.
+the tree builds. A gate failure blocks at most two stops under one prompt,
+the second only over a changed tree (ADR 0052). The build stamp in the state
+directory carries the facts between the processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
 the current Claude Code documentation. klin MUST bound its own blocks (ADR
-0022). A gate failure blocks once per turn. A host that submits the block
-report as another prompt records that exact report in the turn stamp before
-delivery; the matching prompt consumes it without opening another turn. A
-deleted test is the one gate failure that does not stay red: the stop that blocks on it records the
-question beside the stamp, and the next stop lets it through as a NOTE and
-ends green (8.2, ADR 0031). A build failure blocks at each
+0022). The first failing stop spends gate block 1 of 2. After it, a failing
+stop over the tree that block was taken over spends no block: the hook
+reports and lets the turn end, so an agent that says a break is intended and
+stops again without an edit ends the turn. A failing stop over a different
+tree spends gate block 2 of 2, whether the failure is the same finding, a new
+one, or a tool error. After gate block 2 no gate failure under that prompt
+blocks, whatever the tree. Each gate block names its number in the turn.
+
+klin MUST prove gate block 2 from its own record: the tree gate block 1 was
+taken over, recorded in the build stamp, and a current tree that differs
+from it. The host's `blocked_before` flag says a block happened and never
+which tree it saw, so it stands in for an unrecorded first block and never
+authorizes a second. When klin cannot read that tree, cannot hash the
+current tree, or cannot write the record of the second block, the hook
+reports and spends no block. A first block klin cannot record still blocks.
+
+A host that submits the block report as another prompt records that exact
+report in the turn stamp before delivery; the matching prompt consumes it
+without opening another turn, so it raises no prompt counter and brings no
+fresh gate budget. A genuine later prompt brings a fresh budget of two gate
+blocks and eight build blocks. A deleted test is the one gate failure that
+does not stay red: the stop that blocks on it records the question beside
+the stamp, and the next stop lets it through as a NOTE and ends green (8.2,
+ADR 0031). A deletion already asked about fails nothing, so it is no reason
+for gate block 2. A new deletion may spend a gate block that remains, and
+once both are spent it is reported and asked about under a later prompt. A
+build failure blocks at each
 stop that changed the tree since the last build block, until the tree
 builds, up to eight in one turn, and then the hook reports, says that it
 stopped blocking, and lets the turn end. A stop over a tree the last build
@@ -2521,9 +2542,12 @@ block already saw spends no block: the hook reports the failure, says the
 tree did not change, and lets the turn end, because a block over a tree the
 agent did not touch teaches it nothing (ADR 0048). The build
 stamp holds the count, the prompt counter of 6.2 the count was taken
-under, and the tree of 6.5 the last block was taken over. A count taken
-under an earlier prompt reads as zero, so every turn
-has eight blocks and only the stop writes the build stamp. A build-failure
+under, and the tree of 6.5 the last block was taken over, apart from the
+gate block count and the tree the last gate block was taken over. A build
+block changes only the build fields and a gate block only the gate fields.
+A count taken under an earlier prompt reads as zero, so every turn
+has eight build blocks and two gate blocks, and only the stop writes the
+build stamp. A build-failure
 stop writes a RED verdict before it blocks, so the next prompt does not move
 the turn stamp over a tree that does not build. Each block names its number
 in the turn, and a failing build's report opens with the `derived:` line of
@@ -2628,11 +2652,22 @@ tool call.
 
 ### 9.5 What the hook prints
 
-On a block, one lead line that says how many gates failed and what to do,
-then each failing gate's own output, then the derived values the run used.
-Never the command that accepts debt, and never `turn reset`. On a second stop,
-the same report and a line saying the window stays open until a person fixes,
-accepts or resets it.
+On a block, one lead line that says how many gates failed, what to do, and
+which gate block of two the stop spends, then the report. On a stop that
+spends no gate block, the same report and a line saying why klin does not
+block again and that the window stays open until a person fixes, accepts or
+resets it. Never the command that accepts debt, and never `turn reset`.
+
+The hook's text report is focused. It prints every gate that did not pass,
+`FAIL` and `ERR` alike, each with its own `derived:` and `pinned:` lines and
+its own output. A gate that passed prints nothing, unless it left a note the
+hook tells (8.2, 14): a file no grammar read, a file no semantic adapter
+measured, a deleted test let through, a derived ceiling whose scope fell
+back, a dependency a resolver could not resolve, a build tool the shell could
+not find, or a file the run could not read or stopped measuring. Such a gate prints in full, so the note
+stands with the gate it belongs to. The run-level lines and the closing
+count stay. The 11.2 object and the journal record every gate, whatever the
+text printed. `klin gate` outside the hook prints every gate.
 The `--json` form is available for a host that reads JSON.
 
 A stop that nothing blocks can end a turn, and on a turn that caught a
@@ -2657,17 +2692,17 @@ none were, the sentence ends after the count. A command in the message stands
 in backticks, and the message never names a command that accepts debt. The
 notes the run left (8.2, 14), the turn-end line and the weekly line join in one
 message, in that order. The stop reads the journal for this only where the turn
-stamp records an intervention, or where the prompt's gate block is spent
+stamp records an intervention, or where the prompt spent a gate block
 (16.3), it reads the bounded tail of 11.4 and never the whole file, and its
 journal line records which parts it printed (11.4). The word `shortcut` appears
 in no message klin prints for a person.
 
-A red pass-through that finds the prompt's gate block spent also checks the
+A red pass-through under a prompt that spent a gate block also checks the
 journal for a `prompt` line carrying the stop event's session id. If the event
 has no session id, it checks nothing. If no such line exists, the stop adds a
 note to its `systemMessage`: ``klin: no prompt event reached this session; klin
-will not block again until `klin radius` runs on session start and on prompt
-submitted.`` It still exits 0 and changes neither the block nor the verdict.
+gives no fresh gate budget until `klin radius` runs on session start and on
+prompt submitted.`` It still exits 0 and changes neither the block nor the verdict.
 The note is a `note` in `told`, and the stop carries `no-prompt-event` in its
 `flags`.
 
@@ -2981,11 +3016,16 @@ failure, or an error alike — plus what only the hook knew:
 
 - `host`, the adapter's name, null where the event was unreadable.
 - `prompt`, the counter of 6.2 the stop ran under.
-- `hook` `{blocked, delivery, gate_spent, build_blocks, blocked_before}`.
-  `blocked` is whether this stop exited 2. `delivery` is `block` or `none`;
-  `follow-up` and `report` are reserved for a host whose stop cannot block
-  (#67). `gate_spent` and `build_blocks` are the build stamp of 16.3 as this
-  stop left it, and `blocked_before` is the host's flag.
+- `hook` `{blocked, delivery, gate_spent, gate_blocks, gate_block,
+  build_blocks, blocked_before}`. `blocked` is whether this stop exited 2.
+  `delivery` is `block` or `none`; `follow-up` and `report` are reserved for
+  a host whose stop cannot block (#67). `gate_blocks` and `build_blocks` are
+  the build stamp of 16.3 as this stop left it, and `gate_spent` is whether
+  `gate_blocks` is above zero. All three are cumulative, so a later stop sees
+  them too. `gate_block` is the number of the gate block this stop itself
+  spent, 1 or 2, and null on every other stop: an intervention is a failing
+  gate on a line whose `gate_block` is set (ADR 0034, ADR 0052).
+  `blocked_before` is the host's flag.
 - `verdict`, `green`, `red`, or `none` for a stop that wrote no verdict, with
   a `why` string beside `none` that names the reason this stop had and no
   other: the lock timed out, the state directory could not be readied, it held
@@ -3003,8 +3043,8 @@ failure, or an error alike — plus what only the hook knew:
   `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
   window because no stamp resolved, or because the commit the stamp was taken
   over is outside current HEAD history, 6.2), `count-unwritable` (a build
-  stamp that would not write, 14), `no-prompt-event` (16.3, a spent gate block
-  found no prompt line for the stop's session).
+  stamp that would not write, 14), `no-prompt-event` (16.3, a prompt that
+  spent a gate block found no prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
   empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
   (9.5). A reader finds the last weekly line from it.
@@ -3695,7 +3735,7 @@ hook(event):
   survey = cached_survey(at) or survey(at)
   count = read(state/build-blocked)
   if count is None or count.prompt != turn.prompt:
-    count = Count(prompt=turn.prompt, builds=0, gate_spent=False)   # a new turn
+    count = Count(prompt=turn.prompt, builds=0, gate_blocks=0)      # a new turn
   failure = build(config_or(survey), changed_files(window))
   unbuilt = None
   if failure and failure.exit == 127:
@@ -3703,8 +3743,8 @@ hook(event):
   if failure:
     write_verdict_atomic(state/turn, RED)
     tree = tree_of(working_directory)
-    if count.builds > 0 and tree == count.tree: report(failure, "the tree did not change"); return 0
-    count.builds += 1; count.tree = tree; write_atomic(state/build-blocked, count)
+    if count.builds > 0 and tree == count.build_tree: report(failure, "the tree did not change"); return 0
+    count.builds += 1; count.build_tree = tree; write_atomic(state/build-blocked, count)
     if count.builds > 8: report(failure, "stopped blocking after eight"); return 0
     block(derived_lines + failure + "block N of 8")
   (failed, errored, reported, told) = run_gates(config_or(survey), window, scope=changed, unbuilt)
@@ -3713,16 +3753,29 @@ hook(event):
     if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
     return 0
   write_verdict_atomic(state/turn, RED)
-  if count.gate_spent:
-    report()
-    if event.session and no_prompt_line(event.session):
-      systemMessage("klin: no prompt event reached this session; klin will not block again until `klin radius` runs on session start and on prompt submitted.")
-      flags += "no-prompt-event"
-    return 0
-  if count.builds == 0 and host.blocked_before(event): report(); return 0
-  count.gate_spent = True; write_atomic(state/build-blocked, count)
+  if count.gate_blocks >= 2: pass_through("the gate has blocked 2 stops"); return 0
+  flagged = count.builds == 0 and host.blocked_before(event)
+  if count.gate_blocks == 0 and not flagged:
+    number = 1
+    tree = tree_of(working_directory)              # None when git cannot hash it
+  else:
+    if count.gate_tree is None: pass_through("no record of the last gate tree"); return 0
+    tree = tree_of(working_directory)
+    if tree is None: pass_through("no record of the last gate tree"); return 0
+    if tree == count.gate_tree: pass_through("the tree did not change"); return 0
+    number = count.gate_blocks + 1
+  count.gate_blocks = number; count.gate_tree = tree
+  if not write_atomic(state/build-blocked, count):
+    flags += "count-unwritable"
+    if number > 1: pass_through("could not record a second gate block"); return 0
   add_asked_atomic(state/turn, reported)           # 8.2, cleared when the stamp moves
-  block(report)
+  block(report + "gate block " + number + " of 2")
+
+pass_through(why):
+  report(); say(why)
+  if event.session and no_prompt_line(event.session):
+    systemMessage("klin: no prompt event reached this session; klin gives no fresh gate budget until `klin radius` runs on session start and on prompt submitted.")
+    flags += "no-prompt-event"
 ```
 
 `reported` is the site id (11.2) of every finding the run printed, and `told`
@@ -3733,8 +3786,11 @@ agent never saw is asked again at the next stop that blocks. `inventory`
 reads `asked` under `--hook` (8.2).
 
 The build stamp is one record per prompt: the prompt counter it belongs to,
-the number of build blocks, the tree the last build block was taken over,
-and whether the turn's one gate block is spent.
+the number of build blocks and the tree the last build block was taken over,
+and the number of gate blocks and the tree the last gate block was taken
+over. The two pairs never share a field (ADR 0052). A record an older klin
+wrote holds `tree` for the build tree and `gate_spent` for one gate block,
+and no gate tree, so it never proves a second gate block.
 A passing build does not reset the build count, so a tree that builds, breaks
 and builds again inside one turn still gets eight blocks in that turn and no
 more. The tree is the one 6.5 hashes for the stamp, read through an index of
@@ -3742,8 +3798,8 @@ the build stamp's own, `build-index`, so a build block costs one hash of the
 working tree and leaves the turn stamp's first-session marker alone. `unbuilt` is one
 note the runner adds to the run's notes and counts as told, so a stop nothing
 blocks still tells it. The host's `blocked_before` flag is a second opinion for the first gate
-block only, because after a build block that flag is true while the gate
-block is still unspent (ADR 0004).
+block only, because after a build block that flag is true while no gate
+block is spent (ADR 0004). It never proves a second gate block (ADR 0052).
 
 ### 16.4 Evaluate one gate
 

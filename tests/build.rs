@@ -58,7 +58,7 @@ fn a_turn_that_failed_to_build_is_still_blocked_when_a_gate_fails() {
     let second = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
     assert_eq!(second.code, 2, "{}", second.out);
     assert!(second.says("FAIL  doc-size"), "{}", second.out);
-    assert!(!second.says("not blocking a second time"), "{}", second.out);
+    assert!(!second.says("not blocking again"), "{}", second.out);
 }
 
 #[test]
@@ -348,7 +348,40 @@ fn the_gates_one_block_is_spent_apart_from_the_build_blocks() {
 
     let again = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
     assert_eq!(again.code, 0, "{}", again.out);
-    assert!(again.says("not blocking a second time"), "{}", again.out);
+    assert!(
+        again.says("the tree did not change since the last gate block"),
+        "{}",
+        again.out
+    );
+}
+
+#[test]
+fn a_build_block_between_gate_blocks_keeps_the_tree_the_first_gate_block_saw() {
+    let tree = tree(r#""build": "test ! -f fails","#);
+    tree.words("README.md", 30);
+
+    let gate = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(gate.code, 2, "{}", gate.out);
+    assert!(gate.says("gate block 1 of 2"), "{}", gate.out);
+
+    tree.write("fails", "");
+    let build = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(build.code, 2, "{}", build.out);
+    assert!(build.says("block 1 of 8"), "{}", build.out);
+
+    tree.remove("fails");
+    let reverted = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(reverted.code, 0, "{}", reverted.out);
+    assert!(
+        reverted.says("the tree did not change since the last gate block"),
+        "{}",
+        reverted.out
+    );
+
+    tree.words("README.md", 31);
+    let changed = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    assert_eq!(changed.code, 2, "{}", changed.out);
+    assert!(changed.says("gate block 2 of 2"), "{}", changed.out);
 }
 
 #[test]
@@ -403,7 +436,7 @@ fn a_passing_stop_leaves_the_gates_one_block_unspent() {
     tree.words("README.md", 30);
     let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
     assert_eq!(gate.code, 2, "{}", gate.out);
-    assert!(!gate.says("not blocking a second time"), "{}", gate.out);
+    assert!(!gate.says("not blocking again"), "{}", gate.out);
 }
 
 /// A fake toolchain on the path, which records each command the hook runs so a test reads which

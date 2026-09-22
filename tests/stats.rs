@@ -1125,6 +1125,25 @@ fn turn_reports_the_stops_since_the_stamp_and_a_reset_sets_the_rest_aside() {
 }
 
 #[test]
+fn a_site_that_spends_both_gate_blocks_is_one_regression() {
+    let tree = hooked();
+    blocked(&tree);
+    tree.write("src/other.rs", "pub fn g() -> i32 {\n    1\n}\n");
+    let again = hook(&tree, A_SECOND_STOP);
+    assert_eq!(again.code, 2, "{}", again.out);
+    assert!(again.says("gate block 2 of 2"), "{}", again.out);
+
+    let turn = tree.run(&["stats", "--turn"]);
+    assert_eq!(turn.code, 0, "{}", turn.out);
+    assert!(
+        turn.says("1 regression needs your attention."),
+        "{}",
+        turn.out
+    );
+    assert!(turn.says("klin caught 1 this turn."), "{}", turn.out);
+}
+
+#[test]
 fn a_green_stop_after_a_block_tells_the_turn_in_regressions_and_claims_no_author() {
     let tree = hooked();
     blocked(&tree);

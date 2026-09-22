@@ -505,17 +505,80 @@ fn hook_blocks_the_first_stop_and_hands_the_failures_back() {
 }
 
 #[test]
-fn hook_does_not_block_the_stop_after_that() {
+fn a_host_flag_alone_does_not_spend_a_gate_block() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
     let run = stop(&tree, A_SECOND_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("still, after one round of fixes"), "{}", run.out);
+    assert!(run.says("still, after a round of fixes"), "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
-    assert!(run.says("not blocking a second time"), "{}", run.out);
+    assert!(run.says("not blocking again"), "{}", run.out);
+    assert!(
+        run.says("klin holds no record of the tree the last gate block saw"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("then stop again"), "{}", run.out);
     assert!(!run.says("CI will refuse"), "{}", run.out);
+}
+
+#[test]
+fn hook_prints_only_the_gates_that_did_not_pass() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("pinned: doc_size README.md 10"), "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("gate(s)"), "{}", run.out);
+    assert!(run.says("1 failed."), "{}", run.out);
+    for passed in [
+        "ok    escapes",
+        "ok    complexity",
+        "pinned: complexity cc 8",
+        "OK:",
+    ] {
+        assert!(!run.says(passed), "{passed}: {}", run.out);
+    }
+
+    let by_hand = tree.run(&["gate"]);
+    assert_eq!(by_hand.code, 1, "{}", by_hand.out);
+    assert!(by_hand.says("ok    escapes"), "{}", by_hand.out);
+    assert!(by_hand.says("pinned: complexity cc 8"), "{}", by_hand.out);
+}
+
+#[test]
+fn hook_keeps_the_note_a_passing_gate_left_beside_the_failure() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    tree.write("src/flow.rs", "%%% not rust %%%\n");
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("NOTE:"), "{}", run.out);
+    assert!(run.says("src/flow.rs"), "{}", run.out);
+    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+}
+
+#[test]
+fn the_structured_report_of_a_hook_stop_still_holds_every_gate() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let report = object(journal.lines().last().unwrap_or_default(), &run);
+    let gates = report["gates"].as_array().cloned().unwrap_or_default();
+    for name in ["doc-size", "escapes", "complexity"] {
+        assert!(
+            gates.iter().any(|gate| field(gate, "name") == name),
+            "{name}: {report}"
+        );
+    }
 }
 
 #[test]
@@ -584,7 +647,23 @@ fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
     let run = stop(&tree, A_SECOND_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("could not run a quality gate"), "{}", run.out);
-    assert!(run.says("still, after one round of fixes"), "{}", run.out);
+    assert!(run.says("still, after a round of fixes"), "{}", run.out);
+}
+
+#[test]
+fn a_tool_error_after_a_changed_tree_spends_the_second_gate_block() {
+    let tree = tree(A_BROKEN_GATE);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+
+    tree.words("README.md", 30);
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 2, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    assert!(second.says("FAIL  doc-size"), "{}", second.out);
+    assert!(second.says("ERR   escapes"), "{}", second.out);
 }
 
 #[test]
@@ -645,30 +724,74 @@ fn the_stamp_sits_beside_the_config_rather_than_the_working_directory() {
 }
 
 #[test]
-fn the_gate_blocks_once_under_each_prompt_and_reports_on_the_stop_after() {
+fn the_gate_blocks_twice_under_each_prompt_and_only_over_a_changed_tree() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
     let first = stop(&tree, A_STOP);
     assert_eq!(first.code, 2, "{}", first.out);
     assert!(
-        first.says("fix what each names, then stop again"),
+        first.says("fix what each names, then stop again (gate block 1 of 2 in this turn)"),
         "{}",
         first.out
     );
 
-    let again = stop(&tree, A_SECOND_STOP);
-    assert_eq!(again.code, 0, "{}", again.out);
-    assert!(again.says("not blocking a second time"), "{}", again.out);
+    let unchanged = stop(&tree, A_SECOND_STOP);
+    assert_eq!(unchanged.code, 0, "{}", unchanged.out);
+    assert!(unchanged.says("FAIL  doc-size"), "{}", unchanged.out);
+    assert!(
+        unchanged.says("not blocking again; the tree did not change since the last gate block"),
+        "{}",
+        unchanged.out
+    );
+
+    tree.words("README.md", 31);
+    let changed = stop(&tree, A_SECOND_STOP);
+    assert_eq!(changed.code, 2, "{}", changed.out);
+    assert!(
+        changed.says("fix what each names, then stop again (gate block 2 of 2 in this turn)"),
+        "{}",
+        changed.out
+    );
+
+    tree.words("README.md", 32);
+    let capped = stop(&tree, A_SECOND_STOP);
+    assert_eq!(capped.code, 0, "{}", capped.out);
+    assert!(
+        capped.says("not blocking again; the gate has blocked 2 stops under this prompt"),
+        "{}",
+        capped.out
+    );
 
     let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     let after = stop(&tree, A_STOP);
     assert_eq!(after.code, 2, "{}", after.out);
+    assert!(after.says("gate block 1 of 2"), "{}", after.out);
+}
+
+#[test]
+fn a_second_gate_block_needs_a_record_of_the_tree_the_first_one_saw() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree, A_STOP);
+    assert_eq!(first.code, 2, "{}", first.out);
+    let text = std::fs::read_to_string(tree.path(BUILD_BLOCKED)).unwrap_or_default();
+    let mut held: Value = object(&text, &first);
+    let removed = held
+        .as_object_mut()
+        .and_then(|fields| fields.remove("gate_tree"));
+    assert!(removed.is_some(), "{text}");
+    tree.write(BUILD_BLOCKED, &held.to_string());
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, A_SECOND_STOP);
+    assert_eq!(second.code, 0, "{}", second.out);
     assert!(
-        after.says("fix what each names, then stop again"),
+        second.says("klin holds no record of the tree the last gate block saw"),
         "{}",
-        after.out
+        second.out
     );
 }
 

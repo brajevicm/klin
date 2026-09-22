@@ -18,14 +18,17 @@ use crate::syntax::{LanguageId, structural};
 use crate::{build, coverage, journal, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
-/// build blocks are left and whether the turn's gate block is still unspent. In the state
-/// directory, which an agent does not empty. ADR 0019, ADR 0022.
+/// build blocks and gate blocks are left. In the state directory, which an agent does not
+/// empty. ADR 0019, ADR 0022, ADR 0052.
 const BUILD_BLOCKED: &str = "build-blocked";
 /// The index the build stamp hashes the tree through, apart from the turn stamp's own.
 const BUILD_INDEX: &str = "build-index";
 /// How many stops one prompt's build failures may block. klin bounds this itself, because the
 /// host documents no cap of its own. ADR 0022, spec 9.3.
 const BLOCKS: u64 = 8;
+/// How many stops one prompt's gate failures may block. The second needs a tree that changed
+/// since the first. ADR 0052, spec 9.3.
+const GATE_BLOCKS: u64 = 2;
 /// What `--list` indents a gate's own lines by, under the row that names it.
 const UNDER: &str = "      ";
 /// The `ERR` row of 11.1 as `--json` names it, which a run that could not measure prints
@@ -177,7 +180,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
         let held = count(&at);
-        log.gate_spent = held.gate_spent;
+        log.gate_blocks = held.gate_blocks;
         log.build_blocks = held.builds;
         log.prompt = held.prompt;
     }
@@ -245,7 +248,7 @@ fn tell(
 ) -> Option<String> {
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
-    let intervened = log.gate_spent || turn::intervened(root);
+    let intervened = log.gate_blocks > 0 || turn::intervened(root);
     if code == 0 && !args.json && log.host.is_some() && intervened {
         let tail = stats::stop_tail(root);
         add_prompt_note(&tail, log, &mut parts);
@@ -261,11 +264,12 @@ fn add_prompt_note(
     log: &mut journal::Stop,
     parts: &mut Vec<(&'static str, String)>,
 ) {
-    if log.gate_spent && log.verdict == "red" && no_prompt_event(tail, log.session.as_deref()) {
+    if log.gate_blocks > 0 && log.verdict == "red" && no_prompt_event(tail, log.session.as_deref())
+    {
         log.flags.push("no-prompt-event");
         parts.push((
             "note",
-            "klin: no prompt event reached this session; klin will not block again until \
+            "klin: no prompt event reached this session; klin gives no fresh gate budget until \
              `klin radius` runs on session start and on prompt submitted."
                 .to_string(),
         ));
@@ -449,38 +453,45 @@ fn unbuilt_said(run: &str, output: &str) -> String {
 }
 
 /// The build stamp: one record per prompt. The prompt counter of the turn file it was taken
-/// under, how many stops a build failure already blocked, and whether the turn's one gate
-/// block is spent. A record taken under an earlier prompt reads as zero, so every prompt gets
-/// the whole budget. Spec 16.3.
+/// under, how many stops a build failure and a gate failure already blocked, and the tree each
+/// kind of block last saw. The two kinds never share a count or a tree. A record taken under an
+/// earlier prompt reads as zero, so every prompt gets the whole budget. Spec 16.3, ADR 0052.
 struct Count {
     prompt: u64,
     builds: u64,
-    gate_spent: bool,
     /// The working tree the last build block was taken over, so a stop that changed nothing
     /// since is reported and not blocked again. ADR 0048.
-    tree: Option<String>,
+    build_tree: Option<String>,
+    gate_blocks: u64,
+    /// The working tree the last gate block was taken over. Only a tree klin recorded here can
+    /// prove that a later stop changed it. ADR 0052.
+    gate_tree: Option<String>,
 }
 
+/// The record as this prompt left it. A record an older klin wrote names its build tree `tree`
+/// and its one gate block `gate_spent`, and names no gate tree, so it can never prove a second
+/// gate block.
 fn count(at: &Path) -> Count {
     let prompt = turn::prompts(at);
     let held = std::fs::read_to_string(at.join(BUILD_BLOCKED))
         .ok()
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .filter(|held| held.get("prompt").and_then(Value::as_u64) == Some(prompt));
+        .filter(|held| held.get("prompt").and_then(Value::as_u64) == Some(prompt))
+        .unwrap_or_default();
+    let text = |key: &str| held.get(key)?.as_str().map(str::to_string);
+    let spent = held.get("gate_spent").and_then(Value::as_bool) == Some(true);
     Count {
         prompt,
         builds: held
-            .as_ref()
-            .and_then(|held| held.get("builds")?.as_u64())
+            .get("builds")
+            .and_then(Value::as_u64)
             .unwrap_or_default(),
-        gate_spent: held
-            .as_ref()
-            .and_then(|held| held.get("gate_spent")?.as_bool())
-            .unwrap_or_default(),
-        tree: held
-            .as_ref()
-            .and_then(|held| held.get("tree")?.as_str())
-            .map(str::to_string),
+        build_tree: text("build_tree").or_else(|| text("tree")),
+        gate_blocks: held
+            .get("gate_blocks")
+            .and_then(Value::as_u64)
+            .unwrap_or(u64::from(spent)),
+        gate_tree: text("gate_tree"),
     }
 }
 
@@ -490,8 +501,9 @@ fn counted(at: &Path, count: &Count) -> bool {
     let text = serde_json::json!({
         "prompt": count.prompt,
         "builds": count.builds,
-        "gate_spent": count.gate_spent,
-        "tree": count.tree,
+        "build_tree": count.build_tree,
+        "gate_blocks": count.gate_blocks,
+        "gate_tree": count.gate_tree,
     })
     .to_string()
         + "\n";
@@ -565,13 +577,13 @@ fn raised(root: &Path, log: &mut journal::Stop) -> Blocks {
         Err(why) => return unbounded(&why, log),
     };
     let held = count(&at);
-    let tree = turn::tree_through(root, &at.join(BUILD_INDEX));
-    if held.builds > 0 && tree.is_some() && tree == held.tree {
+    let tree = working_tree(root, &at);
+    if held.builds > 0 && tree.is_some() && tree == held.build_tree {
         return Blocks::Unchanged;
     }
     let count = Count {
         builds: held.builds + 1,
-        tree,
+        build_tree: tree,
         ..held
     };
     match counted(&at, &count) {
@@ -973,23 +985,34 @@ fn hook(
         eprint!("{report}");
         return (1, None);
     };
-    let again = gate_spent(held.as_ref(), event.blocked_before);
-    let tail = match again {
-        true => " — still, after one round of fixes:",
-        false => " — fix what each names, then stop again:",
+    let round = match round(root, held.as_ref(), event.blocked_before) {
+        Round::Block { number, tree } => spend(held, number, tree, log),
+        passed => passed,
     };
-    let lead = format!("klin: {}{tail}", lead(failed, errored));
+    let number = match round {
+        Round::Block { number, .. } => number,
+        Round::Pass(why) => {
+            eprintln!(
+                "klin: {} — still, after a round of fixes:",
+                lead(failed, errored)
+            );
+            eprint!("{report}");
+            eprintln!(
+                "klin: not blocking again; {why}, and the window stays open until a person \
+                 fixes, accepts or resets it."
+            );
+            return (event.host.stop(&Stop::Pass), None);
+        }
+    };
+    let lead = format!(
+        "klin: {} — fix what each names, then stop again (gate block {number} of {GATE_BLOCKS} \
+         in this turn):",
+        lead(failed, errored)
+    );
     eprintln!("{lead}");
     eprint!("{report}");
-    if !again {
-        let said = format!("{lead}\n{report}");
-        return (spend(root, held, log, event.host, &said), None);
-    }
-    eprintln!(
-        "klin: not blocking a second time; the window stays open until a person fixes, accepts \
-         or resets it."
-    );
-    (event.host.stop(&Stop::Pass), None)
+    log.gate_block = Some(number);
+    (block(root, event.host, format!("{lead}\n{report}")), None)
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
@@ -1014,36 +1037,99 @@ fn nothing_blocks(
     (0, Some(said))
 }
 
-/// Whether the turn's one gate block is already spent. The build stamp is the record. The
-/// host's flag is a second opinion for the first gate block only, because after a build block
-/// that flag is true while the gate block is still unspent. Spec 16.3.
-fn gate_spent(held: Option<&(Count, PathBuf)>, blocked_before: bool) -> bool {
-    match held {
-        Some((count, _)) => count.gate_spent || (count.builds == 0 && blocked_before),
-        None => blocked_before,
+/// What a gate failure at this stop spends: the gate block it takes, with its number under this
+/// prompt and the tree it is taken over, or no block and the reason the report gives.
+enum Round {
+    Block { number: u64, tree: Option<String> },
+    Pass(String),
+}
+
+/// The gate block this failure may take. The first is free. The second needs a tree that
+/// differs from the one klin recorded for the first, so a stop over the tree the agent left
+/// alone reports and lets the turn end. None comes after the second. The host's flag says a
+/// block happened, never which tree it saw, so it can stand in for an unrecorded first block
+/// and never prove a second. After a build block that flag is true while no gate block is
+/// spent, so it counts only where no build block was spent either. Spec 16.3, ADR 0052.
+fn round(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> Round {
+    let Some((count, at)) = held else {
+        return match blocked_before {
+            true => Round::Pass(UNPROVEN.to_string()),
+            false => Round::Block {
+                number: 1,
+                tree: None,
+            },
+        };
+    };
+    if count.gate_blocks >= GATE_BLOCKS {
+        return Round::Pass(capped());
+    }
+    let flagged = count.builds == 0 && blocked_before;
+    if count.gate_blocks == 0 && !flagged {
+        return Round::Block {
+            number: 1,
+            tree: working_tree(root, at),
+        };
+    }
+    changed_since(root, count, at)
+}
+
+/// The next gate block after one that already happened, which only a tree klin recorded for
+/// that block and a current tree that differs from it can prove.
+fn changed_since(root: &Path, count: &Count, at: &Path) -> Round {
+    let Some(before) = count.gate_tree.as_deref() else {
+        return Round::Pass(UNPROVEN.to_string());
+    };
+    match working_tree(root, at) {
+        Some(tree) if tree == before => Round::Pass(UNCHANGED_SINCE_GATE.to_string()),
+        Some(tree) => Round::Block {
+            number: count.gate_blocks + 1,
+            tree: Some(tree),
+        },
+        None => Round::Pass(UNPROVEN.to_string()),
     }
 }
 
-/// The block the gate takes, recorded so the stop after it reports and lets the turn end.
+/// The gate block recorded before it is delivered. A first block klin cannot record still
+/// blocks, as it always has. A second block klin cannot record could not be bounded, so it
+/// becomes a report.
 fn spend(
-    root: &Path,
     held: Option<(Count, PathBuf)>,
+    number: u64,
+    tree: Option<String>,
     log: &mut journal::Stop,
-    host: &dyn host::Adapter,
-    said: &str,
-) -> u8 {
-    if let Some((count, at)) = held
-        && !counted(
-            &at,
-            &Count {
-                gate_spent: true,
-                ..count
-            },
-        )
-    {
-        log.flags.push("count-unwritable");
+) -> Round {
+    let Some((count, at)) = held else {
+        return Round::Block { number, tree };
+    };
+    let next = Count {
+        gate_blocks: number,
+        gate_tree: tree.clone(),
+        ..count
+    };
+    if counted(&at, &next) {
+        return Round::Block { number, tree };
     }
-    block(root, host, said.to_string())
+    log.flags.push("count-unwritable");
+    match number {
+        1 => Round::Block { number, tree },
+        _ => Round::Pass(UNRECORDED.to_string()),
+    }
+}
+
+const UNPROVEN: &str = "klin holds no record of the tree the last gate block saw, so it cannot \
+    tell whether this stop changed it";
+const UNRECORDED: &str = "klin could not record a second gate block, so nothing would bound it";
+const UNCHANGED_SINCE_GATE: &str = "the tree did not change since the last gate block";
+
+fn capped() -> String {
+    format!(
+        "the gate has blocked {GATE_BLOCKS} stops under this prompt, which is the most it blocks"
+    )
+}
+
+/// The working tree as the build stamp records it, hashed through the build stamp's own index.
+fn working_tree(root: &Path, at: &Path) -> Option<String> {
+    turn::tree_through(root, &at.join(BUILD_INDEX))
 }
 
 /// Record the exact report a follow-up host will echo, then deliver the block. Spec 9.1, 9.3.
@@ -1216,12 +1302,14 @@ fn each(
             1 => tally.failed += 1,
             _ => tally.errored += 1,
         }
-        for line in &records.derived_lines {
-            let _ = writeln!(out, "  {line}");
-        }
-        let _ = writeln!(out, "  {}  {}", status(code), gate.name);
-        for line in text.lines() {
-            let _ = writeln!(out, "        {line}");
+        if rendered(args, code, &records) {
+            for line in &records.derived_lines {
+                let _ = writeln!(out, "  {line}");
+            }
+            let _ = writeln!(out, "  {}  {}", status(code), gate.name);
+            for line in text.lines() {
+                let _ = writeln!(out, "        {line}");
+            }
         }
         totals.gates.push(row(gate, code, &records, ms));
         gather(&mut totals, records, &gate.name);
@@ -1233,6 +1321,13 @@ fn each(
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
     (tally, totals)
+}
+
+/// Whether the text report prints this gate. The hook prints a gate that did not pass, and a
+/// passing gate only where it left a note the hook tells, so the agent reads what it must act
+/// on. Every other run prints every gate. The records keep every gate either way. Spec 9.5.
+fn rendered(args: &Args, code: u8, records: &Records) -> bool {
+    !args.hook || code != 0 || records.notes.iter().any(told)
 }
 
 /// What one gate's structural work came to, with the declaration states of the gate that builds
