@@ -275,6 +275,16 @@ fn blocked(line: &Value) -> bool {
         .unwrap_or_default()
 }
 
+/// Whether this stop itself spent a gate block, which is where a regression opens: a build block
+/// puts no gate finding in front of the agent. A line an older klin wrote names no `gate_block`,
+/// and its `blocked` stands in. ADR 0034, ADR 0052.
+fn gate_blocked(line: &Value) -> bool {
+    match line.get("hook").and_then(|hook| hook.get("gate_block")) {
+        Some(block) => !block.is_null(),
+        None => blocked(line),
+    }
+}
+
 /// Whether klin could tell where the window the person asked for begins. `--turn` needs a turn
 /// stamp it can read, and `--session` needs a session id somewhere in the journal. Without one
 /// the scope holds no line at all, and a report that never found its window must not read as a
@@ -367,7 +377,7 @@ fn regressions(lines: &[Value]) -> Vec<Regression> {
             "reset" => pass.set_aside(at(line), index),
             "stop" => {
                 pass.settle(line, index);
-                if blocked(line) {
+                if gate_blocked(line) {
                     pass.flag(lines, index);
                 }
             }

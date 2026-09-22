@@ -116,7 +116,7 @@ fn a_stop_event_comes_back_as_a_block_or_a_pass() {
 fn a_stop_that_says_it_already_blocked_this_turn_is_read_that_way() {
     let run = stop(&failing(), A_SECOND_STOP, &[]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("still, after a round of fixes"), "{}", run.out);
+    assert!(run.says("this stop is not blocked"), "{}", run.out);
     assert!(run.says("not blocking again"), "{}", run.out);
 }
 

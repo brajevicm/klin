@@ -85,7 +85,9 @@ The journal's cumulative `gate_spent` and `gate_blocks` cannot tell those
 stops apart, because a later stop observes them too. Each stop line therefore
 also records `gate_block`, the number of the gate block that stop itself
 spent, or null. A reader counts interventions from the lines whose
-`gate_block` is set. The Regression reader of spec 11.5 is unchanged: it keys
+`gate_block` is set. The Regression reader of spec 11.5 opens a Regression
+only on such a line, so a build block opens none. A line an older klin wrote
+records no `gate_block`, and its `blocked` stands in. The reader still keys
 on finding sites, so one site delivered on both blocked stops is one
 Regression.
 
@@ -107,4 +109,4 @@ leaves unresolved (ADR 0009).
 - A gate failure hashes the working tree once, through the build stamp's own
   index, at a stop that may spend a gate block. A stop that finds both blocks
   spent hashes nothing.
-- `docs/SPEC.md` 9.3, 9.5, 11.4 and 16.3 carry the rule.
+- `docs/SPEC.md` 9.3, 9.5, 11.4, 11.5 and 16.3 carry the rule.

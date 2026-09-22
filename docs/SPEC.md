@@ -2664,8 +2664,9 @@ its own output. A gate that passed prints nothing, unless it left a note the
 hook tells (8.2, 14): a file no grammar read, a file no semantic adapter
 measured, a deleted test let through, a derived ceiling whose scope fell
 back, a dependency a resolver could not resolve, a build tool the shell could
-not find, or a file the run could not read or stopped measuring. Such a gate prints in full, so the note
-stands with the gate it belongs to. The run-level lines and the closing
+not find, or a file the run could not read or stopped measuring. Such a gate
+prints its provenance, its row and its output without its `OK:` line, so the
+note stands with the gate it belongs to. The run-level lines and the closing
 count stay. The 11.2 object and the journal record every gate, whatever the
 text printed. `klin gate` outside the hook prints every gate.
 The `--json` form is available for a host that reads JSON.
@@ -2701,7 +2702,7 @@ A red pass-through under a prompt that spent a gate block also checks the
 journal for a `prompt` line carrying the stop event's session id. If the event
 has no session id, it checks nothing. If no such line exists, the stop adds a
 note to its `systemMessage`: ``klin: no prompt event reached this session; klin
-gives no fresh gate budget until `klin radius` runs on session start and on
+grants no fresh gate blocks until `klin radius` runs on session start and on
 prompt submitted.`` It still exits 0 and changes neither the block nor the verdict.
 The note is a `note` in `told`, and the stop carries `no-prompt-event` in its
 `flags`.
@@ -3131,7 +3132,10 @@ Two more scopes replace the window of days, and the three exclude each other:
 #### The counted unit
 
 A **regression** is one finding site that a blocked stop put in front of the
-agent because it was new or worse than the base. It is the person's unit, and
+agent because it was new or worse than the base. The blocked stop is one whose
+line records a `gate_block` (11.4), and a build block is none. A line an older
+klin wrote records no `gate_block`, and its `blocked` stands in (ADR 0052). It
+is the person's unit, and
 the word `shortcut` MUST NOT appear in any text `klin stats` or a turn end
 prints.
 
@@ -3774,7 +3778,7 @@ hook(event):
 pass_through(why):
   report(); say(why)
   if event.session and no_prompt_line(event.session):
-    systemMessage("klin: no prompt event reached this session; klin gives no fresh gate budget until `klin radius` runs on session start and on prompt submitted.")
+    systemMessage("klin: no prompt event reached this session; klin grants no fresh gate blocks until `klin radius` runs on session start and on prompt submitted.")
     flags += "no-prompt-event"
 ```
 

@@ -511,7 +511,7 @@ fn a_host_flag_alone_does_not_spend_a_gate_block() {
 
     let run = stop(&tree, A_SECOND_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("still, after a round of fixes"), "{}", run.out);
+    assert!(run.says("this stop is not blocked"), "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("not blocking again"), "{}", run.out);
     assert!(
@@ -561,6 +561,7 @@ fn hook_keeps_the_note_a_passing_gate_left_beside_the_failure() {
     assert!(run.says("NOTE:"), "{}", run.out);
     assert!(run.says("src/flow.rs"), "{}", run.out);
     assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(!run.says("OK:"), "{}", run.out);
 }
 
 #[test]
@@ -647,7 +648,7 @@ fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
     let run = stop(&tree, A_SECOND_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("could not run a quality gate"), "{}", run.out);
-    assert!(run.says("still, after a round of fixes"), "{}", run.out);
+    assert!(run.says("this stop is not blocked"), "{}", run.out);
 }
 
 #[test]
@@ -739,6 +740,7 @@ fn the_gate_blocks_twice_under_each_prompt_and_only_over_a_changed_tree() {
     let unchanged = stop(&tree, A_SECOND_STOP);
     assert_eq!(unchanged.code, 0, "{}", unchanged.out);
     assert!(unchanged.says("FAIL  doc-size"), "{}", unchanged.out);
+    assert!(!unchanged.says("ok    escapes"), "{}", unchanged.out);
     assert!(
         unchanged.says("not blocking again; the tree did not change since the last gate block"),
         "{}",
@@ -770,20 +772,24 @@ fn the_gate_blocks_twice_under_each_prompt_and_only_over_a_changed_tree() {
     assert!(after.says("gate block 1 of 2"), "{}", after.out);
 }
 
+/// A record an older klin wrote names one spent gate block and no gate tree, so it can never
+/// prove the tree changed. Spec 16.3.
 #[test]
-fn a_second_gate_block_needs_a_record_of_the_tree_the_first_one_saw() {
+fn a_record_an_older_klin_wrote_proves_no_second_gate_block() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
     let first = stop(&tree, A_STOP);
     assert_eq!(first.code, 2, "{}", first.out);
     let text = std::fs::read_to_string(tree.path(BUILD_BLOCKED)).unwrap_or_default();
-    let mut held: Value = object(&text, &first);
-    let removed = held
-        .as_object_mut()
-        .and_then(|fields| fields.remove("gate_tree"));
-    assert!(removed.is_some(), "{text}");
-    tree.write(BUILD_BLOCKED, &held.to_string());
+    let held: Value = object(&text, &first);
+    let older = serde_json::json!({
+        "prompt": held["prompt"],
+        "builds": 0,
+        "gate_spent": true,
+        "tree": "a tree an older build block saw",
+    });
+    tree.write(BUILD_BLOCKED, &older.to_string());
 
     tree.words("README.md", 31);
     let second = stop(&tree, A_SECOND_STOP);

@@ -269,7 +269,7 @@ fn add_prompt_note(
         log.flags.push("no-prompt-event");
         parts.push((
             "note",
-            "klin: no prompt event reached this session; klin gives no fresh gate budget until \
+            "klin: no prompt event reached this session; klin grants no fresh gate blocks until \
              `klin radius` runs on session start and on prompt submitted."
                 .to_string(),
         ));
@@ -479,7 +479,7 @@ fn count(at: &Path) -> Count {
         .filter(|held| held.get("prompt").and_then(Value::as_u64) == Some(prompt))
         .unwrap_or_default();
     let text = |key: &str| held.get(key)?.as_str().map(str::to_string);
-    let spent = held.get("gate_spent").and_then(Value::as_bool) == Some(true);
+    let legacy_spent = held.get("gate_spent").and_then(Value::as_bool) == Some(true);
     Count {
         prompt,
         builds: held
@@ -490,7 +490,7 @@ fn count(at: &Path) -> Count {
         gate_blocks: held
             .get("gate_blocks")
             .and_then(Value::as_u64)
-            .unwrap_or(u64::from(spent)),
+            .unwrap_or(u64::from(legacy_spent)),
         gate_tree: text("gate_tree"),
     }
 }
@@ -985,15 +985,12 @@ fn hook(
         eprint!("{report}");
         return (1, None);
     };
-    let round = match round(root, held.as_ref(), event.blocked_before) {
-        Round::Block { number, tree } => spend(held, number, tree, log),
-        passed => passed,
-    };
-    let number = match round {
-        Round::Block { number, .. } => number,
-        Round::Pass(why) => {
+    let next = next(root, held.as_ref(), event.blocked_before);
+    let number = match spend(held, next, log) {
+        GateBlock::Take { number, .. } => number,
+        GateBlock::Pass(why) => {
             eprintln!(
-                "klin: {} — still, after a round of fixes:",
+                "klin: {} — this stop is not blocked:",
                 lead(failed, errored)
             );
             eprint!("{report}");
@@ -1039,8 +1036,8 @@ fn nothing_blocks(
 
 /// What a gate failure at this stop spends: the gate block it takes, with its number under this
 /// prompt and the tree it is taken over, or no block and the reason the report gives.
-enum Round {
-    Block { number: u64, tree: Option<String> },
+enum GateBlock {
+    Take { number: u64, tree: Option<String> },
     Pass(String),
 }
 
@@ -1050,22 +1047,22 @@ enum Round {
 /// block happened, never which tree it saw, so it can stand in for an unrecorded first block
 /// and never prove a second. After a build block that flag is true while no gate block is
 /// spent, so it counts only where no build block was spent either. Spec 16.3, ADR 0052.
-fn round(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> Round {
+fn next(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> GateBlock {
     let Some((count, at)) = held else {
         return match blocked_before {
-            true => Round::Pass(UNPROVEN.to_string()),
-            false => Round::Block {
+            true => GateBlock::Pass(UNPROVEN.to_string()),
+            false => GateBlock::Take {
                 number: 1,
                 tree: None,
             },
         };
     };
     if count.gate_blocks >= GATE_BLOCKS {
-        return Round::Pass(capped());
+        return GateBlock::Pass(capped());
     }
     let flagged = count.builds == 0 && blocked_before;
     if count.gate_blocks == 0 && !flagged {
-        return Round::Block {
+        return GateBlock::Take {
             number: 1,
             tree: working_tree(root, at),
         };
@@ -1075,52 +1072,56 @@ fn round(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> 
 
 /// The next gate block after one that already happened, which only a tree klin recorded for
 /// that block and a current tree that differs from it can prove.
-fn changed_since(root: &Path, count: &Count, at: &Path) -> Round {
+fn changed_since(root: &Path, count: &Count, at: &Path) -> GateBlock {
     let Some(before) = count.gate_tree.as_deref() else {
-        return Round::Pass(UNPROVEN.to_string());
+        return GateBlock::Pass(UNPROVEN.to_string());
     };
     match working_tree(root, at) {
-        Some(tree) if tree == before => Round::Pass(UNCHANGED_SINCE_GATE.to_string()),
-        Some(tree) => Round::Block {
+        Some(tree) if tree == before => GateBlock::Pass(UNCHANGED_SINCE_GATE.to_string()),
+        Some(tree) => GateBlock::Take {
             number: count.gate_blocks + 1,
             tree: Some(tree),
         },
-        None => Round::Pass(UNPROVEN.to_string()),
+        None => GateBlock::Pass(UNPROVEN.to_string()),
     }
 }
 
 /// The gate block recorded before it is delivered. A first block klin cannot record still
 /// blocks, as it always has. A second block klin cannot record could not be bounded, so it
 /// becomes a report.
-fn spend(
-    held: Option<(Count, PathBuf)>,
-    number: u64,
-    tree: Option<String>,
-    log: &mut journal::Stop,
-) -> Round {
-    let Some((count, at)) = held else {
-        return Round::Block { number, tree };
+fn spend(held: Option<(Count, PathBuf)>, next: GateBlock, log: &mut journal::Stop) -> GateBlock {
+    let (number, tree) = match &next {
+        GateBlock::Take { number, tree } => (*number, tree.clone()),
+        GateBlock::Pass(_) => return next,
     };
-    let next = Count {
+    let Some((count, at)) = held else {
+        return next;
+    };
+    let recorded = Count {
         gate_blocks: number,
-        gate_tree: tree.clone(),
+        gate_tree: tree,
         ..count
     };
-    if counted(&at, &next) {
-        return Round::Block { number, tree };
+    if counted(&at, &recorded) {
+        return next;
     }
     log.flags.push("count-unwritable");
     match number {
-        1 => Round::Block { number, tree },
-        _ => Round::Pass(UNRECORDED.to_string()),
+        1 => next,
+        _ => GateBlock::Pass(UNRECORDED.to_string()),
     }
 }
 
+/// Why a stop after a gate block spends none: klin has no tree of its own to compare against.
 const UNPROVEN: &str = "klin holds no record of the tree the last gate block saw, so it cannot \
     tell whether this stop changed it";
+/// Why a stop spends no second gate block when its record would not write. ADR 0052.
 const UNRECORDED: &str = "klin could not record a second gate block, so nothing would bound it";
+/// Why a stop over the tree the last gate block saw spends none. ADR 0052.
 const UNCHANGED_SINCE_GATE: &str = "the tree did not change since the last gate block";
 
+/// Why a stop after the prompt's last gate block spends none, with the bound from
+/// `GATE_BLOCKS`, so the cap and the words for it cannot drift apart.
 fn capped() -> String {
     format!(
         "the gate has blocked {GATE_BLOCKS} stops under this prompt, which is the most it blocks"
@@ -1307,7 +1308,7 @@ fn each(
                 let _ = writeln!(out, "  {line}");
             }
             let _ = writeln!(out, "  {}  {}", status(code), gate.name);
-            for line in text.lines() {
+            for line in text.lines().filter(|line| !succeeded(args, code, line)) {
                 let _ = writeln!(out, "        {line}");
             }
         }
@@ -1328,6 +1329,12 @@ fn each(
 /// on. Every other run prints every gate. The records keep every gate either way. Spec 9.5.
 fn rendered(args: &Args, code: u8, records: &Records) -> bool {
     !args.hook || code != 0 || records.notes.iter().any(told)
+}
+
+/// A passing gate's own success line, which the hook leaves out of the gate it prints for a
+/// note, so only the note and the row that names its gate remain. Spec 9.5.
+fn succeeded(args: &Args, code: u8, line: &str) -> bool {
+    args.hook && code == 0 && line.starts_with("OK:")
 }
 
 /// What one gate's structural work came to, with the declaration states of the gate that builds
