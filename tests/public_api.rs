@@ -333,6 +333,22 @@ fn a_removed_library_surface_fails_once_at_the_surface() {
 }
 
 #[test]
+fn a_library_whose_package_has_publish_false_is_still_a_surface() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", &format!("{PACKAGE}publish = false\n"));
+    tree.write("src/lib.rs", "pub fn parse() {}\npub fn render() {}\n");
+    tree.base();
+    tree.write("src/lib.rs", "pub fn parse() {}\n");
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(run.says("render (function)"), "{}", run.out);
+}
+
+#[test]
 fn a_source_move_behind_an_unchanged_external_identity_passes() {
     let tree = Tree::new();
     library(&tree);
@@ -528,6 +544,28 @@ fn a_package_whose_entries_are_generated_or_absent_is_not_applicable() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn a_private_package_with_a_typescript_entry_is_still_a_surface() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "web/package.json",
+        r#"{"name":"@acme/app","private":true,"exports":"./src/index.ts"}"#,
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export function parse(): void {}\nexport function render(): void {}\n",
+    );
+    tree.base();
+    tree.write("web/src/index.ts", "export function parse(): void {}\n");
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(run.says("render (function)"), "{}", run.out);
 }
 
 #[test]
