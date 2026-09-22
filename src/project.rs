@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
 use std::path::{Path, PathBuf};
 
-use crate::base::{self, Kind, Prior, Window};
+use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error};
 use crate::syntax::structural::Extracted;
@@ -203,7 +203,7 @@ pub struct Project {
     changes: OnceCell<(String, Vec<Change>)>,
     whole_base: OnceCell<(String, Prior)>,
     facts: OnceCell<survey::Facts>,
-    derivation: OnceCell<String>,
+    derivation: OnceCell<Option<String>>,
 }
 
 impl Project {
@@ -246,13 +246,25 @@ impl Project {
     /// first call and held for the run. Spec 4.3.
     pub fn facts(&self) -> &survey::Facts {
         self.facts
-            .get_or_init(|| survey::facts(&self.tree, self.derivation.get().map(String::as_str)))
+            .get_or_init(|| survey::facts(&self.tree, self.derivation().as_deref()))
     }
 
-    pub fn derive_from(&self, window: &Window) {
-        if !matches!(window.kind, Kind::Turn) {
-            let _ = self.derivation.set(window.before.clone());
-        }
+    fn derivation(&self) -> &Option<String> {
+        self.derivation.get_or_init(|| {
+            base::choose(self.root(), false)
+                .ok()
+                .and_then(|window| window.derives)
+                .or_else(|| survey::unwindowed(self.root()))
+        })
+    }
+
+    pub fn bind(&mut self, window: &Window) {
+        let commit = window
+            .derives
+            .clone()
+            .or_else(|| survey::unwindowed(self.root()));
+        self.derivation = OnceCell::from(commit);
+        self.facts.take();
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives

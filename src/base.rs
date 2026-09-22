@@ -637,6 +637,7 @@ pub struct Window {
     pub kind: Kind,
     pub before: String,
     pub how: String,
+    pub derives: Option<String>,
 }
 
 /// The three window kinds of section 4.2. The hook judges a turn, `klin gate` by hand and CI
@@ -698,6 +699,7 @@ pub fn choose(root: &Path, strict: bool) -> Result<Window, Error> {
         };
         let base = Window {
             kind,
+            derives: Some(commit.clone()),
             before: commit,
             how,
         };

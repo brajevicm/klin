@@ -109,11 +109,11 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let loaded = Project::load(args.config.as_deref(), start);
     if !args.hook {
-        let judged = loaded.and_then(|project| by_hand(args, &project, out));
+        let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
         return refused(args, judged, out).map(|tally| code(&tally));
     }
     match loaded {
-        Ok(project) => Ok(stopped(args, &project, event, out)),
+        Ok(mut project) => Ok(stopped(args, &mut project, event, out)),
         Err(problem) => {
             eprintln!(
                 "klin: FAIL: {problem} — only a person edits that file, so this stop is not \
@@ -124,10 +124,10 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
 }
 
-fn by_hand(args: &Args, project: &Project, out: &mut String) -> Result<Tally, Error> {
+fn by_hand(args: &Args, project: &mut Project, out: &mut String) -> Result<Tally, Error> {
     let window = base::choose(project.root(), args.strict).ok();
     if let Some(window) = &window {
-        project.derive_from(window);
+        project.bind(window);
     }
     judge(args, project, window.as_ref(), &[], None, out)
 }
@@ -139,9 +139,9 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// One stop in the hook: the lock, the turn window, the build, the gates, and the verdict the
 /// next prompt reads. The lock is held from before the run measures until after the verdict is
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
-fn stopped(args: &Args, project: &Project, event: Option<host::Event>, out: &mut String) -> u8 {
+fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: &mut String) -> u8 {
     let begun = std::time::Instant::now();
-    let root = project.root();
+    let root = &project.root().to_path_buf();
     let mut log = journal::Stop::begun(event.as_ref(), config_hash(project));
     let (lock, lock_ms) =
         journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
@@ -149,8 +149,9 @@ fn stopped(args: &Args, project: &Project, event: Option<host::Event>, out: &mut
     let lost = matches!(&lock, Some(None));
     let window = turn::window(root, &mut log.flags, out).ok();
     if let Some(window) = &window {
-        project.derive_from(window);
+        project.bind(window);
     }
+    let project = &*project;
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
         log.flags.push("branch-fallback");
     }

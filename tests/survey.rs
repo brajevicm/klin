@@ -541,6 +541,57 @@ fn a_document_ceiling_comes_from_the_same_base_as_the_complexity_ceiling() {
 }
 
 #[test]
+fn a_check_run_on_its_own_derives_from_the_same_base_as_the_gate() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+
+    derived_at_the_base(&tree, &tree.run(&["gate", "--gate", "complexity"]));
+    derived_at_the_base(&tree, &tree.run(&["complexity"]));
+}
+
+#[test]
+fn doc_size_run_on_its_own_derives_from_the_base() {
+    let tree = project();
+    tree.words("README.md", 400);
+    tree.commit("a document that would raise its own ceiling");
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("README.md is 400 words, over its ceiling of 50"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+    tree.git(&["reset", "-q", "--hard", "HEAD~1"]);
+    tree.write("klin.json", "{}");
+    tree.commit("the configuration");
+    let parent = tree.revision("HEAD")[..7].to_string();
+    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    tree.write("src/more.rs", &many(TANGLED, 50));
+    tree.commit("a change inside the turn that would move the percentile");
+    tree.write(".git/unusable", "a file where the state directory would go");
+
+    let run = harness::feed_with(
+        tree.root(),
+        &[("KLIN_STATE_DIR", &tree.at(".git/unusable"))],
+        &["gate", "--hook"],
+        STOP,
+    );
+    assert!(run.says("window: turn"), "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "derived: complexity cc 9 (95th percentile of 50 functions at {parent}, floor 5)"
+        )),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn below_fifty_functions_the_floor_is_the_ceiling() {
     let tree = project();
     let at = short(&tree);
@@ -609,7 +660,7 @@ fn a_document_the_derivation_commit_lacks_is_a_note_and_is_not_judged() {
     );
     tree.remove("klin.json");
 
-    tree.commit("the derivation commit holds it now");
+    tree.base();
     let held = tree.run(&["doc-size"]);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(

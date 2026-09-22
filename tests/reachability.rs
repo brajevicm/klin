@@ -615,6 +615,24 @@ fn a_changed_run_reports_one_surface_the_whole_run_reports_too() {
 }
 
 #[test]
+fn reachability_on_its_own_derives_its_families_from_the_base_as_the_gate_does() {
+    let tree = three_reached_commands();
+    tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
+    tree.base();
+    tree.write(
+        "src/main.rs",
+        "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
+    );
+    tree.commit("a change that would prove the family it is judged by");
+
+    let gate = tree.run(&["gate", "--gate", "reachability"]);
+    let alone = tree.run(&["reachability"]);
+
+    assert!(gate.says("0 file(s) judged"), "{}", gate.out);
+    assert!(alone.says("0 file(s) judged"), "{}", alone.out);
+}
+
+#[test]
 fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
     let tree = three_reached_commands();
     tree.base();

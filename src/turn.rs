@@ -507,6 +507,7 @@ fn turn(stamp: &Stamp) -> Window {
         kind: Kind::Turn,
         before: stamp.commit.clone().unwrap_or_default(),
         how: format!("the turn stamp, taken {}", ago(stamp.time)),
+        derives: stamp.parent.clone(),
     }
 }
 
@@ -522,6 +523,7 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
         );
         Ok(Window {
             kind: Kind::Branch,
+            derives: Some(head.clone()),
             before: head,
             how: "HEAD, because no base resolves".to_string(),
         })
