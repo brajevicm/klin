@@ -60,10 +60,12 @@ impl Facts {
 
 /// The facts of a tree, read from the derivation commit's cached survey and the tree's one file
 /// list. Nothing expensive is computed here. Spec 4.3.
-pub fn facts(tree: &Tree) -> Facts {
+pub fn facts(tree: &Tree, from: Option<&str>) -> Facts {
     let root = tree.root();
     let directory = state::ready(root).ok();
-    let commit = turn::derivation(root, directory.as_deref());
+    let commit = from
+        .map(str::to_string)
+        .or_else(|| turn::derivation(root, directory.as_deref()));
     let held = at_commit(root, directory.as_deref(), commit.as_deref());
     let found = union(&held.clone().unwrap_or_default(), &walked(tree), root);
     let unheld = match &held {

@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
 use std::path::{Path, PathBuf};
 
-use crate::base::{self, Prior};
+use crate::base::{self, Kind, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::{Config, Error};
 use crate::syntax::structural::Extracted;
@@ -203,6 +203,7 @@ pub struct Project {
     changes: OnceCell<(String, Vec<Change>)>,
     whole_base: OnceCell<(String, Prior)>,
     facts: OnceCell<survey::Facts>,
+    derivation: OnceCell<String>,
 }
 
 impl Project {
@@ -222,6 +223,7 @@ impl Project {
             changes: OnceCell::new(),
             whole_base: OnceCell::new(),
             facts: OnceCell::new(),
+            derivation: OnceCell::new(),
         }
     }
 
@@ -243,7 +245,14 @@ impl Project {
     /// What the derivation commit and the working tree say about the repository, read on the
     /// first call and held for the run. Spec 4.3.
     pub fn facts(&self) -> &survey::Facts {
-        self.facts.get_or_init(|| survey::facts(&self.tree))
+        self.facts
+            .get_or_init(|| survey::facts(&self.tree, self.derivation.get().map(String::as_str)))
+    }
+
+    pub fn derive_from(&self, window: &Window) {
+        if !matches!(window.kind, Kind::Turn) {
+            let _ = self.derivation.set(window.before.clone());
+        }
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives

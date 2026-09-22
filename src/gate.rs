@@ -109,7 +109,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let loaded = Project::load(args.config.as_deref(), start);
     if !args.hook {
-        let judged = loaded.and_then(|project| judge(args, &project, None, &[], None, out));
+        let judged = loaded.and_then(|project| by_hand(args, &project, out));
         return refused(args, judged, out).map(|tally| code(&tally));
     }
     match loaded {
@@ -122,6 +122,14 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
             Ok(1)
         }
     }
+}
+
+fn by_hand(args: &Args, project: &Project, out: &mut String) -> Result<Tally, Error> {
+    let window = base::choose(project.root(), args.strict).ok();
+    if let Some(window) = &window {
+        project.derive_from(window);
+    }
+    judge(args, project, window.as_ref(), &[], None, out)
 }
 
 /// How long a stop waits for the stop before it to finish. A fraction of the hook's five
@@ -140,6 +148,9 @@ fn stopped(args: &Args, project: &Project, event: Option<host::Event>, out: &mut
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
     let window = turn::window(root, &mut log.flags, out).ok();
+    if let Some(window) = &window {
+        project.derive_from(window);
+    }
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
         log.flags.push("branch-fallback");
     }

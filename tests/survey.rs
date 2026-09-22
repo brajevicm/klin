@@ -7,6 +7,7 @@ use harness::{Run, Tree};
 use serde_json::Value;
 
 const SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
+const STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const TANGLED: &str = "pub fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
 const MIDDLING: &str = "pub fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    0\n}\n";
@@ -26,6 +27,10 @@ fn project() -> Tree {
 
 fn gate(tree: &Tree) -> Run {
     tree.run(&["gate"])
+}
+
+fn stop(tree: &Tree) -> Run {
+    harness::feed(tree.root(), &["gate", "--hook"], STOP)
 }
 
 #[test]
@@ -262,6 +267,7 @@ fn a_root_that_first_appears_in_the_working_tree_is_measured_and_its_sites_are_n
 #[test]
 fn a_site_under_a_root_the_derivation_commit_did_not_hold_is_new_whatever_the_base_holds() {
     let tree = Tree::new();
+    tree.write("klin.json", "{}");
     tree.words("README.md", 5);
     tree.write("src/lib.rs", CLEAN);
     tree.write("parked/risky.rs", text::WRAPPED);
@@ -269,9 +275,11 @@ fn a_site_under_a_root_the_derivation_commit_did_not_hold_is_new_whatever_the_ba
     tree.remove("parked/risky.rs");
     tree.commit("the derivation commit holds no parked root");
     tree.write("parked/risky.rs", text::WRAPPED);
+    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    tree.write("parked/risky.rs", text::WRAPPED_WITH_A_NOTE);
 
-    let run = gate(&tree);
-    assert_eq!(run.code, 1, "{}", run.out);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("parked/risky.rs"), "{}", run.out);
 }
@@ -291,7 +299,7 @@ fn a_language_that_first_appears_in_the_working_tree_is_measured_on_that_run() {
 }
 
 fn cache(tree: &Tree) -> std::path::PathBuf {
-    tree.state(&format!("cache/{}.json", tree.revision("HEAD")))
+    tree.state(&format!("cache/{}.json", tree.revision("main")))
 }
 
 #[test]
@@ -346,14 +354,21 @@ fn a_cache_another_version_wrote_and_one_that_is_unreadable_are_surveyed_again()
 }
 
 #[test]
-fn a_new_commit_is_a_new_derivation_commit_and_a_new_cache_entry() {
+fn a_new_base_is_a_new_derivation_commit_and_a_new_cache_entry() {
     let tree = project();
     assert_eq!(gate(&tree).code, 0);
     let first = cache(&tree);
     assert!(first.is_file(), "{} was not written", first.display());
 
     tree.write("src/more.rs", CLEAN);
-    tree.commit("another commit");
+    tree.commit("a commit on the branch");
+    assert_eq!(gate(&tree).code, 0);
+    assert_eq!(cache(&tree), first);
+    let head = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
+    assert!(!head.is_file(), "{} was written", head.display());
+
+    tree.write("src/other.rs", CLEAN);
+    tree.base();
     assert_eq!(gate(&tree).code, 0);
     let second = cache(&tree);
     assert_ne!(first, second);
@@ -416,7 +431,7 @@ fn many(source: &str, count: usize) -> String {
 }
 
 fn short(tree: &Tree) -> String {
-    tree.revision("HEAD")[..7].to_string()
+    tree.revision("main")[..7].to_string()
 }
 
 /// The ceiling is the nearest-rank 95th percentile of the derivation commit's own functions,
@@ -445,6 +460,81 @@ fn a_derived_ceiling_is_the_percentile_of_the_derivation_commit() {
         run.says(&format!(
             "derived: complexity lines 25 (the floor of 25, over 50 function(s) at {at})"
         )),
+        "{}",
+        run.out
+    );
+}
+
+/// Fifty functions whose 95th percentile is cc 9, committed as the base, and a committed change
+/// that would put the percentile at the tangled functions' cc 12.
+fn a_change_that_would_raise_its_own_ceiling() -> Tree {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("src/clean.rs", &many(CLEAN, 47));
+    tree.write("src/mid.rs", MIDDLING);
+    tree.write("src/knot.rs", &many(TANGLED, 2));
+    tree.base();
+    tree.write("src/more.rs", &many(TANGLED, 50));
+    tree.commit("a change that would move the percentile");
+    tree
+}
+
+fn derived_at_the_base(tree: &Tree, run: &Run) {
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "derived: complexity cc 9 (95th percentile of 50 functions at {}, floor 5)",
+            short(tree)
+        )),
+        "{}",
+        run.out
+    );
+    assert!(run.says("src/more.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_branch_run_derives_from_the_base_and_not_from_a_committed_change() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+
+    derived_at_the_base(&tree, &gate(&tree));
+}
+
+#[test]
+fn a_branch_run_by_hand_derives_from_the_base_and_not_from_a_turn_stamp() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+
+    derived_at_the_base(&tree, &gate(&tree));
+}
+
+#[test]
+fn a_push_run_derives_from_the_commit_the_push_started_from() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+    tree.write(
+        "event.json",
+        &format!("{{\"before\": \"{}\"}}", tree.revision("main")),
+    );
+
+    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["gate"]);
+    assert!(run.says("the commit this push started from"), "{}", run.out);
+    derived_at_the_base(&tree, &run);
+}
+
+#[test]
+fn a_document_ceiling_comes_from_the_same_base_as_the_complexity_ceiling() {
+    let tree = project();
+    tree.words("README.md", 400);
+    tree.commit("a document that would raise its own ceiling");
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("README.md is 400 words, over its ceiling of 50"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says(&format!("over 2 function(s) at {})", short(&tree))),
         "{}",
         run.out
     );
@@ -676,8 +766,7 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
     tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
     tree.commit("widen the recorded scope later");
 
-    let held = gate(&tree);
-    assert_ne!(held.code, 2, "{}", held.out);
+    let held = stop(&tree);
     assert!(
         held.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
         "{}",
@@ -685,9 +774,12 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
     );
 
     assert_eq!(tree.run(&["turn", "reset"]).code, 0);
-    let moved = gate(&tree);
-    assert_ne!(moved.code, 2, "{}", moved.out);
-    assert!(moved.says("derived: complexity cc 12 ("), "{}", moved.out);
+    let moved = stop(&tree);
+    assert_eq!(moved.code, 0, "{}", moved.out);
+    let file = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
+    let derived: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap_or_default())
+        .unwrap_or_default();
+    assert_eq!(derived["complexity"]["cc"], 12, "{derived}");
 }
 
 #[test]

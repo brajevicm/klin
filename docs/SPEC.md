@@ -940,6 +940,19 @@ taken. Under the branch and push windows it is `before` itself. It is never
 the stamp, because a stamp is a new commit on every turn and a cache keyed by
 it would never hit.
 
+A run fixes its window before it reads any fact of the tree, so every check
+derives from the same commit. A run by hand or in CI therefore derives from
+`before` whatever turn stamp the checkout holds, and a change it judges never
+moves its own ceiling, even when the change is committed. A run by hand that
+resolves no base has no `before`, and it derives from the stamp's parent, or
+from HEAD when no stamp is readable. Pinned by
+`a_branch_run_derives_from_the_base_and_not_from_a_committed_change`,
+`a_branch_run_by_hand_derives_from_the_base_and_not_from_a_turn_stamp`,
+`a_push_run_derives_from_the_commit_the_push_started_from`,
+`a_document_ceiling_comes_from_the_same_base_as_the_complexity_ceiling` and
+`a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves` in
+`tests/survey.rs`.
+
 The survey MUST cache its result under `survey/<commit>.json` in the state
 directory, because its numbers and its path sets at that commit are a pure
 function of the derivation commit and the binary version. The `after` walk
