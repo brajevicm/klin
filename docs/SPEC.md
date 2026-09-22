@@ -1865,15 +1865,16 @@ An *item* is what a consumer names under a surface, and its identity is the
 surface, the exported path or name and the item's kind, never the file that
 declares it. In this check, *external* means outside the crate or package
 that declares the item, including a sibling in the same repository, and never
-means published. The check judges only external items. From a Rust root the check follows
-every plain `pub` declaration, every `pub mod`, and every `pub use` leaf: an
-alias renames the item, a glob exposes every public item of the module it
-reaches less the names the globbing module exposes itself, a re-export of a
-module exposes everything under it, and a plain `pub` item inside a private
-module is external only where a `pub use` exposes it. `pub(crate)`, `pub(super)`, `pub(self)` and
-`pub(in ...)` are never external. A public inherent method is an item under
-its type. From a TypeScript entry file the check follows exported
-declarations, default exports, local export clauses, and named, aliased,
+means published. The check judges only external items. From a Rust root the
+check follows every plain `pub` declaration, every `pub mod`, and every
+`pub use` leaf: an alias renames the item, a glob exposes every public item of
+the module it reaches less the names the globbing module exposes itself, a
+re-export of a module exposes everything under it, and a plain `pub` item
+inside a private module is external only where a `pub use` exposes it.
+`pub(crate)`, `pub(super)`, `pub(self)` and `pub(in ...)` are never external.
+A public inherent method is an item under its type. From a TypeScript entry
+file the check follows exported declarations, default exports, local export
+clauses, and named, aliased,
 type-only and star re-exports through the module graph's own edges. An
 exported file no entry reaches is not package API. TSX is TypeScript.
 
