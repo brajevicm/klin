@@ -264,36 +264,49 @@ fn holds(entry: &Entry, path: &str) -> bool {
 
 /// The first entry that failed, or the first whose command the shell could not find when every
 /// entry that ran passed, or None when every entry built. An absent tool skips its own entry
-/// and no other, so a compile error behind it still blocks. A tool the project installed is not
-/// an absent tool: a broken install fails its own build. Spec 9.3.
+/// and no other, so a compile error behind it still blocks. Spec 9.3.
 pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<Failure> {
     let mut missing = None;
     for entry in wanted {
-        let at = match &entry.root {
-            Some(under) => root.join(under),
-            None => root.to_path_buf(),
-        };
-        let (run, own) = runs(root, &at, entry);
-        let done = Command::new("sh")
-            .arg("-c")
-            .arg(&run)
-            .current_dir(&at)
-            .output();
-        match done {
-            Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
-            Ok(done) if done.status.code() == Some(MISSING) && !own => {
-                missing.get_or_insert(Failure::Missing {
-                    run,
-                    output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
-                });
+        match built(root, entry) {
+            None => (),
+            Some(found @ Failure::Missing { .. }) => {
+                missing.get_or_insert(found);
             }
-            Ok(done) if !done.status.success() => {
-                let mut text = String::from_utf8_lossy(&done.stdout).into_owned();
-                text.push_str(&String::from_utf8_lossy(&done.stderr));
-                return Some(Failure::Failed(format!("$ {run}\n{text}")));
-            }
-            Ok(_) => (),
+            Some(failed) => return Some(failed),
         }
     }
     missing
+}
+
+/// Why one entry did not build, or None when it built. A tool the project installed is not an
+/// absent tool: a broken install fails its own build rather than leaving the tree unmeasured.
+/// Spec 9.3.
+fn built(root: &Path, entry: &Entry) -> Option<Failure> {
+    let at = match &entry.root {
+        Some(under) => root.join(under),
+        None => root.to_path_buf(),
+    };
+    let (run, own) = runs(root, &at, entry);
+    let done = match Command::new("sh")
+        .arg("-c")
+        .arg(&run)
+        .current_dir(&at)
+        .output()
+    {
+        Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
+        Ok(done) => done,
+    };
+    match done.status.code() {
+        Some(0) => None,
+        Some(MISSING) if !own => Some(Failure::Missing {
+            run,
+            output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
+        }),
+        _ => {
+            let mut text = String::from_utf8_lossy(&done.stdout).into_owned();
+            text.push_str(&String::from_utf8_lossy(&done.stderr));
+            Some(Failure::Failed(format!("$ {run}\n{text}")))
+        }
+    }
 }
