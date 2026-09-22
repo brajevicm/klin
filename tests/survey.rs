@@ -591,6 +591,31 @@ fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent
     );
 }
 
+fn pinned_cc(tree: &Tree) -> Value {
+    let written = tree.run(&["init", "--pin"]);
+    assert_eq!(written.code, 0, "{}", written.out);
+    let held = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
+    let config: Value = serde_json::from_str(&held).unwrap_or_default();
+    config["complexity"]["cc"].clone()
+}
+
+#[test]
+fn init_pin_with_no_turn_stamp_derives_from_head_and_not_from_the_base() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+
+    assert_eq!(pinned_cc(&tree), 12);
+}
+
+#[test]
+fn init_pin_derives_from_the_stamps_parent_and_not_from_the_base_or_head() {
+    let tree = a_change_that_would_raise_its_own_ceiling();
+    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    tree.write("src/plain.rs", &many(CLEAN, 1000));
+    tree.commit("a later change that would put the percentile at the floor");
+
+    assert_eq!(pinned_cc(&tree), 12);
+}
+
 #[test]
 fn below_fifty_functions_the_floor_is_the_ceiling() {
     let tree = project();

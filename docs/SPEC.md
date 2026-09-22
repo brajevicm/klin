@@ -949,7 +949,11 @@ even when the change is committed. The hook derives from the stamp's parent
 even when the state directory cannot be written, because the turn ref keeps
 the stamp. A run by hand that resolves no base has no `before`, and it
 derives from the stamp's parent, or from HEAD when no stamp is readable.
+`klin init --pin` judges nothing and has no window, so every value it pins
+comes from that same commit, the stamp's parent or HEAD, as `radius` does.
 Pinned by `a_branch_run_derives_from_the_base_and_not_from_a_committed_change`,
+`init_pin_with_no_turn_stamp_derives_from_head_and_not_from_the_base`,
+`init_pin_derives_from_the_stamps_parent_and_not_from_the_base_or_head`,
 `a_branch_run_by_hand_derives_from_the_base_and_not_from_a_turn_stamp`,
 `a_push_run_derives_from_the_commit_the_push_started_from`,
 `a_document_ceiling_comes_from_the_same_base_as_the_complexity_ceiling`,

@@ -204,6 +204,7 @@ pub struct Project {
     whole_base: OnceCell<(String, Prior)>,
     facts: OnceCell<survey::Facts>,
     derivation: OnceCell<Option<String>>,
+    by_hand: bool,
 }
 
 impl Project {
@@ -211,7 +212,10 @@ impl Project {
     /// root with nothing read yet. Spec 5.1, 14.
     pub fn load(explicit: Option<&Path>, start: &Path) -> Result<Project, Error> {
         let config = Config::load(explicit, start)?;
-        Ok(Project::of(config, start))
+        Ok(Project {
+            by_hand: true,
+            ..Project::of(config, start)
+        })
     }
 
     /// A run over a configuration already loaded.
@@ -224,6 +228,7 @@ impl Project {
             whole_base: OnceCell::new(),
             facts: OnceCell::new(),
             derivation: OnceCell::new(),
+            by_hand: false,
         }
     }
 
@@ -251,8 +256,9 @@ impl Project {
 
     fn derivation(&self) -> &Option<String> {
         self.derivation.get_or_init(|| {
-            base::choose(self.root(), false)
-                .ok()
+            self.by_hand
+                .then(|| base::choose(self.root(), false).ok())
+                .flatten()
                 .and_then(|window| window.derives)
                 .or_else(|| survey::unwindowed(self.root()))
         })
