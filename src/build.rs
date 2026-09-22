@@ -24,6 +24,10 @@ const MANIFESTS: &[(&str, &str, &str)] = &[
     ("tsconfig.json", "", ""),
 ];
 
+/// The manifest whose tool a JavaScript package manager installs into the tree, which is the one
+/// derived command klin resolves against the checkout before it runs. Spec 9.3.
+const NODE: &str = "package.json";
+
 const RULE: &str = "one command per manifest";
 
 /// One command that builds part of the tree. An entry with no root covers the whole tree.
@@ -31,6 +35,9 @@ const RULE: &str = "one command per manifest";
 pub struct Entry {
     pub root: Option<String>,
     pub run: String,
+    /// Whether a JavaScript package manager installs this entry's tool into the tree, so the run
+    /// resolves the installed tool before it runs. A command a person wrote never does. Spec 9.3.
+    pub node: bool,
 }
 
 /// Why a build did not pass. `Failed` is the output of the first entry that did not build.
@@ -67,6 +74,7 @@ pub fn plan(project: &Project) -> Result<Plan, Error> {
         Some(Value::String(run)) => vec![Entry {
             root: None,
             run: run.clone(),
+            node: false,
         }],
         Some(Value::Array(items)) => items
             .iter()
@@ -93,6 +101,7 @@ fn entry(config: &Config, item: &serde_json::Map<String, Value>) -> Result<Entry
     Ok(Entry {
         root,
         run: run.to_string(),
+        node: false,
     })
 }
 
@@ -102,7 +111,7 @@ fn derived(project: &Project) -> Plan {
     let manifests = &project.facts().found.manifests;
     let mut found: Vec<(Entry, String)> = manifests
         .iter()
-        .filter_map(|path| command(project.root(), manifests, path))
+        .filter_map(|path| command(manifests, path))
         .collect();
     found.sort();
     let Some((first, _)) = found.first() else {
@@ -135,7 +144,7 @@ impl Entry {
 
 /// The command a manifest the table names builds with, and the manifest it came from, or
 /// nothing for one that builds no project of its own or whose companion file is not beside it.
-fn command(root: &Path, manifests: &[String], path: &str) -> Option<(Entry, String)> {
+fn command(manifests: &[String], path: &str) -> Option<(Entry, String)> {
     let name = path.rsplit_once('/').map_or(path, |(_, name)| name);
     let (_, beside, run) = MANIFESTS.iter().find(|(held, _, _)| name == *held)?;
     let at = match survey::parent(path) {
@@ -148,51 +157,61 @@ fn command(root: &Path, manifests: &[String], path: &str) -> Option<(Entry, Stri
     };
     let whole = beside.is_empty() || manifests.contains(&companion);
     (!run.is_empty() && whole).then(|| {
-        let run = installed(root, at.as_deref(), run);
-        (Entry { root: at, run }, origin(path, beside))
+        (
+            Entry {
+                root: at,
+                run: run.to_string(),
+                node: name == NODE,
+            },
+            origin(path, beside),
+        )
     })
 }
 
-/// A derived command runs the tool the project installed when one sits in a `node_modules/.bin`
-/// at the manifest's directory or above it, up to the root klin measures and never beyond it,
-/// and the tool on `PATH` when the project installed none. The path is relative to the directory the
-/// entry runs in, so no derived string carries where the tree sits. Nothing here resolves or
-/// downloads a tool over the network. Spec 5.4, 9.3.
-fn installed(root: &Path, at: Option<&str>, run: &str) -> String {
-    let (tool, args) = run.split_once(' ').unwrap_or((run, ""));
+/// The command one entry runs in this checkout, and whether it is the project's own tool. A
+/// derived JavaScript entry runs the tool the package manager installed: from the directory the
+/// entry runs in, and then each directory above it up to the root klin measures and never above
+/// it, the nearest `node_modules/.bin` that holds the tool names it, and a Yarn Plug'n'Play
+/// checkout, which installs no `node_modules`, runs it through Yarn's own binary. Nothing here
+/// downloads a tool. The derived value is the command of 5.4 and this resolution is no part of
+/// it, so nothing a checkout installs reaches the journal or the build order. Spec 5.4, 9.3.
+fn runs(root: &Path, at: &Path, entry: &Entry) -> (String, bool) {
+    let (tool, args) = entry.run.split_once(' ').unwrap_or((&entry.run, ""));
+    let Some((found, own)) = entry.node.then(|| installed(root, at, tool)).flatten() else {
+        return (entry.run.clone(), false);
+    };
+    (format!("{found} {args}").trim_end().to_string(), own)
+}
+
+/// How the checkout runs one tool of a JavaScript project, and whether that command is the
+/// project's own tool, which a broken install leaves unable to run. `None` is a checkout that
+/// installed none, which leaves the tool on `PATH`.
+fn installed(root: &Path, at: &Path, tool: &str) -> Option<(String, bool)> {
+    let mut here = at.to_path_buf();
     let mut up = String::new();
-    let mut here = at.map_or_else(|| root.to_path_buf(), |at| root.join(at));
     loop {
-        if runnable(&here.join("node_modules/.bin").join(tool)) {
-            return format!("{up}node_modules/.bin/{tool} {args}")
-                .trim_end()
-                .to_string();
+        if here
+            .join("node_modules/.bin")
+            .join(tool)
+            .symlink_metadata()
+            .is_ok()
+        {
+            return Some((format!("{up}node_modules/.bin/{tool}"), true));
+        }
+        if PNP.iter().any(|name| here.join(name).is_file()) {
+            return Some((format!("yarn exec {tool}"), false));
         }
         match here.parent() {
             Some(parent) if here != root => here = parent.to_path_buf(),
-            _ => return run.to_string(),
+            _ => return None,
         }
         up.push_str("../");
     }
 }
 
-/// Whether a path is a file this host can execute. A file without the bit is not the tool: a
-/// shell that cannot run it exits 126, which ADR 0048 does not read as an absent tool, so the
-/// `PATH` tool is the better command.
-fn runnable(at: &Path) -> bool {
-    let Ok(held) = at.metadata() else {
-        return false;
-    };
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        held.is_file() && held.permissions().mode() & 0o111 != 0
-    }
-    #[cfg(not(unix))]
-    {
-        held.is_file()
-    }
-}
+/// The files a Yarn Plug'n'Play checkout holds in place of a `node_modules` directory. Yarn 2.0
+/// to 2.3 wrote the first name and every later Yarn writes the second.
+const PNP: &[&str] = &[".pnp.js", ".pnp.cjs"];
 
 /// The manifest a derived command came from, as the `derived:` line and a failing build name it.
 fn origin(path: &str, beside: &str) -> String {
@@ -245,7 +264,8 @@ fn holds(entry: &Entry, path: &str) -> bool {
 
 /// The first entry that failed, or the first whose command the shell could not find when every
 /// entry that ran passed, or None when every entry built. An absent tool skips its own entry
-/// and no other, so a compile error behind it still blocks.
+/// and no other, so a compile error behind it still blocks. A tool the project installed is not
+/// an absent tool: a broken install fails its own build. Spec 9.3.
 pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<Failure> {
     let mut missing = None;
     for entry in wanted {
@@ -253,23 +273,24 @@ pub fn failure(root: &Path, wanted: &[&Entry]) -> Option<Failure> {
             Some(under) => root.join(under),
             None => root.to_path_buf(),
         };
+        let (run, own) = runs(root, &at, entry);
         let done = Command::new("sh")
             .arg("-c")
-            .arg(&entry.run)
+            .arg(&run)
             .current_dir(&at)
             .output();
         match done {
-            Err(why) => return Some(Failure::Failed(format!("{}: {why}\n", entry.run))),
-            Ok(done) if done.status.code() == Some(MISSING) => {
+            Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
+            Ok(done) if done.status.code() == Some(MISSING) && !own => {
                 missing.get_or_insert(Failure::Missing {
-                    run: entry.run.clone(),
+                    run,
                     output: String::from_utf8_lossy(&done.stderr).trim().to_string(),
                 });
             }
             Ok(done) if !done.status.success() => {
                 let mut text = String::from_utf8_lossy(&done.stdout).into_owned();
                 text.push_str(&String::from_utf8_lossy(&done.stderr));
-                return Some(Failure::Failed(format!("$ {}\n{text}", entry.run)));
+                return Some(Failure::Failed(format!("$ {run}\n{text}")));
             }
             Ok(_) => (),
         }

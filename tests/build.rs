@@ -556,7 +556,7 @@ fn typescript(tree: &Tree, at: &str) {
 }
 
 /// A derived TypeScript build runs the compiler the project installed beside its manifest, with
-/// no compiler on `PATH`, and a compile error blocks the stop. Spec 5.4, 9.3.
+/// no compiler on `PATH`, and a compile error blocks the stop. Spec 9.3.
 #[test]
 fn a_derived_build_runs_the_compiler_installed_beside_the_manifest() {
     let tree = Tree::new();
@@ -576,28 +576,30 @@ fn a_derived_build_runs_the_compiler_installed_beside_the_manifest() {
     assert!(!run.says("could not run"), "{}", run.out);
 }
 
-/// A nested manifest whose compiler is hoisted to an ancestor `node_modules/.bin` inside the
-/// repository runs that compiler, and a passing compile prints no NOTE. Spec 5.4, 9.3.
+/// Of two installed compilers the nearest one above the manifest runs, and a passing compile
+/// prints no NOTE. Spec 9.3.
 #[test]
 fn a_derived_build_runs_the_nearest_compiler_above_the_manifest() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
-    typescript(&tree, "web/");
-    installed(
-        &tree,
-        "node_modules/.bin/tsc",
-        &format!("#!/bin/sh\necho \"$PWD\" >> \"{}\"\n", tree.at("ran")),
-    );
+    typescript(&tree, "web/app/");
+    for at in ["node_modules", "web/node_modules"] {
+        installed(
+            &tree,
+            &format!("{at}/.bin/tsc"),
+            &format!("#!/bin/sh\necho \"{at}\" >> \"{}\"\n", tree.at("ran")),
+        );
+    }
     tree.base();
-    tree.write("web/src/index.ts", "export const a = 2;\n");
+    tree.write("web/app/src/index.ts", "export const a = 2;\n");
 
     let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(ran(&tree).trim().ends_with("/web"), "{}", ran(&tree));
+    assert_eq!(ran(&tree), "web/node_modules\n", "{}", run.out);
     assert!(!run.says("could not run"), "{}", run.out);
 }
 
-/// With no compiler installed in the tree, a compiler on `PATH` still runs. Spec 5.4.
+/// With no compiler installed in the tree, a compiler on `PATH` still runs. Spec 9.3.
 #[test]
 fn a_derived_build_falls_back_to_the_compiler_on_the_path() {
     let tree = Tree::new();
@@ -631,7 +633,7 @@ fn a_configured_build_is_not_rewritten_by_an_installed_compiler() {
 }
 
 /// Resolution stops at the root klin measures: a compiler above that root is not the project's.
-/// Spec 5.4.
+/// Spec 9.3.
 #[test]
 fn a_derived_build_does_not_reach_a_compiler_above_the_root() {
     let tree = Tree::new();
@@ -655,19 +657,147 @@ fn a_derived_build_does_not_reach_a_compiler_above_the_root() {
     );
 }
 
-/// A file without the executable bit is not the project's compiler, so the `PATH` tool runs.
-/// Spec 5.4.
+/// A compiler the project installed that cannot run is still the project's compiler: the build
+/// fails and klin does not compile with the one on `PATH`. Spec 9.3.
 #[test]
-fn a_compiler_that_cannot_be_executed_is_not_the_derived_command() {
+fn a_local_compiler_that_cannot_run_does_not_fall_through_to_the_path() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     typescript(&tree, "");
-    tree.write("node_modules/.bin/tsc", "#!/bin/sh\nexit 1\n");
+    tree.write("node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n");
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(ran(&tree), "", "{}", run.out);
+}
+
+/// A Plug'n'Play checkout installs no `node_modules`, so the compiler runs through Yarn's own
+/// binary and no `PATH` compiler is reached. Spec 9.3.
+#[test]
+fn a_plug_and_play_checkout_runs_the_compiler_through_yarn() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.cjs", "// a Plug'n'Play checkout\n");
+    tree.base();
+    let path = toolchain(&tree);
+    installed(
+        &tree,
+        "toolchain/yarn",
+        &format!("#!/bin/sh\necho \"yarn $*\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "yarn exec tsc --noEmit\n", "{}", run.out);
+}
+
+/// Resolution is for the tool a JavaScript package manager installs alone. A `node_modules/.bin`
+/// entry named for another language's tool does not shadow that language's derived command.
+/// Spec 9.3.
+#[test]
+fn an_installed_binary_does_not_shadow_a_derived_cargo_or_go_command() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("api/Cargo.toml", "[package]\nname = \"api\"\n");
+    tree.write("api/src/lib.rs", CLEAN);
+    tree.write("svc/go.mod", "module svc\n");
+    tree.write("svc/main.go", "package main\n\nfunc main() {}\n");
+    for tool in ["cargo", "go"] {
+        installed(
+            &tree,
+            &format!("node_modules/.bin/{tool}"),
+            "#!/bin/sh\nexit 1\n",
+        );
+    }
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write(
+        "api/src/lib.rs",
+        "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(ran(&tree), "cargo api\ngo svc\n", "{}", run.out);
+}
+
+/// The derived value is the command the table names, whatever the checkout installed, so the
+/// journal and the order the entries run in do not move when dependencies arrive. Spec 5.4.
+#[test]
+fn an_installed_compiler_does_not_change_the_derived_value_or_the_order() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
+    tree.write("src/lib.rs", CLEAN);
+    typescript(&tree, "web/");
+    installed(
+        &tree,
+        "web/node_modules/.bin/tsc",
+        &format!("#!/bin/sh\necho \"tsc web\" >> \"{}\"\n", tree.at("ran")),
+    );
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write(
+        "src/lib.rs",
+        "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
+    );
+    tree.write("web/src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let ran = ran(&tree);
+    let mut lines = ran.lines();
+    assert!(
+        lines.next().unwrap_or_default().starts_with("cargo "),
+        "{ran}"
+    );
+    assert_eq!(lines.next(), Some("tsc web"), "{ran}");
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    assert!(journal.contains("cargo build --all-targets"), "{journal}");
+    assert!(journal.contains("tsc --noEmit"), "{journal}");
+    assert!(!journal.contains("node_modules"), "{journal}");
+}
+
+/// A broken install, whose `node_modules/.bin` link points nowhere, fails its own build. The
+/// shell exits 127 for it, and that is an absent tool only for a command klin did not resolve.
+/// Spec 9.3.
+#[test]
+fn a_broken_install_fails_its_own_build_and_is_not_an_absent_tool() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write("node_modules/.bin/keep", "");
+    let bin = tree.path("node_modules/.bin/tsc");
+    assert!(std::os::unix::fs::symlink("../typescript/bin/tsc", &bin).is_ok());
+    tree.base();
+    let path = toolchain(&tree);
+    tree.write("src/index.ts", "export const a = 2;\n");
+
+    let run = derived(&tree, &path, &["gate", "--hook"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(!run.says("could not run"), "{}", run.out);
+    assert_eq!(ran(&tree), "", "{}", run.out);
+}
+
+/// A Plug'n'Play checkout with no Yarn on the hook's `PATH` is unmeasured, and klin does not
+/// compile with another compiler instead. Spec 9.3.
+#[test]
+fn a_plug_and_play_checkout_with_no_yarn_is_unmeasured() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    typescript(&tree, "");
+    tree.write(".pnp.js", "// a Yarn 2.0 Plug'n'Play checkout\n");
     tree.base();
     let path = toolchain(&tree);
     tree.write("src/index.ts", "export const a = 2;\n");
 
     let run = derived(&tree, &path, &["gate", "--hook"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
+    assert!(run.says("could not run"), "{}", run.out);
+    assert_eq!(ran(&tree), "", "{}", run.out);
 }

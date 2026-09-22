@@ -632,14 +632,10 @@ Each check documents its rule. The rules for the shipped checks:
   fails, so a derived command never reaches the agent with no origin (ADR
   0040, ADR 0048). Manifests are a path set. A manifest the derivation commit
   lacks gets its entry from the fixed table on the turn that adds it.
-  A derived command runs the tool the project installed: from the manifest's
-  directory, and then each directory above it up to the root klin measures
-  and never above it, the first `node_modules/.bin/<tool>` this host can
-  execute is the tool, written relative to the directory the entry runs in,
-  and the tool on `PATH` runs when the tree installed none. The resolution
-  reads the working tree, so a tree whose dependencies are not installed
-  derives the `PATH` command and the same commit with them installed derives
-  the project's own. klin never invokes `npx`, `npm
+  The derived value is the command the table names, such as `tsc --noEmit`,
+  and it stays a function of the derivation commit. Which tool a checkout
+  runs that command with is resolved when the build runs, per 9.3, and
+  reaches neither the derived value nor the order the entries run in. klin never invokes `npx`, `npm
   exec` or any other command that could fetch a tool. A `build` a person
   wrote runs exactly as written.
 
@@ -2453,9 +2449,23 @@ the turn stamp over a tree that does not build. Each block names its number
 in the turn, and a failing build's report opens with the `derived:` line of
 5.4 when the command was derived.
 
-A derived build runs the project's own tool when the tree holds one, per
-5.4, so a tool a project installed but did not put on `PATH` is found and the
-NOTE below is not told.
+A derived build for a JavaScript project runs the tool that project's
+package manager installed. From the directory the entry runs in, and then
+each directory above it up to the root klin measures and never above it, the
+nearest `node_modules/.bin` that holds the tool names it, written relative to
+that directory, and a Plug'n'Play checkout, which installs no
+`node_modules`, runs the tool through Yarn's own binary. The tool on `PATH`
+runs when the checkout installed none. A candidate that is there and cannot
+run is still the project's tool, so a broken install, such as one whose link
+points nowhere, fails its own build and klin does not quietly compile with
+another: the 127 of ADR 0048 is an absent tool only for a command klin did
+not resolve against the checkout. A Plug'n'Play checkout with no Yarn on the
+hook's `PATH` is unmeasured under that rule and tells the NOTE. klin never invokes `npx`, `npm
+exec`, `yarn dlx` or any other command that could fetch a tool. This applies
+to a derived JavaScript command alone: a derived `cargo` or `go` command, and
+every command a person wrote, run exactly as they read. A tool a project
+installed but did not put on `PATH` is therefore found, and the NOTE below is
+not told for it.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
