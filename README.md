@@ -200,4 +200,7 @@ klin handles the deterministic quality-control loop around code changes. Humans 
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
 - [Shadow/Active benchmark result, 2026-09-22](docs/benchmark-result-2026-09-22.md)
 
+Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
+Security issue? [Follow the private reporting instructions](SECURITY.md).
+
 Apache-2.0.

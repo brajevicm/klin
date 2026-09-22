@@ -1,0 +1,54 @@
+name: Open an issue
+description: Report a bug, ask a question, or request a feature.
+title: ""
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve klin.
+
+        **Security issue?** Please do not post vulnerability details here. Follow the [security policy](https://github.com/brajevicm/klin/blob/main/SECURITY.md) instead.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of issue is this?
+      options:
+        - Bug
+        - Question / help
+        - Feature request
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What do you need?
+      description: Tell us what happened, what you expected, or what you would like klin to do.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where are you using klin?
+      options:
+        - Claude Code
+        - Codex
+        - Cursor
+        - Standalone CLI
+        - Custom harness
+        - Not applicable / unsure
+
+  - type: input
+    id: version
+    attributes:
+      label: klin version
+      placeholder: e.g. v0.2.1
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optional — reproduction steps, relevant output, OS, host version, CI environment, or anything else that may help.
