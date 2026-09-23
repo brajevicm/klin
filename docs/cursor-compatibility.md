@@ -2,7 +2,7 @@
 
 Verified with Cursor 3.20.21 on 2026-09-16 on macOS.
 
-The native plugin is the install (ADR 0045). These notes record what that
+The native plugin carries klin's hooks for Cursor (ADR 0045, ADR 0053). These notes record what that
 Cursor build did with hook output, so a later adapter change can compare
 against a measured host rather than a guess.
 

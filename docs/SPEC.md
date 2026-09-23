@@ -4033,7 +4033,8 @@ green, because deterministic detection is not correct judgement:
   of klin's is removed, an entry of klin's on an event klin no longer writes is
   removed, another tool's entries survive, a second complete run writes no
   file, an unreadable host file leaves every file untouched, a written line
-  exits 0 when no binary resolves, `--user` writes the person's own file and
+  exits 0 when no binary resolves and only the stop of an opted-in tree says
+  how to install it, `--user` writes the person's own file and
   no home-directory `klin.json`, and the project form outside a repository is
   refused.
 - State: default under the git directory, per worktree, `KLIN_STATE_DIR`
@@ -4164,12 +4165,15 @@ Support status:
 
 Delivery and interoperability:
 
-1. **Native plugin.** The host-managed plugin klin ships for a first-class
-   host. It is the preferred local product experience on that host. It carries
+1. **Native plugin.** The native plugin klin ships for a first-class
+   host. It is the native alternative to the standalone route: Claude Code and
+   Codex install and update it, and Cursor's verified route is a local copy a
+   person makes from a release tag. It carries
    the host hooks, the klin skill and a pinned wrapper that fetches a pinned
    runtime. Section 19.2.
-2. **Standalone route.** The klin binary and `klin install`, for a first-class
-   host or surface where explicit hook reconciliation fits. It owns explicit
+2. **Standalone route.** The klin binary and `klin install`, the route
+   documents lead with on every first-class host, because it alone gives the
+   person the `klin` command. It owns explicit
    hook files a repository or a person commits or keeps, standalone skill
    placement, managed and manual installations, and every first-class host
    surface that has no native plugin. Sections 19.1 and 19.3.
@@ -4181,12 +4185,13 @@ Delivery and interoperability:
 "Standalone integration" is not a category: the standalone route delivers a
 first-class integration and is not a tier of support.
 
-A person on a first-class host installs the plugin alone. The plugin is not
-half of an install that a second standalone binary completes: the wrapper it
-carries fetches the runtime. The standalone route is for the person who
-deliberately does not use a plugin, for a host surface that loads no plugin,
-and for a managed environment that needs explicit files. A custom harness
-integration uses the binary of 19.1 and not this route (19.4).
+A person on a first-class host takes either route, and documents lead with the
+standalone route: the installer, then `klin install` (ADR 0053). A plugin is
+self-sufficient. The wrapper it carries fetches the runtime, so a plugin user
+installs no binary for the hooks to work. It gives the person no `klin`
+command, and it MUST NOT install one: the wrapper names the command that does,
+once (19.2). A custom harness integration uses the binary of 19.1 and not this
+route (19.4).
 
 No route gates a repository by itself. Under `--hook` a `klin.json` at the
 repository root is the marker that the repository opted in, and a tree without
@@ -4238,7 +4243,8 @@ No other channel ships. There is no Homebrew tap, no npm package and no
 published crate, and this document MUST NOT print an install command for one.
 Each of them is a distribution channel with its own release obligations, and
 none is required to make klin work on a supported platform, so each stays
-deferred (#64). A future channel is added here only once it ships.
+deferred (#64). #315 ships Homebrew and npm once releases are public. A future
+channel is added here only once it ships.
 
 The supported binary targets are macOS and Linux, on x86_64 and arm64. The
 plugin wrapper resolves that same set, so the public contract and the release
@@ -4264,12 +4270,12 @@ user MUST NOT be told to install the standalone binary of 19.1 to make the
 plugin work. The one exception is the managed case below, where the host gives
 the plugin no usable `bin/`.
 
-**Claude Code.** klin maintains a native Claude Code plugin, and it is the
-first-class route. The project route of 19.3, under `.claude/`, stays the
-portable and manual alternative, and it is what a person takes where user
-settings are not available. A plugin a person installed, and the settings that
-enable it, live on that person's machine. This document MUST NOT claim that
-they exist in a remote or cloud environment.
+**Claude Code.** klin maintains a native Claude Code plugin, the host-managed
+route. The project route of 19.3, under `.claude/`, stays the portable and
+manual alternative, and it is what a person takes where user settings are not
+available. A plugin a person installed, and the settings that enable it, live
+on that person's machine. This document MUST NOT claim that they exist in a
+remote or cloud environment.
 
 **Codex CLI.** klin maintains a native Codex plugin for the Codex surfaces
 that load plugins. Codex CLI reads the same manifest and the same `hooks.json`
@@ -4293,20 +4299,22 @@ covering it; that surface takes the standalone route of 19.3.
 `.cursor-plugin/marketplace.json` at the repository root, which points at the
 same directory. Cursor Teams import that repository under Dashboard → Plugins
 → Team Marketplaces. A person without a team marketplace copies `plugins/klin`
-to `~/.cursor/plugins/local/klin` and reloads the window, which is a user-scope
-install for that machine alone. The copy instructions a document gives MUST be
-idempotent: a second run leaves one usable copy and never nests one plugin
+from the release tag the manifests pin to `~/.cursor/plugins/local/klin` and
+reloads the window, which is a user-scope install for that machine alone. A
+copy made again from that tag takes a released plugin and never a wrapper from
+an unreleased branch (ADR 0029). The copy instructions a document gives MUST
+be idempotent: a second run leaves one usable copy and never nests one plugin
 inside another. The Team Marketplace import has no recorded verification
 (`docs/cursor-compatibility.md`), so a document MUST label it as such rather
 than present it as a verified route. Cursor skips a symlink whose target sits
-outside that folder. The Cursor hook lines name `${CURSOR_PLUGIN_ROOT}/bin/klin`
-in that form and no other, the way Claude Code and Codex name
-`${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A project
-`.cursor/hooks.json` (19.3) stays the portable and manual route, and it is the
-route for an environment that loads a repository's hooks but not a person's
-own. A user-scope Cursor hook or skill is local to that machine. This document
-MUST NOT call it global, and MUST NOT imply that it reaches Cursor Cloud
-Agents.
+outside that folder. The Cursor hook lines name
+`${CURSOR_PLUGIN_ROOT}/bin/klin` in that form and no other, the way Claude
+Code and Codex name `${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A
+project `.cursor/hooks.json` (19.3) stays the portable and manual route, and
+it is the route for an environment that loads a repository's hooks but not a
+person's own. A user-scope Cursor hook or skill is local to that machine. This
+document MUST NOT call it global, and MUST NOT imply that it reaches Cursor
+Cloud Agents.
 
 The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
@@ -4319,18 +4327,30 @@ plugin. ADR 0030 records the decision.
 The wrapper is a shell script. It reads the version from the plugin manifest
 beside it, so the plugin carries one pin. On first run it downloads that
 release into `~/.cache/klin/bin/<version>/klin`, verifies the checksum, and
-executes it. That install removes every other version from the cache, so the
-cache holds one binary. Every later run executes the cached binary with no
-network call. When the download fails, the wrapper runs a `klin` that PATH
-resolves if there is one, and otherwise prints one line saying so and exits 0,
-so a turn is never blocked by a missing network. This is the one place klin
-touches the network, and it is install, not measurement.
+executes it. That install removes every other version that no session ran for
+seven days: another host's plugin may pin another version into the same cache,
+and removing it at once would make the two fetch in turn. A `radius` run
+touches its version to mark it used. Every later run executes the cached
+binary with no network call. When the download fails, the wrapper runs a
+`klin` that PATH resolves if there is one, and otherwise prints one line
+saying so and exits 0, so a turn is never blocked by a missing network. This
+is the one place klin touches the network, and it is install, not measurement.
+
+The plugin never installs a `klin` command for the person (19.0). Once per
+machine, at the first `radius` run that printed nothing, the wrapper says in
+one `systemMessage` that the CLI exists and names the command that installs
+it. The hint is never a `followup_message`: Cursor submits a stop's
+`followup_message` as the next prompt, which would hand the installer to the
+agent. It says nothing where PATH resolves a `klin` other than the wrapper
+itself, and nothing under Cursor, which shows no message at a prompt. A file
+beside the cache records that the hint was given.
 
 Every line the wrapper or a hook prints on exit 0 is a JSON object with a
-`systemMessage`, and the same object carries `followup_message` with the same
-text. Claude Code and Codex show `systemMessage`. Cursor's native stop shows
-`followup_message`. Codex rejects plain text on a Stop that exits 0, and
-Claude Code writes it to the debug log alone.
+`systemMessage`. A notice carries `followup_message` with the same text too,
+except a notice that names an install command, which carries `systemMessage`
+alone for the reason above. Claude Code and Codex show `systemMessage`.
+Cursor's native stop shows `followup_message`. Codex rejects plain text on a
+Stop that exits 0, and Claude Code writes it to the debug log alone.
 
 Each hook line runs `${CLAUDE_PLUGIN_ROOT}/bin/klin` when that file is
 executable, and otherwise the `klin` that PATH resolves. Claude Code appends
@@ -4349,16 +4369,19 @@ a `klin` on PATH the session start, the prompt and the pre-tool events say
 nothing and block nothing. The Stop hook names the install command in a
 `systemMessage` on stdout, and only where a `klin.json` resolves at the
 project root, so a tree that never opted in stays silent (ADR 0028). Nothing
-blocks, so the turn ends at that stop and the line appears once.
+blocks, so the turn ends at that stop and the line appears once. Cursor shows
+no `systemMessage` at a stop and submits a `followup_message` as a prompt, so
+the Cursor line's notice is written and not shown.
 
 The wrapper reads two overrides, `KLIN_RELEASE_BASE_URL` and `KLIN_CACHE_DIR`.
 They exist so a CLI test can fetch a release of its own over `file://` and
 prove the two paths that a real release cannot: the first run that installs,
 and the failure that installs nothing.
 
-Installing the plugin is the whole install for the host. It is not the whole
-install for a repository: no `init` runs, and the repository opts in through
-its own `klin.json` (5.1). Once it has one, the first stop is gated.
+Installing the plugin is the whole install of the hooks for the host. It is
+not an install of the `klin` command, and it is not the install for a
+repository: no `init` runs, and the repository opts in through its own
+`klin.json` (5.1). Once it has one, the first stop is gated.
 
 This reverses ADR 0002. Its first reason, a version pin beside committed
 baselines, went with ADR 0009. Its second reason is handled by the PATH
@@ -4367,12 +4390,13 @@ binary is a NOTE per 5.2, not a failure.
 
 ### 19.3 The standalone route: `klin install`
 
-A team may prefer hooks that are committed and covered by CODEOWNERS over the
-plugin of 19.2, and a host surface that loads no plugin has no other route. On
-this route the binary comes from 19.1, and `klin install` is the one command
-that installs and repairs the integration. It is not a second step after a
-native plugin install: a plugin user opts a repository in by committing a
-`klin.json` and installs no binary. ADR 0046 records the decision.
+The standalone route is the one documents lead with (19.0, ADR 0053). On this
+route the binary comes from 19.1, and `klin install` is the one command that
+installs and repairs the integration. It serves the person who wants the
+`klin` command, a team that wants hooks committed and covered by CODEOWNERS,
+and a host surface that loads no plugin. A plugin user may take it later for
+the command alone: plugin ownership below keeps it from writing a second copy
+of the hooks. ADR 0046 records the command.
 
 `klin install` does three things in one run: it opts the repository in, it
 selects the hosts to serve, and it reconciles the explicit hook files klin
@@ -4410,8 +4434,10 @@ machine. Codex CLI lists them as `[plugins."klin@<marketplace>"]` tables in
 repository's and the user's the same way. Cursor's documented local layout is
 `.cursor/plugins/local/<name>`, and Cursor 3.20.21's observed marketplace
 cache is `.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin
-searches those bounded trees for `.cursor-plugin/plugin.json` named `klin`,
-under the project and the user's home. A repository write is held back the
+reads `.cursor-plugin/plugin.json` named `klin` at exactly those two depths,
+under the project and the user's home, and a klin manifest anywhere else
+under `plugins`, such as a marketplace's own source, is not an installed
+plugin. A repository write is held back the
 same way by a user file that already holds klin's entries, and the run names
 the command that changes them.
 
@@ -4455,7 +4481,24 @@ a hook file by hand.
 Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
 who never installed the binary, or who removed it, sees nothing rather than a
-failed hook on every event.
+failed hook on every event. The one exception is the stop of a repository that
+holds a `klin.json` at its Git root, which the line resolves with `git
+rev-parse --show-toplevel` because a session may start below the root: there
+the line names the install command in a `systemMessage` alone, so a teammate
+who cloned the committed hooks learns what they are for. Cursor shows the
+person no stop field that is not also a prompt, so on Cursor the notice is
+written and not shown (`docs/cursor-compatibility.md`). A host whose klin
+plugin is enabled gets no committed hooks and no skill (plugin ownership
+above), and the run says so and names what the person changes to commit them,
+so a document need not repeat it. Cursor records no enabled state klin can
+read, so a klin plugin Cursor installed holds the hooks back whether or not
+Cursor loads it, and the run names where it is. For a local copy the run says
+to remove it and reload Cursor. For a marketplace install it says to disable
+or uninstall it in Cursor, because the cache is Cursor's, and a plugin an
+organization requires cannot share a repository with committed hooks. Codex
+skips a project hook file's hooks until the person trusts them through
+`/hooks`, as it does a plugin's (19.2), so a document that gives the
+standalone route for Codex names that step.
 
 **Standalone skill.** The standalone route writes the exact text authored at `plugins/klin/skills/klin/SKILL.md`; the binary embeds that source so the plugin and standalone copies cannot drift.
 

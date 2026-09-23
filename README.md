@@ -16,16 +16,35 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 ## Install
 
-Use the native plugin for Claude Code, Codex, or Cursor.
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+```
 
-### Claude Code
+Then, in a new terminal, turn klin on in your repository:
+
+```sh
+cd your-repo
+klin install --host claude    # or: codex, cursor
+```
+
+This writes `klin.json` and the hooks for that host (if the klin plugin already runs there, `klin install` says what to change). Commit them, and your teammates get the same checks.
+
+Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.
+
+**Updating:** run `klin update`, then `klin install` again.
+
+### Or use your host's plugin
+
+A plugin runs the same checks and fetches klin by itself, but it doesn't add the `klin` command.
+
+#### Claude Code
 
 ```text
 /plugin marketplace add brajevicm/klin
 /plugin install klin@klin
 ```
 
-### Codex
+#### Codex
 
 ```sh
 codex plugin marketplace add brajevicm/klin
@@ -34,26 +53,25 @@ codex plugin add klin@klin
 
 Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
-### Cursor
+#### Cursor
 
 <details>
 <summary>Install the local plugin</summary>
 
 ```sh
-d=$(mktemp -d) && git clone --depth 1 https://github.com/brajevicm/klin "$d"
-rm -rf ~/.cursor/plugins/local/klin
-mkdir -p ~/.cursor/plugins/local
-cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
-rm -rf "$d"
+d=$(mktemp -d) &&
+  git clone --depth 1 --branch v0.3.0 https://github.com/brajevicm/klin "$d" &&
+  mkdir -p ~/.cursor/plugins/local &&
+  rm -rf ~/.cursor/plugins/local/klin &&
+  cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
+s=$?; rm -rf "$d"; [ "$s" -eq 0 ] || { echo "klin: the Cursor plugin copy failed. Run it again once the fetch works." >&2; false; }
 ```
 
 Reload Cursor after installation.
 
 </details>
 
-### Activate this repository
-
-Native plugins stay silent until the repository opts in:
+A plugin's checks stay quiet until the repository opts in. At the repository root, run:
 
 ```sh
 echo '{}' > klin.json
@@ -62,21 +80,6 @@ echo '{}' > klin.json
 `{}` is a complete configuration. klin discovers repository facts automatically; `klin.json` contains only the policy you choose to configure.
 
 **Configure policy, not your repository.**
-
-<!-- PRE-RELEASE: #268 is exploring a more intentional user-owned native activation flow. Until something better ships and is verified, keep the explicit klin.json marker. -->
-
-### Standalone
-
-Need committed project hooks or an environment where the native plugin isn't available? Install the binary:
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-klin install
-```
-
-`klin install` configures the supported Claude Code, Codex, and Cursor integrations it can prove are present.
-
-**Updating:** update native plugins through the host's plugin mechanism. Standalone users can run `klin update` followed by `klin install`.
 
 ### Other coding agents
 

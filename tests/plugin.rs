@@ -211,20 +211,31 @@ fn the_readme_names_the_codex_hook_trust_step() {
     );
 }
 
-/// The README leads with the three first-class plugins, keeps the standalone binary a
-/// fallback, gives the repository opt-in its own heading, and points any other harness at the
-/// harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1, 19.4.
+/// The README leads with the installer and `klin install`, which give the person the `klin`
+/// command on every first-class host, offers the three plugins after them as the host-managed
+/// alternative, gives the repository opt-in a plugin user takes, and points any other harness at
+/// the harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1,
+/// 19.4, ADR 0053.
 #[test]
-fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
+fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     let readme = text(README);
+    let installer = readme.find("klin-installer.sh | sh").unwrap_or(usize::MAX);
+    let plugin = readme.find("/plugin install").unwrap_or(0);
 
+    assert!(
+        installer < plugin,
+        "the README does not lead with the installer"
+    );
+    assert!(
+        !block(&readme, "klin-installer.sh").contains("klin install"),
+        "the README runs klin in the block that installs it, before PATH holds it"
+    );
     for said in [
         "**Claude Code · Codex · Cursor**",
-        "Use the native plugin for Claude Code, Codex, or Cursor.",
-        "### Activate this repository",
-        "Native plugins stay silent until the repository opts in",
+        "klin install --host claude",
+        "### Or use your host's plugin",
+        "A plugin's checks stay quiet until the repository opts in",
         "`{}` is a complete configuration.",
-        "### Standalone",
         "`klin update`",
         "### Other coding agents",
         "docs/HARNESS_INTEGRATION.md",
@@ -242,14 +253,10 @@ fn the_readme_leads_with_first_class_plugins_and_a_truthful_fallback() {
 fn the_readmes_cursor_copy_leaves_one_plugin_when_it_runs_twice() {
     let tree = Tree::bare();
     let home = tree.root().display().to_string();
-    let seed = format!(
-        "d=$(mktemp -d) && cp -R \"{}\" \"$d/plugins\"",
+    let script = cursor_copy(&format!(
+        "cp -R \"{}\" \"$d/plugins\"",
         at("plugins").display()
-    );
-    let script = block(&text(README), "~/.cursor/plugins/local/klin").replace(
-        "d=$(mktemp -d) && git clone --depth 1 https://github.com/brajevicm/klin \"$d\"",
-        &seed,
-    );
+    ));
 
     for _ in 0..2 {
         let run = ran(
@@ -270,6 +277,44 @@ fn the_readmes_cursor_copy_leaves_one_plugin_when_it_runs_twice() {
         !installed.join("klin").exists(),
         "a second run nested the plugin inside the first copy"
     );
+}
+
+/// The README's Cursor copy is also its update, so a fetch that fails leaves the plugin already
+/// installed as it was and says so with a failing status. Spec 19.2.
+#[test]
+fn the_readmes_cursor_copy_keeps_the_installed_plugin_when_the_fetch_fails() {
+    let tree = Tree::bare();
+    let home = tree.root().display().to_string();
+    let kept = tree.write(
+        ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
+        "{\"name\":\"klin\"}",
+    );
+
+    let run = ran(
+        SHELL,
+        &["-c", &cursor_copy("false")],
+        tree.root(),
+        &[("PATH", SYSTEM_PATH), ("HOME", &home)],
+    );
+
+    assert_ne!(run.code, 0, "the failed copy reported success: {}", run.out);
+    assert!(
+        kept.is_file(),
+        "the failed copy removed the installed plugin"
+    );
+}
+
+/// The README's Cursor copy with its fetch replaced by `fetch`, so a test runs the commands a
+/// person is given against a release it controls.
+fn cursor_copy(fetch: &str) -> String {
+    let clone =
+        format!("git clone --depth 1 --branch v{PINNED} https://github.com/brajevicm/klin \"$d\"");
+    let script = block(&text(README), "~/.cursor/plugins/local/klin");
+    assert!(
+        script.contains(&clone),
+        "the README copy clones no release: {script}"
+    );
+    script.replace(&clone, fetch)
 }
 
 /// The fenced block of a document that holds one line, so a test runs the commands a person
@@ -297,6 +342,20 @@ fn the_plugin_pins_the_crate_version() {
         .unwrap_or_default()
         .to_string();
     assert_eq!(cursor, PINNED, "the Cursor plugin pins another version");
+}
+
+/// The README's Cursor copy clones the release the manifests pin, so a copy run again takes a
+/// released plugin and never a wrapper from an unreleased branch. ADR 0029, spec 19.2.
+#[test]
+fn the_readmes_cursor_copy_clones_the_pinned_release() {
+    let copy = block(&text(README), "~/.cursor/plugins/local/klin");
+
+    assert!(
+        copy.contains(&format!(
+            "git clone --depth 1 --branch v{PINNED} https://github.com/brajevicm/klin"
+        )),
+        "{copy}"
+    );
 }
 
 /// The wrapper reads the version from the plugin manifest beside it, so a wrapper without one
@@ -441,6 +500,16 @@ fn the_cursor_hook_lines_name_the_cursor_plugin_root() {
     }
 }
 
+/// Cursor submits a stop's `followup_message` as the next prompt, so the install hint in the
+/// Cursor stop line is never one: it would hand the installer to the agent. Spec 19.2.
+#[test]
+fn the_cursor_stop_hands_the_installer_to_no_agent() {
+    let line = cursor_hook("stop");
+
+    assert!(line.contains("klin-installer.sh"), "{line}");
+    assert!(!line.contains("followup_message"), "{line}");
+}
+
 /// The `systemMessage` of a JSON notice on stdout, or a panic naming what was printed instead.
 fn notice(printed: &str) -> String {
     let Ok(held) = serde_json::from_str::<serde_json::Value>(printed.trim()) else {
@@ -494,21 +563,130 @@ fn a_download_that_fails_runs_a_klin_on_path_instead() {
 }
 
 /// A plugin update pins a new version, and the fetch that installs it removes the ones before
-/// it, so the cache holds one binary. Spec 19.2.
+/// it that nothing ran for a week. Another host's plugin may pin another version into the same
+/// cache, and a version it ran this week stays, so the two do not fetch in turn. Spec 19.2.
 #[test]
-fn a_fetch_removes_the_other_cached_versions() {
+fn a_fetch_removes_the_other_cached_versions_nothing_ran_this_week() {
     let tree = Tree::bare();
     release(&tree, "the-fetched-binary");
     tree.write("cache/bin/0.0.1/klin", "#!/bin/sh\necho stale\n");
+    tree.write("cache/bin/0.0.2/klin", "#!/bin/sh\necho recent\n");
+    let aged = ran(
+        "touch",
+        &[
+            "-t",
+            "202001010000",
+            &tree.path("cache/bin/0.0.1").display().to_string(),
+        ],
+        tree.root(),
+        &[],
+    );
+    assert_eq!(aged.code, 0, "{}", aged.out);
 
     let run = fetch(&tree, &["--version"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         held(&tree),
-        PINNED,
-        "the cache holds more than the pinned version"
+        format!("0.0.2 {PINNED}"),
+        "the cache kept a stale version"
     );
+}
+
+/// A plugin user with no `klin` of their own hears once that the CLI exists, at the first turn
+/// whose radius printed nothing, and never again on that machine. Spec 19.2.
+#[test]
+fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
+    let tree = Tree::bare();
+    release_running(&tree, "true");
+
+    let first = fetch(&tree, &["radius"]);
+    let second = fetch(&tree, &["radius"]);
+
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(
+        notice(&first.printed).contains("klin-installer.sh"),
+        "{}",
+        first.out
+    );
+    assert!(!first.printed.contains("followup_message"), "{}", first.out);
+    assert_eq!(second.printed, "", "the hint came twice");
+}
+
+/// Cursor shows no message at a prompt, so under Cursor the hint waits for another host.
+#[test]
+fn the_wrapper_names_the_cli_to_nobody_under_cursor() {
+    let tree = Tree::bare();
+    release_running(&tree, "true");
+    let base = format!("file://{}", tree.path("release").display());
+
+    let run = ran(
+        &at(WRAPPER).display().to_string(),
+        &["radius"],
+        tree.root(),
+        &[
+            ("PATH", SYSTEM_PATH),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &tree.path("cache").display().to_string()),
+            ("CURSOR_VERSION", "3.20.21"),
+        ],
+    );
+
+    assert_eq!(run.printed, "", "{}", run.out);
+}
+
+/// A radius run marks its version as used, so a later fetch of another pin keeps it.
+#[test]
+fn a_radius_run_keeps_its_version_in_the_cache() {
+    let tree = Tree::bare();
+    release(&tree, "the-fetched-binary");
+    assert_eq!(fetch(&tree, &["--version"]).code, 0);
+    let pinned = tree.path(&format!("cache/bin/{PINNED}"));
+    let aged = ran(
+        "touch",
+        &["-t", "202001010000", &pinned.display().to_string()],
+        tree.root(),
+        &[],
+    );
+    assert_eq!(aged.code, 0, "{}", aged.out);
+
+    assert_eq!(fetch(&tree, &["radius"]).code, 0);
+
+    let used = fs::metadata(&pinned)
+        .and_then(|held| held.modified())
+        .unwrap_or_else(|why| panic!("{why}"));
+    let week = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+    assert!(
+        used.elapsed().is_ok_and(|age| age < week),
+        "the radius run left its version looking unused"
+    );
+}
+
+/// The hint never displaces what radius printed, and a person who has a `klin` of their own
+/// never hears it.
+#[test]
+fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
+    let tree = Tree::bare();
+    release(&tree, "the-radius-note");
+    let spoke = fetch(&tree, &["radius"]);
+    assert_eq!(spoke.printed.trim(), "the-radius-note", "{}", spoke.out);
+
+    let decoy = tree.write("path/klin", "#!/bin/sh\n");
+    executable(&decoy);
+    release_running(&tree, "true");
+    let base = format!("file://{}", tree.path("release").display());
+    let path = format!("{}:{SYSTEM_PATH}", tree.path("path").display());
+    let own = ran(
+        &at(WRAPPER).display().to_string(),
+        &["radius"],
+        tree.root(),
+        &[
+            ("PATH", &path),
+            ("KLIN_RELEASE_BASE_URL", &base),
+            ("KLIN_CACHE_DIR", &tree.path("fresh").display().to_string()),
+        ],
+    );
+    assert_eq!(own.printed, "", "{}", own.out);
 }
 
 /// The hook runs the plugin's own wrapper before any `klin` on PATH, so the version the plugin
@@ -560,7 +738,12 @@ fn without_klin(tree: &Tree) -> Ran {
 /// A release the wrapper can fetch over `file://`: one archive holding a `klin` that prints
 /// `says`, and the checksum file beside it.
 fn release(tree: &Tree, says: &str) -> PathBuf {
-    let written = tree.write("release/stage/klin", &format!("#!/bin/sh\necho {says}\n"));
+    release_running(tree, &format!("echo {says}"))
+}
+
+/// A release whose `klin` runs `body`.
+fn release_running(tree: &Tree, body: &str) -> PathBuf {
+    let written = tree.write("release/stage/klin", &format!("#!/bin/sh\n{body}\n"));
     let stage = written
         .parent()
         .unwrap_or(tree.root())
@@ -771,6 +954,7 @@ fn ran(program: &str, args: &[&str], cwd: &Path, environment: &[(&str, &str)]) -
     let done = Command::new(program)
         .args(args)
         .current_dir(cwd)
+        .env_remove("CURSOR_VERSION")
         .envs(environment.iter().copied())
         .output();
     match done {

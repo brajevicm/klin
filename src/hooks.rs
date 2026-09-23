@@ -302,14 +302,8 @@ fn component(
     scope: &Scope,
     skills: &mut Vec<PathBuf>,
 ) -> Result<Component, Error> {
-    if let Some(settings) = host.plugin_enabled(&scope.at, scope.user) {
-        return Ok(told(
-            host,
-            format!(
-                "hooks supplied by the klin plugin, which {} enables.",
-                settings.display()
-            ),
-        ));
+    if let Some(proof) = host.plugin_enabled(&scope.at, scope.user) {
+        return Ok(told(host, host.plugin_owns(&proof)));
     }
     if let Some(user) = scope.covered_by_user(host) {
         return Ok(told(
@@ -502,10 +496,25 @@ fn array<'a>(
 
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
-/// would otherwise see a failed hook on every event of every session. Section 19.3.
+/// would otherwise see a failed hook on every event of every session. The stop of a repository
+/// that opted in says how to install it instead, so a teammate who cloned the committed hooks
+/// learns what they are for. It looks for the marker at the Git root, because a session may
+/// start below it. It is a `systemMessage` alone: Cursor submits a `followup_message`
+/// as the next prompt, which would hand the installer to the agent. Section 19.3.
 fn line(arguments: &str) -> String {
-    format!("command -v klin > /dev/null 2>&1 || exit 0; klin {arguments}")
+    let missing = match arguments.starts_with("gate") {
+        true => format!(
+            "{{ r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$r/klin.json\" ] && echo \
+             '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
+        ),
+        false => "exit 0".to_string(),
+    };
+    format!("command -v klin > /dev/null 2>&1 || {missing}; klin {arguments}")
 }
+
+const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \
+                       -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
+                       klin-installer.sh | sh";
 
 /// What one entry filters by, in the host's matcher syntax: nothing, or the tools the guard
 /// reads. The hook table says which, per event.

@@ -44,10 +44,22 @@ fn cursor_settings(tree: &Tree) -> Value {
     settings_at(&tree.path(".cursor/hooks.json"))
 }
 
-/// The hook line klin writes for one klin command. Every line resolves the binary first.
+/// The hook line klin writes for one klin command. Every line resolves the binary first, and
+/// the stop says how to install it where the repository opted in.
 fn line(arguments: &str) -> String {
-    format!("command -v klin > /dev/null 2>&1 || exit 0; klin {arguments}")
+    let missing = match arguments.starts_with("gate") {
+        true => format!(
+            "{{ r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$r/klin.json\" ] && echo \
+             '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
+        ),
+        false => "exit 0".to_string(),
+    };
+    format!("command -v klin > /dev/null 2>&1 || {missing}; klin {arguments}")
 }
+
+const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \
+                       -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
+                       klin-installer.sh | sh";
 
 fn entries(settings: &Value, event: &str) -> Vec<Value> {
     settings["hooks"][event]
@@ -102,6 +114,60 @@ const A_PLUGIN: &str = r#"{"enabledPlugins": {"klin@klin-marketplace": true}}"#;
 /// An entry of another tool's, which every reconciliation keeps.
 const ANOTHER_TOOL: &str = r#"{"hooks": {"Stop": [{"hooks": [{"type": "command",
   "command": "cargo fmt"}]}]}}"#;
+
+/// A teammate who clones a repository with klin's committed hooks and has no klin on PATH hears
+/// at the stop how to install it. The notice is never a `followup_message`, which Cursor submits
+/// as the next prompt and would hand the installer to the agent. The session may start below
+/// the root, as Codex and Claude Code both allow, so the stop looks for the marker at the Git
+/// root. A tree that never opted in stays silent. Spec 19.3.
+#[test]
+fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
+    let tree = a_repository();
+    let run = tree.run(&[
+        "install", "--host", "claude", "--host", "codex", "--host", "cursor",
+    ]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let stops = [
+        commands(&settings(&tree), "Stop"),
+        commands(&codex_settings(&tree), "Stop"),
+        cursor_commands(&cursor_settings(&tree), "stop"),
+    ]
+    .concat();
+    let nested = tree.path("apps/web");
+    std::fs::create_dir_all(&nested).unwrap_or_else(|why| panic!("{why}"));
+
+    for stop in &stops {
+        let said = without_klin(&nested, stop);
+        let Ok(notice) = serde_json::from_str::<Value>(said.trim()) else {
+            panic!("the stop printed no JSON notice: {said}\n{stop}")
+        };
+        assert!(
+            notice["systemMessage"]
+                .as_str()
+                .is_some_and(|text| text.contains("klin-installer.sh")),
+            "{said}"
+        );
+        assert!(notice.get("followup_message").is_none(), "{said}");
+    }
+    std::fs::remove_file(tree.path("klin.json")).unwrap_or_else(|why| panic!("{why}"));
+    for stop in &stops {
+        assert_eq!(without_klin(&nested, stop), "", "{stop}");
+    }
+}
+
+/// What a hook line prints on stdout from `cwd`, a session that started there, where PATH
+/// resolves git and no `klin`.
+fn without_klin(cwd: &std::path::Path, line: &str) -> String {
+    let done = std::process::Command::new("/bin/sh")
+        .args(["-c", line])
+        .current_dir(cwd)
+        .env("PATH", "/usr/bin:/bin")
+        .env("CLAUDE_PROJECT_DIR", cwd)
+        .output()
+        .unwrap_or_else(|why| panic!("sh could not run: {why}"));
+    assert!(done.status.success(), "{line}");
+    String::from_utf8_lossy(&done.stdout).to_string()
+}
 
 /// The marker belongs to the repository root, not to the directory the command was run from.
 #[test]
@@ -603,19 +669,23 @@ fn install_writes_nothing_when_a_host_file_cannot_be_read() {
 }
 
 /// Every hook line klin writes resolves the binary first, so a machine that holds no klin says
-/// nothing on every event of every session instead of failing. #147.
+/// nothing on every event of every session instead of failing, in a tree that did not opt in.
+/// #147.
 #[test]
 fn a_written_hook_line_says_nothing_when_no_binary_resolves() {
     let tree = a_repository();
     tree.write(".claude/settings.json", "{}\n");
     assert_eq!(tree.run(&["install"]).code, 0);
+    std::fs::remove_file(tree.path("klin.json")).unwrap_or_else(|why| panic!("{why}"));
 
     let settings = settings(&tree);
     for event in CLAUDE_EVENTS {
         for command in commands(&settings, event) {
             let outcome = std::process::Command::new("/bin/sh")
                 .args(["-c", &command])
+                .current_dir(tree.root())
                 .env("PATH", "")
+                .env_remove("CLAUDE_PROJECT_DIR")
                 .output();
             let Ok(done) = outcome else {
                 panic!("the hook line could not run: {command}")
@@ -771,6 +841,37 @@ fn install_adds_nothing_when_the_local_cursor_plugin_is_installed() {
     assert!(run.says("plugin"), "{}", run.out);
 }
 
+/// Cursor records no enabled state klin can read, so a plugin copy on disk holds the hooks back
+/// whether or not Cursor loads it. The run names the copy and how to move to committed hooks,
+/// and once the copy is gone the same command writes them. Spec 19.3.
+#[test]
+fn a_cursor_plugin_copy_names_its_removal_and_then_the_hooks_are_written() {
+    let tree = a_repository();
+    tree.write(
+        ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
+        A_CURSOR_PLUGIN,
+    );
+
+    let held = tree.run(&["install", "--host", "cursor"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(
+        held.says(&tree.at(".cursor/plugins/local/klin")),
+        "{}",
+        held.out
+    );
+    assert!(held.says("remove it"), "{}", held.out);
+
+    std::fs::remove_dir_all(tree.path(".cursor/plugins")).unwrap_or_else(|why| panic!("{why}"));
+    let moved = tree.run(&["install", "--host", "cursor"]);
+    assert_eq!(moved.code, 0, "{}", moved.out);
+    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", moved.out);
+    assert!(
+        tree.path(".agents/skills/klin/SKILL.md").is_file(),
+        "{}",
+        moved.out
+    );
+}
+
 /// Cursor marketplace installs observed in 3.20.21 live under
 /// `plugins/cache/<marketplace>/<plugin>/<revision>`.
 #[test]
@@ -792,6 +893,26 @@ fn install_adds_nothing_when_a_marketplace_cursor_plugin_is_installed() {
         run.out
     );
     assert!(run.says("plugin"), "{}", run.out);
+    assert!(run.says("in Cursor"), "{}", run.out);
+    assert!(!run.says("remove it"), "{}", run.out);
+}
+
+/// klin reads the two layouts Cursor installs a plugin into and no other, so a klin manifest
+/// elsewhere under `plugins`, such as a marketplace's own source, holds no hooks back. Spec 19.3.
+#[test]
+fn install_writes_for_cursor_past_a_klin_manifest_cursor_did_not_install() {
+    let tree = a_repository();
+    let home = Tree::bare();
+    home.write(
+        ".cursor/plugins/marketplaces/team/plugins/klin/.cursor-plugin/plugin.json",
+        A_CURSOR_PLUGIN,
+    );
+    let at = home_of(&home);
+
+    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--host", "cursor"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
 }
 
 const A_CODEX_PLUGIN: &str = "[plugins.\"klin@klin\"]\nenabled = true\n";

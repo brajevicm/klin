@@ -1,7 +1,8 @@
 # The plugin ships a wrapper that fetches the binary
 
 > Supersedes ADR 0002. ADR 0030 amends the last paragraph: Codex CLI installs
-> this same plugin.
+> this same plugin. ADR 0053 makes the standalone route the one documents lead
+> with; the plugin stays the complete install of the hooks alone.
 
 ADR 0002 kept the binary out of the Claude Code plugin for two reasons. A
 repository pinned a klin version beside its baselines, and a second binary

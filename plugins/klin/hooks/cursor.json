@@ -34,7 +34,7 @@
     ],
     "stop": [
       {
-        "command": "k=\"${CURSOR_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || { [ -f klin.json ] && echo '{\"systemMessage\":\"klin is not installed. Install it with: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh\",\"followup_message\":\"klin is not installed. Install it with: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh\"}'; exit 0; }; \"$k\" gate --hook --changed",
+        "command": "k=\"${CURSOR_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || { [ -f klin.json ] && echo '{\"systemMessage\":\"klin is not installed. Install it with: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh\"}'; exit 0; }; \"$k\" gate --hook --changed",
         "timeout": 900
       }
     ]

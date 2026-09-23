@@ -98,6 +98,13 @@ pub trait Adapter: Sync {
     /// directory when `shared`. The plugin carries the hooks itself, so the file klin would
     /// write must then stay as it is. Section 19.3.
     fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf>;
+    /// What an install says when `proof` shows klin's plugin already carries the hooks.
+    fn plugin_owns(&self, proof: &Path) -> String {
+        format!(
+            "hooks supplied by the klin plugin, which {} enables.",
+            proof.display()
+        )
+    }
     /// The host's own name for the event this payload is. Every host klin maintains sends it
     /// under `hook_event_name`; the harness protocol of 9.7 names its own field.
     fn event_name(&self, payload: &Value) -> String {

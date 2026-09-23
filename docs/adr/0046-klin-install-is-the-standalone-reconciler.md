@@ -1,7 +1,9 @@
 # `klin install` is the standalone reconciler
 
 > Amends ADR 0023, ADR 0030 and ADR 0045, each of which named
-> `klin init --hooks` as the explicit-hooks route.
+> `klin init --hooks` as the explicit-hooks route. ADR 0053 amends it in turn:
+> the plugin is no longer the preferred local product experience, and
+> documents lead with `klin install`.
 
 klin maintains a native plugin for Claude Code, for Codex CLI and for Cursor.
 A plugin carries the host hooks, the skill and a pinned wrapper that fetches a

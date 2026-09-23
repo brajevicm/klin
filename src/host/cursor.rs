@@ -84,6 +84,35 @@ impl Adapter for Cursor {
         looked.into_iter().find_map(|dir| finds_klin(&dir))
     }
 
+    /// Cursor records no enabled state klin can read, and it skips a local copy where local
+    /// plugin imports are off, so a copy on disk proves the files and not that Cursor loads
+    /// them. Writing hooks beside a loaded copy would run the lifecycle twice, so the hooks stay
+    /// with the copy and the line says how to move off it.
+    /// A local copy is the person's to remove. A marketplace install is Cursor's, so the line
+    /// names Cursor's own plugin controls instead.
+    fn plugin_owns(&self, proof: &Path) -> String {
+        let plugin = proof.parent().and_then(Path::parent).unwrap_or(proof);
+        let copied = plugin
+            .parent()
+            .is_some_and(|dir| dir.ends_with("plugins/local"));
+        match copied {
+            true => format!(
+                "no hooks written, because a klin plugin copy is at {}. Cursor records no \
+                 enabled state klin can read. To commit the hooks instead, remove it, reload \
+                 Cursor and run klin install again.",
+                plugin.display()
+            ),
+            false => format!(
+                "no hooks written, because Cursor installed the klin plugin at {}. Cursor \
+                 records no enabled state klin can read. To commit the hooks instead, disable \
+                 or uninstall the plugin in Cursor and run klin install again. A plugin your \
+                 organization requires cannot share a repository with committed hooks, because \
+                 both would run.",
+                plugin.display()
+            ),
+        }
+    }
+
     fn placed(&self, payload: &Value) -> bool {
         payload.get(VERSION).is_some()
     }
@@ -158,20 +187,18 @@ impl Adapter for Cursor {
     }
 }
 
-/// A plugin Cursor already holds under the documented local tree or the observed marketplace
-/// cache tree. Marketplace roots are four directories below `plugins`: cache, marketplace,
-/// plugin and revision.
+/// A plugin Cursor installed: a local copy at `local/<name>`, or a marketplace install at
+/// `cache/<marketplace>/<plugin>/<revision>`. A klin manifest anywhere else under `plugins`,
+/// such as a marketplace's own source, is not an installed plugin.
 fn finds_klin(dir: &Path) -> Option<PathBuf> {
-    find_manifest(dir, 4)
+    find_manifest(&dir.join("local"), 1).or_else(|| find_manifest(&dir.join("cache"), 3))
 }
 
+/// The klin manifest of a plugin exactly `depth` directories below `dir`.
 fn find_manifest(dir: &Path, depth: usize) -> Option<PathBuf> {
-    let manifest = dir.join(".cursor-plugin/plugin.json");
-    if names_klin(&manifest) {
-        return Some(manifest);
-    }
     if depth == 0 {
-        return None;
+        let manifest = dir.join(".cursor-plugin/plugin.json");
+        return names_klin(&manifest).then_some(manifest);
     }
     let Ok(entries) = std::fs::read_dir(dir) else {
         return None;
