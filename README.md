@@ -27,7 +27,7 @@ cd your-repo
 klin install --host claude    # or: codex, cursor
 ```
 
-This writes `klin.json` and the hooks for that host. Commit them, and your teammates get the same checks.
+This writes `klin.json` and the hooks for that host (if the klin plugin already runs there, `klin install` says what to change). Commit them, and your teammates get the same checks.
 
 Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
