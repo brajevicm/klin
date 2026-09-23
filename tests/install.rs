@@ -841,6 +841,37 @@ fn install_adds_nothing_when_the_local_cursor_plugin_is_installed() {
     assert!(run.says("plugin"), "{}", run.out);
 }
 
+/// Cursor records no enabled state klin can read, so a plugin copy on disk holds the hooks back
+/// whether or not Cursor loads it. The run names the copy and how to move to committed hooks,
+/// and once the copy is gone the same command writes them. Spec 19.3.
+#[test]
+fn a_cursor_plugin_copy_names_its_removal_and_then_the_hooks_are_written() {
+    let tree = a_repository();
+    tree.write(
+        ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
+        A_CURSOR_PLUGIN,
+    );
+
+    let held = tree.run(&["install", "--host", "cursor"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(
+        held.says(&tree.at(".cursor/plugins/local/klin")),
+        "{}",
+        held.out
+    );
+    assert!(held.says("remove it"), "{}", held.out);
+
+    std::fs::remove_dir_all(tree.path(".cursor/plugins")).unwrap_or_else(|why| panic!("{why}"));
+    let moved = tree.run(&["install", "--host", "cursor"]);
+    assert_eq!(moved.code, 0, "{}", moved.out);
+    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", moved.out);
+    assert!(
+        tree.path(".agents/skills/klin/SKILL.md").is_file(),
+        "{}",
+        moved.out
+    );
+}
+
 /// Cursor marketplace installs observed in 3.20.21 live under
 /// `plugins/cache/<marketplace>/<plugin>/<revision>`.
 #[test]

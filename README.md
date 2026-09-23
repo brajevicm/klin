@@ -28,7 +28,7 @@ The installer puts `klin` in `~/.local/bin`. If your shell can't find it yet, op
 cd your-repo && klin install --host claude
 ```
 
-Name the host you use: `claude`, `codex`, or `cursor`, and repeat `--host` for more than one. `klin install` writes `klin.json` at the repository root, plus that host's hooks and the klin skill. Commit them so your teammates get the same checks. If the klin plugin is already enabled for that host, `klin install` leaves the hooks and the skill to the plugin and writes neither; disable the plugin first if you want them committed with the repository.
+Name the host you use: `claude`, `codex`, or `cursor`, and repeat `--host` for more than one. `klin install` writes `klin.json` at the repository root, plus that host's hooks and the klin skill. Commit them so your teammates get the same checks. If the klin plugin is already enabled for that host, `klin install` leaves the hooks and the skill to the plugin and writes neither. To commit them with the repository instead, disable the plugin first. For Cursor's local copy, remove `~/.cursor/plugins/local/klin` and reload Cursor, because klin can't tell whether Cursor loads a copy.
 
 Codex asks you to trust new hooks first. Run `/hooks`, review and trust the klin hooks, then start a fresh session. Reload Cursor afterward.
 
@@ -64,7 +64,7 @@ Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 <summary>Install the local plugin</summary>
 
 ```sh
-d=$(mktemp -d) && git clone --depth 1 https://github.com/brajevicm/klin "$d"
+d=$(mktemp -d) && git clone --depth 1 --branch v0.3.0 https://github.com/brajevicm/klin "$d"
 rm -rf ~/.cursor/plugins/local/klin
 mkdir -p ~/.cursor/plugins/local
 cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin

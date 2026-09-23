@@ -22,8 +22,10 @@ plugin a person installed does not.
 ## The decision
 
 Documents lead with the standalone route: the installer, then `klin install`.
-The native plugins stay supported and self-sufficient, as the host-managed
-alternative for a person who wants one click and host-managed updates. A
+The native plugins stay supported and self-sufficient, as the alternative for
+a person who wants the host's own plugin. Claude Code and Codex install and
+update theirs in one step. Cursor's verified route is a local copy a person
+makes from a release tag and makes again to update. A
 plugin still fetches its own pinned runtime and needs no binary for its hooks.
 
 The plugin does not install the CLI. Once per machine the wrapper names the

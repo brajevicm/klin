@@ -258,7 +258,10 @@ fn the_readmes_cursor_copy_leaves_one_plugin_when_it_runs_twice() {
         at("plugins").display()
     );
     let script = block(&text(README), "~/.cursor/plugins/local/klin").replace(
-        "d=$(mktemp -d) && git clone --depth 1 https://github.com/brajevicm/klin \"$d\"",
+        &format!(
+            "d=$(mktemp -d) && git clone --depth 1 --branch v{PINNED} \
+             https://github.com/brajevicm/klin \"$d\""
+        ),
         &seed,
     );
 
@@ -308,6 +311,20 @@ fn the_plugin_pins_the_crate_version() {
         .unwrap_or_default()
         .to_string();
     assert_eq!(cursor, PINNED, "the Cursor plugin pins another version");
+}
+
+/// The README's Cursor copy clones the release the manifests pin, so a copy run again takes a
+/// released plugin and never a wrapper from an unreleased branch. ADR 0029, spec 19.2.
+#[test]
+fn the_readmes_cursor_copy_clones_the_pinned_release() {
+    let copy = block(&text(README), "~/.cursor/plugins/local/klin");
+
+    assert!(
+        copy.contains(&format!(
+            "git clone --depth 1 --branch v{PINNED} https://github.com/brajevicm/klin"
+        )),
+        "{copy}"
+    );
 }
 
 /// The wrapper reads the version from the plugin manifest beside it, so a wrapper without one

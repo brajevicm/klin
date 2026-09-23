@@ -84,6 +84,20 @@ impl Adapter for Cursor {
         looked.into_iter().find_map(|dir| finds_klin(&dir))
     }
 
+    /// Cursor records no enabled state klin can read, and it skips a local copy where local
+    /// plugin imports are off, so a copy on disk proves the files and not that Cursor loads
+    /// them. Writing hooks beside a loaded copy would run the lifecycle twice, so the hooks stay
+    /// with the copy and the line says how to move off it.
+    fn plugin_owns(&self, proof: &Path) -> String {
+        let copy = proof.parent().and_then(Path::parent).unwrap_or(proof);
+        format!(
+            "no hooks written, because a klin plugin copy is at {}. Cursor records no enabled \
+             state klin can read. To commit the hooks instead, remove it, reload Cursor and run \
+             klin install again.",
+            copy.display()
+        )
+    }
+
     fn placed(&self, payload: &Value) -> bool {
         payload.get(VERSION).is_some()
     }

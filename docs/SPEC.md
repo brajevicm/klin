@@ -4165,8 +4165,10 @@ Support status:
 
 Delivery and interoperability:
 
-1. **Native plugin.** The host-managed plugin klin ships for a first-class
-   host. It is the host-managed alternative to the standalone route. It carries
+1. **Native plugin.** The native plugin klin ships for a first-class
+   host. It is the native alternative to the standalone route: Claude Code and
+   Codex install and update it, and Cursor's verified route is a local copy a
+   person makes from a release tag. It carries
    the host hooks, the klin skill and a pinned wrapper that fetches a pinned
    runtime. Section 19.2.
 2. **Standalone route.** The klin binary and `klin install`, the route
@@ -4297,20 +4299,22 @@ covering it; that surface takes the standalone route of 19.3.
 `.cursor-plugin/marketplace.json` at the repository root, which points at the
 same directory. Cursor Teams import that repository under Dashboard → Plugins
 → Team Marketplaces. A person without a team marketplace copies `plugins/klin`
-to `~/.cursor/plugins/local/klin` and reloads the window, which is a user-scope
-install for that machine alone. The copy instructions a document gives MUST be
-idempotent: a second run leaves one usable copy and never nests one plugin
+from the release tag the manifests pin to `~/.cursor/plugins/local/klin` and
+reloads the window, which is a user-scope install for that machine alone. A
+copy made again from that tag takes a released plugin and never a wrapper from
+an unreleased branch (ADR 0029). The copy instructions a document gives MUST
+be idempotent: a second run leaves one usable copy and never nests one plugin
 inside another. The Team Marketplace import has no recorded verification
 (`docs/cursor-compatibility.md`), so a document MUST label it as such rather
 than present it as a verified route. Cursor skips a symlink whose target sits
-outside that folder. The Cursor hook lines name `${CURSOR_PLUGIN_ROOT}/bin/klin`
-in that form and no other, the way Claude Code and Codex name
-`${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A project
-`.cursor/hooks.json` (19.3) stays the portable and manual route, and it is the
-route for an environment that loads a repository's hooks but not a person's
-own. A user-scope Cursor hook or skill is local to that machine. This document
-MUST NOT call it global, and MUST NOT imply that it reaches Cursor Cloud
-Agents.
+outside that folder. The Cursor hook lines name
+`${CURSOR_PLUGIN_ROOT}/bin/klin` in that form and no other, the way Claude
+Code and Codex name `${CLAUDE_PLUGIN_ROOT}`. Cursor expands both variables. A
+project `.cursor/hooks.json` (19.3) stays the portable and manual route, and
+it is the route for an environment that loads a repository's hooks but not a
+person's own. A user-scope Cursor hook or skill is local to that machine. This
+document MUST NOT call it global, and MUST NOT imply that it reaches Cursor
+Cloud Agents.
 
 The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
@@ -4323,14 +4327,14 @@ plugin. ADR 0030 records the decision.
 The wrapper is a shell script. It reads the version from the plugin manifest
 beside it, so the plugin carries one pin. On first run it downloads that
 release into `~/.cache/klin/bin/<version>/klin`, verifies the checksum, and
-executes it. That install removes every other version that no session ran
-for seven days: another host's plugin may pin another version into the same
-cache, and removing it at once would make the two fetch in turn. A `radius`
-run touches its version to mark it used. Every later run executes the cached
-binary with no network call. When the download fails, the wrapper runs a `klin` that PATH
-resolves if there is one, and otherwise prints one line saying so and exits 0,
-so a turn is never blocked by a missing network. This is the one place klin
-touches the network, and it is install, not measurement.
+executes it. That install removes every other version that no session ran for
+seven days: another host's plugin may pin another version into the same cache,
+and removing it at once would make the two fetch in turn. A `radius` run
+touches its version to mark it used. Every later run executes the cached
+binary with no network call. When the download fails, the wrapper runs a
+`klin` that PATH resolves if there is one, and otherwise prints one line
+saying so and exits 0, so a turn is never blocked by a missing network. This
+is the one place klin touches the network, and it is install, not measurement.
 
 The plugin never installs a `klin` command for the person (19.0). Once per
 machine, at the first `radius` run that printed nothing, the wrapper says in
@@ -4476,17 +4480,20 @@ Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
 who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event. The one exception is the stop of a repository that
-holds a `klin.json` at its Git root, which the line resolves with
-`git rev-parse --show-toplevel` because a session may start below the root: there
+holds a `klin.json` at its Git root, which the line resolves with `git
+rev-parse --show-toplevel` because a session may start below the root: there
 the line names the install command in a `systemMessage` alone, so a teammate
 who cloned the committed hooks learns what they are for. Cursor shows the
 person no stop field that is not also a prompt, so on Cursor the notice is
 written and not shown (`docs/cursor-compatibility.md`). A host whose klin
 plugin is enabled gets no committed hooks and no skill (plugin ownership
 above), so a document that tells a person to commit them says that the plugin
-must be disabled first. Codex skips a project hook file's hooks until the
-person trusts them through `/hooks`, as it does a plugin's (19.2), so a
-document that gives the standalone route for Codex names that step.
+must be disabled first. Cursor records no enabled state klin can read, so a
+klin plugin copy on disk holds the hooks back whether or not Cursor loads it:
+the run names the copy, and the document says to remove it and reload Cursor.
+Codex skips a project hook file's hooks until the person trusts them through
+`/hooks`, as it does a plugin's (19.2), so a document that gives the
+standalone route for Codex names that step.
 
 **Standalone skill.** The standalone route writes the exact text authored at `plugins/klin/skills/klin/SKILL.md`; the binary embeds that source so the plugin and standalone copies cannot drift.
 

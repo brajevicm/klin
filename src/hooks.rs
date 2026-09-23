@@ -302,14 +302,8 @@ fn component(
     scope: &Scope,
     skills: &mut Vec<PathBuf>,
 ) -> Result<Component, Error> {
-    if let Some(settings) = host.plugin_enabled(&scope.at, scope.user) {
-        return Ok(told(
-            host,
-            format!(
-                "hooks supplied by the klin plugin, which {} enables.",
-                settings.display()
-            ),
-        ));
+    if let Some(proof) = host.plugin_enabled(&scope.at, scope.user) {
+        return Ok(told(host, host.plugin_owns(&proof)));
     }
     if let Some(user) = scope.covered_by_user(host) {
         return Ok(told(
