@@ -105,9 +105,10 @@ impl Adapter for Cursor {
         (!named.is_empty()).then(|| PathBuf::from(named))
     }
 
-    /// Cursor sends no flag for a stop it already blocked. Its `loop_count` counts the follow-ups
-    /// one conversation has already taken, not the blocks this turn spent, so `blocked_before` is
-    /// false here and klin's own record bounds the block. Spec 9.3, ADR 0022.
+    /// Cursor sends no flag for a stop it already blocked. Its `loop_count` counts the automatic
+    /// follow-ups before this stop, not the blocks this turn spent, so `blocked_before` is false
+    /// here and klin's own record bounds the block. A count above 0 says the stop continues a
+    /// chain of automatic messages, which is what `continued` records. Spec 9.3, ADR 0022, 0052.
     fn event(&'static self, payload: &Value) -> Event {
         let path = path(payload);
         Event {
@@ -115,6 +116,10 @@ impl Adapter for Cursor {
             file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
             command: command(payload),
             blocked_before: false,
+            continued: payload
+                .get("loop_count")
+                .and_then(Value::as_u64)
+                .is_some_and(|count| count > 0),
             session: session(payload),
             prompt: text(payload.get("prompt")),
             ..Event::of(self)

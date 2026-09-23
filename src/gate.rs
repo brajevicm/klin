@@ -184,7 +184,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
     written(root, lost, green, asked.as_deref(), &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
-        let held = count(&at);
+        let held = count(&at, log.continued);
         log.gate_blocks = held.gate_blocks;
         log.build_blocks = held.builds;
         log.prompt = held.prompt;
@@ -532,15 +532,19 @@ struct Count {
     gate_tree: Option<String>,
 }
 
-/// The record as this prompt left it. A record an older klin wrote names its build tree `tree`
-/// and its one gate block `gate_spent`, and names no gate tree, so it can never prove a second
-/// gate block.
-fn count(at: &Path) -> Count {
+/// The record as this prompt left it. A stop that `continued` a chain of messages its host
+/// submitted by itself keeps the record whatever prompt it was taken under: another hook's
+/// message may have won the host's merge, and klin read it as a person's prompt, but the chain
+/// belongs to the prompt that opened it. The record is written back under the current counter,
+/// so every later stop of the chain reads it too. A record an older klin wrote names its build
+/// tree `tree` and its one gate block `gate_spent`, and names no gate tree, so it can never
+/// prove a second gate block. Spec 9.3, ADR 0052.
+fn count(at: &Path, continued: bool) -> Count {
     let prompt = turn::prompts(at);
     let held = std::fs::read_to_string(at.join(BUILD_BLOCKED))
         .ok()
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .filter(|held| held.get("prompt").and_then(Value::as_u64) == Some(prompt))
+        .filter(|held| continued || held.get("prompt").and_then(Value::as_u64) == Some(prompt))
         .unwrap_or_default();
     let text = |key: &str| held.get(key)?.as_str().map(str::to_string);
     let legacy_spent = held.get("gate_spent").and_then(Value::as_bool) == Some(true);
@@ -649,7 +653,7 @@ fn raised(root: &Path, log: &mut journal::Stop) -> Blocks {
         Ok(at) => at,
         Err(why) => return unbounded(&why, log),
     };
-    let held = count(&at);
+    let held = count(&at, log.continued);
     let tree = working_tree(root, &at);
     if held.builds > 0 && tree.is_some() && tree == held.build_tree {
         return Blocks::Unchanged;
@@ -1050,7 +1054,9 @@ fn hook(
     log: &mut journal::Stop,
 ) -> (u8, Option<String>) {
     let (failed, errored) = (tally.failed, tally.errored);
-    let held = state::ready(root).ok().map(|at| (count(&at), at));
+    let held = state::ready(root)
+        .ok()
+        .map(|at| (count(&at, log.continued), at));
     unwritable(root);
     if failed == 0 && errored == 0 {
         return nothing_blocks(args, tally.told, report, event);

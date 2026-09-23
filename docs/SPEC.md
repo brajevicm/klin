@@ -2569,8 +2569,16 @@ A host that submits the block report as another prompt records that exact
 report in the session's handoff record of 9.1 before delivery; the matching
 prompt consumes it
 without opening another turn, so it raises no prompt counter and brings no
-fresh gate budget. A genuine later prompt brings a fresh budget of two gate
-blocks and eight build blocks. A deleted test is the one gate failure that
+fresh gate budget. The match is by exact text, and a host can submit text
+klin did not hand off: Cursor merges every stop hook's answer, and another
+hook's `followup_message` can win (9.1). So a stop whose host says it follows
+a message the host submitted by itself keeps the build stamp of the prompt
+that opened the chain, whatever the prompt counter says, and writes it back
+under the current counter. Cursor says so with a `loop_count` above 0. That
+rule never adds a block: where the host does not reset the count for a
+person's message, it only withholds that prompt's fresh budget. A genuine
+later prompt brings a fresh budget of two gate blocks and eight build
+blocks. A deleted test is the one gate failure that
 does not stay red: the stop that blocks on it records the question beside
 the stamp, and the next stop lets it through as a NOTE and ends green (8.2,
 ADR 0031). A deletion already asked about fails nothing, so it is no reason
@@ -3060,7 +3068,9 @@ failure, or an error alike — plus what only the hook knew:
 - `host`, the adapter's name, null where the event was unreadable.
 - `prompt`, the counter of 6.2 the stop ran under.
 - `hook` `{blocked, delivery, gate_spent, gate_blocks, gate_block,
-  build_blocks, blocked_before}`. `blocked` is whether this stop blocked, whatever exit code its host takes
+  build_blocks, blocked_before, continued}`. `continued` is whether the host
+  said this stop follows a message it submitted by itself (9.3). `blocked` is
+  whether this stop blocked, whatever exit code its host takes
   for a block (2 on Claude Code, Codex and the harness protocol, 0 on
   Cursor, 9.1).
   `delivery` is `block` or `none`; `follow-up` and `report` are reserved for
@@ -3784,8 +3794,9 @@ hook(event):
   at = derivation_commit(window)
   survey = cached_survey(at) or survey(at)
   count = read(state/build-blocked)
-  if count is None or count.prompt != turn.prompt:
+  if count is None or (count.prompt != turn.prompt and not host.continued(event)):
     count = Count(prompt=turn.prompt, builds=0, gate_blocks=0)      # a new turn
+  count.prompt = turn.prompt                       # a continued chain keeps its record (9.3)
   failure = build(config_or(survey), changed_files(window))
   unbuilt = None
   if failure and failure.exit == 127:

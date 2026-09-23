@@ -44,7 +44,7 @@ const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1"
 const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm klin.json"}}"#;
 const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
 const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;
-const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":5}"#;
+const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
 
 fn codex(name: &str, command: &str) -> String {
     format!(
@@ -266,8 +266,10 @@ fn a_cursor_block_exits_0_and_is_journaled_as_a_block() {
     assert_eq!(line["exit"], 0, "{line}");
 }
 
+/// `loop_count` counts the automatic follow-ups before this stop. It says nothing about a
+/// block, so a first stop blocks whatever count it carries.
 #[test]
-fn cursor_stop_blocks_and_ignores_loop_count() {
+fn a_first_cursor_stop_blocks_whatever_its_loop_count() {
     let tree = Tree::new();
     tree.write("klin.json", A_CONFIG);
     tree.words("README.md", 5);
@@ -282,7 +284,7 @@ fn cursor_stop_blocks_and_ignores_loop_count() {
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.words("README.md", 30);
 
-    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
+    let blocked = stop(&tree, &cursor_stop_at("s1", 5), &[]);
     assert_eq!(blocked.code, 0, "{}", blocked.out);
     assert!(blocked.says(r#""followup_message":"#), "{}", blocked.out);
     assert!(blocked.says("fix what each names"), "{}", blocked.out);
@@ -465,14 +467,64 @@ fn submit(tree: &Tree, session: &str, prompt: &serde_json::Value) {
 }
 
 fn cursor_stop(session: &str) -> String {
+    cursor_stop_at(session, 0)
+}
+
+/// A Cursor stop whose `loop_count` says how many automatic follow-ups came before it.
+fn cursor_stop_at(session: &str, loop_count: u64) -> String {
     serde_json::json!({
         "hook_event_name": "stop",
-        "cursor_version": "3.20.21",
+        "cursor_version": "3.21.18",
         "conversation_id": session,
         "session_id": session,
-        "loop_count": 1
+        "loop_count": loop_count
     })
     .to_string()
+}
+
+/// Cursor submits the follow-up that wins its merge of every stop hook's answer, which may be
+/// another hook's text klin cannot recognize, and that text raises the prompt counter. A stop
+/// whose `loop_count` is above 0 follows an automatic message, so it keeps the budget of the
+/// prompt the chain continues. A person's message brings `loop_count` back to 0 and a fresh
+/// budget. docs/cursor-compatibility.md.
+#[test]
+fn a_cursor_stop_after_an_automatic_message_keeps_its_prompts_budget() {
+    let tree = cursor_failing();
+    let first = stop(&tree, &cursor_stop_at("s1", 0), &[]);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+
+    let prompts = tree.field("prompts");
+    submit(&tree, "s1", &"ANOTHER-HOOK-WON-THE-MERGE".into());
+    assert_ne!(
+        tree.field("prompts"),
+        prompts,
+        "the merged text read as a person's prompt"
+    );
+    let unchanged = stop(&tree, &cursor_stop_at("s1", 1), &[]);
+    assert_eq!(unchanged.code, 0, "{}", unchanged.out);
+    assert!(
+        unchanged.says("the tree did not change since the last gate block"),
+        "{}",
+        unchanged.out
+    );
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["hook"]["continued"], true, "{line}");
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, &cursor_stop_at("s1", 2), &[]);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    tree.words("README.md", 32);
+    let capped = stop(&tree, &cursor_stop_at("s1", 3), &[]);
+    assert!(capped.says("has blocked 2 stops"), "{}", capped.out);
+
+    submit(&tree, "s1", &"keep going".into());
+    let fresh = stop(&tree, &cursor_stop_at("s1", 0), &[]);
+    assert!(fresh.says("gate block 1 of 2"), "{}", fresh.out);
 }
 
 /// A Cursor session opened over a tree whose README is within its ceiling, then pushed over it.

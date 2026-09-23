@@ -33,6 +33,8 @@ pub struct Stop {
     pub prompt: u64,
     pub blocked: bool,
     pub blocked_before: bool,
+    /// Whether the host said this stop follows a message it submitted by itself. Spec 9.3.
+    pub continued: bool,
     /// The build stamp as this stop left it. Spec 16.3.
     pub gate_blocks: u64,
     pub build_blocks: u64,
@@ -78,6 +80,7 @@ impl Stop {
             prompt: 0,
             blocked: false,
             blocked_before: event.is_some_and(|event| event.blocked_before),
+            continued: event.is_some_and(|event| event.continued),
             gate_blocks: 0,
             build_blocks: 0,
             gate_block: None,
@@ -135,6 +138,7 @@ pub fn line(stop: &Stop) -> Value {
             "gate_block": stop.gate_block,
             "build_blocks": stop.build_blocks,
             "blocked_before": stop.blocked_before,
+            "continued": stop.continued,
         }),
     );
     line.insert("verdict".into(), stop.verdict.into());

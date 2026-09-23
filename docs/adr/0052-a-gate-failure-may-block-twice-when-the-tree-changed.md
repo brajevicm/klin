@@ -77,6 +77,18 @@ budget the report came from. A told message was not recorded before this
 decision, so a red turn on Cursor gained a fresh gate block from each turn-end
 message it told.
 
+klin recognizes a submitted follow-up by its exact text, and Cursor can submit
+text klin never handed off: it merges every stop hook's answer, and another
+hook's `followup_message` can win. klin reads that text as a person's prompt.
+So a stop whose host says it follows a message the host submitted by itself
+keeps the build stamp of the prompt that opened the chain, whatever the prompt
+counter says. Cursor says so with a `loop_count` above 0, which rose after an
+automatic follow-up on 3.21.18. The rule never adds a block. It depends on
+Cursor returning `loop_count` to 0 for a person's message, which is not
+measured yet; where Cursor does not, a person's prompt in that conversation
+gets no fresh budget, which fails safe. Each stop line records the host's
+word as `hook.continued`.
+
 A consumed follow-up also opens no turn for the agent to end, so a stop over
 the same state would tell the same message, Cursor would submit it, and the
 loop would repeat. klin therefore records the last message it told a
