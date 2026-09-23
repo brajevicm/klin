@@ -18,13 +18,14 @@ against a measured host rather than a guess.
 | Stop block | `followup_message` and exit 0 | measured on 3.21.18 (below): a stop hook that exits 2 has its `followup_message` dropped. stderr still holds the report; native stop has no other channel. Nothing enforces an exit-0 block |
 | Stop note | `followup_message` | not `systemMessage` |
 | klin's own follow-up | exact report hash recorded per session and consumed once | **klin implementation**. On 3.21.18 `beforeSubmitPrompt` **does** fire for an automatic `followup_message` (below), so the hash is what keeps a firing from refreshing the block budget. It recognizes only klin's own text: another stop hook's follow-up that wins Cursor's merge reads as a person's prompt |
-| repeated follow-up bound | klin's gate block count and gate tree; a stop with `loop_count` above 0 keeps the build stamp of the prompt its chain continues | **klin implementation**. Cursor sends no `stop_hook_active`. On 3.21.18 `loop_count` rose after an automatic follow-up (below); whether it returns to 0 after a person's message is **not measured**. If it does not, the rule only withholds a fresh budget |
+| repeated follow-up bound | klin's gate block count and gate tree; a stop with `loop_count` above 0 keeps the build stamp of the prompt its chain continues | **klin implementation**. Cursor sends no `stop_hook_active`. On 3.21.18 `loop_count` rises by one for each automatic follow-up and returns to 0 after a person's message (below), so a person's prompt still gets a fresh budget |
 | no `klin.json` silence | hook-mode gate exits 0 with no output; guard allow is exit 0 with no stdout | ADR 0028; CLI fixtures cover both. A deny of a write to the `klin.json` path still speaks, as on every host |
 | Team Marketplace import | **unverified** | README documents Dashboard → Plugins → Team Marketplaces → import; this matrix has no recorded result for that route. Local `plugins/local/<name>` and marketplace cache detection are covered by CLI fixtures |
 
 ## Measured on Cursor 3.21.18, 2026-09-23
 
-Two probe runs on macOS, klin 0.3.0 at c4a0075, recorded for PR #314. Each ran
+Probe runs on macOS for PR #314: run 1 and run 2 with klin 0.3.0 at c4a0075,
+and run 2 again at fc87e51, after a Cursor block began to exit 0. Each ran
 klin's hooks at project scope behind logging wrappers, over a tree whose
 README went over its `doc_size` ceiling.
 
@@ -35,7 +36,8 @@ README went over its `doc_size` ceiling.
 | two stop hooks that both return `followup_message` | the user-scope hook's text wins over the project-scope hook's, as the docs' "last response wins" says (run 1) |
 | `beforeSubmitPrompt` on an automatic follow-up | **fires**, and `prompt` carries the submitted (merged) text (run 1) |
 | `generation_id` on an automatic follow-up | changes, the same as on a person's message (run 1) |
-| stop `loop_count` | 0 on the first stop, 1 on the stop after an automatic follow-up (run 1). Whether it returns to 0 after a person's message is **not measured**: run 2 had no automatic follow-up to count |
+| stop `loop_count` | rises by one for each automatic follow-up: 0, 1, 2 over klin's block report and its turn-end message. It returns to 0 on the stop after a person's message, then rises 0, 1, 2 again (run 2 at fc87e51) |
+| klin's exit-0 block and its told message | both are submitted, both reach `beforeSubmitPrompt` with klin's exact text, and klin consumes both: the prompt counter ended at 2, one for each message the person sent. The repeated told message was not told again, so the chain ended (run 2 at fc87e51) |
 
 Issue #67 originally required the Claude-compatible hook route to be tested
 first. That route was not tested. The later product decision requires a

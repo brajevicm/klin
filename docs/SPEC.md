@@ -2574,9 +2574,11 @@ klin did not hand off: Cursor merges every stop hook's answer, and another
 hook's `followup_message` can win (9.1). So a stop whose host says it follows
 a message the host submitted by itself keeps the build stamp of the prompt
 that opened the chain, whatever the prompt counter says, and writes it back
-under the current counter. Cursor says so with a `loop_count` above 0. That
-rule never adds a block: where the host does not reset the count for a
-person's message, it only withholds that prompt's fresh budget. A genuine
+under the current counter. Cursor says so with a `loop_count` above 0, and
+Cursor 3.21.18 returns the count to 0 for a person's message
+(`docs/cursor-compatibility.md`). That rule never adds a block: where a host
+does not reset the count for a person's message, it only withholds that
+prompt's fresh budget. A genuine
 later prompt brings a fresh budget of two gate blocks and eight build
 blocks. A deleted test is the one gate failure that
 does not stay red: the stop that blocks on it records the question beside
