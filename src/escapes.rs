@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::check::{Context, Sink};
 use crate::config::Error;
 use crate::markers::{self, Args, Kind, Language};
-use crate::ratchet::{Evaluator, Values};
+use crate::ratchet::{Evaluator, Remedy, Values};
 use crate::reference::Key;
 use crate::scope;
 
@@ -131,9 +131,11 @@ pub const KIND: Kind = Kind {
         metrics: &["count"],
         unit: "escape site(s)",
         condition: "where the code opts out of a check",
-        fix_advice: "Fix what the escape hides: handle the error instead of unwrapping it, \
-                     address the lint instead of allowing it. Accepting a new escape is a policy \
-                     decision for a person, in the config, in a reviewed commit.",
+        fix_advice: Remedy::Fixed(
+            "Fix what the escape hides: handle the error instead of unwrapping it, \
+             address the lint instead of allowing it. Accepting a new escape is a policy \
+             decision for a person, in the config, in a reviewed commit.",
+        ),
         ceiling: None,
         format_metrics: show,
         nested: None,

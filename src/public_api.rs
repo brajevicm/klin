@@ -20,7 +20,7 @@ use crate::config::Error;
 use crate::coverage::Coverage;
 use crate::modules::{self, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::surface::{self, Contract, Derived, Item, MODULE, Surface};
 use crate::syntax::{self, structural};
@@ -305,7 +305,7 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
         metrics: &[BREAK],
         unit: "compatibility break(s)",
         condition: "where an external surface or item the base exposed is gone or its declared contract changed",
-        fix_advice: if hook { HOOK_REMEDY } else { REMEDY },
+        fix_advice: Remedy::Fixed(if hook { HOOK_REMEDY } else { REMEDY }),
         ceiling: None,
         format_metrics: show,
         nested: Some(held_by_removed_modules),

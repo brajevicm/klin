@@ -18,7 +18,7 @@ use crate::coverage::Coverage;
 use crate::files;
 use crate::git::Repo;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 
 pub const SECTION: &str = "doc_citations";
@@ -211,7 +211,7 @@ fn evaluator() -> Evaluator<'static> {
         metrics: &["count"],
         unit: "citation(s)",
         condition: "where a document cites a file that resolves nowhere",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::Fixed(REMEDY),
         ceiling: None,
         format_metrics: show,
         nested: None,

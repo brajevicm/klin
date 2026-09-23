@@ -484,11 +484,26 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
 /// For each new finding, the one whose group it prints inside, or `None` where it leads.
 pub type Nesting = fn(&[Finding]) -> Vec<Option<usize>>;
 
+#[derive(Clone, Copy)]
+pub enum Remedy<'a> {
+    Fixed(&'a str),
+    ByValues(fn(&[&Values]) -> String),
+}
+
+impl Remedy<'_> {
+    fn text(self, values: &[&Values]) -> String {
+        match self {
+            Remedy::Fixed(text) => text.to_string(),
+            Remedy::ByValues(built) => built(values),
+        }
+    }
+}
+
 pub struct Evaluator<'a> {
     pub metrics: &'a [&'a str],
     pub unit: &'a str,
     pub condition: &'a str,
-    pub fix_advice: &'a str,
+    pub fix_advice: Remedy<'a>,
     /// The ceiling in force, printed beside every failure and carried in the JSON. `None` for a
     /// gate whose only ceiling is the value the base holds, which each failure already names.
     /// Spec 4.7, 8.6.
@@ -663,7 +678,13 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
             );
         }
     }
-    let _ = writeln!(out, "{}", evaluator.fix_advice);
+    let failing: Vec<&Values> = comparison
+        .unmatched_findings
+        .iter()
+        .chain(comparison.rose.iter().map(|(finding, _)| finding))
+        .map(|finding| &finding.values)
+        .collect();
+    let _ = writeln!(out, "{}", evaluator.fix_advice.text(&failing));
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside
@@ -776,7 +797,10 @@ fn collect(comparison: &Comparison, evaluator: &Evaluator, gate: &str, records: 
         out.insert("id".into(), identity(gate, finding).into());
         out.insert("values".into(), Value::Object(finding.values.clone()));
         out.insert("condition".into(), evaluator.condition.into());
-        out.insert("fix_advice".into(), evaluator.fix_advice.into());
+        out.insert(
+            "fix_advice".into(),
+            evaluator.fix_advice.text(&[&finding.values]).into(),
+        );
         out.insert(
             "ceiling".into(),
             evaluator.ceiling.map_or(Value::Null, Into::into),

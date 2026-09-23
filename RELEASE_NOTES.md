@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### `lockfile` checks each pin against the version the lockfile records (#305)
+
+A new value, `stale`, is 1 when a dependency's specifier is exact and the
+lockfile records versions of it, none of which is the pin. Before this, a
+manifest could pin `typescript` at `5.6.3` while `package-lock.json` still
+installed `5.4.0`, and the gate passed. Staleness the base already had is
+held. The remedy now has one part for each value a failure carries, so a
+new dependency with no lockfile entry is told to run the project's install.
+The old remedy asked it to restore a base pin it never had.
+
+An accepted `lockfile` entry in `klin.json` must now give `stale` as well. An
+entry without it is a configuration error. Add `"stale": 0` to keep what the
+entry accepted.
+
 ### Generated `klin.json` schema (#181)
 
 The generated SchemaStore artifact now shares its native Rust structural

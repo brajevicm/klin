@@ -1,8 +1,9 @@
 //! `lockfile` proves that every dependency a manifest names has an entry in the lockfile beside
-//! it, and that no pin the base held is gone. The manifests are the ones the survey finds that
-//! klin has a reader for; a person narrows them only with `in` and `except`. A site is the
-//! manifest's path and the dependency's name. Every manifest and lockfile is read once per tree,
-//! and a lockfile several manifests share is parsed once. Spec 5.4, 8.2.1, ADR 0040.
+//! it, that no pin the base held is gone, and that the lockfile records each exact pin. The
+//! manifests are the ones the survey finds that klin has a reader for; a person narrows them only
+//! with `in` and `except`. A site is the manifest's path and the dependency's name. Every
+//! manifest and lockfile is read once per tree, and a lockfile several manifests share is parsed
+//! once. Spec 5.4, 8.2.1, ADR 0040.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -12,7 +13,7 @@ use crate::check::{self, Context, Sink};
 use crate::config::Error;
 use crate::coverage::Coverage;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::{base, changed};
@@ -25,22 +26,39 @@ pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 const RULE: &str = "the manifests the survey found that klin can read a lockfile for";
 const UNLOCKED: &str = "unlocked";
 const UNPINNED: &str = "unpinned";
-const METRICS: &[&str] = &[UNLOCKED, UNPINNED];
-const REMEDY: &str = "Run the project's own install so the lockfile records the dependency, and \
-    give the specifier the base's exact version back. A dependency the lockfile does not know is \
-    one no install has ever resolved, and a pin the base held is a version a person chose.";
+const STALE: &str = "stale";
+const METRICS: &[&str] = &[UNLOCKED, UNPINNED, STALE];
+const REMEDIES: &[(&str, &str)] = &[
+    (
+        UNLOCKED,
+        "Run the project's own install, so the lockfile records the dependency. A dependency the \
+         lockfile does not know is one no install has ever resolved.",
+    ),
+    (
+        UNPINNED,
+        "Restore the exact version the base pinned, or pin an exact version for a new \
+         dependency. A pin the base held is a version a person chose.",
+    ),
+    (
+        STALE,
+        "Install again, so the lockfile records the pinned version. A lockfile that records \
+         another version installs that one, whatever the manifest pins.",
+    ),
+];
 
 /// One dependency a manifest names, before the lockfile beside it is read. `name` is what the
 /// manifest calls it, which is the site's identity, and `package` is what the lockfile records
 /// it under, which a Cargo rename makes different. A dependency with no registry behind it — a
 /// path, a git or a workspace dependency — has no lockfile entry to want and no version to pin,
-/// so it carries neither value. A statement only ever takes a value away, so two tables that
-/// name one dependency give the same reading in either order.
+/// so it carries no value. `pins` holds every exact version a statement gave it. A statement
+/// only ever takes a value away, so two tables that name one dependency give the same reading in
+/// either order.
 struct Dependency {
     name: String,
     package: String,
     registry: bool,
     exact: bool,
+    pins: Vec<String>,
 }
 
 impl Dependency {
@@ -50,14 +68,26 @@ impl Dependency {
             package: name.to_string(),
             registry: true,
             exact: true,
+            pins: Vec::new(),
+        }
+    }
+
+    fn record_requirement(&mut self, requirement: &str) {
+        match requirement.strip_prefix('=') {
+            Some(pin) => self.pins.push(pin.trim().to_string()),
+            None => self.exact = false,
         }
     }
 }
 
 /// One ecosystem: the manifest klin reads, the lockfiles it can read beside it, and the two
-/// readers. A lockfile reader returns `None` when its shape is not one it recognizes. Spec 8.2.1.
+/// readers. A lockfile reader gives each name it holds, with the version it records for that
+/// name where it records one the manifest resolves to, and returns `None` when its shape is not
+/// one it recognizes. Spec 8.2.1.
 type DependencyReader = fn(&str, &[u8]) -> Result<Vec<Dependency>, Error>;
-type LockfileReader = fn(&str, &[u8]) -> Result<Option<Vec<String>>, Error>;
+type Entry = (String, Option<String>);
+type LockfileReader = fn(&str, &[u8]) -> Result<Option<Vec<Entry>>, Error>;
+type Locked = HashMap<String, HashSet<String>>;
 
 struct Format {
     manifest: &'static str,
@@ -198,10 +228,10 @@ fn candidates(judged: &[&(&str, &Format)]) -> Vec<String> {
 }
 
 /// One tree's bytes for every path a judged manifest could read, each read once, and the names
-/// every lockfile holds, parsed once however many manifests share it.
+/// and versions every lockfile holds, parsed once however many manifests share it.
 struct Side {
     bytes: HashMap<String, Vec<u8>>,
-    locked: HashMap<String, Result<Option<HashSet<String>>, String>>,
+    locked: HashMap<String, Result<Option<Locked>, String>>,
 }
 
 impl Side {
@@ -244,7 +274,7 @@ impl Side {
             return Ok(None);
         };
         let found = beside(&self.bytes, manifest, format.lockfiles);
-        let none = HashSet::new();
+        let none = Locked::new();
         let mut unreadable = None;
         let names = match &found {
             Some(at) => match locked(&mut self.locked, &self.bytes, at, format)? {
@@ -269,17 +299,18 @@ impl Side {
     }
 }
 
-/// The names one lockfile holds, parsed on the first manifest that reads it and borrowed by
-/// every manifest after, and the error a malformed one gives each of them.
+/// The names one lockfile holds, each with the versions it records, parsed on the first
+/// manifest that reads it and borrowed by every manifest after, and the error a malformed one
+/// gives each of them.
 fn locked<'a>(
-    parsed: &'a mut HashMap<String, Result<Option<HashSet<String>>, String>>,
+    parsed: &'a mut HashMap<String, Result<Option<Locked>, String>>,
     bytes: &HashMap<String, Vec<u8>>,
     at: &str,
     format: &Format,
-) -> Result<Option<&'a HashSet<String>>, Error> {
+) -> Result<Option<&'a Locked>, Error> {
     let names = parsed.entry(at.to_string()).or_insert_with(|| {
         (format.locked)(at, &bytes[at])
-            .map(|names| names.map(|names| names.into_iter().collect()))
+            .map(|entries| entries.map(recorded))
             .map_err(|Error(why)| why)
     });
     names
@@ -288,23 +319,41 @@ fn locked<'a>(
         .map_err(|why| Error(why.clone()))
 }
 
+fn recorded(entries: Vec<Entry>) -> Locked {
+    let mut out = Locked::new();
+    for (name, version) in entries {
+        out.entry(name).or_default().extend(version);
+    }
+    out
+}
+
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
         metrics: METRICS,
         unit: "dependenc(ies)",
         condition: "that the lockfile beside the manifest does not lock",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::ByValues(remedy),
         ceiling: None,
         format_metrics: show,
         nested: None,
     }
 }
 
+fn remedy(failing: &[&Values]) -> String {
+    REMEDIES
+        .iter()
+        .filter(|(metric, _)| failing.iter().any(|values| number(values, metric) > 0))
+        .map(|(_, text)| *text)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn show(values: &Values) -> String {
     format!(
-        "{UNLOCKED} {}, {UNPINNED} {}",
+        "{UNLOCKED} {}, {UNPINNED} {}, {STALE} {}",
         number(values, UNLOCKED),
-        number(values, UNPINNED)
+        number(values, UNPINNED),
+        number(values, STALE)
     )
 }
 
@@ -369,7 +418,7 @@ impl Sites {
         self.manifests += 1;
         self.judged += now.deps.len();
         for (name, values) in &now.deps {
-            if before.deps.contains_key(name) || number(values, UNLOCKED) > 0 {
+            if before.deps.contains_key(name) || fails_when_new(values) {
                 self.findings.push(finding(manifest, name, values.clone()));
             }
         }
@@ -383,6 +432,10 @@ impl Sites {
     }
 }
 
+fn fails_when_new(values: &Values) -> bool {
+    number(values, UNLOCKED) > 0 || number(values, STALE) > 0
+}
+
 fn finding(manifest: &str, name: &str, values: Values) -> Finding {
     Finding {
         file: manifest.to_string(),
@@ -393,7 +446,7 @@ fn finding(manifest: &str, name: &str, values: Values) -> Finding {
     }
 }
 
-/// What one tree says about one manifest: its dependencies with both values already taken, the
+/// What one tree says about one manifest: its dependencies with every value already taken, the
 /// lockfile klin read them against, a lockfile klin found and cannot read, and why klin could
 /// not parse the manifest itself.
 #[derive(Default)]
@@ -466,20 +519,39 @@ fn unparseable(
     }
 }
 
-/// Both values of every dependency, taken against the names the lockfile holds.
-fn taken(deps: Vec<Dependency>, locked: &HashSet<String>) -> BTreeMap<String, Values> {
+/// Every value of every dependency, taken against the names and versions the lockfile holds.
+fn taken(deps: Vec<Dependency>, locked: &Locked) -> BTreeMap<String, Values> {
     deps.into_iter()
         .map(|dep| {
-            let unlocked = dep.registry && !locked.contains(&dep.package);
-            (dep.name, values(unlocked, dep.registry && !dep.exact))
+            let versions = locked.get(&dep.package);
+            let unlocked = dep.registry && versions.is_none();
+            let drifted = dep.registry
+                && dep.exact
+                && versions.is_some_and(|versions| stale(&dep.pins, versions));
+            (
+                dep.name,
+                values(unlocked, dep.registry && !dep.exact, drifted),
+            )
         })
         .collect()
 }
 
-fn values(unlocked: bool, unpinned: bool) -> Values {
+fn stale(pins: &[String], versions: &HashSet<String>) -> bool {
+    !versions.is_empty()
+        && pins.iter().any(|pin| {
+            !versions.iter().any(|version| {
+                version
+                    .strip_prefix(pin.as_str())
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
+            })
+        })
+}
+
+fn values(unlocked: bool, unpinned: bool, stale: bool) -> Values {
     let mut out = Values::new();
     out.insert(UNLOCKED.into(), u64::from(unlocked).into());
     out.insert(UNPINNED.into(), u64::from(unpinned).into());
+    out.insert(STALE.into(), u64::from(stale).into());
     out
 }
 
@@ -668,7 +740,7 @@ fn cargo_whole(name: &str, value: &str, found: &mut BTreeMap<String, Dependency>
         return;
     }
     if let Some(entry) = entry_of(name, found) {
-        entry.exact &= unquoted(value).starts_with('=');
+        entry.record_requirement(unquoted(value));
     }
 }
 
@@ -679,7 +751,7 @@ fn cargo_field(name: &str, key: &str, value: &str, found: &mut BTreeMap<String, 
         return;
     };
     match key {
-        "version" => entry.exact &= unquoted(value).starts_with('='),
+        "version" => entry.record_requirement(unquoted(value)),
         "package" => entry.package = unquoted(value).to_string(),
         "path" | "git" | "workspace" => entry.registry = false,
         _ => (),
@@ -714,23 +786,32 @@ fn unquoted(text: &str) -> &str {
         .unwrap_or_default()
 }
 
-/// Every package name a `Cargo.lock` holds: the `name` of each `[[package]]` block.
-fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
+/// Every package a `Cargo.lock` holds: the `name` and `version` of each `[[package]]` block.
+fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
     let text = String::from_utf8_lossy(bytes);
     let mut out = Vec::new();
-    let mut package = false;
+    let mut package = None;
     for line in text.lines() {
         let line = line.trim();
         if line.starts_with('[') {
-            package = line == "[[package]]";
-        } else if package
-            && let Some(value) = line.strip_prefix("name").map(str::trim)
-            && let Some(value) = value.strip_prefix('=')
-        {
-            out.push(unquoted(value).to_string());
+            package = (line == "[[package]]").then(String::new);
+        } else if let Some(name) = &mut package {
+            if let Some(value) = toml_value(line, "name") {
+                *name = value.to_string();
+                out.push((value.to_string(), None));
+            } else if let Some(value) = toml_value(line, "version")
+                && !name.is_empty()
+            {
+                out.push((name.clone(), Some(value.to_string())));
+            }
         }
     }
     Ok(Some(out))
+}
+
+fn toml_value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+    let value = line.strip_prefix(key)?.trim().strip_prefix('=')?;
+    Some(unquoted(value))
 }
 
 const NPM_TABLES: &[&str] = &[
@@ -752,6 +833,10 @@ fn npm_dependencies(at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
             found.entry(name.clone()).or_insert_with(|| Dependency {
                 registry: npm_registry(spec),
                 exact: npm_exact(spec),
+                pins: npm_exact(spec)
+                    .then(|| spec.to_string())
+                    .into_iter()
+                    .collect(),
                 ..Dependency::named(name)
             });
         }
@@ -776,7 +861,7 @@ fn npm_exact(spec: &str) -> bool {
 }
 
 /// Read the npm-family lockfile named by `at`; `None` means its line-scanned shape is unknown.
-fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
+fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
     match basename(at) {
         "package-lock.json" => package_locked(at, bytes).map(Some),
         "pnpm-lock.yaml" => Ok(pnpm_locked(bytes)),
@@ -787,24 +872,31 @@ fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
 
 /// Every package name a `package-lock.json` holds, in both lockfile shapes: the keys of
 /// `packages` with everything up to the last `node_modules/` stripped, and the keys of the
-/// nested `dependencies` tree that version 1 writes.
-fn package_locked(at: &str, bytes: &[u8]) -> Result<Vec<String>, Error> {
+/// nested `dependencies` tree that version 1 writes. The version counts only for an entry
+/// that sits in no other package's `node_modules`, which is the one a manifest resolves to.
+fn package_locked(at: &str, bytes: &[u8]) -> Result<Vec<Entry>, Error> {
     let data = json(at, bytes)?;
     let mut out = Vec::new();
     if let Some(packages) = data.get("packages").and_then(Value::as_object) {
-        out.extend(
-            packages
-                .keys()
-                .filter_map(|key| key.rsplit_once("node_modules/"))
-                .map(|(_, name)| name.to_string()),
-        );
+        out.extend(packages.iter().filter_map(|(key, entry)| {
+            let (above, name) = key.rsplit_once("node_modules/")?;
+            let version = (!above.contains("node_modules/")).then(|| npm_version(entry));
+            Some((name.to_string(), version.flatten()))
+        }));
     }
-    npm_nested(data.get("dependencies"), &mut out);
+    npm_nested(data.get("dependencies"), true, &mut out);
     Ok(out)
 }
 
+fn npm_version(entry: &Value) -> Option<String> {
+    entry
+        .get("version")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
 /// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes.
-fn pnpm_locked(bytes: &[u8]) -> Option<Vec<String>> {
+fn pnpm_locked(bytes: &[u8]) -> Option<Vec<Entry>> {
     let text = String::from_utf8_lossy(bytes);
     let version = pnpm_version(&text)?;
     let packages = pnpm_packages(&text)?;
@@ -828,7 +920,7 @@ fn pnpm_version_value(value: &str) -> bool {
         .is_some_and(|major| major >= 4)
 }
 
-fn pnpm_packages(text: &str) -> Option<Vec<String>> {
+fn pnpm_packages(text: &str) -> Option<Vec<Entry>> {
     let mut lines = text.lines();
     while let Some(line) = lines.next() {
         if pnpm_packages_header(line) {
@@ -845,7 +937,7 @@ fn pnpm_packages_header(line: &str) -> bool {
     matches!(value.trim(), "" | "{}")
 }
 
-fn pnpm_package_lines(lines: std::str::Lines<'_>) -> Option<Vec<String>> {
+fn pnpm_package_lines(lines: std::str::Lines<'_>) -> Option<Vec<Entry>> {
     let mut package_indent = None;
     let mut out = Vec::new();
     for line in lines {
@@ -859,64 +951,87 @@ fn pnpm_package_lines(lines: std::str::Lines<'_>) -> Option<Vec<String>> {
         }
         let at = package_indent.get_or_insert(indent);
         if indent == *at {
-            out.push(pnpm_name(yaml_key(trimmed)?)?);
+            out.push(pnpm_entry(yaml_key(trimmed)?)?);
         }
     }
     Some(out)
 }
 
-fn pnpm_name(key: &str) -> Option<String> {
+fn pnpm_entry(key: &str) -> Option<Entry> {
     let key = yaml_text(key)
         .split_once('(')
         .map_or(yaml_text(key), |(name, _)| name)
         .trim_start_matches('/');
-    if let Some((name, version)) = key.rsplit_once('@')
-        && !name.is_empty()
-        && !version.is_empty()
-    {
-        return Some(name.to_string());
-    }
-    let (name, version) = key.rsplit_once('/')?;
-    if version.is_empty() {
-        return None;
-    }
-    Some(
-        name.strip_prefix("registry.npmjs.org/")
-            .unwrap_or(name)
-            .to_string(),
-    )
+    let (name, version) = pnpm_path(key)
+        .or_else(|| {
+            key.rsplit_once('@')
+                .filter(|(name, version)| !name.is_empty() && !version.is_empty())
+        })
+        .or_else(|| {
+            key.rsplit_once('/')
+                .filter(|(_, version)| !version.is_empty())
+        })?;
+    let name = name.strip_prefix("registry.npmjs.org/").unwrap_or(name);
+    Some((name.to_string(), Some(version.to_string())))
+}
+
+fn pnpm_path(key: &str) -> Option<(&str, &str)> {
+    let (name, rest) = key.rsplit_once('/')?;
+    let version = rest.split('_').next()?;
+    (version.starts_with(|at: char| at.is_ascii_digit()) && !version.contains('@'))
+        .then_some((name, version))
 }
 
 /// Yarn classic has top-level selectors after its v1 marker; Yarn Berry has top-level locators
-/// after a `__metadata` mapping whose version is at least 4. Both only need package names here.
-fn yarn_locked(bytes: &[u8]) -> Option<Vec<String>> {
+/// after a `__metadata` mapping whose version is at least 4. Each gives its package names from
+/// those keys and its version from the `version` line below them.
+fn yarn_locked(bytes: &[u8]) -> Option<Vec<Entry>> {
     let text = String::from_utf8_lossy(bytes);
     if text.lines().any(|line| line.trim() == "# yarn lockfile v1") {
-        Some(yarn_classic(&text))
+        yarn_entries(text.lines(), false)
     } else {
         yarn_berry(&text)
     }
 }
 
-fn yarn_classic(text: &str) -> Vec<String> {
-    text.lines()
-        .filter_map(yarn_classic_names)
-        .flatten()
-        .collect()
+fn yarn_entries(lines: std::str::Lines<'_>, strict: bool) -> Option<Vec<Entry>> {
+    let mut out = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+    for line in lines.filter(|line| !yarn_blank(line.trim())) {
+        let trimmed = line.trim();
+        if !line.starts_with(char::is_whitespace) {
+            names = yarn_top(trimmed, strict)?;
+            out.extend(names.iter().map(|name| (name.clone(), None)));
+        } else if let Some(version) = yarn_recorded(trimmed) {
+            out.extend(
+                names
+                    .iter()
+                    .map(|name| (name.clone(), Some(version.clone()))),
+            );
+        }
+    }
+    Some(out)
 }
 
-fn yarn_classic_names(line: &str) -> Option<Vec<String>> {
-    let trimmed = line.trim();
-    if line.len() != line.trim_start().len() {
-        return None;
-    }
-    if trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---" {
-        return None;
-    }
-    yarn_names(yaml_key(trimmed)?)
+fn yarn_blank(trimmed: &str) -> bool {
+    trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---"
 }
 
-fn yarn_berry(text: &str) -> Option<Vec<String>> {
+fn yarn_top(trimmed: &str, strict: bool) -> Option<Vec<String>> {
+    match yaml_key(trimmed).and_then(yarn_names) {
+        Some(found) => Some(found),
+        None if strict => None,
+        None => Some(Vec::new()),
+    }
+}
+
+fn yarn_recorded(line: &str) -> Option<String> {
+    let rest = line.strip_prefix("version")?;
+    let rest = rest.strip_prefix(':').unwrap_or(rest);
+    rest.starts_with(' ').then(|| yaml_text(rest).to_string())
+}
+
+fn yarn_berry(text: &str) -> Option<Vec<Entry>> {
     let version = yarn_metadata_version(text)?;
     let locators = yarn_locators(text)?;
     version.then_some(locators)
@@ -957,28 +1072,14 @@ fn yarn_metadata_header(line: &str) -> bool {
     line.len() == line.trim_start().len() && yaml_key(line.trim()) == Some("__metadata")
 }
 
-fn yarn_locators(text: &str) -> Option<Vec<String>> {
+fn yarn_locators(text: &str) -> Option<Vec<Entry>> {
     let mut lines = text.lines();
     while let Some(line) = lines.next() {
         if yarn_metadata_header(line) {
-            return yarn_locator_lines(lines);
+            return yarn_entries(lines, true);
         }
     }
     None
-}
-
-fn yarn_locator_lines(lines: std::str::Lines<'_>) -> Option<Vec<String>> {
-    let mut out = Vec::new();
-    for line in lines {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---" {
-            continue;
-        }
-        if line.len() == line.trim_start().len() {
-            out.extend(yarn_names(yaml_key(trimmed)?)?);
-        }
-    }
-    Some(out)
 }
 
 fn yarn_names(key: &str) -> Option<Vec<String>> {
@@ -1011,13 +1112,13 @@ fn yaml_text(text: &str) -> &str {
     text.trim().trim_matches(['\'', '"'])
 }
 
-fn npm_nested(held: Option<&Value>, out: &mut Vec<String>) {
+fn npm_nested(held: Option<&Value>, top: bool, out: &mut Vec<Entry>) {
     let Some(named) = held.and_then(Value::as_object) else {
         return;
     };
     for (name, entry) in named {
-        out.push(name.clone());
-        npm_nested(entry.get("dependencies"), out);
+        out.push((name.clone(), npm_version(entry).filter(|_| top)));
+        npm_nested(entry.get("dependencies"), false, out);
     }
 }
 
@@ -1030,62 +1131,75 @@ fn json(at: &str, bytes: &[u8]) -> Result<Value, Error> {
 /// directive points at a local path has no registry behind it.
 fn go_dependencies(_at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
     let text = String::from_utf8_lossy(bytes);
-    let local = go_replaced(&text);
+    let replaced = go_replaced(&text);
     let mut found: BTreeMap<String, Dependency> = BTreeMap::new();
     let mut inside = false;
     for line in text.lines() {
         let line = bare(line);
         if inside {
             inside = !line.starts_with(')');
-            go_require(line, &local, &mut found);
+            go_require(line, &replaced, &mut found);
         } else if let Some(rest) = line.strip_prefix("require").map(str::trim) {
             inside = rest == "(";
-            go_require(rest, &local, &mut found);
+            go_require(rest, &replaced, &mut found);
         }
     }
     Ok(found.into_values().collect())
 }
 
-fn go_require(line: &str, local: &[String], found: &mut BTreeMap<String, Dependency>) {
-    let Some(name) = line.split_whitespace().next() else {
+fn go_require(line: &str, replaced: &[(String, bool)], found: &mut BTreeMap<String, Dependency>) {
+    let mut fields = line.split_whitespace();
+    let Some(name) = fields.next() else {
         return;
     };
     if name == "(" || name == ")" {
         return;
     }
+    let replacement = replaced.iter().find(|(held, _)| held == name);
     found.insert(
         name.to_string(),
         Dependency {
-            registry: !local.iter().any(|held| held == name),
+            registry: !replacement.is_some_and(|(_, local)| *local),
+            pins: match replacement {
+                Some(_) => Vec::new(),
+                None => fields.next().map(str::to_string).into_iter().collect(),
+            },
             ..Dependency::named(name)
         },
     );
 }
 
-/// The modules a `replace` directive sends to a local path, in both forms of the directive.
-fn go_replaced(text: &str) -> Vec<String> {
+/// The modules a `replace` directive names, in both forms of the directive, each with whether
+/// it sends the module to a local path.
+fn go_replaced(text: &str) -> Vec<(String, bool)> {
     let mut out = Vec::new();
     for line in text.lines() {
         let line = bare(line).trim_start_matches("replace").trim();
         let Some((from, to)) = line.split_once("=>") else {
             continue;
         };
-        if let Some(name) = from.split_whitespace().next()
-            && (to.trim().starts_with('.') || to.trim().starts_with('/'))
-        {
-            out.push(name.to_string());
+        if let Some(name) = from.split_whitespace().next() {
+            let to = to.trim();
+            out.push((name.to_string(), to.starts_with('.') || to.starts_with('/')));
         }
     }
     out
 }
 
-/// Every module a `go.sum` holds: the first field of each line.
-fn go_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<String>>, Error> {
+/// Every module a `go.sum` holds, with each version it has a line for: the first two fields of
+/// each line, the `/go.mod` suffix cut off the version.
+fn go_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
     let text = String::from_utf8_lossy(bytes);
     Ok(Some(
         text.lines()
-            .filter_map(|line| line.split_whitespace().next())
-            .map(str::to_string)
+            .filter_map(|line| {
+                let mut fields = line.split_whitespace();
+                let name = fields.next()?.to_string();
+                let version = fields
+                    .next()
+                    .map(|at| at.trim_end_matches("/go.mod").to_string());
+                Some((name, version))
+            })
             .collect(),
     ))
 }

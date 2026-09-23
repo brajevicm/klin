@@ -18,7 +18,7 @@ use crate::config::{Config, Error};
 use crate::coverage::Coverage;
 use crate::hunks::Hunks;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 
 pub const SECTION: &str = "sarif";
@@ -587,7 +587,7 @@ fn evaluator() -> Evaluator<'static> {
         metrics: METRICS,
         unit: "result(s)",
         condition: "the scanner reports on a line this window changed",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::Fixed(REMEDY),
         ceiling: None,
         format_metrics: show,
         nested: None,
