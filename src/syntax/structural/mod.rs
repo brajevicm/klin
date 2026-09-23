@@ -78,10 +78,12 @@ pub struct Declaration {
     /// methods outside the type's own body, as Rust's `impl Client { pub fn new() }` does. A
     /// trait's method, a trait implementation's method and a member of a class carry none.
     pub owner: Option<String>,
-    /// The declared contract, canonical: no body, no comment, no attribute, one space between
-    /// tokens, and a parameter binding that is not contract written as `_`. `None` where the
-    /// syntax is a form V1 does not canonicalize. A type the language would infer is written
-    /// as `?`, so an inferred contract is visibly partial and never fabricated.
+    /// The declared contract, canonical: no body, no comment, no attribute but a directly
+    /// written `#[non_exhaustive]`, one space between tokens, and a parameter binding that is
+    /// not contract written as `_`. `None` where the syntax is a form V1 does not canonicalize,
+    /// and empty for a TypeScript implementation that follows its overloads. A type the
+    /// language would infer is written as `?`, so an inferred contract is visibly partial and
+    /// never fabricated.
     pub signature: Option<String>,
 }
 
@@ -2041,7 +2043,7 @@ impl Tr for S<u8> { fn f(&self) -> u8 { 1 } }
         let facts = measured_facts("src/lib.rs", RUST);
         assert_eq!(
             signature(&facts, "S"),
-            "struct S<T: Clone> where T: Copy { a: T }"
+            "struct S<T: Clone> where T: Copy { a: T, .. }"
         );
         assert_eq!(signature(&facts, "U"), "struct U(u8, _);");
         assert_eq!(
@@ -2050,7 +2052,7 @@ impl Tr for S<u8> { fn f(&self) -> u8 { 1 } }
         );
         assert_eq!(
             signature(&facts, "Tr"),
-            "trait Tr: Send { fn f(&self) -> u8; fn g(&self); type A: Copy; const N: u8; }"
+            "trait Tr: Send { fn f(&self) -> u8; fn g(&self) { .. } type A: Copy; const N: u8; }"
         );
         assert_eq!(signature(&facts, "K"), "const K: u8;");
         assert_eq!(signature(&facts, "ST"), "static mut ST: &str;");

@@ -22,7 +22,7 @@ use crate::modules::{self, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::Key;
-use crate::surface::{self, Contract, Derived, Item, Surface};
+use crate::surface::{self, Contract, Derived, Item, MODULE, Surface};
 use crate::syntax::{self, structural};
 
 pub const SECTION: &str = "public_api";
@@ -40,15 +40,19 @@ const REMOVED: &str = "removed";
 const CHANGED: &str = "changed";
 const SURFACE_TEXT: &str = "(surface)";
 const REMEDY: &str = "Keep the surface, the item or the declared contract the base had where the task \
-                      allows it. Do not change what the task asked for only to satisfy this gate. If the \
-                      break is intended, a person accepts it with an accepted entry in a reviewed \
-                      commit, and until then CI refuses it.";
+                      allows it. For a changed contract, a new item beside the unchanged one keeps \
+                      the base's contract where that serves the task. Do not change what the task \
+                      asked for only to satisfy this gate. If the break is intended, a person \
+                      accepts it with an accepted entry in a reviewed commit, and until then CI \
+                      refuses it.";
 const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract the base had where \
-                           the task allows it. Do not change what the task asked for only to \
-                           satisfy this gate. If this stop blocked on a break the task intends, say \
-                           so in your reply and stop again, and the next stop may then end the \
-                           turn. Your reply does not accept the break: a person accepts it with \
-                           an accepted entry in a reviewed commit, and until then CI refuses it.";
+                           the task allows it. For a changed contract, a new item beside the \
+                           unchanged one keeps the base's contract where that serves the task. Do \
+                           not change what the task asked for only to satisfy this gate. If this \
+                           stop blocked on a break the task intends, say so in your reply and stop \
+                           again, and the next stop may then end the turn. Your reply does not \
+                           accept the break: a person accepts it with an accepted entry in a \
+                           reviewed commit, and until then CI refuses it.";
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -304,7 +308,38 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
         fix_advice: if hook { HOOK_REMEDY } else { REMEDY },
         ceiling: None,
         format_metrics: show,
+        nested: Some(held_by_removed_modules),
     }
+}
+
+/// For each finding, the removed module it prints under: the outermost module under the same
+/// surface id that the same change removed and whose path holds the finding's own path. Two
+/// surfaces that share an id share every identity, so their modules group together.
+fn held_by_removed_modules(found: &[Finding]) -> Vec<Option<usize>> {
+    let removed =
+        |finding: &Finding| finding.values.get(KIND).and_then(Value::as_str) == Some(REMOVED);
+    let mut modules: HashMap<(&str, &str), usize> = HashMap::new();
+    for (at, finding) in found.iter().enumerate().filter(|(_, held)| removed(held)) {
+        let module = finding
+            .text
+            .strip_suffix(')')
+            .and_then(|text| text.strip_suffix(MODULE))
+            .and_then(|text| text.strip_suffix(" ("));
+        if let Some(module) = module {
+            modules.entry((finding.file.as_str(), module)).or_insert(at);
+        }
+    }
+    found
+        .iter()
+        .map(|finding| {
+            let (own, _) = finding
+                .text
+                .rsplit_once(" (")
+                .filter(|_| removed(finding))?;
+            own.match_indices("::")
+                .find_map(|(end, _)| modules.get(&(finding.file.as_str(), &own[..end])).copied())
+        })
+        .collect()
 }
 
 fn show(values: &Values) -> String {

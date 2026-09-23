@@ -435,6 +435,7 @@ fn evaluator(spec: &Spec) -> Evaluator<'_> {
                      under the gate. Accepting new debt is a policy decision for a person, in \
                      the config, in a reviewed commit.",
         format_metrics: show,
+        nested: None,
     }
 }
 

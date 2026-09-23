@@ -50,6 +50,10 @@ pub const UNBUILT: &str = "unbuilt";
 /// layering run must not imply a resolution klin did not make. Spec 8.2.1, 8.6.
 pub const UNRESOLVED: &str = "unresolved";
 
+/// The name of the `public-api` gate, for a reader of the journal that may not depend on the
+/// gate itself.
+pub const PUBLIC_API: &str = public_api::NAME;
+
 /// The source-content work a file-local gate performed over its current and base trees. The
 /// runner exposes this beside structural `facts` so performance rows can prove a changed run
 /// did not read unchanged source.

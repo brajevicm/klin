@@ -72,7 +72,7 @@ fn a_root_pub_item_a_pub_mod_chain_and_a_pub_use_are_external_and_the_rest_is_no
         "core::model::Document  type  measured  src/model.rs:1",
         "struct Document { title: String }",
         "core::Client  type  measured  src/client.rs:1",
-        "struct Client { name: String }",
+        "struct Client { name: String, .. }",
         "core::Client::new  method  measured  src/client.rs:7",
         "fn new(_: &str) -> Client;",
     ] {
@@ -911,5 +911,507 @@ fn a_tree_with_no_typescript_path_derives_only_rust_surfaces() {
         gate["graph"]["dispatches"],
         serde_json::json!({"rust": 2, "typescript": 0}),
         "{report}"
+    );
+}
+
+/// A crate whose root holds `lib` alone, committed as the base.
+fn crate_of(tree: &Tree, lib: &str) {
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write("src/lib.rs", lib);
+    tree.base();
+}
+
+/// A package whose one entry file holds `index`, committed as the base.
+fn package_of(tree: &Tree, index: &str) {
+    tree.write("klin.json", "{}");
+    tree.write(
+        "web/package.json",
+        r#"{"name":"a","types":"./src/index.ts"}"#,
+    );
+    tree.write("web/src/index.ts", index);
+    tree.base();
+}
+
+#[test]
+fn non_exhaustive_added_to_a_type_or_a_variant_fails_and_was_and_now_differ() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "pub struct S {\n    pub a: u8,\n}\npub enum E {\n    A,\n    B { x: u8 },\n}\n",
+    );
+    tree.write(
+        "src/lib.rs",
+        "/// A point.\n#[non_exhaustive]\n#[derive(Debug)]\npub struct S {\n    pub a: u8,\n}\n#[derive(Debug)]\npub enum E {\n    A,\n    #[non_exhaustive]\n    B { x: u8 },\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new compatibility break(s)"), "{}", run.out);
+    assert!(
+        run.says("was `struct S { a: u8 }`, now `#[non_exhaustive] struct S { a: u8 }`"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says(
+            "was `enum E { A, B { x: u8 } }`, now `enum E { A, #[non_exhaustive] B { x: u8 } }`"
+        ),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_private_field_added_to_a_struct_whose_fields_were_all_public_fails() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "pub struct S {\n    pub a: u8,\n}\npub struct T {\n    pub a: u8,\n    b: u8,\n}\n",
+    );
+    tree.write(
+        "src/lib.rs",
+        "pub struct S {\n    pub a: u8,\n    b: u8,\n}\npub struct T {\n    pub a: u8,\n    b: u8,\n    #[cfg(unix)]\n    c: u8,\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(
+        run.says("was `struct S { a: u8 }`, now `struct S { a: u8, .. }`"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("T (type)"), "{}", run.out);
+}
+
+#[test]
+fn a_default_body_removed_from_a_trait_method_fails() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "pub trait Tr {\n    fn f(&self) -> u8 {\n        1\n    }\n}\n",
+    );
+    tree.write(
+        "src/lib.rs",
+        "pub trait Tr {\n    fn f(&self) -> u8 {\n        2\n    }\n}\n",
+    );
+    let green = by_hand(&tree);
+    tree.write("src/lib.rs", "pub trait Tr {\n    fn f(&self) -> u8;\n}\n");
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says(
+            "was `trait Tr { fn f(&self) -> u8 { .. } }`, now `trait Tr { fn f(&self) -> u8; }`"
+        ),
+        "{}",
+        red.out
+    );
+}
+
+const OVERLOADS: &str = "export function parse(input: string): string;\nexport function parse(input: number): number;\nexport function parse(input: string | number): string | number {\n    return input;\n}\n";
+
+#[test]
+fn a_change_that_only_reorders_an_overload_set_in_one_file_fails() {
+    let tree = Tree::new();
+    package_of(&tree, OVERLOADS);
+    tree.write(
+        "web/src/index.ts",
+        &OVERLOADS.replace(
+            "input: string | number): string | number",
+            "input: any): any",
+        ),
+    );
+    let green = by_hand(&tree);
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export function parse(input: number): number;\nexport function parse(input: string): string;\nexport function parse(input: any): any {\n    return input;\n}\n",
+    );
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert!(
+        listed.says("function parse(_: string): string; function parse(_: number): number\n"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `function parse(_: string): string; function parse(_: number): number`, now `function parse(_: number): number; function parse(_: string): string`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn a_trailing_default_is_optional_and_a_default_a_required_parameter_follows_is_not() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export function f(a: number, unit: \"m\" | \"km\" = \"m\"): number {\n    return a;\n}\nexport function g(unit: string = \"m\", a: number): number {\n    return a;\n}\n",
+    );
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export function f(a: number, unit?: \"m\" | \"km\"): number {\n    return a;\n}\nexport function g(unit: string = \"km\", a: number): number {\n    return a;\n}\n",
+    );
+
+    let green = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export function f(a: number, unit?: \"m\" | \"km\"): number {\n    return a;\n}\nexport function g(unit: string, a: number): number {\n    return a;\n}\n",
+    );
+
+    let red = by_hand(&tree);
+
+    assert!(
+        listed.says("function f(_: number, _?: \"m\" | \"km\"): number")
+            && listed.says("function g(_: string = .., _: number): number"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `function g(_: string = .., _: number): number`, now `function g(_: string, _: number): number`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn an_optional_property_added_to_an_exported_interface_fails_and_the_remedy_names_the_additive_route()
+ {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export interface Point {\n    lat: number;\n    lon: number;\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export interface Point {\n    height?: number;\n    lat: number;\n    lon: number;\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("Point (type)"), "{}", run.out);
+    assert!(
+        run.says("a new item beside the unchanged one keeps the base's contract"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Do not change what the task asked for only to satisfy this gate"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_removed_module_prints_as_one_group_and_json_keeps_each_item() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write("src/lib.rs", "pub mod cmd;\npub mod other;\n");
+    tree.write("src/cmd.rs", "pub fn run() {}\n");
+    tree.write("src/other.rs", "pub fn go() {}\n");
+    tree.base();
+    tree.remove("src/cmd.rs");
+    tree.remove("src/other.rs");
+    tree.write("src/lib.rs", "pub fn kept() {}\n");
+
+    let run = by_hand(&tree);
+    let json = tree.run(&["gate", "--gate", "public-api", "--json"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    let lines: Vec<&str> = run.out.lines().collect();
+    for (module, item) in [
+        ("cmd (module)", "cmd::run (function)"),
+        ("other (module)", "other::go (function)"),
+    ] {
+        let lead = lines
+            .iter()
+            .position(|line| line.starts_with("  core:") && line.contains(module))
+            .unwrap_or_else(|| panic!("no {module} line: {}", run.out));
+        assert!(
+            lines[lead + 1].starts_with("    core:") && lines[lead + 1].contains(item),
+            "{}",
+            run.out
+        );
+    }
+    let report = json.json();
+    let texts: Vec<&str> = report["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|finding| finding["text"].as_str())
+        .collect();
+    assert_eq!(texts.len(), 4, "{}", json.out);
+    assert!(texts.contains(&"cmd::run (function)"), "{}", json.out);
+}
+
+#[test]
+fn a_method_overload_set_keeps_its_source_order_and_drops_its_implementation() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class L {\n    m(x: string): string;\n    m(x: number): number;\n    m(x: string | number): string | number {\n        return x;\n    }\n    get v(): number {\n        return 1;\n    }\n}\nexport interface I {\n    (x: string): string;\n    (x: number): number;\n    f(x: string): void;\n    f(x: number): void;\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class L {\n    m(x: string): string;\n    m(x: number): number;\n    m(x: any): any {\n        return x;\n    }\n    get v(): number {\n        return 1;\n    }\n}\nexport interface I {\n    (x: string): string;\n    (x: number): number;\n    f(x: string): void;\n    f(x: number): void;\n}\n",
+    );
+    let green = by_hand(&tree);
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class L {\n    m(x: string): string;\n    m(x: number): number;\n    m(x: any): any {\n        return x;\n    }\n    get v(): number {\n        return 1;\n    }\n}\nexport interface I {\n    (x: number): number;\n    (x: string): string;\n    f(x: number): void;\n    f(x: string): void;\n}\n",
+    );
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert!(
+        listed.says("class L { get v(): number; m(_: string): string; m(_: number): number }"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `interface I { (_: string): string; (_: number): number; f(_: string): void; f(_: number): void }`, now `interface I { (_: number): number; (_: string): string; f(_: number): void; f(_: string): void }`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn methods_whose_keys_hold_brackets_stay_distinct_and_an_overload_key_ignores_access_and_async() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    [Symbol.for(\"a\")](x: string): void {}\n    [Symbol.for(\"b\")](x: string): void {}\n    public m(a: string): string;\n    m(a: number): number;\n    async m(a: any): Promise<any> {\n        return a;\n    }\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    [Symbol.for(\"a\")](x: string): void {}\n    [Symbol.for(\"b\")](x: string): void {}\n    public m(a: string): string;\n    m(a: number): number;\n    async m(a: string | number): Promise<unknown> {\n        return a;\n    }\n}\n",
+    );
+    let green = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    [Symbol.for(\"a\")](x: string): void {}\n    [Symbol.for(\"b\")](x: number): void {}\n    m(a: number): number;\n    public m(a: string): string;\n    async m(a: any): Promise<any> {\n        return a;\n    }\n}\n",
+    );
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `class C { [Symbol.for(\"a\")](_: string): void; [Symbol.for(\"b\")](_: string): void; public m(_: string): string; m(_: number): number }`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn a_default_removed_from_a_trait_const_fails() {
+    let tree = Tree::new();
+    crate_of(&tree, "pub trait Tr {\n    const N: u8 = 1;\n}\n");
+    tree.write("src/lib.rs", "pub trait Tr {\n    const N: u8 = 2;\n}\n");
+    let green = by_hand(&tree);
+    tree.write("src/lib.rs", "pub trait Tr {\n    const N: u8;\n}\n");
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `trait Tr { const N: u8 = ..; }`, now `trait Tr { const N: u8; }`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn reordering_the_cfg_declarations_of_one_rust_item_passes() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "#[cfg(unix)]\npub fn f(_: u8) {}\n#[cfg(not(unix))]\npub fn f(_: u16) {}\n",
+    );
+    tree.write(
+        "src/lib.rs",
+        "#[cfg(not(unix))]\npub fn f(_: u16) {}\n#[cfg(unix)]\npub fn f(_: u8) {}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    for root in ["a", "b"] {
+        tree.write(&format!("{root}/Cargo.toml"), PACKAGE);
+        tree.write(
+            &format!("{root}/src/lib.rs"),
+            "pub mod m {\n    pub fn f() {}\n    pub mod n {\n        pub fn g() {}\n    }\n}\n",
+        );
+    }
+    tree.base();
+    for root in ["a", "b"] {
+        tree.write(&format!("{root}/src/lib.rs"), "pub fn kept() {}\n");
+    }
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    let printed = run
+        .out
+        .lines()
+        .filter(|line| line.trim_start().starts_with("core:"))
+        .count();
+    assert!(run.says("8 new compatibility break(s)"), "{}", run.out);
+    assert_eq!(printed, 8, "{}", run.out);
+}
+
+#[test]
+fn quoted_method_names_that_hold_brackets_stay_distinct() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    \"x(a\"(): void {}\n    \"x(b\"(): void {}\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    \"x(a\"(): void {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("C (type)"), "{}", run.out);
+}
+
+#[test]
+fn a_constructor_implementation_that_leaves_the_set_keeps_its_parameter_properties() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    constructor(a: string);\n    constructor(public a: any, private b?: number) {}\n}\n",
+    );
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    constructor(a: string);\n    constructor(a: any, private b?: number) {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert!(
+        listed.says("class C { constructor(_: string); public a: any }"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+}
+
+#[test]
+fn a_quoted_overload_name_is_the_same_name_and_a_this_parameter_shows() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    \"m\"(a: string): void;\n    m(a: any) {}\n}\nexport function h(this: Date, a: string): void {}\n",
+    );
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    \"m\"(a: string): void;\n    m(a: unknown) {}\n}\nexport function h(x: Date, a: string): void {}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert!(
+        listed.says("function h(this: Date, _: string): void"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("h (function)") && !run.says("C (type)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_defaulted_parameter_property_is_not_an_optional_one() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    constructor(public a: number = 1) {}\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    constructor(public a?: number) {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `class C { constructor(public a: number = ..) }`"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_reorder_of_overloads_whose_names_are_quoted_fails_and_a_private_constructor_shows() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export interface I {\n    f(a: string): string;\n    [\"f\"](a: unknown): number;\n}\nexport class K {\n    n(): void {}\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export interface I {\n    [\"f\"](a: unknown): number;\n    f(a: string): string;\n}\nexport class K {\n    private constructor() {}\n    n(): void {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("I (type)") && run.says("K (type)"), "{}", run.out);
+    assert!(run.says("private constructor()"), "{}", run.out);
+}
+
+#[test]
+fn an_object_type_literal_keeps_its_overloads_in_source_order() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export type T = {\n    f(x: string): string;\n    f(x: number): number;\n};\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export type T = {\n    f(x: number): number;\n    f(x: string): string;\n};\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `type T = { f(_: string): string; f(_: number): number; }`"),
+        "{}",
+        run.out
     );
 }

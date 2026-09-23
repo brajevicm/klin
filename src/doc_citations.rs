@@ -214,6 +214,7 @@ fn evaluator() -> Evaluator<'static> {
         fix_advice: REMEDY,
         ceiling: None,
         format_metrics: show,
+        nested: None,
     }
 }
 

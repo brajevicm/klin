@@ -54,6 +54,7 @@ const CONTRACTED: &[&str] = &[
 ];
 
 /// What never reaches a canonical contract: comments, attributes and the item's own modifier.
+/// `noise` lets a directly written `#[non_exhaustive]` through.
 const NOISE: &[&str] = &[
     "line_comment",
     "block_comment",
@@ -155,27 +156,103 @@ fn type_name(node: Node, source: &[u8]) -> Option<String> {
     }
 }
 
-/// The declared contract of one item, canonical, and `None` for a form V1 does not cover.
+/// The declared contract of one item, canonical, and `None` for a form V1 does not cover. A
+/// `#[non_exhaustive]` written above the item leads it.
 fn contract(node: Node, source: &[u8]) -> Option<String> {
-    CONTRACTED
-        .contains(&node.kind())
-        .then(|| spelled(node, source, &|held| spelling(held, source)))
+    if !CONTRACTED.contains(&node.kind()) {
+        return None;
+    }
+    let spelled = spelled(node, source, &|held| spelling(held, source));
+    Some(match outer_non_exhaustive(node, source) {
+        true => format!("#[non_exhaustive] {spelled}"),
+        false => spelled,
+    })
+}
+
+/// Whether a `#[non_exhaustive]` stands among the attributes and comments directly above a node.
+fn outer_non_exhaustive(node: Node, source: &[u8]) -> bool {
+    let mut above = node.prev_named_sibling();
+    while let Some(held) = above.filter(|held| NOISE.contains(&held.kind())) {
+        if non_exhaustive(held, source) {
+            return true;
+        }
+        above = held.prev_named_sibling();
+    }
+    false
+}
+
+/// Whether an attribute item is `#[non_exhaustive]` written directly, and not through
+/// `#[cfg_attr(...)]`.
+fn non_exhaustive(node: Node, source: &[u8]) -> bool {
+    node.kind() == "attribute_item"
+        && node
+            .named_child(0)
+            .filter(|held| held.kind() == "attribute" && held.named_child_count() == 1)
+            .and_then(|held| held.named_child(0))
+            .is_some_and(|name| text_of(name, source) == "non_exhaustive")
 }
 
 /// How one node is spelled in a canonical contract: bodies, initializers, comments, attributes,
-/// modifiers and binding names leave, a private field leaves, a private tuple position becomes
-/// `_`, and everything else is kept as written.
+/// modifiers and binding names leave, a trait method's default body is `{ .. }`, a private
+/// named field leaves and puts `..` in its struct's field list, a private tuple position
+/// becomes `_`, a `#[non_exhaustive]` stays, and everything else is kept as written.
 fn spelling(node: Node, source: &[u8]) -> Spelling {
     let parent_kind = node.parent().map_or("", |held| held.kind());
-    if NOISE.contains(&node.kind()) || initializer(node, parent_kind) {
+    if noise(node, parent_kind, source) {
         return Spelling::Skip;
     }
     match node.kind() {
-        "block" if parent_kind == "function_item" => Spelling::Replace(";".to_string()),
+        "block" if parent_kind == "function_item" => body(node),
+        _ if initializer(node, parent_kind) && node.kind() != "=" => {
+            Spelling::Replace("..".to_string())
+        }
+        "field_declaration_list" => fields(node, parent_kind, source),
         "parameter" => parameter(node, source),
         "string_literal" => Spelling::Replace(text_of(node, source)),
         _ => field(node, parent_kind, source),
     }
+}
+
+/// Whether a node never reaches a canonical contract: a comment, an attribute other than
+/// `#[non_exhaustive]`, the item's own modifier, or the `=` and initializer of a `const` or
+/// `static` outside a trait. A trait's default `const` keeps `= ..`, because an implementor may
+/// rely on it.
+fn noise(node: Node, parent_kind: &str, source: &[u8]) -> bool {
+    let in_trait = above(node, &["trait_item"]).is_some();
+    (NOISE.contains(&node.kind()) && !non_exhaustive(node, source))
+        || (!in_trait && initializer(node, parent_kind))
+}
+
+/// A function's body: `{ .. }` for a trait method's default body, which an implementor may
+/// rely on, and `;` everywhere else.
+fn body(node: Node) -> Spelling {
+    let in_trait = node
+        .parent()
+        .is_some_and(|held| above(held, &["trait_item"]).is_some());
+    Spelling::Replace(if in_trait { "{ .. }" } else { ";" }.to_string())
+}
+
+/// A struct's named fields as the public ones and a closing `..` where any field is private, so
+/// adding the first private field changes the contract and adding another does not. A variant's
+/// fields stay as written.
+fn fields(list: Node, parent_kind: &str, source: &[u8]) -> Spelling {
+    if parent_kind != "struct_item" {
+        return Spelling::Keep;
+    }
+    let mut cursor = list.walk();
+    let (public, private): (Vec<Node>, Vec<Node>) = list
+        .named_children(&mut cursor)
+        .filter(|held| held.kind() == "field_declaration")
+        .partition(|held| visibility(*held, source) == Visibility::Public);
+    if private.is_empty() {
+        return Spelling::Keep;
+    }
+    let mut shown: Vec<String> = public
+        .into_iter()
+        .map(|held| spelled(held, source, &|inner| spelling(inner, source)))
+        .collect();
+    shown.push("..".to_string());
+    Spelling::Replace(format!("{{ {} }}", shown.join(", ")))
 }
 
 /// Whether this node is the `=` or the value of a `const` or `static`.

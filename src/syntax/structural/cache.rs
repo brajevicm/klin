@@ -17,7 +17,7 @@ use crate::syntax::{LANGUAGES, Language};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
-const EPOCH: u64 = 3;
+const EPOCH: u64 = 4;
 
 const MAGIC: &[u8] = b"klin structural cache\n";
 const KEPT: usize = 4;

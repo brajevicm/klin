@@ -176,9 +176,11 @@ fn has_token(node: Node, token: &str) -> bool {
 }
 
 /// The declared contract of one declaration, canonical, and `None` for a class member, whose
-/// contract is part of its class.
+/// contract is part of its class. An implementation that follows its overload signatures adds
+/// nothing to the set and is empty.
 fn contract(node: Node, source: &[u8]) -> Option<String> {
     match node.kind() {
+        _ if implementation(node, source) => Some(String::new()),
         kind if FUNCTION_LIKE.contains(&kind) && above(node, &["class_body"]).is_none() => {
             Some(function_like(node, source))
         }
@@ -190,6 +192,34 @@ fn contract(node: Node, source: &[u8]) -> Option<String> {
         | "enum_declaration" => Some(canonical(node, source)),
         _ => None,
     }
+}
+
+/// Whether a function declaration directly follows an overload signature of its own name, so a
+/// consumer never calls it.
+fn implementation(node: Node, source: &[u8]) -> bool {
+    if !matches!(
+        node.kind(),
+        "function_declaration" | "generator_function_declaration"
+    ) {
+        return false;
+    }
+    let name = |held: Node| {
+        held.child_by_field_name("name")
+            .map(|name| text_of(name, source))
+    };
+    let at = node
+        .parent()
+        .filter(|held| held.kind() == "export_statement")
+        .unwrap_or(node);
+    let mut before = at.prev_named_sibling();
+    while let Some(held) = before.filter(|held| held.kind() == "comment") {
+        before = held.prev_named_sibling();
+    }
+    let signature = match before {
+        Some(held) if held.kind() == "export_statement" => held.child_by_field_name("declaration"),
+        other => other,
+    };
+    signature.is_some_and(|held| held.kind() == "function_signature" && name(held) == name(node))
 }
 
 fn canonical(node: Node, source: &[u8]) -> String {
@@ -253,11 +283,32 @@ fn spelling(node: Node, source: &[u8]) -> Spelling {
 }
 
 /// One parameter: its accessibility where it declares a property, `_` for a binding name that
-/// is no contract, `...` for a rest parameter, `?` where optional, and its type or `?`.
+/// is no contract, `...` for a rest parameter, `?` where a caller may omit it, and its type or
+/// `?`. A default no required parameter follows makes it omittable. A default a required
+/// parameter follows shows as `= ..`, because a caller passes `undefined` to reach it. Its value
+/// never shows.
 fn parameter(node: Node, source: &[u8]) -> String {
+    let modifiers = modifiers(node, source);
+    let pattern = node.child_by_field_name("pattern");
+    let rest = pattern.is_some_and(|held| held.kind() == "rest_pattern");
+    let name = match (modifiers.is_empty(), pattern) {
+        (false, Some(held)) => text_of(held, source),
+        (true, Some(held)) if held.kind() == "this" => "this".to_string(),
+        _ if rest => "..._".to_string(),
+        _ => "_".to_string(),
+    };
+    let (optional, reached) = omission(node, !modifiers.is_empty());
+    let mut out = modifiers.join(" ");
+    if !out.is_empty() {
+        out.push(' ');
+    }
+    format!("{out}{name}{optional}{}{reached}", annotated(node, source))
+}
+
+/// The modifiers that make a constructor parameter declare a property of its class.
+fn modifiers(node: Node, source: &[u8]) -> Vec<String> {
     let mut cursor = node.walk();
-    let modifiers: Vec<String> = node
-        .children(&mut cursor)
+    node.children(&mut cursor)
         .filter(|child| {
             matches!(
                 child.kind(),
@@ -265,38 +316,158 @@ fn parameter(node: Node, source: &[u8]) -> String {
             )
         })
         .map(|child| text_of(child, source))
-        .collect();
-    let pattern = node.child_by_field_name("pattern");
-    let rest = pattern.is_some_and(|held| held.kind() == "rest_pattern");
-    let name = match (modifiers.is_empty(), pattern) {
-        (false, Some(held)) => text_of(held, source),
-        _ if rest => "..._".to_string(),
-        _ => "_".to_string(),
+        .collect()
+}
+
+/// The public and protected properties a constructor declares through its parameters, each
+/// spelled as a member of its class: its modifiers, its name, `?` where optional, and its type.
+fn properties(constructor: Node, source: &[u8]) -> Vec<String> {
+    let Some(list) = constructor.child_by_field_name("parameters") else {
+        return Vec::new();
     };
-    let optional = if node.kind() == "optional_parameter" {
-        "?"
-    } else {
-        ""
-    };
-    let mut out = modifiers.join(" ");
-    if !out.is_empty() {
-        out.push(' ');
+    let mut cursor = list.walk();
+    list.named_children(&mut cursor)
+        .filter_map(|held| {
+            let modifiers = modifiers(held, source);
+            let name = held.child_by_field_name("pattern")?;
+            let optional = if held.kind() == "optional_parameter" {
+                "?"
+            } else {
+                ""
+            };
+            (!modifiers.is_empty() && !modifiers.iter().any(|modifier| modifier == "private")).then(
+                || {
+                    format!(
+                        "{} {}{optional}{}",
+                        modifiers.join(" "),
+                        text_of(name, source),
+                        annotated(held, source)
+                    )
+                },
+            )
+        })
+        .collect()
+}
+
+/// How a caller may leave a parameter out: `?` where it is optional or its default no required
+/// parameter follows, and ` = ..` where a required parameter follows its default. A default on
+/// a parameter that declares a property is always ` = ..`, because the property it declares is
+/// never `undefined` the way an optional one may be.
+fn omission(node: Node, property: bool) -> (&'static str, &'static str) {
+    let defaulted = node.child_by_field_name("value").is_some();
+    match (node.kind() == "optional_parameter", defaulted) {
+        (true, _) => ("?", ""),
+        (false, true) if property || required_after(node) => ("", " = .."),
+        (false, true) => ("?", ""),
+        (false, false) => ("", ""),
     }
-    format!("{out}{name}{optional}{}", annotated(node, source))
+}
+
+/// Whether a required parameter follows this one: one with no `?`, no default and no rest.
+fn required_after(node: Node) -> bool {
+    let mut after = node.next_named_sibling();
+    while let Some(held) = after {
+        let rest = held
+            .child_by_field_name("pattern")
+            .is_some_and(|pattern| pattern.kind() == "rest_pattern");
+        if held.kind() == "required_parameter"
+            && held.child_by_field_name("value").is_none()
+            && !rest
+        {
+            return true;
+        }
+        after = held.next_named_sibling();
+    }
+    false
 }
 
 /// The members of a class or interface body, each spelled, private ones left out, in one order
 /// whatever order the source wrote them in.
 fn members(body: Node, source: &[u8]) -> String {
-    let mut cursor = body.walk();
-    let mut listed: Vec<String> = body
-        .named_children(&mut cursor)
-        .filter(|child| MEMBERS.contains(&child.kind()) && !private(*child, source))
-        .map(|child| member(child, source))
-        .collect();
+    let mut listed = overload_sets(body, source);
     listed.sort();
     listed.dedup();
     format!("{{ {} }}", listed.join("; "))
+}
+
+/// The public members of a body, one entry each, except that the overloads of one method, call
+/// or construct signature share an entry in source order, and an implementation that directly
+/// follows them leaves, keeping only the properties a constructor declares through its
+/// parameters.
+fn overload_sets(body: Node, source: &[u8]) -> Vec<String> {
+    let mut cursor = body.walk();
+    let mut sets: Vec<(Option<String>, Vec<String>)> = Vec::new();
+    let mut signed: Option<String> = None;
+    for child in body
+        .named_children(&mut cursor)
+        .filter(|child| listed(*child, source))
+    {
+        let key = overloadable(child, source);
+        let implementation = child.kind() == "method_definition";
+        let follows = key.is_some() && signed == key;
+        signed = key.clone().filter(|_| !implementation);
+        if implementation && follows {
+            sets.extend(
+                properties(child, source)
+                    .into_iter()
+                    .map(|held| (None, vec![held])),
+            );
+            continue;
+        }
+        joined(&mut sets, key, member(child, source));
+    }
+    sets.into_iter()
+        .map(|(_, texts)| texts.join("; "))
+        .collect()
+}
+
+/// Whether a body lists this member in its contract: a member that is not private, and a
+/// private constructor, because it stops a consumer constructing the class.
+fn listed(node: Node, source: &[u8]) -> bool {
+    let constructor = node
+        .child_by_field_name("name")
+        .is_some_and(|name| text_of(name, source) == "constructor");
+    MEMBERS.contains(&node.kind()) && (constructor || !private(node, source))
+}
+
+/// One member's text added to the overload set its key names, or to a set of its own.
+fn joined(sets: &mut Vec<(Option<String>, Vec<String>)>, key: Option<String>, text: String) {
+    let set = key
+        .as_ref()
+        .and_then(|key| sets.iter_mut().find(|(held, _)| held.as_ref() == Some(key)));
+    match set {
+        Some((_, texts)) => texts.push(text),
+        None => sets.push((key, vec![text])),
+    }
+}
+
+/// What one overload set of a body is known by: the kind of signature, `static`, `get` or `set`
+/// where written, and the name without the quotes or brackets a string name is written in. Accessibility
+/// and `async` are no part of it, and a member that has no overloads has none.
+fn overloadable(node: Node, source: &[u8]) -> Option<String> {
+    let kind = match node.kind() {
+        "method_definition" | "method_signature" | "abstract_method_signature" => "method",
+        "call_signature" => "call",
+        "construct_signature" => "construct",
+        _ => return None,
+    };
+    let mut key = kind.to_string();
+    for mark in ["static", "get", "set"] {
+        if has_token(node, mark) {
+            key.push(' ');
+            key.push_str(mark);
+        }
+    }
+    if let Some(name) = node.child_by_field_name("name") {
+        key.push(' ');
+        let written = text_of(name, source);
+        let computed = written
+            .strip_prefix('[')
+            .and_then(|inner| inner.strip_suffix(']'))
+            .filter(|inner| inner.starts_with(['"', '\'']));
+        key.push_str(computed.unwrap_or(&written).trim_matches(['"', '\'']));
+    }
+    Some(key)
 }
 
 fn member(node: Node, source: &[u8]) -> String {

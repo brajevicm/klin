@@ -136,6 +136,7 @@ pub const KIND: Kind = Kind {
                      decision for a person, in the config, in a reviewed commit.",
         ceiling: None,
         format_metrics: show,
+        nested: None,
     },
 };
 

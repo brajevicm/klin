@@ -1216,6 +1216,55 @@ fn a_fix_in_a_later_prompt_of_the_same_turn_still_tells_the_count() {
     );
 }
 
+/// A library crate with `lib` as its root, hooked and committed as the base.
+fn library(lib: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"build": [], "escapes": {"in": "src"}}"#);
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"core\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("src/lib.rs", lib);
+    tree.base();
+    tree
+}
+
+#[test]
+fn a_red_pass_through_whose_open_regressions_are_all_public_api_names_the_breaks_not_a_count() {
+    let tree = library("pub fn parse() {}\npub fn render() {}\n");
+    prompt(&tree);
+    tree.write("src/lib.rs", "pub fn kept() {}\n");
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+
+    let through = hook(&tree, A_SECOND_STOP);
+    let counted = tree.run(&["stats", "--turn"]);
+
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert_eq!(
+        told(&through),
+        "Public API compatibility breaks still need your attention. `klin stats --turn` shows them.",
+        "{}",
+        through.out
+    );
+    assert!(
+        counted.says("2 regressions need your attention."),
+        "{}",
+        counted.out
+    );
+
+    let mixed = library("pub fn parse() {}\n");
+    prompt(&mixed);
+    mixed.write("src/lib.rs", &an_escape());
+    assert_eq!(hook(&mixed, A_STOP).code, 2);
+    let through = hook(&mixed, A_SECOND_STOP);
+    assert_eq!(
+        told(&through),
+        "2 regressions still need your attention. `klin stats --turn` shows them.",
+        "{}",
+        through.out
+    );
+}
+
 /// A journal whose last weekly line went out eight days ago, from a stop under a stamp long gone.
 fn weekly_eight_days_ago(tree: &Tree) {
     let mut old = stop(8 * DAY, false, vec![], vec![]);

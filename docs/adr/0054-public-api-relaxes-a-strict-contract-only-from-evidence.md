@@ -77,25 +77,34 @@ shows every fact whose change breaks a consumer:
 - a Rust struct with a private named field renders `..` in its field list,
   whether or not the field sits under `#[cfg]`;
 - a Rust trait method with a default body renders `{ .. }` where one without
-  renders `;`;
+  renders `;`, and a trait's associated `const` with a default renders
+  `= ..`;
 - a TypeScript overload set keeps the source order of its signatures inside
   one file, because overload resolution follows it, and groups from different
   files are ordered by their text, so a renamed file never changes a contract
-  (ADR 0001);
+  (ADR 0001). This holds for functions and for the methods, call signatures
+  and construct signatures of a class or interface, and an object type
+  literal keeps all its members in source order. The `cfg`
+  declarations of one Rust item are not an overload set and are ordered by
+  their text;
 - a TypeScript implementation signature that follows overload signatures
-  leaves the set, because a consumer never calls it;
+  leaves the set, because a consumer never calls it, while the public and
+  protected properties a constructor implementation declares through its
+  parameters stay as members of the class;
 - a TypeScript parameter with a default carries the optional marker when no
   required parameter follows it, because a caller may then omit it. A default
-  that a required parameter follows carries no marker. The initializer stays
-  out of the contract.
+  that a required parameter follows carries no optional marker, because a
+  caller cannot omit it, and renders as `= ..`, because a caller passes
+  `undefined` to reach it. The initializer stays out of the contract.
 
 An attribute written through `#[cfg_attr(...)]` stays out of the contract,
 which is a known limit.
 
 So `#[non_exhaustive]` added to a type or a variant, a private field added to
-a struct whose fields were all public, a default body removed from a trait
-method, and a change that only reorders overloads each fail. Each passes today
-without a finding. The same binary renders both trees, so a contract that did
+a struct whose fields were all public, a default body or a default `const`
+removed from a trait, a default removed from a TypeScript parameter that a
+required parameter follows, and a change that only reorders overloads each
+fail. Each passes today without a finding. The same binary renders both trees, so a contract that did
 not change still compares equal.
 
 Two invariants hold for every contract from now on:
@@ -294,9 +303,10 @@ only. JSON and journal identities and accepted entries stay per finding.
 - SPEC 9.5 says the turn-end line and the report of 11.5 use the same words
   and the same counting rule. The public-api-only line keeps the counting and
   changes the words, so #304 amends 9.5 to name that exception.
-- Four breaks that pass today fail: `#[non_exhaustive]` added, a private field
-  added to a struct whose fields were all public, a default body removed, and
-  overloads reordered.
+- Breaks that pass today fail: `#[non_exhaustive]` added, a private field
+  added to a struct whose fields were all public, a default body or a default
+  `const` removed from a trait, a default removed before a required
+  TypeScript parameter, and overloads reordered.
 - The b647fbfa8993 final tree still fails, and the remedy names the additive
   route the oracle expected.
 - Intended additive growth still blocks once. The agent says the change is

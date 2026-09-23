@@ -481,6 +481,9 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
     comparison
 }
 
+/// For each new finding, the one whose group it prints inside, or `None` where it leads.
+pub type Nesting = fn(&[Finding]) -> Vec<Option<usize>>;
+
 pub struct Evaluator<'a> {
     pub metrics: &'a [&'a str],
     pub unit: &'a str,
@@ -491,6 +494,10 @@ pub struct Evaluator<'a> {
     /// Spec 4.7, 8.6.
     pub ceiling: Option<&'a str>,
     pub format_metrics: fn(&Values) -> String,
+    /// For each new finding, the one whose group it prints inside, for a gate whose text report
+    /// groups what one change took away. A lead is a finding that prints inside no group.
+    /// Presentation only: every finding keeps its own identity, record and count.
+    pub nested: Option<Nesting>,
 }
 
 impl Evaluator<'_> {
@@ -619,16 +626,20 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
             evaluator.condition,
             held
         );
-        for finding in &comparison.unmatched_findings {
-            let _ = writeln!(
-                out,
-                "  {}:{}  {}  {}{}",
-                finding.file,
-                finding.line,
-                (evaluator.format_metrics)(&finding.values),
-                clip(&finding.text),
-                against(None, evaluator)
-            );
+        let found = &comparison.unmatched_findings;
+        for (lead, inside) in grouped(found, evaluator.nested) {
+            let members = inside.into_iter().map(|at| ("  ", &found[at]));
+            for (indent, finding) in std::iter::once(("", &found[lead])).chain(members) {
+                let _ = writeln!(
+                    out,
+                    "  {indent}{}:{}  {}  {}{}",
+                    finding.file,
+                    finding.line,
+                    (evaluator.format_metrics)(&finding.values),
+                    clip(&finding.text),
+                    against(None, evaluator)
+                );
+            }
         }
     }
     if !comparison.rose.is_empty() {
@@ -653,6 +664,31 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
         }
     }
     let _ = writeln!(out, "{}", evaluator.fix_advice);
+}
+
+/// Every new finding once, as the leads in their order, each with the findings that print inside
+/// its group. A finding whose named lead is itself inside a group, or out of range, leads.
+fn grouped(found: &[Finding], nested: Option<Nesting>) -> Vec<(usize, Vec<usize>)> {
+    let under = nested.map_or_else(|| vec![None; found.len()], |nested| nested(found));
+    let lead = |at: usize| {
+        under
+            .get(at)
+            .copied()
+            .flatten()
+            .filter(|held| *held != at && under.get(*held).is_some_and(Option::is_none))
+    };
+    let mut groups: Vec<(usize, Vec<usize>)> = Vec::new();
+    let mut slot: Vec<Option<usize>> = vec![None; found.len()];
+    for at in (0..found.len()).filter(|at| lead(*at).is_none()) {
+        slot[at] = Some(groups.len());
+        groups.push((at, Vec::new()));
+    }
+    for at in 0..found.len() {
+        if let Some(group) = lead(at).and_then(|held| slot[held]) {
+            groups[group].1.push(at);
+        }
+    }
+    groups
 }
 
 /// What one failure was judged against: the `before` site it matched, or the accepted entry, or

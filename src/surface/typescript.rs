@@ -15,7 +15,7 @@ use crate::modules::{ModuleGraph, Topology, directory, joined};
 use crate::survey;
 use crate::syntax::structural::{DeclarationKind, Export, FileFacts, Visibility};
 
-const LANGUAGE: &str = "TypeScript";
+pub(super) const LANGUAGE: &str = "TypeScript";
 const MANIFEST: &str = "package.json";
 const SOURCE: &[&str] = &[".ts", ".tsx", ".mts", ".cts"];
 

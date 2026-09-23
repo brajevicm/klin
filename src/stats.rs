@@ -1263,12 +1263,22 @@ pub fn turn_end(root: &Path, tail: journal::Tail, this: Value) -> Vec<(&'static 
 }
 
 /// The turn in one sentence: what klin caught and what became of it, or what still needs the
-/// person. Nothing for a turn that caught none, and never a claim about who wrote the fix.
+/// person. Nothing for a turn that caught none, and never a claim about who wrote the fix. Where
+/// every open regression is a public-api break, it names the problem and not the count, because
+/// one intended removal can be several breaks. ADR 0054.
 fn turn_line(held: &[Regression]) -> Option<String> {
     let counts = Counts::of(held);
+    let public_api = held
+        .iter()
+        .filter(|one| one.outcome == Outcome::Open)
+        .all(|one| one.gate == check::PUBLIC_API);
     match (counts.open, counts.caught) {
         (0, 0) => None,
         (0, caught) => Some(caught_this("this turn", caught, counts.fixed)),
+        (_, _) if public_api => Some(
+            "Public API compatibility breaks still need your attention. `klin stats --turn` shows them."
+                .into(),
+        ),
         (1, _) => {
             Some("1 regression still needs your attention. `klin stats --turn` shows it.".into())
         }

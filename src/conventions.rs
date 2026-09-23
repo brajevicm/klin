@@ -366,6 +366,7 @@ fn judged(
         fix_advice: &rule.convention.remedy,
         ceiling: None,
         format_metrics: show,
+        nested: None,
     };
     Ok(evaluator.evaluate(
         now,
