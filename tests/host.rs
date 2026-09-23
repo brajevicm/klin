@@ -231,8 +231,9 @@ fn cursor_stop_measures_the_workspace_root_the_event_names() {
         &event.to_string(),
     );
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says(r#""followup_message":"#), "{}", run.out);
+    assert!(run.says("then stop again"), "{}", run.out);
     assert!(run.says("README.md"), "{}", run.out);
 }
 
@@ -242,6 +243,27 @@ fn cursor_reads_a_shell_command_off_the_event_itself() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(r#""permission":"deny""#), "{}", run.out);
     assert!(run.says("klin.json"), "{}", run.out);
+}
+
+/// Cursor 3.21.18 did not submit the `followup_message` of a stop hook that exited 2, and did
+/// submit one from a hook that exited 0, so a Cursor block exits 0. docs/cursor-compatibility.md.
+#[test]
+fn a_cursor_block_exits_0_and_is_journaled_as_a_block() {
+    let tree = cursor_failing();
+    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(blocked.code, 0, "{}", blocked.out);
+    assert!(blocked.says(r#""followup_message":"#), "{}", blocked.out);
+    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
+
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["hook"]["blocked"], true, "{line}");
+    assert_eq!(line["hook"]["gate_block"], 1, "{line}");
+    assert_eq!(line["exit"], 0, "{line}");
 }
 
 #[test]
@@ -261,7 +283,7 @@ fn cursor_stop_blocks_and_ignores_loop_count() {
     tree.words("README.md", 30);
 
     let blocked = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(blocked.code, 2, "{}", blocked.out);
+    assert_eq!(blocked.code, 0, "{}", blocked.out);
     assert!(blocked.says(r#""followup_message":"#), "{}", blocked.out);
     assert!(blocked.says("fix what each names"), "{}", blocked.out);
     assert!(!blocked.says("not blocking again"), "{}", blocked.out);
@@ -370,7 +392,7 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.words("README.md", 30);
     let first = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
     echo_followup(&tree, &first);
 
     let told = stop(&tree, A_CURSOR_STOP, &[]);
@@ -384,7 +406,7 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
 
     tree.words("README.md", 31);
     let second = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(second.code, 2, "{}", second.out);
+    assert_eq!(second.code, 0, "{}", second.out);
     assert!(second.says("gate block 2 of 2"), "{}", second.out);
     echo_followup(&tree, &second);
 
@@ -488,7 +510,7 @@ fn last_stop_flags(tree: &Tree) -> String {
 fn a_cursor_tell_is_told_once_per_prompt_and_a_new_message_still_gets_through() {
     let tree = cursor_failing();
     let blocked = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(blocked.code, 2, "{}", blocked.out);
+    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
     echo_followup(&tree, &blocked);
     let told = stop(&tree, A_CURSOR_STOP, &[]);
     assert!(told.says(r#""followup_message":"#), "{}", told.out);
@@ -558,7 +580,7 @@ fn a_person_prompt_lets_cursor_hear_the_same_message_again() {
 
     submit(&tree, "s1", &"keep going".into());
     let fresh = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(fresh.code, 2, "{}", fresh.out);
+    assert!(fresh.says("gate block 1 of 2"), "{}", fresh.out);
     echo_followup(&tree, &fresh);
     let retold = stop(&tree, A_CURSOR_STOP, &[]);
     assert_eq!(retold.code, 0, "{}", retold.out);
@@ -571,7 +593,7 @@ fn a_person_prompt_lets_cursor_hear_the_same_message_again() {
 fn a_second_cursor_session_does_not_refresh_the_first_sessions_budget() {
     let tree = cursor_failing();
     let blocked = stop(&tree, &cursor_stop("s1"), &[]);
-    assert_eq!(blocked.code, 2, "{}", blocked.out);
+    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
 
     let other = stop(&tree, &cursor_stop("s2"), &[]);
     assert_eq!(other.code, 0, "{}", other.out);
@@ -584,7 +606,7 @@ fn a_second_cursor_session_does_not_refresh_the_first_sessions_budget() {
 
     tree.words("README.md", 31);
     let second = stop(&tree, &cursor_stop("s1"), &[]);
-    assert_eq!(second.code, 2, "{}", second.out);
+    assert_eq!(second.code, 0, "{}", second.out);
     assert!(second.says("gate block 2 of 2"), "{}", second.out);
 }
 

@@ -136,14 +136,16 @@ impl Adapter for Cursor {
         }
     }
 
-    /// A stop that tells the person uses `followup_message`, which Cursor shows. A block uses
-    /// that field too, because Cursor's stop has no other channel, and still exits 2 so the
-    /// refusal holds if stdout goes unread — the same pairing as a deny. Spec 9.1.
+    /// A stop that tells the person uses `followup_message`, which Cursor submits as the next
+    /// prompt. A block uses that field too, because Cursor's stop has no other channel, and it
+    /// exits 0: Cursor 3.21.18 did not submit the follow-up of a stop hook that exited 2, and
+    /// did submit one from a hook that exited 0. Nothing enforces an exit-0 block, so a Cursor
+    /// that ignored stdout would let the turn end, which fails open. Spec 9.1.
     fn stop(&self, stop: &Stop) -> u8 {
         match stop {
             Stop::Block(text) => {
                 followup(text);
-                2
+                self.block_exit()
             }
             Stop::Pass => 0,
             Stop::Tell(text) => {
@@ -155,6 +157,10 @@ impl Adapter for Cursor {
 
     fn follows_up(&self) -> bool {
         true
+    }
+
+    fn block_exit(&self) -> u8 {
+        0
     }
 }
 

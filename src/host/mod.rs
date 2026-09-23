@@ -120,6 +120,11 @@ pub trait Adapter: Sync {
     fn stop(&self, stop: &Stop) -> u8 {
         emit(stop)
     }
+    /// The exit code a stop this host blocks ends with. The block itself is the report the
+    /// adapter delivered; the code is only the host's protocol for it. Spec 9.1.
+    fn block_exit(&self) -> u8 {
+        2
+    }
     /// Whether a blocked stop submits its report as another prompt. The caller records the
     /// exact report before delivery, so the matching prompt does not open a fresh turn.
     fn follows_up(&self) -> bool {

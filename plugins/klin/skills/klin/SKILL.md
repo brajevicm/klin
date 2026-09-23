@@ -15,7 +15,8 @@ The stop hook prints a lead line, then each gate that did not pass, with the
 derived values it used above its row and its own output below. A gate that
 passed prints only when it left a note you should read. In the hook the exit code is the host's
 protocol and not the verdict: exit 2 means "block this stop", and it does not
-mean that klin failed to run.
+mean that klin failed to run. On Cursor a block arrives as the next message
+instead, with exit 0.
 
 1. Read the site each finding names. A finding is one violation at one site,
    not a report about the whole file.

@@ -110,6 +110,18 @@ replacement, because the stop holding the lock may be writing the same
 stamp (spec 6.5). A genuine later prompt raises the counter and gets a
 fresh budget of two gate blocks and eight build blocks.
 
+**A Cursor block exits 0.** Two probe runs on Cursor 3.21.18 showed that
+Cursor does not submit the `followup_message` of a stop hook that exits 2, and
+does submit one from a hook that exits 0. A Cursor block therefore prints its
+report as `followup_message` and exits 0, which amends ADR 0045. The stop's
+run still reads the block as a block: the journal records it as blocked, the
+findings as asked, and the gate block by its number. Nothing enforces an exit-0
+block, so a Cursor that ignored stdout would let the turn end, which fails
+open. The same runs showed that `beforeSubmitPrompt` fires for an automatic
+follow-up and carries the text Cursor submitted. klin recognizes only its own
+report there, so another stop hook whose follow-up wins Cursor's merge still
+reads as a person's prompt. `docs/cursor-compatibility.md` records the runs.
+
 **ADR 0031 keeps its precedence.** A deleted test already asked about stays
 ask-once. It is a NOTE, it fails no gate, and it is no reason for gate block 2.
 A newly deleted test is a gate failure like any other and may spend a gate

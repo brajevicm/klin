@@ -2444,9 +2444,12 @@ shell event but did not enforce it. A question the host does not enforce
 fails closed, as it does on Codex. An allow is exit 0 with no stdout, matching
 Claude Code and Codex, so a user-scope plugin stays silent in a tree that
 never wrote `klin.json`. Stop blocks print a JSON
-`followup_message` on stdout and still
-exit 2, so the agent sees the report and the refusal holds where that answer
-goes unread — the same pairing as a deny. A stop that tells the
+`followup_message` on stdout and exit 0. Cursor 3.21.18 did not submit the
+follow-up of a stop hook that exited 2, and did submit one from a hook that
+exited 0 (measured 2026-09-23, `docs/cursor-compatibility.md`). Nothing
+enforces an exit-0 block: a Cursor that ignored stdout would let the turn
+end, which fails open. The journal still records the stop as blocked. A stop
+that tells the
 person writes a JSON `followup_message` on stdout under exit 0. Cursor submits
 that follow-up as the next user prompt. Before delivery, klin records a hash
 of the exact report or message in a handoff record, one file per session id
@@ -2492,8 +2495,10 @@ and no module outside the adapter names it. The adapter places the payload
 once and the resulting event carries its host, named tree and whether it is
 this prompt event; guard, gate and radius do not place or parse it again.
 
-In hook mode the exit code is the host's protocol, not the verdict. Exit 2
-means "block this stop", whatever caused it. The verdict of section 4.9 lives
+In hook mode the exit code is the host's protocol, not the verdict. On Claude
+Code, Codex and the harness protocol, exit 2 means "block this stop", whatever
+caused it. On Cursor a block is a `followup_message` under exit 0, as above.
+The verdict of section 4.9 lives
 in the report and in the `turn` file. Outside hook mode the exit code is the
 verdict.
 
@@ -3055,7 +3060,9 @@ failure, or an error alike — plus what only the hook knew:
 - `host`, the adapter's name, null where the event was unreadable.
 - `prompt`, the counter of 6.2 the stop ran under.
 - `hook` `{blocked, delivery, gate_spent, gate_blocks, gate_block,
-  build_blocks, blocked_before}`. `blocked` is whether this stop exited 2.
+  build_blocks, blocked_before}`. `blocked` is whether this stop blocked, whatever exit code its host takes
+  for a block (2 on Claude Code, Codex and the harness protocol, 0 on
+  Cursor, 9.1).
   `delivery` is `block` or `none`; `follow-up` and `report` are reserved for
   a host whose stop cannot block (#67). `gate_blocks` and `build_blocks` are
   the build stamp of 16.3 as this stop left it, and `gate_spent` is whether

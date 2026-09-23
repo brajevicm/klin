@@ -15,12 +15,27 @@ against a measured host rather than a guess.
 | session/prompt radius | `sessionStart`, `beforeSubmitPrompt` | each host names its own prompt event |
 | the tree | `cwd`, then the first `workspace_roots` entry | a user-scope hook runs from `~/.cursor`, not the workspace |
 | shell/MCP matcher | none written | those events name no tool, so a tool matcher would gate nothing |
-| Stop block | `followup_message` and exit 2 | stderr still holds the report; native stop has no other channel |
+| Stop block | `followup_message` and exit 0 | measured on 3.21.18 (below): a stop hook that exits 2 has its `followup_message` dropped. stderr still holds the report; native stop has no other channel. Nothing enforces an exit-0 block |
 | Stop note | `followup_message` | not `systemMessage` |
-| klin's own follow-up | exact report hash recorded and consumed once | **klin implementation**, not a measured host fact. Whether `beforeSubmitPrompt` fires on an automatic `followup_message` was **not measured** on 3.20.21; the hash exists so a firing cannot refresh the block budget |
+| klin's own follow-up | exact report hash recorded per session and consumed once | **klin implementation**. On 3.21.18 `beforeSubmitPrompt` **does** fire for an automatic `followup_message` (below), so the hash is what keeps a firing from refreshing the block budget. It recognizes only klin's own text: another stop hook's follow-up that wins Cursor's merge reads as a person's prompt |
 | repeated follow-up bound | klin's gate block count and gate tree; `loop_count` ignored | **unmeasured** whether `loop_count` resets on a person's message; conversation-wide counter is what the docs say, and Cursor sends no `stop_hook_active` |
 | no `klin.json` silence | hook-mode gate exits 0 with no output; guard allow is exit 0 with no stdout | ADR 0028; CLI fixtures cover both. A deny of a write to the `klin.json` path still speaks, as on every host |
 | Team Marketplace import | **unverified** | README documents Dashboard → Plugins → Team Marketplaces → import; this matrix has no recorded result for that route. Local `plugins/local/<name>` and marketplace cache detection are covered by CLI fixtures |
+
+## Measured on Cursor 3.21.18, 2026-09-23
+
+Two probe runs on macOS, klin 0.3.0 at c4a0075, recorded for PR #314. Each ran
+klin's hooks at project scope behind logging wrappers, over a tree whose
+README went over its `doc_size` ceiling.
+
+| Behaviour | Result |
+|---|---|
+| a stop hook that exits 2 with `followup_message` | the follow-up is **not** submitted (run 2: klin the only stop hook, two blocks, no automatic message) |
+| a stop hook that exits 0 with `followup_message` | the follow-up is submitted as the next user message (run 1) |
+| two stop hooks that both return `followup_message` | the user-scope hook's text wins over the project-scope hook's, as the docs' "last response wins" says (run 1) |
+| `beforeSubmitPrompt` on an automatic follow-up | **fires**, and `prompt` carries the submitted (merged) text (run 1) |
+| `generation_id` on an automatic follow-up | changes, the same as on a person's message (run 1) |
+| stop `loop_count` | 0 on the first stop, 1 on the stop after an automatic follow-up (run 1). Whether it returns to 0 after a person's message is **not measured**: run 2 had no automatic follow-up to count |
 
 Issue #67 originally required the Claude-compatible hook route to be tested
 first. That route was not tested. The later product decision requires a

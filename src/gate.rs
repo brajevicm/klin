@@ -35,6 +35,9 @@ const UNDER: &str = "      ";
 /// whatever exit code it ends with.
 const ERROR: &str = "ERROR";
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
+/// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
+/// the stop ends with. Spec 9.1.
+const BLOCKED: u8 = 2;
 
 struct Gate {
     name: String,
@@ -170,13 +173,14 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
     let teardown = project.teardown_base();
     log.timing.base_remove_ms = journal::millis(teardown.remove);
     log.timing.base_prune_ms = journal::millis(teardown.prune);
+    let exit = exit_code(code, event.as_ref());
     if let Some(Value::Object(report)) = &mut log.report {
-        report.insert("exit".into(), code.into());
+        report.insert("exit".into(), exit.into());
         if let Some(window) = &window {
             report.entry("window").or_insert_with(|| window.record());
         }
     }
-    log.blocked = code == 2;
+    log.blocked = code == BLOCKED;
     written(root, lost, green, asked.as_deref(), &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
@@ -193,7 +197,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
     if let Some(said) = said {
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
-    code
+    exit
 }
 
 /// Whether this stop keeps its told message to itself. A host that submits a told message as
@@ -237,6 +241,15 @@ fn heard(said: &str) -> String {
 /// The host session an event names, and none for a stop no event placed.
 fn session(event: Option<&host::Event>) -> &str {
     event.map_or("", |event| event.session.as_str())
+}
+
+/// The exit code a stop ends with: the host's own code for a block where the run blocked, and
+/// the run's code otherwise. Spec 9.1.
+fn exit_code(code: u8, event: Option<&host::Event>) -> u8 {
+    match code {
+        BLOCKED => host::answering(event).block_exit(),
+        code => code,
+    }
 }
 
 /// The benchmark wrapper may observe the report this stop already built. A failed write leaves
@@ -394,7 +407,7 @@ fn ran(
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
             let (code, note) = handed(args, project, judged, event, lost, log, out);
-            let asked = (code == 2).then_some(reported);
+            let asked = (code == BLOCKED).then_some(reported);
             (code, green, asked, note)
         }
     }
@@ -1073,7 +1086,7 @@ fn hook(
     eprintln!("{lead}");
     eprint!("{report}");
     let code = block(root, Some(event), format!("{lead}\n{report}"));
-    if code == 2 {
+    if code == BLOCKED {
         log.gate_block = Some(number);
     }
     (code, None)
@@ -1197,7 +1210,8 @@ fn working_tree(root: &Path, at: &Path) -> Option<String> {
 }
 
 /// Record the exact report a follow-up host will echo under the event's session, then deliver
-/// the block. A stop that tells records its message the same way, so neither echo opens a turn
+/// the block. The stop's run reads `BLOCKED` as its decision whatever exit code the host takes
+/// for a block, and the stop ends with that code. A stop that tells records its message the same way, so neither echo opens a turn
 /// or a fresh gate budget. Spec 9.1, 9.3.
 ///
 /// A host that submits the report hears it only once klin recorded it. A report klin could
@@ -1213,7 +1227,8 @@ fn block(root: &Path, event: Option<&host::Event>, said: String) -> u8 {
         );
         return host.stop(&Stop::Pass);
     }
-    host.stop(&Stop::Block(said))
+    host.stop(&Stop::Block(said));
+    BLOCKED
 }
 
 /// A state directory klin cannot write costs a wider window and nothing else. Section 14.
