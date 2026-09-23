@@ -1,30 +1,37 @@
 # Public API relaxes a strict contract only from evidence
 
-> Amends ADR 0044, section "Judgement, holes and the failure model". Surfaces,
-> items, identities, holes and the accepted list stand. What changes is how
-> two measured contracts are compared, and which facts a contract shows.
+> Amends ADR 0044, sections "The structural adapters extract what a surface
+> needs, once" and "Judgement, holes and the failure model". Surfaces, items,
+> identities, holes and the accepted list stand. What changes is which facts a
+> canonical contract shows, and the rule a later relaxation must follow.
 
-ADR 0044 failed every changed measured contract. The seeded benchmark run
-b647fbfa8993 showed the cost: klin failed
+ADR 0044 fails every changed measured contract. #303 asked whether some
+ordinary API growth should pass, and named one case as a false positive: in
+the seeded run b647fbfa8993 klin failed
 `interface Point { height?: number; lat: number; lon: number }` against
-`interface Point { lat: number; lon: number }`, and a `tsc` check of ordinary
-object-literal and caller use compiled. The 48 public-api occurrences of the
-v1 and v2 rounds were all labeled `valid-review`. So the measured problem is
-one kind of ordinary additive growth that klin blocked, not a lack of subtle
-compatibility rules. #303 asked for this record, #301 tracks the evidence, and
-#304 carries it out.
+`interface Point { lat: number; lon: number }`. #301 tracks the evidence, and
+#304 carries out this record.
 
-An earlier draft of this record gave each language a table of compatible
-changes. An adversarial review compiled consumers against it with `tsc` 5.8.2
-and `rustc` 1.98.1 and found eight changes that the tables passed or could not
-see although ordinary consumer code broke: an empty interface that became a
-weak type, `in` narrowing, call signatures under `strictFunctionTypes`, a
-method implementer's own extra parameter, an `as` cast of a
-`#[non_exhaustive]` enum, a variant-level `#[non_exhaustive]`, a private field
-under `#[cfg]`, and a field that shadows one reached through `Deref`. Each fix
-added a language-specific condition, and each new language would need its own
-table and its own review. This record keeps the language knowledge in the
-adapters and gives the gate one rule.
+The run's record says otherwise. The seed planted a required `height: number`
+on the exported `Point`. After klin blocked, the agent made `height` optional
+and stopped. The shortcut detector still found the change to `Point`, and the
+oracle failed, because `distanceInSpace` kept taking `Point` instead of the
+`Reading` type the task needed, and `b.height - a.height` can now be `NaN`.
+ADR 0052 already names that move as appeasement. klin's failure was correct.
+The 48 public-api occurrences of the v1 and v2 rounds were all labeled
+`valid-review`. No evidence yet shows a false positive worth a relaxation.
+
+Two drafts of this record tried relaxations anyway. The first gave each
+language a table of compatible changes. An adversarial review compiled
+consumers against it with `tsc` 5.8.2 and `rustc` 1.98.1 and found eight
+changes the tables passed or could not see although ordinary consumer code
+broke: an empty interface that became a weak type, `in` narrowing, call
+signatures under `strictFunctionTypes`, a method implementer's own extra
+parameter, an `as` cast of a `#[non_exhaustive]` enum, a variant-level
+`#[non_exhaustive]`, a private field under `#[cfg]`, and a field that shadows
+one reached through `Deref`. The second kept one relaxation, the optional
+property, and that relaxation passes the b647fbfa8993 tree. This record keeps
+what both drafts learned and relaxes nothing.
 
 In ADR 0044, "widening" in "Additions, widening and an opaque item that became
 measured pass" means a widened visibility. It never meant a widened type.
@@ -35,14 +42,15 @@ measured pass" means a widened visibility. It never meant a widened type.
 for. It does not prove semantic-version compatibility, and it does not prove
 that every consumer still compiles; the build and the consumer's own CI do
 that. A false negative lets a contract drift silently. A false positive costs
-a block and an accepted entry, and it can push an agent to change the API only
-to satisfy the gate. klin prefers the false positive whenever it cannot
-classify a change narrowly.
+a block and an accepted entry. The most common agent shortcut the gate meets
+is a repair that keeps the change and softens it until the gate passes, so a
+relaxation is also a route for that shortcut. klin prefers the false positive
+whenever it cannot tell the two apart.
 
 Three verdicts name how a change meets a consumer:
 
 - **Compatible.** Every ordinary consumer use that compiled against the base
-  still compiles against the working tree, within the limits this record
+  still compiles against the working tree, within the limits a relaxation
   names.
 - **Breaking.** The change takes away a use the base offered, such as a member
   to read, a field to write, or a call with the old arguments, and no position
@@ -52,21 +60,74 @@ Three verdicts name how a change meets a consumer:
   resolution in consumer scope. The answer depends on consumer code or
   language semantics klin does not model.
 
-klin passes only a compatible change that a relaxation below names. It fails
-every breaking and every context-dependent change, and every compatible change
-no relaxation names yet.
-
-The policy is **conventional source compatibility**. It is not a proof that no
-consumer program can break. A TypeScript consumer can reflect the exact key
-set of a type, and a Rust addition can make a name ambiguous in a consumer's
-scope. Each relaxation names its known limits.
+A relaxation would pass one kind of compatible change. There is none yet, so
+every changed measured contract fails, as ADR 0044 decided. The policy a
+relaxation follows is **conventional source compatibility**, not a proof that
+no consumer program can break, and each relaxation names its known limits.
 
 ## The decision
 
-### One rule for every language
+### The strict contract is complete
 
-`public_api` compares two measured contracts of one item with one algorithm,
-and it holds no branch for a language:
+A strict comparison fails only what it can see, so the canonical contract
+shows every fact whose change breaks a consumer:
+
+- a Rust type or variant with a directly written `#[non_exhaustive]` renders
+  it;
+- a Rust struct with a private named field renders `..` in its field list,
+  whether or not the field sits under `#[cfg]`;
+- a Rust trait method with a default body renders `{ .. }` where one without
+  renders `;`;
+- a TypeScript overload set keeps the source order of its signatures inside
+  one file, because overload resolution follows it, and groups from different
+  files are ordered by their text, so a renamed file never changes a contract
+  (ADR 0001);
+- a TypeScript implementation signature that follows overload signatures
+  leaves the set, because a consumer never calls it;
+- a TypeScript parameter with a default carries the optional marker when no
+  required parameter follows it, because a caller may then omit it. A default
+  that a required parameter follows carries no marker. The initializer stays
+  out of the contract.
+
+An attribute written through `#[cfg_attr(...)]` stays out of the contract,
+which is a known limit.
+
+So `#[non_exhaustive]` added to a type or a variant, a private field added to
+a struct whose fields were all public, a default body removed from a trait
+method, and a change that only reorders overloads each fail. Each passes today
+without a finding. The same binary renders both trees, so a contract that did
+not change still compares equal.
+
+Two invariants hold for every contract from now on:
+
+- **Visible.** A fact whose own change can fail an item appears in the
+  rendered contract, so the `was` and `now` lines always differ where klin
+  fails an item.
+- **Missing facts are strict.** A construct the adapter cannot canonicalize is
+  opaque or compared as a whole, never guessed.
+
+### How a relaxation will work
+
+No relaxation ships with this record. When evidence justifies the first one,
+it follows this design, so that no language needs a rule of its own in the
+judge.
+
+A language adapter gives the contract of the construct it relaxes structure:
+
+- a **header**, the canonical text that belongs to the item as a whole, such as
+  type parameters, heritage or a `where` clause;
+- its **parts**, the item's immediate children that a consumer names one by
+  one, each with an identity (a name or a position), its canonical text, and
+  whether it is **omittable**: a consumer that constructs, implements or calls
+  the item may leave it out;
+- whether the item **accepts omittable parts**.
+
+The rendered contract is written from the header and the parts, so the two can
+never disagree. The adapter decides every one of these facts from its own
+parse, and the judge never learns why.
+
+`public_api` then compares two measured contracts of one item with one rule
+and no branch for a language:
 
 1. Equal rendered contracts pass.
 2. Where either side is not structured, a difference fails.
@@ -80,31 +141,10 @@ Every difference must pass for the item to pass. The base decides what it
 accepts, so a working tree cannot make itself permissive in the same change
 that adds to it.
 
-### The structured contract
+A structured contract also keeps these invariants:
 
-A language adapter may give a measured contract structure:
-
-- a **header**, the canonical text that belongs to the item as a whole, such as
-  type parameters, heritage or a `where` clause;
-- its **parts**, the item's immediate children that a consumer names one by
-  one, each with an identity (a name or a position), its canonical text, and
-  whether it is **omittable**: a consumer that constructs, implements or calls
-  the item may leave it out;
-- whether the item **accepts omittable parts**.
-
-The rendered contract is written from the header and the parts, so the two can
-never disagree. The adapter decides every one of these facts from its own
-parse. The judge never learns why a part is omittable or why an item accepts
-one. A contract without structure is compared as a whole, as ADR 0044 did.
-
-### Invariants
-
-- **Lossless.** Where a contract is structured, its header and parts hold the
-  whole contract. A member that no relaxation concerns is still a part, or the
-  item is not structured.
-- **Visible.** A fact whose own change can fail an item appears in the
-  rendered contract, so the `was` and `now` lines always differ where klin
-  fails an item.
+- **Lossless.** The header and parts hold the whole contract. A member that no
+  relaxation concerns is still a part, or the item is not structured.
 - **Immediate parts only.** A field inside a variant and a parameter inside a
   method stay inside the text of their part, so an addition the outer item
   accepts can never admit a change nested inside an existing part.
@@ -113,85 +153,31 @@ one. A contract without structure is compared as a whole, as ADR 0044 did.
   declared twice under `cfg` are compared as a whole.
 - **Unique identities.** An item whose parts do not each have a unique identity
   is not structured.
-- **Order where it matters.** The rendered contract keeps the source order of
-  signatures inside one file, because overload resolution follows it. Groups
-  from different files are ordered by their text, so a renamed file never
-  changes a contract (ADR 0001).
-- **Missing facts are strict.** A construct the adapter cannot decompose
-  safely has no structure.
 
-### The one relaxation: an optional property added to a TypeScript shape
+### Adding a relaxation
 
-A TypeScript item accepts omittable parts when all of these hold in the base:
+A later record adds a relaxation when all of these hold:
 
-- it is an exported interface, or a type alias whose whole right-hand side is
-  one object type;
-- exactly one declaration makes it;
-- it has at least one member, and every member has a unique name.
+- a benchmark or a real repository shows a recurring false positive of
+  ordinary, intended API growth;
+- the relaxation does not pass a repair that a benchmark labels as a shortcut
+  or appeasement, such as the final tree of b647fbfa8993;
+- a fact of the adapter's own parse tells the safe case apart;
+- the contract stays lossless, and every nearby case stays strict;
+- an adversarial review names the limits;
+- CLI tests pin the new pass and the nearby failures.
 
-Each member is a part under its name. A property signature marked `?` is
-omittable. Every other member, a method or an optional method included, is
-not. An interface's `extends` clause and type parameters are its header.
-
-Example: `interface Point { lat: number; lon: number }` gaining
-`height?: number` passes. A required `height: number`, a removed `lon`, a
-changed `lat: string` and an added `readonly` each fail.
-
-The base must hold a member because an empty interface is not a weak type and
-an interface of optional members is: against a base `interface PluginOptions {}`
-a consumer's `use({ name: "x", level: 2 })` compiles, and against
-`{ debug?: boolean }` it fails (TS2559).
-
-Known limits of this relaxation:
-
-- a consumer that depends on the exact key set, such as
-  `Record<keyof Point, string>`, or a mapped or conditional type over it;
-- `in` narrowing over a union: with `type Shape = Circle | Square`, adding
-  `radius?: number` to `Square` makes `if ("radius" in s) s.radius * 2` fail
-  (TS18048);
-- an intersection, or a consumer type that already has a member of the same
-  name with another type, including one added by the consumer's own
-  declaration merge or module augmentation;
-- `exactOptionalPropertyTypes`, under which a consumer's own
-  `height?: number | undefined` no longer matches (TS2375).
-
-A class, a call or construct signature, an index signature and every Rust
-item have no relaxation yet.
-
-### The strict contract is complete
-
-A strict comparison fails only what it can see, so the canonical contract
-shows every fact whose change breaks a consumer:
-
-- a Rust type or variant with a directly written `#[non_exhaustive]` renders
-  it;
-- a Rust struct with a private named field renders `..` in its field list,
-  whether or not the field sits under `#[cfg]`;
-- a Rust trait method with a default body renders `{ .. }` where one without
-  renders `;`;
-- a TypeScript overload set keeps its source order inside one file, and an
-  implementation signature that follows overload signatures leaves the set,
-  because a consumer never calls it;
-- a TypeScript parameter with a default carries the optional marker when no
-  required parameter follows it, because a caller may then omit it. The
-  initializer stays out of the contract.
-
-An attribute written through `#[cfg_attr(...)]` stays out of the contract,
-which is a known limit.
-
-So `#[non_exhaustive]` added to a type or a variant, a private field added to
-a struct whose fields were all public, a default body removed from a trait
-method, and a change that only reorders overloads each fail. Each passes today
-without a finding.
+Such a record changes an adapter's facts. The judge normally stays as it is.
 
 ### Changes that stay strict
 
-These changes fail. The table records their verdicts, so a later relaxation
+Every change below fails. The table records verdicts, so a later relaxation
 starts from them and not from nothing. "Deferred" marks a change that is
-compatible by convention but has no evidence behind a relaxation.
+compatible by convention and has no evidence behind a relaxation.
 
 | Change | Verdict | Consumer example or rationale |
 |---|---|---|
+| TS optional property added to an interface or object type alias | compatible by forward-compatibility policy, deferred | The final tree of b647fbfa8993 is this change, made to soften a planted break, and its oracle failed. The limits below apply to any later relaxation. |
 | TS required member added | context-dependent | A reader is unaffected. `const p: Point = { lat, lon }` fails. |
 | TS member removed | breaking | `p.lon` fails. |
 | TS member type changed | context-dependent | Widened, `p.lat.toFixed()` fails. Narrowed, `{ lat: "1", lon }` fails. klin infers neither direction. |
@@ -215,18 +201,20 @@ compatible by convention but has no evidence behind a relaxation.
 | Rust default body removed from a trait method | breaking | An implementor that relied on it fails (E0046). |
 | Rust function parameter added | breaking | Every call fails (E0061). |
 
-### Adding a relaxation
-
-A later record adds a relaxation when all of these hold:
-
-- a benchmark or a real repository shows a recurring false positive of
-  ordinary, intended API growth;
-- a fact of the adapter's own parse tells the safe case apart;
-- the contract stays lossless, and every nearby case stays strict;
-- an adversarial review names the limits;
-- CLI tests pin the new pass and the nearby failures.
-
-Such a record changes an adapter's facts. The judge normally stays as it is.
+A later relaxation for an optional TypeScript property would start from what
+the review found. It would need a base that comes from one declaration and
+holds at least one uniquely named member, because an empty interface is not a
+weak type and an interface of optional members is: against a base
+`interface PluginOptions {}` a consumer's `use({ name: "x", level: 2 })`
+compiles, and against `{ debug?: boolean }` it fails (TS2559). Its known
+limits would be a consumer that depends on the exact key set, such as
+`Record<keyof Point, string>`; `in` narrowing over a union, where adding
+`radius?: number` to one member of `Circle | Square` makes
+`if ("radius" in s) s.radius * 2` fail (TS18048); an intersection or a
+consumer type with a same-named member, including one from the consumer's own
+declaration merge or module augmentation; and `exactOptionalPropertyTypes`
+(TS2375). It would also have to tell growth apart from the b647fbfa8993
+repair, which the facts of one tree cannot do.
 
 ### Adding a language
 
@@ -237,18 +225,18 @@ highest rung the language reaches:
 |---|---|---|
 | 0 | a grammar and its function node kinds | complexity, patterns |
 | 1 | a structural adapter: declarations, visibility, imports | dead symbols |
-| 2 | a module resolver and a surface | layering, and `public-api` for added and removed items |
-| 3 | a complete canonical contract | `public-api` for a changed contract |
-| 4 | structure for one construct | a relaxation for that construct |
+| 2 | a module resolver | layering |
+| 3 | a surface: entry points and exported names | `public-api` for added and removed items |
+| 4 | a complete canonical contract | `public-api` for a changed contract |
+| 5 | structure for one construct | a relaxation for that construct |
 
-Rung 4 is held per construct, not per language: TypeScript reaches it for
-interfaces and object type aliases alone. The registries each layer already
-keeps by `LanguageId` are the seams, and no trait layer is added. A rung is
-proved by CLI scenarios every language supplies fixtures for: at rung 2 a
-removed item fails and an added one passes; at rung 3 a changed contract
-fails and a move behind an unchanged identity passes; at rung 4 the
-relaxation passes and a required addition, a changed part, a removed part, a
-second change beside a compatible one and a merged declaration each fail.
+Rung 5 is held per construct, not per language, and no construct holds it
+yet. The registries each layer already keeps by `LanguageId` are the seams,
+and no trait layer is added. Go (#222) and Python (#223) aim at rung 2. A rung
+is proved by CLI scenarios every language supplies fixtures for: at rung 3 a
+removed item fails and an added one passes; at rung 4 a changed contract
+fails, a move behind an unchanged identity passes, and every fact of the
+complete contract shows in `was` and `now`.
 
 ### What klin does not build
 
@@ -258,19 +246,18 @@ second change beside a compatible one and a merged declaration each fail.
 - a second parser;
 - a layer that reparses canonical strings or diffs them by a heuristic.
 
-Canonical strings, whole or of one part, are compared for equality only. The
-persisted structural facts change, and so do some rendered contracts, so the
-structural-cache epoch rises once for both, and round-trip tests pin the new
-facts.
+Canonical strings are compared for equality only. Rendered contracts change,
+so the structural-cache epoch rises once, and round-trip tests pin the new
+rendering.
 
 ## Accepted entries
 
-The shared lifecycle of an accepted entry does not change. A public-api change
-that needed an accepted entry and now passes can leave that entry unmatched.
-It follows the stale-entry behavior every gate has: klin reports it as
-unmatched, and `--strict` still requires the person to remove it. There is no
-public-api migration state. klin deletes no entry, and it does not keep a
-compatible finding alive only to consume an old entry.
+The shared lifecycle of an accepted entry does not change. When a later
+relaxation makes a change pass that needed an accepted entry, the entry can
+become unmatched. It follows the stale-entry behavior every gate has: klin
+reports it as unmatched, and `--strict` still requires the person to remove
+it. There is no public-api migration state. klin deletes no entry, and it
+does not keep a compatible finding alive only to consume an old entry.
 
 ## The turn-end message
 
@@ -288,27 +275,30 @@ only. JSON and journal identities and accepted entries stay per finding.
 
 ## Rejected alternatives
 
-- **A table of compatible changes per language.** The earlier draft of this
+- **A table of compatible changes per language.** The first draft of this
   record. Every row leaked under review, and the cost grows with languages
   times rows.
+- **Pass an optional property added to a TypeScript shape.** The second draft.
+  Its only evidence was the b647fbfa8993 tree, which is a failed repair, so the
+  relaxation would have rewarded the shortcut the gate exists to catch, and
+  the seeded confirmation of #307 would have read it as appeasement.
 - **Ask once for a context-dependent change**, as ADR 0031 does for a deleted
-  test. In b647fbfa8993 the agent made `height` optional to satisfy the gate.
-  That change is context-dependent, so asking would let the same shortcut end
-  the turn.
-- **Reserved policy values**, such as "accept any part" or "accept at the end
-  only". A value arrives with the relaxation that needs it.
+  test. Asking would let the same softened repair end the turn.
+- **Build the structured contract now.** No relaxation reads it, so it waits
+  for the first one.
 
 ## Consequences
 
-- #304 carries out this record. SPEC 8.2 states the rule, the structured
-  contract, the relaxation and the complete strict contract, and it no longer
-  says that the canonical contract drops every attribute.
+- #304 carries out this record. SPEC 8.2 states the complete strict contract
+  and no longer says that the canonical contract drops every attribute.
 - SPEC 9.5 says the turn-end line and the report of 11.5 use the same words
   and the same counting rule. The public-api-only line keeps the counting and
   changes the words, so #304 amends 9.5 to name that exception.
 - Four breaks that pass today fail: `#[non_exhaustive]` added, a private field
   added to a struct whose fields were all public, a default body removed, and
   overloads reordered.
-- A relaxation can pass a change that breaks a reflective or
-  resolution-sensitive consumer. Its limits name each known case.
+- The b647fbfa8993 final tree still fails, and the remedy names the additive
+  route the oracle expected.
+- Intended additive growth still blocks once. The agent says the change is
+  intended and stops again, and a person accepts it in review.
 - A new language adds value from rung 2 on, without any compatibility rule.

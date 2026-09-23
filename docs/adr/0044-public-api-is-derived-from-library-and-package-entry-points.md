@@ -2,8 +2,8 @@
 
 > ADR 0054 amends "Judgement, holes and the failure model" and the
 > canonicalization paragraph: the canonical contract shows the facts ADR 0054
-> lists, attributes included, and a structured contract passes an added part
-> its base accepts. Every other changed measured contract still fails.
+> lists, attributes included, and every changed measured contract still fails
+> until a later record adds a relaxation under the rule ADR 0054 sets.
 > "Widening" there means a widened visibility, never a widened type.
 
 Issue #46 names one agent failure: a local refactor changes a contract that
