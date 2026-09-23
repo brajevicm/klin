@@ -1051,8 +1051,7 @@ fn a_change_that_only_reorders_an_overload_set_in_one_file_fails() {
 }
 
 #[test]
-fn a_trailing_default_is_optional_and_a_default_a_required_parameter_follows_shows_without_its_value()
- {
+fn a_trailing_default_is_optional_and_a_default_a_required_parameter_follows_is_not() {
     let tree = Tree::new();
     package_of(
         &tree,
