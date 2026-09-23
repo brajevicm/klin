@@ -163,6 +163,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
         project,
         window.as_ref(),
         event.as_ref(),
+        lost,
         &mut log,
         out,
     );
@@ -184,18 +185,37 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
         log.build_blocks = held.builds;
         log.prompt = held.prompt;
     }
-    let said = tell(args, root, code, note, &mut log);
+    let said = tell(args, root, code, note, &mut log)
+        .filter(|said| !told_before(root, event.as_ref(), said, &mut log));
     observe_hook_report(log.report.as_ref());
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
         let host = host::answering(event.as_ref());
         if host.follows_up() {
-            turn::expect_followup(root, &said);
+            turn::expect_told(root, &said);
         }
         host.stop(&Stop::Tell(said));
     }
     code
+}
+
+/// Whether a host that submits a told message as a prompt already heard this one under the
+/// current prompt. The message it submitted opened no turn, so telling it again over the same
+/// state would replay it forever; a stop with a different message still tells. The journal
+/// records the stop as having told nothing. ADR 0052.
+fn told_before(
+    root: &Path,
+    event: Option<&host::Event>,
+    said: &str,
+    log: &mut journal::Stop,
+) -> bool {
+    if !host::answering(event).follows_up() || !turn::told_before(root, said) {
+        return false;
+    }
+    log.told.clear();
+    log.flags.push("told-before");
+    true
 }
 
 /// The benchmark wrapper may observe the report this stop already built. A failed write leaves
@@ -222,7 +242,8 @@ fn written(
     if lost {
         eprintln!(
             "klin: NOTE: another stop in this worktree held the state directory for the whole \
-             {} ms klin waits, so this stop wrote no verdict and the window stays as it is.",
+             {} ms klin waits, so this stop wrote no verdict, spent no block, and the window \
+             stays as it is.",
             BUDGET.as_millis()
         );
         log.why = Some("another stop held the state directory, so this stop wrote no verdict");
@@ -309,12 +330,15 @@ fn config_hash(project: &Project) -> String {
 
 /// One stop's run: the exit code the host reads, whether the gates left the tree green, the
 /// findings a gate block put in front of the agent, which is `None` unless the stop blocked on
-/// a gate, and the note a stop nothing blocks leaves for the person. Spec 8.2, 16.3.
+/// a gate, and the note a stop nothing blocks leaves for the person. A stop that `lost` the
+/// state lock runs unserialized with another stop, so it measures and reports and spends no
+/// block of either kind. Spec 6.5, 8.2, 16.3.
 fn ran(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
     event: Option<&host::Event>,
+    lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, bool, Option<Vec<String>>, Option<String>) {
@@ -323,14 +347,14 @@ fn ran(
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),
         Err(problem) => {
-            let (code, note) = handed(args, project, Err(problem), event, log, out);
+            let (code, note) = handed(args, project, Err(problem), event, lost, log, out);
             return (code, false, None, note);
         }
     };
     match failure {
         Some(failure) => {
-            let (code, text) =
-                does_not_build(args, project.root(), &failure, &said, window, log, out);
+            let blocks = build_block(project.root(), lost, log);
+            let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
             (
                 blocked_build(project.root(), event, text, code),
                 false,
@@ -348,7 +372,7 @@ fn ran(
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let (code, note) = handed(args, project, judged, event, log, out);
+            let (code, note) = handed(args, project, judged, event, lost, log, out);
             let asked = (code == 2).then_some(reported);
             (code, green, asked, note)
         }
@@ -376,6 +400,7 @@ fn handed(
     project: &Project,
     outcome: Result<Tally, Error>,
     event: Option<&host::Event>,
+    lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, Option<String>) {
@@ -405,6 +430,7 @@ fn handed(
         &std::mem::take(out),
         project.root(),
         event,
+        lost,
         log,
     )
 }
@@ -526,15 +552,14 @@ fn counted(at: &Path, count: &Count) -> bool {
 
 fn does_not_build(
     args: &Args,
-    root: &Path,
     failure: &str,
     said: &[check::Said],
     window: Option<&Window>,
+    blocks: &Blocks,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, String) {
-    let blocks = raised(root, log);
-    let (code, report, text) = reported(args, failure, said, window, &blocks, out);
+    let (code, report, text) = reported(args, failure, said, window, blocks, out);
     log.report = Some(report);
     (code, text)
 }
@@ -567,6 +592,16 @@ fn blocked_build(root: &Path, event: Option<&host::Event>, text: String, code: u
     match code {
         2 => block(root, host::answering(event), text),
         _ => code,
+    }
+}
+
+/// The build block a failing build may spend. None at a stop that lost the state lock, because
+/// another stop may be writing the count; the lock's own NOTE tells it. The build twin of the
+/// gate's `next`. Spec 6.5.
+fn build_block(root: &Path, lost: bool, log: &mut journal::Stop) -> Blocks {
+    match lost {
+        true => Blocks::Unbounded,
+        false => raised(root, log),
     }
 }
 
@@ -977,6 +1012,7 @@ fn hook(
     report: &str,
     root: &Path,
     event: Option<&host::Event>,
+    lost: bool,
     log: &mut journal::Stop,
 ) -> (u8, Option<String>) {
     let (failed, errored) = (tally.failed, tally.errored);
@@ -989,7 +1025,10 @@ fn hook(
         eprint!("{report}");
         return (1, None);
     };
-    let next = next(root, held.as_ref(), event.blocked_before);
+    let next = match lost {
+        true => GateBlock::Pass(LOCKED.to_string()),
+        false => next(root, held.as_ref(), event.blocked_before),
+    };
     let number = match spend(held, next, log) {
         GateBlock::Take { number, .. } => number,
         GateBlock::Pass(why) => {
@@ -1053,13 +1092,7 @@ enum GateBlock {
 /// spent, so it counts only where no build block was spent either. Spec 16.3, ADR 0052.
 fn next(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> GateBlock {
     let Some((count, at)) = held else {
-        return match blocked_before {
-            true => GateBlock::Pass(UNPROVEN.to_string()),
-            false => GateBlock::Take {
-                number: 1,
-                tree: None,
-            },
-        };
+        return GateBlock::Pass(UNRECORDED.to_string());
     };
     if count.gate_blocks >= GATE_BLOCKS {
         return GateBlock::Pass(capped());
@@ -1090,16 +1123,16 @@ fn changed_since(root: &Path, count: &Count, at: &Path) -> GateBlock {
     }
 }
 
-/// The gate block recorded before it is delivered. A first block klin cannot record still
-/// blocks, as it always has. A second block klin cannot record could not be bounded, so it
-/// becomes a report.
+/// The gate block recorded before it is delivered. A block klin cannot record could not be
+/// bounded, because the next stop would read it as never spent and take it again, so it
+/// becomes a report. ADR 0052.
 fn spend(held: Option<(Count, PathBuf)>, next: GateBlock, log: &mut journal::Stop) -> GateBlock {
     let (number, tree) = match &next {
         GateBlock::Take { number, tree } => (*number, tree.clone()),
         GateBlock::Pass(_) => return next,
     };
     let Some((count, at)) = held else {
-        return next;
+        return GateBlock::Pass(UNRECORDED.to_string());
     };
     let recorded = Count {
         gate_blocks: number,
@@ -1110,17 +1143,17 @@ fn spend(held: Option<(Count, PathBuf)>, next: GateBlock, log: &mut journal::Sto
         return next;
     }
     log.flags.push("count-unwritable");
-    match number {
-        1 => next,
-        _ => GateBlock::Pass(UNRECORDED.to_string()),
-    }
+    GateBlock::Pass(UNRECORDED.to_string())
 }
 
 /// Why a stop after a gate block spends none: klin has no tree of its own to compare against.
 const UNPROVEN: &str = "klin holds no record of the tree the last gate block saw, so it cannot \
     tell whether this stop changed it";
-/// Why a stop spends no second gate block when its record would not write. ADR 0052.
-const UNRECORDED: &str = "klin could not record a second gate block, so nothing would bound it";
+/// Why a stop spends no gate block when its record would not write. ADR 0052.
+const UNRECORDED: &str = "klin could not record a gate block, so nothing would bound it";
+/// Why a stop that lost the state lock spends no gate block. Spec 6.5.
+const LOCKED: &str = "another stop held the state directory, so this stop could not count a \
+    gate block";
 /// Why a stop over the tree the last gate block saw spends none. ADR 0052.
 const UNCHANGED_SINCE_GATE: &str = "the tree did not change since the last gate block";
 

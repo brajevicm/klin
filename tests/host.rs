@@ -378,6 +378,10 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
     assert!(told.says(r#""followup_message":"#), "{}", told.out);
     echo_followup(&tree, &told);
 
+    let again = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(!again.says("followup_message"), "{}", again.out);
+
     tree.words("README.md", 31);
     let second = stop(&tree, A_CURSOR_STOP, &[]);
     assert_eq!(second.code, 2, "{}", second.out);
@@ -388,6 +392,30 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
     let third = stop(&tree, A_CURSOR_STOP, &[]);
     assert_eq!(third.code, 0, "{}", third.out);
     assert!(third.says("has blocked 2 stops"), "{}", third.out);
+}
+
+/// Cursor sends no flag that a stop already blocked, so klin's own record is the only bound. A
+/// gate block klin cannot record would repeat at every stop, so it blocks nothing.
+#[test]
+fn a_cursor_gate_block_klin_cannot_record_blocks_nothing() {
+    let tree = failing();
+    let record = tree.path(".git/klin/build-blocked");
+    assert!(
+        std::fs::create_dir_all(&record).is_ok(),
+        "{}",
+        record.display()
+    );
+
+    for at in 1..=3 {
+        let run = stop(&tree, A_CURSOR_STOP, &[]);
+        assert_eq!(run.code, 0, "stop {at}: {}", run.out);
+        assert!(run.says("FAIL  doc-size"), "stop {at}: {}", run.out);
+        assert!(
+            run.says("klin could not record a gate block"),
+            "stop {at}: {}",
+            run.out
+        );
+    }
 }
 
 fn echo_followup(tree: &Tree, blocked: &Run) {

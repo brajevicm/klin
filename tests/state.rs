@@ -216,6 +216,38 @@ fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
     assert_eq!(first.code, 0, "{}", first.out);
     assert_eq!(tree.field("verdict"), "green", "{}", first.out);
 
+    let _lock = held_lock(&tree);
+    tree.words("README.md", 30);
+
+    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(held.says("held the state directory"), "{}", held.out);
+    assert!(held.says("FAIL  doc-size"), "{}", held.out);
+    assert!(!held.says("gate block 1 of 2"), "{}", held.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", held.out);
+    let record = std::fs::read_to_string(tree.state("build-blocked")).unwrap_or_default();
+    assert!(!record.contains(r#""gate_blocks":1"#), "{record}");
+}
+
+#[test]
+fn a_build_failure_at_a_stop_that_cannot_take_the_state_directory_spends_no_block() {
+    let tree = tree("\"build\": \"test ! -f fails\",");
+    let first = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    assert_eq!(first.code, 0, "{}", first.out);
+
+    let _lock = held_lock(&tree);
+    tree.write("fails", "");
+    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(held.says("does not build"), "{}", held.out);
+    assert!(held.says("held the state directory"), "{}", held.out);
+    let record = std::fs::read_to_string(tree.state("build-blocked")).unwrap_or_default();
+    assert!(!record.contains(r#""builds":1"#), "{record}");
+}
+
+/// The advisory lock a stop takes over the state directory, held by the test past the hook's
+/// budget, so the stop under test runs as one that lost it.
+fn held_lock(tree: &Tree) -> std::fs::File {
     let opened = std::fs::OpenOptions::new()
         .create(true)
         .truncate(false)
@@ -225,10 +257,5 @@ fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
         panic!("the lock file could not be opened");
     };
     assert!(lock.lock().is_ok(), "another holder has the lock");
-    tree.words("README.md", 30);
-
-    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
-    assert_eq!(held.code, 2, "{}", held.out);
-    assert!(held.says("held the state directory"), "{}", held.out);
-    assert_eq!(tree.field("verdict"), "green", "{}", held.out);
+    lock
 }

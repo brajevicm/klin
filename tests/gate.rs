@@ -790,7 +790,7 @@ fn a_second_gate_block_klin_cannot_record_is_reported_and_blocks_nothing() {
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
     assert!(
-        second.says("klin could not record a second gate block"),
+        second.says("klin could not record a gate block"),
         "{}",
         second.out
     );

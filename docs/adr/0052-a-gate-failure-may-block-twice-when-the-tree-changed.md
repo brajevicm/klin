@@ -48,10 +48,21 @@ recorded `gate_tree` and a current tree that differs from it. A host's
 `blocked_before` flag says that a block happened, never which tree it saw. It
 can stand in for an unrecorded first block, as before, and it cannot authorize
 a second. When klin cannot read the previous gate tree, cannot hash the
-current tree, or cannot write the record of a second block, it reports and
-spends no block. A first block klin cannot record still blocks, as it always
-has. This is the conservative rule of ADR 0022: local state that cannot bound
-a loop blocks nothing more.
+current tree, or cannot write the record of a block, it reports and spends no
+block. That includes the first gate block. A first block klin could not record
+would read as unspent at the next stop, and Cursor sends no prior-block flag,
+so it would be taken again at every stop and the cap of two would bound
+nothing. A host flag does not rescue it either, because after a build block
+the flag no longer says which kind of block happened. This is the
+conservative rule of ADR 0022 and spec 14: local state that cannot bound a
+loop blocks nothing. It reverses the older rule that an unrecorded first gate
+block still blocked.
+
+**A stop that lost the state lock spends nothing.** The count is read and
+written by the stop that holds the lock. A stop that waited out the hook's
+lock budget runs beside another stop, so both could read the same count and
+both deliver the same numbered block. It measures and reports, and spends
+neither a build block nor a gate block (spec 6.5).
 
 A record an older klin wrote names one `gate_spent` flag and no gate tree. It
 reads as one gate block spent over an unknown tree, so it can never prove a
@@ -63,7 +74,14 @@ report, and any message a stop tells the person, as the next prompt (spec 9.1,
 without raising the prompt counter, and the stop after it still holds the
 budget the report came from. A told message was not recorded before this
 decision, so a red turn on Cursor gained a fresh gate block from each turn-end
-message it told. A genuine later prompt raises the counter and gets a
+message it told.
+
+A consumed follow-up also opens no turn for the agent to end, so a stop over
+the same state would tell the same message, Cursor would submit it, and the
+loop would repeat. klin therefore records the last message it told a
+follow-up host under the current prompt, and a later stop under that prompt
+tells nothing when its message is identical. A different message is told. A
+person's prompt clears the record. A genuine later prompt raises the counter and gets a
 fresh budget of two gate blocks and eight build blocks.
 
 **ADR 0031 keeps its precedence.** A deleted test already asked about stays

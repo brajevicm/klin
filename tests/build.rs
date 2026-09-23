@@ -356,6 +356,33 @@ fn the_gates_one_block_is_spent_apart_from_the_build_blocks() {
 }
 
 #[test]
+fn a_gate_block_klin_cannot_record_after_a_build_block_blocks_nothing() {
+    let tree = tree(r#""build": "test ! -f fails","#);
+    tree.write("fails", "");
+    tree.words("README.md", 30);
+    let build = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(build.code, 2, "{}", build.out);
+
+    let staging = tree.path(".git/klin/build-blocked.writing");
+    assert!(
+        std::fs::create_dir_all(&staging).is_ok(),
+        "{}",
+        staging.display()
+    );
+    tree.remove("fails");
+    for words in [30, 31, 32] {
+        tree.words("README.md", words);
+        let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+        assert_eq!(gate.code, 0, "{words}: {}", gate.out);
+        assert!(
+            gate.says("klin could not record a gate block"),
+            "{words}: {}",
+            gate.out
+        );
+    }
+}
+
+#[test]
 fn a_build_block_between_gate_blocks_keeps_the_tree_the_first_gate_block_saw() {
     let tree = tree(r#""build": "test ! -f fails","#);
     tree.words("README.md", 30);

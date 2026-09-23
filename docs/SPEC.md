@@ -916,7 +916,10 @@ makes it visible to `git log --all`, and is the copy a stop restores the
 `turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
 in the state directory holds the time, the verdict, the prompt counter and
 the `asked` record of 8.2 beside the commit id, and `intervened`, set once a
-stop under the stamp spends a gate block (9.5). A fresh stamp holds neither.
+stop under the stamp spends a gate block (9.5). It also holds `followup`, the
+hash of the report or message a host will submit as its next prompt, and
+`told`, the hash of the last message a stop told such a host, which a
+person's prompt clears (9.1). A fresh stamp holds none of these.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
 worktree share one window and one `turn` file. A stop MUST hold an advisory
@@ -925,7 +928,9 @@ verdict, so stops in one worktree run in order and the last verdict describes
 the last tree. Without the lock an old green stop that finishes after a new
 red one would write green, and the next prompt would move the stamp over the
 red debt. A stop that cannot take the lock within the hook budget writes no
-verdict and says so.
+verdict, spends no build block and no gate block, and says so. It still
+measures and reports, but another stop may be writing the counts of 16.3,
+so a block it spent could exceed the budget of 9.3.
 
 The ref is `refs/worktree/klin/turn`, not `refs/klin/turn`. Git shares
 `refs/` across the worktrees of one repository, with `refs/worktree/`,
@@ -2438,7 +2443,12 @@ goes unread — the same pairing as a deny. A stop that tells the
 person writes a JSON `followup_message` on stdout under exit 0. Cursor submits
 that follow-up as the next user prompt. Before delivery, klin records a hash
 of the exact report or message in the turn stamp, for a block and a told
-stop alike. A prompt with that hash consumes the
+stop alike. A told message is also recorded as told under the current
+prompt, and a later stop under that prompt that would tell the identical
+message tells nothing, so a message Cursor submits and the agent answers
+without a change cannot replay forever. A different message is told, and a
+person's prompt clears the record. The stop that tells nothing carries
+`told-before` in its `flags`. A prompt with that hash consumes the
 record and moves neither the prompt counter nor the mark. Every different
 prompt, including one that starts with `klin:`, clears the record and opens a
 turn normally. A prose prefix is not a protocol marker. ADR 0045.
@@ -2522,8 +2532,11 @@ taken over, recorded in the build stamp, and a current tree that differs
 from it. The host's `blocked_before` flag says a block happened and never
 which tree it saw, so it stands in for an unrecorded first block and never
 authorizes a second. When klin cannot read that tree, cannot hash the
-current tree, or cannot write the record of the second block, the hook
-reports and spends no block. A first block klin cannot record still blocks.
+current tree, or cannot write the record of the block, the hook reports and
+spends no block. That holds for the first gate block too: a block klin cannot
+record would read as unspent at the next stop, and a host that sends no
+prior-block flag would take it again at every stop, so it blocks nothing, by
+the rule of 14 that a state klin cannot keep blocks nothing.
 
 A host that submits the block report as another prompt records that exact
 report in the turn stamp before delivery; the matching prompt consumes it
@@ -3045,7 +3058,9 @@ failure, or an error alike — plus what only the hook knew:
   `turn-restored` (16.1), `branch-fallback` (a stop that judged a branch
   window because no stamp resolved, or because the commit the stamp was taken
   over is outside current HEAD history, 6.2), `count-unwritable` (a build
-  stamp that would not write, 14), `no-prompt-event` (16.3, a prompt that
+  stamp that would not write, 14), `told-before` (9.1, a message this prompt
+  already told a host that submits it as a prompt, told nothing this time),
+  `no-prompt-event` (16.3, a prompt that
   spent a gate block found no prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
   empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
@@ -3747,6 +3762,7 @@ hook(event):
     unbuilt = note("unbuilt", failure.command, failure.shell_said); failure = None
   if failure:
     write_verdict_atomic(state/turn, RED)
+    if lost_the_lock: report(failure); return 0         # 6.5: another stop may be counting
     tree = tree_of(working_directory)
     if count.builds > 0 and tree == count.build_tree: report(failure, "the tree did not change"); return 0
     count.builds += 1; count.build_tree = tree; write_atomic(state/build-blocked, count)
@@ -3758,6 +3774,8 @@ hook(event):
     if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
     return 0
   write_verdict_atomic(state/turn, RED)
+  if lost_the_lock: pass_through("another stop held the state directory"); return 0
+  if no_state_directory: pass_through("could not record a gate block"); return 0
   if count.gate_blocks >= 2: pass_through("the gate has blocked 2 stops"); return 0
   flagged = count.builds == 0 and host.blocked_before(event)
   if count.gate_blocks == 0 and not flagged:
@@ -3772,7 +3790,7 @@ hook(event):
   count.gate_blocks = number; count.gate_tree = tree
   if not write_atomic(state/build-blocked, count):
     flags += "count-unwritable"
-    if number > 1: pass_through("could not record a second gate block"); return 0
+    pass_through("could not record a gate block"); return 0
   add_asked_atomic(state/turn, reported)           # 8.2, cleared when the stamp moves
   block(report + "gate block " + number + " of 2")
 

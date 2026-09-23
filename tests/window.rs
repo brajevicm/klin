@@ -158,8 +158,9 @@ fn a_stop_that_cannot_take_the_lock_writes_no_verdict_and_says_so() {
     assert!(taken.lock().is_ok(), "the test could not hold the lock");
 
     let run = stop(&tree);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("wrote no verdict"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("FAIL"), "{}", run.out);
+    assert!(run.says("wrote no verdict, spent no block"), "{}", run.out);
     assert_eq!(
         tree.field("verdict"),
         "green",
@@ -218,8 +219,9 @@ fn a_state_directory_klin_cannot_keep_still_reads_the_stamp_from_the_ref() {
         &["gate", "--hook", "--changed"],
         A_STOP,
     );
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("window: turn"), "{}", run.out);
+    assert!(run.says("FAIL"), "{}", run.out);
     assert!(run.says("wrote no verdict"), "{}", run.out);
 }
 

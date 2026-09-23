@@ -324,7 +324,7 @@ fn an_unwritable_state_directory_leaves_the_exit_code_and_the_text_unchanged() {
         &["gate", "--hook"],
         A_STOP,
     );
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("blocks nothing"), "{}", run.out);
 }

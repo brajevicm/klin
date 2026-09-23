@@ -65,6 +65,10 @@ pub struct Stamp {
     /// The hash of the exact stop report a host will submit as its next prompt. It is consumed
     /// once, so protocol-generated text cannot open a fresh turn and another prompt clears it.
     pub followup: Option<u64>,
+    /// The hash of the last message a stop told a host that submits it as a prompt. A stop under
+    /// the same prompt does not tell it again, so an unchanged state cannot replay one message
+    /// forever. A person's prompt clears it. ADR 0052.
+    pub told: Option<u64>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -94,7 +98,15 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let mark = tree.as_deref().and_then(|tree| marked(start, tree));
     if let Some(stamp) = next(start, tree.as_deref(), never, held, prompts, out) {
         let mark = mark.or(stamp.mark);
-        write(&at, &Stamp { mark, ..stamp }, out);
+        write(
+            &at,
+            &Stamp {
+                mark,
+                told: None,
+                ..stamp
+            },
+            out,
+        );
     }
     Ok(0)
 }
@@ -266,6 +278,29 @@ pub fn expect_followup(root: &Path, report: &str) {
     write(&at, &held, &mut String::new());
 }
 
+/// Whether a stop under this prompt already told this exact message to a host that submits it
+/// as a prompt. False when no stamp is readable, so a lost record tells again. ADR 0052.
+pub fn told_before(root: &Path, said: &str) -> bool {
+    state::dir(root)
+        .and_then(|at| read(&at))
+        .is_some_and(|held| held.told == Some(state::hash(said.as_bytes())))
+}
+
+/// Remember a told message as both the follow-up the host will submit and the message this
+/// prompt already heard. ADR 0052.
+pub fn expect_told(root: &Path, said: &str) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let Some(mut held) = read(&at) else {
+        return;
+    };
+    let hash = state::hash(said.as_bytes());
+    held.followup = Some(hash);
+    held.told = Some(hash);
+    write(&at, &held, &mut String::new());
+}
+
 /// Consume one expected follow-up. A different prompt clears the expectation and remains a
 /// person's prompt; an exact match is host-generated and opens no turn.
 fn consumes_followup(root: &Path, prompt: &str, out: &mut String) -> bool {
@@ -316,6 +351,7 @@ fn read(at: &Path) -> Option<Stamp> {
             .and_then(Value::as_bool)
             .unwrap_or_default(),
         followup: held.get("followup").and_then(Value::as_u64),
+        told: held.get("told").and_then(Value::as_u64),
     })
 }
 
@@ -339,6 +375,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         asked: Vec::new(),
         intervened: false,
         followup: None,
+        told: None,
     })
 }
 
@@ -385,6 +422,7 @@ fn kept(root: &Path) -> Option<Stamp> {
         asked: Vec::new(),
         intervened: false,
         followup: None,
+        told: None,
     })
 }
 
@@ -411,6 +449,7 @@ fn restored(
         asked: Vec::new(),
         intervened: false,
         followup: None,
+        told: None,
     })
 }
 
@@ -483,6 +522,7 @@ fn replaced(
             asked: Vec::new(),
             intervened: false,
             followup: None,
+            told: None,
         },
         out,
     );
@@ -666,13 +706,15 @@ fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
 fn recorded(stamp: &Stamp) -> Value {
     let mut fields = Map::new();
     let fields_of = [
-        ("commit", &stamp.commit),
-        ("parent", &stamp.parent),
-        ("mark", &stamp.mark),
+        ("commit", stamp.commit.clone().map(Value::from)),
+        ("parent", stamp.parent.clone().map(Value::from)),
+        ("mark", stamp.mark.clone().map(Value::from)),
+        ("followup", stamp.followup.map(Value::from)),
+        ("told", stamp.told.map(Value::from)),
     ];
     for (key, value) in fields_of {
         if let Some(found) = value {
-            fields.insert(key.into(), found.clone().into());
+            fields.insert(key.into(), found);
         }
     }
     fields.insert("time".into(), stamp.time.into());
@@ -687,9 +729,6 @@ fn recorded(stamp: &Stamp) -> Value {
     }
     if stamp.intervened {
         fields.insert("intervened".into(), true.into());
-    }
-    if let Some(followup) = &stamp.followup {
-        fields.insert("followup".into(), (*followup).into());
     }
     Value::Object(fields)
 }
