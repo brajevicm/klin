@@ -1959,7 +1959,8 @@ written `#[non_exhaustive]` renders it, and every other attribute leaves,
 `#[cfg_attr(...)]` included. A Rust struct's private named field leaves and
 its field list ends in `..`, whether or not the field sits under `#[cfg]`. A
 Rust trait method with a default body renders `{ .. }` where one without
-renders `;`. A TypeScript overload set keeps the source order of its
+renders `;`, and a trait's associated `const` with a default renders `= ..`.
+A TypeScript overload set keeps the source order of its
 signatures inside one file, the groups of different files are ordered by their
 text, so a renamed file never changes a contract, and an implementation
 signature that follows overload signatures leaves the set. Inside a class or
@@ -1970,8 +1971,10 @@ wrote them in. A TypeScript
 parameter with a default carries `?` where no required parameter follows it
 and no marker where one does, and its initializer never shows. So
 `#[non_exhaustive]` added to a type or a variant, a private field added to a
-struct whose fields were all public, a default body removed and a change that
-only reorders an overload set each fail. Rust covers
+struct whose fields were all public, a default body or a default `const`
+removed and a change that only reorders a TypeScript overload set each fail.
+The `cfg` declarations of one Rust item are ordered by their text, so
+reordering them passes. Rust covers
 functions with qualifiers, generics, receiver and parameter types, return
 type and `where` clause; structs, unions, enums with their variants, fields
 and explicit discriminants; traits with their supertraits and associated-item

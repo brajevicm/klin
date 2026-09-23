@@ -203,6 +203,9 @@ fn spelling(node: Node, source: &[u8]) -> Spelling {
     }
     match node.kind() {
         "block" if parent_kind == "function_item" => body(node),
+        _ if initializer(node, parent_kind) && node.kind() != "=" => {
+            Spelling::Replace("..".to_string())
+        }
         "field_declaration_list" => fields(node, parent_kind, source),
         "parameter" => parameter(node, source),
         "string_literal" => Spelling::Replace(text_of(node, source)),
@@ -211,10 +214,13 @@ fn spelling(node: Node, source: &[u8]) -> Spelling {
 }
 
 /// Whether a node never reaches a canonical contract: a comment, an attribute other than
-/// `#[non_exhaustive]`, the item's own modifier, or the initializer of a `const` or `static`.
+/// `#[non_exhaustive]`, the item's own modifier, or the `=` and initializer of a `const` or
+/// `static` outside a trait. A trait's default `const` keeps `= ..`, because an implementor may
+/// rely on it.
 fn noise(node: Node, parent_kind: &str, source: &[u8]) -> bool {
+    let in_trait = above(node, &["trait_item"]).is_some();
     (NOISE.contains(&node.kind()) && !non_exhaustive(node, source))
-        || initializer(node, parent_kind)
+        || (!in_trait && initializer(node, parent_kind))
 }
 
 /// A function's body: `{ .. }` for a trait method's default body, which an implementor may

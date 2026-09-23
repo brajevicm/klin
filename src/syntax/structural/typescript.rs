@@ -336,47 +336,72 @@ fn required_after(node: Node) -> bool {
 }
 
 /// The members of a class or interface body, each spelled, private ones left out, in one order
-/// whatever order the source wrote them in. The overloads of one method, call or construct
-/// signature stay together in source order, and an implementation that follows them leaves.
+/// whatever order the source wrote them in.
 fn members(body: Node, source: &[u8]) -> String {
-    let mut cursor = body.walk();
-    let mut sets: Vec<(Option<String>, Vec<String>)> = Vec::new();
-    for child in body
-        .named_children(&mut cursor)
-        .filter(|child| MEMBERS.contains(&child.kind()) && !private(*child, source))
-    {
-        let text = member(child, source);
-        let key = overloadable(child, &text);
-        match sets
-            .iter_mut()
-            .find(|(held, _)| key.is_some() && *held == key)
-        {
-            Some(_) if child.kind() == "method_definition" => {}
-            Some((_, texts)) => texts.push(text),
-            None => sets.push((key, vec![text])),
-        }
-    }
-    let mut listed: Vec<String> = sets
-        .into_iter()
-        .map(|(_, texts)| texts.join("; "))
-        .collect();
+    let mut listed = overload_sets(body, source);
     listed.sort();
     listed.dedup();
     format!("{{ {} }}", listed.join("; "))
 }
 
-/// What one overload set of a body is known by: the kind of signature and the text before its
-/// parameters, such as `m`, `static m` or `get v`, and `None` for a member that has no
-/// overloads.
-fn overloadable(node: Node, text: &str) -> Option<String> {
+/// The public members of a body, one entry each, except that the overloads of one method, call
+/// or construct signature share an entry in source order, and an implementation that directly
+/// follows them leaves.
+fn overload_sets(body: Node, source: &[u8]) -> Vec<String> {
+    let mut cursor = body.walk();
+    let mut sets: Vec<(Option<String>, Vec<String>)> = Vec::new();
+    let mut signed: Option<String> = None;
+    for child in body
+        .named_children(&mut cursor)
+        .filter(|child| MEMBERS.contains(&child.kind()) && !private(*child, source))
+    {
+        let key = overloadable(child, source);
+        let implementation = child.kind() == "method_definition";
+        let follows = key.is_some() && signed == key;
+        signed = key.clone().filter(|_| !implementation);
+        if implementation && follows {
+            continue;
+        }
+        joined(&mut sets, key, member(child, source));
+    }
+    sets.into_iter()
+        .map(|(_, texts)| texts.join("; "))
+        .collect()
+}
+
+/// One member's text added to the overload set its key names, or to a set of its own.
+fn joined(sets: &mut Vec<(Option<String>, Vec<String>)>, key: Option<String>, text: String) {
+    let set = key
+        .as_ref()
+        .and_then(|key| sets.iter_mut().find(|(held, _)| held.as_ref() == Some(key)));
+    match set {
+        Some((_, texts)) => texts.push(text),
+        None => sets.push((key, vec![text])),
+    }
+}
+
+/// What one overload set of a body is known by: the kind of signature, `static`, `get` or `set`
+/// where written, and the name as the source wrote it. Accessibility and `async` are no part of
+/// it, and a member that has no overloads has none.
+fn overloadable(node: Node, source: &[u8]) -> Option<String> {
     let kind = match node.kind() {
         "method_definition" | "method_signature" | "abstract_method_signature" => "method",
         "call_signature" => "call",
         "construct_signature" => "construct",
         _ => return None,
     };
-    let head = text.split(['(', '<']).next().unwrap_or(text);
-    Some(format!("{kind} {}", head.trim_end()))
+    let mut key = kind.to_string();
+    for mark in ["static", "get", "set"] {
+        if has_token(node, mark) {
+            key.push(' ');
+            key.push_str(mark);
+        }
+    }
+    if let Some(name) = node.child_by_field_name("name") {
+        key.push(' ');
+        key.push_str(&text_of(name, source));
+    }
+    Some(key)
 }
 
 fn member(node: Node, source: &[u8]) -> String {

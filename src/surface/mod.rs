@@ -150,7 +150,8 @@ pub fn derive(topology: &Topology, graph: &ModuleGraph) -> Derived {
         }
     }
     for surface in &mut out.surfaces {
-        surface.items = merged(std::mem::take(&mut surface.items));
+        let ordered = surface.language == typescript::LANGUAGE;
+        surface.items = merged(std::mem::take(&mut surface.items), ordered);
         surface.holes.sort_by(|a, b| {
             (&a.file, a.line, &a.text, &a.why).cmp(&(&b.file, b.line, &b.text, &b.why))
         });
@@ -198,11 +199,13 @@ impl Surface {
 
 /// Items of one surface under one identity, folded into one: a Rust item declared twice under
 /// `cfg`, or a TypeScript overload set, is one item whose contract lists each declared
-/// signature once. Inside one file the signatures keep their source order, because overload
-/// resolution follows it, and the groups of different files are ordered by their text, so a
-/// renamed file never changes a contract. An empty signature, an implementation that follows
-/// its overloads, adds nothing. An identity that any declaration leaves opaque is opaque.
-fn merged(items: Vec<Item>) -> Vec<Item> {
+/// signature once. Where `ordered`, as for a TypeScript overload set, the signatures of one file
+/// keep their source order, because overload resolution follows it, and the groups of different
+/// files are ordered by their text, so a renamed file never changes a contract. Otherwise, as
+/// for Rust's `cfg` twins, every signature is ordered by its text. An empty signature, an
+/// implementation that follows its overloads, adds nothing. An identity that any declaration
+/// leaves opaque is opaque.
+fn merged(items: Vec<Item>, ordered: bool) -> Vec<Item> {
     let mut by_identity: BTreeMap<(String, &'static str), Vec<Item>> = BTreeMap::new();
     for item in items {
         by_identity
@@ -210,12 +213,15 @@ fn merged(items: Vec<Item>) -> Vec<Item> {
             .or_default()
             .push(item);
     }
-    by_identity.into_values().map(folded).collect()
+    by_identity
+        .into_values()
+        .map(|same| folded(same, ordered))
+        .collect()
 }
 
 /// One identity's items as one item: opaque where any of them is, with every clause once, and
 /// measured by its signatures otherwise. The first declaration names the origin.
-fn folded(mut same: Vec<Item>) -> Item {
+fn folded(mut same: Vec<Item>, ordered: bool) -> Item {
     same.sort_by_key(|item| item.origin.clone());
     let opaque = same
         .iter()
@@ -231,7 +237,7 @@ fn folded(mut same: Vec<Item>) -> Item {
     clauses.dedup();
     let contract = match opaque {
         true => Contract::Opaque((!clauses.is_empty()).then(|| clauses.join("; "))),
-        false => Contract::Measured(signatures(&same)),
+        false => Contract::Measured(signatures(&same, ordered)),
     };
     Item {
         contract,
@@ -239,9 +245,10 @@ fn folded(mut same: Vec<Item>) -> Item {
     }
 }
 
-/// The measured signatures of one identity's items, which come sorted by origin: each file's in
-/// source order and once each, and the groups of different files ordered by their text.
-fn signatures(same: &[Item]) -> String {
+/// The measured signatures of one identity's items, which come sorted by origin: where
+/// `ordered`, each file's in source order and once each, and the groups of different files
+/// ordered by their text; otherwise each signature on its own, ordered by its text.
+fn signatures(same: &[Item], ordered: bool) -> String {
     let mut files: Vec<(Option<&String>, Vec<&str>)> = Vec::new();
     for item in same {
         let Contract::Measured(signature) = &item.contract else {
@@ -251,7 +258,10 @@ fn signatures(same: &[Item]) -> String {
             continue;
         }
         let file = item.origin.as_ref().map(|(file, _)| file);
-        match files.last_mut().filter(|(held, _)| *held == file) {
+        match files
+            .last_mut()
+            .filter(|(held, _)| ordered && *held == file)
+        {
             Some((_, held)) if held.contains(&signature.as_str()) => {}
             Some((_, held)) => held.push(signature),
             None => files.push((file, vec![signature])),

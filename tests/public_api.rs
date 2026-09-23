@@ -1179,3 +1179,95 @@ fn a_method_overload_set_keeps_its_source_order_and_drops_its_implementation() {
         red.out
     );
 }
+
+#[test]
+fn methods_whose_keys_hold_brackets_stay_distinct_and_an_overload_key_ignores_access_and_async() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    [Symbol.for(\"a\")](x: string): void {}\n    [Symbol.for(\"b\")](x: string): void {}\n    public m(a: string): string;\n    m(a: number): number;\n    async m(a: any): Promise<any> {\n        return a;\n    }\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    [Symbol.for(\"a\")](x: string): void {}\n    [Symbol.for(\"b\")](x: string): void {}\n    public m(a: string): string;\n    m(a: number): number;\n    async m(a: string | number): Promise<unknown> {\n        return a;\n    }\n}\n",
+    );
+    let green = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    [Symbol.for(\"a\")](x: string): void {}\n    [Symbol.for(\"b\")](x: number): void {}\n    m(a: number): number;\n    public m(a: string): string;\n    async m(a: any): Promise<any> {\n        return a;\n    }\n}\n",
+    );
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `class C { [Symbol.for(\"a\")](_: string): void; [Symbol.for(\"b\")](_: string): void; public m(_: string): string; m(_: number): number }`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn a_default_removed_from_a_trait_const_fails() {
+    let tree = Tree::new();
+    crate_of(&tree, "pub trait Tr {\n    const N: u8 = 1;\n}\n");
+    tree.write("src/lib.rs", "pub trait Tr {\n    const N: u8 = 2;\n}\n");
+    let green = by_hand(&tree);
+    tree.write("src/lib.rs", "pub trait Tr {\n    const N: u8;\n}\n");
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `trait Tr { const N: u8 = ..; }`, now `trait Tr { const N: u8; }`"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn reordering_the_cfg_declarations_of_one_rust_item_passes() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "#[cfg(unix)]\npub fn f(_: u8) {}\n#[cfg(not(unix))]\npub fn f(_: u16) {}\n",
+    );
+    tree.write(
+        "src/lib.rs",
+        "#[cfg(not(unix))]\npub fn f(_: u16) {}\n#[cfg(unix)]\npub fn f(_: u8) {}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    for root in ["a", "b"] {
+        tree.write(&format!("{root}/Cargo.toml"), PACKAGE);
+        tree.write(
+            &format!("{root}/src/lib.rs"),
+            "pub mod m {\n    pub fn f() {}\n    pub mod n {\n        pub fn g() {}\n    }\n}\n",
+        );
+    }
+    tree.base();
+    for root in ["a", "b"] {
+        tree.write(&format!("{root}/src/lib.rs"), "pub fn kept() {}\n");
+    }
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    let printed = run
+        .out
+        .lines()
+        .filter(|line| line.trim_start().starts_with("core:"))
+        .count();
+    assert!(run.says("8 new compatibility break(s)"), "{}", run.out);
+    assert_eq!(printed, 8, "{}", run.out);
+}

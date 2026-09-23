@@ -308,29 +308,37 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
         fix_advice: if hook { HOOK_REMEDY } else { REMEDY },
         ceiling: None,
         format_metrics: show,
-        nested: Some(held_by_removed_module),
+        nested: Some(held_by_removed_modules),
     }
 }
 
-/// Whether a removed item sat inside a module the same change removed, so the text report prints
-/// it under that module's line.
-fn held_by_removed_module(module: &Finding, item: &Finding) -> bool {
+/// For each finding, the removed module it prints under: the outermost module of the same
+/// surface that the same change removed and whose path holds the finding's own path.
+fn held_by_removed_modules(found: &[Finding]) -> Vec<Option<usize>> {
     let removed =
         |finding: &Finding| finding.values.get(KIND).and_then(Value::as_str) == Some(REMOVED);
-    let path = module
-        .text
-        .strip_suffix(')')
-        .and_then(|text| text.strip_suffix(MODULE))
-        .and_then(|text| text.strip_suffix(" ("));
-    path.is_some_and(|path| {
-        removed(module)
-            && removed(item)
-            && module.file == item.file
-            && item
+    let mut modules: HashMap<(&str, &str), usize> = HashMap::new();
+    for (at, finding) in found.iter().enumerate().filter(|(_, held)| removed(held)) {
+        let module = finding
+            .text
+            .strip_suffix(')')
+            .and_then(|text| text.strip_suffix(MODULE))
+            .and_then(|text| text.strip_suffix(" ("));
+        if let Some(module) = module {
+            modules.entry((finding.file.as_str(), module)).or_insert(at);
+        }
+    }
+    found
+        .iter()
+        .map(|finding| {
+            let (own, _) = finding
                 .text
-                .strip_prefix(path)
-                .is_some_and(|rest| rest.starts_with("::"))
-    })
+                .rsplit_once(" (")
+                .filter(|_| removed(finding))?;
+            own.match_indices("::")
+                .find_map(|(end, _)| modules.get(&(finding.file.as_str(), &own[..end])).copied())
+        })
+        .collect()
 }
 
 fn show(values: &Values) -> String {
