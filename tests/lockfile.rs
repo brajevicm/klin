@@ -520,7 +520,7 @@ fn an_accepted_entry_keyed_by_the_manifest_and_the_name_holds_a_finding() {
     tree.write(
         "klin.json",
         r#"{"accepted": [{"gate": "lockfile", "file": "Cargo.toml", "text": "regex",
-                          "unlocked": 1, "unpinned": 0, "stale": 0}]}"#,
+                          "unlocked": 1, "unpinned": 0}]}"#,
     );
     let run = tree.run(&["gate", "--gate", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -923,7 +923,7 @@ fn a_pnpm_5_peer_suffix_is_no_part_of_the_name_or_the_version() {
 }
 
 #[test]
-fn a_go_module_a_replace_sends_to_another_version_is_not_judged_for_stale() {
+fn a_go_module_a_replace_sends_to_another_version_is_judged_at_that_version() {
     let tree = go_tree();
     tree.write(
         "go.mod",
@@ -933,4 +933,284 @@ fn a_go_module_a_replace_sends_to_another_version_is_not_judged_for_stale() {
     tree.write("go.sum", "example.com/a v1.2.0 h1:abc=\n");
     let run = tree.run(&["gate", "--gate", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn an_exact_pin_beside_a_range_of_the_same_dependency_is_still_judged_for_stale() {
+    let tree = Tree::new();
+    tree.write(
+        "Cargo.toml",
+        &format!(
+            "{}\n[target.'cfg(unix)'.dependencies]\nserde = \"=2.0.0\"\n",
+            manifest("serde = \"1\"\n")
+        ),
+    );
+    tree.write("Cargo.lock", &locked(&["serde"]));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("Cargo.toml:0  unlocked 0, unpinned 1, stale 1  serde"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_npm_pin_with_only_a_nested_lockfile_entry_is_stale() {
+    let tree = Tree::new();
+    tree.write(
+        "package.json",
+        r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
+    );
+    tree.write(
+        "package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"},
+            "node_modules/tool": {"version": "1.0.0"},
+            "node_modules/tool/node_modules/typescript": {"version": "5.6.3"}}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("package.json:0  unlocked 0, unpinned 0, stale 1  typescript"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_npm_workspace_link_is_judged_at_the_version_of_the_package_it_links() {
+    let tree = Tree::new();
+    tree.write("package.json", r#"{"dependencies": {"shared": "1.0.0"}}"#);
+    let lockfile = |version: &str| {
+        format!(
+            r#"{{"lockfileVersion": 3, "packages": {{"": {{"name": "t"}},
+                "node_modules/shared": {{"resolved": "packages/shared", "link": true}},
+                "packages/shared": {{"version": "{version}"}}}}}}"#
+        )
+    };
+    tree.write("package-lock.json", &lockfile("1.0.0"));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    tree.write("package-lock.json", &lockfile("2.0.0"));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert!(
+        run.says("package.json:0  unlocked 0, unpinned 0, stale 1  shared"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn each_npm_workspace_manifest_is_judged_against_its_own_entry_and_then_the_root() {
+    let tree = Tree::new();
+    tree.write(
+        "package.json",
+        r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
+    );
+    tree.write(
+        "packages/a/package.json",
+        r#"{"devDependencies": {"typescript": "5.6.3", "left-pad": "1.0.0"}}"#,
+    );
+    tree.write(
+        "package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"},
+            "node_modules/typescript": {"version": "5.4.0"},
+            "node_modules/left-pad": {"version": "1.0.0"},
+            "packages/a/node_modules/typescript": {"version": "5.6.3"}}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("  package.json:0  unlocked 0, unpinned 0, stale 1  typescript"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("packages/a/package.json:0"), "{}", run.out);
+}
+
+#[test]
+fn a_cargo_lock_block_is_read_whatever_the_order_of_its_fields() {
+    let tree = Tree::new();
+    tree.write("Cargo.toml", &manifest("serde = \"=2.0.0\"\n"));
+    tree.write(
+        "Cargo.lock",
+        "[[package]]\nversion = \"1.0.0\"\nname = \"serde\"\n",
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("Cargo.toml:0  unlocked 0, unpinned 0, stale 1  serde"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn only_a_pin_with_fewer_than_three_numbers_holds_the_versions_it_is_a_prefix_of() {
+    let tree = Tree::new();
+    tree.write("Cargo.toml", &manifest("serde = \"=1.2\"\n"));
+    tree.write(
+        "Cargo.lock",
+        "[[package]]\nname = \"serde\"\nversion = \"1.2.5\"\n",
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let tree = Tree::new();
+    tree.write(
+        "package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0-alpha"}}"#,
+    );
+    tree.write(
+        "package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"},
+            "node_modules/left-pad": {"version": "1.0.0-alpha.1"}}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("package.json:0  unlocked 0, unpinned 0, stale 1  left-pad"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_go_replace_applies_only_to_the_version_it_names_and_judges_its_target() {
+    let tree = go_tree();
+    tree.write(
+        "go.mod",
+        "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.1.0\n)\n\
+         \nreplace example.com/a v1.0.0 => example.com/a v1.2.0\n",
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says(
+            "unlocked 0, unpinned 0, stale 1, was unlocked 0, unpinned 0, stale 0  example.com/a"
+        ),
+        "{}",
+        run.out
+    );
+
+    tree.write(
+        "go.mod",
+        "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.0.0\n)\n\
+         \nreplace example.com/a => example.com/fork v1.2.0\n",
+    );
+    tree.write("go.sum", "example.com/fork v1.2.0 h1:abc=\n");
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_pnpm_manifest_is_judged_against_its_own_importer_and_not_the_package_pool() {
+    let lockfile = |root: &str| {
+        format!(
+            "lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    dependencies:\n      foo:\n\
+             \x20       specifier: 2.0.0\n        version: {root}\n\n  packages/a:\n\
+             \x20   devDependencies:\n      foo:\n        specifier: 2.0.0\n\
+             \x20       version: 2.0.0(react@18.2.0)\n\npackages:\n\n  foo@1.0.0:\n\
+             \x20   resolution: {{integrity: sha512-a}}\n\n  foo@2.0.0:\n\
+             \x20   resolution: {{integrity: sha512-b}}\n"
+        )
+    };
+    let tree = Tree::new();
+    tree.write("package.json", r#"{"dependencies": {"foo": "2.0.0"}}"#);
+    tree.write(
+        "packages/a/package.json",
+        r#"{"devDependencies": {"foo": "2.0.0"}}"#,
+    );
+    tree.write("pnpm-lock.yaml", &lockfile("2.0.0"));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    tree.write("pnpm-lock.yaml", &lockfile("1.0.0"));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("  package.json:0  unlocked 0, unpinned 0, stale 1  foo"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("packages/a/package.json:0"), "{}", run.out);
+}
+
+#[test]
+fn a_pnpm_5_root_dependency_section_is_its_importer() {
+    let tree = Tree::new();
+    tree.write("package.json", r#"{"dependencies": {"foo": "2.0.0"}}"#);
+    tree.write(
+        "pnpm-lock.yaml",
+        "lockfileVersion: 5.4\n\nspecifiers:\n  foo: 2.0.0\n\ndependencies:\n  foo: 1.0.0\n\n\
+         packages:\n\n  /foo/1.0.0:\n    resolution: {integrity: sha512-a}\n\n\
+         \x20 /foo/2.0.0:\n    resolution: {integrity: sha512-b}\n",
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("package.json:0  unlocked 0, unpinned 0, stale 1  foo"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_worsened_finding_prints_only_the_remedy_of_the_value_that_rose() {
+    let tree = Tree::new();
+    tree.write("Cargo.toml", &manifest("serde = \"1\"\n"));
+    tree.write("Cargo.lock", &locked(&["serde"]));
+    tree.base();
+    tree.write("Cargo.lock", &locked(&["other"]));
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("unlocked 1, unpinned 1, stale 0, was unlocked 0, unpinned 1, stale 0  serde"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("Run the project's own install"), "{}", run.out);
+    assert!(!run.says("Restore the exact version"), "{}", run.out);
+}
+
+#[test]
+fn a_stale_pin_fails_under_a_condition_that_names_it() {
+    let tree = Tree::new();
+    tree.write("package.json", r#"{"dependencies": {}}"#);
+    tree.write("package-lock.json", &npm_lock("5.4.0"));
+    tree.base();
+    tree.write(
+        "package.json",
+        r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert!(
+        run.says(
+            "1 new dependenc(ies) that the lockfile beside the manifest does not lock at an exact pin"
+        ),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_accepted_entry_that_gives_no_stale_holds_no_staleness() {
+    let tree = typescript_tree("5.4.0");
+    tree.write(
+        "package.json",
+        r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
+    );
+    tree.write(
+        "klin.json",
+        r#"{"accepted": [{"gate": "lockfile", "file": "package.json", "text": "typescript",
+                          "unlocked": 0, "unpinned": 0}]}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("stale 1, was unlocked 0, unpinned 0, stale 0  typescript"),
+        "{}",
+        run.out
+    );
 }

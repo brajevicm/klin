@@ -50,9 +50,9 @@ const REMEDIES: &[(&str, &str)] = &[
 /// manifest calls it, which is the site's identity, and `package` is what the lockfile records
 /// it under, which a Cargo rename makes different. A dependency with no registry behind it — a
 /// path, a git or a workspace dependency — has no lockfile entry to want and no version to pin,
-/// so it carries no value. `pins` holds every exact version a statement gave it. A statement
-/// only ever takes a value away, so two tables that name one dependency give the same reading in
-/// either order.
+/// so it carries no value. `pins` holds every exact version a statement gave it, which is judged
+/// for staleness even when another statement is a range. A statement only ever takes a value
+/// away, so two tables that name one dependency give the same reading in either order.
 struct Dependency {
     name: String,
     package: String,
@@ -82,12 +82,67 @@ impl Dependency {
 
 /// One ecosystem: the manifest klin reads, the lockfiles it can read beside it, and the two
 /// readers. A lockfile reader gives each name it holds, with the version it records for that
-/// name where it records one the manifest resolves to, and returns `None` when its shape is not
-/// one it recognizes. Spec 8.2.1.
+/// name where it records one, and returns `None` when its shape is not one it recognizes. An
+/// entry with an `importer` is what the manifest in that directory, relative to the lockfile,
+/// resolves the name to, and one without is a package in the lockfile's pool. Spec 8.2.1.
 type DependencyReader = fn(&str, &[u8]) -> Result<Vec<Dependency>, Error>;
-type Entry = (String, Option<String>);
 type LockfileReader = fn(&str, &[u8]) -> Result<Option<Vec<Entry>>, Error>;
-type Locked = HashMap<String, HashSet<String>>;
+
+struct Entry {
+    name: String,
+    version: Option<String>,
+    importer: Option<String>,
+}
+
+impl Entry {
+    fn pooled(name: &str, version: Option<String>) -> Entry {
+        Entry {
+            name: name.to_string(),
+            version,
+            importer: None,
+        }
+    }
+
+    fn resolved(name: &str, version: Option<String>, importer: &str) -> Entry {
+        Entry {
+            importer: Some(importer.to_string()),
+            ..Entry::pooled(name, version)
+        }
+    }
+}
+
+#[derive(Default)]
+struct Locked {
+    names: HashSet<String>,
+    pool: HashMap<String, HashSet<String>>,
+    importers: HashMap<(String, String), HashSet<String>>,
+}
+
+impl Locked {
+    fn read(entries: Vec<Entry>) -> Locked {
+        let mut out = Locked::default();
+        for entry in entries {
+            out.names.insert(entry.name.clone());
+            let versions = match entry.importer {
+                Some(importer) => out.importers.entry((importer, entry.name)).or_default(),
+                None => out.pool.entry(entry.name).or_default(),
+            };
+            versions.extend(entry.version);
+        }
+        out
+    }
+
+    fn versions(&self, importer: &str, name: &str) -> Option<&HashSet<String>> {
+        if self.importers.is_empty() {
+            return self.pool.get(name);
+        }
+        let at = |importer: &str| {
+            self.importers
+                .get(&(importer.to_string(), name.to_string()))
+        };
+        at(importer).or_else(|| at(""))
+    }
+}
 
 struct Format {
     manifest: &'static str,
@@ -140,7 +195,12 @@ pub fn applies(project: &Project) -> bool {
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let sites = surveyed(at, out)?;
-    let accepted = ratchet::accepted(at.config(), at.gate, METRICS)?;
+    let mut accepted = ratchet::accepted(at.config(), at.gate, &[UNLOCKED, UNPINNED])?;
+    for entry in &mut accepted {
+        if !entry.get(STALE).is_some_and(Value::is_number) {
+            entry.insert(STALE.into(), 0.into());
+        }
+    }
     let state = format!(
         "{} dependenc{} in {} manifest(s), each locked and pinned",
         sites.judged,
@@ -274,7 +334,7 @@ impl Side {
             return Ok(None);
         };
         let found = beside(&self.bytes, manifest, format.lockfiles);
-        let none = Locked::new();
+        let none = Locked::default();
         let mut unreadable = None;
         let names = match &found {
             Some(at) => match locked(&mut self.locked, &self.bytes, at, format)? {
@@ -286,8 +346,11 @@ impl Side {
             },
             None => &none,
         };
+        let importer = found
+            .as_deref()
+            .map_or(String::new(), |at| relative(&parent(manifest), &parent(at)));
         let (deps, unparsed) = match (format.dependencies)(manifest, text) {
-            Ok(deps) => (taken(deps, names), None),
+            Ok(deps) => (taken(deps, names, &importer), None),
             Err(Error(why)) => (BTreeMap::new(), Some(why)),
         };
         Ok(Some(State {
@@ -310,7 +373,7 @@ fn locked<'a>(
 ) -> Result<Option<&'a Locked>, Error> {
     let names = parsed.entry(at.to_string()).or_insert_with(|| {
         (format.locked)(at, &bytes[at])
-            .map(|entries| entries.map(recorded))
+            .map(|entries| entries.map(Locked::read))
             .map_err(|Error(why)| why)
     });
     names
@@ -319,19 +382,11 @@ fn locked<'a>(
         .map_err(|why| Error(why.clone()))
 }
 
-fn recorded(entries: Vec<Entry>) -> Locked {
-    let mut out = Locked::new();
-    for (name, version) in entries {
-        out.entry(name).or_default().extend(version);
-    }
-    out
-}
-
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
         metrics: METRICS,
         unit: "dependenc(ies)",
-        condition: "that the lockfile beside the manifest does not lock",
+        condition: "that the lockfile beside the manifest does not lock at an exact pin",
         fix_advice: Remedy::ByValues(remedy),
         ceiling: None,
         format_metrics: show,
@@ -520,31 +575,40 @@ fn unparseable(
 }
 
 /// Every value of every dependency, taken against the names and versions the lockfile holds.
-fn taken(deps: Vec<Dependency>, locked: &Locked) -> BTreeMap<String, Values> {
+fn taken(deps: Vec<Dependency>, locked: &Locked, importer: &str) -> BTreeMap<String, Values> {
     deps.into_iter()
         .map(|dep| {
-            let versions = locked.get(&dep.package);
-            let unlocked = dep.registry && versions.is_none();
-            let drifted = dep.registry
-                && dep.exact
-                && versions.is_some_and(|versions| stale(&dep.pins, versions));
+            let unlocked = dep.registry && !locked.names.contains(&dep.package);
+            let stale = dep.registry
+                && !unlocked
+                && !dep.pins.is_empty()
+                && !locked
+                    .versions(importer, &dep.package)
+                    .is_some_and(|versions| pinned(&dep.pins, versions));
             (
                 dep.name,
-                values(unlocked, dep.registry && !dep.exact, drifted),
+                values(unlocked, dep.registry && !dep.exact, stale),
             )
         })
         .collect()
 }
 
-fn stale(pins: &[String], versions: &HashSet<String>) -> bool {
-    !versions.is_empty()
-        && pins.iter().any(|pin| {
-            !versions.iter().any(|version| {
-                version
-                    .strip_prefix(pin.as_str())
-                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('.'))
-            })
-        })
+fn pinned(pins: &[String], versions: &HashSet<String>) -> bool {
+    pins.iter()
+        .all(|pin| versions.iter().any(|version| holds(pin, version)))
+}
+
+fn holds(pin: &str, version: &str) -> bool {
+    let partial =
+        pin.split('.').count() < 3 && pin.chars().all(|at| at.is_ascii_digit() || at == '.');
+    version == pin
+        || version.starts_with("link:")
+        || version.starts_with("file:")
+        || (partial
+            && !version.contains('-')
+            && version
+                .strip_prefix(pin)
+                .is_some_and(|rest| rest.starts_with('.')))
 }
 
 fn values(unlocked: bool, unpinned: bool, stale: bool) -> Values {
@@ -584,6 +648,16 @@ fn nearest(manifest: &str, name: &str) -> Vec<String> {
             return out;
         }
         at = parent(&at);
+    }
+}
+
+fn relative(dir: &str, root: &str) -> String {
+    match root.is_empty() {
+        true => dir.to_string(),
+        false => dir
+            .strip_prefix(root)
+            .map_or(dir, |rest| rest.trim_start_matches('/'))
+            .to_string(),
     }
 }
 
@@ -786,33 +860,35 @@ fn unquoted(text: &str) -> &str {
         .unwrap_or_default()
 }
 
-/// Every package a `Cargo.lock` holds: the `name` and `version` of each `[[package]]` block.
+/// Every package a `Cargo.lock` holds: the `name` and `version` of each `[[package]]` block, in
+/// whichever order the block states them.
 fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
     let text = String::from_utf8_lossy(bytes);
     let mut out = Vec::new();
-    let mut package = None;
-    for line in text.lines() {
-        let line = line.trim();
+    let mut package: Option<(Option<&str>, Option<&str>)> = None;
+    for line in text.lines().map(str::trim) {
         if line.starts_with('[') {
-            package = (line == "[[package]]").then(String::new);
-        } else if let Some(name) = &mut package {
-            if let Some(value) = toml_value(line, "name") {
-                *name = value.to_string();
-                out.push((value.to_string(), None));
-            } else if let Some(value) = toml_value(line, "version")
-                && !name.is_empty()
-            {
-                out.push((name.clone(), Some(value.to_string())));
-            }
+            out.extend(package.take().and_then(cargo_package));
+            package = (line == "[[package]]").then_some((None, None));
+        } else if let Some((name, version)) = &mut package {
+            *name = toml_value(line, "name").or(*name);
+            *version = toml_value(line, "version").or(*version);
         }
     }
+    out.extend(package.and_then(cargo_package));
     Ok(Some(out))
+}
+
+fn cargo_package((name, version): (Option<&str>, Option<&str>)) -> Option<Entry> {
+    Some(Entry::pooled(name?, version.map(str::to_string)))
 }
 
 fn toml_value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     let value = line.strip_prefix(key)?.trim().strip_prefix('=')?;
     Some(unquoted(value))
 }
+
+const PNPM_TABLES: &[&str] = &["dependencies", "devDependencies", "optionalDependencies"];
 
 const NPM_TABLES: &[&str] = &[
     "dependencies",
@@ -872,35 +948,113 @@ fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
 
 /// Every package name a `package-lock.json` holds, in both lockfile shapes: the keys of
 /// `packages` with everything up to the last `node_modules/` stripped, and the keys of the
-/// nested `dependencies` tree that version 1 writes. The version counts only for an entry
-/// that sits in no other package's `node_modules`, which is the one a manifest resolves to.
+/// nested `dependencies` tree that version 1 writes. An entry that sits in no other package's
+/// `node_modules` is what the manifest in the directory above it resolves the name to, and a
+/// link takes the version of the package it links.
 fn package_locked(at: &str, bytes: &[u8]) -> Result<Vec<Entry>, Error> {
     let data = json(at, bytes)?;
     let mut out = Vec::new();
     if let Some(packages) = data.get("packages").and_then(Value::as_object) {
         out.extend(packages.iter().filter_map(|(key, entry)| {
             let (above, name) = key.rsplit_once("node_modules/")?;
-            let version = (!above.contains("node_modules/")).then(|| npm_version(entry));
-            Some((name.to_string(), version.flatten()))
+            Some(match above.contains("node_modules/") {
+                true => Entry::pooled(name, None),
+                false => Entry::resolved(
+                    name,
+                    npm_version(entry, packages),
+                    above.trim_end_matches('/'),
+                ),
+            })
         }));
     }
-    npm_nested(data.get("dependencies"), true, &mut out);
+    npm_nested(data.get("dependencies"), Some(""), &mut out);
     Ok(out)
 }
 
-fn npm_version(entry: &Value) -> Option<String> {
-    entry
-        .get("version")
-        .and_then(Value::as_str)
-        .map(str::to_string)
+fn npm_version(entry: &Value, packages: &serde_json::Map<String, Value>) -> Option<String> {
+    let version = |entry: &Value| {
+        entry
+            .get("version")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    };
+    if entry.get("link").and_then(Value::as_bool) != Some(true) {
+        return version(entry);
+    }
+    let target = entry.get("resolved").and_then(Value::as_str)?;
+    Some(
+        packages
+            .get(target)
+            .and_then(version)
+            .unwrap_or(format!("link:{target}")),
+    )
 }
 
-/// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes.
+/// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes, and
+/// what each importer resolves its dependencies to.
 fn pnpm_locked(bytes: &[u8]) -> Option<Vec<Entry>> {
     let text = String::from_utf8_lossy(bytes);
     let version = pnpm_version(&text)?;
-    let packages = pnpm_packages(&text)?;
+    let mut packages = pnpm_packages(&text)?;
+    packages.extend(pnpm_importers(&text));
     version.then_some(packages)
+}
+
+fn pnpm_importers(text: &str) -> Vec<Entry> {
+    let mut out = Vec::new();
+    let mut path: Vec<(usize, String)> = Vec::new();
+    for line in text.lines().filter(|line| !yarn_blank(line.trim())) {
+        let indent = line.len() - line.trim_start().len();
+        while path.last().is_some_and(|(at, _)| *at >= indent) {
+            path.pop();
+        }
+        let (key, value) = yaml_pair(line.trim());
+        let keys: Vec<&str> = path.iter().map(|(_, key)| key.as_str()).collect();
+        if let Some(importer) = pnpm_table(&keys)
+            && !value.is_empty()
+        {
+            out.push(Entry::resolved(key, Some(pnpm_resolved(value)), &importer));
+        } else if key == "version"
+            && let Some((name, above)) = keys.split_last()
+            && let Some(importer) = pnpm_table(above)
+        {
+            out.push(Entry::resolved(name, Some(pnpm_resolved(value)), &importer));
+        }
+        path.push((indent, key.to_string()));
+    }
+    out
+}
+
+fn pnpm_table(keys: &[&str]) -> Option<String> {
+    match keys {
+        [table] if PNPM_TABLES.contains(table) => Some(String::new()),
+        ["importers", importer, table] if PNPM_TABLES.contains(table) => Some(
+            importer
+                .trim_start_matches('.')
+                .trim_start_matches('/')
+                .to_string(),
+        ),
+        _ => None,
+    }
+}
+
+fn pnpm_resolved(value: &str) -> String {
+    if value.starts_with("link:") || value.starts_with("file:") {
+        return value.to_string();
+    }
+    let version = value.split(['(', '_']).next().unwrap_or(value);
+    let version = version.rsplit_once('@').map_or(version, |(_, at)| at);
+    version
+        .rsplit_once('/')
+        .map_or(version, |(_, at)| at)
+        .to_string()
+}
+
+fn yaml_pair(line: &str) -> (&str, &str) {
+    match line.split_once(": ") {
+        Some((key, value)) => (yaml_text(key), yaml_text(value)),
+        None => (yaml_text(line.trim_end_matches(':')), ""),
+    }
 }
 
 fn pnpm_version(text: &str) -> Option<bool> {
@@ -972,7 +1126,7 @@ fn pnpm_entry(key: &str) -> Option<Entry> {
                 .filter(|(_, version)| !version.is_empty())
         })?;
     let name = name.strip_prefix("registry.npmjs.org/").unwrap_or(name);
-    Some((name.to_string(), Some(version.to_string())))
+    Some(Entry::pooled(name, Some(version.to_string())))
 }
 
 fn pnpm_path(key: &str) -> Option<(&str, &str)> {
@@ -1001,12 +1155,12 @@ fn yarn_entries(lines: std::str::Lines<'_>, strict: bool) -> Option<Vec<Entry>> 
         let trimmed = line.trim();
         if !line.starts_with(char::is_whitespace) {
             names = yarn_top(trimmed, strict)?;
-            out.extend(names.iter().map(|name| (name.clone(), None)));
+            out.extend(names.iter().map(|name| Entry::pooled(name, None)));
         } else if let Some(version) = yarn_recorded(trimmed) {
             out.extend(
                 names
                     .iter()
-                    .map(|name| (name.clone(), Some(version.clone()))),
+                    .map(|name| Entry::pooled(name, Some(version.clone()))),
             );
         }
     }
@@ -1112,13 +1266,23 @@ fn yaml_text(text: &str) -> &str {
     text.trim().trim_matches(['\'', '"'])
 }
 
-fn npm_nested(held: Option<&Value>, top: bool, out: &mut Vec<Entry>) {
+fn npm_nested(held: Option<&Value>, importer: Option<&str>, out: &mut Vec<Entry>) {
     let Some(named) = held.and_then(Value::as_object) else {
         return;
     };
     for (name, entry) in named {
-        out.push((name.clone(), npm_version(entry).filter(|_| top)));
-        npm_nested(entry.get("dependencies"), false, out);
+        out.push(match importer {
+            Some(importer) => Entry::resolved(
+                name,
+                entry
+                    .get("version")
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                importer,
+            ),
+            None => Entry::pooled(name, None),
+        });
+        npm_nested(entry.get("dependencies"), None, out);
     }
 }
 
@@ -1147,7 +1311,7 @@ fn go_dependencies(_at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
     Ok(found.into_values().collect())
 }
 
-fn go_require(line: &str, replaced: &[(String, bool)], found: &mut BTreeMap<String, Dependency>) {
+fn go_require(line: &str, replaced: &[Replace], found: &mut BTreeMap<String, Dependency>) {
     let mut fields = line.split_whitespace();
     let Some(name) = fields.next() else {
         return;
@@ -1155,32 +1319,63 @@ fn go_require(line: &str, replaced: &[(String, bool)], found: &mut BTreeMap<Stri
     if name == "(" || name == ")" {
         return;
     }
-    let replacement = replaced.iter().find(|(held, _)| held == name);
-    found.insert(
-        name.to_string(),
-        Dependency {
-            registry: !replacement.is_some_and(|(_, local)| *local),
-            pins: match replacement {
-                Some(_) => Vec::new(),
-                None => fields.next().map(str::to_string).into_iter().collect(),
-            },
+    let version = fields.next();
+    let dependency = match replaced.iter().find(|held| held.applies(name, version)) {
+        None => Dependency {
+            pins: version.map(str::to_string).into_iter().collect(),
             ..Dependency::named(name)
         },
-    );
+        Some(held) if held.local() => Dependency {
+            registry: false,
+            ..Dependency::named(name)
+        },
+        Some(held) => Dependency {
+            package: held.target.clone(),
+            pins: held.target_version.clone().into_iter().collect(),
+            ..Dependency::named(name)
+        },
+    };
+    found.insert(name.to_string(), dependency);
 }
 
-/// The modules a `replace` directive names, in both forms of the directive, each with whether
-/// it sends the module to a local path.
-fn go_replaced(text: &str) -> Vec<(String, bool)> {
+struct Replace {
+    module: String,
+    version: Option<String>,
+    target: String,
+    target_version: Option<String>,
+}
+
+impl Replace {
+    fn applies(&self, module: &str, version: Option<&str>) -> bool {
+        self.module == module
+            && self
+                .version
+                .as_deref()
+                .is_none_or(|held| Some(held) == version)
+    }
+
+    fn local(&self) -> bool {
+        self.target.starts_with('.') || self.target.starts_with('/')
+    }
+}
+
+/// Every `replace` directive, in both forms: the module and the version it replaces, and the
+/// module or local path and the version it sends them to.
+fn go_replaced(text: &str) -> Vec<Replace> {
     let mut out = Vec::new();
     for line in text.lines() {
         let line = bare(line).trim_start_matches("replace").trim();
         let Some((from, to)) = line.split_once("=>") else {
             continue;
         };
-        if let Some(name) = from.split_whitespace().next() {
-            let to = to.trim();
-            out.push((name.to_string(), to.starts_with('.') || to.starts_with('/')));
+        let (mut from, mut to) = (from.split_whitespace(), to.split_whitespace());
+        if let (Some(module), Some(target)) = (from.next(), to.next()) {
+            out.push(Replace {
+                module: module.to_string(),
+                version: from.next().map(str::to_string),
+                target: target.to_string(),
+                target_version: to.next().map(str::to_string),
+            });
         }
     }
     out
@@ -1194,11 +1389,11 @@ fn go_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
         text.lines()
             .filter_map(|line| {
                 let mut fields = line.split_whitespace();
-                let name = fields.next()?.to_string();
+                let name = fields.next()?;
                 let version = fields
                     .next()
                     .map(|at| at.trim_end_matches("/go.mod").to_string());
-                Some((name, version))
+                Some(Entry::pooled(name, version))
             })
             .collect(),
     ))

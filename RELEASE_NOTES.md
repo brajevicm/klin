@@ -5,16 +5,15 @@
 ### `lockfile` checks each pin against the version the lockfile records (#305)
 
 A new value, `stale`, is 1 when a dependency's specifier is exact and the
-lockfile records versions of it, none of which is the pin. Before this, a
+lockfile does not record that version for the manifest. Before this, a
 manifest could pin `typescript` at `5.6.3` while `package-lock.json` still
 installed `5.4.0`, and the gate passed. Staleness the base already had is
-held. The remedy now has one part for each value a failure carries, so a
+held. The remedy now has one part for each value that failed, so a
 new dependency with no lockfile entry is told to run the project's install.
 The old remedy asked it to restore a base pin it never had.
 
-An accepted `lockfile` entry in `klin.json` must now give `stale` as well. An
-entry without it is a configuration error. Add `"stale": 0` to keep what the
-entry accepted.
+An accepted `lockfile` entry written before this release stays valid. With no
+`stale`, it holds a `stale` of 0.
 
 ### Generated `klin.json` schema (#181)
 
