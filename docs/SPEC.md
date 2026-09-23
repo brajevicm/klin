@@ -811,8 +811,11 @@ detached checkout of an unrelated commit, a hard reset, and a rebase that
 drops the parent each take the parent out of HEAD history. The stop then
 prints a NOTE that names the reason, judges a branch window from the base of
 6.3 for the current checkout, and writes that base as the stamp, red, keeping
-the prompt counter and dropping the `asked` record of 8.2, `intervened` and
-the follow-up hash, because all three belong to the turn the checkout left.
+the prompt counter and dropping the `asked` record of 8.2 and `intervened`,
+because both belong to the turn the checkout left. The handoff records of
+9.1 belong to a host session and not to the turn, so the fallback leaves
+them: a report the host is about to submit is still recognized, and a
+session's next prompt clears its record as always.
 The journal records the stop as `branch-fallback` (11.4).
 
 The recovery copies go with it. The stop deletes `refs/worktree/klin/turn`
@@ -2558,8 +2561,8 @@ prior-block flag would take it again at every stop, so it blocks nothing, by
 the rule of 14 that a state klin cannot keep blocks nothing.
 
 A host that submits the block report as another prompt records that exact
-report in the turn stamp, under the stop's session, before delivery; the
-matching prompt consumes it
+report in the session's handoff record of 9.1 before delivery; the matching
+prompt consumes it
 without opening another turn, so it raises no prompt counter and brings no
 fresh gate budget. A genuine later prompt brings a fresh budget of two gate
 blocks and eight build blocks. A deleted test is the one gate failure that
@@ -3610,7 +3613,7 @@ same in all three.
 | No base resolves outside the hook | exit 2 naming what was tried |
 | `turn` file missing in the hook, ref present | restored from the ref with a RED verdict, and a NOTE says so |
 | `turn` file and ref both missing in the hook | a branch window from the base of 6.3, or from HEAD when none resolves, a NOTE names the missing stamp, and the stop writes that base as the stamp |
-| The commit the stamp was taken over is outside current HEAD history in the hook | a branch window from the base of 6.3 for the current checkout, a NOTE names the commit HEAD no longer holds, and the stop writes that base as the stamp, red, keeping the prompt counter, dropping `asked`, `intervened` and the follow-up hash, and deleting both `refs/worktree/klin/turn` and `refs/worktree/klin/mark` (6.2) |
+| The commit the stamp was taken over is outside current HEAD history in the hook | a branch window from the base of 6.3 for the current checkout, a NOTE names the commit HEAD no longer holds, and the stop writes that base as the stamp, red, keeping the prompt counter, dropping `asked` and `intervened`, leaving the handoff records of 9.1, which belong to a host session, and deleting both `refs/worktree/klin/turn` and `refs/worktree/klin/mark` (6.2) |
 | Git cannot answer whether HEAD history holds that commit | the turn window stays, because only a proven divergence is a turn the checkout left (6.2) |
 | A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE, told to the person through `systemMessage` on a stop that ends (9.1). |
 | A deleted test (8.2) | Hook: blocks the first stop that finds it, once. The next stop lets it through as a NOTE, tells the person, and ends green. Outside the hook: a NOTE, `--strict` included. |
