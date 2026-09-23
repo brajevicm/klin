@@ -1051,7 +1051,8 @@ fn a_change_that_only_reorders_an_overload_set_in_one_file_fails() {
 }
 
 #[test]
-fn a_trailing_default_is_optional_and_a_default_a_required_parameter_follows_is_not() {
+fn a_trailing_default_is_optional_and_a_default_a_required_parameter_follows_shows_without_its_value()
+ {
     let tree = Tree::new();
     package_of(
         &tree,
@@ -1063,15 +1064,27 @@ fn a_trailing_default_is_optional_and_a_default_a_required_parameter_follows_is_
         "export function f(a: number, unit?: \"m\" | \"km\"): number {\n    return a;\n}\nexport function g(unit: string = \"km\", a: number): number {\n    return a;\n}\n",
     );
 
-    let run = by_hand(&tree);
+    let green = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export function f(a: number, unit?: \"m\" | \"km\"): number {\n    return a;\n}\nexport function g(unit: string, a: number): number {\n    return a;\n}\n",
+    );
+
+    let red = by_hand(&tree);
 
     assert!(
         listed.says("function f(_: number, _?: \"m\" | \"km\"): number")
-            && listed.says("function g(_: string, _: number): number"),
+            && listed.says("function g(_: string = .., _: number): number"),
         "{}",
         listed.out
     );
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `function g(_: string = .., _: number): number`, now `function g(_: string, _: number): number`"),
+        "{}",
+        red.out
+    );
 }
 
 #[test]
@@ -1270,4 +1283,22 @@ fn a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once() {
         .count();
     assert!(run.says("8 new compatibility break(s)"), "{}", run.out);
     assert_eq!(printed, 8, "{}", run.out);
+}
+
+#[test]
+fn quoted_method_names_that_hold_brackets_stay_distinct() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    \"x(a\"(): void {}\n    \"x(b\"(): void {}\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    \"x(a\"(): void {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("C (type)"), "{}", run.out);
 }

@@ -1968,8 +1968,9 @@ interface body the overloads of one method, call signature or construct
 signature likewise stay together in source order and lose their
 implementation, while the members keep one order whatever order the source
 wrote them in. A TypeScript
-parameter with a default carries `?` where no required parameter follows it
-and no marker where one does, and its initializer never shows. So
+parameter with a default carries `?` where no required parameter follows it,
+and `= ..` where one does, because a caller passes `undefined` to reach that
+default. Its initializer never shows. So
 `#[non_exhaustive]` added to a type or a variant, a private field added to a
 struct whose fields were all public, a default body or a default `const`
 removed and a change that only reorders a TypeScript overload set each fail.

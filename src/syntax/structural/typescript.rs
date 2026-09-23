@@ -284,7 +284,9 @@ fn spelling(node: Node, source: &[u8]) -> Spelling {
 
 /// One parameter: its accessibility where it declares a property, `_` for a binding name that
 /// is no contract, `...` for a rest parameter, `?` where a caller may omit it, and its type or
-/// `?`. A default no required parameter follows makes it omittable, and its value never shows.
+/// `?`. A default no required parameter follows makes it omittable. A default a required
+/// parameter follows shows as `= ..`, because a caller passes `undefined` to reach it. Its value
+/// never shows.
 fn parameter(node: Node, source: &[u8]) -> String {
     let mut cursor = node.walk();
     let modifiers: Vec<String> = node
@@ -304,17 +306,24 @@ fn parameter(node: Node, source: &[u8]) -> String {
         _ if rest => "..._".to_string(),
         _ => "_".to_string(),
     };
-    let defaulted = node.child_by_field_name("value").is_some() && !required_after(node);
-    let optional = if node.kind() == "optional_parameter" || defaulted {
-        "?"
-    } else {
-        ""
-    };
+    let (optional, reached) = omission(node);
     let mut out = modifiers.join(" ");
     if !out.is_empty() {
         out.push(' ');
     }
-    format!("{out}{name}{optional}{}", annotated(node, source))
+    format!("{out}{name}{optional}{}{reached}", annotated(node, source))
+}
+
+/// How a caller may leave a parameter out: `?` where it is optional or its default no required
+/// parameter follows, and ` = ..` where a required parameter follows its default.
+fn omission(node: Node) -> (&'static str, &'static str) {
+    let defaulted = node.child_by_field_name("value").is_some();
+    match (node.kind() == "optional_parameter", defaulted) {
+        (true, _) => ("?", ""),
+        (false, true) if required_after(node) => ("", " = .."),
+        (false, true) => ("?", ""),
+        (false, false) => ("", ""),
+    }
 }
 
 /// Whether a required parameter follows this one: one with no `?`, no default and no rest.
