@@ -1,5 +1,11 @@
 # Public API is derived from library and package entry points
 
+> ADR 0054 amends "Judgement, holes and the failure model" and the
+> canonicalization paragraph: the canonical contract shows the facts ADR 0054
+> lists, attributes included, and every changed measured contract still fails
+> until a later record adds a relaxation under the rule ADR 0054 sets.
+> "Widening" there means a widened visibility, never a widened type.
+
 Issue #46 names one agent failure: a local refactor changes a contract that
 another crate or package consumes, while the repository still compiles and
 its own tests still pass. Spec 8.4 listed `public-api` as a tier-2 check over
