@@ -36,8 +36,11 @@ in a consumer's scope. Each compatible row below names its limits, so a PASS
 never claims universal compatibility.
 
 **An item passes only when every difference between its two contracts is a
-compatible row.** A difference no row names fails, as ADR 0044 decided. A
-compatible change together with any other change fails.
+compatible row.** A compatible change together with any other change fails.
+A difference no row names is *unclassified*, and klin fails it. That is a
+product policy, not a claim that every such change breaks a consumer: the
+gate passes only a change that a row proves compatible. "Unclassified
+changes" below names the ones this record already knows.
 
 ## TypeScript
 
@@ -72,8 +75,9 @@ growth of a shape. Its known limits:
 - an intersection such as `Point & { height: string }` gives `height` a type
   no value has;
 - a consumer that already has an incompatible member of the same name no
-  longer compiles: `interface Building extends Point { height: string }`, or
-  `const q = { lat: 1, lon: 2, height: "tall" }; const p: Point = q;`.
+  longer compiles: `interface Building extends Point { height: string }`,
+  `const q = { lat: 1, lon: 2, height: "tall" }; const p: Point = q;`, or a
+  declaration merge or module augmentation of `Point` that declares `height`.
 
 The row covers an interface and a type literal. A member added to a class is
 not a row, so it fails.
@@ -81,16 +85,26 @@ not a row, so it fails.
 ### `readonly` removed
 
 A consumer that reads a member is unaffected, and a write the base refused
-now compiles. A consumer that tests `readonly` at the type level, such as a
-conditional type that tells a readonly member from a writable one, can see a
-difference. The row covers a member of an interface or a type literal, as
+now compiles. Its known limits:
+
+- a consumer that tests `readonly` at the type level, such as a conditional
+  type that tells a readonly member from a writable one, can see a
+  difference;
+- a consumer that merges a declaration into the interface, or augments its
+  module, and redeclares the member with the old modifier can stop compiling.
+
+The row covers a member of an interface or a type literal, as
 the optional-member row does.
 
 ### Parameters
 
-A parameter with a default initializer is optional to a caller, so the
-default and the `?` marker are the same fact. The initializer text stays out of
-the contract, as ADR 0044 decided. Today the canonical contract gives the
+A parameter with a default initializer that no required parameter follows is
+optional to a caller, so that default and the `?` marker are the same fact. A
+default that a required parameter follows is not: in
+`function f(a = 1, b: string)` a caller must still pass an argument, at least
+`undefined`, to reach `b`. That parameter carries a defaulted marker of its
+own, and a change to or from it is unclassified. The initializer text stays out
+of the contract, as ADR 0044 decided. Today the canonical contract gives the
 defaulted parameter of `function f(a: number, unit: "m" | "km" = "m")` no
 optional marker, so the report shows it as required. #304 fixes the contract.
 
@@ -128,10 +142,11 @@ export function parse(x: string): number;
 
 `const n: number = parse("1")` compiles against the base and fails against the
 working tree. `ReturnType<typeof parse>` reads the last signature, so an
-addition at the end can change reflection too. klin also sorts the signatures
-of an overload set when it builds the item, so it cannot see where the
-overload went. klin
-cannot prove an added overload harmless, and it fails.
+addition at the end can change reflection too. klin cannot prove an added
+overload harmless, and it fails. For the same reason, a change that only
+reorders the signatures of an overload set fails. Today klin sorts those
+signatures when it builds the item, so such a change is invisible, and the
+structural facts below keep their order.
 
 ## Rust
 
@@ -184,44 +199,72 @@ fails the addition.
   `S: Send` no longer compiles.
 - A field added to a tuple struct before an existing public position moves
   that position. That is a changed field, not an added one, and it fails.
+- The policy judges source compatibility, not behavior. An added field changes
+  what a derived `PartialEq`, `Hash` or `Ord` computes, and a variant added
+  before others moves the implicit discriminants and the derived `Ord` order.
 - A sealed trait is not recognized, so a method added to one fails.
+
+## Unclassified changes
+
+These changes are not rows of #303, and klin fails each of them. The verdict
+column says whether the change breaks a consumer or fails only by the policy
+above.
+
+| Change | Verdict | klin | Consumer example or rationale |
+|---|---|---|---|
+| Rust `#[non_exhaustive]` added to an enum, or to a struct whose fields were all public | breaking | FAIL | A struct literal, a pattern without `..` and a `match` without a wildcard arm no longer compile outside the crate. |
+| Rust `#[non_exhaustive]` added to a struct that already had a private field | unclassified | FAIL | No ordinary external use changes, because the private field already denied the literal and the pattern without `..`. |
+| Rust `#[non_exhaustive]` removed | unclassified | FAIL | Every use still compiles. A wildcard arm that has become unreachable can raise a lint. |
+| Rust private field added to a struct whose fields were all public | breaking | FAIL | `S { a, b }` and `let S { a, b } = s` no longer compile. |
+| Rust last private field removed | unclassified | FAIL | Every use still compiles, and a literal the base refused now compiles. |
+| Rust default body removed from a trait method | breaking | FAIL | An implementor that relied on the default no longer compiles (E0046). |
+| Rust default body added to an existing trait method | unclassified | FAIL | Implementors and callers still compile. |
+| TypeScript overload set reordered | context-dependent | FAIL | Resolution picks the first signature that matches, so a call can resolve to a different signature. |
+| TypeScript parameter default moved to or from a position that a required parameter follows | unclassified | FAIL | A caller may have to pass `undefined` where it passed nothing, or the reverse. |
+
+A later record can move an unclassified change into a row, from evidence.
 
 ## Structural representation
 
 A compatible verdict is decided from the two trees' **structural facts**. It
 does not have to be decidable from today's canonical signature strings alone.
-The canonical contract erases some facts the table needs:
+The canonical contract erases or merges some facts the tables need:
 
 - Rust attributes, `#[non_exhaustive]` among them, leave the signature;
 - a private named Rust field leaves the signature, and a private tuple
   position becomes `_`;
 - a trait method body leaves the signature, so its default is not shown;
-- TypeScript member order is normalized, and so is the order of an overload
-  set, although overload order can matter.
+- the members of a TypeScript class or interface are sorted, and so are the
+  signatures of an overload set, although overload order can matter;
+- each Rust field and variant and each TypeScript member and parameter is one
+  part of a single string, so an addition cannot be told from a change without
+  splitting that string.
 
 The structural adapters therefore record, beside the canonical signature, only
-the facts the table needs:
+the facts the tables need. Each fact comes from the adapter's own parse:
 
-- Rust: whether a struct or an enum carries `#[non_exhaustive]`, and whether a
-  struct has a private field;
-- TypeScript: each member of an interface or type literal with its name,
-  canonical type and its optional and readonly markers, and each parameter of
-  a single-signature function, method or constructor with its canonical type
-  and its optional and rest markers. A parameter with a default carries the
-  optional marker, so `unit: "m" | "km" = "m"` and `unit?: "m" | "km"` are the
-  same fact.
+- a Rust struct: its header contract (kind, generics and `where` clause),
+  whether it carries `#[non_exhaustive]`, whether it has a private field,
+  named or positional, each public named field by name with its canonical type, and each
+  tuple position by index with its canonical type, or `_` where it is private;
+- a Rust enum: its header contract, whether it carries `#[non_exhaustive]`,
+  and each variant by name with its canonical contract (its fields and any
+  explicit discriminant);
+- a Rust trait method: whether it has a default body;
+- a TypeScript interface or type literal: its header contract (type
+  parameters and heritage), and each member by name with its canonical type
+  and its optional and readonly markers;
+- a TypeScript function, method or constructor: each parameter by position
+  with its canonical type and its optional, defaulted and rest markers, where
+  a default that no required parameter follows carries the optional marker;
+- a TypeScript overload set, whether of a function or of the members that
+  share a name: its signatures in declaration order.
 
-Every Rust receiver row fails, and the receiver is already in the canonical
-signature, so no receiver fact is needed. Both trait-method rows fail, so the
-verdict needs no default-body fact. The overload row fails and the parameter
-rows exclude an overload set, so no ordered overload fact is needed. #304 adds
-one of those facts only if the report needs it to explain a finding.
-
-A new fact is part of the item's contract. A change to it that no compatible
-row names fails. So `#[non_exhaustive]` added, `#[non_exhaustive]` removed and
-a private field added to a struct whose fields were all public each fail. klin
-passes the last of those today, because the canonical contract omits a private
-field, and this record makes the break visible.
+An identity is the name or the position a consumer writes. An addition is an
+identity only the working tree holds, a removal is one only the base holds,
+and a change is one both hold with different canonical contracts. The Rust
+receiver is already in the canonical signature, so no receiver fact is
+needed.
 
 The exact Rust types are an implementation detail. klin adds none of these:
 
@@ -232,10 +275,9 @@ The exact Rust types are an implementation detail. klin adds none of these:
 - a layer that reparses canonical signature strings, or that diffs them by a
   heuristic.
 
-Two canonical strings are compared for equality only. The facts come from the
-adapter's own parse, never from splitting a canonical string. The persisted
-structural facts change, so the structural-cache epoch rises, and round-trip
-tests pin the new facts.
+Two canonical strings, whole or of one constituent, are compared for equality
+only. The persisted structural facts change, so the structural-cache epoch
+rises, and round-trip tests pin the new facts.
 
 ## Accepted entries
 
@@ -268,8 +310,9 @@ journal identities and accepted entries stay per finding.
   rule and changes only the words, so #304 amends 9.5 to name that exception.
 - A PASS row can let a change through that breaks a type-reflective or
   resolution-sensitive consumer. The limits above name each known case.
-- Any change the table does not name stays a changed contract and fails, so
-  the gate never passes a change it cannot classify.
-- Known limit: a default body removed from a trait method is not visible,
-  because the canonical contract drops bodies (ADR 0044). This record leaves
-  that limit as it is.
+- An unclassified change fails, so the gate never passes a change it cannot
+  classify.
+- Four breaks that klin passes today become visible and fail: an order-only
+  change of an overload set, `#[non_exhaustive]` added to an enum or to a
+  struct whose fields were all public, a private field added to such a struct,
+  and a default body removed from a trait method.
