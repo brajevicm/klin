@@ -916,12 +916,10 @@ makes it visible to `git log --all`, and is the copy a stop restores the
 `turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
 in the state directory holds the time, the verdict, the prompt counter and
 the `asked` record of 8.2 beside the commit id, and `intervened`, set once a
-stop under the stamp spends a gate block (9.5). It also holds `handed`, one
-record per host session id: `followup`, the hash of the report or message
-that session's host will submit as its next prompt, and `told`, the hash of
-the last message a stop told it, less its window line. The session's next
-prompt clears its record, and no session's record replaces another's (9.1).
-A fresh stamp holds none of these.
+stop under the stamp spends a gate block (9.5). A fresh stamp holds neither.
+What a host session was handed is not in the `turn` file: it lives in the
+handoff records of 9.1, one file per session, so no write of the stamp can
+replace it.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
 worktree share one window and one `turn` file. A stop MUST hold an advisory
@@ -932,7 +930,10 @@ red one would write green, and the next prompt would move the stamp over the
 red debt. A stop that cannot take the lock within the hook budget writes no
 verdict, spends no build block and no gate block, and says so. It still
 measures and reports, but another stop may be writing the counts of 16.3,
-so a block it spent could exceed the budget of 9.3.
+so a block it spent could exceed the budget of 9.3. It reads its window
+read-only: from the `turn` file, or else the ref, with no restore of a
+missing file, no re-anchor of an abandoned stamp and no replacement written
+(6.2, 16.1).
 
 The ref is `refs/worktree/klin/turn`, not `refs/klin/turn`. Git shares
 `refs/` across the worktrees of one repository, with `refs/worktree/`,
@@ -1056,10 +1057,11 @@ report exists to discourage.
 Nothing into the working tree. `init` writes `klin.json` and hook files, and
 only when a person runs it.
 
-klin's own state is four things: the turn stamp with the prompt mark of
-6.2.1, the build stamp, the cache, which holds the survey of 6.6 and the
-structural cache of 8.4, and the journal of 9.6. All are per
-working tree. The cache is safe to delete. All four are guarded, because the
+klin's own state is five things: the turn stamp with the prompt mark of
+6.2.1, the build stamp, the handoff records of 9.1 under `handed/`, the
+cache, which holds the survey of 6.6 and the structural cache of 8.4, and the
+journal of 9.6. All are per working tree. The cache is safe to delete. All
+five are guarded, because the
 guard guards the directory they share (9.4). Deleting the turn stamp buys
 nothing, because a stop without one judges the whole branch (6.2). They live
 in the state directory:
@@ -2444,13 +2446,18 @@ exit 2, so the agent sees the report and the refusal holds where that answer
 goes unread — the same pairing as a deny. A stop that tells the
 person writes a JSON `followup_message` on stdout under exit 0. Cursor submits
 that follow-up as the next user prompt. Before delivery, klin records a hash
-of the exact report or message in the turn stamp, under the session id of
-the stop's event, for a block and a told stop alike, so two sessions in one
-worktree never replace each other's record. A prompt of that session with
-that hash consumes the record and moves neither the prompt counter nor the
-mark. Every different prompt of that session, including one that starts
-with `klin:`, clears the record and opens a turn normally. A prose prefix is
-not a protocol marker. ADR 0045.
+of the exact report or message in a handoff record, one file per session id
+of the stop's event under `handed/` in the state directory, for a block and
+a told stop alike. Only that session's own hooks write its file, and a host
+runs one session's hooks in order, so no write for one session can replace
+another session's record, sequentially or concurrently. A prompt of that
+session with that hash consumes the record and moves neither the prompt
+counter nor the mark. Every different prompt of that session, including one
+that starts with `klin:`, clears the record and opens a turn normally. A
+prose prefix is not a protocol marker. A block whose report klin could not
+record is reported and not blocked, because the host would submit it as a
+person's prompt and gain a fresh budget; the block its count already took
+stays spent. ADR 0045, ADR 0052.
 
 A told message is also recorded as told under the current prompt, less its
 window line, whose age moves each minute and says nothing new. A later stop
@@ -2460,7 +2467,7 @@ cannot replay forever. A different message is told, and the session's next
 prompt clears the record. A stop that tells nothing because of this carries
 `told-before` in its `flags`. A host that submits a told message hears only
 one klin recorded first: a stop that lost the state lock (6.5), or whose
-stamp would not take the record, tells it nothing, because an unrecorded
+handoff record would not write, tells it nothing, because an unrecorded
 message would replay. Every such stop records an empty `told` (11.4). ADR
 0052.
 
@@ -3805,11 +3812,13 @@ hook(event):
     flags += "count-unwritable"
     pass_through("could not record a gate block"); return 0
   add_asked_atomic(state/turn, reported)           # 8.2, cleared when the stamp moves
+  if host.follows_up(event) and not record_atomic(state/handed/hash(event.session), followup=hash(report)):
+    report(); return 0                             # 9.1: the echo would open a turn
   block(report + "gate block " + number + " of 2")
 
 tell(message):                                   # 9.1, ADR 0052
   if host.follows_up(event):
-    handed = turn.handed[event.session]
+    handed = state/handed/hash(event.session)
     if lost_the_lock: return                       # an unrecorded message would replay
     if handed.told == hash(without_window_line(message)): flags += "told-before"; return
     if not record_atomic(handed, followup=hash(message), told=hash(without_window_line(message))): return

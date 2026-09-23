@@ -300,6 +300,48 @@ fn left_behind() -> Tree {
     tree
 }
 
+/// The advisory lock a stop takes over the state directory, held past the hook's budget.
+fn held_lock(tree: &Tree) -> File {
+    let Ok(taken) = File::create(tree.state("lock")) else {
+        panic!("the lock file could not be made")
+    };
+    assert!(taken.lock().is_ok(), "the test could not hold the lock");
+    taken
+}
+
+#[test]
+fn a_stop_without_the_lock_restores_no_turn_file_from_the_ref() {
+    let tree = stamped();
+    let reference = tree.revision("refs/worktree/klin/turn");
+    tree.remove(".git/klin/turn");
+    let _lock = held_lock(&tree);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("window: turn"), "{}", run.out);
+    assert!(!tree.state("turn").exists(), "{}", run.out);
+    assert_eq!(tree.revision("refs/worktree/klin/turn"), reference);
+}
+
+#[test]
+fn a_stop_without_the_lock_leaves_an_abandoned_stamp_and_its_refs_alone() {
+    let tree = left_behind();
+    let stamp = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    let reference = tree.revision("refs/worktree/klin/turn");
+    let mark = tree.revision("refs/worktree/klin/mark");
+    let _lock = held_lock(&tree);
+    tree.write("src/lib.rs", text::WRAPPED);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("window: branch"), "{}", run.out);
+    let after = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    assert_eq!(after, stamp, "a stop without the lock replaced the stamp");
+    assert_eq!(tree.revision("refs/worktree/klin/turn"), reference);
+    assert_eq!(tree.revision("refs/worktree/klin/mark"), mark);
+}
+
 /// The per-turn records a stop leaves on the stamp, so one test can prove the fallback drops
 /// every one of them rather than carrying them into the branch it judges instead.
 fn records(tree: &Tree) {

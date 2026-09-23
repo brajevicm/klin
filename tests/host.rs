@@ -578,13 +578,32 @@ fn a_second_cursor_session_does_not_refresh_the_first_sessions_budget() {
     assert!(other.says(r#""followup_message":"#), "{}", other.out);
 
     let prompts = tree.field("prompts");
+    echo_from(&tree, &other, "s2");
     echo_from(&tree, &blocked, "s1");
-    assert_eq!(tree.field("prompts"), prompts, "the echo opened a turn");
+    assert_eq!(tree.field("prompts"), prompts, "an echo opened a turn");
 
     tree.words("README.md", 31);
     let second = stop(&tree, &cursor_stop("s1"), &[]);
     assert_eq!(second.code, 2, "{}", second.out);
     assert!(second.says("gate block 2 of 2"), "{}", second.out);
+}
+
+/// Cursor submits a block report as its next prompt, so a report klin could not record as
+/// expected would open a turn and a fresh budget. Such a block is reported and blocks nothing.
+#[test]
+fn a_cursor_block_klin_cannot_hand_off_is_reported_and_blocks_nothing() {
+    let tree = cursor_failing();
+    tree.write(".git/klin/handed", "");
+
+    let run = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(!run.says("followup_message"), "{}", run.out);
+    assert!(
+        run.says("could not record the report the host will submit"),
+        "{}",
+        run.out
+    );
 }
 
 /// A stop that lost the state lock cannot record what it tells, so on Cursor it tells nothing

@@ -85,15 +85,29 @@ tells nothing when its message is the same. The comparison leaves out the
 window line, whose age moves each minute and says nothing new. A different
 message is told, and the session's next prompt clears the record.
 
-Both records are kept per host session, because two sessions can share one
-worktree. With one shared record, a second session's told message replaced
-the first session's pending block report, the first session's echo then
-opened a turn, and its budget refreshed.
+Both records are kept per host session, in a file of that session's own under
+`handed/` in the state directory, because two sessions can share one
+worktree. With one shared record in the `turn` file, a second session's told
+message replaced the first session's pending block report, the first
+session's echo then opened a turn, and its budget refreshed. A shared file
+with a record per session still lost updates: `klin radius` consumes a
+follow-up without the stop's lock, so it could read the file, let a stop of
+another session write that session's record, and then write its older copy
+over it. A session's file is written only by that session's hooks, which a
+host runs in order, so neither the sequential nor the concurrent case can
+replace another session's record.
 
-A follow-up host hears only a message klin recorded first. A stop that lost
-the state lock, or whose stamp would not take the record, tells it nothing,
-because an unrecorded message would replay and a stop without the lock must
-not write the stamp. A genuine later prompt raises the counter and gets a
+A follow-up host hears only what klin recorded first. A stop that lost the
+state lock, or whose handoff record would not write, tells it nothing,
+because an unrecorded message would replay. A block whose report klin could
+not record is reported and not blocked, because the host would submit it as
+a person's prompt and gain a fresh budget. The count that block already took
+stays spent, so the budget only shrinks.
+
+A stop that lost the state lock also reads its window read-only. It restores
+no missing `turn` file, re-anchors no abandoned stamp and writes no
+replacement, because the stop holding the lock may be writing the same
+stamp (spec 6.5). A genuine later prompt raises the counter and gets a
 fresh budget of two gate blocks and eight build blocks.
 
 **ADR 0031 keeps its precedence.** A deleted test already asked about stays

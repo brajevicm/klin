@@ -16,6 +16,7 @@ mod files;
 mod gate;
 mod git;
 mod guard;
+mod handoff;
 mod hooks;
 mod host;
 mod hunks;

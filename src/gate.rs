@@ -15,7 +15,7 @@ use crate::config::{self, Error};
 use crate::host::{self, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, coverage, journal, state, stats, turn, write};
+use crate::{build, coverage, handoff, journal, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -150,7 +150,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
         journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
-    let window = turn::window(root, &mut log.flags, out).ok();
+    let window = turn::window(root, lost, &mut log.flags, out).ok();
     if let Some(window) = &window {
         project.bind(window);
     }
@@ -214,11 +214,11 @@ fn keeps_quiet(
     }
     let session = session(event);
     let heard = heard(said);
-    let repeated = !lost && turn::told_before(root, session, &heard);
+    let repeated = !lost && handoff::told_before(root, session, &heard);
     if repeated {
         log.flags.push("told-before");
     }
-    if !lost && !repeated && turn::expect_told(root, session, said, &heard) {
+    if !lost && !repeated && handoff::expect_told(root, session, said, &heard) {
         return false;
     }
     log.told.clear();
@@ -1072,8 +1072,11 @@ fn hook(
     );
     eprintln!("{lead}");
     eprint!("{report}");
-    log.gate_block = Some(number);
-    (block(root, Some(event), format!("{lead}\n{report}")), None)
+    let code = block(root, Some(event), format!("{lead}\n{report}"));
+    if code == 2 {
+        log.gate_block = Some(number);
+    }
+    (code, None)
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
@@ -1196,10 +1199,19 @@ fn working_tree(root: &Path, at: &Path) -> Option<String> {
 /// Record the exact report a follow-up host will echo under the event's session, then deliver
 /// the block. A stop that tells records its message the same way, so neither echo opens a turn
 /// or a fresh gate budget. Spec 9.1, 9.3.
+///
+/// A host that submits the report hears it only once klin recorded it. A report klin could
+/// not record would open a turn and a fresh budget when the host submits it, so the stop is
+/// reported and not blocked, and the block its count already took stays spent, so the budget
+/// only shrinks. ADR 0052.
 fn block(root: &Path, event: Option<&host::Event>, said: String) -> u8 {
     let host = host::answering(event);
-    if host.follows_up() {
-        turn::expect_followup(root, session(event), &said);
+    if host.follows_up() && !handoff::expect_followup(root, session(event), &said) {
+        eprintln!(
+            "klin: NOTE: klin could not record the report the host will submit as its next \
+             prompt, so this stop is not blocked."
+        );
+        return host.stop(&Stop::Pass);
     }
     host.stop(&Stop::Block(said))
 }
