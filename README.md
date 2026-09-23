@@ -16,14 +16,19 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 ## Install
 
-Install klin, then turn it on in your repository:
+Install klin:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+```
+
+The installer puts `klin` in `~/.local/bin`. If your shell can't find it yet, open a new terminal or run `source ~/.local/bin/env`. Then turn klin on in your repository:
+
+```sh
 cd your-repo && klin install --host claude
 ```
 
-Name the host you use: `claude`, `codex`, or `cursor`, and repeat `--host` for more than one. `klin install` writes `klin.json` at the repository root, plus that host's hooks and the klin skill. Commit them so your teammates get the same checks. If your shell can't find `klin` yet, open a new terminal.
+Name the host you use: `claude`, `codex`, or `cursor`, and repeat `--host` for more than one. `klin install` writes `klin.json` at the repository root, plus that host's hooks and the klin skill. Commit them so your teammates get the same checks. If the klin plugin is already enabled for that host, `klin install` leaves the hooks and the skill to the plugin and writes neither; disable the plugin first if you want them committed with the repository.
 
 Codex asks you to trust new hooks first. Run `/hooks`, review and trust the klin hooks, then start a fresh session. Reload Cursor afterward.
 
@@ -35,7 +40,7 @@ Codex asks you to trust new hooks first. Run `/hooks`, review and trust the klin
 
 ### Or use your host's plugin
 
-The native plugins install and update through your host. They carry the hooks and fetch klin on their own, but they don't give you a `klin` command. Install it as shown above if you want one.
+The Claude Code and Codex plugins install and update through the host. The Cursor plugin is a local copy, which you update by running the copy again. Each plugin carries the hooks and fetches klin on its own, but none gives you a `klin` command. Install it as shown above if you want one.
 
 #### Claude Code
 
@@ -70,7 +75,7 @@ Reload Cursor after installation.
 
 </details>
 
-Native plugins stay silent until the repository opts in. Run `klin init` if you have the command, or run this at the repository root:
+Native plugin checks stay silent until the repository opts in. Run `klin init` if you have the command, or run this at the repository root:
 
 ```sh
 echo '{}' > klin.json

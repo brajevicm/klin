@@ -504,12 +504,13 @@ fn array<'a>(
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
 /// would otherwise see a failed hook on every event of every session. The stop of a repository
 /// that opted in says how to install it instead, so a teammate who cloned the committed hooks
-/// learns what they are for. It is a `systemMessage` alone: Cursor submits a `followup_message`
+/// learns what they are for. It looks for the marker at the Git root, because a session may
+/// start below it. It is a `systemMessage` alone: Cursor submits a `followup_message`
 /// as the next prompt, which would hand the installer to the agent. Section 19.3.
 fn line(arguments: &str) -> String {
     let missing = match arguments.starts_with("gate") {
         true => format!(
-            "{{ [ -f \"${{CLAUDE_PROJECT_DIR:-.}}/klin.json\" ] && echo \
+            "{{ r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$r/klin.json\" ] && echo \
              '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
         ),
         false => "exit 0".to_string(),

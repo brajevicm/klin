@@ -12,8 +12,10 @@ these is a command only a person may run. The plugin route's opt-in was
 `echo '{}' > klin.json`, a file format where the CLI has a command.
 
 The standalone route gives everything in two commands on every first-class
-host: the installer puts `klin` on PATH, and `klin install` opts the
-repository in and writes the hooks and the skill for each host it finds. The
+host: the installer puts `klin` on PATH, and `klin install --host NAME` opts
+the repository in and writes the hooks and the skill for that host. Where the
+klin plugin already serves the host, `klin install` leaves the hooks and the
+skill to it (19.3). The
 committed hook files also reach a teammate who clones the repository, which a
 plugin a person installed does not.
 

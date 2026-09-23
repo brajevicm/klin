@@ -226,11 +226,15 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
         installer < plugin,
         "the README does not lead with the installer"
     );
+    assert!(
+        !block(&readme, "klin-installer.sh").contains("klin install"),
+        "the README runs klin in the block that installs it, before PATH holds it"
+    );
     for said in [
         "**Claude Code · Codex · Cursor**",
         "cd your-repo && klin install",
         "### Or use your host's plugin",
-        "Native plugins stay silent until the repository opts in",
+        "Native plugin checks stay silent until the repository opts in",
         "`{}` is a complete configuration.",
         "`klin update`",
         "### Other coding agents",

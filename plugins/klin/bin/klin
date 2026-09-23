@@ -101,7 +101,7 @@ if [ "${1:-}" = radius ]; then
 			[ -z "$printed" ] || printf '%s\n' "$printed"
 			exit "$outcome"
 		fi
-		: >"$HINTED" 2>/dev/null && printf '{"systemMessage":"%s"}\n' "$CLI"
+		mkdir "$HINTED" 2>/dev/null && printf '{"systemMessage":"%s"}\n' "$CLI"
 		exit 0
 	fi
 fi

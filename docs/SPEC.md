@@ -4365,7 +4365,9 @@ a `klin` on PATH the session start, the prompt and the pre-tool events say
 nothing and block nothing. The Stop hook names the install command in a
 `systemMessage` on stdout, and only where a `klin.json` resolves at the
 project root, so a tree that never opted in stays silent (ADR 0028). Nothing
-blocks, so the turn ends at that stop and the line appears once.
+blocks, so the turn ends at that stop and the line appears once. Cursor shows
+no `systemMessage` at a stop and submits a `followup_message` as a prompt, so
+the Cursor line's notice is written and not shown.
 
 The wrapper reads two overrides, `KLIN_RELEASE_BASE_URL` and `KLIN_CACHE_DIR`.
 They exist so a CLI test can fetch a release of its own over `file://` and
@@ -4474,11 +4476,17 @@ Each line klin writes resolves `klin` on PATH before it runs it and ends the
 hook when none resolves, the way the plugin's own lines do (19.2). A person
 who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event. The one exception is the stop of a repository that
-holds a `klin.json`: there the line names the install command in a
-`systemMessage` alone, so a teammate who cloned the committed hooks learns
-what they are for. Codex skips a project hook file's hooks until the person
-trusts them through `/hooks`, as it does a plugin's (19.2), so a document that
-gives the standalone route for Codex names that step.
+holds a `klin.json` at its Git root, which the line resolves with
+`git rev-parse --show-toplevel` because a session may start below the root: there
+the line names the install command in a `systemMessage` alone, so a teammate
+who cloned the committed hooks learns what they are for. Cursor shows the
+person no stop field that is not also a prompt, so on Cursor the notice is
+written and not shown (`docs/cursor-compatibility.md`). A host whose klin
+plugin is enabled gets no committed hooks and no skill (plugin ownership
+above), so a document that tells a person to commit them says that the plugin
+must be disabled first. Codex skips a project hook file's hooks until the
+person trusts them through `/hooks`, as it does a plugin's (19.2), so a
+document that gives the standalone route for Codex names that step.
 
 **Standalone skill.** The standalone route writes the exact text authored at `plugins/klin/skills/klin/SKILL.md`; the binary embeds that source so the plugin and standalone copies cannot drift.
 

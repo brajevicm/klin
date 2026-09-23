@@ -49,7 +49,7 @@ fn cursor_settings(tree: &Tree) -> Value {
 fn line(arguments: &str) -> String {
     let missing = match arguments.starts_with("gate") {
         true => format!(
-            "{{ [ -f \"${{CLAUDE_PROJECT_DIR:-.}}/klin.json\" ] && echo \
+            "{{ r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$r/klin.json\" ] && echo \
              '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
         ),
         false => "exit 0".to_string(),
@@ -117,8 +117,9 @@ const ANOTHER_TOOL: &str = r#"{"hooks": {"Stop": [{"hooks": [{"type": "command",
 
 /// A teammate who clones a repository with klin's committed hooks and has no klin on PATH hears
 /// at the stop how to install it. The notice is never a `followup_message`, which Cursor submits
-/// as the next prompt and would hand the installer to the agent. A tree that never opted in
-/// stays silent. Spec 19.3.
+/// as the next prompt and would hand the installer to the agent. The session may start below
+/// the root, as Codex and Claude Code both allow, so the stop looks for the marker at the Git
+/// root. A tree that never opted in stays silent. Spec 19.3.
 #[test]
 fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
     let tree = a_repository();
@@ -132,11 +133,11 @@ fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
         cursor_commands(&cursor_settings(&tree), "stop"),
     ]
     .concat();
-    let empty = tree.path("empty");
-    std::fs::create_dir_all(&empty).unwrap_or_else(|why| panic!("{why}"));
+    let nested = tree.path("apps/web");
+    std::fs::create_dir_all(&nested).unwrap_or_else(|why| panic!("{why}"));
 
     for stop in &stops {
-        let said = without_klin(&tree, &empty, stop);
+        let said = without_klin(&nested, stop);
         let Ok(notice) = serde_json::from_str::<Value>(said.trim()) else {
             panic!("the stop printed no JSON notice: {said}\n{stop}")
         };
@@ -150,17 +151,18 @@ fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
     }
     std::fs::remove_file(tree.path("klin.json")).unwrap_or_else(|why| panic!("{why}"));
     for stop in &stops {
-        assert_eq!(without_klin(&tree, &empty, stop), "", "{stop}");
+        assert_eq!(without_klin(&nested, stop), "", "{stop}");
     }
 }
 
-/// What a hook line prints on stdout where PATH resolves no `klin`.
-fn without_klin(tree: &Tree, empty: &std::path::Path, line: &str) -> String {
+/// What a hook line prints on stdout from `cwd`, a session that started there, where PATH
+/// resolves git and no `klin`.
+fn without_klin(cwd: &std::path::Path, line: &str) -> String {
     let done = std::process::Command::new("/bin/sh")
         .args(["-c", line])
-        .current_dir(tree.root())
-        .env("PATH", empty)
-        .env_remove("CLAUDE_PROJECT_DIR")
+        .current_dir(cwd)
+        .env("PATH", "/usr/bin:/bin")
+        .env("CLAUDE_PROJECT_DIR", cwd)
         .output()
         .unwrap_or_else(|why| panic!("sh could not run: {why}"));
     assert!(done.status.success(), "{line}");
