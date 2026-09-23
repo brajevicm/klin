@@ -1,5 +1,9 @@
 # An intervention is a spent gate block, not a followed finding id
 
+> ADR 0052 gives a prompt two gate blocks. An intervention is one gate
+> failure on a stop that itself spent gate block 1 or 2, which the stop's
+> journal line records as `hook.gate_block`.
+
 The journal of spec 9.6 exists so two readers — `klin stats` and the
 benchmark — can count what klin caught. Both need one unit to count, and the
 obvious unit is the finding: record each finding's `id` (11.2), follow it

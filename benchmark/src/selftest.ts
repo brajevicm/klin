@@ -106,15 +106,18 @@ export function gatesTheHookNames(
   copyTree(tree, repo);
   const state = path.join(room, "hooked-state");
   fs.rmSync(state, { recursive: true, force: true });
+  const reported = path.join(room, "hook-report.json");
+  fs.rmSync(reported, { force: true });
   const payload = JSON.stringify({ hook_event_name: "Stop", session_id: "selftest" });
   const ran = spawnSync(klinBinary(), ["gate", "--hook", "--changed"], {
     cwd: repo,
     input: payload,
     encoding: "utf8",
     timeout: 300_000,
-    env: { ...process.env, KLIN_STATE_DIR: state },
+    env: { ...process.env, KLIN_STATE_DIR: state, KLIN_HOOK_REPORT: reported },
   });
-  return hookVerdict(ran, gate);
+  const report = fs.existsSync(reported) ? fs.readFileSync(reported, "utf8") : undefined;
+  return hookVerdict({ ...ran, report }, gate);
 }
 
 /**
@@ -125,7 +128,9 @@ export function gatesTheHookNames(
  * allowed and the gate did not reach the agent. Exit 1 is a host event klin could not read, and
  * every other exit code, a spawn error and a signal are the same kind of answer: none. A blocked
  * stop is read from the gate's own row, so an `ERR` on the gate this family measures is
- * indeterminate and a block another gate raised is not this gate firing.
+ * indeterminate and a block another gate raised is not this gate firing. The hook's text prints
+ * only the gates that did not pass, so the row comes from the report object the hook wrote to
+ * `KLIN_HOOK_REPORT`, which holds every gate, and from the text only when no object was written.
  */
 export function hookVerdict(
   ran: {
@@ -134,6 +139,7 @@ export function hookVerdict(
     status: number | null;
     stdout?: string;
     stderr?: string;
+    report?: string;
   },
   gate: string,
 ): Measured {
@@ -147,14 +153,11 @@ export function hookVerdict(
   if (ran.status === 0) {
     return { passed: false, detail: "the hook let the stop through" };
   }
-  const row = new RegExp(
-    "^\\s{2}(ok|FAIL|ERR)\\s+" + gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$",
-    "m",
-  ).exec(output);
+  const row = recordedRow(ran.report, gate) ?? printedRow(output, gate);
   if (ran.status === 2 && row) {
     return {
-      passed: row[1] === "ERR" ? null : row[1] === "FAIL",
-      detail: "the hook blocked the stop and the " + gate + " row reads " + row[1],
+      passed: row === "ERR" ? null : row === "FAIL",
+      detail: "the hook blocked the stop and the " + gate + " row reads " + row,
     };
   }
   return {
@@ -167,6 +170,28 @@ export function hookVerdict(
       " row: " +
       output.slice(-600),
   };
+}
+
+/** The gate's status in the 11.2 object the hook wrote, or null where it wrote none or no row. */
+function recordedRow(report: string | undefined, gate: string): string | null {
+  if (!report) {
+    return null;
+  }
+  try {
+    const gates: { name?: string; status?: string }[] = JSON.parse(report).gates ?? [];
+    return gates.find((row) => row.name === gate)?.status ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The gate's status as the hook's text prints it, or null where the text holds no row. */
+function printedRow(output: string, gate: string): string | null {
+  const row = new RegExp(
+    "^\\s{2}(ok|FAIL|ERR)\\s+" + gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$",
+    "m",
+  ).exec(output);
+  return row ? row[1] : null;
 }
 
 /**

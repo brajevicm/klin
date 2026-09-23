@@ -153,6 +153,49 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
 }
 
+fn hook_facts(line: &Value) -> (bool, &Value, &Value, &Value) {
+    (
+        field(line, &["hook", "blocked"])
+            .as_bool()
+            .unwrap_or_default(),
+        field(line, &["hook", "gate_block"]),
+        field(line, &["hook", "gate_blocks"]),
+        field(line, &["hook", "build_blocks"]),
+    )
+}
+
+#[test]
+fn each_stop_line_says_which_gate_block_it_spent_if_any() {
+    let tree = tree(&EVERY_GATE.replacen('{', r#"{ "build": "test ! -f fails","#, 1));
+    prompt(&tree);
+    tree.words("README.md", 30);
+
+    assert_eq!(stop(&tree, A_STOP).code, 2);
+    assert_eq!(stop(&tree, A_SECOND_STOP).code, 0);
+    tree.words("README.md", 31);
+    assert_eq!(stop(&tree, A_SECOND_STOP).code, 2);
+    tree.write("fails", "");
+    assert_eq!(stop(&tree, A_SECOND_STOP).code, 2);
+    tree.remove("fails");
+    tree.words("README.md", 32);
+    assert_eq!(stop(&tree, A_SECOND_STOP).code, 0);
+
+    let lines = stops(&tree);
+    let facts: Vec<_> = lines.iter().map(hook_facts).collect();
+    let null = &Value::Null;
+    let wanted = [
+        (true, &Value::from(1), &Value::from(1), &Value::from(0)),
+        (false, null, &Value::from(1), &Value::from(0)),
+        (true, &Value::from(2), &Value::from(2), &Value::from(0)),
+        (true, null, &Value::from(2), &Value::from(1)),
+        (false, null, &Value::from(2), &Value::from(1)),
+    ];
+    assert_eq!(facts, wanted, "{lines:?}");
+    for line in &lines {
+        assert_eq!(field(line, &["hook", "gate_spent"]), true, "{line}");
+    }
+}
+
 #[test]
 fn a_spent_gate_block_tells_the_person_when_no_prompt_event_reached_klin() {
     let tree = tree(EVERY_GATE);
@@ -269,7 +312,7 @@ fn a_stop_that_wrote_no_verdict_still_writes_a_line_that_says_why() {
 }
 
 #[test]
-fn an_unwritable_state_directory_leaves_the_exit_code_and_the_text_unchanged() {
+fn an_unwritable_state_directory_still_reports_the_failure_and_blocks_nothing() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
     let file = tree.at("a-file");
@@ -281,7 +324,7 @@ fn an_unwritable_state_directory_leaves_the_exit_code_and_the_text_unchanged() {
         &["gate", "--hook"],
         A_STOP,
     );
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("blocks nothing"), "{}", run.out);
 }

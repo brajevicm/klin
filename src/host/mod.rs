@@ -127,6 +127,11 @@ pub trait Adapter: Sync {
     fn stop(&self, stop: &Stop) -> u8 {
         emit(stop)
     }
+    /// The exit code a stop this host blocks ends with. The block itself is the report the
+    /// adapter delivered; the code is only the host's protocol for it. Spec 9.1.
+    fn block_exit(&self) -> u8 {
+        2
+    }
     /// Whether a blocked stop submits its report as another prompt. The caller records the
     /// exact report before delivery, so the matching prompt does not open a fresh turn.
     fn follows_up(&self) -> bool {
@@ -158,6 +163,10 @@ pub struct Event {
     pub file_paths: Vec<String>,
     pub command: String,
     pub blocked_before: bool,
+    /// Whether the host says this stop follows a message it submitted by itself, which Cursor
+    /// says with a `loop_count` above 0. A stop that continues such a chain belongs to the prompt
+    /// that opened it. Spec 9.3, ADR 0052.
+    pub continued: bool,
     /// The host's grouping of many turns under one id, which klin records and never judges.
     /// Empty when the host sends none.
     pub session: String,
@@ -177,6 +186,7 @@ impl Event {
             file_paths: Vec::new(),
             command: String::new(),
             blocked_before: false,
+            continued: false,
             session: String::new(),
             prompt: String::new(),
         }

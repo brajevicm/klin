@@ -3,6 +3,11 @@
 > ADR 0048 amends this: the count rises only at a stop whose tree changed
 > since the last block, and the stamp records that tree.
 >
+> ADR 0052 amends the gate's one block per turn: a gate failure may block
+> twice under one prompt, the second time only over a changed tree. The
+> build stamp keeps the build count and tree apart from the gate count and
+> tree.
+>
 > Amends ADR 0004 and ADR 0012. The block-once policy stands. What changes is
 > who bounds a build failure that never clears.
 

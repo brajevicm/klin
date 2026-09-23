@@ -7,6 +7,10 @@
 > ADR 0022 amends the reliance on Claude Code's eight-block cap. klin bounds
 > its own build blocks at eight per turn. ADR 0019 moves the stamp into the
 > git directory.
+>
+> ADR 0052 amends the gate's one block: a gate failure may block a second
+> stop under the same prompt when the tree changed since the first gate
+> block, and never a third.
 
 detent's Stop hook is a shell wrapper. It builds the tree, and it runs
 `detent gate --hook --changed` only when the build succeeded. Claude Code sends

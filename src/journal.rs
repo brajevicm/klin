@@ -33,9 +33,15 @@ pub struct Stop {
     pub prompt: u64,
     pub blocked: bool,
     pub blocked_before: bool,
+    /// Whether the host said this stop follows a message it submitted by itself. Spec 9.3.
+    pub continued: bool,
     /// The build stamp as this stop left it. Spec 16.3.
-    pub gate_spent: bool,
+    pub gate_blocks: u64,
     pub build_blocks: u64,
+    /// The number of the gate block this stop itself spent, `None` where it spent none, so a
+    /// reader tells the stop that blocked from a later one that only sees the spent count.
+    /// ADR 0052.
+    pub gate_block: Option<u64>,
     /// The verdict this stop wrote: `green`, `red`, or `none` when it wrote nothing.
     pub verdict: &'static str,
     /// Why the stop wrote no verdict, beside `verdict: "none"` alone.
@@ -74,8 +80,10 @@ impl Stop {
             prompt: 0,
             blocked: false,
             blocked_before: event.is_some_and(|event| event.blocked_before),
-            gate_spent: false,
+            continued: event.is_some_and(|event| event.continued),
+            gate_blocks: 0,
             build_blocks: 0,
+            gate_block: None,
             verdict: "none",
             why: None,
             asked: Vec::new(),
@@ -125,9 +133,12 @@ pub fn line(stop: &Stop) -> Value {
                 true => "block",
                 false => "none",
             },
-            "gate_spent": stop.gate_spent,
+            "gate_spent": stop.gate_blocks > 0,
+            "gate_blocks": stop.gate_blocks,
+            "gate_block": stop.gate_block,
             "build_blocks": stop.build_blocks,
             "blocked_before": stop.blocked_before,
+            "continued": stop.continued,
         }),
     );
     line.insert("verdict".into(), stop.verdict.into());

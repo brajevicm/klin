@@ -1,6 +1,9 @@
 # One plugin directory also serves Cursor
 
 > Amends ADR 0030, whose decision named Claude Code and Codex CLI only.
+>
+> ADR 0052 amends the Cursor stop block. Cursor 3.21.18 did not submit the
+> `followup_message` of a stop hook that exited 2, so a block exits 0.
 
 ADR 0030 put Claude Code and Codex CLI on one plugin directory,
 `plugins/claude-code`, with two marketplace files, one wrapper, one version pin.
@@ -49,7 +52,7 @@ command nobody ran.
 Two names moved out of shared modules into the adapter as a result: the
 prompt event, which `turn` had as the literal `UserPromptSubmit`, and the
 stop channel, which `gate` had as Claude Code's `systemMessage`. A Cursor
-block uses `followup_message` and still exits 2, matching a deny. Cursor
+block uses `followup_message` and exits 0 (see the note above). Cursor
 submits that follow-up as the next prompt, so klin records a hash of the
 exact report before delivery. The matching prompt consumes that record and
 does not refresh the block budget. A different prompt, including a person's

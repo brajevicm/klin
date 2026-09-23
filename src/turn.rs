@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 use crate::base::{self, Kind, Window};
 use crate::config::{Config, Error};
 use crate::git::Repo;
+use crate::handoff;
 use crate::host;
 use crate::journal;
 use crate::radius;
@@ -62,9 +63,6 @@ pub struct Stamp {
     /// Whether a stop under this stamp spent a gate block, so the turn holds an intervention for
     /// the turn end to tell. A fresh stamp holds none. Spec 6.5, 9.5.
     pub intervened: bool,
-    /// The hash of the exact stop report a host will submit as its next prompt. It is consumed
-    /// once, so protocol-generated text cannot open a fresh turn and another prompt clears it.
-    pub followup: Option<u64>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -80,6 +78,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let tree = tree(start, &at);
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
+    if let Some(event) = &event {
+        handoff::clear(start, &event.session);
+    }
     if event.as_ref().is_some_and(|event| event.prompted) {
         journaled_prompt(
             start,
@@ -108,10 +109,9 @@ fn opening(start: &Path, out: &mut String) -> Option<(Option<host::Event>, PathB
         .and_then(|event| event.root.clone())
         .unwrap_or_else(|| start.to_path_buf());
     state::dir(&root)?;
-    if event
-        .as_ref()
-        .is_some_and(|event| event.prompted && consumes_followup(&root, &event.prompt, out))
-    {
+    if event.as_ref().is_some_and(|event| {
+        event.prompted && handoff::consumes(&root, &event.session, &event.prompt)
+    }) {
         return None;
     }
     let at = match state::ready(&root) {
@@ -252,36 +252,6 @@ pub fn intervened(root: &Path) -> bool {
         .is_some_and(|held| held.intervened)
 }
 
-/// Remember the exact report a host will submit as its next prompt. The host adapter says
-/// whether it has that delivery mode; the turn owns the state that keeps it from becoming a
-/// person's next turn.
-pub fn expect_followup(root: &Path, report: &str) {
-    let Ok(at) = state::ready(root) else {
-        return;
-    };
-    let Some(mut held) = read(&at) else {
-        return;
-    };
-    held.followup = Some(state::hash(report.as_bytes()));
-    write(&at, &held, &mut String::new());
-}
-
-/// Consume one expected follow-up. A different prompt clears the expectation and remains a
-/// person's prompt; an exact match is host-generated and opens no turn.
-fn consumes_followup(root: &Path, prompt: &str, out: &mut String) -> bool {
-    let Some(at) = state::dir(root) else {
-        return false;
-    };
-    let Some(mut held) = read(&at) else {
-        return false;
-    };
-    let expected = held.followup.take();
-    if expected.is_some() {
-        write(&at, &held, out);
-    }
-    expected == Some(state::hash(prompt.as_bytes()))
-}
-
 fn read(at: &Path) -> Option<Stamp> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;
@@ -315,7 +285,6 @@ fn read(at: &Path) -> Option<Stamp> {
             .get("intervened")
             .and_then(Value::as_bool)
             .unwrap_or_default(),
-        followup: held.get("followup").and_then(Value::as_u64),
     })
 }
 
@@ -338,7 +307,6 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         prompts,
         asked: Vec::new(),
         intervened: false,
-        followup: None,
     })
 }
 
@@ -384,7 +352,6 @@ fn kept(root: &Path) -> Option<Stamp> {
         prompts: 0,
         asked: Vec::new(),
         intervened: false,
-        followup: None,
     })
 }
 
@@ -410,27 +377,23 @@ fn restored(
         prompts,
         asked: Vec::new(),
         intervened: false,
-        followup: None,
     })
 }
 
 /// The window a stop in the hook judges: the turn stamp, or the whole branch when the stamp
 /// was deleted, which the stop then writes as the stamp so the window stops widening. A state
-/// directory klin cannot keep costs the same widening and nothing else. Spec 6.2, 14, 16.1.
+/// directory klin cannot keep costs the same widening and nothing else. A stop that `lost` the
+/// state lock reads the same window and writes nothing, because the stop holding the lock may
+/// be writing the stamp. Spec 6.2, 6.5, 14, 16.1.
 pub fn window(
     root: &Path,
+    lost: bool,
     flags: &mut Vec<&'static str>,
     out: &mut String,
 ) -> Result<Window, Error> {
-    let Ok(at) = state::ready(root) else {
-        return match kept(root) {
-            Some(stamp) if abandoned(root, &stamp) => {
-                note(out, LEFT_BEHIND);
-                branch(root, out)
-            }
-            Some(stamp) => Ok(turn(&stamp)),
-            None => branch(root, out),
-        };
+    let at = state::ready(root).ok().filter(|_| !lost);
+    let Some(at) = at else {
+        return read_only(root, out);
     };
     let held = held(root, &at, flags, out);
     if let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) {
@@ -446,6 +409,22 @@ pub fn window(
     let mark = held.as_ref().and_then(|held| held.mark.clone());
     let base = branch(root, out)?;
     Ok(replaced(&at, held.as_ref(), mark, base, out))
+}
+
+/// The window as the stamp on disk names it, from the `turn` file or else the ref, with no
+/// restore, no re-anchor and no replacement written. Spec 6.5, 14.
+fn read_only(root: &Path, out: &mut String) -> Result<Window, Error> {
+    let file = state::dir(root)
+        .and_then(|at| read(&at))
+        .filter(|stamp| stamp.commit.is_some() && resolves(root, stamp));
+    match file.or_else(|| kept(root)) {
+        Some(stamp) if abandoned(root, &stamp) => {
+            note(out, LEFT_BEHIND);
+            branch(root, out)
+        }
+        Some(stamp) => Ok(turn(&stamp)),
+        None => branch(root, out),
+    }
 }
 
 /// Whether the commit the stamp was taken over has left current HEAD history, which is what a
@@ -482,7 +461,6 @@ fn replaced(
             prompts: held.map_or(0, |held| held.prompts),
             asked: Vec::new(),
             intervened: false,
-            followup: None,
         },
         out,
     );
@@ -666,13 +644,13 @@ fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
 fn recorded(stamp: &Stamp) -> Value {
     let mut fields = Map::new();
     let fields_of = [
-        ("commit", &stamp.commit),
-        ("parent", &stamp.parent),
-        ("mark", &stamp.mark),
+        ("commit", stamp.commit.clone().map(Value::from)),
+        ("parent", stamp.parent.clone().map(Value::from)),
+        ("mark", stamp.mark.clone().map(Value::from)),
     ];
     for (key, value) in fields_of {
         if let Some(found) = value {
-            fields.insert(key.into(), found.clone().into());
+            fields.insert(key.into(), found);
         }
     }
     fields.insert("time".into(), stamp.time.into());
@@ -687,9 +665,6 @@ fn recorded(stamp: &Stamp) -> Value {
     }
     if stamp.intervened {
         fields.insert("intervened".into(), true.into());
-    }
-    if let Some(followup) = &stamp.followup {
-        fields.insert("followup".into(), (*followup).into());
     }
     Value::Object(fields)
 }

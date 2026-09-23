@@ -134,9 +134,10 @@ impl Adapter for Cursor {
         (!named.is_empty()).then(|| PathBuf::from(named))
     }
 
-    /// Cursor sends no flag for a stop it already blocked. Its `loop_count` counts the follow-ups
-    /// one conversation has already taken, not the blocks this turn spent, so `blocked_before` is
-    /// false here and klin's own record bounds the block. Spec 9.3, ADR 0022.
+    /// Cursor sends no flag for a stop it already blocked. Its `loop_count` counts the automatic
+    /// follow-ups before this stop, not the blocks this turn spent, so `blocked_before` is false
+    /// here and klin's own record bounds the block. A count above 0 says the stop continues a
+    /// chain of automatic messages, which is what `continued` records. Spec 9.3, ADR 0022, 0052.
     fn event(&'static self, payload: &Value) -> Event {
         let path = path(payload);
         Event {
@@ -144,6 +145,10 @@ impl Adapter for Cursor {
             file_paths: Vec::from_iter((!path.is_empty()).then_some(path)),
             command: command(payload),
             blocked_before: false,
+            continued: payload
+                .get("loop_count")
+                .and_then(Value::as_u64)
+                .is_some_and(|count| count > 0),
             session: session(payload),
             prompt: text(payload.get("prompt")),
             ..Event::of(self)
@@ -165,14 +170,16 @@ impl Adapter for Cursor {
         }
     }
 
-    /// A stop that tells the person uses `followup_message`, which Cursor shows. A block uses
-    /// that field too, because Cursor's stop has no other channel, and still exits 2 so the
-    /// refusal holds if stdout goes unread — the same pairing as a deny. Spec 9.1.
+    /// A stop that tells the person uses `followup_message`, which Cursor submits as the next
+    /// prompt. A block uses that field too, because Cursor's stop has no other channel, and it
+    /// exits 0: Cursor 3.21.18 did not submit the follow-up of a stop hook that exited 2, and
+    /// did submit one from a hook that exited 0. Nothing enforces an exit-0 block, so a Cursor
+    /// that ignored stdout would let the turn end, which fails open. Spec 9.1.
     fn stop(&self, stop: &Stop) -> u8 {
         match stop {
             Stop::Block(text) => {
                 followup(text);
-                2
+                self.block_exit()
             }
             Stop::Pass => 0,
             Stop::Tell(text) => {
@@ -184,6 +191,10 @@ impl Adapter for Cursor {
 
     fn follows_up(&self) -> bool {
         true
+    }
+
+    fn block_exit(&self) -> u8 {
+        0
     }
 }
 

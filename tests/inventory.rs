@@ -398,6 +398,74 @@ fn a_test_deleted_after_the_question_gets_its_own_question() {
     );
 }
 
+fn three_tests() -> Tree {
+    let tree = Tree::new();
+    for name in ["one", "two", "three"] {
+        tree.write(
+            &format!("tests/test_{name}.py"),
+            &format!("def test_{name}():\n    assert True\n"),
+        );
+    }
+    tree.base();
+    tree
+}
+
+#[test]
+fn a_deleted_test_already_asked_about_is_no_reason_for_a_second_gate_block() {
+    let tree = three_tests();
+    tree.remove("tests/test_one.py");
+    assert_eq!(stop(&tree).code, 2);
+
+    tree.write("src/other.py", "y = 2\n");
+    let after = second_stop(&tree);
+    assert_eq!(after.code, 0, "{}", after.out);
+    assert_eq!(tree.field("verdict"), "green", "{}", after.out);
+}
+
+#[test]
+fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
+    let tree = three_tests();
+    tree.remove("tests/test_one.py");
+    let first = stop(&tree);
+    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+
+    tree.remove("tests/test_two.py");
+    let second = second_stop(&tree);
+    assert_eq!(second.code, 2, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    assert!(
+        second.says("tests/test_two.py:0  missing 1, was missing 0"),
+        "{}",
+        second.out
+    );
+
+    tree.remove("tests/test_three.py");
+    let third = second_stop(&tree);
+    assert_eq!(third.code, 0, "{}", third.out);
+    assert!(third.says("has blocked 2 stops"), "{}", third.out);
+    assert!(
+        third.says("tests/test_three.py:0  missing 1, was missing 0"),
+        "{}",
+        third.out
+    );
+
+    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    let later = stop(&tree);
+    assert_eq!(later.code, 2, "{}", later.out);
+    assert!(later.says("gate block 1 of 2"), "{}", later.out);
+    assert!(
+        later.says("tests/test_three.py:0  missing 1, was missing 0"),
+        "{}",
+        later.out
+    );
+    assert!(
+        !later.says("tests/test_two.py:0  missing 1, was missing 0"),
+        "{}",
+        later.out
+    );
+}
+
 #[test]
 fn a_stop_whose_stamp_was_deleted_still_asks_about_a_deleted_test() {
     let tree = tree_with(&PATTERNS[0]);

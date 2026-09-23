@@ -44,7 +44,7 @@ const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1"
 const A_CURSOR_SHELL_COMMAND: &str = r#"{"hook_event_name":"preToolUse","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","tool_name":"Shell","tool_input":{"command":"rm klin.json"}}"#;
 const A_CURSOR_SHELL_EVENT: &str = r#"{"hook_event_name":"beforeShellExecution","cursor_version":"3.20.21","conversation_id":"s1","command":"rm klin.json"}"#;
 const A_CURSOR_MCP_CALL: &str = r#"{"hook_event_name":"beforeMCPExecution","cursor_version":"3.20.21","conversation_id":"s1","tool_name":"mcp__server__tool","tool_input":{},"command":"rm klin.json"}"#;
-const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":5}"#;
+const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
 
 fn codex(name: &str, command: &str) -> String {
     format!(
@@ -116,8 +116,20 @@ fn a_stop_event_comes_back_as_a_block_or_a_pass() {
 fn a_stop_that_says_it_already_blocked_this_turn_is_read_that_way() {
     let run = stop(&failing(), A_SECOND_STOP, &[]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("still, after one round of fixes"), "{}", run.out);
-    assert!(run.says("not blocking a second time"), "{}", run.out);
+    assert!(run.says("this stop is not blocked"), "{}", run.out);
+    assert!(run.says("not blocking again"), "{}", run.out);
+}
+
+#[test]
+fn a_claude_stop_after_a_gate_block_over_a_changed_tree_spends_the_second() {
+    let tree = failing();
+    let first = stop(&tree, A_STOP, &[]);
+    assert_eq!(first.code, 2, "{}", first.out);
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, A_SECOND_STOP, &[]);
+    assert_eq!(second.code, 2, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
 }
 
 #[test]
@@ -219,8 +231,9 @@ fn cursor_stop_measures_the_workspace_root_the_event_names() {
         &event.to_string(),
     );
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says(r#""followup_message":"#), "{}", run.out);
+    assert!(run.says("then stop again"), "{}", run.out);
     assert!(run.says("README.md"), "{}", run.out);
 }
 
@@ -232,8 +245,31 @@ fn cursor_reads_a_shell_command_off_the_event_itself() {
     assert!(run.says("klin.json"), "{}", run.out);
 }
 
+/// Cursor 3.21.18 did not submit the `followup_message` of a stop hook that exited 2, and did
+/// submit one from a hook that exited 0, so a Cursor block exits 0. docs/cursor-compatibility.md.
 #[test]
-fn cursor_stop_blocks_and_ignores_loop_count() {
+fn a_cursor_block_exits_0_and_is_journaled_as_a_block() {
+    let tree = cursor_failing();
+    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(blocked.code, 0, "{}", blocked.out);
+    assert!(blocked.says(r#""followup_message":"#), "{}", blocked.out);
+    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
+
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["hook"]["blocked"], true, "{line}");
+    assert_eq!(line["hook"]["gate_block"], 1, "{line}");
+    assert_eq!(line["exit"], 0, "{line}");
+}
+
+/// `loop_count` counts the automatic follow-ups before this stop. It says nothing about a
+/// block, so a first stop blocks whatever count it carries.
+#[test]
+fn a_first_cursor_stop_blocks_whatever_its_loop_count() {
     let tree = Tree::new();
     tree.write("klin.json", A_CONFIG);
     tree.words("README.md", 5);
@@ -248,15 +284,11 @@ fn cursor_stop_blocks_and_ignores_loop_count() {
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.words("README.md", 30);
 
-    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(blocked.code, 2, "{}", blocked.out);
+    let blocked = stop(&tree, &cursor_stop_at("s1", 5), &[]);
+    assert_eq!(blocked.code, 0, "{}", blocked.out);
     assert!(blocked.says(r#""followup_message":"#), "{}", blocked.out);
     assert!(blocked.says("fix what each names"), "{}", blocked.out);
-    assert!(
-        !blocked.says("not blocking a second time"),
-        "{}",
-        blocked.out
-    );
+    assert!(!blocked.says("not blocking again"), "{}", blocked.out);
 
     let answer: serde_json::Value = match serde_json::from_str(blocked.printed.trim()) {
         Ok(answer) => answer,
@@ -283,7 +315,11 @@ fn cursor_stop_blocks_and_ignores_loop_count() {
 
     let passed = stop(&tree, A_CURSOR_STOP, &[]);
     assert_eq!(passed.code, 0, "{}", passed.out);
-    assert!(passed.says("not blocking a second time"), "{}", passed.out);
+    assert!(
+        passed.says("the tree did not change since the last gate block"),
+        "{}",
+        passed.out
+    );
 
     let silent = stop(&Tree::new(), A_CURSOR_STOP, &[]);
     assert_eq!(silent.code, 0, "{}", silent.out);
@@ -319,7 +355,401 @@ fn a_codex_stop_honors_its_blocked_before_flag() {
 
     let run = stop(&failing(), A_CODEX_SECOND_STOP, &[]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("not blocking a second time"), "{}", run.out);
+    assert!(run.says("not blocking again"), "{}", run.out);
+}
+
+#[test]
+fn a_codex_continuation_over_a_changed_tree_spends_the_second_gate_block() {
+    let tree = failing();
+    let first = stop(&tree, A_CODEX_STOP, &[]);
+    assert_eq!(first.code, 2, "{}", first.out);
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, A_CODEX_SECOND_STOP, &[]);
+    assert_eq!(second.code, 2, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+
+    tree.words("README.md", 32);
+    let third = stop(&tree, A_CODEX_SECOND_STOP, &[]);
+    assert_eq!(third.code, 0, "{}", third.out);
+    assert!(third.says("has blocked 2 stops"), "{}", third.out);
+}
+
+/// Cursor submits each block report, and each message a stop tells, as the next prompt. klin
+/// consumes that prompt without a fresh gate budget, so the stops after it spend the prompt's
+/// second block and no more.
+#[test]
+fn a_cursor_followup_gains_no_fresh_gate_budget() {
+    let tree = Tree::new();
+    tree.write("klin.json", A_CONFIG);
+    tree.words("README.md", 5);
+    tree.base();
+    let session = serde_json::json!({
+        "hook_event_name": "sessionStart",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()]
+    });
+    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    assert_eq!(opened.code, 0, "{}", opened.out);
+    tree.words("README.md", 30);
+    let first = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+    echo_followup(&tree, &first);
+
+    let told = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(told.code, 0, "{}", told.out);
+    assert!(told.says(r#""followup_message":"#), "{}", told.out);
+    echo_followup(&tree, &told);
+
+    let again = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(!again.says("followup_message"), "{}", again.out);
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    echo_followup(&tree, &second);
+
+    tree.words("README.md", 32);
+    let third = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(third.code, 0, "{}", third.out);
+    assert!(third.says("has blocked 2 stops"), "{}", third.out);
+}
+
+/// Cursor sends no flag that a stop already blocked, so klin's own record is the only bound. A
+/// gate block klin cannot record would repeat at every stop, so it blocks nothing.
+#[test]
+fn a_cursor_gate_block_klin_cannot_record_blocks_nothing() {
+    let tree = failing();
+    let record = tree.path(".git/klin/build-blocked");
+    assert!(
+        std::fs::create_dir_all(&record).is_ok(),
+        "{}",
+        record.display()
+    );
+
+    for at in 1..=3 {
+        let run = stop(&tree, A_CURSOR_STOP, &[]);
+        assert_eq!(run.code, 0, "stop {at}: {}", run.out);
+        assert!(run.says("FAIL  doc-size"), "stop {at}: {}", run.out);
+        assert!(
+            run.says("klin could not record a gate block"),
+            "stop {at}: {}",
+            run.out
+        );
+    }
+}
+
+fn echo_followup(tree: &Tree, blocked: &Run) {
+    echo_from(tree, blocked, "s1");
+}
+
+fn echo_from(tree: &Tree, blocked: &Run, session: &str) {
+    let answer: serde_json::Value = match serde_json::from_str(blocked.printed.trim()) {
+        Ok(answer) => answer,
+        Err(why) => panic!("{why} — Cursor stop printed:\n{}", blocked.printed),
+    };
+    submit(tree, session, &answer["followup_message"]);
+}
+
+fn submit(tree: &Tree, session: &str, prompt: &serde_json::Value) {
+    let submitted = serde_json::json!({
+        "hook_event_name": "beforeSubmitPrompt",
+        "cursor_version": "3.20.21",
+        "conversation_id": session,
+        "workspace_roots": [tree.root()],
+        "prompt": prompt
+    });
+    let radius = feed(tree.root(), &["radius"], &submitted.to_string());
+    assert_eq!(radius.code, 0, "{}", radius.out);
+}
+
+fn cursor_stop(session: &str) -> String {
+    cursor_stop_at(session, 0)
+}
+
+/// A Cursor stop whose `loop_count` says how many automatic follow-ups came before it.
+fn cursor_stop_at(session: &str, loop_count: u64) -> String {
+    serde_json::json!({
+        "hook_event_name": "stop",
+        "cursor_version": "3.21.18",
+        "conversation_id": session,
+        "session_id": session,
+        "loop_count": loop_count
+    })
+    .to_string()
+}
+
+/// Cursor submits the follow-up that wins its merge of every stop hook's answer, which may be
+/// another hook's text klin cannot recognize, and that text raises the prompt counter. A stop
+/// whose `loop_count` is above 0 follows an automatic message, so it keeps the budget of the
+/// prompt the chain continues. A person's message brings `loop_count` back to 0 and a fresh
+/// budget. docs/cursor-compatibility.md.
+#[test]
+fn a_cursor_stop_after_an_automatic_message_keeps_its_prompts_budget() {
+    let tree = cursor_failing();
+    let first = stop(&tree, &cursor_stop_at("s1", 0), &[]);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+
+    let prompts = tree.field("prompts");
+    submit(&tree, "s1", &"ANOTHER-HOOK-WON-THE-MERGE".into());
+    assert_ne!(
+        tree.field("prompts"),
+        prompts,
+        "the merged text read as a person's prompt"
+    );
+    let unchanged = stop(&tree, &cursor_stop_at("s1", 1), &[]);
+    assert_eq!(unchanged.code, 0, "{}", unchanged.out);
+    assert!(
+        unchanged.says("the tree did not change since the last gate block"),
+        "{}",
+        unchanged.out
+    );
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["hook"]["continued"], true, "{line}");
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, &cursor_stop_at("s1", 2), &[]);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    tree.words("README.md", 32);
+    let capped = stop(&tree, &cursor_stop_at("s1", 3), &[]);
+    assert!(capped.says("has blocked 2 stops"), "{}", capped.out);
+
+    submit(&tree, "s1", &"keep going".into());
+    let fresh = stop(&tree, &cursor_stop_at("s1", 0), &[]);
+    assert!(fresh.says("gate block 1 of 2"), "{}", fresh.out);
+}
+
+/// A person's prompt after a prompt that spent both gate blocks gets the whole budget, even
+/// where its first stop spends none and another hook's message then continues the chain.
+#[test]
+fn a_cursor_chain_after_a_clean_stop_inherits_no_earlier_prompts_budget() {
+    let tree = exhausted("s1");
+    submit(&tree, "s1", &"fix the docs".into());
+    tree.words("README.md", 5);
+    let clean = stop(&tree, &cursor_stop_at("s1", 0), &[]);
+    assert_eq!(clean.code, 0, "{}", clean.out);
+    assert!(!clean.says("gate block"), "{}", clean.out);
+
+    submit(&tree, "s1", &"ANOTHER-HOOK-WON-THE-MERGE".into());
+    tree.words("README.md", 30);
+    let continued = stop(&tree, &cursor_stop_at("s1", 1), &[]);
+    assert!(continued.says("gate block 1 of 2"), "{}", continued.out);
+}
+
+/// The block record belongs to the session that took it, so a chain in another session starts
+/// its own budget and never carries the first session's cap.
+#[test]
+fn a_cursor_chain_inherits_no_other_sessions_budget() {
+    let tree = exhausted("s1");
+    submit(&tree, "s2", &"ANOTHER-HOOK-WON-THE-MERGE".into());
+    tree.words("README.md", 33);
+    let other = stop(&tree, &cursor_stop_at("s2", 1), &[]);
+    assert!(other.says("gate block 1 of 2"), "{}", other.out);
+}
+
+/// A failing Cursor tree whose session already spent both gate blocks under its prompt.
+fn exhausted(session: &str) -> Tree {
+    let tree = cursor_failing();
+    let first = stop(&tree, &cursor_stop_at(session, 0), &[]);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+    echo_from(&tree, &first, session);
+    tree.words("README.md", 31);
+    let second = stop(&tree, &cursor_stop_at(session, 1), &[]);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    echo_from(&tree, &second, session);
+    tree.words("README.md", 32);
+    let capped = stop(&tree, &cursor_stop_at(session, 2), &[]);
+    assert!(capped.says("has blocked 2 stops"), "{}", capped.out);
+    tree
+}
+
+/// A Cursor session opened over a tree whose README is within its ceiling, then pushed over it.
+fn cursor_failing() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", A_CONFIG);
+    tree.words("README.md", 5);
+    tree.base();
+    let session = serde_json::json!({
+        "hook_event_name": "sessionStart",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()]
+    });
+    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    assert_eq!(opened.code, 0, "{}", opened.out);
+    tree.words("README.md", 30);
+    tree
+}
+
+fn last_stop_flags(tree: &Tree) -> String {
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .unwrap_or_default();
+    let held: serde_json::Value = serde_json::from_str(line).unwrap_or_default();
+    held["flags"].to_string()
+}
+
+/// A told message Cursor submits opens no turn, so the stop after it would tell the same thing
+/// again. klin tells one message once per prompt, and still tells a message that says something
+/// new.
+#[test]
+fn a_cursor_tell_is_told_once_per_prompt_and_a_new_message_still_gets_through() {
+    let tree = cursor_failing();
+    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
+    echo_followup(&tree, &blocked);
+    let told = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(told.says(r#""followup_message":"#), "{}", told.out);
+    echo_followup(&tree, &told);
+
+    let again = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(!again.says("followup_message"), "{}", again.out);
+    assert!(
+        last_stop_flags(&tree).contains("told-before"),
+        "{}",
+        again.out
+    );
+
+    tree.words("README.md", 5);
+    let fixed = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(fixed.code, 0, "{}", fixed.out);
+    assert!(fixed.says(r#""followup_message":"#), "{}", fixed.out);
+}
+
+/// A tree whose only news is a file no grammar reads, which every stop tells as a note.
+fn cursor_noted() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"cc": 1, "lines": 1}}"#);
+    tree.write("src/flow.rs", "fn f() {}\n");
+    tree.base();
+    let session = serde_json::json!({
+        "hook_event_name": "sessionStart",
+        "cursor_version": "3.20.21",
+        "conversation_id": "s1",
+        "workspace_roots": [tree.root()]
+    });
+    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    assert_eq!(opened.code, 0, "{}", opened.out);
+    tree.write("src/flow.rs", "%%% not rust %%%\n");
+    tree
+}
+
+/// A note's report opens with the window line, whose age moves each minute. The age says
+/// nothing new, so the note is still told once.
+#[test]
+fn a_cursor_note_is_told_once_even_as_its_window_line_ages() {
+    let tree = cursor_noted();
+    let first = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(first.says(r#""followup_message":"#), "{}", first.out);
+    assert!(first.says("window: "), "{}", first.out);
+    echo_followup(&tree, &first);
+
+    let text = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    let mut held: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    held["time"] = (held["time"].as_u64().unwrap_or_default() - 120).into();
+    tree.write(".git/klin/turn", &held.to_string());
+
+    let aged = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(aged.code, 0, "{}", aged.out);
+    assert!(!aged.says("followup_message"), "{}", aged.out);
+}
+
+#[test]
+fn a_person_prompt_lets_cursor_hear_the_same_message_again() {
+    let tree = cursor_failing();
+    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
+    echo_followup(&tree, &blocked);
+    let told = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(told.says(r#""followup_message":"#), "{}", told.out);
+    echo_followup(&tree, &told);
+
+    submit(&tree, "s1", &"keep going".into());
+    let fresh = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(fresh.says("gate block 1 of 2"), "{}", fresh.out);
+    echo_followup(&tree, &fresh);
+    let retold = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(retold.code, 0, "{}", retold.out);
+    assert!(retold.says(r#""followup_message":"#), "{}", retold.out);
+}
+
+/// Two Cursor sessions share one worktree. What one session was handed does not replace what
+/// the other was, so the first session's echoed block report still opens no turn.
+#[test]
+fn a_second_cursor_session_does_not_refresh_the_first_sessions_budget() {
+    let tree = cursor_failing();
+    let blocked = stop(&tree, &cursor_stop("s1"), &[]);
+    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
+
+    let other = stop(&tree, &cursor_stop("s2"), &[]);
+    assert_eq!(other.code, 0, "{}", other.out);
+    assert!(other.says(r#""followup_message":"#), "{}", other.out);
+
+    let prompts = tree.field("prompts");
+    echo_from(&tree, &other, "s2");
+    echo_from(&tree, &blocked, "s1");
+    assert_eq!(tree.field("prompts"), prompts, "an echo opened a turn");
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, &cursor_stop("s1"), &[]);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+}
+
+/// Cursor submits a block report as its next prompt, so a report klin could not record as
+/// expected would open a turn and a fresh budget. Such a block is reported and blocks nothing.
+#[test]
+fn a_cursor_block_klin_cannot_hand_off_is_reported_and_blocks_nothing() {
+    let tree = cursor_failing();
+    tree.write(".git/klin/handed", "");
+
+    let run = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(!run.says("followup_message"), "{}", run.out);
+    assert!(
+        run.says("could not record the report the host will submit"),
+        "{}",
+        run.out
+    );
+}
+
+/// A stop that lost the state lock cannot record what it tells, so on Cursor it tells nothing
+/// and leaves the turn stamp as the stop holding the lock wrote it.
+#[test]
+fn a_cursor_stop_without_the_state_lock_tells_nothing_and_writes_no_stamp() {
+    let tree = cursor_noted();
+    let first = stop(&tree, A_CURSOR_STOP, &[]);
+    assert!(first.says(r#""followup_message":"#), "{}", first.out);
+    echo_followup(&tree, &first);
+    let stamp = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+
+    let opened = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(tree.state("lock"));
+    let Ok(lock) = opened else {
+        panic!("the lock file could not be opened");
+    };
+    assert!(lock.lock().is_ok(), "another holder has the lock");
+    tree.write("src/other.rs", "%%% not rust either %%%\n");
+
+    let held = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(!held.says("followup_message"), "{}", held.out);
+    let after = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    assert_eq!(after, stamp, "a stop without the lock wrote the turn stamp");
 }
 
 #[test]

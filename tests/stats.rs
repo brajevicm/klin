@@ -116,6 +116,23 @@ fn prompt_line(ago: u64, text: &str) -> Value {
 // The counted unit, and what keys it.
 
 #[test]
+fn a_blocked_stop_that_spent_no_gate_block_opens_no_regression() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let mut build = stop(400, true, vec![site.clone()], vec![]);
+    build["hook"]["gate_block"] = Value::Null;
+    let mut gate = stop(300, true, vec![site], vec![]);
+    gate["hook"]["gate_block"] = json!(1);
+
+    let without = tree(std::slice::from_ref(&build));
+    let json = without.run(&["stats", "--json"]).json();
+    assert_eq!(json["counts"]["caught"], 0, "{json}");
+
+    let with = tree(&[build, gate]);
+    let json = with.run(&["stats", "--json"]).json();
+    assert_eq!(json["counts"]["caught"], 1, "{json}");
+}
+
+#[test]
 fn one_id_over_four_blocked_stops_is_one_regression_with_its_latest_outcome() {
     let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
     let mut lines: Vec<Value> = (0..4)
@@ -1122,6 +1139,25 @@ fn turn_reports_the_stops_since_the_stamp_and_a_reset_sets_the_rest_aside() {
         week.out
     );
     assert!(!week.says("still in your code"), "{}", week.out);
+}
+
+#[test]
+fn a_site_that_spends_both_gate_blocks_is_one_regression() {
+    let tree = hooked();
+    blocked(&tree);
+    tree.write("src/other.rs", "pub fn g() -> i32 {\n    1\n}\n");
+    let again = hook(&tree, A_SECOND_STOP);
+    assert_eq!(again.code, 2, "{}", again.out);
+    assert!(again.says("gate block 2 of 2"), "{}", again.out);
+
+    let turn = tree.run(&["stats", "--turn"]);
+    assert_eq!(turn.code, 0, "{}", turn.out);
+    assert!(
+        turn.says("1 regression needs your attention."),
+        "{}",
+        turn.out
+    );
+    assert!(turn.says("klin caught 1 this turn."), "{}", turn.out);
 }
 
 #[test]
