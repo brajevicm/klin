@@ -893,6 +893,26 @@ fn install_adds_nothing_when_a_marketplace_cursor_plugin_is_installed() {
         run.out
     );
     assert!(run.says("plugin"), "{}", run.out);
+    assert!(run.says("in Cursor"), "{}", run.out);
+    assert!(!run.says("remove it"), "{}", run.out);
+}
+
+/// klin reads the two layouts Cursor installs a plugin into and no other, so a klin manifest
+/// elsewhere under `plugins`, such as a marketplace's own source, holds no hooks back. Spec 19.3.
+#[test]
+fn install_writes_for_cursor_past_a_klin_manifest_cursor_did_not_install() {
+    let tree = a_repository();
+    let home = Tree::bare();
+    home.write(
+        ".cursor/plugins/marketplaces/team/plugins/klin/.cursor-plugin/plugin.json",
+        A_CURSOR_PLUGIN,
+    );
+    let at = home_of(&home);
+
+    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--host", "cursor"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
 }
 
 const A_CODEX_PLUGIN: &str = "[plugins.\"klin@klin\"]\nenabled = true\n";

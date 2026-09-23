@@ -4434,8 +4434,10 @@ machine. Codex CLI lists them as `[plugins."klin@<marketplace>"]` tables in
 repository's and the user's the same way. Cursor's documented local layout is
 `.cursor/plugins/local/<name>`, and Cursor 3.20.21's observed marketplace
 cache is `.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin
-searches those bounded trees for `.cursor-plugin/plugin.json` named `klin`,
-under the project and the user's home. A repository write is held back the
+reads `.cursor-plugin/plugin.json` named `klin` at exactly those two depths,
+under the project and the user's home, and a klin manifest anywhere else
+under `plugins`, such as a marketplace's own source, is not an installed
+plugin. A repository write is held back the
 same way by a user file that already holds klin's entries, and the run names
 the command that changes them.
 
@@ -4489,9 +4491,12 @@ written and not shown (`docs/cursor-compatibility.md`). A host whose klin
 plugin is enabled gets no committed hooks and no skill (plugin ownership
 above), so a document that tells a person to commit them says that the plugin
 must be disabled first. Cursor records no enabled state klin can read, so a
-klin plugin copy on disk holds the hooks back whether or not Cursor loads it:
-the run names the copy, and the document says to remove it and reload Cursor.
-Codex skips a project hook file's hooks until the person trusts them through
+klin plugin Cursor installed holds the hooks back whether or not Cursor loads
+it, and the run names where it is. For a local copy the run and the document
+say to remove it and reload Cursor. For a marketplace install they say to
+disable or uninstall it in Cursor, because the cache is Cursor's, and a plugin
+an organization requires cannot share a repository with committed hooks. Codex
+skips a project hook file's hooks until the person trusts them through
 `/hooks`, as it does a plugin's (19.2), so a document that gives the
 standalone route for Codex names that step.
 

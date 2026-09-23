@@ -64,11 +64,12 @@ Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 <summary>Install the local plugin</summary>
 
 ```sh
-d=$(mktemp -d) && git clone --depth 1 --branch v0.3.0 https://github.com/brajevicm/klin "$d"
-rm -rf ~/.cursor/plugins/local/klin
-mkdir -p ~/.cursor/plugins/local
-cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
-rm -rf "$d"
+d=$(mktemp -d) &&
+  git clone --depth 1 --branch v0.3.0 https://github.com/brajevicm/klin "$d" &&
+  mkdir -p ~/.cursor/plugins/local &&
+  rm -rf ~/.cursor/plugins/local/klin &&
+  cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
+s=$?; rm -rf "$d"; [ "$s" -eq 0 ] || { echo "klin: the Cursor plugin copy failed. Run it again once the fetch works." >&2; false; }
 ```
 
 Reload Cursor after installation.

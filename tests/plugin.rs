@@ -253,17 +253,10 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
 fn the_readmes_cursor_copy_leaves_one_plugin_when_it_runs_twice() {
     let tree = Tree::bare();
     let home = tree.root().display().to_string();
-    let seed = format!(
-        "d=$(mktemp -d) && cp -R \"{}\" \"$d/plugins\"",
+    let script = cursor_copy(&format!(
+        "cp -R \"{}\" \"$d/plugins\"",
         at("plugins").display()
-    );
-    let script = block(&text(README), "~/.cursor/plugins/local/klin").replace(
-        &format!(
-            "d=$(mktemp -d) && git clone --depth 1 --branch v{PINNED} \
-             https://github.com/brajevicm/klin \"$d\""
-        ),
-        &seed,
-    );
+    ));
 
     for _ in 0..2 {
         let run = ran(
@@ -284,6 +277,44 @@ fn the_readmes_cursor_copy_leaves_one_plugin_when_it_runs_twice() {
         !installed.join("klin").exists(),
         "a second run nested the plugin inside the first copy"
     );
+}
+
+/// The README's Cursor copy is also its update, so a fetch that fails leaves the plugin already
+/// installed as it was and says so with a failing status. Spec 19.2.
+#[test]
+fn the_readmes_cursor_copy_keeps_the_installed_plugin_when_the_fetch_fails() {
+    let tree = Tree::bare();
+    let home = tree.root().display().to_string();
+    let kept = tree.write(
+        ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
+        "{\"name\":\"klin\"}",
+    );
+
+    let run = ran(
+        SHELL,
+        &["-c", &cursor_copy("false")],
+        tree.root(),
+        &[("PATH", SYSTEM_PATH), ("HOME", &home)],
+    );
+
+    assert_ne!(run.code, 0, "the failed copy reported success: {}", run.out);
+    assert!(
+        kept.is_file(),
+        "the failed copy removed the installed plugin"
+    );
+}
+
+/// The README's Cursor copy with its fetch replaced by `fetch`, so a test runs the commands a
+/// person is given against a release it controls.
+fn cursor_copy(fetch: &str) -> String {
+    let clone =
+        format!("git clone --depth 1 --branch v{PINNED} https://github.com/brajevicm/klin \"$d\"");
+    let script = block(&text(README), "~/.cursor/plugins/local/klin");
+    assert!(
+        script.contains(&clone),
+        "the README copy clones no release: {script}"
+    );
+    script.replace(&clone, fetch)
 }
 
 /// The fenced block of a document that holds one line, so a test runs the commands a person
