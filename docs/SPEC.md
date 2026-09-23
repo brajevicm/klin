@@ -4489,13 +4489,13 @@ who cloned the committed hooks learns what they are for. Cursor shows the
 person no stop field that is not also a prompt, so on Cursor the notice is
 written and not shown (`docs/cursor-compatibility.md`). A host whose klin
 plugin is enabled gets no committed hooks and no skill (plugin ownership
-above), so a document that tells a person to commit them says that the plugin
-must be disabled first. Cursor records no enabled state klin can read, so a
-klin plugin Cursor installed holds the hooks back whether or not Cursor loads
-it, and the run names where it is. For a local copy the run and the document
-say to remove it and reload Cursor. For a marketplace install they say to
-disable or uninstall it in Cursor, because the cache is Cursor's, and a plugin
-an organization requires cannot share a repository with committed hooks. Codex
+above), and the run says so and names what the person changes to commit them,
+so a document need not repeat it. Cursor records no enabled state klin can
+read, so a klin plugin Cursor installed holds the hooks back whether or not
+Cursor loads it, and the run names where it is. For a local copy the run says
+to remove it and reload Cursor. For a marketplace install it says to disable
+or uninstall it in Cursor, because the cache is Cursor's, and a plugin an
+organization requires cannot share a repository with committed hooks. Codex
 skips a project hook file's hooks until the person trusts them through
 `/hooks`, as it does a plugin's (19.2), so a document that gives the
 standalone route for Codex names that step.

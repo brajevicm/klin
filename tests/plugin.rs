@@ -232,9 +232,9 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     );
     for said in [
         "**Claude Code · Codex · Cursor**",
-        "cd your-repo && klin install",
+        "klin install --host claude",
         "### Or use your host's plugin",
-        "Native plugin checks stay silent until the repository opts in",
+        "A plugin's checks stay quiet until the repository opts in",
         "`{}` is a complete configuration.",
         "`klin update`",
         "### Other coding agents",

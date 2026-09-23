@@ -16,31 +16,26 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 ## Install
 
-Install klin:
-
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
 ```
 
-The installer puts `klin` in `~/.local/bin`. If your shell can't find it yet, open a new terminal or run `source ~/.local/bin/env`. Then turn klin on in your repository:
+Then, in a new terminal, turn klin on in your repository:
 
 ```sh
-cd your-repo && klin install --host claude
+cd your-repo
+klin install --host claude    # or: codex, cursor
 ```
 
-Name the host you use: `claude`, `codex`, or `cursor`, and repeat `--host` for more than one. `klin install` writes `klin.json` at the repository root, plus that host's hooks and the klin skill. Commit them so your teammates get the same checks. If the klin plugin is already enabled for that host, `klin install` leaves the hooks and the skill to the plugin and writes neither. To commit them with the repository instead, disable the plugin first. For Cursor's local copy, remove `~/.cursor/plugins/local/klin` and reload Cursor, because klin can't tell whether Cursor loads a copy.
+This writes `klin.json` and the hooks for that host. Commit them, and your teammates get the same checks.
 
-Codex asks you to trust new hooks first. Run `/hooks`, review and trust the klin hooks, then start a fresh session. Reload Cursor afterward.
-
-`{}` is a complete configuration. klin discovers repository facts automatically; `klin.json` contains only the policy you choose to configure.
-
-**Configure policy, not your repository.**
+Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 **Updating:** run `klin update`, then `klin install` again.
 
 ### Or use your host's plugin
 
-The Claude Code and Codex plugins install and update through the host. The Cursor plugin is a local copy, which you update by running the copy again. Each plugin carries the hooks and fetches klin on its own, but none gives you a `klin` command. Install it as shown above if you want one.
+A plugin runs the same checks and fetches klin by itself, but it doesn't add the `klin` command.
 
 #### Claude Code
 
@@ -76,11 +71,15 @@ Reload Cursor after installation.
 
 </details>
 
-Native plugin checks stay silent until the repository opts in. Run `klin init` if you have the command, or run this at the repository root:
+A plugin's checks stay quiet until the repository opts in. At the repository root, run:
 
 ```sh
 echo '{}' > klin.json
 ```
+
+`{}` is a complete configuration. klin discovers repository facts automatically; `klin.json` contains only the policy you choose to configure.
+
+**Configure policy, not your repository.**
 
 ### Other coding agents
 
