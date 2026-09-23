@@ -1,5 +1,10 @@
 # Public API is derived from library and package entry points
 
+> ADR 0054 amends "Judgement, holes and the failure model": a changed measured
+> contract fails unless every difference is a change ADR 0054 classifies as
+> compatible. "Widening" there means a widened visibility, never a widened
+> type. ADR 0050 follows this record for publication metadata.
+
 Issue #46 names one agent failure: a local refactor changes a contract that
 another crate or package consumes, while the repository still compiles and
 its own tests still pass. Spec 8.4 listed `public-api` as a tier-2 check over
