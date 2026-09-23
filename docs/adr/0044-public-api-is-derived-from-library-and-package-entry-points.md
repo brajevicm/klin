@@ -1,9 +1,10 @@
 # Public API is derived from library and package entry points
 
-> ADR 0054 amends "Judgement, holes and the failure model": a changed measured
-> contract fails unless every difference is a change ADR 0054 classifies as
-> compatible. "Widening" there means a widened visibility, never a widened
-> type.
+> ADR 0054 amends "Judgement, holes and the failure model" and the
+> canonicalization paragraph: the canonical contract shows the facts ADR 0054
+> lists, attributes included, and a structured contract passes an added part
+> its base accepts. Every other changed measured contract still fails.
+> "Widening" there means a widened visibility, never a widened type.
 
 Issue #46 names one agent failure: a local refactor changes a contract that
 another crate or package consumes, while the repository still compiles and
