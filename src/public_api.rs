@@ -312,8 +312,9 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
     }
 }
 
-/// For each finding, the removed module it prints under: the outermost module of the same
-/// surface that the same change removed and whose path holds the finding's own path.
+/// For each finding, the removed module it prints under: the outermost module under the same
+/// surface id that the same change removed and whose path holds the finding's own path. Two
+/// surfaces that share an id share every identity, so their modules group together.
 fn held_by_removed_modules(found: &[Finding]) -> Vec<Option<usize>> {
     let removed =
         |finding: &Finding| finding.values.get(KIND).and_then(Value::as_str) == Some(REMOVED);

@@ -83,7 +83,8 @@ shows every fact whose change breaks a consumer:
   one file, because overload resolution follows it, and groups from different
   files are ordered by their text, so a renamed file never changes a contract
   (ADR 0001). This holds for functions and for the methods, call signatures
-  and construct signatures of a class, interface or object type. The `cfg`
+  and construct signatures of a class or interface, and an object type
+  literal keeps all its members in source order. The `cfg`
   declarations of one Rust item are not an overload set and are ordered by
   their text;
 - a TypeScript implementation signature that follows overload signatures

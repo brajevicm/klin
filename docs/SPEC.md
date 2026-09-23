@@ -1964,13 +1964,15 @@ renders `;`, and a trait's associated `const` with a default renders `= ..`.
 A TypeScript overload set keeps the source order of its
 signatures inside one file, the groups of different files are ordered by their
 text, so a renamed file never changes a contract, and an implementation
-signature that follows overload signatures leaves the set. Inside a class,
-interface or object type body the overloads of one method, call signature or construct
+signature that follows overload signatures leaves the set. Inside a class or
+interface body the overloads of one method, call signature or construct
 signature likewise stay together in source order and lose their
 implementation, though the public and protected properties a constructor
 implementation declares through its parameters stay as members, and the
-members keep one order whatever order the source wrote them in. A `this`
-parameter shows as `this` with its type. A TypeScript
+members keep one order whatever order the source wrote them in. An object
+type literal keeps every member in source order, its overloads included, so
+reordering any of its members fails. A `this` parameter shows as `this` with
+its type. A TypeScript
 parameter with a default carries `?` where no required parameter follows it,
 and `= ..` where one does, because a caller passes `undefined` to reach that
 default. A default on a constructor parameter that declares a property is

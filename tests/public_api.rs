@@ -1393,3 +1393,25 @@ fn a_reorder_of_overloads_whose_names_are_quoted_fails_and_a_private_constructor
     assert!(run.says("I (type)") && run.says("K (type)"), "{}", run.out);
     assert!(run.says("private constructor()"), "{}", run.out);
 }
+
+#[test]
+fn an_object_type_literal_keeps_its_overloads_in_source_order() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export type T = {\n    f(x: string): string;\n    f(x: number): number;\n};\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export type T = {\n    f(x: number): number;\n    f(x: string): string;\n};\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `type T = { f(_: string): string; f(_: number): number; }`"),
+        "{}",
+        run.out
+    );
+}
