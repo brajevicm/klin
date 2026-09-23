@@ -9,8 +9,8 @@ b647fbfa8993 showed the cost: klin failed
 `interface Point { height?: number; lat: number; lon: number }` against
 `interface Point { lat: number; lon: number }`, and a `tsc` check of ordinary
 object-literal and caller use compiled. Some ordinary API growth is compatible
-enough that klin should not block it. #301 tracks the evidence, and #304
-carries out this record.
+enough that klin should not block it. #303 asked for this record, #301 tracks
+the evidence, and #304 carries out the record.
 
 In ADR 0044, "widening" in "Additions, widening and an opaque item that became
 measured pass" means a widened visibility. It never meant a widened type.
@@ -53,7 +53,7 @@ compatible change together with any other change fails.
 | Optional parameter added at the end | compatible | PASS | `f(1)` still compiles. The limits follow the table. |
 | Parameter with a default added at the end | compatible | PASS | A caller sees `unit: "m" \| "km" = "m"` as `unit?: "m" \| "km"`, so it is the row above. |
 | Required parameter made optional | compatible | PASS | `f(1, "m")` still compiles, and `f(1)` now compiles too. |
-| Parameter type widened | context-dependent | FAIL | Every call still compiles. A consumer that supplies `(v: number) => void` for `onChange: (v: number \| string) => void` no longer compiles. |
+| Parameter type widened | context-dependent | FAIL | Every call still compiles. Under `strictFunctionTypes`, a consumer that supplies `(v: number) => void` for a member `onChange: (v: number \| string) => void` no longer compiles, and `Parameters<typeof f>` changes. |
 | Parameter type narrowed | context-dependent | FAIL | `f("1")` no longer compiles. A consumer that supplies an implementation is unaffected. |
 | Return type widened | context-dependent | FAIL | `const n: number = f()` no longer compiles. A consumer that supplies an implementation is unaffected. |
 | Return type narrowed | context-dependent | FAIL | Every call still compiles. A consumer that supplies an implementation with the old, wider return no longer compiles. |
@@ -83,16 +83,16 @@ not a row, so it fails.
 A consumer that reads a member is unaffected, and a write the base refused
 now compiles. A consumer that tests `readonly` at the type level, such as a
 conditional type that tells a readonly member from a writable one, can see a
-difference. The row covers a member of an interface, a type literal or a
-class.
+difference. The row covers a member of an interface or a type literal, as
+the optional-member row does.
 
 ### Parameters
 
 A parameter with a default initializer is optional to a caller, so the
 default and the `?` marker are the same fact. The initializer text stays out of
-the contract, as ADR 0044 decided. #304 fixes the report, which today renders
-the defaulted parameter of `function f(a: number, unit: "m" | "km" = "m")` as
-required.
+the contract, as ADR 0044 decided. Today the canonical contract gives the
+defaulted parameter of `function f(a: number, unit: "m" | "km" = "m")` no
+optional marker, so the report shows it as required. #304 fixes the contract.
 
 The parameter rows apply to a function, method or constructor that declares
 one signature. A difference inside an overload set fails. Their known limits:
@@ -119,7 +119,7 @@ order. An overload added before the existing one can change the inferred type
 of a call that was already valid:
 
 ```ts
-// base
+// base, in a declaration file
 export function parse(x: string): number;
 // working tree
 export function parse(x: string | number): string;
@@ -128,8 +128,9 @@ export function parse(x: string): number;
 
 `const n: number = parse("1")` compiles against the base and fails against the
 working tree. `ReturnType<typeof parse>` reads the last signature, so an
-addition at the end can change reflection too. The canonical contract also
-normalizes member order, so klin cannot see where the overload went. klin
+addition at the end can change reflection too. klin also sorts the signatures
+of an overload set when it builds the item, so it cannot see where the
+overload went. klin
 cannot prove an added overload harmless, and it fails.
 
 ## Rust
@@ -195,7 +196,8 @@ The canonical contract erases some facts the table needs:
 - a private named Rust field leaves the signature, and a private tuple
   position becomes `_`;
 - a trait method body leaves the signature, so its default is not shown;
-- TypeScript member order is normalized, although overload order can matter.
+- TypeScript member order is normalized, and so is the order of an overload
+  set, although overload order can matter.
 
 The structural adapters therefore record, beside the canonical signature, only
 the facts the table needs:
@@ -205,7 +207,9 @@ the facts the table needs:
 - TypeScript: each member of an interface or type literal with its name,
   canonical type and its optional and readonly markers, and each parameter of
   a single-signature function, method or constructor with its canonical type
-  and its optional, defaulted and rest markers.
+  and its optional and rest markers. A parameter with a default carries the
+  optional marker, so `unit: "m" | "km" = "m"` and `unit?: "m" | "km"` are the
+  same fact.
 
 Every Rust receiver row fails, and the receiver is already in the canonical
 signature, so no receiver fact is needed. Both trait-method rows fail, so the
@@ -239,7 +243,7 @@ The shared lifecycle of an accepted entry does not change. A public-api change
 that needed an accepted entry and now classifies as PASS can leave that entry
 unmatched. It then follows the stale-entry behavior every gate has: klin
 reports it as unmatched, and `--strict` still requires the person to remove
-the stale debt. There is no public-api migration state. klin deletes no entry,
+the unmatched entry. There is no public-api migration state. klin deletes no entry,
 and it does not keep a compatible finding alive only to consume an old entry.
 
 ## The turn-end message
@@ -252,13 +256,16 @@ turn-end `systemMessage` names the problem, not the raw count:
 
 > Public API compatibility breaks still need your attention. `klin stats --turn` shows them.
 
-When the open Regressions come from more than one gate, the existing counted
-wording stays. The grouped text report of #304 is presentation only. JSON and
+In every other case, including open Regressions from more than one gate, the
+existing counted wording stays. The grouped text report of #304 is presentation only. JSON and
 journal identities and accepted entries stay per finding.
 
 ## Consequences
 
 - #304 carries out this record, and SPEC 8.2 states the rules there.
+- SPEC 9.5 says that the turn-end line and the report of 11.5 use the same
+  words and the same counting rule. The public-api-only line keeps the counting
+  rule and changes only the words, so #304 amends 9.5 to name that exception.
 - A PASS row can let a change through that breaks a type-reflective or
   resolution-sensitive consumer. The limits above name each known case.
 - Any change the table does not name stays a changed contract and fails, so

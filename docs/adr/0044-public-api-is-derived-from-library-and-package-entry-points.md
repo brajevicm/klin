@@ -3,7 +3,7 @@
 > ADR 0054 amends "Judgement, holes and the failure model": a changed measured
 > contract fails unless every difference is a change ADR 0054 classifies as
 > compatible. "Widening" there means a widened visibility, never a widened
-> type. ADR 0050 follows this record for publication metadata.
+> type.
 
 Issue #46 names one agent failure: a local refactor changes a contract that
 another crate or package consumes, while the repository still compiles and
