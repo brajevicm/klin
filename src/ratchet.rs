@@ -491,6 +491,10 @@ pub struct Evaluator<'a> {
     /// Spec 4.7, 8.6.
     pub ceiling: Option<&'a str>,
     pub format_metrics: fn(&Values) -> String,
+    /// Whether the second new finding prints inside the group the first one leads, for a gate
+    /// whose text report groups what one change took away. Presentation only: every finding keeps
+    /// its own identity, record and count.
+    pub nested: Option<fn(&Finding, &Finding) -> bool>,
 }
 
 impl Evaluator<'_> {
@@ -619,16 +623,29 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
             evaluator.condition,
             held
         );
-        for finding in &comparison.unmatched_findings {
-            let _ = writeln!(
-                out,
-                "  {}:{}  {}  {}{}",
-                finding.file,
-                finding.line,
-                (evaluator.format_metrics)(&finding.values),
-                clip(&finding.text),
-                against(None, evaluator)
-            );
+        let nested = |lead: &Finding, finding: &Finding| {
+            !std::ptr::eq(lead, finding)
+                && evaluator.nested.is_some_and(|nested| nested(lead, finding))
+        };
+        let found = &comparison.unmatched_findings;
+        for lead in found
+            .iter()
+            .filter(|finding| !found.iter().any(|lead| nested(lead, finding)))
+        {
+            let inside = found.iter().filter(|finding| nested(lead, finding));
+            for (indent, finding) in
+                std::iter::once(("", lead)).chain(inside.map(|held| ("  ", held)))
+            {
+                let _ = writeln!(
+                    out,
+                    "  {indent}{}:{}  {}  {}{}",
+                    finding.file,
+                    finding.line,
+                    (evaluator.format_metrics)(&finding.values),
+                    clip(&finding.text),
+                    against(None, evaluator)
+                );
+            }
         }
     }
     if !comparison.rose.is_empty() {

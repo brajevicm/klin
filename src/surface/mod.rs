@@ -198,7 +198,10 @@ impl Surface {
 
 /// Items of one surface under one identity, folded into one: a Rust item declared twice under
 /// `cfg`, or a TypeScript overload set, is one item whose contract lists each declared
-/// signature once. An identity that any declaration leaves opaque is opaque.
+/// signature once. Inside one file the signatures keep their source order, because overload
+/// resolution follows it, and the groups of different files are ordered by their text, so a
+/// renamed file never changes a contract. An empty signature, an implementation that follows
+/// its overloads, adds nothing. An identity that any declaration leaves opaque is opaque.
 fn merged(items: Vec<Item>) -> Vec<Item> {
     let mut by_identity: BTreeMap<(String, &'static str), Vec<Item>> = BTreeMap::new();
     for item in items {
@@ -207,36 +210,60 @@ fn merged(items: Vec<Item>) -> Vec<Item> {
             .or_default()
             .push(item);
     }
-    by_identity
-        .into_values()
-        .map(|mut same| {
-            same.sort_by_key(|item| item.origin.clone());
-            let mut signatures: Vec<String> = Vec::new();
-            let mut clauses: Vec<String> = Vec::new();
-            let mut opaque = false;
-            for item in &same {
-                match &item.contract {
-                    Contract::Measured(signature) => signatures.push(signature.clone()),
-                    Contract::Opaque(clause) => {
-                        opaque = true;
-                        clauses.extend(clause.clone());
-                    }
-                }
-            }
-            signatures.sort();
-            signatures.dedup();
-            clauses.sort();
-            clauses.dedup();
-            let first = same.swap_remove(0);
-            Item {
-                contract: match opaque {
-                    true => Contract::Opaque((!clauses.is_empty()).then(|| clauses.join("; "))),
-                    false => Contract::Measured(signatures.join("; ")),
-                },
-                ..first
-            }
+    by_identity.into_values().map(folded).collect()
+}
+
+/// One identity's items as one item: opaque where any of them is, with every clause once, and
+/// measured by its signatures otherwise. The first declaration names the origin.
+fn folded(mut same: Vec<Item>) -> Item {
+    same.sort_by_key(|item| item.origin.clone());
+    let opaque = same
+        .iter()
+        .any(|item| matches!(item.contract, Contract::Opaque(_)));
+    let mut clauses: Vec<String> = same
+        .iter()
+        .filter_map(|item| match &item.contract {
+            Contract::Opaque(clause) => clause.clone(),
+            Contract::Measured(_) => None,
         })
-        .collect()
+        .collect();
+    clauses.sort();
+    clauses.dedup();
+    let contract = match opaque {
+        true => Contract::Opaque((!clauses.is_empty()).then(|| clauses.join("; "))),
+        false => Contract::Measured(signatures(&same)),
+    };
+    Item {
+        contract,
+        ..same.swap_remove(0)
+    }
+}
+
+/// The measured signatures of one identity's items, which come sorted by origin: each file's in
+/// source order and once each, and the groups of different files ordered by their text.
+fn signatures(same: &[Item]) -> String {
+    let mut files: Vec<(Option<&String>, Vec<&str>)> = Vec::new();
+    for item in same {
+        let Contract::Measured(signature) = &item.contract else {
+            continue;
+        };
+        if signature.is_empty() {
+            continue;
+        }
+        let file = item.origin.as_ref().map(|(file, _)| file);
+        match files.last_mut().filter(|(held, _)| *held == file) {
+            Some((_, held)) if held.contains(&signature.as_str()) => {}
+            Some((_, held)) => held.push(signature),
+            None => files.push((file, vec![signature])),
+        }
+    }
+    let mut groups: Vec<String> = files
+        .into_iter()
+        .map(|(_, signatures)| signatures.join("; "))
+        .collect();
+    groups.sort();
+    groups.dedup();
+    groups.join("; ")
 }
 
 /// The word for a declaration's kind.

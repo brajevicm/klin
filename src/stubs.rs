@@ -92,6 +92,7 @@ pub const KIND: Kind = Kind {
                      a reviewed commit.",
         ceiling: None,
         format_metrics: show,
+        nested: None,
     },
 };
 

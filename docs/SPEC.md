@@ -1949,13 +1949,33 @@ exported file no entry reaches is not package API. TSX is TypeScript.
 An item is *measured* where its declared contract is canonical, and *opaque*
 where klin proves it exists and no more. The canonical contract is written by
 the language's structural adapter and never by the check: it drops bodies,
-initializers, comments, attributes and decorators, one space stands between
-tokens, a private field or member leaves, a private tuple position becomes
-`_`, and a binding name that is not contract becomes `_`. Rust covers
+initializers, comments and decorators, one space stands between tokens, a
+private member leaves, a private tuple position becomes `_`, and a binding
+name that is not contract becomes `_`. The contract is complete: it shows
+every fact whose own change can fail an item, so the `was` and `now` lines of
+a failure always differ, and a construct the adapter cannot canonicalize is
+opaque, never guessed (ADR 0054). A Rust type or variant with a directly
+written `#[non_exhaustive]` renders it, and every other attribute leaves,
+`#[cfg_attr(...)]` included. A Rust struct's private named field leaves and
+its field list ends in `..`, whether or not the field sits under `#[cfg]`. A
+Rust trait method with a default body renders `{ .. }` where one without
+renders `;`. A TypeScript overload set keeps the source order of its
+signatures inside one file, the groups of different files are ordered by their
+text, so a renamed file never changes a contract, and an implementation
+signature that follows overload signatures leaves the set. Inside a class or
+interface body the overloads of one method, call signature or construct
+signature likewise stay together in source order and lose their
+implementation, while the members keep one order whatever order the source
+wrote them in. A TypeScript
+parameter with a default carries `?` where no required parameter follows it
+and no marker where one does, and its initializer never shows. So
+`#[non_exhaustive]` added to a type or a variant, a private field added to a
+struct whose fields were all public, a default body removed and a change that
+only reorders an overload set each fail. Rust covers
 functions with qualifiers, generics, receiver and parameter types, return
 type and `where` clause; structs, unions, enums with their variants, fields
 and explicit discriminants; traits with their supertraits and associated-item
-signatures without default bodies; type aliases; and `const` and `static`
+signatures; type aliases; and `const` and `static`
 with their type alone. TypeScript covers functions and overload sets, classes
 with their heritage and public and protected members, interfaces, type
 aliases, enums and variables. A type the compiler would infer is written as
@@ -1971,10 +1991,17 @@ fails, an opaque clause that changed fails, and everything else passes: a new
 surface, a new item, a widened visibility, an opaque item that became
 measured. Each break carries `break` at 1 with the surface as its file and
 `NAME (KIND)` as its text, so an intentional break is an accepted entry under
-that identity, and the base holds no break by construction. The remedy keeps
-the base's contract only where the task allows it and tells the agent not to
-change what the task asked for only to satisfy the gate. In the hook it adds
-that a stop blocked on a break the task intends is answered in the reply and
+that identity, and the base holds no break by construction. Where one change
+removes a module and the items inside it, the text report prints them as one
+group, the module's line and then the lines of the items it held, while the
+11.2 object, the journal, the identities and the accepted entries keep one
+finding per item. Pinned by
+`a_removed_module_prints_as_one_group_and_json_keeps_each_item`. The remedy
+keeps the base's contract only where the task allows it, says that for a
+changed contract a new item beside the unchanged one keeps the base's contract
+where that serves the task, proposes no name or design, and tells the agent
+not to change what the task asked for only to satisfy the gate. In the hook
+it adds that a stop blocked on a break the task intends is answered in the reply and
 followed by another stop, which the block policy of 9.3 may let end, and
 that the reply accepts nothing: a person accepts the break with an accepted
 entry in a reviewed commit, and CI refuses it until then. Every stop prints
@@ -2000,9 +2027,10 @@ derivation runs only over a tree that holds a path of that language, by the
 same rule as its resolver in `layering`. Pinned by every test in
 `tests/public_api.rs`. Known limits: a module bound by `use` and then
 re-exported by its bare name, a macro, a trait implementation's semantics,
-`cfg` evaluation, `typesVersions`, conditional exports that do not reduce to
-one source file, `tsconfig` paths and a package alias are outside V1, and a
-generic parameter renamed is a changed contract.
+`cfg` evaluation, an attribute written through `#[cfg_attr(...)]`,
+`typesVersions`, conditional exports that do not reduce to one source file,
+`tsconfig` paths and a package alias are outside V1, and a generic parameter
+renamed is a changed contract.
 
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a
@@ -2734,9 +2762,15 @@ regression (11.5) it tells the person what happened in one `systemMessage` of
 caught 2 regressions this turn. All 2 were fixed after klin flagged them.` A
 red pass-through names what still needs the person: ``1 regression still needs
 your attention. `klin stats --turn` shows it.`` The line and the report of 11.5
-come from the same words and the same counting rule, and neither says who
-authored a fix: the journal proves a regression was present and later absent
-from a measurement, and nothing more. A turn that caught none prints no such
+come from the same words and the same counting rule, with one exception:
+where every regression still open in the turn is a `public-api` finding, the
+red pass-through names the problem and not the count, ``Public API
+compatibility breaks still need your attention. `klin stats --turn` shows
+them.``, because one intended removal can be several breaks (ADR 0054). The
+counting and `klin stats --turn` do not change. Pinned by
+`a_red_pass_through_whose_open_regressions_are_all_public_api_names_the_breaks_not_a_count`.
+Neither the line nor the report says who authored a fix: the journal proves a
+regression was present and later absent from a measurement, and nothing more. A turn that caught none prints no such
 line, and a session start prints none. A fix in a later prompt of the same turn
 still gets its line, because the turn stamp records the intervention (6.5)
 until the stamp moves.
