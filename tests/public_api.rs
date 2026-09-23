@@ -1301,3 +1301,95 @@ fn quoted_method_names_that_hold_brackets_stay_distinct() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("C (type)"), "{}", run.out);
 }
+
+#[test]
+fn a_constructor_implementation_that_leaves_the_set_keeps_its_parameter_properties() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    constructor(a: string);\n    constructor(public a: any, private b?: number) {}\n}\n",
+    );
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    constructor(a: string);\n    constructor(a: any, private b?: number) {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert!(
+        listed.says("class C { constructor(_: string); public a: any }"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+}
+
+#[test]
+fn a_quoted_overload_name_is_the_same_name_and_a_this_parameter_shows() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    \"m\"(a: string): void;\n    m(a: any) {}\n}\nexport function h(this: Date, a: string): void {}\n",
+    );
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    \"m\"(a: string): void;\n    m(a: unknown) {}\n}\nexport function h(x: Date, a: string): void {}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert!(
+        listed.says("function h(this: Date, _: string): void"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("h (function)") && !run.says("C (type)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_defaulted_parameter_property_is_not_an_optional_one() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export class C {\n    constructor(public a: number = 1) {}\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export class C {\n    constructor(public a?: number) {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `class C { constructor(public a: number = ..) }`"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_reorder_of_overloads_whose_names_are_quoted_fails_and_a_private_constructor_shows() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export interface I {\n    f(a: string): string;\n    [\"f\"](a: unknown): number;\n}\nexport class K {\n    n(): void {}\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export interface I {\n    [\"f\"](a: unknown): number;\n    f(a: string): string;\n}\nexport class K {\n    private constructor() {}\n    n(): void {}\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("I (type)") && run.says("K (type)"), "{}", run.out);
+    assert!(run.says("private constructor()"), "{}", run.out);
+}

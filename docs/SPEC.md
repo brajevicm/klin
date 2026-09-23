@@ -1950,7 +1950,8 @@ An item is *measured* where its declared contract is canonical, and *opaque*
 where klin proves it exists and no more. The canonical contract is written by
 the language's structural adapter and never by the check: it drops bodies,
 initializers, comments and decorators, one space stands between tokens, a
-private member leaves, a private tuple position becomes `_`, and a binding
+private member leaves except a private constructor, which stops a consumer
+constructing the class, a private tuple position becomes `_`, and a binding
 name that is not contract becomes `_`. The contract is complete: it shows
 every fact whose own change can fail an item, so the `was` and `now` lines of
 a failure always differ, and a construct the adapter cannot canonicalize is
@@ -1963,14 +1964,18 @@ renders `;`, and a trait's associated `const` with a default renders `= ..`.
 A TypeScript overload set keeps the source order of its
 signatures inside one file, the groups of different files are ordered by their
 text, so a renamed file never changes a contract, and an implementation
-signature that follows overload signatures leaves the set. Inside a class or
-interface body the overloads of one method, call signature or construct
+signature that follows overload signatures leaves the set. Inside a class,
+interface or object type body the overloads of one method, call signature or construct
 signature likewise stay together in source order and lose their
-implementation, while the members keep one order whatever order the source
-wrote them in. A TypeScript
+implementation, though the public and protected properties a constructor
+implementation declares through its parameters stay as members, and the
+members keep one order whatever order the source wrote them in. A `this`
+parameter shows as `this` with its type. A TypeScript
 parameter with a default carries `?` where no required parameter follows it,
 and `= ..` where one does, because a caller passes `undefined` to reach that
-default. Its initializer never shows. So
+default. A default on a constructor parameter that declares a property is
+always `= ..`, because that property is never `undefined` the way an optional
+one may be. Its initializer never shows. So
 `#[non_exhaustive]` added to a type or a variant, a private field added to a
 struct whose fields were all public, a default body or a default `const`
 removed and a change that only reorders a TypeScript overload set each fail.

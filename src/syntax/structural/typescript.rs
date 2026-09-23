@@ -288,25 +288,16 @@ fn spelling(node: Node, source: &[u8]) -> Spelling {
 /// parameter follows shows as `= ..`, because a caller passes `undefined` to reach it. Its value
 /// never shows.
 fn parameter(node: Node, source: &[u8]) -> String {
-    let mut cursor = node.walk();
-    let modifiers: Vec<String> = node
-        .children(&mut cursor)
-        .filter(|child| {
-            matches!(
-                child.kind(),
-                "accessibility_modifier" | "override_modifier" | "readonly"
-            )
-        })
-        .map(|child| text_of(child, source))
-        .collect();
+    let modifiers = modifiers(node, source);
     let pattern = node.child_by_field_name("pattern");
     let rest = pattern.is_some_and(|held| held.kind() == "rest_pattern");
     let name = match (modifiers.is_empty(), pattern) {
         (false, Some(held)) => text_of(held, source),
+        (true, Some(held)) if held.kind() == "this" => "this".to_string(),
         _ if rest => "..._".to_string(),
         _ => "_".to_string(),
     };
-    let (optional, reached) = omission(node);
+    let (optional, reached) = omission(node, !modifiers.is_empty());
     let mut out = modifiers.join(" ");
     if !out.is_empty() {
         out.push(' ');
@@ -314,13 +305,59 @@ fn parameter(node: Node, source: &[u8]) -> String {
     format!("{out}{name}{optional}{}{reached}", annotated(node, source))
 }
 
+/// The modifiers that make a constructor parameter declare a property of its class.
+fn modifiers(node: Node, source: &[u8]) -> Vec<String> {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .filter(|child| {
+            matches!(
+                child.kind(),
+                "accessibility_modifier" | "override_modifier" | "readonly"
+            )
+        })
+        .map(|child| text_of(child, source))
+        .collect()
+}
+
+/// The public and protected properties a constructor declares through its parameters, each
+/// spelled as a member of its class: its modifiers, its name, `?` where optional, and its type.
+fn properties(constructor: Node, source: &[u8]) -> Vec<String> {
+    let Some(list) = constructor.child_by_field_name("parameters") else {
+        return Vec::new();
+    };
+    let mut cursor = list.walk();
+    list.named_children(&mut cursor)
+        .filter_map(|held| {
+            let modifiers = modifiers(held, source);
+            let name = held.child_by_field_name("pattern")?;
+            let optional = if held.kind() == "optional_parameter" {
+                "?"
+            } else {
+                ""
+            };
+            (!modifiers.is_empty() && !modifiers.iter().any(|modifier| modifier == "private")).then(
+                || {
+                    format!(
+                        "{} {}{optional}{}",
+                        modifiers.join(" "),
+                        text_of(name, source),
+                        annotated(held, source)
+                    )
+                },
+            )
+        })
+        .collect()
+}
+
 /// How a caller may leave a parameter out: `?` where it is optional or its default no required
-/// parameter follows, and ` = ..` where a required parameter follows its default.
-fn omission(node: Node) -> (&'static str, &'static str) {
+/// parameter follows, and ` = ..` where a required parameter follows its default. A default on
+/// a parameter that declares a property is always ` = ..`, because the property it declares is
+/// never `undefined` the way an optional one may be.
+fn omission(node: Node, property: bool) -> (&'static str, &'static str) {
     let defaulted = node.child_by_field_name("value").is_some();
     match (node.kind() == "optional_parameter", defaulted) {
         (true, _) => ("?", ""),
-        (false, true) if required_after(node) => ("", " = .."),
+        (false, true) if property || required_after(node) => ("", " = .."),
         (false, true) => ("?", ""),
         (false, false) => ("", ""),
     }
@@ -355,20 +392,26 @@ fn members(body: Node, source: &[u8]) -> String {
 
 /// The public members of a body, one entry each, except that the overloads of one method, call
 /// or construct signature share an entry in source order, and an implementation that directly
-/// follows them leaves.
+/// follows them leaves, keeping only the properties a constructor declares through its
+/// parameters.
 fn overload_sets(body: Node, source: &[u8]) -> Vec<String> {
     let mut cursor = body.walk();
     let mut sets: Vec<(Option<String>, Vec<String>)> = Vec::new();
     let mut signed: Option<String> = None;
     for child in body
         .named_children(&mut cursor)
-        .filter(|child| MEMBERS.contains(&child.kind()) && !private(*child, source))
+        .filter(|child| listed(*child, source))
     {
         let key = overloadable(child, source);
         let implementation = child.kind() == "method_definition";
         let follows = key.is_some() && signed == key;
         signed = key.clone().filter(|_| !implementation);
         if implementation && follows {
+            sets.extend(
+                properties(child, source)
+                    .into_iter()
+                    .map(|held| (None, vec![held])),
+            );
             continue;
         }
         joined(&mut sets, key, member(child, source));
@@ -376,6 +419,15 @@ fn overload_sets(body: Node, source: &[u8]) -> Vec<String> {
     sets.into_iter()
         .map(|(_, texts)| texts.join("; "))
         .collect()
+}
+
+/// Whether a body lists this member in its contract: a member that is not private, and a
+/// private constructor, because it stops a consumer constructing the class.
+fn listed(node: Node, source: &[u8]) -> bool {
+    let constructor = node
+        .child_by_field_name("name")
+        .is_some_and(|name| text_of(name, source) == "constructor");
+    MEMBERS.contains(&node.kind()) && (constructor || !private(node, source))
 }
 
 /// One member's text added to the overload set its key names, or to a set of its own.
@@ -390,8 +442,8 @@ fn joined(sets: &mut Vec<(Option<String>, Vec<String>)>, key: Option<String>, te
 }
 
 /// What one overload set of a body is known by: the kind of signature, `static`, `get` or `set`
-/// where written, and the name as the source wrote it. Accessibility and `async` are no part of
-/// it, and a member that has no overloads has none.
+/// where written, and the name without the quotes or brackets a string name is written in. Accessibility
+/// and `async` are no part of it, and a member that has no overloads has none.
 fn overloadable(node: Node, source: &[u8]) -> Option<String> {
     let kind = match node.kind() {
         "method_definition" | "method_signature" | "abstract_method_signature" => "method",
@@ -408,7 +460,12 @@ fn overloadable(node: Node, source: &[u8]) -> Option<String> {
     }
     if let Some(name) = node.child_by_field_name("name") {
         key.push(' ');
-        key.push_str(&text_of(name, source));
+        let written = text_of(name, source);
+        let computed = written
+            .strip_prefix('[')
+            .and_then(|inner| inner.strip_suffix(']'))
+            .filter(|inner| inner.starts_with(['"', '\'']));
+        key.push_str(computed.unwrap_or(&written).trim_matches(['"', '\'']));
     }
     Some(key)
 }
