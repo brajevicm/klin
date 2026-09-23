@@ -186,36 +186,57 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
         log.prompt = held.prompt;
     }
     let said = tell(args, root, code, note, &mut log)
-        .filter(|said| !told_before(root, event.as_ref(), said, &mut log));
+        .filter(|said| !keeps_quiet(root, event.as_ref(), lost, said, &mut log));
     observe_hook_report(log.report.as_ref());
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
-        let host = host::answering(event.as_ref());
-        if host.follows_up() {
-            turn::expect_told(root, &said);
-        }
-        host.stop(&Stop::Tell(said));
+        host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     code
 }
 
-/// Whether a host that submits a told message as a prompt already heard this one under the
-/// current prompt. The message it submitted opened no turn, so telling it again over the same
-/// state would replay it forever; a stop with a different message still tells. The journal
-/// records the stop as having told nothing. ADR 0052.
-fn told_before(
+/// Whether this stop keeps its told message to itself. A host that submits a told message as
+/// its next prompt opens no turn with it, so a stop over the same state would tell it again and
+/// the pair would replay forever. Such a host hears one message once per prompt, and only a
+/// message klin recorded first: a stop that lost the state lock, or whose stamp would not take
+/// the record, tells it nothing. The journal records the stop as having told nothing, and a
+/// repeat carries `told-before`. Spec 9.1, ADR 0052.
+fn keeps_quiet(
     root: &Path,
     event: Option<&host::Event>,
+    lost: bool,
     said: &str,
     log: &mut journal::Stop,
 ) -> bool {
-    if !host::answering(event).follows_up() || !turn::told_before(root, said) {
+    if !host::answering(event).follows_up() {
+        return false;
+    }
+    let session = session(event);
+    let heard = heard(said);
+    let repeated = !lost && turn::told_before(root, session, &heard);
+    if repeated {
+        log.flags.push("told-before");
+    }
+    if !lost && !repeated && turn::expect_told(root, session, said, &heard) {
         return false;
     }
     log.told.clear();
-    log.flags.push("told-before");
     true
+}
+
+/// What a told message says, less its window line, whose age moves each minute and says
+/// nothing new. Spec 9.1.
+fn heard(said: &str) -> String {
+    said.lines()
+        .filter(|line| !line.trim_start().starts_with("window:"))
+        .collect::<Vec<&str>>()
+        .join("\n")
+}
+
+/// The host session an event names, and none for a stop no event placed.
+fn session(event: Option<&host::Event>) -> &str {
+    event.map_or("", |event| event.session.as_str())
 }
 
 /// The benchmark wrapper may observe the report this stop already built. A failed write leaves
@@ -590,7 +611,7 @@ impl Blocks {
 /// already reads stderr ignores the text and returns 2.
 fn blocked_build(root: &Path, event: Option<&host::Event>, text: String, code: u8) -> u8 {
     match code {
-        2 => block(root, host::answering(event), text),
+        2 => block(root, event, text),
         _ => code,
     }
 }
@@ -1052,7 +1073,7 @@ fn hook(
     eprintln!("{lead}");
     eprint!("{report}");
     log.gate_block = Some(number);
-    (block(root, event.host, format!("{lead}\n{report}")), None)
+    (block(root, Some(event), format!("{lead}\n{report}")), None)
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
@@ -1086,10 +1107,12 @@ enum GateBlock {
 
 /// The gate block this failure may take. The first is free. The second needs a tree that
 /// differs from the one klin recorded for the first, so a stop over the tree the agent left
-/// alone reports and lets the turn end. None comes after the second. The host's flag says a
-/// block happened, never which tree it saw, so it can stand in for an unrecorded first block
-/// and never prove a second. After a build block that flag is true while no gate block is
-/// spent, so it counts only where no build block was spent either. Spec 16.3, ADR 0052.
+/// alone reports and lets the turn end. None comes after the second, and none at all without a
+/// state directory to record it in. The host's flag says a block happened, never which tree it
+/// saw: where klin's record holds no gate block, the flag counts as one klin never recorded, so
+/// the stop spends none, and it never proves a second. After a build block that flag is true
+/// while no gate block is spent, so it counts only where no build block was spent either.
+/// Spec 16.3, ADR 0052.
 fn next(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> GateBlock {
     let Some((count, at)) = held else {
         return GateBlock::Pass(UNRECORDED.to_string());
@@ -1170,12 +1193,13 @@ fn working_tree(root: &Path, at: &Path) -> Option<String> {
     turn::tree_through(root, &at.join(BUILD_INDEX))
 }
 
-/// Record the exact report a follow-up host will echo, then deliver the block. A stop that tells
-/// records its message the same way, so neither echo opens a turn or a fresh gate budget.
-/// Spec 9.1, 9.3.
-fn block(root: &Path, host: &dyn host::Adapter, said: String) -> u8 {
+/// Record the exact report a follow-up host will echo under the event's session, then deliver
+/// the block. A stop that tells records its message the same way, so neither echo opens a turn
+/// or a fresh gate budget. Spec 9.1, 9.3.
+fn block(root: &Path, event: Option<&host::Event>, said: String) -> u8 {
+    let host = host::answering(event);
     if host.follows_up() {
-        turn::expect_followup(root, &said);
+        turn::expect_followup(root, session(event), &said);
     }
     host.stop(&Stop::Block(said))
 }

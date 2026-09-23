@@ -380,6 +380,21 @@ fn a_gate_block_klin_cannot_record_after_a_build_block_blocks_nothing() {
             gate.out
         );
     }
+
+    assert!(
+        std::fs::remove_dir(&staging).is_ok(),
+        "{}",
+        staging.display()
+    );
+    for (words, said) in [
+        (33, "gate block 1 of 2"),
+        (34, "gate block 2 of 2"),
+        (35, "has blocked 2 stops"),
+    ] {
+        tree.words("README.md", words);
+        let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+        assert!(gate.says(said), "{words}: {}", gate.out);
+    }
 }
 
 #[test]

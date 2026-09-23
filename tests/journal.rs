@@ -312,7 +312,7 @@ fn a_stop_that_wrote_no_verdict_still_writes_a_line_that_says_why() {
 }
 
 #[test]
-fn an_unwritable_state_directory_leaves_the_exit_code_and_the_text_unchanged() {
+fn an_unwritable_state_directory_still_reports_the_failure_and_blocks_nothing() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
     let file = tree.at("a-file");

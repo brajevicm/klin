@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -62,12 +63,20 @@ pub struct Stamp {
     /// Whether a stop under this stamp spent a gate block, so the turn holds an intervention for
     /// the turn end to tell. A fresh stamp holds none. Spec 6.5, 9.5.
     pub intervened: bool,
-    /// The hash of the exact stop report a host will submit as its next prompt. It is consumed
-    /// once, so protocol-generated text cannot open a fresh turn and another prompt clears it.
+    /// What each host session was handed, by the session id its events carry, so two sessions
+    /// in one worktree never overwrite each other's record. Spec 9.1, ADR 0052.
+    pub handed: BTreeMap<String, Handed>,
+}
+
+/// What one session of a host that submits a stop's text as its next prompt was handed.
+#[derive(Clone, Default)]
+pub struct Handed {
+    /// The hash of the exact text the host will submit next. It is consumed once, so
+    /// protocol-generated text cannot open a fresh turn, and another prompt clears it.
     pub followup: Option<u64>,
-    /// The hash of the last message a stop told a host that submits it as a prompt. A stop under
-    /// the same prompt does not tell it again, so an unchanged state cannot replay one message
-    /// forever. A person's prompt clears it. ADR 0052.
+    /// The hash of the last message a stop told, less its window line. A stop under the same
+    /// prompt does not tell it again, so an unchanged state cannot replay one message forever.
+    /// The session's next prompt clears it.
     pub told: Option<u64>,
 }
 
@@ -84,6 +93,11 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let tree = tree(start, &at);
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
+    let mut handed = held
+        .as_ref()
+        .map(|held| held.handed.clone())
+        .unwrap_or_default();
+    handed.remove(event.as_ref().map_or("", |event| event.session.as_str()));
     if event.as_ref().is_some_and(|event| event.prompted) {
         journaled_prompt(
             start,
@@ -102,7 +116,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
             &at,
             &Stamp {
                 mark,
-                told: None,
+                handed,
                 ..stamp
             },
             out,
@@ -120,10 +134,9 @@ fn opening(start: &Path, out: &mut String) -> Option<(Option<host::Event>, PathB
         .and_then(|event| event.root.clone())
         .unwrap_or_else(|| start.to_path_buf());
     state::dir(&root)?;
-    if event
-        .as_ref()
-        .is_some_and(|event| event.prompted && consumes_followup(&root, &event.prompt, out))
-    {
+    if event.as_ref().is_some_and(|event| {
+        event.prompted && consumes_followup(&root, &event.session, &event.prompt, out)
+    }) {
         return None;
     }
     let at = match state::ready(&root) {
@@ -264,53 +277,60 @@ pub fn intervened(root: &Path) -> bool {
         .is_some_and(|held| held.intervened)
 }
 
-/// Remember the exact report a host will submit as its next prompt. The host adapter says
-/// whether it has that delivery mode; the turn owns the state that keeps it from becoming a
-/// person's next turn.
-pub fn expect_followup(root: &Path, report: &str) {
-    let Ok(at) = state::ready(root) else {
-        return;
-    };
-    let Some(mut held) = read(&at) else {
-        return;
-    };
-    held.followup = Some(state::hash(report.as_bytes()));
-    write(&at, &held, &mut String::new());
+/// Remember the exact report a session's host will submit as its next prompt. The host adapter
+/// says whether it has that delivery mode; the turn owns the state that keeps it from becoming
+/// a person's next turn. Spec 9.1.
+pub fn expect_followup(root: &Path, session: &str, report: &str) -> bool {
+    hand(root, session, |handed| {
+        handed.followup = Some(state::hash(report.as_bytes()));
+    })
 }
 
-/// Whether a stop under this prompt already told this exact message to a host that submits it
-/// as a prompt. False when no stamp is readable, so a lost record tells again. ADR 0052.
-pub fn told_before(root: &Path, said: &str) -> bool {
+/// Whether a stop under this prompt already told this session a message that `heard` stands
+/// for. False when no stamp is readable. Spec 9.1, ADR 0052.
+pub fn told_before(root: &Path, session: &str, heard: &str) -> bool {
     state::dir(root)
         .and_then(|at| read(&at))
-        .is_some_and(|held| held.told == Some(state::hash(said.as_bytes())))
+        .and_then(|held| held.handed.get(session)?.told)
+        == Some(state::hash(heard.as_bytes()))
 }
 
-/// Remember a told message as both the follow-up the host will submit and the message this
-/// prompt already heard. ADR 0052.
-pub fn expect_told(root: &Path, said: &str) {
+/// Remember a told message as the follow-up the session's host will submit, and what it stands
+/// for as the message this prompt already heard. False when the stamp would not take it.
+/// Spec 9.1, ADR 0052.
+pub fn expect_told(root: &Path, session: &str, said: &str, heard: &str) -> bool {
+    hand(root, session, |handed| {
+        handed.followup = Some(state::hash(said.as_bytes()));
+        handed.told = Some(state::hash(heard.as_bytes()));
+    })
+}
+
+/// One change to what a session was handed, written back to the stamp. False when no stamp
+/// could be read or written.
+fn hand(root: &Path, session: &str, change: impl FnOnce(&mut Handed)) -> bool {
     let Ok(at) = state::ready(root) else {
-        return;
+        return false;
     };
     let Some(mut held) = read(&at) else {
-        return;
+        return false;
     };
-    let hash = state::hash(said.as_bytes());
-    held.followup = Some(hash);
-    held.told = Some(hash);
-    write(&at, &held, &mut String::new());
+    change(held.handed.entry(session.to_string()).or_default());
+    write(&at, &held, &mut String::new())
 }
 
-/// Consume one expected follow-up. A different prompt clears the expectation and remains a
-/// person's prompt; an exact match is host-generated and opens no turn.
-fn consumes_followup(root: &Path, prompt: &str, out: &mut String) -> bool {
+/// Consume one expected follow-up of this session. A different prompt clears the expectation
+/// and remains a person's prompt; an exact match is host-generated and opens no turn.
+fn consumes_followup(root: &Path, session: &str, prompt: &str, out: &mut String) -> bool {
     let Some(at) = state::dir(root) else {
         return false;
     };
     let Some(mut held) = read(&at) else {
         return false;
     };
-    let expected = held.followup.take();
+    let expected = held
+        .handed
+        .get_mut(session)
+        .and_then(|handed| handed.followup.take());
     if expected.is_some() {
         write(&at, &held, out);
     }
@@ -350,8 +370,23 @@ fn read(at: &Path) -> Option<Stamp> {
             .get("intervened")
             .and_then(Value::as_bool)
             .unwrap_or_default(),
-        followup: held.get("followup").and_then(Value::as_u64),
-        told: held.get("told").and_then(Value::as_u64),
+        handed: held
+            .get("handed")
+            .and_then(Value::as_object)
+            .map(|sessions| {
+                sessions
+                    .iter()
+                    .map(|(session, handed)| {
+                        let hash = |key: &str| handed.get(key).and_then(Value::as_u64);
+                        let handed = Handed {
+                            followup: hash("followup"),
+                            told: hash("told"),
+                        };
+                        (session.clone(), handed)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
     })
 }
 
@@ -374,8 +409,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         prompts,
         asked: Vec::new(),
         intervened: false,
-        followup: None,
-        told: None,
+        handed: BTreeMap::new(),
     })
 }
 
@@ -421,8 +455,7 @@ fn kept(root: &Path) -> Option<Stamp> {
         prompts: 0,
         asked: Vec::new(),
         intervened: false,
-        followup: None,
-        told: None,
+        handed: BTreeMap::new(),
     })
 }
 
@@ -448,8 +481,7 @@ fn restored(
         prompts,
         asked: Vec::new(),
         intervened: false,
-        followup: None,
-        told: None,
+        handed: BTreeMap::new(),
     })
 }
 
@@ -521,8 +553,7 @@ fn replaced(
             prompts: held.map_or(0, |held| held.prompts),
             asked: Vec::new(),
             intervened: false,
-            followup: None,
-            told: None,
+            handed: BTreeMap::new(),
         },
         out,
     );
@@ -709,8 +740,7 @@ fn recorded(stamp: &Stamp) -> Value {
         ("commit", stamp.commit.clone().map(Value::from)),
         ("parent", stamp.parent.clone().map(Value::from)),
         ("mark", stamp.mark.clone().map(Value::from)),
-        ("followup", stamp.followup.map(Value::from)),
-        ("told", stamp.told.map(Value::from)),
+        ("handed", recorded_handed(&stamp.handed)),
     ];
     for (key, value) in fields_of {
         if let Some(found) = value {
@@ -731,6 +761,25 @@ fn recorded(stamp: &Stamp) -> Value {
         fields.insert("intervened".into(), true.into());
     }
     Value::Object(fields)
+}
+
+/// What each session was handed, as the `turn` file holds it, or nothing where no session holds
+/// a record.
+fn recorded_handed(handed: &BTreeMap<String, Handed>) -> Option<Value> {
+    let sessions: Map<String, Value> = handed
+        .iter()
+        .map(|(session, handed)| {
+            let mut fields = Map::new();
+            for (key, hash) in [("followup", handed.followup), ("told", handed.told)] {
+                if let Some(hash) = hash {
+                    fields.insert(key.into(), hash.into());
+                }
+            }
+            (session.clone(), Value::Object(fields))
+        })
+        .filter(|(_, fields)| fields.as_object().is_some_and(|fields| !fields.is_empty()))
+        .collect();
+    (!sessions.is_empty()).then_some(Value::Object(sessions))
 }
 
 fn now() -> u64 {

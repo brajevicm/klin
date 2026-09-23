@@ -45,9 +45,10 @@ second-block decision depend on which kind of block came last.
 
 **klin proves the second block from its own record.** Gate block 2 needs a
 recorded `gate_tree` and a current tree that differs from it. A host's
-`blocked_before` flag says that a block happened, never which tree it saw. It
-can stand in for an unrecorded first block, as before, and it cannot authorize
-a second. When klin cannot read the previous gate tree, cannot hash the
+`blocked_before` flag says that a block happened, never which tree it saw.
+Where klin's record holds no gate block and no build block, it counts as a
+gate block klin never recorded, so the stop spends none, as before. It cannot
+authorize a second. When klin cannot read the previous gate tree, cannot hash the
 current tree, or cannot write the record of a block, it reports and spends no
 block. That includes the first gate block. A first block klin could not record
 would read as unspent at the next stop, and Cursor sends no prior-block flag,
@@ -80,8 +81,19 @@ A consumed follow-up also opens no turn for the agent to end, so a stop over
 the same state would tell the same message, Cursor would submit it, and the
 loop would repeat. klin therefore records the last message it told a
 follow-up host under the current prompt, and a later stop under that prompt
-tells nothing when its message is identical. A different message is told. A
-person's prompt clears the record. A genuine later prompt raises the counter and gets a
+tells nothing when its message is the same. The comparison leaves out the
+window line, whose age moves each minute and says nothing new. A different
+message is told, and the session's next prompt clears the record.
+
+Both records are kept per host session, because two sessions can share one
+worktree. With one shared record, a second session's told message replaced
+the first session's pending block report, the first session's echo then
+opened a turn, and its budget refreshed.
+
+A follow-up host hears only a message klin recorded first. A stop that lost
+the state lock, or whose stamp would not take the record, tells it nothing,
+because an unrecorded message would replay and a stop without the lock must
+not write the stamp. A genuine later prompt raises the counter and gets a
 fresh budget of two gate blocks and eight build blocks.
 
 **ADR 0031 keeps its precedence.** A deleted test already asked about stays
