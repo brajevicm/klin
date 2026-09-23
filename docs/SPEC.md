@@ -2574,7 +2574,12 @@ klin did not hand off: Cursor merges every stop hook's answer, and another
 hook's `followup_message` can win (9.1). So a stop whose host says it follows
 a message the host submitted by itself keeps the build stamp of the prompt
 that opened the chain, whatever the prompt counter says, and writes it back
-under the current counter. Cursor says so with a `loop_count` above 0, and
+under the current counter. The build stamp names the host session that took
+it, and a chain keeps only its own session's stamp. A stop that follows no
+automatic message opens its prompt's budget: where its session's stamp names
+an earlier prompt, the stop writes a fresh stamp for the current prompt, even
+if it spends no block. So a chain that a clean stop opened never inherits the
+cap of an earlier prompt. Cursor says so with a `loop_count` above 0, and
 Cursor 3.21.18 returns the count to 0 for a person's message
 (`docs/cursor-compatibility.md`). That rule never adds a block: where a host
 does not reset the count for a person's message, it only withholds that
@@ -3796,8 +3801,11 @@ hook(event):
   at = derivation_commit(window)
   survey = cached_survey(at) or survey(at)
   count = read(state/build-blocked)
-  if count is None or (count.prompt != turn.prompt and not host.continued(event)):
-    count = Count(prompt=turn.prompt, builds=0, gate_blocks=0)      # a new turn
+  mine = count is not None and count.session == event.session
+  if count is None or (count.prompt != turn.prompt and not (host.continued(event) and mine)):
+    count = Count(prompt=turn.prompt, session=event.session, builds=0, gate_blocks=0)
+    if mine and not host.continued(event) and not lost_the_lock:
+      write_atomic(state/build-blocked, count)     # a person's prompt opens its budget (9.3)
   count.prompt = turn.prompt                       # a continued chain keeps its record (9.3)
   failure = build(config_or(survey), changed_files(window))
   unbuilt = None

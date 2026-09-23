@@ -82,7 +82,12 @@ text klin never handed off: it merges every stop hook's answer, and another
 hook's `followup_message` can win. klin reads that text as a person's prompt.
 So a stop whose host says it follows a message the host submitted by itself
 keeps the build stamp of the prompt that opened the chain, whatever the prompt
-counter says. Cursor says so with a `loop_count` above 0. On 3.21.18 the count
+counter says. Cursor says so with a `loop_count` above 0. The build stamp names
+the session that took it, and a chain keeps only its own session's stamp. A stop
+that follows no automatic message writes a fresh stamp for its prompt when the
+stamp its session left names an earlier prompt, even where that stop spends no
+block. Without that write, a chain opened by a clean stop would inherit the
+stamp of an older prompt that already spent both gate blocks. On 3.21.18 the count
 rose by one for each automatic follow-up and returned to 0 after a person's
 message, so a person's prompt still gets a fresh budget. The rule never adds a
 block: if a later Cursor stopped resetting the count, a person's prompt in that

@@ -158,6 +158,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
         project.bind(window);
     }
     let project = &*project;
+    opened(root, lost, &mut log);
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
         log.flags.push("branch-fallback");
     }
@@ -184,7 +185,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
     written(root, lost, green, asked.as_deref(), &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
-        let held = count(&at, log.continued);
+        let held = count(&at, &log);
         log.gate_blocks = held.gate_blocks;
         log.build_blocks = held.builds;
         log.prompt = held.prompt;
@@ -517,11 +518,13 @@ fn unbuilt_said(run: &str, output: &str) -> String {
 }
 
 /// The build stamp: one record per prompt. The prompt counter of the turn file it was taken
-/// under, how many stops a build failure and a gate failure already blocked, and the tree each
-/// kind of block last saw. The two kinds never share a count or a tree. A record taken under an
-/// earlier prompt reads as zero, so every prompt gets the whole budget. Spec 16.3, ADR 0052.
+/// under, the host session that took it, how many stops a build failure and a gate failure
+/// already blocked, and the tree each kind of block last saw. The two kinds never share a count
+/// or a tree. A record taken under an earlier prompt reads as zero, so every prompt gets the
+/// whole budget. Spec 16.3, ADR 0052.
 struct Count {
     prompt: u64,
+    session: Option<String>,
     builds: u64,
     /// The working tree the last build block was taken over, so a stop that changed nothing
     /// since is reported and not blocked again. ADR 0048.
@@ -533,23 +536,23 @@ struct Count {
 }
 
 /// The record as this prompt left it. A stop that `continued` a chain of messages its host
-/// submitted by itself keeps the record whatever prompt it was taken under: another hook's
-/// message may have won the host's merge, and klin read it as a person's prompt, but the chain
-/// belongs to the prompt that opened it. The record is written back under the current counter,
-/// so every later stop of the chain reads it too. A record an older klin wrote names its build
-/// tree `tree` and its one gate block `gate_spent`, and names no gate tree, so it can never
-/// prove a second gate block. Spec 9.3, ADR 0052.
-fn count(at: &Path, continued: bool) -> Count {
+/// submitted by itself keeps its own session's record whatever prompt it was taken under:
+/// another hook's message may have won the host's merge, and klin read it as a person's prompt,
+/// but the chain belongs to the prompt that opened it, and the stop that opened it wrote the
+/// record (`opened`). The record is written back under the current counter, so every later stop
+/// of the chain reads it too. A record an older klin wrote names its build tree `tree` and its
+/// one gate block `gate_spent`, and names no gate tree or session, so it can never prove a
+/// second gate block or carry into a chain. Spec 9.3, ADR 0052.
+fn count(at: &Path, log: &journal::Stop) -> Count {
     let prompt = turn::prompts(at);
-    let held = std::fs::read_to_string(at.join(BUILD_BLOCKED))
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .filter(|held| continued || held.get("prompt").and_then(Value::as_u64) == Some(prompt))
+    let held = held(at)
+        .filter(|held| taken_under(held, prompt) || log.continued && taken_by(held, log))
         .unwrap_or_default();
     let text = |key: &str| held.get(key)?.as_str().map(str::to_string);
     let legacy_spent = held.get("gate_spent").and_then(Value::as_bool) == Some(true);
     Count {
         prompt,
+        session: log.session.clone(),
         builds: held
             .get("builds")
             .and_then(Value::as_u64)
@@ -563,11 +566,46 @@ fn count(at: &Path, continued: bool) -> Count {
     }
 }
 
+fn held(at: &Path) -> Option<Value> {
+    std::fs::read_to_string(at.join(BUILD_BLOCKED))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+}
+
+fn taken_under(held: &Value, prompt: u64) -> bool {
+    held.get("prompt").and_then(Value::as_u64) == Some(prompt)
+}
+
+fn taken_by(held: &Value, log: &journal::Stop) -> bool {
+    log.session
+        .as_deref()
+        .is_some_and(|session| held.get("session").and_then(Value::as_str) == Some(session))
+}
+
+/// A stop that no automatic message came before opens its prompt's budget, even where it
+/// spends none, so a later stop of the chain it opens inherits that budget and never one this
+/// session left under an earlier prompt. A record another session left stays: no chain of this
+/// session inherits it, and its own chain still may. Spec 9.3, ADR 0052.
+fn opened(root: &Path, lost: bool, log: &mut journal::Stop) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let prompt = turn::prompts(&at);
+    let stale = held(&at).is_some_and(|held| taken_by(&held, log) && !taken_under(&held, prompt));
+    if lost || log.continued || !stale {
+        return;
+    }
+    if !counted(&at, &count(&at, log)) {
+        log.flags.push("count-unwritable");
+    }
+}
+
 /// Whether the record reached the disk. A count klin cannot write bounds nothing, so the
 /// caller reports the build failure and does not block on it. Spec 14.
 fn counted(at: &Path, count: &Count) -> bool {
     let text = serde_json::json!({
         "prompt": count.prompt,
+        "session": count.session,
         "builds": count.builds,
         "build_tree": count.build_tree,
         "gate_blocks": count.gate_blocks,
@@ -653,7 +691,7 @@ fn raised(root: &Path, log: &mut journal::Stop) -> Blocks {
         Ok(at) => at,
         Err(why) => return unbounded(&why, log),
     };
-    let held = count(&at, log.continued);
+    let held = count(&at, log);
     let tree = working_tree(root, &at);
     if held.builds > 0 && tree.is_some() && tree == held.build_tree {
         return Blocks::Unchanged;
@@ -1054,9 +1092,7 @@ fn hook(
     log: &mut journal::Stop,
 ) -> (u8, Option<String>) {
     let (failed, errored) = (tally.failed, tally.errored);
-    let held = state::ready(root)
-        .ok()
-        .map(|at| (count(&at, log.continued), at));
+    let held = state::ready(root).ok().map(|at| (count(&at, log), at));
     unwritable(root);
     if failed == 0 && errored == 0 {
         return nothing_blocks(args, tally.told, report, event);

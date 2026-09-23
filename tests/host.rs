@@ -527,6 +527,50 @@ fn a_cursor_stop_after_an_automatic_message_keeps_its_prompts_budget() {
     assert!(fresh.says("gate block 1 of 2"), "{}", fresh.out);
 }
 
+/// A person's prompt after a prompt that spent both gate blocks gets the whole budget, even
+/// where its first stop spends none and another hook's message then continues the chain.
+#[test]
+fn a_cursor_chain_after_a_clean_stop_inherits_no_earlier_prompts_budget() {
+    let tree = exhausted("s1");
+    submit(&tree, "s1", &"fix the docs".into());
+    tree.words("README.md", 5);
+    let clean = stop(&tree, &cursor_stop_at("s1", 0), &[]);
+    assert_eq!(clean.code, 0, "{}", clean.out);
+    assert!(!clean.says("gate block"), "{}", clean.out);
+
+    submit(&tree, "s1", &"ANOTHER-HOOK-WON-THE-MERGE".into());
+    tree.words("README.md", 30);
+    let continued = stop(&tree, &cursor_stop_at("s1", 1), &[]);
+    assert!(continued.says("gate block 1 of 2"), "{}", continued.out);
+}
+
+/// The block record belongs to the session that took it, so a chain in another session starts
+/// its own budget and never carries the first session's cap.
+#[test]
+fn a_cursor_chain_inherits_no_other_sessions_budget() {
+    let tree = exhausted("s1");
+    submit(&tree, "s2", &"ANOTHER-HOOK-WON-THE-MERGE".into());
+    tree.words("README.md", 33);
+    let other = stop(&tree, &cursor_stop_at("s2", 1), &[]);
+    assert!(other.says("gate block 1 of 2"), "{}", other.out);
+}
+
+/// A failing Cursor tree whose session already spent both gate blocks under its prompt.
+fn exhausted(session: &str) -> Tree {
+    let tree = cursor_failing();
+    let first = stop(&tree, &cursor_stop_at(session, 0), &[]);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+    echo_from(&tree, &first, session);
+    tree.words("README.md", 31);
+    let second = stop(&tree, &cursor_stop_at(session, 1), &[]);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    echo_from(&tree, &second, session);
+    tree.words("README.md", 32);
+    let capped = stop(&tree, &cursor_stop_at(session, 2), &[]);
+    assert!(capped.says("has blocked 2 stops"), "{}", capped.out);
+    tree
+}
+
 /// A Cursor session opened over a tree whose README is within its ceiling, then pushed over it.
 fn cursor_failing() -> Tree {
     let tree = Tree::new();
