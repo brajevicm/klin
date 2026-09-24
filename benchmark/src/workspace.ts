@@ -502,6 +502,8 @@ export function materialize(
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");
   git(repo, "config", "commit.gpgsign", "false");
+  git(repo, "config", "user.name", "Developer");
+  git(repo, "config", "user.email", "developer@example.invalid");
   git(repo, "add", "-A");
   git(repo, "commit", "--quiet", "-m", "The starting tree");
   const startCommit = git(repo, "rev-parse", "HEAD");

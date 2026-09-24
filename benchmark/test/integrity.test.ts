@@ -138,13 +138,13 @@ test("materializing a trial gives a fresh repository, state and session store", 
   clear();
 });
 
-test("a subject commits in its repository although the operator signs every commit", () => {
+test("a subject commits in its repository although the operator signs every commit and names no one", () => {
   const home = room();
   const { place, clear } = laid("stubs", "risk", "selftest-unsigned");
   try {
     fs.writeFileSync(
       path.join(home, ".gitconfig"),
-      "[user]\n\tname = operator\n\temail = operator@example.invalid\n[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = /usr/bin/false\n",
+      "[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = /usr/bin/false\n[user]\n\tuseConfigOnly = true\n",
     );
     const env = { PATH: process.env.PATH, HOME: home, GIT_CONFIG_NOSYSTEM: "1" };
     fs.writeFileSync(path.join(place.repo, "README.md"), "changed\n");

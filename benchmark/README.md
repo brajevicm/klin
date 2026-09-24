@@ -285,7 +285,10 @@ attempts of the seeded round of 2026-09-22 failed to commit for that reason,
 and each ended by asking a person what to do.
 
 `materialize` therefore writes `commit.gpgsign = false` into the repository's
-own `.git/config`, which git reads over the global file. The environment is not
+own `.git/config`, which git reads over the global file. It writes a neutral
+`user.name` and `user.email` there too, because the harness's own identity is
+only a `-c` flag on its own git calls, and a machine with no global identity
+would otherwise refuse the subject's commit. The environment is not
 the place for it: the host sets `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS`
 for its own use. The `commits-unsigned` check under `isolation.freshness` reads
 the value back under the environment the harness hands the host, so the
@@ -297,7 +300,8 @@ can override a repository's configuration. So the probe proves the value the
 subject's git really reads: its environment helper runs
 `git config --bool --get commit.gpgsign` in the subject's repository, through
 the host's own Bash, and `subject-git-signs-nothing` fails unless the witnessed
-answer is `false`. `plan` and `seeded-plan` refuse a round without a passing
+answer is `false`. The same helper makes one plain empty commit there, and
+`subject-can-commit` fails unless that commit succeeded. `plan` and `seeded-plan` refuse a round without a passing
 probe per language, so no round runs on a host that signs.
 
 ### The host's own configuration
@@ -407,8 +411,8 @@ control or challenge tables.
 The planted catalogue has its own version, `SEEDED_PROTOCOL` in
 `src/protocol.ts`, and a seeded manifest states it as `seededProtocol`.
 `seeded-plan` writes the current one and `seeded-execute` and `verify` refuse
-any other. A planted variant's task id is keyed by `SEEDED_PROTOCOL` as well as
-the natural protocol, so a reworked seed whose prompt did not change still gets
+any other. A planted variant's task id is keyed by the name and version of
+`SEEDED_PROTOCOL` as well as the natural protocol, so a reworked seed whose prompt did not change still gets
 a new task id, and a natural task id stays what the frozen v2 protocol states. The frozen round of 2026-09-22, under
 `evidence/seeded-2026-09-22/`, ran the first planted catalogue and states no
 `seededProtocol`. It stays as it was published. `seeded-v2` reworks six seeds

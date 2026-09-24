@@ -129,7 +129,7 @@ export interface Family {
 
 function protocolKey(name: VariantName): string {
   return (PLANTED as readonly string[]).includes(name)
-    ? String(CURRENT_PROTOCOL.version) + "/" + SEEDED_PROTOCOL.name
+    ? String(CURRENT_PROTOCOL.version) + "/" + SEEDED_PROTOCOL.name + "/" + String(SEEDED_PROTOCOL.version)
     : String(CURRENT_PROTOCOL.version);
 }
 

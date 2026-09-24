@@ -54,6 +54,7 @@ export function expectedChecks(language: FamilySpec["language"]): string[] {
     "reported-the-environment",
     "no-owned-path-in-the-environment",
     "subject-git-signs-nothing",
+    "subject-can-commit",
     "file-tools-attempted",
     "file-tools-refused",
     APPARATUS,
@@ -154,9 +155,10 @@ function environmentScript(roots: EnvironmentRoots): string {
     shellQuote(script),
   ].join("");
   const signing =
+    "if git commit --allow-empty --no-verify --quiet -m probe >/dev/null 2>&1; then committed=1; else committed=0; fi; " +
     "printf '" +
     ENVIRONMENT_SENTINEL +
-    "-git gpgsign=%s\\n' \"$(git config --bool --get commit.gpgsign 2>/dev/null || echo unset)\"";
+    "-git gpgsign=%s commit=%s\\n' \"$(git config --bool --get commit.gpgsign 2>/dev/null || echo unset)\" \"$committed\"";
   return ["#!/bin/sh", "set -eu", command, signing].join("\n") + "\n";
 }
 
@@ -347,7 +349,7 @@ function responseText(output: string): string {
 function environmentObservation(
   seen: Witnessed[],
   wanted: string,
-): { status: string; home: boolean; path: boolean; klin: string[]; owned: string[]; gpgsign: string } | null {
+): { status: string; home: boolean; path: boolean; klin: string[]; owned: string[]; gpgsign: string; committed: boolean } | null {
   const ran = seen.find(
     (one) =>
       one.event === "PostToolUse" &&
@@ -370,7 +372,7 @@ function environmentObservation(
       .map((line) => line.slice((ENVIRONMENT_SENTINEL + "-" + kind + " ").length))
       .filter((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name));
   const signing = lines
-    .map((line) => line.match(new RegExp("^" + ENVIRONMENT_SENTINEL + "-git gpgsign=(\\S+)$")))
+    .map((line) => line.match(new RegExp("^" + ENVIRONMENT_SENTINEL + "-git gpgsign=(\\S+) commit=([01])$")))
     .find((one): one is RegExpMatchArray => one !== null);
   return {
     status: found?.[3] ?? "",
@@ -379,6 +381,7 @@ function environmentObservation(
     klin: names("klin"),
     owned: names("owned"),
     gpgsign: signing?.[1] ?? "",
+    committed: signing?.[2] === "1",
   };
 }
 
@@ -442,6 +445,15 @@ export function environmentChecks(
         : observation.gpgsign === "false"
           ? "the subject's own Bash reads commit.gpgsign as false in its repository"
           : "the subject's own Bash reads commit.gpgsign as " + (observation.gpgsign || "nothing"),
+    ),
+    check(
+      "subject-can-commit",
+      complete && observation.committed,
+      !complete
+        ? "no trusted environment observation exists from which to prove the subject can commit"
+        : observation.committed
+          ? "the subject's own Bash made a plain commit in its repository"
+          : "a plain commit from the subject's own Bash failed in its repository",
     ),
   ];
 }

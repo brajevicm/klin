@@ -767,7 +767,10 @@ test("a seeded task id is bound to the seeded protocol and a natural one is not"
   const seeded = variantIn(tracer, "seeded");
   const bound = (key: string, name: string, promptSha256: string) =>
     sha256(`${key}:${TRACER}:${name}:${promptSha256}`).slice(0, 16);
-  assert.equal(seeded.taskId, bound(CURRENT_PROTOCOL.version + "/" + SEEDED_PROTOCOL.name, "seeded", seeded.promptSha256));
+  assert.equal(
+    seeded.taskId,
+    bound(CURRENT_PROTOCOL.version + "/" + SEEDED_PROTOCOL.name + "/" + SEEDED_PROTOCOL.version, "seeded", seeded.promptSha256),
+  );
   assert.notEqual(seeded.taskId, bound(String(CURRENT_PROTOCOL.version), "seeded", seeded.promptSha256));
   for (const name of VARIANTS) {
     const natural = tracer.variants[name];
