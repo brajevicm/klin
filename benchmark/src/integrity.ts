@@ -4,6 +4,7 @@ import { files, read } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
 import type { Check, HookInvocation, Isolation } from "./record.ts";
 import { commitsUnsigned } from "./workspace.ts";
+import { withoutKlin } from "./session.ts";
 
 /**
  * Subject-workspace isolation.
@@ -174,7 +175,7 @@ export function freshness(
 ): Isolation {
   const isolated = config !== "";
   const entries = fs.existsSync(state) ? fs.readdirSync(state) : [];
-  const unsigned = commitsUnsigned(repo);
+  const unsigned = commitsUnsigned(repo, withoutKlin());
   const checks: Check[] = [
     check("fresh-repository", commits === 1, String(commits) + " commit(s) before the session"),
     check(
