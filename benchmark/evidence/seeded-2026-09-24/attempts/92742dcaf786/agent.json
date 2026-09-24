@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/92742dcaf786/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "47674c8d-ce8c-4b5d-87f6-c73526dc8c2a",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "94102a78324db3b75d6ed34339696ebdd1f2e7df2872e17fd02a799ad58087ff",
+  "sessionId": "47674c8d-ce8c-4b5d-87f6-c73526dc8c2a",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":74918,\"stop_reason\":\"end_turn\",\"session_id\":\"47674c8d-ce8c-4b5d-87f6-c73526dc8c2a\",\"total_cost_usd\":0.26391300000000006,\"usage\":{\"input_tokens\":31,\"cache_creation_input_tokens\":20252,\"cache_read_input_tokens\":658715,\"output_tokens\":5110,\"output_tokens_details\":{\"thinking_tokens\":2095},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":20252,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":38,\"cache_read_input_tokens\":46375,\"cache_creation_input_tokens\":622,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":622},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":31,\"outputTokens\":5110,\"cacheReadInputTokens\":658715,\"cacheCreationInputTokens\":20252,\"webSearchRequests\":0,\"costUSD\":0.26391300000000006,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":2095,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":18,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Committed as `67cfdf8`. Let's wait for the gate hook to confirm it's now satisfied.\",\"ttft_ms\":1995,\"type\":\"result\",\"duration_ms\":81458,\"uuid\":\"82fdd075-0db1-4c2b-be67-d7ad1c893b32\",\"ttft_stream_ms\":1432,\"time_to_request_ms\":295,\"first_content_frame_ms\":1432,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 74918,
+    "stop_reason": "end_turn",
+    "session_id": "47674c8d-ce8c-4b5d-87f6-c73526dc8c2a",
+    "total_cost_usd": 0.26391300000000006,
+    "usage": {
+      "input_tokens": 31,
+      "cache_creation_input_tokens": 20252,
+      "cache_read_input_tokens": 658715,
+      "output_tokens": 5110,
+      "output_tokens_details": {
+        "thinking_tokens": 2095
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 20252,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 38,
+          "cache_read_input_tokens": 46375,
+          "cache_creation_input_tokens": 622,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 622
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 31,
+        "outputTokens": 5110,
+        "cacheReadInputTokens": 658715,
+        "cacheCreationInputTokens": 20252,
+        "webSearchRequests": 0,
+        "costUSD": 0.26391300000000006,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 2095,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 18,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Committed as `67cfdf8`. Let's wait for the gate hook to confirm it's now satisfied.",
+    "ttft_ms": 1995,
+    "type": "result",
+    "duration_ms": 81458,
+    "uuid": "82fdd075-0db1-4c2b-be67-d7ad1c893b32",
+    "ttft_stream_ms": 1432,
+    "time_to_request_ms": 295,
+    "first_content_frame_ms": 1432,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T11:38:43.903Z",
+  "endedAt": "2026-09-24T11:40:07.099Z",
+  "wallMs": 83197,
+  "timedOut": false
+}

@@ -1,0 +1,65 @@
+{
+  "activity": {
+    "klin_ms": 806,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 1,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "geo \".\"",
+      "first": 1790249652,
+      "gate": "public-api",
+      "id": "9454d129763966ef",
+      "key": {
+        "file": "geo \".\"",
+        "gate": "public-api",
+        "line": 4,
+        "text": "Point (type)"
+      },
+      "label": "broken public contract",
+      "last": 1790249707,
+      "line": 4,
+      "outcome": "fixed-next",
+      "prompt": "A teammate started height-aware distances and had to hand the work over before l",
+      "remedy": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If this stop blocked on a break the task intends, say so in your reply and stop again, and the next stop may then end the turn. Your reply does not accept the break: a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+      "text": "Point (type)",
+      "time": 1790249652,
+      "tries": 1,
+      "values": {
+        "break": 1,
+        "kind": "changed",
+        "now": "interface Point { height: number; lat: number; lon: number }",
+        "origin": "src/index.ts:4",
+        "was": "interface Point { lat: number; lon: number }"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

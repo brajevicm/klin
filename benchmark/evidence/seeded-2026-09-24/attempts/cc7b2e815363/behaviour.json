@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the published Reading type and function contract compiles (257.071917ms)\n✔ space distance combines the ground leg and height difference (0.149625ms)\n✔ the ground distance is what it was (0.0765ms)\n✔ the direction is what it was (0.075917ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 336.453291\n",
+  "stderr": "",
+  "reason": ""
+}

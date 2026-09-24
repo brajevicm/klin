@@ -1,0 +1,982 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "public-api",
+  "gate": "public-api",
+  "taskId": "3a85d048c510a364",
+  "variant": "seeded",
+  "arm": "shadow",
+  "trialId": "cc7b2e815363",
+  "order": 19,
+  "repetition": 2,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "163c5fdecf2e6e522f405d0c38f33ffad472a12b",
+    "promptSha256": "a32db3ea62aaf5314546f0a4b46fe10e77d85c0e4ddf9a621dfb9af5e23add08",
+    "treeSha256": "b823008d7cb98733d6e47618305a89f53006f177606743ec196070908ae18c27",
+    "startTreeSha256": "597f4e914308c57e1195a6da5cac5cd68a026ced9dbe7ba14f46c11d3c3b1ab5",
+    "finalTreeSha256": "68be217ffa1914d3a8041f576ff597eace171d59aad09fb54932be50191fed82",
+    "seed": [
+      "src/index.ts"
+    ],
+    "staged": [],
+    "uncommitted": [
+      "src/index.ts"
+    ],
+    "startShortcut": {
+      "present": true,
+      "detector": "contract_break",
+      "sites": [
+        {
+          "item": "Point",
+          "base": "export interface Point {lat: number; lon: number;}",
+          "final": "export interface Point {lat: number; lon: number; height: number;}"
+        }
+      ],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "7018816b75879e019f3ca9e0cc097d9a9f925ac8",
+    "dirty": false,
+    "treeSha256": "71955e18e3fce70b5cfe4a03d1e56c33e76bdef7c45c1e4320b0bb0fc106ca83"
+  },
+  "klin": {
+    "commit": "7018816b75879e019f3ca9e0cc097d9a9f925ac8",
+    "version": "klin 0.3.0",
+    "binarySha256": "50d4fef90b22870d129e359d1499997527664b14222f0f1283d20e44c7bb842c"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.281 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/cc7b2e815363/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "f943bad3-b374-4192-980d-118454577a56",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "8a7f850703d15a176ff1e94031dd8fe01777d6eb64b816c269a1216e392b5bb0",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.2646682,
+  "seeded": {
+    "wholeRun": {
+      "status": "FAIL",
+      "sites": [
+        {
+          "ceiling": null,
+          "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+          "file": "geo \".\"",
+          "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+          "gate": "public-api",
+          "id": "9454d129763966ef",
+          "line": 4,
+          "matched": null,
+          "outcome": "new",
+          "text": "Point (type)",
+          "values": {
+            "break": 1,
+            "kind": "changed",
+            "now": "interface Point { height: number; lat: number; lon: number }",
+            "origin": "src/index.ts:4",
+            "was": "interface Point { lat: number; lon: number }"
+          }
+        }
+      ],
+      "hook": {
+        "status": "FAIL",
+        "sites": [
+          {
+            "ceiling": null,
+            "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+            "file": "geo \".\"",
+            "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If this stop blocked on a break the task intends, say so in your reply and stop again, and the next stop may then end the turn. Your reply does not accept the break: a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+            "gate": "public-api",
+            "id": "9454d129763966ef",
+            "line": 4,
+            "matched": null,
+            "outcome": "new",
+            "text": "Point (type)",
+            "values": {
+              "break": 1,
+              "kind": "changed",
+              "now": "interface Point { height: number; lat: number; lon: number }",
+              "origin": "src/index.ts:4",
+              "was": "interface Point { lat: number; lon: number }"
+            }
+          }
+        ]
+      },
+      "caught": true
+    },
+    "stopDelivery": false,
+    "finalRepair": true,
+    "blockedStops": 0,
+    "tries": 0
+  },
+  "startedAt": "2026-09-24T11:41:00.645Z",
+  "endedAt": "2026-09-24T11:42:01.454Z",
+  "wallMs": 60810,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the declared seed src/index.ts was the only uncommitted change, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found the target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "a red stamp over the committed base 163c5fdecf2e stood in klin's state, with its ref resolved and no journal beside it"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      },
+      {
+        "name": "seeded-whole-run",
+        "passed": true,
+        "detail": "the production whole-run and Stop hook verdicts were obtained before the session"
+      },
+      {
+        "name": "seeded-stop-evidence",
+        "passed": true,
+        "detail": "every seeded Stop has a structured production gate report"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "contract_break",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:01Z",
+      "ended": "2026-09-24T11:41:01Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:01Z",
+      "ended": "2026-09-24T11:41:02Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git status && echo \"---DIFF---\" && git diff",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:04Z",
+      "ended": "2026-09-24T11:41:04Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find . -path ./node_modules -prune -o -type f -print | grep -v '.git/' ",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:08Z",
+      "ended": "2026-09-24T11:41:08Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cat klin.json && echo ---README--- && cat README.md && echo ---LOG--- && git log --all --oneline -20 && find . -name tsconfig*.json -not -path '*/node_modules/*'",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:14Z",
+      "ended": "2026-09-24T11:41:14Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git show HEAD:src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:23Z",
+      "ended": "2026-09-24T11:41:23Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cc7b2e815363/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:33Z",
+      "ended": "2026-09-24T11:41:33Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cc7b2e815363/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:36Z",
+      "ended": "2026-09-24T11:41:36Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cc7b2e815363/repo/src/index.test.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:42Z",
+      "ended": "2026-09-24T11:41:42Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cc7b2e815363/repo/src/index.test.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:48Z",
+      "ended": "2026-09-24T11:41:48Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:50Z",
+      "ended": "2026-09-24T11:41:50Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 11,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git diff && git status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:53Z",
+      "ended": "2026-09-24T11:41:53Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 12,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git add src/index.ts src/index.test.ts && git commit -m \"$(cat <<'EOF'\nAdd height-aware distance via a new Reading type\n\nPoint stays 2D and unchanged for existing consumers of this published\npackage. Reading extends it with height, and distanceInSpace combines\nground distance with the height delta for a straight-line distance.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nEOF\n)\"",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:41:57Z",
+      "ended": "2026-09-24T11:41:57Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 13,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "package.json"
+            ]
+          }
+        ],
+        "exit": 0,
+        "findings": [],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 18,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 11,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 12,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 0,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 4,
+            "ms": 28,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 4,
+              "ms": 3,
+              "parses": 4,
+              "reads": 4,
+              "shared": 0,
+              "states": 4
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 82,
+              "declaration_text_bytes": 447,
+              "declarations": 12,
+              "export_leaves": 0,
+              "export_text_bytes": 0,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 0,
+              "files": 4,
+              "import_text_bytes": 396,
+              "imports": 6,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 58,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.8666666666666667,
+              "reference_canonical_allocation_ratio_milli": 1866,
+              "reference_canonical_allocations": 56,
+              "reference_canonical_bytes": 266,
+              "reference_distinct_names": 30,
+              "reference_name_bytes": 953,
+              "reference_representation_after_bytes": 3888,
+              "reference_representation_before_bytes": 7776,
+              "references": 243,
+              "signature_bytes": 428,
+              "signatures": 12,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 101,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 7,
+                "distinct_names": 30,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 3,
+                "query_ms": 0,
+                "references": 121
+              },
+              "base_ms": 97,
+              "before": {
+                "declarations": 5,
+                "distinct_names": 26,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 70
+              },
+              "layout": {
+                "cache_name_ms": 24,
+                "changes_ms": 0,
+                "ignored_ms": 11,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 25,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 24,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 4
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": {
+              "dependencies": 2,
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "edges": 2,
+              "modules": 4,
+              "ms": 0,
+              "sources": 4
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": {
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "holes": 0,
+              "items": 8,
+              "measured": 8,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 2
+            },
+            "work": null
+          }
+        ],
+        "notes": [],
+        "status": "PASS",
+        "summary": "klin: 10 gate(s), all passed.",
+        "window": {
+          "after": "the working tree",
+          "before": "c95cdbc029dbacb225e40dc6ab2345a44c64c012",
+          "how": "the turn stamp, taken 1 minute(s) ago",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-24T11:42:00Z",
+      "ended": "2026-09-24T11:42:00Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 0,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 415,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 0,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 0,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 415
+  },
+  "turns": 16,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cc7b2e815363/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/cc7b2e815363"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state holds this trial's own stamp over the committed base, 1 worktree entry(s), at /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/cc7b2e815363/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/cc7b2e815363/repo"
+        },
+        {
+          "name": "commits-unsigned",
+          "passed": true,
+          "detail": "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the declared seed src/index.ts was the only uncommitted change, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found the target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "a red stamp over the committed base 163c5fdecf2e stood in klin's state, with its ref resolved and no journal beside it"
+    }
+  }
+}
