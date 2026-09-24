@@ -138,6 +138,47 @@ test("materializing a trial gives a fresh repository, state and session store", 
   clear();
 });
 
+test("a subject commits in its repository although the operator signs every commit", () => {
+  const home = room();
+  const { place, clear } = laid("stubs", "risk", "selftest-unsigned");
+  try {
+    fs.writeFileSync(
+      path.join(home, ".gitconfig"),
+      "[user]\n\tname = operator\n\temail = operator@example.invalid\n[commit]\n\tgpgsign = true\n[gpg]\n\tprogram = /usr/bin/false\n",
+    );
+    const env = { PATH: process.env.PATH, HOME: home, GIT_CONFIG_NOSYSTEM: "1" };
+    fs.writeFileSync(path.join(place.repo, "README.md"), "changed\n");
+    const committed = spawnSync("git", ["commit", "--quiet", "-am", "The subject's change"], {
+      cwd: place.repo,
+      env,
+      encoding: "utf8",
+    });
+    assert.equal(committed.status, 0, committed.stderr);
+    const signed = spawnSync("git", ["commit", "--quiet", "--allow-empty", "-S", "-m", "signed"], {
+      cwd: place.repo,
+      env,
+      encoding: "utf8",
+    });
+    assert.notEqual(signed.status, 0, "the operator's signing program must refuse, or this proves nothing");
+    assert.equal(named(integrity.freshness(place.repo, place.state, "", 1), "commits-unsigned").passed, true);
+  } finally {
+    clear();
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a repository whose commits would be signed is not fresh", () => {
+  const { place, clear } = laid("stubs", "risk", "selftest-signed");
+  try {
+    workspace.git(place.repo, "config", "commit.gpgsign", "true");
+    const judged = integrity.freshness(place.repo, place.state, "", place.commits);
+    assert.equal(named(judged, "commits-unsigned").passed, false);
+    assert.equal(judged.verified, false);
+  } finally {
+    clear();
+  }
+});
+
 test("the repository is the only thing in its own parent directory", () => {
   const { place, clear } = laid("stubs", "risk", "selftest-alone");
   assert.deepEqual(

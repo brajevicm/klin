@@ -17,3 +17,9 @@ test("plain rows are unchanged", () => {
   assert.deepEqual(parseCsvLine("a,,c"), ["a", "", "c"]);
   assert.deepEqual(parseCsvLine(""), [""]);
 });
+
+test("a trailing comma leaves an empty last field", () => {
+  assert.deepEqual(parseCsvLine("a,b,"), ["a", "b", ""]);
+  assert.deepEqual(parseCsvLine('"a",'), ["a", ""]);
+  assert.deepEqual(parseCsvLine('a,""'), ["a", ""]);
+});

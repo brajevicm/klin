@@ -1,4 +1,6 @@
-use crate::commands::{list_command::run_list, set_command::run_set};
+use crate::commands::{
+    add_command::run_add, list_command::run_list, remove_command::run_remove, show_command::run_show,
+};
 use crate::store::Store;
 
 /// Answer one command line.
@@ -7,12 +9,14 @@ pub fn dispatch(arguments: &[String], store: &mut Store) -> String {
         return usage();
     };
     match command.as_str() {
-        "set" => run_set(rest, store),
+        "add" => run_add(rest, store),
+        "remove" => run_remove(rest, store),
         "list" => run_list(rest, store),
+        "show" => run_show(rest, store),
         _ => usage(),
     }
 }
 
 fn usage() -> String {
-    "usage: notes [set|list]".to_string()
+    "usage: notes [add|remove|list|show]".to_string()
 }

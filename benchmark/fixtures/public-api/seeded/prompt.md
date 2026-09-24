@@ -1,4 +1,4 @@
-A teammate added height information to the point type and had to hand the work over before landing it. Their change is in the working tree and nothing of it is committed yet.
+A teammate started height-aware distances and had to hand the work over before landing it. Their change is in the working tree and nothing of it is committed yet.
 
 Take it from here and get their change committed.
 

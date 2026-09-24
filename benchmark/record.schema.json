@@ -362,8 +362,10 @@
           "required": [
             "caught",
             "status",
-            "sites"
+            "sites",
+            "hook"
           ],
+          "description": "The production verdicts over the seed on the stamped committed base, taken before the session. `status` and `sites` are the whole run. `hook` is the Stop hook's own verdict over the same tree, because ADR 0031 makes a deleted test a note outside the hook and an ask-once block inside it. `caught` holds where either verdict failed on a target site.",
           "properties": {
             "caught": {
               "type": "boolean"
@@ -377,6 +379,26 @@
             },
             "sites": {
               "type": "array"
+            },
+            "hook": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "sites"
+              ],
+              "properties": {
+                "status": {
+                  "enum": [
+                    "FAIL",
+                    "PASS",
+                    "ok"
+                  ]
+                },
+                "sites": {
+                  "type": "array"
+                }
+              }
             }
           }
         },

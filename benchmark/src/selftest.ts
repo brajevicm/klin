@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { copyTree, files, overlay } from "./trees.ts";
+import { copyTree, files, overlay, removals } from "./trees.ts";
 import {
   families,
   variantNames,
@@ -330,16 +330,19 @@ export function admission(
  *
  * A seed is both the overlay the harness leaves uncommitted and an exemplar tree the self-test
  * measures on all four verdicts, so it has to be one of the declared trees: what the harness
- * plants is then exactly what the four verdicts were taken over. A seed that removed a file would
- * stand in the working tree as a deletion the declared path list does not name, and `seed-as-
- * declared` would fail every live trial, so it is refused here instead.
+ * plants is then exactly what the four verdicts were taken over. A seed may remove files, and the
+ * declared seed paths name each one, but git reports only the removal of a file the committed base
+ * holds. A removal of anything else would leave `seed-as-declared` naming a path the working tree
+ * never changed, and fail every live trial, so it is refused here instead.
  */
-function seedCases(family: Family, variant: Variant): Case[] {
+function seedCases(family: Family, variant: Variant, starting: string): Case[] {
   if (variant.seed === "") {
     return [];
   }
   const declared = Object.keys(variant.trees);
-  const removals = path.join(variant.root, variant.seed, "REMOVE");
+  const absent = removals(path.join(variant.root, variant.seed)).filter(
+    (relative) => !fs.statSync(path.join(starting, relative), { throwIfNoEntry: false })?.isFile(),
+  );
   return [
     judge(
       "the seed overlay is one of the variant's declared trees",
@@ -351,11 +354,11 @@ function seedCases(family: Family, variant: Variant): Case[] {
       variant,
     ),
     judge(
-      "the seed overlay states no removal",
-      !fs.existsSync(removals),
-      fs.existsSync(removals)
-        ? "the seed removes files, which no declared seed path can name"
-        : "the seed only writes files",
+      "the seed removes only files the committed base holds",
+      absent.length === 0,
+      absent.length === 0
+        ? "every removal the seed declares stands in the working tree as a deleted file"
+        : "the seed removes " + absent.join(", ") + ", which the committed base holds as no file",
       family,
       variant,
     ),
@@ -399,7 +402,7 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
       family,
       variant,
     ),
-    ...seedCases(family, variant),
+    ...seedCases(family, variant, starting),
   );
 
   const measured: Record<string, Record<keyof TreeSpec, Measured>> = {};

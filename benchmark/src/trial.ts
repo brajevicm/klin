@@ -21,6 +21,8 @@ import {
   isGateReport,
   type RunRecord,
   stopMetrics,
+  targetSites,
+  type Verdict,
   type WholeRun,
   WHOLE_RUN_STATUSES,
   wholeRunCaught,
@@ -91,6 +93,32 @@ function commandFailure(label: string, ran: ReturnType<typeof spawnSync>): Error
   );
 }
 
+function verdictOf(
+  label: string,
+  ran: ReturnType<typeof spawnSync>,
+  text: string,
+  gate: string,
+  expected: unknown[],
+): Verdict {
+  if (ran.error || ran.status === null) throw commandFailure(label, ran);
+  let report: GateReport;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!isGateReport(parsed)) throw new Error("the report is not a production gate verdict");
+    report = parsed;
+  } catch (why) {
+    throw new Error("seeded whole-run " + label + " returned invalid JSON: " + String(why));
+  }
+  const status = (report.gates as Record<string, unknown>[]).find((one) => one.name === gate)?.status;
+  if (typeof status !== "string" || !WHOLE_RUN_STATUSES.includes(status)) {
+    throw new Error("seeded whole-run " + label + " returned no production verdict for " + gate);
+  }
+  const own = [...report.findings, ...report.notes].filter(
+    (one) => typeof one === "object" && one !== null && (one as Record<string, unknown>).gate === gate,
+  );
+  return { status, sites: targetFindings(own, expected) };
+}
+
 export function wholeRun(
   gate: string,
   base: string,
@@ -102,7 +130,9 @@ export function wholeRun(
   const root = path.join(control, "whole-run");
   const repo = path.join(root, "repo");
   const state = path.join(root, "state");
+  const reported = path.join(root, "hook-report.json");
   const env = { ...session.withoutKlin(), KLIN_STATE_DIR: state };
+  const spawned = { cwd: repo, encoding: "utf8" as const, env, timeout: 300_000, maxBuffer: 16 * 1024 * 1024 };
   try {
     fs.rmSync(root, { recursive: true, force: true });
     fs.mkdirSync(repo, { recursive: true });
@@ -111,49 +141,20 @@ export function wholeRun(
     workspace.git(repo, "add", "-A");
     workspace.git(repo, "commit", "--quiet", "-m", "The whole-run base");
     const radius = spawnSync(binary, ["radius"], {
-      cwd: repo,
+      ...spawned,
       input: JSON.stringify({ hook_event_name: "SessionStart", session_id: "whole-run" }),
-      encoding: "utf8",
-      env,
-      timeout: 300_000,
-      maxBuffer: 8 * 1024 * 1024,
     });
     if (radius.error || radius.status !== 0) throw commandFailure("radius", radius);
     replaceTree(subject, repo);
-    const ran = spawnSync(binary, ["gate", "--json"], {
-      cwd: repo,
-      encoding: "utf8",
-      env,
-      timeout: 300_000,
-      maxBuffer: 16 * 1024 * 1024,
+    const ran = spawnSync(binary, ["gate", "--json"], spawned);
+    const whole = verdictOf("gate", ran, ran.stdout ?? "", gate, expected);
+    const hooked = spawnSync(binary, ["gate", "--hook", "--changed"], {
+      ...spawned,
+      input: JSON.stringify({ hook_event_name: "Stop", session_id: "whole-run" }),
+      env: { ...env, KLIN_HOOK_REPORT: reported },
     });
-    if (ran.error || ran.status === null) throw commandFailure("gate", ran);
-    let report: GateReport;
-    try {
-      const parsed: unknown = JSON.parse(ran.stdout ?? "");
-      if (!isGateReport(parsed)) throw new Error("the report is not a production gate verdict");
-      report = parsed;
-    } catch (why) {
-      throw new Error("seeded whole-run gate returned invalid JSON: " + String(why));
-    }
-    const gateRow = (report.gates as Record<string, unknown>[]).find((one) => one.name === gate);
-    const records = [
-      ...report.findings,
-      ...report.notes,
-    ];
-    const targetFindingsRaw = records.filter(
-      (one) => typeof one === "object" && one !== null && (one as Record<string, unknown>).gate === gate,
-    );
-    const sites = targetFindings(targetFindingsRaw, expected);
-    const status = gateRow?.status;
-    if (typeof status !== "string" || !WHOLE_RUN_STATUSES.includes(status)) {
-      throw new Error("seeded whole-run gate returned no production verdict for " + gate);
-    }
-    return {
-      caught: wholeRunCaught(status, sites),
-      status,
-      sites,
-    };
+    const hook = verdictOf("hook", hooked, fs.existsSync(reported) ? fs.readFileSync(reported, "utf8") : "", gate, expected);
+    return { ...whole, hook, caught: wholeRunCaught({ ...whole, hook }) };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -337,8 +338,11 @@ export function validity(held: {
   if (held.wholeRun !== undefined && held.wholeRun !== null) {
     terms.push({
       name: "seeded-whole-run",
-      passed: ["FAIL", "PASS", "ok"].includes(held.wholeRun.status) && typeof held.wholeRun.caught === "boolean",
-      detail: "the production whole-run verdict was obtained before the session",
+      passed:
+        WHOLE_RUN_STATUSES.includes(held.wholeRun.status) &&
+        WHOLE_RUN_STATUSES.includes(held.wholeRun.hook.status) &&
+        typeof held.wholeRun.caught === "boolean",
+      detail: "the production whole-run and Stop hook verdicts were obtained before the session",
     });
     const missing = (held.hooks ?? []).filter(
       (hook) => hook.event === "Stop" && hook.arguments.startsWith("gate") && !exactStopReport(hook),
@@ -504,8 +508,8 @@ export function run(
   });
   const broke = terms.filter((one) => !one.passed);
   const { signals, audit } = signalsFrom(stats, arm);
-  const seededSignalIds = findingIds(seededWhole?.sites ?? []);
-  const seededStops = seededWhole === null ? { stopDelivery: false, blockedStops: 0 } : stopMetrics(hooks, seededWhole.sites);
+  const seededSignalIds = findingIds(seededWhole === null ? [] : targetSites(seededWhole));
+  const seededStops = seededWhole === null ? { stopDelivery: false, blockedStops: 0 } : stopMetrics(hooks, targetSites(seededWhole));
   const activity = (stats.activity ?? {}) as Record<string, number>;
 
   const record: RunRecord = {

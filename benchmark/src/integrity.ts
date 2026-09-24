@@ -3,6 +3,7 @@ import path from "node:path";
 import { files, read } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
 import type { Check, HookInvocation, Isolation } from "./record.ts";
+import { signsNothing } from "./workspace.ts";
 
 /**
  * Subject-workspace isolation.
@@ -173,6 +174,7 @@ export function freshness(
 ): Isolation {
   const isolated = config !== "";
   const entries = fs.existsSync(state) ? fs.readdirSync(state) : [];
+  const unsigned = signsNothing(repo);
   const checks: Check[] = [
     check("fresh-repository", commits === 1, String(commits) + " commit(s) before the session"),
     check(
@@ -192,6 +194,13 @@ export function freshness(
         : "the trial shares the operator's host configuration, and the record keeps its memory digest",
     ),
     check("workspace-is-its-own-repository", fs.existsSync(path.join(repo, ".git")), repo),
+    check(
+      "commits-unsigned",
+      unsigned,
+      unsigned
+        ? "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        : "the subject's git reads commit.gpgsign as other than false, so its commit reaches a keyring the sandbox refuses",
+    ),
   ];
   return { verified: checks.every((one) => one.passed), checks };
 }

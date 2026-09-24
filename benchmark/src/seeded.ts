@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { ARMS, families, variantIn, type ArmName } from "./catalogue.ts";
-import { CURRENT_PROTOCOL } from "./protocol.ts";
+import { CURRENT_PROTOCOL, SEEDED_PROTOCOL } from "./protocol.ts";
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as selftest from "./selftest.ts";
@@ -72,6 +72,7 @@ export interface SeededFixture {
 
 export interface Manifest {
   protocol: number;
+  seededProtocol: number;
   kind: "publishable";
   publishable: true;
   population: "seeded";
@@ -184,6 +185,7 @@ export function manifestOf(seed: number, held: Frozen, probes: Witness[] = []): 
   const planned = schedule(seed);
   return {
     protocol: CURRENT_PROTOCOL.version,
+    seededProtocol: SEEDED_PROTOCOL.version,
     kind: "publishable",
     publishable: true,
     population: "seeded",
@@ -215,6 +217,14 @@ export function manifestProblems(held: Manifest): string[] {
   }
   if (held.protocol !== CURRENT_PROTOCOL.version) {
     problems.push("the manifest states protocol " + String(held.protocol));
+  }
+  if (held.seededProtocol !== SEEDED_PROTOCOL.version) {
+    problems.push(
+      "the manifest states seeded protocol " +
+        String(held.seededProtocol) +
+        " where the planted catalogue is " +
+        SEEDED_PROTOCOL.name,
+    );
   }
   if (!held.frozen || typeof held.frozen !== "object") {
     problems.push("the seeded manifest states no frozen provenance");
@@ -338,7 +348,7 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
   fs.writeFileSync(file, bytes);
   process.stdout.write(
     [
-      "planned " + String(held.design.blocks) + " seeded blocks, " + String(held.design.runs) + " runs, seed " + String(seed),
+      "planned " + String(held.design.blocks) + " " + SEEDED_PROTOCOL.name + " blocks, " + String(held.design.runs) + " runs, seed " + String(seed),
       "first arm: " + String(held.firstArm.active) + " Active, " + String(held.firstArm.shadow) + " Shadow",
       "manifest " + file,
       "sha256 " + sha256(bytes),
@@ -547,6 +557,12 @@ function row(cells: string[]): string {
   return "| " + cells.join(" | ") + " |";
 }
 
+function caught(record: RunRecord): string {
+  const run = record.seeded?.wholeRun;
+  if (run?.caught !== true) return yesNo(run?.caught);
+  return run.status === "FAIL" && run.sites.length > 0 ? "yes" : "yes, at the Stop hook";
+}
+
 function delivery(record: RunRecord): string {
   if (record.seeded?.stopDelivery !== true) return yesNo(record.seeded?.stopDelivery);
   return record.arm === "active" ? "delivered" : "would-have-been-delivered";
@@ -573,7 +589,7 @@ export function report(directory: string): string {
         record.gate,
         record.arm,
         yesNo(record.fixture.startShortcut?.present),
-        yesNo(record.seeded?.wholeRun.caught),
+        caught(record),
         delivery(record),
         yesNo(record.seeded?.finalRepair),
         String(record.seeded?.blockedStops ?? ""),

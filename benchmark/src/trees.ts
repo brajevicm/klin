@@ -75,14 +75,8 @@ export function overlay(source: string, target: string): string[] {
   if (!fs.existsSync(source)) {
     return [];
   }
-  const removals = path.join(source, "REMOVE");
-  if (fs.existsSync(removals)) {
-    for (const line of fs.readFileSync(removals, "utf8").split("\n")) {
-      const relative = line.trim();
-      if (relative.length > 0 && !relative.startsWith("#")) {
-        fs.rmSync(path.join(target, relative), { recursive: true, force: true });
-      }
-    }
+  for (const relative of removals(source)) {
+    fs.rmSync(path.join(target, relative), { recursive: true, force: true });
   }
   const written = files(source).filter((relative) => relative !== "REMOVE");
   for (const relative of written) {
@@ -91,6 +85,19 @@ export function overlay(source: string, target: string): string[] {
     fs.copyFileSync(path.join(source, relative), destination);
   }
   return written;
+}
+
+/** The relative paths an overlay's `REMOVE` file names, in the order it names them. */
+export function removals(source: string): string[] {
+  const listed = path.join(source, "REMOVE");
+  if (!fs.existsSync(listed)) {
+    return [];
+  }
+  return fs
+    .readFileSync(listed, "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((relative) => relative.length > 0 && !relative.startsWith("#"));
 }
 
 /**

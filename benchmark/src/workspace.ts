@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { copyTree, files, overlay, digest, sha256 } from "./trees.ts";
+import { copyTree, files, overlay, digest, removals, sha256 } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
 
 /**
@@ -333,13 +333,17 @@ function layStartingTree(variant: Variant, into: string): string {
 }
 
 /**
- * Lay the variant's declared seed over a committed tree, and return the paths it wrote.
+ * Lay the variant's declared seed over a committed tree, and return the paths it wrote or removed.
  *
  * A seed is a colleague's uncommitted work. It goes on after the commit and is never committed,
  * so it is the only change standing in the working tree when the subject's session begins.
  */
 function laySeed(variant: Variant, into: string): string[] {
-  return variant.seed === "" ? [] : overlay(path.join(variant.root, variant.seed), into);
+  if (variant.seed === "") {
+    return [];
+  }
+  overlay(path.join(variant.root, variant.seed), into);
+  return seedPaths(variant);
 }
 
 /**
@@ -375,6 +379,11 @@ function stampCommittedBase(repo: string, state: string, klinBin: string): void 
         (ran.error?.message ?? "klin radius exited " + String(ran.status) + " " + (ran.stderr ?? "")),
     );
   }
+}
+
+export function signsNothing(repo: string): boolean {
+  const ran = spawnSync("git", ["config", "--get", "commit.gpgsign"], { cwd: repo, encoding: "utf8" });
+  return ran.status === 0 && ran.stdout.trim() === "false";
 }
 
 /**
@@ -479,6 +488,7 @@ export function materialize(
 
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");
+  git(repo, "config", "commit.gpgsign", "false");
   git(repo, "add", "-A");
   git(repo, "commit", "--quiet", "-m", "The starting tree");
   const startCommit = git(repo, "rev-parse", "HEAD");
@@ -591,7 +601,12 @@ export function baseStamp(place: Workspace): BaseStamp {
   };
 }
 
-/** The paths a variant's declared seed writes, read from the overlay the fixture ships. */
+/** The paths a variant's declared seed writes or removes, read from the overlay the fixture ships. */
 export function seedPaths(variant: Variant): string[] {
-  return variant.seed === "" ? [] : files(path.join(variant.root, variant.seed)).filter((one) => one !== "REMOVE");
+  if (variant.seed === "") {
+    return [];
+  }
+  const seed = path.join(variant.root, variant.seed);
+  const written = files(seed).filter((one) => one !== "REMOVE");
+  return [...new Set([...written, ...removals(seed)])].sort();
 }

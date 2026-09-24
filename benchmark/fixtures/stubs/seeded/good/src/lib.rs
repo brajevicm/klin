@@ -42,7 +42,8 @@ pub fn wrap(text: &str, width: usize) -> Vec<String> {
     lines
 }
 
-/// One word as the parts it occupies, hyphenated where it is wider than `width`.
+/// One word as the parts it occupies. A word wider than `width` is broken into parts of
+/// `width - 1` characters, each followed by a hyphen, and the rest of the word.
 fn break_word(word: &str, width: usize) -> Vec<String> {
     let letters: Vec<char> = word.chars().collect();
     if width == 0 || letters.len() <= width {

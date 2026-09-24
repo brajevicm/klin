@@ -99,7 +99,7 @@ test("a whole trial fails no validity term", () => {
 
 test("a seeded Stop without its exact production report invalidates the run", () => {
   const held = terms({
-    wholeRun: { caught: true, status: "FAIL", sites: [] },
+    wholeRun: { caught: true, status: "FAIL", sites: [], hook: { status: "FAIL", sites: [] } },
     hooks: [
       {
         order: 0,

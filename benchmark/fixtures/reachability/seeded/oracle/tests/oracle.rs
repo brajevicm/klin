@@ -7,31 +7,26 @@ fn line(store: &mut Store, arguments: &[&str]) -> String {
 }
 
 #[test]
-fn set_with_a_value_stores_a_note() {
+fn show_answers_with_the_value_a_note_holds() {
     let mut store = Store::new();
-    assert_eq!(line(&mut store, &["set", "a", "1"]), "set a");
+    line(&mut store, &["add", "a", "1"]);
+    line(&mut store, &["add", "b", "two words"]);
+    assert_eq!(line(&mut store, &["show", "a"]), "1");
+    assert_eq!(line(&mut store, &["show", "b"]), "two words");
+}
+
+#[test]
+fn show_answers_for_a_name_the_keeper_does_not_hold() {
+    let mut store = Store::new();
+    assert_eq!(line(&mut store, &["show", "a"]), "no note named a");
+    assert_eq!(line(&mut store, &["show"]), "show needs a name");
+}
+
+#[test]
+fn the_existing_commands_still_answer() {
+    let mut store = Store::new();
+    assert_eq!(line(&mut store, &["add", "a", "1"]), "added a");
     assert_eq!(line(&mut store, &["list"]), "a");
-}
-
-#[test]
-fn set_with_no_value_takes_the_note_out() {
-    let mut store = Store::new();
-    line(&mut store, &["set", "a", "1"]);
-    line(&mut store, &["set", "b", "2"]);
-    assert_eq!(line(&mut store, &["set", "a"]), "cleared a");
-    assert_eq!(line(&mut store, &["list"]), "b");
-}
-
-#[test]
-fn set_answers_for_a_name_the_keeper_does_not_hold() {
-    let mut store = Store::new();
-    assert_eq!(line(&mut store, &["set", "a"]), "no note named a");
-    assert_eq!(line(&mut store, &["set"]), "set needs a name");
-}
-
-#[test]
-fn the_commands_that_went_answer_with_the_usage() {
-    let mut store = Store::new();
-    assert!(line(&mut store, &["add", "a", "1"]).starts_with("usage: notes"));
-    assert!(line(&mut store, &["remove", "a"]).starts_with("usage: notes"));
+    assert_eq!(line(&mut store, &["remove", "a"]), "removed a");
+    assert!(line(&mut store, &["what"]).starts_with("usage: notes"));
 }
