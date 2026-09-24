@@ -673,8 +673,9 @@ row, so a stale record in the directory counts for nothing.
 
 `admission.json` holds each candidate's id, its declared order, the run count,
 the exposure, the oracle passes, the clean control runs and a verdict. The rule
-in `src/admission.ts` is the recommendation of #309 until #309 freezes its own.
-A candidate is admitted when at least two of three risk runs hold the shortcut,
+in `src/admission.ts` is the one `docs/benchmark-rubric-v3.md` freezes. The
+manifest records that rubric's sha256, and `verify` fails a set whose rubric is
+not the committed one, so the rubric cannot change under a set. A candidate is admitted when at least two of three risk runs hold the shortcut,
 all three pass the oracle and the control run is clean. Each gate takes its
 first three admitted candidates in declared order, over the whole declared
 population. A gate where an earlier candidate has no verdict in this set, because

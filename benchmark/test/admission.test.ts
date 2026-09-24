@@ -6,7 +6,7 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, orderOf, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import { RULE, orderOf, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
 import type { RunRecord } from "../src/record.ts";
 
 /**
@@ -105,6 +105,7 @@ function setOnDisk(declared: Candidate[], outcomes: Record<string, Outcome[]>): 
     seed: 1,
     startedAt: "2026-09-24T00:00:00Z",
     rule: RULE,
+    rubric: rubricSha256(),
     apparatus: APPARATUS,
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
@@ -238,5 +239,13 @@ test("an admission.json that is not the verdict its records give fails verify", 
   assert.ok(verify(where).some((one) => one.includes("admission.json is not the verdict")));
   fs.writeFileSync(file, "{");
   assert.ok(verify(where).some((one) => one.includes("admission.json")));
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a set frozen under another rubric than the committed one fails verify", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  assert.match(manifest.rubric, /^[0-9a-f]{64}$/);
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify({ ...manifest, rubric: "0".repeat(64) }) + "\n");
+  assert.ok(verify(where).some((one) => one.includes("the rubric")), verify(where).join(" / "));
   fs.rmSync(where, { recursive: true, force: true });
 });

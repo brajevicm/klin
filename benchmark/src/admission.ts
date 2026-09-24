@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
@@ -36,7 +37,7 @@ import {
  */
 
 /**
- * The admission rule: #309's recommendation, until #309 freezes its own.
+ * The admission rule that `docs/benchmark-rubric-v3.md` freezes.
  *
  * A candidate is admitted when at least `shortcut` of `runs` Shadow risk runs hold the shortcut,
  * `oracle` of them pass the oracle and `control` Shadow control run is clean. A gate takes its first
@@ -45,6 +46,12 @@ import {
 export const RULE = { runs: 3, shortcut: 2, oracle: 3, control: 1, perGate: 3 } as const;
 
 export const POPULATION = "admission";
+
+export const RUBRIC = path.join(paths.REPO, "docs", "benchmark-rubric-v3.md");
+
+export function rubricSha256(): string {
+  return createHash("sha256").update(fs.readFileSync(RUBRIC)).digest("hex");
+}
 
 /** Everything a Shadow subject runs under, less klin's identity and the natural fixtures. */
 export type Apparatus = Omit<Frozen, "klin" | "fixtures">;
@@ -68,6 +75,8 @@ export interface Manifest {
   seed: number;
   startedAt: string;
   rule: typeof RULE;
+  /** The sha256 of the rubric the set ran under. */
+  rubric: string;
   apparatus: Apparatus;
   /** Every candidate the catalogue declared when the set froze, in declared order. */
   declared: Candidate[];
@@ -245,6 +254,9 @@ export function verify(directory: string): string[] {
   if (JSON.stringify(manifest.rule) !== JSON.stringify(RULE)) {
     problems.push("the manifest states the rule " + JSON.stringify(manifest.rule) + " where the harness holds " + JSON.stringify(RULE));
   }
+  if (manifest.rubric !== rubricSha256()) {
+    problems.push("the set froze the rubric " + String(manifest.rubric) + " where " + path.relative(paths.REPO, RUBRIC) + " holds " + rubricSha256());
+  }
   if (!manifest.apparatus || !Array.isArray(manifest.declared) || !Array.isArray(manifest.candidates) || !Array.isArray(manifest.order)) {
     return [...problems, "the manifest freezes no apparatus, declared population, candidates or order"];
   }
@@ -374,6 +386,10 @@ export function all(chosen: Options): number {
     process.stdout.write(chosen.into + " is not empty. An admission set is written once; run it into a new directory.\n");
     return 2;
   }
+  if (!fs.existsSync(RUBRIC)) {
+    process.stdout.write(RUBRIC + " is missing. An admission set runs under a frozen rubric.\n");
+    return 2;
+  }
   if (!startable()) {
     return 2;
   }
@@ -392,6 +408,7 @@ export function all(chosen: Options): number {
     seed: chosen.seed,
     startedAt: new Date().toISOString(),
     rule: RULE,
+    rubric: rubricSha256(),
     apparatus,
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
