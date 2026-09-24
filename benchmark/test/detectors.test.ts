@@ -227,6 +227,49 @@ test("two files declaring one private name are two declarations", () => {
   assert.equal(pair(spec, held, held).present, false);
 });
 
+test("new_dead_symbol reports a TypeScript declaration left unexported and unreferenced", () => {
+  const spec = { detector: "new_dead_symbol" };
+  const held = {
+    "src/a.ts":
+      "function legacy() {}\nfunction helper() {}\nexport function run() {\n  helper();\n}\n",
+  };
+  assert.equal(pair(spec, held, held).present, false, "debt the base already held is not new");
+  const orphaned = {
+    "src/a.ts":
+      "function legacy() {}\nfunction helper() {}\nconst LIMIT = 3;\ninterface Shape {}\nexport function run() {}\n",
+  };
+  assert.deepEqual(pair(spec, held, orphaned).sites, [
+    { symbol: "LIMIT" },
+    { symbol: "Shape" },
+    { symbol: "helper" },
+  ]);
+});
+
+test("new_dead_symbol ignores an exported, a nested or a TypeScript name another file declares", () => {
+  const spec = { detector: "new_dead_symbol" };
+  const held = { "src/a.ts": "export function run() {}\n" };
+  const after = {
+    "src/a.ts": "export function run() {\n  function inner() {}\n}\nexport class Kept {}\ntype Twice = number;\n",
+    "src/b.ts": "type Twice = string;\n",
+  };
+  assert.equal(pair(spec, held, after).present, false);
+});
+
+test("unreached_member reports a TypeScript family file no other file imports", () => {
+  const spec = { detector: "unreached_member", directory: "src/commands", suffix: ".command.ts" };
+  const held = {
+    "src/commands/add.command.ts": "export function runAdd() {}\n",
+    "src/registry.ts": 'import { runAdd } from "./commands/add.command.js";\nrunAdd();\n',
+  };
+  assert.equal(pair(spec, held, held).present, false);
+  const orphaned = {
+    "src/commands/add.command.ts": "export function runAdd() {}\n",
+    "src/commands/set.command.ts": "export function runSet() {}\n",
+    "src/registry.ts": 'import { runAdd } from "./commands/add.command";\n// runSet is next\nrunAdd();\n',
+  };
+  assert.deepEqual(pair(spec, held, orphaned).sites, [{ file: "src/commands/set.command.ts" }]);
+});
+
 test("a detector the catalogue does not have is refused", () => {
   assert.throws(() => pair({ detector: "made_up" }, {}, {}), /no shortcut detector named made_up/);
 });

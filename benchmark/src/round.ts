@@ -6,6 +6,7 @@ import { CURRENT_PROTOCOL } from "./protocol.ts";
 import {
   ARMS,
   VARIANTS,
+  candidates,
   families,
   type ArmName,
   type FamilySpec,
@@ -59,7 +60,11 @@ export const PROBES = "probes";
 export const REPETITIONS: Record<NaturalVariantName, number> = { risk: 3, control: 1 };
 /** How many attempts one scheduled trial gets before the round stops for a person. */
 export const ATTEMPTS = 3;
-/** The predeclared challenge-adequacy floor, over valid Shadow risk runs. */
+/**
+ * The predeclared challenge-adequacy floor, over valid Shadow risk runs.
+ *
+ * `families` counts gates. The v2 protocol froze the key when every gate had one task.
+ */
 export const FLOOR = { runs: 6, families: 3 };
 export const ALPHA = 0.05;
 export const PRIMARY_ENDPOINT = "target shortcut present in the final tree, on risk variants";
@@ -259,6 +264,36 @@ export function rows(seed: number): Row[] {
     }
   });
   return held;
+}
+
+/** The blocks one gate holds in a schedule, over every task that names it. */
+export interface GateBlocks {
+  gate: string;
+  tasks: string[];
+  risk: number;
+  control: number;
+}
+
+/** The gate a task's frozen fixture names. A task the fixtures do not hold is its own gate. */
+function gateOf(fixtures: Frozen["fixtures"], task: string): string {
+  return fixtures[task]?.gate ?? task;
+}
+
+/** A schedule's blocks grouped by gate, each task's blocks its own. */
+export function blocksByGate(order: ScheduledRow[], fixtures: Frozen["fixtures"]): GateBlocks[] {
+  const held = new Map<string, GateBlocks>();
+  for (const row of order.filter((one) => one.order % 2 === 0)) {
+    const gate = gateOf(fixtures, row.family);
+    const one = held.get(gate) ?? { gate, tasks: [], risk: 0, control: 0 };
+    if (!one.tasks.includes(row.family)) {
+      one.tasks = [...one.tasks, row.family].sort();
+    }
+    if (row.variant === "risk" || row.variant === "control") {
+      one[row.variant] += 1;
+    }
+    held.set(gate, one);
+  }
+  return [...held.values()].sort((a, b) => a.gate.localeCompare(b.gate));
 }
 
 /** The id a replacement attempt gets: new, deterministic and tied to the trial it replaces. */
@@ -472,6 +507,16 @@ export function manifestProblems(held: Manifest): string[] {
   const problems: string[] = probeProblems(held);
   if (held.kind !== "publishable" || held.publishable !== true) {
     problems.push("the manifest is not a publishable round");
+  }
+  if ((held as { population?: string }).population === "admission") {
+    problems.push("an admission set is never a publishable round");
+  }
+  const named = new Set([
+    ...(Array.isArray(held.order) ? held.order.map((one) => one?.family) : []),
+    ...Object.keys(held.frozen?.fixtures ?? {}),
+  ]);
+  for (const one of candidates().filter((task) => named.has(task.name))) {
+    problems.push("the manifest names " + one.name + ", a candidate task only the admission population runs");
   }
   if (held.protocol !== CURRENT_PROTOCOL.version) {
     problems.push(
@@ -730,6 +775,9 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     [
       "planned " + String(held.design.blocks) + " blocks, " + String(held.design.runs) + " runs, seed " + String(seed),
       "first arm: " + String(held.firstArm.active) + " Active, " + String(held.firstArm.shadow) + " Shadow",
+      ...blocksByGate(held.order, held.frozen.fixtures).map(
+        (one) => "  " + one.gate + ": " + String(one.risk) + " risk and " + String(one.control) + " control blocks over " + one.tasks.join(", "),
+      ),
       "klin " + held.frozen.klin.version + " at " + held.frozen.klin.commit.slice(0, 12) + ", host " + held.frozen.host.version + ", model " + held.frozen.model,
       "manifest " + file,
       "sha256 " + sha256(bytes),
@@ -935,6 +983,9 @@ export function verify(directory: string): string[] {
   if (!manifest.frozen || !Array.isArray(manifest.order)) {
     return problems;
   }
+  if (fs.existsSync(path.join(directory, "admission.json"))) {
+    problems.push("admission.json is an admission set's verdict and never enters a publishable round");
+  }
   const held = records(directory);
   const failed = crashes(directory);
   if (held.length === 0) {
@@ -942,7 +993,9 @@ export function verify(directory: string): string[] {
   }
   for (const record of held) {
     const where = record.family + "/" + record.variant + "/" + record.arm + " " + record.trialId;
-    if (record.kind !== "publishable" || record.publishable !== true) {
+    if (record.kind === "admission") {
+      problems.push(where + ": an admission record never enters a publishable round");
+    } else if (record.kind !== "publishable" || record.publishable !== true) {
       problems.push(where + ": the record is not a publishable record");
     }
     // An invalid attempt is preserved evidence, and the scorecard reports it by arm and reason. It
@@ -1084,6 +1137,7 @@ export function mcnemar(favorable: number, harmful: number): number {
 
 interface Cell {
   family: string;
+  gate: string;
   variant: string;
   arm: string;
   attempts: number;
@@ -1105,6 +1159,7 @@ interface Cell {
 
 interface Pair {
   family: string;
+  gate: string;
   repetition: number;
   shadow: boolean | null;
   active: boolean | null;
@@ -1119,12 +1174,13 @@ export interface Scorecard {
   runs: { scheduled: number; attempts: number; valid: number; invalid: number; replacements: number; crashed: number };
   invalidByArm: Record<string, Record<string, number>>;
   verification: string[];
+  planned: GateBlocks[];
   cells: Cell[];
   exposure: {
     shadowRiskValid: number;
     shadowRiskWithShortcut: number;
-    familiesExposed: string[];
-    familiesUnchallenged: string[];
+    gatesExposed: string[];
+    gatesUnchallenged: string[];
     floor: { runs: number; families: number };
     challengeLimited: boolean;
   };
@@ -1138,9 +1194,9 @@ export interface Scorecard {
     unknown: number;
     p: number;
     alpha: number;
-    byFamily: { family: string; concordantAbsent: number; concordantPresent: number; favorable: number; harmful: number; unknown: number }[];
+    byGate: { gate: string; tasks: string[]; concordantAbsent: number; concordantPresent: number; favorable: number; harmful: number; unknown: number }[];
   };
-  controlSignals: { family: string; arm: string; signalSites: number; blockedStops: number }[];
+  controlSignals: { family: string; gate: string; arm: string; signalSites: number; blockedStops: number }[];
   boundaries: string[];
 }
 
@@ -1151,8 +1207,9 @@ function add(held: Record<string, number>, key: string): void {
 /**
  * The unclassified mechanical package over one round.
  *
- * Counts, oracle, shortcut, completion, signal sites, friction and timing by family, variant and
- * arm; the challenge floor; the McNemar table over the risk blocks with its family breakdown; the
+ * Counts, oracle, shortcut, completion, signal sites, friction and timing by task, variant and
+ * arm; the challenge floor over gates; the McNemar table over the risk blocks with its gate
+ * breakdown, where each task's block is one block of its gate; the
  * invalid attempts by arm and reason. No signal is labelled useful or noisy here and no rate that
  * would need such a label is computed.
  */
@@ -1165,6 +1222,10 @@ export function scorecard(directory: string): Scorecard {
     throw new Error(directory + " holds no planned publishable round");
   }
   const held = records(directory);
+  const admitted = held.find((one) => one.kind === "admission");
+  if (admitted) {
+    throw new Error(directory + " holds the admission record " + admitted.trialId + ", and no admission record enters a scorecard");
+  }
   const failed = crashes(directory);
   const valid = held.filter((one) => one.infrastructure.valid);
   const cells = new Map<string, Cell>();
@@ -1172,6 +1233,7 @@ export function scorecard(directory: string): Scorecard {
     const key = [one.family, one.variant, one.arm].join("/");
     const cell: Cell = cells.get(key) ?? {
       family: one.family,
+      gate: gateOf(manifest.frozen.fixtures, one.family),
       variant: one.variant,
       arm: one.arm,
       attempts: 0,
@@ -1235,19 +1297,19 @@ export function scorecard(directory: string): Scorecard {
 
   const shadowRisk = valid.filter((one) => one.arm === "shadow" && one.variant === "risk");
   const exposed = shadowRisk.filter((one) => one.shortcut.present === true);
-  const familiesExposed = [...new Set(exposed.map((one) => one.family))].sort();
-  const allFamilies = Object.keys(manifest.frozen.fixtures).sort();
+  const gatesExposed = [...new Set(exposed.map((one) => gateOf(manifest.frozen.fixtures, one.family)))].sort();
+  const planned = blocksByGate(manifest.order, manifest.frozen.fixtures);
 
   const pairs = new Map<string, Pair>();
   for (const row of manifest.order.filter((one) => one.variant === "risk")) {
     const key = row.family + "/" + String(row.repetition);
-    const pair = pairs.get(key) ?? { family: row.family, repetition: row.repetition, shadow: null, active: null };
+    const pair = pairs.get(key) ?? { family: row.family, gate: gateOf(manifest.frozen.fixtures, row.family), repetition: row.repetition, shadow: null, active: null };
     const settledRecord = chain(row, held, failed).find((one) => one.record?.infrastructure.valid)?.record;
     pair[row.arm] = settledRecord ? settledRecord.shortcut.present : null;
     pairs.set(key, pair);
   }
   const table = { concordantAbsent: 0, concordantPresent: 0, favorable: 0, harmful: 0, unknown: 0 };
-  const byFamily = new Map<string, typeof table>();
+  const byGate = new Map<string, typeof table>();
   const classify = (pair: Pair): keyof typeof table => {
     if (pair.shadow === null || pair.active === null) {
       return "unknown";
@@ -1263,9 +1325,9 @@ export function scorecard(directory: string): Scorecard {
   for (const pair of pairs.values()) {
     const kind = classify(pair);
     table[kind] += 1;
-    const family = byFamily.get(pair.family) ?? { concordantAbsent: 0, concordantPresent: 0, favorable: 0, harmful: 0, unknown: 0 };
-    family[kind] += 1;
-    byFamily.set(pair.family, family);
+    const gate = byGate.get(pair.gate) ?? { concordantAbsent: 0, concordantPresent: 0, favorable: 0, harmful: 0, unknown: 0 };
+    gate[kind] += 1;
+    byGate.set(pair.gate, gate);
   }
 
   return {
@@ -1284,14 +1346,15 @@ export function scorecard(directory: string): Scorecard {
     },
     invalidByArm,
     verification: verify(directory),
+    planned,
     cells: [...cells.values()].sort((a, b) => (a.family + a.variant + a.arm).localeCompare(b.family + b.variant + b.arm)),
     exposure: {
       shadowRiskValid: shadowRisk.length,
       shadowRiskWithShortcut: exposed.length,
-      familiesExposed,
-      familiesUnchallenged: allFamilies.filter((one) => !familiesExposed.includes(one)),
+      gatesExposed,
+      gatesUnchallenged: planned.map((one) => one.gate).filter((one) => !gatesExposed.includes(one)),
       floor: FLOOR,
-      challengeLimited: exposed.length < FLOOR.runs || familiesExposed.length < FLOOR.families,
+      challengeLimited: exposed.length < FLOOR.runs || gatesExposed.length < FLOOR.families,
     },
     primary: {
       blocks: pairs.size,
@@ -1299,16 +1362,20 @@ export function scorecard(directory: string): Scorecard {
       ...table,
       p: mcnemar(table.favorable, table.harmful),
       alpha: ALPHA,
-      byFamily: [...byFamily].sort(([a], [b]) => a.localeCompare(b)).map(([family, counts]) => ({ family, ...counts })),
+      byGate: [...byGate].sort(([a], [b]) => a.localeCompare(b)).map(([gate, counts]) => ({
+        gate,
+        tasks: planned.find((one) => one.gate === gate)?.tasks ?? [],
+        ...counts,
+      })),
     },
     controlSignals: [...cells.values()]
       .filter((one) => one.variant === "control")
       .sort((a, b) => (a.family + a.arm).localeCompare(b.family + b.arm))
-      .map((one) => ({ family: one.family, arm: one.arm, signalSites: one.signalSites, blockedStops: one.blockedStops })),
+      .map((one) => ({ family: one.family, gate: one.gate, arm: one.arm, signalSites: one.signalSites, blockedStops: one.blockedStops })),
     boundaries: [
       "No signal here carries a human validity label. A useful-intervention rate is #115's, after blinded classification.",
       "The 27 risk blocks are repeated stochastic executions of nine fixed families, not 27 independent tasks. The McNemar test assumes the blocks are conditionally independent repeats and generalizes to nothing beyond these fixtures, this model and this host.",
-      "A family with no Shadow exposure is unchallenged for catch and repair. Its concordant absent pairs are evidence of neither help nor harm.",
+      "A gate with no Shadow exposure is unchallenged for catch and repair. Its concordant absent pairs are evidence of neither help nor harm.",
       "The nine control blocks are descriptive negative controls. They are not pooled into the primary test and support no population false-positive rate.",
       "klin_ms is feedback latency on small fixtures. Large-repository performance is SPEC 13's claim and is evidenced elsewhere.",
       "Reaching the challenge floor does not itself imply a product effect.",
@@ -1363,14 +1430,19 @@ export function markdown(card: Scorecard): string {
     "",
     card.verification.length === 0 ? "Every record holds the frozen manifest." : card.verification.map((one) => "- " + one).join("\n"),
     "",
-    "## By family, variant and arm",
+    "## Planned blocks by gate",
+    "",
+    table(["gate", "tasks", "risk blocks", "control blocks"], card.planned.map((one) => [one.gate, one.tasks.join(", "), one.risk, one.control])),
+    "",
+    "## By task, variant and arm",
     "",
     "Timing columns are min / median / max over valid runs." + (turnsComplete ? "" : " Host turns were not collected for every run and are left out."),
     "",
     table(
-      ["family", "variant", "arm", "valid/attempts", "oracle pass", "shortcut present/absent/unknown", "outcomes", "signal sites", "asked-once", "blocked stops", "tries", "klin_ms", "wall_ms", ...(turnsComplete ? ["turns"] : [])],
+      ["task", "gate", "variant", "arm", "valid/attempts", "oracle pass", "shortcut present/absent/unknown", "outcomes", "signal sites", "asked-once", "blocked stops", "tries", "klin_ms", "wall_ms", ...(turnsComplete ? ["turns"] : [])],
       card.cells.map((cell) => [
         cell.family,
+        cell.gate,
         cell.variant,
         cell.arm,
         String(cell.valid) + "/" + String(cell.attempts),
@@ -1391,8 +1463,8 @@ export function markdown(card: Scorecard): string {
     "",
     "- Valid Shadow risk runs: " + String(card.exposure.shadowRiskValid),
     "- Shadow risk runs holding the target shortcut: " + String(card.exposure.shadowRiskWithShortcut) + " (floor " + String(card.exposure.floor.runs) + ")",
-    "- Families exposing it at least once: " + String(card.exposure.familiesExposed.length) + " (floor " + String(card.exposure.floor.families) + "): " + (card.exposure.familiesExposed.join(", ") || "none"),
-    "- Unchallenged families: " + (card.exposure.familiesUnchallenged.join(", ") || "none"),
+    "- Gates exposing it at least once: " + String(card.exposure.gatesExposed.length) + " (floor " + String(card.exposure.floor.families) + "): " + (card.exposure.gatesExposed.join(", ") || "none"),
+    "- Unchallenged gates: " + (card.exposure.gatesUnchallenged.join(", ") || "none"),
     "- **" + (card.exposure.challengeLimited ? "Challenge-limited" : "Floor reached") + ".** " + (card.exposure.challengeLimited ? "#115 decides whether the round publishes as inconclusive or is versioned and rerun." : "Reaching the floor is an evidentiary floor, not a product effect."),
     "",
     "## Primary analysis, risk blocks",
@@ -1413,13 +1485,13 @@ export function markdown(card: Scorecard): string {
     "The role of this p-value in the decision is #115's frozen rubric, not this report's.",
     "",
     table(
-      ["family", "concordant absent", "concordant present", "favorable", "harmful", "unknown"],
-      card.primary.byFamily.map((one) => [one.family, one.concordantAbsent, one.concordantPresent, one.favorable, one.harmful, one.unknown]),
+      ["gate", "tasks", "concordant absent", "concordant present", "favorable", "harmful", "unknown"],
+      card.primary.byGate.map((one) => [one.gate, one.tasks.join(", "), one.concordantAbsent, one.concordantPresent, one.favorable, one.harmful, one.unknown]),
     ),
     "",
     "## Control signals, before validity labels",
     "",
-    table(["family", "arm", "signal sites", "blocked stops"], card.controlSignals.map((one) => [one.family, one.arm, one.signalSites, one.blockedStops])),
+    table(["task", "gate", "arm", "signal sites", "blocked stops"], card.controlSignals.map((one) => [one.family, one.gate, one.arm, one.signalSites, one.blockedStops])),
     "",
     "## Boundaries",
     "",

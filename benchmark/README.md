@@ -618,6 +618,48 @@ A family in a language neither Rust nor TypeScript needs no harness change
 either, because the behaviour command lives in `family.json`. It would need a
 detector that reads that language.
 
+### Several tasks per gate
+
+A family directory is one task, and its `gate` is the gate it scores under.
+Several task directories may name one gate. The planner still gives each task
+its own blocks, so two tasks of one gate are two blocks of that gate for each
+repetition, and no block holds two tasks. The scorecard reads each task's gate
+from the frozen fixtures and groups the planned blocks, challenge adequacy and
+the McNemar breakdown by gate. The floor's `families` key counts gates, because
+the v2 protocol froze that key when every gate had one task.
+
+`new_dead_symbol` and `unreached_member` read TypeScript as well as Rust. A
+TypeScript dead symbol is a top-level declaration that is not exported and that
+no other line of a TypeScript file names. A TypeScript family member is reached
+when another TypeScript file imports it through a relative module specifier
+that resolves to it.
+
+### The admission population
+
+A v3 candidate is a task directory whose `family.json` states `"candidate"`,
+its declared place in the admission order. A candidate is outside the natural
+population: no round plans it, and a publishable manifest that names one is
+refused. `run`, `selftest` and `list` still reach it.
+
+```sh
+node benchmark/src/cli.ts calibrate --population admission [--only a,b] [--seed N] [--into DIR]
+```
+
+This runs the Shadow arm only: each candidate's risk variant three times and
+its control once. Every record states kind `admission` and publishable false.
+`admission.json` then holds each candidate's id, its declared order, the run
+count, the exposure, the oracle passes, the clean control runs and a verdict.
+The rule in `src/admission.ts` is the recommendation of #309 until #309
+freezes its own. A candidate is admitted when at least two of three risk runs
+hold the shortcut, all three pass the oracle and the control run is clean. Each
+gate takes its first three admitted candidates in declared order.
+
+The would-have-been-delivered signals of admission runs stay sealed. The
+progress output, `admission.json` and `report` show none of them. `verify`
+holds an admission set to its frozen candidates and order. A publishable
+round's `verify` refuses an admission record or an `admission.json`, and its
+`scorecard` refuses a directory that holds an admission record.
+
 ## The external oracles
 
 Every variant has an oracle that lives outside klin and outside the agent's

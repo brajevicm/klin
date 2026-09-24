@@ -5,7 +5,8 @@ import { CURRENT_PROTOCOL, SEEDED_PROTOCOL } from "./protocol.ts";
 import { sha256 } from "./trees.ts";
 
 /**
- * The fixture catalogue: nine families, each with a risk and a control variant.
+ * The fixture catalogue: task directories, each with a risk and a control variant. A task that
+ * states a candidate order belongs to the admission population and to no round.
  *
  * A family directory holds:
  *
@@ -101,6 +102,11 @@ export interface FamilySpec {
   legacyDebt: string;
   shortcut: ShortcutSpec;
   variants: Record<NaturalVariantName, VariantSpec>;
+  /**
+   * A candidate task's declared place in the admission order. A task that states one belongs to
+   * the Shadow-only admission population and to no round's natural population.
+   */
+  candidate?: number;
 }
 
 export interface Variant {
@@ -173,7 +179,8 @@ function plantedIn(family: string, root: string, spec: FamilySpec): Partial<Reco
   return held;
 }
 
-export function families(): Record<string, Family> {
+/** Every task directory the catalogue holds, natural and candidate alike. */
+export function catalogue(): Record<string, Family> {
   const found: Record<string, Family> = {};
   if (!fs.existsSync(paths.FIXTURES)) {
     return found;
@@ -199,9 +206,25 @@ export function families(): Record<string, Family> {
   return found;
 }
 
+/**
+ * The natural population: every task that states no candidate order.
+ *
+ * Several tasks may name one gate. A round plans each task as its own blocks and scores them
+ * under the gate its frozen fixture names.
+ */
+export function families(): Record<string, Family> {
+  return Object.fromEntries(Object.entries(catalogue()).filter(([, one]) => one.spec.candidate === undefined));
+}
+
+/** The admission population, in declared order. */
+export function candidates(): Family[] {
+  return Object.values(catalogue())
+    .filter((one) => one.spec.candidate !== undefined)
+    .sort((a, b) => Number(a.spec.candidate) - Number(b.spec.candidate) || a.name.localeCompare(b.name));
+}
+
 export function family(name: string): Family {
-  const found = families();
-  const one = found[name];
+  const one = catalogue()[name];
   if (!one) {
     throw new Error(`no fixture family named ${name}`);
   }

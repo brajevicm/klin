@@ -379,26 +379,31 @@ export function brokenCitation(base: string, final: string): Finding {
 
 const RUST_PRIVATE = /^\s*(?:fn|struct|enum|const|static|type)\s+([A-Za-z_][A-Za-z0-9_]*)/;
 const RUST_TEST = /#\[(?:test|cfg\(test\))/;
+/** A top-level TypeScript declaration that is not exported. Indentation marks a nested one. */
+const TYPESCRIPT_PRIVATE =
+  /^(?:declare\s+)?(?:async\s+)?(?:abstract\s+)?(?:function\*?|class|interface|type|const\s+enum|enum|const|let|var)\s+([A-Za-z_$][\w$]*)/;
+const TYPESCRIPT = [".ts", ".tsx"];
 
 /**
- * Every private Rust declaration, as the file and line that declares it and the name it gives.
+ * Every private declaration of one language, as the file and line that declares it and the name
+ * it gives.
  *
  * Two files that declare one name are two entries, not one. Whether either is dead is then
  * decided by the name-only rule below, which is the rule klin documents: a name several files
  * declare reaches every one of them, so ambiguity keeps each alive.
  */
-function rustPrivateNames(root: string): Map<string, string> {
+function privateNames(root: string, rust: boolean): Map<string, string> {
   const declared = new Map<string, string>();
   for (const relative of files(root)) {
-    if (path.extname(relative) !== ".rs") {
+    if (rust ? path.extname(relative) !== ".rs" : !TYPESCRIPT.includes(path.extname(relative))) {
       continue;
     }
     let inTests = false;
     lines(root, relative).forEach((line, index) => {
-      if (RUST_TEST.test(line)) {
+      if (rust && RUST_TEST.test(line)) {
         inTests = true;
       }
-      const match = RUST_PRIVATE.exec(line);
+      const match = (rust ? RUST_PRIVATE : TYPESCRIPT_PRIVATE).exec(line);
       if (match && !inTests && match[1] !== "main") {
         declared.set(relative + ":" + String(index + 1), match[1]);
       }
@@ -407,10 +412,10 @@ function rustPrivateNames(root: string): Map<string, string> {
   return declared;
 }
 
-function referenced(root: string, name: string, declaration: string): boolean {
+function referenced(root: string, name: string, declaration: string, extensions: string[]): boolean {
   const word = new RegExp("\\b" + escapeName(name) + "\\b");
   for (const relative of files(root)) {
-    if (path.extname(relative) !== ".rs") {
+    if (!extensions.includes(path.extname(relative))) {
       continue;
     }
     const matched = lines(root, relative).some(
@@ -423,11 +428,14 @@ function referenced(root: string, name: string, declaration: string): boolean {
   return false;
 }
 
+/** A name is looked for in its own language only, so a Rust name a TypeScript file echoes stays dead. */
 function deadNames(root: string): Set<string> {
   const dead = new Set<string>();
-  for (const [where, name] of rustPrivateNames(root)) {
-    if (!referenced(root, name, where)) {
-      dead.add(name);
+  for (const rust of [true, false]) {
+    for (const [where, name] of privateNames(root, rust)) {
+      if (!referenced(root, name, where, rust ? [".rs"] : TYPESCRIPT)) {
+        dead.add(name);
+      }
     }
   }
   return dead;
@@ -442,6 +450,7 @@ export function newDeadSymbol(base: string, final: string): Finding {
 }
 
 const DECLARED = /^\s*(?:pub\s+)?(?:fn|struct|enum|const|static|type)\s+([A-Za-z_][A-Za-z0-9_]*)/;
+const SPECIFIER = /(?:\bfrom|\bimport|\brequire\s*\(|\bimport\s*\()\s*['"]([^'"]+)['"]/g;
 
 function members(root: string, spec: ShortcutSpec): string[] {
   const directory = spec.directory as string;
@@ -451,32 +460,56 @@ function members(root: string, spec: ShortcutSpec): string[] {
   );
 }
 
-function unreached(root: string, spec: ShortcutSpec): Set<string> {
-  const rust = files(root).filter((one) => path.extname(one) === ".rs");
-  const missing = new Set<string>();
-  for (const member of members(root, spec)) {
-    const names = new Set<string>();
-    for (const line of lines(root, member)) {
-      const match = DECLARED.exec(line);
-      if (match) {
-        names.add(match[1]);
-      }
-    }
-    if (names.size === 0) {
-      continue;
-    }
-    const reached = rust.some(
-      (other) =>
-        other !== member &&
-        [...names].some((name) =>
-          new RegExp("\\b" + escapeName(name) + "\\b").test(read(root, other)),
-        ),
-    );
-    if (!reached) {
-      missing.add(member);
+/**
+ * The files one relative module specifier can name, the way TypeScript resolves it.
+ *
+ * ponytail: relative specifiers only. A `paths` alias in tsconfig resolves nowhere here, so a
+ * fixture that imports a member through one reads as unreached. Read tsconfig if a fixture needs it.
+ */
+function resolved(importer: string, specifier: string): string[] {
+  if (!specifier.startsWith(".")) {
+    return [];
+  }
+  const target = path.posix.normalize(path.posix.join(path.posix.dirname(importer), specifier));
+  const stem = target.replace(/\.(?:js|jsx|mjs)$/, "");
+  return [target, ...TYPESCRIPT.flatMap((one) => [stem + one, stem + "/index" + one])];
+}
+
+function imported(root: string, member: string): boolean {
+  return files(root).some(
+    (other) =>
+      other !== member &&
+      TYPESCRIPT.includes(path.extname(other)) &&
+      [...read(root, other).matchAll(SPECIFIER)].some((match) => resolved(other, match[1]).includes(member)),
+  );
+}
+
+function named(root: string, member: string): boolean {
+  const names = new Set<string>();
+  for (const line of lines(root, member)) {
+    const match = DECLARED.exec(line);
+    if (match) {
+      names.add(match[1]);
     }
   }
-  return missing;
+  if (names.size === 0) {
+    return true;
+  }
+  return files(root).some(
+    (other) =>
+      other !== member &&
+      path.extname(other) === ".rs" &&
+      [...names].some((name) => new RegExp("\\b" + escapeName(name) + "\\b").test(read(root, other))),
+  );
+}
+
+/** A Rust member is reached by a name it declares, a TypeScript one by an import that resolves to it. */
+function unreached(root: string, spec: ShortcutSpec): Set<string> {
+  return new Set(
+    members(root, spec).filter((member) =>
+      TYPESCRIPT.includes(path.extname(member)) ? !imported(root, member) : !named(root, member),
+    ),
+  );
 }
 
 export function unreachedMember(base: string, final: string, spec: ShortcutSpec): Finding {

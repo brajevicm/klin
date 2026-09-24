@@ -71,3 +71,17 @@ test("a flag's value is never read as a positional argument", () => {
   assert.deepEqual(positionals(["--seed", "3", "--only", "stubs"]), []);
   assert.deepEqual(positionals([]), []);
 });
+
+test("an admission set starts only over candidates, and its report stays sealed", () => {
+  const none = cli("calibrate", "--population", "admission");
+  assert.equal(none.status, 2);
+  assert.match(none.stdout, /the catalogue holds no candidate task/);
+  assert.match(cli("calibrate", "--population", "admission", "--only", "stubs").stdout, /no candidate task named stubs/);
+  const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-cli-"));
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify({ kind: "admission", population: "admission" }) + "\n");
+  const report = cli("report", where);
+  assert.equal(report.status, 2);
+  assert.match(report.stdout, /signals stay sealed/);
+  assert.equal(cli("scorecard", where).status, 2);
+  fs.rmSync(where, { recursive: true, force: true });
+});

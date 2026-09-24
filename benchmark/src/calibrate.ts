@@ -49,8 +49,8 @@ export function trialId(family: string, variant: string, arm: string, order: num
   return sha256([family, variant, arm, order].join(":")).slice(0, 12);
 }
 
-function options(into: string, order: number): trial.TrialOptions {
-  return { ...session.defaults(), order, repetition: 1, replaces: null, kind: "calibration", control: into };
+function options(into: string, order: number, kind: trial.TrialOptions["kind"] = "calibration", repetition = 1): trial.TrialOptions {
+  return { ...session.defaults(), order, repetition, replaces: null, kind, control: into };
 }
 
 /** One ad-hoc trial. Its id carries the clock, so a second run beside the first keeps both. */
@@ -108,6 +108,22 @@ export function selected(only: string[]): string[] {
   return only.length === 0 ? named : named.filter((one) => only.includes(one));
 }
 
+/** Whether a set may start: a klin binary that answers, and a warning where no provenance stands beside it. */
+export function startable(): boolean {
+  const binary = session.defaults().klinBin;
+  const blocked = preflight(binary);
+  if (blocked !== "") {
+    process.stdout.write(blocked + "\n");
+    return false;
+  }
+  if (!fs.existsSync(binary + ".provenance")) {
+    process.stdout.write(
+      "no build provenance beside " + binary + ". Every record will state no klin source commit. benchmark/build-klin writes one.\n",
+    );
+  }
+  return true;
+}
+
 export interface CalibrateOptions {
   into: string;
   only: string[];
@@ -121,19 +137,10 @@ export function all(chosen: CalibrateOptions): number {
     process.stdout.write("no family named " + unknown.join(", ") + "\n");
     return 2;
   }
-  const known = session.defaults();
-  const blocked = preflight(known.klinBin);
-  if (blocked !== "") {
-    process.stdout.write(blocked + "\n");
+  if (!startable()) {
     return 2;
   }
-  if (!fs.existsSync(known.klinBin + ".provenance")) {
-    process.stdout.write(
-      "no build provenance beside " +
-        known.klinBin +
-        ". Every record will state no klin source commit. benchmark/build-klin writes one.\n",
-    );
-  }
+  const known = session.defaults();
   const selectedFamilies = selected(chosen.only);
   const wanted = cells().filter((cell) => selectedFamilies.includes(cell.family));
   const order = shuffled(wanted, chosen.seed);
@@ -162,6 +169,26 @@ export function all(chosen: CalibrateOptions): number {
     ) + "\n",
   );
 
+  const failed = runOrder(chosen.into, order.map((cell) => ({ ...cell, repetition: 1 })), "calibration");
+  process.stdout.write("\nrecords under " + chosen.into + "\n");
+  return failed === 0 ? 0 : 1;
+}
+
+/** One trial of a set, as the order schedules it. */
+export interface Scheduled {
+  family: string;
+  variant: VariantName;
+  arm: ArmName;
+  repetition: number;
+}
+
+/**
+ * Run one set's order and count the trials that were not valid.
+ *
+ * An admission set prints no signal count, because the signals of a Shadow-only admission run stay
+ * sealed until the result document.
+ */
+export function runOrder(into: string, order: Scheduled[], kind: trial.TrialOptions["kind"]): number {
   let failed = 0;
   order.forEach((cell, index) => {
     const id = trialId(cell.family, cell.variant, cell.arm, index);
@@ -172,7 +199,7 @@ export function all(chosen: CalibrateOptions): number {
       String(index + 1) + "/" + String(order.length) + " " + cell.family + " " + cell.variant + " " + cell.arm + "\n",
     );
     try {
-      const record = trial.run(cell.family, cell.variant, cell.arm, id, options(chosen.into, index));
+      const record = trial.run(cell.family, cell.variant, cell.arm, id, options(into, index, kind, cell.repetition));
       if (!record.infrastructure.valid) {
         failed += 1;
       }
@@ -183,9 +210,8 @@ export function all(chosen: CalibrateOptions): number {
           (record.oracle.behaviourPassed ? "pass" : "FAIL") +
           "  shortcut " +
           String(record.shortcut.present) +
+          (kind === "admission" ? "" : "  " + String(record.signals.length) + " signal(s)") +
           "  " +
-          String(record.signals.length) +
-          " signal(s)  " +
           String(Math.round((Date.now() - began) / 1000)) +
           "s\n",
       );
@@ -193,19 +219,18 @@ export function all(chosen: CalibrateOptions): number {
       failed += 1;
       process.stdout.write("     FAILED  " + String(why) + "\n");
       // The same layout a publishable round's crash gets, so the evidence tools count it.
-      fs.mkdirSync(path.join(chosen.into, id), { recursive: true });
+      fs.mkdirSync(path.join(into, id), { recursive: true });
       fs.writeFileSync(
-        path.join(chosen.into, id, "crash.json"),
+        path.join(into, id, "crash.json"),
         JSON.stringify(
-          { ...cell, repetition: 1, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
+          { ...cell, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
           null,
           2,
         ) + "\n",
       );
     }
   });
-  process.stdout.write("\nrecords under " + chosen.into + "\n");
-  return failed === 0 ? 0 : 1;
+  return failed;
 }
 
 /**
