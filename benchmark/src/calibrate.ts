@@ -231,17 +231,19 @@ export function crashes(directory: string): Crash[] {
  * Run one set's order and count the trials that were not valid.
  *
  * An admission set prints no signal count, because the signals of a Shadow-only admission run stay
- * sealed until the result document.
+ * sealed until the result document. A row that states its order and trial id runs under them, so a
+ * resumed set runs its remaining rows as they were scheduled.
  */
-export function runOrder(into: string, order: Scheduled[], kind: trial.TrialOptions["kind"]): number {
+export function runOrder(into: string, order: (Scheduled & { order?: number; trialId?: string })[], kind: trial.TrialOptions["kind"]): number {
   let failed = 0;
-  order.forEach((cell, index) => {
-    const id = trialId(cell.family, cell.variant, cell.arm, index);
+  order.forEach((cell, position) => {
+    const index = cell.order ?? position;
+    const id = cell.trialId ?? trialId(cell.family, cell.variant, cell.arm, index);
     const began = Date.now();
     // The name goes out before the trial and the outcome after it, so a watched terminal shows
     // which trial is running now and how the ones before it came out.
     process.stdout.write(
-      String(index + 1) + "/" + String(order.length) + " " + cell.family + " " + cell.variant + " " + cell.arm + "\n",
+      String(position + 1) + "/" + String(order.length) + " " + cell.family + " " + cell.variant + " " + cell.arm + "\n",
     );
     try {
       const record = trial.run(cell.family, cell.variant, cell.arm, id, options(into, index, kind, cell.repetition));
@@ -268,7 +270,7 @@ export function runOrder(into: string, order: Scheduled[], kind: trial.TrialOpti
       fs.writeFileSync(
         path.join(into, id, "crash.json"),
         JSON.stringify(
-          { ...cell, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
+          { family: cell.family, variant: cell.variant, arm: cell.arm, repetition: cell.repetition, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
           null,
           2,
         ) + "\n",

@@ -416,6 +416,8 @@ export interface Options {
   seed: number;
   /** The first set whose incomplete candidates this set retries, or empty for a first set. */
   retry: string;
+  /** Where every admission first set lives, directly. */
+  root?: string;
 }
 
 /** Every way a retry fails the first set it settles. */
@@ -487,23 +489,79 @@ function manifestSha256(directory: string): string {
   return sha256(fs.readFileSync(path.join(directory, "manifest.json")));
 }
 
+/** Where a set that is running holds the process id that runs it. */
+export const LOCK = "running.json";
+
+/** Where a resumed set keeps the partial plane of each row that an interrupted process left. */
+export const INTERRUPTED = "interrupted";
+
+/** The process that runs the set, while it is alive. */
+export function running(directory: string): number | null {
+  const file = path.join(directory, LOCK);
+  if (!fs.existsSync(file)) {
+    return null;
+  }
+  const pid = Number((JSON.parse(fs.readFileSync(file, "utf8")) as { pid?: unknown }).pid);
+  try {
+    process.kill(pid, 0);
+    return pid;
+  } catch {
+    return null;
+  }
+}
+
+/** Every scheduled row that holds neither a record nor a crash. A set with none left has finished. */
+export function unfinished(directory: string): Row[] {
+  const done = new Set([...records(directory), ...crashes(directory)].map((one) => one.trialId));
+  return readManifest(directory).order.filter((row) => !done.has(row.trialId));
+}
+
+/** Why a set is not yet in its terminal state, or nothing once it is. */
+function unterminated(directory: string): string[] {
+  const pid = running(directory);
+  if (pid !== null) {
+    return [directory + " is still running, as process " + String(pid)];
+  }
+  const left = unfinished(directory).length;
+  if (left > 0) {
+    return [
+      directory + " has " + String(left) + " scheduled row(s) with neither a record nor a crash, so it has not finished. Resume it: " +
+        "node benchmark/src/cli.ts calibrate --population admission --resume " + directory,
+    ];
+  }
+  if (verify(directory, false).length === 0 && !fs.existsSync(path.join(directory, "admission.json"))) {
+    return [directory + " verifies and states no verdict yet. Resume it to write admission.json: node benchmark/src/cli.ts calibrate --population admission --resume " + directory];
+  }
+  return [];
+}
+
+/** The cohort a retry of `first` would record if it started under `apparatus`. */
+export function retryCohort(first: string, apparatus: Apparatus): string {
+  const manifest = readManifest(first);
+  return cohortOf({ rubric: manifest.rubric, rule: manifest.rule, declared: manifest.declared, apparatus });
+}
+
 /**
  * The final verdict of the admission whose first set is `first`, as rubric section 4 merges it.
  *
- * The first set must verify on its own, state its verdict and be the earliest first set of its
- * cohort beside it. A retry that verifies gives the final verdict. A retry that does not verify,
- * or one that `cannotStart` says no set could start now, admits none of the incomplete candidates.
+ * Every admission first set lives directly under `root`, and the first set must be the only one of
+ * its cohort there: the plan does not choose between two by the text of their start times. The
+ * first set must have finished, verify on its own and state its verdict. A retry must have finished
+ * too. A retry that verifies gives the final verdict. A retry that does not verify, or one that
+ * `cannotStart` says no process could start, admits none of the incomplete candidates.
  */
-export function final(first: string, cannotStart = false): Final {
+export function final(first: string, options: { cannotStart?: boolean; root?: string } = {}): Final {
+  const root = options.root ?? paths.RUNS;
   const manifest = readManifest(first);
-  const problems = verify(first, false);
+  const problems = [...unterminated(first), ...verify(first, false)];
   if (manifest.first !== null) {
     problems.push(first + " is a retry, and the paired round freezes from its first set");
   }
-  for (const other of rivals(path.dirname(first), manifest.cohort).filter((one) => path.resolve(one) !== path.resolve(first))) {
-    if (readManifest(other).startedAt <= manifest.startedAt) {
-      problems.push(other + " is a first set of the same cohort that started no later, so " + first + " is not the first set");
-    }
+  if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
+    problems.push(first + " is not directly under " + root + ", where every admission first set lives");
+  }
+  for (const other of rivals(root, manifest.cohort).filter((one) => path.resolve(one) !== path.resolve(first))) {
+    problems.push(other + " is a second first set of the same cohort, so neither is the first set until a person removes one with a recorded reason");
   }
   const kept = path.join(first, "admission.json");
   if (!fs.existsSync(kept)) {
@@ -531,28 +589,17 @@ export function final(first: string, cannotStart = false): Final {
     source,
   });
   if (!fs.existsSync(path.join(again, "manifest.json"))) {
-    return cannotStart ? merged("first set, the retry cannot start") : held;
+    return options.cannotStart ? merged("first set, the retry cannot start") : held;
+  }
+  const waiting = unterminated(again);
+  if (waiting.length > 0) {
+    return { ...held, problems: [...problems, ...waiting] };
   }
   const retried = path.join(again, "admission.json");
   if (verify(again).length === 0 && fs.existsSync(retried)) {
     return { ...held, summary: summarize(again), source: "retry", retry: manifestSha256(again), verdict: sha256(fs.readFileSync(retried)) };
   }
   return merged("first set, the retry did not verify");
-}
-
-/**
- * The cohort a set started now would record, or null when the checkout holds no rubric.
- *
- * A retry whose cohort is not its first set's cannot start, so a paired plan reads this to apply
- * rule 6 to a retry that never ran.
- */
-export function cohortNow(): string | null {
-  const rubric = rubricSha256();
-  if (rubric === null) {
-    return null;
-  }
-  const { klin: _klin, fixtures: _fixtures, ...apparatus } = frozen(session.defaults());
-  return cohortOf({ rubric, rule: RULE, declared: frozenCandidates(candidates()), apparatus });
 }
 
 /** The file that records why a gate has no candidate, beside the fixtures. */
@@ -602,7 +649,13 @@ export function all(chosen: Options): number {
     return 2;
   }
   let names = known.map((one) => one.name);
+  const root = chosen.root ?? paths.RUNS;
   const into = chosen.retry === "" ? chosen.into : path.join(chosen.retry, RETRY);
+  const first = chosen.retry === "" ? into : chosen.retry;
+  if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
+    process.stdout.write(first + " is not directly under " + root + ". Every admission first set lives there, so a rival of its cohort cannot hide elsewhere.\n");
+    return 2;
+  }
   if (chosen.retry !== "") {
     const broken = verify(chosen.retry);
     if (broken.length > 0) {
@@ -661,14 +714,30 @@ export function all(chosen: Options): number {
     first: chosen.retry === "" ? null : sha256(fs.readFileSync(path.join(chosen.retry, "manifest.json"))),
   };
   manifest.cohort = cohortOf(manifest);
-  const refused = chosen.retry === "" ? rivals(path.dirname(into), manifest.cohort).map((one) => one + " is a first set of the same cohort") : retryProblems(chosen.retry, manifest);
+  const refused = chosen.retry === "" ? rivals(root, manifest.cohort).map((one) => one + " is a first set of the same cohort") : retryProblems(chosen.retry, manifest);
   if (refused.length > 0) {
     process.stdout.write("the set cannot start:\n" + refused.map((one) => "  " + one).join("\n") + "\n");
     return 2;
   }
   fs.mkdirSync(into, { recursive: true });
   fs.writeFileSync(path.join(into, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
-  const failed = runOrder(into, manifest.order, POPULATION);
+  return conclude(into, manifest.order);
+}
+
+/**
+ * Run `rows` of the set in `into` under its lock, then write its verdicts only once it verifies.
+ *
+ * The lock names this process, so a plan or a resume can tell a set that is running from one an
+ * interrupted process left.
+ */
+function conclude(into: string, rows: Row[]): number {
+  fs.writeFileSync(path.join(into, LOCK), JSON.stringify({ pid: process.pid, at: new Date().toISOString() }) + "\n");
+  let failed = 0;
+  try {
+    failed = runOrder(into, rows, POPULATION);
+  } finally {
+    fs.rmSync(path.join(into, LOCK), { force: true });
+  }
   const problems = verify(into);
   if (problems.length > 0) {
     process.stdout.write("\nthe set does not verify, so it states no verdict:\n" + problems.map((one) => "  " + one).join("\n") + "\n");
@@ -689,6 +758,47 @@ export function all(chosen: Options): number {
   }
   process.stdout.write("\nverdicts in " + path.join(into, "admission.json") + "\n");
   return failed === 0 ? 0 : 1;
+}
+
+/**
+ * Finish a set that an interrupted process left, under the apparatus it started with.
+ *
+ * Only the rows that hold neither a record nor a crash run, under their scheduled trial ids. Each
+ * such row's partial plane moves into `interrupted/` first and stays there as evidence. A set whose
+ * rows have all finished only has its verdict written.
+ */
+export function resume(directory: string): number {
+  if (!fs.existsSync(path.join(directory, "manifest.json"))) {
+    process.stdout.write(directory + " holds no admission set\n");
+    return 2;
+  }
+  const pid = running(directory);
+  if (pid !== null) {
+    process.stdout.write(directory + " is still running, as process " + String(pid) + "\n");
+    return 2;
+  }
+  if (fs.existsSync(path.join(directory, "admission.json"))) {
+    process.stdout.write(directory + " already states its verdict, so it has nothing to resume\n");
+    return 2;
+  }
+  const manifest = readManifest(directory);
+  if (!startable()) {
+    return 2;
+  }
+  const { klin: _klin, fixtures: _fixtures, ...apparatus } = frozen(session.defaults());
+  if (JSON.stringify(apparatus) !== JSON.stringify(manifest.apparatus)) {
+    process.stdout.write("the apparatus moved since " + directory + " started, so its remaining rows cannot run under the apparatus it froze\n");
+    return 2;
+  }
+  const rows = unfinished(directory);
+  for (const row of rows) {
+    const partial = path.join(directory, row.trialId);
+    if (fs.existsSync(partial)) {
+      fs.mkdirSync(path.join(directory, INTERRUPTED), { recursive: true });
+      fs.renameSync(partial, path.join(directory, INTERRUPTED, row.trialId + "-" + stamp()));
+    }
+  }
+  return conclude(directory, rows);
 }
 
 export function directory(): string {

@@ -38,7 +38,7 @@ export function candidate(name: string, gate: string, order: number): Candidate 
   return { candidate: name, gate, order, fixtureSha256: "f-" + name, variants: { risk: identity("risk"), control: identity("control") } };
 }
 
-export function recordFor(row: Manifest["order"][number], trialId: string, outcome: Outcome, frozen?: Candidate): RunRecord {
+export function recordFor(row: Manifest["order"][number], trialId: string, outcome: Outcome, frozen?: Candidate, apparatus: Apparatus = APPARATUS): RunRecord {
   const valid = outcome.valid ?? true;
   const planned = frozen?.variants[row.variant as "risk" | "control"] ?? {
     taskId: "t-" + row.family + row.variant,
@@ -62,10 +62,17 @@ export function recordFor(row: Manifest["order"][number], trialId: string, outco
     signals: [],
     hooks: [],
     fixture: { startCommit: "c", promptSha256: planned.promptSha256, treeSha256: planned.treeSha256 },
-    harness: { commit: "h", dirty: false, treeSha256: "ht" },
+    harness: { commit: apparatus.harness.commit, dirty: apparatus.harness.dirty, treeSha256: apparatus.harness.treeSha256 },
     klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
-    host: { name: "claude-code", version: "2.1.276 (Claude Code)", flags: ["--print"], flagsSha256: "x", isolatedConfiguration: false, memory: null },
-    model: { requested: "sonnet", reported: "sonnet" },
+    host: {
+      name: "claude-code",
+      version: apparatus.host.version,
+      flags: apparatus.flags,
+      flagsSha256: "x",
+      isolatedConfiguration: apparatus.isolatedConfiguration,
+      memory: apparatus.memory,
+    },
+    model: { requested: apparatus.model, reported: apparatus.model },
     agent: { wiringSha256: "w", wrapperSha256: "wr" },
     infrastructure: valid
       ? { valid: true, reason: null, terms: [{ name: "state-fresh", passed: true, detail: "" }] }
@@ -97,7 +104,7 @@ export function write(where: string, directory: string, record: RunRecord): void
 export function setOnDisk(
   declared: Candidate[],
   outcomes: Record<string, Outcome[]>,
-  at: { retries?: string; under?: string } = {},
+  at: { retries?: string; under?: string; apparatus?: Apparatus } = {},
 ): { where: string; manifest: Manifest } {
   const where = at.retries
     ? path.join(at.retries, "retry")
@@ -113,7 +120,7 @@ export function setOnDisk(
     startedAt: "2026-09-24T00:00:00Z",
     rule: RULE,
     rubric: rubricSha256() as string,
-    apparatus: APPARATUS,
+    apparatus: at.apparatus ?? APPARATUS,
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
     order: orderOf(names, 1),
@@ -124,7 +131,7 @@ export function setOnDisk(
   fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
   for (const row of manifest.order) {
     const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;
-    write(where, row.trialId, recordFor(row, row.trialId, outcomes[row.family][at], declared.find((one) => one.candidate === row.family)));
+    write(where, row.trialId, recordFor(row, row.trialId, outcomes[row.family][at], declared.find((one) => one.candidate === row.family), manifest.apparatus));
   }
   return { where, manifest };
 }
@@ -142,4 +149,9 @@ export function withVerdict(where: string): string {
 
 export function digestOf(file: string): string {
   return sha256(fs.readFileSync(file));
+}
+
+/** The root a set made by `setOnDisk` lives directly under, where `final` looks for its rivals. */
+export function rootOf(where: string): { root: string } {
+  return { root: path.dirname(where) };
 }

@@ -22,7 +22,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <variant> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family]
-  node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...] [--population admission [--retry FIRST-SET]]
+  node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...] [--population admission [--retry FIRST-SET | --resume SET]]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded [--families a,b] [--repetitions N]]
   node benchmark/src/cli.ts plan --population v3 --admission FIRST-SET [--into DIR] [--seed N]
@@ -338,15 +338,18 @@ export function main(argv: string[]): number {
       return 2;
     }
     if (population === admission.POPULATION) {
-      if (args.includes("--only") || (args.includes("--retry") && args.includes("--into"))) {
+      if (args.includes("--only") || args.includes("--into")) {
         process.stdout.write(
-          "an admission set runs the whole declared population, and --retry FIRST-SET writes the one retry of its incomplete candidates into FIRST-SET/" +
+          "an admission set runs the whole declared population into " + paths.RUNS + ", where every first set lives, and --retry FIRST-SET writes the one retry of its incomplete candidates into FIRST-SET/" +
             admission.RETRY + "\n",
         );
         return 2;
       }
+      if (args.includes("--resume")) {
+        return admission.resume(flag(args, "--resume", ""));
+      }
       return admission.all({
-        into: flag(args, "--into", admission.directory()),
+        into: admission.directory(),
         seed: Number(flag(args, "--seed", "1")),
         retry: flag(args, "--retry", ""),
       });

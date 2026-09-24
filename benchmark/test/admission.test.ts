@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { final, populationProblems, rivals, rubricSha256, schedule, summarize, verify, type Manifest } from "../src/admission.ts";
-import { admitted, candidate, clean, digestOf, invalid, recordFor, risk, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
+import { LOCK, final, populationProblems, rivals, rubricSha256, schedule, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
+import { admitted, candidate, clean, digestOf, invalid, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
 
 /**
  * The Shadow-only admission population: what it freezes, what it schedules and the verdict it
@@ -213,7 +213,7 @@ test("a first set starts only when every gate holds three or four candidates or 
 test("the final verdict is the first set's when no retry ran, and names the files it came from", () => {
   const first = setOnDisk([candidate("a", "complexity", 1), candidate("b", "stubs", 2)], { a: admitted, b: [risk(false), risk(false), risk(false), clean] });
   withVerdict(first.where);
-  const held = final(first.where);
+  const held = final(first.where, rootOf(first.where));
   assert.deepEqual(held.problems, []);
   assert.equal(held.source, "first set");
   assert.deepEqual(held.summary, summarize(first.where));
@@ -222,37 +222,39 @@ test("the final verdict is the first set's when no retry ran, and names the file
   assert.equal(held.verdict, digestOf(path.join(first.where, "admission.json")));
   assert.equal(held.retry, null);
   assert.equal(held.cohort, first.manifest.cohort);
+  assert.ok(final(first.where, { root: os.tmpdir() }).problems.some((one) => one.includes("not directly under")), "a first set lives in one namespace");
   fs.rmSync(first.where, { recursive: true, force: true });
 });
 
 test("a first set that states no verdict, or a retry named as the first set, freezes nothing", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
   const first = setOnDisk(declared, { a: admitted, b: invalid });
-  assert.ok(final(first.where).problems.some((one) => one.includes("no admission.json")));
+  assert.ok(final(first.where, rootOf(first.where)).problems.some((one) => one.includes("states no verdict yet")));
   withVerdict(first.where);
   const retry = setOnDisk(declared, { b: admitted }, { retries: first.where });
   withVerdict(retry.where);
-  assert.ok(final(retry.where).problems.some((one) => one.includes("is a retry")));
+  assert.ok(final(retry.where, rootOf(first.where)).problems.some((one) => one.includes("is a retry")));
   fs.mkdirSync(path.join(retry.where, "retry"));
-  assert.ok(final(first.where).problems.some((one) => one.includes("takes one retry")));
+  assert.ok(final(first.where, rootOf(first.where)).problems.some((one) => one.includes("takes one retry")));
   fs.rmSync(first.where, { recursive: true, force: true });
 });
 
-test("a verified retry gives the final verdict, and a retry that does not verify admits no incomplete candidate", () => {
+test("a verified retry gives the final verdict, and a finished retry that does not verify admits no incomplete candidate", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
   const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
   withVerdict(first.where);
-  assert.deepEqual(final(first.where).summary.unsettled, ["complexity", "stubs"], "without its retry the first set leaves gates unsettled");
+  const at = rootOf(first.where);
+  assert.deepEqual(final(first.where, at).summary.unsettled, ["complexity", "stubs"], "without its retry the first set leaves gates unsettled");
   const retry = setOnDisk(declared, { b: admitted, c: admitted }, { retries: first.where });
   withVerdict(retry.where);
-  const settled = final(first.where);
+  const settled = final(first.where, at);
   assert.deepEqual(settled.problems, []);
   assert.equal(settled.source, "retry");
   assert.deepEqual(settled.summary.slots, { complexity: ["a", "b"], stubs: ["c"] });
   assert.equal(settled.retry, digestOf(path.join(retry.where, "manifest.json")));
   assert.equal(settled.verdict, digestOf(path.join(retry.where, "admission.json")));
   fs.writeFileSync(path.join(retry.where, "admission.json"), "{}\n");
-  const broken = final(first.where);
+  const broken = final(first.where, at);
   assert.deepEqual(broken.problems, [], "rule 6 is a verdict, not a refusal");
   assert.equal(broken.source, "first set, the retry did not verify");
   assert.deepEqual(
@@ -266,32 +268,50 @@ test("a verified retry gives the final verdict, and a retry that does not verify
   fs.rmSync(first.where, { recursive: true, force: true });
 });
 
-test("of two first sets of one cohort, only the one that started earliest gives a verdict", () => {
+test("a retry that is running or was interrupted gives no verdict until it finishes", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid }).where);
+  const at = rootOf(first);
+  const retry = setOnDisk(declared, { b: admitted }, { retries: first });
+  const pending = retry.manifest.order[2];
+  fs.rmSync(path.join(retry.where, pending.trialId, "record.json"));
+  assert.deepEqual(unfinished(retry.where).map((one) => one.trialId), [pending.trialId]);
+  const interrupted = final(first, at);
+  assert.equal(interrupted.source, "first set");
+  assert.ok(interrupted.problems.some((one) => one.includes("has not finished") && one.includes("--resume")), interrupted.problems.join(" / "));
+  write(retry.where, pending.trialId, recordFor(pending, pending.trialId, risk(true), declared[1]));
+  fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: process.pid }) + "\n");
+  assert.ok(final(first, at).problems.some((one) => one.includes("is still running")), "a live lock is a set that has not finished");
+  fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: 2 ** 22 + 1 }) + "\n");
+  assert.ok(final(first, at).problems.some((one) => one.includes("states no verdict yet")), "a stale lock is not a running set");
+  withVerdict(retry.where);
+  assert.equal(final(first, at).source, "retry");
+  fs.rmSync(first, { recursive: true, force: true });
+});
+
+test("two first sets of one cohort leave neither the first set, whatever their start times say", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
   const declared = [candidate("a", "complexity", 1)];
-  const one = setOnDisk(declared, { a: admitted }, { under: root });
-  withVerdict(one.where);
+  const one = withVerdict(setOnDisk(declared, { a: admitted }, { under: root }).where);
+  assert.deepEqual(final(one, { root }).problems, []);
   const two = setOnDisk(declared, { a: admitted }, { under: root });
-  fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2026-09-25T00:00:00Z" }) + "\n");
+  fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2020-01-01T00:00:00Z" }) + "\n");
   withVerdict(two.where);
-  assert.deepEqual(final(one.where).problems, []);
-  assert.ok(final(two.where).problems.some((problem) => problem.includes(one.where) && problem.includes("started no later")));
-  fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify(two.manifest) + "\n");
-  assert.ok(final(one.where).problems.some((problem) => problem.includes(two.where)), "a tie leaves neither set the first");
-  assert.ok(final(two.where).problems.some((problem) => problem.includes(one.where)));
+  assert.ok(final(one, { root }).problems.some((problem) => problem.includes(two.where) && problem.includes("second first set")));
+  assert.ok(final(two.where, { root }).problems.some((problem) => problem.includes(one)), "an earlier startedAt does not make a set the first");
   fs.rmSync(root, { recursive: true, force: true });
 });
 
 test("a retry that cannot start admits none of the first set's incomplete candidates", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
   const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid, c: admitted }).where);
-  const blocked = final(first, true);
+  const blocked = final(first, { cannotStart: true, ...rootOf(first) });
   assert.deepEqual(blocked.problems, []);
   assert.equal(blocked.source, "first set, the retry cannot start");
   assert.deepEqual(blocked.summary.slots, { complexity: ["a"], stubs: ["c"] });
   assert.deepEqual(blocked.summary.unsettled, []);
   setOnDisk(declared, { b: admitted }, { retries: first });
   withVerdict(path.join(first, "retry"));
-  assert.equal(final(first, true).source, "retry", "a retry that ran and verified is the verdict, whatever the flag says");
+  assert.equal(final(first, { cannotStart: true, ...rootOf(first) }).source, "retry", "a retry that ran and verified is the verdict, whatever the flag says");
   fs.rmSync(first, { recursive: true, force: true });
 });
