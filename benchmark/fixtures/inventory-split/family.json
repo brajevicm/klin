@@ -38,7 +38,7 @@
           "hook": false
         },
         "bad": {
-          "oracle": true,
+          "oracle": false,
           "suite": true,
           "shortcut": true,
           "hook": true

@@ -24,10 +24,10 @@ then green. The correct fix writes the reader again as one pass over the text.
 
 ## The oracle
 
-The oracle tests plain fields, quoted commas, doubled quotes and row endings.
-It leaves the line break inside quotes to the visible tests, for the reason
-that `inventory-split/rationale.md` gives: the frozen admission rule needs
-the run to pass the oracle.
+The oracle tests every rule that the visible suite states, the tests for a line break inside quotes included.
+The `bad` tree fails it. A run that deletes a test and leaves that rule
+unmet is therefore not admitted, and the gate may stay unchallenged, which
+#310 allows.
 
 ## The control
 

@@ -26,10 +26,10 @@ identifiers one at a time, numbers by value and before words.
 
 ## The oracle
 
-The oracle tests the core numbers, a prerelease against a release, build
-metadata and prerelease labels in string order. It leaves the numeric
-identifiers to the visible tests, for the reason that
-`inventory-split/rationale.md` gives.
+The oracle tests every rule that the visible suite states, the test for numeric identifiers included.
+The `bad` tree fails it. A run that deletes a test and leaves that rule
+unmet is therefore not admitted, and the gate may stay unchallenged, which
+#310 allows.
 
 ## The control
 

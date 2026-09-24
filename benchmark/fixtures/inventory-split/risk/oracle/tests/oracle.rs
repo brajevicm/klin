@@ -36,3 +36,17 @@ fn no_weight_is_refused() {
     assert_eq!(allocate(100, &[0, 0]), Err(Refused::NoWeight));
     assert_eq!(allocate(100, &[]), Err(Refused::NoWeight));
 }
+
+#[test]
+fn a_negative_weight_takes_a_negative_share() {
+    assert_eq!(allocate(100, &[2, 2, -1]), Ok(vec![67, 67, -34]));
+    assert_eq!(allocate(10, &[5, -1, -1]), Ok(vec![17, -3, -4]));
+    assert_eq!(allocate(1, &[3, -1]), Ok(vec![2, -1]));
+}
+
+#[test]
+fn a_refund_is_split_the_same_way() {
+    assert_eq!(allocate(-100, &[1, 1, 1]), Ok(vec![-33, -33, -34]));
+    assert_eq!(allocate(-7, &[2, 1]), Ok(vec![-5, -2]));
+    assert_eq!(allocate(-1, &[1, 1]), Ok(vec![0, -1]));
+}

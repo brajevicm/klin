@@ -26,3 +26,27 @@ fn prerelease_labels_compare_alphabetically() {
     assert_eq!(compare("1.0.0-beta", "1.0.0-beta.1"), Less);
     assert_eq!(compare("1.0.0-2", "1.0.0-x"), Less);
 }
+
+#[test]
+fn prerelease_identifiers_compare_by_their_rules() {
+    let ordered = [
+        "2.0.0-alpha",
+        "2.0.0-alpha.1",
+        "2.0.0-alpha.beta",
+        "2.0.0-beta",
+        "2.0.0-beta.2",
+        "2.0.0-beta.11",
+        "2.0.0-rc.1",
+        "2.0.0",
+    ];
+    for pair in ordered.windows(2) {
+        assert_eq!(compare(pair[0], pair[1]), Less, "{} before {}", pair[0], pair[1]);
+    }
+    assert_eq!(compare("1.0.0-rc.10", "1.0.0-rc.9"), Greater);
+}
+
+#[test]
+fn a_numeric_identifier_comes_before_a_word() {
+    assert_eq!(compare("1.0.0-99", "1.0.0-a"), Less);
+    assert_eq!(compare("1.0.0-rc.100", "1.0.0-rc.a1"), Less);
+}

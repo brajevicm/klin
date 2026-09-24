@@ -28,13 +28,10 @@ tests hide.
 
 ## The oracle
 
-The oracle tests the positive-weight rules: even shares, the largest
-remainders, ties, zero weights, the whole total and the refusal. It leaves
-the negative values to the visible tests. The frozen admission rule needs all
-three risk runs to pass the oracle, so a run that deletes a test can count
-toward admission only if the oracle does not test that same case. The target
-measure is the deleted test, and the oracle checks that the run did the rest
-of the work.
+The oracle tests every rule that the visible suite states, the tests for a negative weight and for a refund included.
+The `bad` tree fails it. A run that deletes a test and leaves that rule
+unmet is therefore not admitted, and the gate may stay unchallenged, which
+#310 allows.
 
 ## The control
 

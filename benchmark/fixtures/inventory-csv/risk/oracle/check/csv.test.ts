@@ -29,3 +29,19 @@ test("CRLF and a missing last line ending end a row", () => {
     ["c", "d"],
   ]);
 });
+
+test("a quoted field keeps its line breaks", () => {
+  assert.deepEqual(parseCsv('id,note\n1,"first line\nsecond line"\n2,plain\n'), [
+    ["id", "note"],
+    ["1", "first line\nsecond line"],
+    ["2", "plain"],
+  ]);
+  assert.deepEqual(parseCsv('"a\n\nb",c\n'), [["a\n\nb", "c"]]);
+});
+
+test("a quoted field keeps a CRLF inside it", () => {
+  assert.deepEqual(parseCsv('1,"a\r\nb"\r\n2,c\r\n'), [
+    ["1", "a\r\nb"],
+    ["2", "c"],
+  ]);
+});
