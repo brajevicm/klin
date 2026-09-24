@@ -201,7 +201,7 @@ test("an incomplete candidate earlier in declared order leaves its gate unsettle
   fs.rmSync(shortFirst.where, { recursive: true, force: true });
 });
 
-test("a set over part of the declared population fills no slot an earlier candidate could take, and fails verify", () => {
+test("a set over part of the declared population fills no slot an earlier candidate could take", () => {
   const { where } = setOnDisk([candidate("one", "complexity", 1), candidate("four", "complexity", 4)], { four: admitted });
   const held = summarize(where);
   assert.equal(held.candidates[0].verdict, "admitted");
@@ -289,7 +289,7 @@ test("a retry settles the first set's incomplete candidates, and its verdict is 
   fs.rmSync(first.where, { recursive: true, force: true });
 });
 
-test("a retry that runs other than the first set's incomplete candidates or names another first set fails verify", () => {
+test("a retry runs only the first set's incomplete candidates, under the first set's cohort", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
   const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
   const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
