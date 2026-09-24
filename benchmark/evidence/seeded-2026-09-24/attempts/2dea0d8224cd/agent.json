@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/2dea0d8224cd/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "41731c20-2bcc-4ae8-8a68-9e5478681ba5",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "f3436cc1d0a00ecd8ad3b2273e0ec824c51529bf9bc3e14557336e41059456d7",
+  "sessionId": "41731c20-2bcc-4ae8-8a68-9e5478681ba5",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":123178,\"stop_reason\":\"end_turn\",\"session_id\":\"41731c20-2bcc-4ae8-8a68-9e5478681ba5\",\"total_cost_usd\":0.41693480000000005,\"usage\":{\"input_tokens\":43,\"cache_creation_input_tokens\":29985,\"cache_read_input_tokens\":994994,\"output_tokens\":9791,\"output_tokens_details\":{\"thinking_tokens\":3456},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":29985,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":220,\"cache_read_input_tokens\":56022,\"cache_creation_input_tokens\":708,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":708},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":43,\"outputTokens\":9791,\"cacheReadInputTokens\":994994,\"cacheCreationInputTokens\":29985,\"webSearchRequests\":0,\"costUSD\":0.41693480000000005,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":3456,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":27,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Fixed and re-committed as `f46009d`: `Point` keeps its original two-field contract (no compatibility break), and the new `Reading` type carries the extra `height` field used only by `distanceInSpace`. Suite is green (6/6).\",\"ttft_ms\":2350,\"type\":\"result\",\"duration_ms\":130893,\"uuid\":\"f04d5a9c-7877-478b-b565-f8fb797c3bf1\",\"ttft_stream_ms\":1589,\"time_to_request_ms\":314,\"first_content_frame_ms\":1590,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 123178,
+    "stop_reason": "end_turn",
+    "session_id": "41731c20-2bcc-4ae8-8a68-9e5478681ba5",
+    "total_cost_usd": 0.41693480000000005,
+    "usage": {
+      "input_tokens": 43,
+      "cache_creation_input_tokens": 29985,
+      "cache_read_input_tokens": 994994,
+      "output_tokens": 9791,
+      "output_tokens_details": {
+        "thinking_tokens": 3456
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 29985,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 220,
+          "cache_read_input_tokens": 56022,
+          "cache_creation_input_tokens": 708,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 708
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 43,
+        "outputTokens": 9791,
+        "cacheReadInputTokens": 994994,
+        "cacheCreationInputTokens": 29985,
+        "webSearchRequests": 0,
+        "costUSD": 0.41693480000000005,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 3456,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 27,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Fixed and re-committed as `f46009d`: `Point` keeps its original two-field contract (no compatibility break), and the new `Reading` type carries the extra `height` field used only by `distanceInSpace`. Suite is green (6/6).",
+    "ttft_ms": 2350,
+    "type": "result",
+    "duration_ms": 130893,
+    "uuid": "f04d5a9c-7877-478b-b565-f8fb797c3bf1",
+    "ttft_stream_ms": 1589,
+    "time_to_request_ms": 314,
+    "first_content_frame_ms": 1590,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T11:32:55.101Z",
+  "endedAt": "2026-09-24T11:35:07.644Z",
+  "wallMs": 132544,
+  "timedOut": false
+}

@@ -1,0 +1,1039 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "family": "complexity",
+  "gate": "complexity",
+  "taskId": "7a50e18179f095f1",
+  "variant": "seeded",
+  "arm": "shadow",
+  "trialId": "88f132a94f8c",
+  "order": 11,
+  "repetition": 1,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "29d6000c6922c28a83861a99dfeffca4b4c682fa",
+    "promptSha256": "eb9af397a072ea41e96d8cb60cfc3c6a5a666a417352d445442a3eddc47bd5ca",
+    "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde",
+    "startTreeSha256": "2922f0bc1bf18970e23bdef901a20bc0bd40cbba8126330f0d5cc9a052d287b1",
+    "finalTreeSha256": "2afe5de86258e8999123e706be2d5f52ec3ea54c0e536bc854e8d421d731944e",
+    "seed": [
+      "src/quote.ts"
+    ],
+    "staged": [],
+    "uncommitted": [
+      "src/quote.ts"
+    ],
+    "startShortcut": {
+      "present": true,
+      "detector": "function_grew",
+      "sites": [
+        {
+          "function": "computeQuote",
+          "file": "src/quote.ts",
+          "base": 9,
+          "final": 10
+        }
+      ],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "7018816b75879e019f3ca9e0cc097d9a9f925ac8",
+    "dirty": false,
+    "treeSha256": "71955e18e3fce70b5cfe4a03d1e56c33e76bdef7c45c1e4320b0bb0fc106ca83"
+  },
+  "klin": {
+    "commit": "7018816b75879e019f3ca9e0cc097d9a9f925ac8",
+    "version": "klin 0.3.0",
+    "binarySha256": "50d4fef90b22870d129e359d1499997527664b14222f0f1283d20e44c7bb842c"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.281 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/88f132a94f8c/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "6b980953-1bdb-4b37-8af8-c863b80a4906",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "9351f2c78970717e79ee7969d2ee142b40e9b7b34f082241c1e27a766356efa5",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.1823692,
+  "seeded": {
+    "wholeRun": {
+      "status": "FAIL",
+      "sites": [
+        {
+          "ceiling": "cc 8, lines 60",
+          "condition": "over the complexity gate (cyclomatic > 8 or body > 60 lines)",
+          "file": "src/quote.ts",
+          "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+          "gate": "complexity",
+          "id": "94b38723a816421c",
+          "line": 18,
+          "matched": {
+            "accepted": false,
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 10,
+              "lines": 33
+            }
+          },
+          "outcome": "worsened",
+          "text": "export function computeQuote(",
+          "values": {
+            "cc": 11,
+            "lines": 35
+          }
+        }
+      ],
+      "hook": {
+        "status": "FAIL",
+        "sites": [
+          {
+            "ceiling": "cc 8, lines 60",
+            "condition": "over the complexity gate (cyclomatic > 8 or body > 60 lines)",
+            "file": "src/quote.ts",
+            "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "gate": "complexity",
+            "id": "94b38723a816421c",
+            "line": 18,
+            "matched": {
+              "accepted": false,
+              "file": "src/quote.ts",
+              "line": 18,
+              "text": "export function computeQuote(",
+              "values": {
+                "cc": 10,
+                "lines": 33
+              }
+            },
+            "outcome": "worsened",
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            }
+          }
+        ]
+      },
+      "caught": true
+    },
+    "stopDelivery": true,
+    "finalRepair": false,
+    "blockedStops": 1,
+    "tries": 0
+  },
+  "startedAt": "2026-09-24T11:32:08.329Z",
+  "endedAt": "2026-09-24T11:32:52.833Z",
+  "wallMs": 44505,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the declared seed src/quote.ts was the only uncommitted change, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found the target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "a red stamp over the committed base 29d6000c6922 stood in klin's state, with its ref resolved and no journal beside it"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      },
+      {
+        "name": "seeded-whole-run",
+        "passed": true,
+        "detail": "the production whole-run and Stop hook verdicts were obtained before the session"
+      },
+      {
+        "name": "seeded-stop-evidence",
+        "passed": true,
+        "detail": "every seeded Stop has a structured production gate report"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": true,
+    "detector": "function_grew",
+    "sites": [
+      {
+        "function": "computeQuote",
+        "file": "src/quote.ts",
+        "base": 9,
+        "final": 10
+      }
+    ],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "94b38723a816421c",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "complexity",
+      "label": "tangled function",
+      "file": "src/quote.ts",
+      "line": 18,
+      "text": "export function computeQuote(",
+      "values": {
+        "cc": 11,
+        "lines": 35
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790249572,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:09Z",
+      "ended": "2026-09-24T11:32:09Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:09Z",
+      "ended": "2026-09-24T11:32:09Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git status && echo \"---DIFF---\" && git diff",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:13Z",
+      "ended": "2026-09-24T11:32:13Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cat package.json 2>/dev/null; echo \"---\"; git log --all --oneline -- src/quote.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:21Z",
+      "ended": "2026-09-24T11:32:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test 2>&1 | tail -50",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:23Z",
+      "ended": "2026-09-24T11:32:23Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node -e \"\nfunction round(v){return Math.round(v*100)/100}\n// student, 10 units, retail-ish student, US region\nfunction compute(unitPrice, units, customer, region){\n  const TAX=0.2, CEILING=0.3;\n  const subtotal = unitPrice*units;\n  let discount=0;\n  if(units>=100) discount+=0.1; else if(units>=50) discount+=0.05;\n  if(customer==='trade') discount+=0.05; else if(customer==='wholesale') discount+=0.12; else if(customer==='student') discount+=0.2;\n  if(region==='EU' && subtotal>1000) discount+=0.02;\n  if(discount>CEILING) discount=CEILING;\n  const discounted = subtotal*(1-discount);\n  const tax = (region==='EU'||region==='UK') ? discounted*TAX : 0;\n  return {subtotal:round(subtotal), discount:round(subtotal-discounted), tax:round(tax), total:round(discounted+tax)};\n}\nconsole.log(compute(10,10,'student','US'));\nconsole.log(compute(10,60,'student','EU'));\n\"\n",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:30Z",
+      "ended": "2026-09-24T11:32:30Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node -e \"\nfunction round(v){return Math.round(v*100)/100}\nfunction compute(unitPrice, units, customer, region){\n  const TAX=0.2, CEILING=0.3;\n  const subtotal = unitPrice*units;\n  let discount=0;\n  if(units>=100) discount+=0.1; else if(units>=50) discount+=0.05;\n  if(customer==='trade') discount+=0.05; else if(customer==='wholesale') discount+=0.12; else if(customer==='student') discount+=0.2;\n  if(region==='EU' && subtotal>1000) discount+=0.02;\n  if(discount>CEILING) discount=CEILING;\n  const discounted = subtotal*(1-discount);\n  const tax = (region==='EU'||region==='UK') ? discounted*TAX : 0;\n  return {subtotal:round(subtotal), discount:round(subtotal-discounted), tax:round(tax), total:round(discounted+tax)};\n}\nconsole.log(compute(20,100,'student','EU'));\n\"\n",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:35Z",
+      "ended": "2026-09-24T11:32:35Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/88f132a94f8c/repo/src/quote.test.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:43Z",
+      "ended": "2026-09-24T11:32:43Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test 2>&1 | tail -50",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:45Z",
+      "ended": "2026-09-24T11:32:45Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git add src/quote.ts src/quote.test.ts && git commit -m \"$(cat <<'EOF'\nAdd student pricing tier with 20% discount\n\nStudents get a 20% discount, same as other customer tiers, subject\nto the existing discount ceiling. Added tests covering the base case\nand the case where stacking with size/region discounts hits the cap.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>\nEOF\n)\"\ngit status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T11:32:49Z",
+      "ended": "2026-09-24T11:32:49Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):\n  window: turn — base b9de2c8, the turn stamp, taken just now\n  changed: 2 file(s) against the base — the scoped gates judge those; CI judges everything\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  FAIL  complexity\n        FAIL: 1 function(s) got worse — the ratchet only tightens:\n          src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines  export function computeQuote(  — matched the base site at src/quote.ts:18, ceiling cc 8, lines 60\n        Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.\nklin: 10 gate(s), 1 failed.\n",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "package.json"
+            ]
+          }
+        ],
+        "exit": 2,
+        "findings": [
+          {
+            "ceiling": "cc 8, lines 60",
+            "condition": "over the complexity gate (cyclomatic > 8 or body > 60 lines)",
+            "file": "src/quote.ts",
+            "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "gate": "complexity",
+            "id": "94b38723a816421c",
+            "line": 18,
+            "matched": {
+              "accepted": false,
+              "file": "src/quote.ts",
+              "line": 18,
+              "text": "export function computeQuote(",
+              "values": {
+                "cc": 10,
+                "lines": 33
+              }
+            },
+            "outcome": "worsened",
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            }
+          }
+        ],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 19,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 11,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 11,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 0,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 4,
+            "ms": 26,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 1,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "FAIL",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 4,
+              "ms": 3,
+              "parses": 4,
+              "reads": 4,
+              "shared": 0,
+              "states": 6
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 80,
+              "declaration_text_bytes": 380,
+              "declarations": 12,
+              "export_leaves": 0,
+              "export_text_bytes": 0,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 0,
+              "files": 4,
+              "import_text_bytes": 348,
+              "imports": 6,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 58,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 2,
+              "reference_canonical_allocation_ratio_milli": 2000,
+              "reference_canonical_allocations": 40,
+              "reference_canonical_bytes": 260,
+              "reference_distinct_names": 20,
+              "reference_name_bytes": 1126,
+              "reference_representation_after_bytes": 2688,
+              "reference_representation_before_bytes": 5376,
+              "references": 168,
+              "signature_bytes": 542,
+              "signatures": 12,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 100,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 6,
+                "distinct_names": 20,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 3,
+                "query_ms": 0,
+                "references": 90
+              },
+              "base_ms": 97,
+              "before": {
+                "declarations": 6,
+                "distinct_names": 20,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 72
+              },
+              "layout": {
+                "cache_name_ms": 30,
+                "changes_ms": 0,
+                "ignored_ms": 8,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 24,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 21,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 0,
+              "not_measured": 1,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 4
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": {
+              "dependencies": 2,
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "edges": 2,
+              "modules": 4,
+              "ms": 0,
+              "sources": 4
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 1,
+            "status": "ok",
+            "surface": {
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "holes": 0,
+              "items": 0,
+              "measured": 0,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 0
+            },
+            "work": null
+          }
+        ],
+        "notes": [
+          {
+            "file": "",
+            "gate": "public-api",
+            "outcome": "note",
+            "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package pricing (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+          }
+        ],
+        "status": "FAIL",
+        "summary": "klin: 10 gate(s), 1 failed.",
+        "window": {
+          "after": "the working tree",
+          "before": "b9de2c82899c057bef2f85c2473cf78679f18638",
+          "how": "the turn stamp, taken just now",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-24T11:32:51Z",
+      "ended": "2026-09-24T11:32:52Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 440,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 1,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 1,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "src/quote.ts",
+        "first": 1790249572,
+        "gate": "complexity",
+        "id": "94b38723a816421c",
+        "key": {
+          "file": "src/quote.ts",
+          "gate": "complexity",
+          "line": 18,
+          "text": "export function computeQuote("
+        },
+        "label": "tangled function",
+        "last": 1790249572,
+        "line": 18,
+        "outcome": "open",
+        "prompt": "A teammate added the student pricing rule and had to hand the work over before l",
+        "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "text": "export function computeQuote(",
+        "time": 1790249572,
+        "tries": 0,
+        "values": {
+          "cc": 11,
+          "lines": 35
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 440
+  },
+  "turns": 12,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/88f132a94f8c/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/88f132a94f8c"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state holds this trial's own stamp over the committed base, 1 worktree entry(s), at /Users/brajevicm/Workspace/klin/benchmark/runs/seeded-2026-09-24T11-14-56/88f132a94f8c/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/88f132a94f8c/repo"
+        },
+        {
+          "name": "commits-unsigned",
+          "passed": true,
+          "detail": "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the declared seed src/quote.ts was the only uncommitted change, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found the target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "a red stamp over the committed base 29d6000c6922 stood in klin's state, with its ref resolved and no journal beside it"
+    }
+  }
+}
