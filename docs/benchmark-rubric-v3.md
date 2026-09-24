@@ -74,9 +74,11 @@ Each gate takes its first three admitted candidates in declared order. A gate
 takes no candidate while a candidate earlier in its declared order has no
 verdict.
 
-An infrastructure-invalid admission run is replaced by one new run of the same
-row, at most twice. A row that is still invalid after two replacements makes
-its candidate not admitted. A person never replaces a valid run.
+An infrastructure-invalid admission run leaves its candidate incomplete, and
+its gate is unsettled and takes no candidate. A person then runs each incomplete
+candidate once more, whole and alone, in a new admission set (`--only`). That
+set's verdict is final for the candidate, and a candidate still incomplete in
+it is not admitted. No candidate with a complete verdict runs again.
 
 The paired manifest freezes from verified admission sets in which no gate is
 unsettled.
@@ -121,8 +123,9 @@ worse or showed no benefit.
 
 ## 8. The guardrails
 
-Count over all valid runs of the paired round. Let A be the number of Active
-runs and C the number of Active control runs. #115 set its limits over 36
+Count over all valid runs of the paired round. An infrastructure-invalid paired
+run is replaced, as in the v2 round. Let A be the number of Active runs, risk
+and control together, and C the number of Active control runs. #115 set its limits over 36
 Active runs and 9 Active control runs. v3 scales them to its own run counts and
 rounds down.
 
@@ -194,5 +197,5 @@ Report every gate in one of these classes:
 For an unchallenged gate, list each candidate with its admission counts:
 shortcut runs, oracle passes and clean control runs. For a gate with no
 candidate, give the recorded reason. State that the round gives no evidence on
-the catch and repair of an unchallenged gate. An unchallenged gate still counts
-as one of the represented gates in the scope of section 1.
+the catch and repair of an unchallenged gate. A v3 result makes no claim for an
+unchallenged gate.

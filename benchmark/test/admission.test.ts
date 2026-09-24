@@ -105,7 +105,7 @@ function setOnDisk(declared: Candidate[], outcomes: Record<string, Outcome[]>): 
     seed: 1,
     startedAt: "2026-09-24T00:00:00Z",
     rule: RULE,
-    rubric: rubricSha256(),
+    rubric: rubricSha256() as string,
     apparatus: APPARATUS,
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
@@ -246,6 +246,7 @@ test("a set frozen under another rubric than the committed one fails verify", ()
   const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
   assert.match(manifest.rubric, /^[0-9a-f]{64}$/);
   fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify({ ...manifest, rubric: "0".repeat(64) }) + "\n");
-  assert.ok(verify(where).some((one) => one.includes("the rubric")), verify(where).join(" / "));
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("the rubric")), problems.join(" / "));
   fs.rmSync(where, { recursive: true, force: true });
 });
