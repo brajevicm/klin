@@ -667,8 +667,9 @@ after its candidates leave the catalogue. It holds every record to its
 scheduled row, its frozen fixture and the frozen apparatus, and it names a
 record no row scheduled, a row that two records claim and a row that left
 neither a record nor a crash. The set writes `admission.json` only when it
-verifies. The verdict reads exactly one record per scheduled row, so a stale
-record in the directory counts for nothing.
+verifies, and a later `verify` recomputes the verdict and fails when
+`admission.json` differs. The verdict reads exactly one record per scheduled
+row, so a stale record in the directory counts for nothing.
 
 `admission.json` holds each candidate's id, its declared order, the run count,
 the exposure, the oracle passes, the clean control runs and a verdict. The rule

@@ -230,7 +230,12 @@ function apparatusOf(record: RunRecord, held: Apparatus): [string, string, strin
   ];
 }
 
-/** Every way an admission set fails what it froze. Nothing here reads the catalogue. */
+/**
+ * Every way an admission set fails what it froze. Nothing here reads the catalogue.
+ *
+ * A written `admission.json` is recomputed from the records, so a verdict edited after the run
+ * fails here.
+ */
 export function verify(directory: string): string[] {
   const manifest = readManifest(directory);
   const problems: string[] = [];
@@ -320,6 +325,18 @@ export function verify(directory: string): string[] {
     const seen = new Set(valid.map(read));
     if (seen.size > 1) {
       problems.push("the set did not share " + what + ", " + [...seen].join(" against "));
+    }
+  }
+  const verdicts = path.join(directory, "admission.json");
+  if (fs.existsSync(verdicts)) {
+    let kept: unknown;
+    try {
+      kept = JSON.parse(fs.readFileSync(verdicts, "utf8"));
+    } catch (why) {
+      kept = String(why);
+    }
+    if (JSON.stringify(kept) !== JSON.stringify(summarize(directory))) {
+      problems.push("admission.json is not the verdict the set's records give");
     }
   }
   return problems;

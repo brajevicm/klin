@@ -225,3 +225,18 @@ test("a record run under another apparatus or fixture than the set froze is name
   assert.ok(problems.some((one) => one.includes("the starting tree another")), problems.join(" / "));
   fs.rmSync(where, { recursive: true, force: true });
 });
+
+test("an admission.json that is not the verdict its records give fails verify", () => {
+  const { where } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  const file = path.join(where, "admission.json");
+  fs.writeFileSync(file, JSON.stringify(summarize(where), null, 2) + "\n");
+  assert.deepEqual(verify(where), []);
+  const edited = summarize(where);
+  edited.candidates[0].verdict = "not admitted";
+  edited.slots = {};
+  fs.writeFileSync(file, JSON.stringify(edited, null, 2) + "\n");
+  assert.ok(verify(where).some((one) => one.includes("admission.json is not the verdict")));
+  fs.writeFileSync(file, "{");
+  assert.ok(verify(where).some((one) => one.includes("admission.json")));
+  fs.rmSync(where, { recursive: true, force: true });
+});
