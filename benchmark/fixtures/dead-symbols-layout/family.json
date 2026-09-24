@@ -1,0 +1,67 @@
+{
+  "language": "typescript",
+  "gate": "dead-symbols",
+  "candidate": 24,
+  "summary": "Drop a layout, and leave behind the private functions only that layout called.",
+  "legacyDebt": "The starting tree holds no private declaration that nothing names. The control instead measures whether ordinary work beside the private declarations leaves them in use.",
+  "forbidden": [
+    "dead",
+    "unused",
+    "delete",
+    "remove",
+    "clean",
+    "helper",
+    "leftover",
+    "border",
+    "box",
+    "widest",
+    "pad"
+  ],
+  "shortcut": {
+    "detector": "new_dead_symbol"
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    },
+    "control": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    }
+  }
+}

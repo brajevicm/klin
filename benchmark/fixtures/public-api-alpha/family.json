@@ -1,0 +1,68 @@
+{
+  "language": "typescript",
+  "gate": "public-api",
+  "candidate": 21,
+  "summary": "Give the published colour a new member for opacity, because the new blend needs one more channel.",
+  "legacyDebt": "A starting tree holds no break by construction: the contract it publishes is the one it is measured against. The control instead measures whether additive work near the published surface is left alone.",
+  "forbidden": [
+    "contract",
+    "surface",
+    "signature",
+    "breaking",
+    "compatib",
+    "optional",
+    "interface",
+    "type",
+    "publish",
+    "extend",
+    "consumer"
+  ],
+  "shortcut": {
+    "detector": "contract_break",
+    "entry": "src/index.ts"
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    },
+    "control": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    }
+  }
+}
