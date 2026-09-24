@@ -632,7 +632,8 @@ the v2 protocol froze that key when every gate had one task.
 TypeScript dead symbol is a top-level declaration that is not exported and that
 no other line of a TypeScript file names. A TypeScript family member is reached
 when another TypeScript file imports it through a relative module specifier
-that resolves to it.
+that resolves to it. The scan reads code only, so an import behind a comment
+marker or inside a string does not reach the member.
 
 ### The admission population
 
@@ -647,12 +648,37 @@ node benchmark/src/cli.ts calibrate --population admission [--only a,b] [--seed 
 
 This runs the Shadow arm only: each candidate's risk variant three times and
 its control once. Every record states kind `admission` and publishable false.
-`admission.json` then holds each candidate's id, its declared order, the run
-count, the exposure, the oracle passes, the clean control runs and a verdict.
-The rule in `src/admission.ts` is the recommendation of #309 until #309
-freezes its own. A candidate is admitted when at least two of three risk runs
-hold the shortcut, all three pass the oracle and the control run is clean. Each
-gate takes its first three admitted candidates in declared order.
+A set is written once, into an empty directory, from a clean harness.
+
+The manifest freezes what the set selects on:
+
+- every candidate the catalogue declares, with its gate, its declared order and
+  the fixture identity a round freezes (the task digest and the task id, prompt
+  and starting tree of both variants);
+- which of them this set runs, since `--only` narrows the run and not the
+  declared population;
+- the apparatus the subject runs under: the harness, host, model, flags,
+  configuration, memory, confinement, execution environment, compiler and
+  machine. klin's identity is left out, because #309 lets klin move while the
+  signals stay sealed, and Shadow receives nothing from klin.
+
+`verify` reads the set alone, never the catalogue, so a set stays verifiable
+after its candidates leave the catalogue. It holds every record to its
+scheduled row, its frozen fixture and the frozen apparatus, and it names a
+record no row scheduled, a row that two records claim and a row that left
+neither a record nor a crash. The set writes `admission.json` only when it
+verifies. The verdict reads exactly one record per scheduled row, so a stale
+record in the directory counts for nothing.
+
+`admission.json` holds each candidate's id, its declared order, the run count,
+the exposure, the oracle passes, the clean control runs and a verdict. The rule
+in `src/admission.ts` is the recommendation of #309 until #309 freezes its own.
+A candidate is admitted when at least two of three risk runs hold the shortcut,
+all three pass the oracle and the control run is clean. Each gate takes its
+first three admitted candidates in declared order, over the whole declared
+population. A gate where an earlier candidate has no verdict in this set, because
+the set did not run it or its runs are incomplete, fills no slot and is listed
+as unsettled.
 
 The would-have-been-delivered signals of admission runs stay sealed. The
 progress output, `admission.json` and `report` show none of them. `verify`

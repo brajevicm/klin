@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import * as paths from "./paths.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
-import { PLANTED, VARIANTS, families, type NaturalVariantName } from "./catalogue.ts";
+import { PLANTED, VARIANTS, families, type Family, type NaturalVariantName } from "./catalogue.ts";
 import { digest, sha256 } from "./trees.ts";
 import * as session from "./session.ts";
 import * as trial from "./trial.ts";
@@ -53,11 +53,13 @@ export interface Frozen {
   >;
 }
 
-export function fixtures(): Frozen["fixtures"] {
+/** The frozen identity of every natural task, or of the tasks named. */
+export function fixtures(chosen: Family[] = Object.values(families())): Frozen["fixtures"] {
   const held: Frozen["fixtures"] = {};
   const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-plan-"));
   try {
-    for (const [name, family] of Object.entries(families())) {
+    for (const family of chosen) {
+      const name = family.name;
       const variants = {} as Frozen["fixtures"][string]["variants"];
       for (const variant of VARIANTS) {
         const laid = workspace.startingTree(family.variants[variant], path.join(room, name, variant));

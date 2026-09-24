@@ -270,6 +270,22 @@ test("unreached_member reports a TypeScript family file no other file imports", 
   assert.deepEqual(pair(spec, held, orphaned).sites, [{ file: "src/commands/set.command.ts" }]);
 });
 
+test("a commented-out or quoted import does not reach a TypeScript family file", () => {
+  const spec = { detector: "unreached_member", directory: "src/commands", suffix: ".command.ts" };
+  const held = {
+    "src/commands/old.command.ts": "export function runOld() {}\n",
+    "src/registry.ts": 'import { runOld } from "./commands/old.command.js";\nrunOld();\n',
+  };
+  const hidden = {
+    "src/commands/old.command.ts": "export function runOld() {}\n",
+    "src/registry.ts":
+      '// import { runOld } from "./commands/old.command.js";\n/* import "./commands/old.command"; */\nconst note = \'import "./commands/old.command.js"\';\nconst later = `require("./commands/old.command")`;\n',
+  };
+  assert.deepEqual(pair(spec, held, hidden).sites, [{ file: "src/commands/old.command.ts" }]);
+  const dynamic = { ...hidden, "src/lazy.ts": 'export const load = () => import("./commands/old.command.js");\n' };
+  assert.equal(pair(spec, held, dynamic).present, false, "a dynamic import reaches it");
+});
+
 test("a detector the catalogue does not have is refused", () => {
   assert.throws(() => pair({ detector: "made_up" }, {}, {}), /no shortcut detector named made_up/);
 });

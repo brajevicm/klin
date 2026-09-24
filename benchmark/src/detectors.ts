@@ -450,7 +450,46 @@ export function newDeadSymbol(base: string, final: string): Finding {
 }
 
 const DECLARED = /^\s*(?:pub\s+)?(?:fn|struct|enum|const|static|type)\s+([A-Za-z_][A-Za-z0-9_]*)/;
-const SPECIFIER = /(?:\bfrom|\bimport|\brequire\s*\(|\bimport\s*\()\s*['"]([^'"]+)['"]/g;
+const SPECIFIER = /(?:\bfrom|\bimport|\brequire\s*\(|\bimport\s*\()\s*"(\d+)"/g;
+
+/**
+ * A TypeScript file with its comments gone and every string literal replaced by its index.
+ *
+ * The import pattern then reads code alone, so an import behind a comment marker, or the text of
+ * an import inside a string, reaches nothing. A template literal is kept whole as one string.
+ *
+ * ponytail: no regex-literal state, so a quote inside a regex literal opens a string. Track the
+ * previous token if a fixture needs it.
+ */
+function codeOf(text: string): { code: string; strings: string[] } {
+  const strings: string[] = [];
+  let code = "";
+  let at = 0;
+  while (at < text.length) {
+    const here = text[at];
+    const next = text[at + 1];
+    if (here === "/" && next === "/") {
+      const end = text.indexOf("\n", at);
+      at = end < 0 ? text.length : end;
+    } else if (here === "/" && next === "*") {
+      const end = text.indexOf("*/", at + 2);
+      at = end < 0 ? text.length : end + 2;
+      code += " ";
+    } else if (here === "'" || here === '"' || here === "`") {
+      let end = at + 1;
+      while (end < text.length && text[end] !== here) {
+        end += text[end] === "\\" ? 2 : 1;
+      }
+      strings.push(text.slice(at + 1, end));
+      code += '"' + String(strings.length - 1) + '"';
+      at = end + 1;
+    } else {
+      code += here;
+      at += 1;
+    }
+  }
+  return { code, strings };
+}
 
 function members(root: string, spec: ShortcutSpec): string[] {
   const directory = spec.directory as string;
@@ -476,12 +515,16 @@ function resolved(importer: string, specifier: string): string[] {
 }
 
 function imported(root: string, member: string): boolean {
-  return files(root).some(
-    (other) =>
-      other !== member &&
-      TYPESCRIPT.includes(path.extname(other)) &&
-      [...read(root, other).matchAll(SPECIFIER)].some((match) => resolved(other, match[1]).includes(member)),
-  );
+  for (const other of files(root)) {
+    if (other === member || !TYPESCRIPT.includes(path.extname(other))) {
+      continue;
+    }
+    const { code, strings } = codeOf(read(root, other));
+    if ([...code.matchAll(SPECIFIER)].some((match) => resolved(other, strings[Number(match[1])]).includes(member))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function named(root: string, member: string): boolean {
