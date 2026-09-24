@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { LOCK, final, populationProblems, rivals, rubricSha256, schedule, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
-import { admitted, candidate, clean, digestOf, invalid, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
+import { LOCK, all, claim, claimed, final, populationProblems, resume, rivals, rubricSha256, schedule, selectionKeyOf, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
+import { APPARATUS, admitted, candidate, clean, digestOf, invalid, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
 
 /**
  * The Shadow-only admission population: what it freezes, what it schedules and the verdict it
@@ -187,9 +187,10 @@ test("a first set has no rival of its cohort beside it", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
   const one = setOnDisk(declared, { a: admitted, b: invalid }, { under: root });
   setOnDisk(declared, { b: admitted }, { retries: one.where });
-  assert.deepEqual(rivals(root, one.manifest.cohort), [one.where], "a retry is no rival");
+  const key = selectionKeyOf(one.manifest);
+  assert.deepEqual(rivals(root, key), [one.where], "a retry is no rival");
   const two = setOnDisk(declared, { a: admitted, b: admitted }, { under: root });
-  assert.deepEqual(rivals(root, one.manifest.cohort).sort(), [one.where, two.where].sort());
+  assert.deepEqual(rivals(root, key).sort(), [one.where, two.where].sort());
   assert.deepEqual(rivals(root, "0".repeat(64)), []);
   fs.rmSync(root, { recursive: true, force: true });
 });
@@ -289,17 +290,55 @@ test("a retry that is running or was interrupted gives no verdict until it finis
   fs.rmSync(first, { recursive: true, force: true });
 });
 
-test("two first sets of one cohort leave neither the first set, whatever their start times say", () => {
+test("one selection key has one first set, whatever the apparatus or the start times say", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
   const declared = [candidate("a", "complexity", 1)];
   const one = withVerdict(setOnDisk(declared, { a: admitted }, { under: root }).where);
   assert.deepEqual(final(one, { root }).problems, []);
-  const two = setOnDisk(declared, { a: admitted }, { under: root });
+  assert.equal(claimed(root, selectionKeyOf(JSON.parse(fs.readFileSync(path.join(one, "manifest.json"), "utf8")) as Manifest)), path.basename(one));
+  const updated = { ...APPARATUS, host: { name: "claude-code", version: "2.1.300 (Claude Code)" } };
+  const two = setOnDisk(declared, { a: admitted }, { under: root, apparatus: updated });
+  assert.notEqual(two.manifest.cohort, JSON.parse(fs.readFileSync(path.join(one, "manifest.json"), "utf8")).cohort, "a host update moves the cohort");
+  assert.equal(claim(root, selectionKeyOf(two.manifest), two.where), false, "the claim is taken once");
   fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2020-01-01T00:00:00Z" }) + "\n");
   withVerdict(two.where);
   assert.ok(final(one, { root }).problems.some((problem) => problem.includes(two.where) && problem.includes("second first set")));
-  assert.ok(final(two.where, { root }).problems.some((problem) => problem.includes(one)), "an earlier startedAt does not make a set the first");
+  const later = final(two.where, { root }).problems;
+  assert.ok(later.some((problem) => problem.includes("is claimed by " + path.basename(one))), "an earlier startedAt or a new host does not make a set the first");
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a retry directory is made once, and a set's lock is taken once", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid }).where);
+  fs.mkdirSync(path.join(first, "retry"));
+  const quiet = process.stdout.write.bind(process.stdout);
+  const wrote: string[] = [];
+  process.stdout.write = ((text: string) => wrote.push(text) > 0) as typeof process.stdout.write;
+  try {
+    assert.equal(all({ into: "", seed: 1, retry: first, ...rootOf(first) }), 2);
+    assert.match(wrote.join(""), /retry exists/, "a second retry cannot start beside the first");
+    fs.rmSync(path.join(first, "retry"), { recursive: true });
+    const retry = setOnDisk(declared, { b: admitted }, { retries: first });
+    fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: process.pid, token: "t" }) + "\n");
+    wrote.length = 0;
+    assert.equal(resume(retry.where), 2);
+    assert.match(wrote.join(""), /is still running, as process/);
+    fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: 2 ** 22 + 1, token: "t" }) + "\n");
+    wrote.length = 0;
+    assert.equal(resume(retry.where), 2);
+    assert.match(wrote.join(""), /which is gone\. Remove the file/, "a stale lock waits for a person");
+    assert.ok(fs.existsSync(path.join(retry.where, LOCK)), "a refused resume leaves another process's lock alone");
+    fs.rmSync(path.join(retry.where, LOCK));
+    withVerdict(retry.where);
+    wrote.length = 0;
+    assert.equal(resume(retry.where), 2);
+    assert.match(wrote.join(""), /already states its verdict/);
+    assert.equal(fs.existsSync(path.join(retry.where, LOCK)), false, "the resume releases the lock it took");
+  } finally {
+    process.stdout.write = quiet;
+    fs.rmSync(first, { recursive: true, force: true });
+  }
 });
 
 test("a retry that cannot start admits none of the first set's incomplete candidates", () => {

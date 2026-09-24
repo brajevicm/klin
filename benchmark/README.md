@@ -706,24 +706,39 @@ its control once. Every record states kind `admission` and publishable false.
 A set is written once, into an empty directory, from a clean harness.
 
 Every first set lives directly under `benchmark/runs`, and the command takes no
-`--into`. Thus a rival first set of the same cohort cannot hide in another
-directory, and the refusal to start a second first set covers the whole
-namespace.
+`--into`. Thus a rival first set cannot hide in another directory.
 
-While a set runs, `running.json` in its directory names the process that runs
-it. A set is finished when no live process holds that lock and every scheduled
-row holds a record or a crash. An interrupted set is not finished, so it gives
-no verdict. Resume it under the apparatus that it froze:
+One admission has one first set. Its selection key is the sha256 of the rubric,
+the rule and the declared population, and it leaves the apparatus and the seed
+out. Before its first session, a first set claims its key as
+`benchmark/runs/.admission-claims/<key>`, with an exclusive create. A second
+first set of the same key cannot start, even after a host update moves the
+cohort. The cohort only says whether a retry can continue the first set under
+the same apparatus. If the host changes during a first set, restore the frozen
+apparatus and resume the set. If that is not possible, keep the failed set as
+evidence. A new admission of the same candidates needs a new rubric version.
+
+The command makes a set's directory with an exclusive `mkdir`, so two retries
+of one first set cannot both start. While a set runs, `running.json` in its
+directory names the process and a random token. The lock is also made with an
+exclusive create, and only the process whose token it holds removes it. A set
+is finished when no live process holds that lock and every scheduled row holds
+a record or a crash. An interrupted set is not finished, so it gives no
+verdict. Resume it under the apparatus that it froze:
 
 ```sh
 node benchmark/src/cli.ts calibrate --population admission --resume SET
 ```
 
-The resume runs only the rows that hold neither a record nor a crash, under
-their scheduled trial ids. It first moves the partial plane of each such row
-into `SET/interrupted/`, where the plane stays as evidence. The resume refuses
-a set that still runs, a set that already states its verdict, and an apparatus
-that is not the frozen one. A finished set that verifies but holds no
+The resume takes the set's lock first, with the same exclusive create. It runs
+only the rows that hold neither a record nor a crash, under their scheduled
+trial ids. It first moves the partial plane of each such row into
+`SET/interrupted/`, where the plane stays as evidence. The resume refuses a set
+that still runs, a set that already states its verdict, and an apparatus that
+is not the frozen one. An interrupted process can leave its lock behind. The
+resume does not take over such a stale lock, because two processes that took
+over one lock would both run the set. Check that the process named in
+`running.json` is gone, remove the file, and then resume. A finished set that verifies but holds no
 `admission.json` gets its verdict written, and no session runs.
 
 The manifest freezes what the set selects on:
@@ -801,8 +816,9 @@ section 4:
 
 - The first set must lie directly under `benchmark/runs`, must be finished,
   must verify alone and must hold its `admission.json`.
-- No other first set of its cohort may lie under `benchmark/runs`. If two
-  exist, the plan refuses. It does not choose between them by `startedAt`,
+- The first set must hold the claim of its selection key. No other first set
+  of the same key may lie under `benchmark/runs`. If two exist, the plan
+  refuses. It does not choose between them by `startedAt`,
   because that text binds to nothing a set records. A person removes one, and
   records the reason.
 - A retry that has not finished stops the plan.

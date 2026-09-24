@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
@@ -311,7 +312,7 @@ export function verify(directory: string, withRetry = true): string[] {
     if (manifest.candidates.length !== manifest.declared.length) {
       problems.push("a first set runs the whole declared population, and this one runs part of it");
     }
-    if (withRetry && fs.existsSync(path.join(directory, RETRY))) {
+    if (withRetry && fs.existsSync(path.join(directory, RETRY, "manifest.json"))) {
       problems.push(...verify(path.join(directory, RETRY)).map((one) => RETRY + ": " + one));
     }
   } else {
@@ -452,7 +453,7 @@ function incompleteOf(first: string): string[] {
 }
 
 /** Every first set of a cohort directly under `root`. Two of them make the admission ambiguous. */
-export function rivals(root: string, cohort: string): string[] {
+export function rivals(root: string, key: string): string[] {
   if (!fs.existsSync(root)) {
     return [];
   }
@@ -465,8 +466,46 @@ export function rivals(root: string, cohort: string): string[] {
         return false;
       }
       const held = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<Manifest>;
-      return held.kind === POPULATION && held.first === null && held.cohort === cohort;
+      return held.kind === POPULATION && held.first === null && selectionKeyOf(held as Manifest) === key;
     });
+}
+
+/**
+ * What one admission selects over: the rubric, the rule and the declared population.
+ *
+ * It leaves the apparatus and the seed out, so exactly one first set may ever claim it. A host
+ * update moves the cohort, which only says whether a retry can continue the first set; it opens no
+ * second admission of the same candidates.
+ */
+export function selectionKeyOf(manifest: Pick<Manifest, "rubric" | "rule" | "declared">): string {
+  return sha256(JSON.stringify({ rubric: manifest.rubric, rule: manifest.rule, declared: manifest.declared }));
+}
+
+/** Where the one first set of each selection key is claimed, under the root every first set lives in. */
+export const CLAIMS = ".admission-claims";
+
+function claimOf(root: string, key: string): string {
+  return path.join(root, CLAIMS, key);
+}
+
+/** The first set that claimed `key` under `root`, by its directory name, or null when none did. */
+export function claimed(root: string, key: string): string | null {
+  const file = claimOf(root, key);
+  return fs.existsSync(file) ? String((JSON.parse(fs.readFileSync(file, "utf8")) as { first?: unknown }).first) : null;
+}
+
+/** Claim `key` for the first set `first`, atomically. False when another first set holds the claim. */
+export function claim(root: string, key: string, first: string): boolean {
+  fs.mkdirSync(path.join(root, CLAIMS), { recursive: true });
+  try {
+    fs.writeFileSync(claimOf(root, key), JSON.stringify({ first: path.basename(first), at: new Date().toISOString() }) + "\n", { flag: "wx" });
+    return true;
+  } catch (why) {
+    if ((why as { code?: string }).code === "EEXIST") {
+      return false;
+    }
+    throw why;
+  }
 }
 
 /** The verdict a paired round freezes from, and the files it came from. */
@@ -494,6 +533,44 @@ export const LOCK = "running.json";
 
 /** Where a resumed set keeps the partial plane of each row that an interrupted process left. */
 export const INTERRUPTED = "interrupted";
+
+/**
+ * Take the set's lock, atomically, or null when a lock is already there.
+ *
+ * A lock whose process is gone is not taken over here. A person removes it once they have seen that
+ * the process is gone, because two processes that both took over one stale lock would both run.
+ */
+function acquire(directory: string): string | null {
+  const token = randomUUID();
+  try {
+    fs.writeFileSync(path.join(directory, LOCK), JSON.stringify({ pid: process.pid, token, at: new Date().toISOString() }) + "\n", { flag: "wx" });
+    return token;
+  } catch (why) {
+    if ((why as { code?: string }).code === "EEXIST") {
+      return null;
+    }
+    throw why;
+  }
+}
+
+/** Remove the lock only when this process still owns it. */
+function release(directory: string, token: string): void {
+  const file = path.join(directory, LOCK);
+  if (fs.existsSync(file) && (JSON.parse(fs.readFileSync(file, "utf8")) as { token?: unknown }).token === token) {
+    fs.rmSync(file);
+  }
+}
+
+/** Why the set's lock cannot be taken: a live process runs the set, or a stale lock waits for a person. */
+function held(directory: string): string {
+  const pid = running(directory);
+  const file = path.join(directory, LOCK);
+  if (pid !== null) {
+    return directory + " is still running, as process " + String(pid);
+  }
+  const stale = fs.existsSync(file) ? String((JSON.parse(fs.readFileSync(file, "utf8")) as { pid?: unknown }).pid) : "another process";
+  return file + " names process " + stale + ", which is gone. Remove the file once you have checked that, then resume.";
+}
 
 /** The process that runs the set, while it is alive. */
 export function running(directory: string): number | null {
@@ -560,8 +637,17 @@ export function final(first: string, options: { cannotStart?: boolean; root?: st
   if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
     problems.push(first + " is not directly under " + root + ", where every admission first set lives");
   }
-  for (const other of rivals(root, manifest.cohort).filter((one) => path.resolve(one) !== path.resolve(first))) {
-    problems.push(other + " is a second first set of the same cohort, so neither is the first set until a person removes one with a recorded reason");
+  const key = selectionKeyOf(manifest);
+  for (const other of rivals(root, key).filter((one) => path.resolve(one) !== path.resolve(first))) {
+    problems.push(other + " is a second first set of the same selection key, so neither is the first set until a person removes one with a recorded reason");
+  }
+  const owner = claimed(root, key);
+  if (owner !== path.basename(first)) {
+    problems.push(
+      owner === null
+        ? "no first set claimed the selection key " + key + " under " + path.join(root, CLAIMS)
+        : "the selection key " + key + " is claimed by " + owner + ", not by " + path.basename(first),
+    );
   }
   const kept = path.join(first, "admission.json");
   if (!fs.existsSync(kept)) {
@@ -668,8 +754,8 @@ export function all(chosen: Options): number {
       return 2;
     }
   }
-  if (fs.existsSync(into) && fs.readdirSync(into).length > 0) {
-    process.stdout.write(into + " is not empty. An admission set is written once, and a first set takes one retry.\n");
+  if (fs.existsSync(into)) {
+    process.stdout.write(into + " exists. An admission set is written once, and a first set takes one retry.\n");
     return 2;
   }
   if (chosen.retry === "") {
@@ -714,29 +800,46 @@ export function all(chosen: Options): number {
     first: chosen.retry === "" ? null : sha256(fs.readFileSync(path.join(chosen.retry, "manifest.json"))),
   };
   manifest.cohort = cohortOf(manifest);
-  const refused = chosen.retry === "" ? rivals(root, manifest.cohort).map((one) => one + " is a first set of the same cohort") : retryProblems(chosen.retry, manifest);
+  const key = selectionKeyOf(manifest);
+  const refused =
+    chosen.retry === ""
+      ? rivals(root, key).map((one) => one + " is a first set of the same selection key")
+      : retryProblems(chosen.retry, manifest);
   if (refused.length > 0) {
     process.stdout.write("the set cannot start:\n" + refused.map((one) => "  " + one).join("\n") + "\n");
     return 2;
   }
-  fs.mkdirSync(into, { recursive: true });
+  fs.mkdirSync(path.dirname(into), { recursive: true });
+  // Only one process creates the directory, so two retries of one first set cannot both start.
+  try {
+    fs.mkdirSync(into);
+  } catch {
+    process.stdout.write(into + " exists. An admission set is written once, and a first set takes one retry.\n");
+    return 2;
+  }
+  if (chosen.retry === "" && !claim(root, key, into)) {
+    fs.rmSync(into, { recursive: true, force: true });
+    process.stdout.write("the selection key " + key + " is already claimed by " + String(claimed(root, key)) + ", and one admission has one first set\n");
+    return 2;
+  }
+  const token = acquire(into) as string;
   fs.writeFileSync(path.join(into, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
-  return conclude(into, manifest.order);
+  return conclude(into, manifest.order, token);
 }
 
 /**
- * Run `rows` of the set in `into` under its lock, then write its verdicts only once it verifies.
+ * Run `rows` of the set in `into` under the lock `token` owns, release it, then write the set's
+ * verdicts only once it verifies.
  *
  * The lock names this process, so a plan or a resume can tell a set that is running from one an
  * interrupted process left.
  */
-function conclude(into: string, rows: Row[]): number {
-  fs.writeFileSync(path.join(into, LOCK), JSON.stringify({ pid: process.pid, at: new Date().toISOString() }) + "\n");
+function conclude(into: string, rows: Row[], token: string): number {
   let failed = 0;
   try {
     failed = runOrder(into, rows, POPULATION);
   } finally {
-    fs.rmSync(path.join(into, LOCK), { force: true });
+    release(into, token);
   }
   const problems = verify(into);
   if (problems.length > 0) {
@@ -772,23 +875,26 @@ export function resume(directory: string): number {
     process.stdout.write(directory + " holds no admission set\n");
     return 2;
   }
-  const pid = running(directory);
-  if (pid !== null) {
-    process.stdout.write(directory + " is still running, as process " + String(pid) + "\n");
+  const token = acquire(directory);
+  if (token === null) {
+    process.stdout.write(held(directory) + "\n");
     return 2;
   }
-  if (fs.existsSync(path.join(directory, "admission.json"))) {
-    process.stdout.write(directory + " already states its verdict, so it has nothing to resume\n");
+  const refuse = (why: string): number => {
+    release(directory, token);
+    process.stdout.write(why + "\n");
     return 2;
+  };
+  if (fs.existsSync(path.join(directory, "admission.json"))) {
+    return refuse(directory + " already states its verdict, so it has nothing to resume");
   }
   const manifest = readManifest(directory);
   if (!startable()) {
-    return 2;
+    return refuse("the set is not resumed");
   }
   const { klin: _klin, fixtures: _fixtures, ...apparatus } = frozen(session.defaults());
   if (JSON.stringify(apparatus) !== JSON.stringify(manifest.apparatus)) {
-    process.stdout.write("the apparatus moved since " + directory + " started, so its remaining rows cannot run under the apparatus it froze\n");
-    return 2;
+    return refuse("the apparatus moved since " + directory + " started, so its remaining rows cannot run under the apparatus it froze");
   }
   const rows = unfinished(directory);
   for (const row of rows) {
@@ -798,7 +904,7 @@ export function resume(directory: string): number {
       fs.renameSync(partial, path.join(directory, INTERRUPTED, row.trialId + "-" + stamp()));
     }
   }
-  return conclude(directory, rows);
+  return conclude(directory, rows, token);
 }
 
 export function directory(): string {
