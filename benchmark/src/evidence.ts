@@ -12,6 +12,8 @@ const CRASH = "crash.json";
 /** The planned round's probe evidence. It sits beside the attempts and is not one. */
 const PROBES = "probes";
 const FORENSIC_DIRS = ["state", "hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"];
+/** A seeded report diffs this tree against the final one, so a seeded attempt must keep it. */
+const SEEDED_START = "fixtures/subject";
 const KINDS = new Set(["calibration", "publishable"]);
 
 interface Hash {
@@ -36,6 +38,7 @@ interface RecordShape {
   kind?: unknown;
   publishable?: unknown;
   trialId?: unknown;
+  variant?: unknown;
   replaces?: unknown;
   infrastructure?: { valid?: unknown };
 }
@@ -193,14 +196,15 @@ function recordsAt(root: string, requireForensic: boolean): Attempt[] {
         }
         fail(entry.name + " has no record.json");
       }
+      const record = json<RecordShape>(recordFile);
       if (requireForensic) {
-        for (const name of FORENSIC_DIRS) {
+        for (const name of [...FORENSIC_DIRS, ...(record.variant === "seeded" ? [SEEDED_START] : [])]) {
           if (!isDirectory(path.join(source, name))) {
             fail(entry.name + " is missing " + name);
           }
         }
       }
-      return { id: entry.name, record: json<RecordShape>(recordFile), crash: null };
+      return { id: entry.name, record, crash: null };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 }

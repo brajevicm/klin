@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -41,8 +42,32 @@ import {
 import { PROBES as PROBE_RUNS } from "./probe.ts";
 
 export const VARIANT = "seeded" as const;
-export const BLOCKS = 9;
-export const RUNS = BLOCKS * ARMS.length;
+
+/** Which families a seeded round schedules, and how many adjacent pairs each one gets. */
+export interface Design {
+  families: string[];
+  repetitions: number;
+}
+
+export function everyFamily(): Design {
+  return { families: Object.keys(families()).sort(), repetitions: 1 };
+}
+
+/** Every way a design can name something the planted catalogue cannot schedule. */
+export function designProblems(design: Design): string[] {
+  const problems: string[] = [];
+  const known = new Set(Object.keys(families()));
+  const named = Array.isArray(design?.families) ? design.families : [];
+  if (named.length === 0) problems.push("the seeded design names no family");
+  for (const name of named) if (!known.has(name)) problems.push("no family " + String(name) + " in the catalogue");
+  if (JSON.stringify(named) !== JSON.stringify([...new Set(named)].sort())) {
+    problems.push("the seeded design does not name its families once each, sorted");
+  }
+  if (!Number.isInteger(design?.repetitions) || design.repetitions < 1) {
+    problems.push("--repetitions needs a positive integer, and the design states " + String(design?.repetitions));
+  }
+  return problems;
+}
 
 export function roundDirectory(): string {
   return path.join(paths.RUNS, "seeded-" + new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19));
@@ -51,7 +76,7 @@ export function roundDirectory(): string {
 export interface Row {
   family: string;
   variant: typeof VARIANT;
-  repetition: 1;
+  repetition: number;
   arm: ArmName;
   block: number;
   order: number;
@@ -80,7 +105,8 @@ export interface Manifest {
   seed: number;
   plannedAt: string;
   design: {
-    repetitions: 1;
+    families: string[];
+    repetitions: number;
     blocks: number;
     runs: number;
     attemptsPerTrial: number;
@@ -92,12 +118,12 @@ export interface Manifest {
   probes?: Witness[];
 }
 
-/** One seeded block per family, shuffled once and held to its adjacent pair of arms. */
-export function rows(seed: number): Row[] {
+/** One seeded block per family and repetition, shuffled once and held to its adjacent pair of arms. */
+export function rows(seed: number, design: Design = everyFamily()): Row[] {
   const draw = ordering(seed);
-  const blocks = Object.keys(families())
-    .sort()
-    .map((family) => ({ family }));
+  const blocks = design.families.flatMap((family) =>
+    Array.from({ length: design.repetitions }, (_, index) => ({ family, repetition: index + 1 })),
+  );
   const firsts = shuffledBy(
     blocks.map((_, index) => (index < Math.ceil(blocks.length / 2) ? ARMS[0] : ARMS[1])),
     draw,
@@ -111,7 +137,7 @@ export function rows(seed: number): Row[] {
       held.push({
         family: block.family,
         variant: VARIANT,
-        repetition: 1,
+        repetition: block.repetition,
         arm,
         block: index,
         order,
@@ -130,8 +156,8 @@ export interface Schedule {
   order: Row[];
 }
 
-export function schedule(seed: number): Schedule {
-  const order = rows(seed);
+export function schedule(seed: number, design: Design = everyFamily()): Schedule {
+  const order = rows(seed, design);
   const firstArm = { active: 0, shadow: 0 };
   for (const row of order.filter((one) => one.order % 2 === 0)) {
     firstArm[row.arm] += 1;
@@ -140,11 +166,11 @@ export function schedule(seed: number): Schedule {
 }
 
 /** The full fixture identity for the planted population, separate from natural v2's identity. */
-export function fixtures(): Record<string, SeededFixture> {
+export function fixtures(names: string[] = everyFamily().families): Record<string, SeededFixture> {
   const held: Record<string, SeededFixture> = {};
   const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-seeded-plan-"));
   try {
-    for (const [name, family] of Object.entries(families())) {
+    for (const [name, family] of Object.entries(families()).filter(([one]) => names.includes(one))) {
       const variant = variantIn(family, VARIANT);
       const base = workspace.startingTree(variant, path.join(room, name, "base"));
       const subject = workspace.subjectStartingTree(variant, path.join(room, name, "subject"));
@@ -183,8 +209,8 @@ function naturalProtocolDrift(): string[] {
   return uncommitted(identity(1));
 }
 
-export function manifestOf(seed: number, held: Frozen, probes: Witness[] = []): Manifest {
-  const planned = schedule(seed);
+export function manifestOf(seed: number, held: Frozen, probes: Witness[] = [], design: Design = everyFamily()): Manifest {
+  const planned = schedule(seed, design);
   return {
     protocol: CURRENT_PROTOCOL.version,
     seededProtocol: SEEDED_PROTOCOL.version,
@@ -194,14 +220,15 @@ export function manifestOf(seed: number, held: Frozen, probes: Witness[] = []): 
     seed,
     plannedAt: new Date().toISOString(),
     design: {
-      repetitions: 1,
+      families: design.families,
+      repetitions: design.repetitions,
       blocks: planned.blocks,
       runs: planned.runs,
       attemptsPerTrial: ATTEMPTS,
     },
     firstArm: planned.firstArm,
     frozen: held,
-    fixtures: fixtures(),
+    fixtures: fixtures(design.families),
     order: planned.order,
     probes,
   };
@@ -231,28 +258,29 @@ export function manifestProblems(held: Manifest): string[] {
   if (!held.frozen || typeof held.frozen !== "object") {
     problems.push("the seeded manifest states no frozen provenance");
   }
-  const planned = schedule(held.seed);
+  const design = { families: held.design?.families, repetitions: held.design?.repetitions } as Design;
+  const unscheduled = designProblems(design);
+  if (unscheduled.length > 0) return [...problems, ...unscheduled, ...probeProblems(held)];
+  const planned = schedule(held.seed, design);
   if (!Number.isInteger(held.seed)) {
     problems.push("the seeded manifest states no integer seed");
   } else if (JSON.stringify(held.order) !== JSON.stringify(planned.order)) {
     problems.push("the seeded order is not the one seed " + String(held.seed) + " gives");
   }
-  if (held.design?.repetitions !== 1) problems.push("the seeded design does not have one repetition");
   if (held.design?.attemptsPerTrial !== ATTEMPTS) {
     problems.push("the seeded design states " + String(held.design?.attemptsPerTrial) + " attempts per trial");
   }
-  if (held.design?.blocks !== BLOCKS) problems.push("the seeded design does not have nine blocks");
-  if (held.design?.runs !== RUNS) problems.push("the seeded design does not have eighteen runs");
+  if (held.design?.blocks !== planned.blocks) problems.push("the seeded design does not have " + String(planned.blocks) + " blocks");
+  if (held.design?.runs !== planned.runs) problems.push("the seeded design does not have " + String(planned.runs) + " runs");
   const order = Array.isArray(held.order) ? held.order : [];
-  if (order.length !== RUNS) problems.push("the seeded order holds " + String(order.length) + " rows");
+  if (order.length !== planned.runs) problems.push("the seeded order holds " + String(order.length) + " rows");
   for (let at = 0; at + 1 < order.length; at += 2) {
     const [first, second] = [order[at], order[at + 1]];
     if (
       first?.family !== second?.family ||
       first?.variant !== VARIANT ||
       second?.variant !== VARIANT ||
-      first?.repetition !== 1 ||
-      second?.repetition !== 1 ||
+      first?.repetition !== second?.repetition ||
       first?.arm === second?.arm ||
       first?.block !== second?.block
     ) {
@@ -267,10 +295,10 @@ export function manifestProblems(held: Manifest): string[] {
   if (held.firstArm?.active !== active || held.firstArm?.shadow !== firsts.length - active) {
     problems.push("the seeded first-arm count does not describe its own order");
   }
-  const known = Object.keys(families()).sort();
+  const known = Array.isArray(design.families) ? design.families : [];
   const named = held.fixtures && typeof held.fixtures === "object" ? Object.keys(held.fixtures).sort() : [];
   if (JSON.stringify(named) !== JSON.stringify(known)) {
-    problems.push("the seeded fixtures do not name every family");
+    problems.push("the seeded fixtures do not name exactly the scheduled families");
   }
   for (const name of known) {
     const fixture = held.fixtures?.[name];
@@ -296,9 +324,14 @@ export function manifestProblems(held: Manifest): string[] {
 }
 
 /** Freeze the seeded schedule and its treatment-independent provenance without running a session. */
-export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
+export function plan(into: string, seed: number, design: Design = everyFamily(), probes = PROBE_RUNS): number {
   if (!Number.isInteger(seed)) {
     process.stdout.write("--seed needs an integer, and it gave " + String(seed) + "\n");
+    return 2;
+  }
+  const unscheduled = designProblems(design);
+  if (unscheduled.length > 0) {
+    process.stdout.write(unscheduled.join("; ") + "\n");
     return 2;
   }
   const known = session.defaults();
@@ -307,12 +340,12 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     process.stdout.write(blocked + "\n");
     return 2;
   }
-  const missing = Object.values(families()).filter((one) => !one.variants.seeded);
+  const missing = Object.values(families()).filter((one) => design.families.includes(one.name) && !one.variants.seeded);
   if (missing.length > 0) {
     process.stdout.write("no seeded fixture for " + missing.map((one) => one.name).join(", ") + "\n");
     return 2;
   }
-  const failed = selftest.run([], "seeded").filter((one) => !one.passed);
+  const failed = selftest.run(design.families, "seeded").filter((one) => !one.passed);
   if (failed.length > 0) {
     process.stdout.write("the seeded self-test failed: " + failed.map((one) => one.detail).join("; ") + "\n");
     return 2;
@@ -322,7 +355,7 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     process.stdout.write(file + " exists. Plan into a new directory.\n");
     return 2;
   }
-  const held = manifestOf(seed, frozen(known));
+  const held = manifestOf(seed, frozen(known), [], design);
   if (held.frozen.klin.commit === "") {
     process.stdout.write("no build provenance ties " + known.klinBin + " to a source commit. benchmark/build-klin writes one.\n");
     return 2;
@@ -395,7 +428,7 @@ export function execute(directory: string, approved: string): number {
   const moved = [
     ...probeEvidenceProblems(directory, manifest),
     ...drift(manifest.frozen, frozen(known)),
-    ...seededFixtureDrift(manifest.fixtures, fixtures()),
+    ...seededFixtureDrift(manifest.fixtures, fixtures(manifest.design.families)),
     ...naturalProtocolDrift(),
   ];
   if (moved.length > 0) {
@@ -421,7 +454,7 @@ export function execute(directory: string, approved: string): number {
       say("stopped before seeded block " + String(block) + ": manifest.json changed under the round");
       return 2;
     }
-    const movedNow = [...drift(manifest.frozen, frozen(known)), ...seededFixtureDrift(manifest.fixtures, fixtures()), ...naturalProtocolDrift()];
+    const movedNow = [...drift(manifest.frozen, frozen(known)), ...seededFixtureDrift(manifest.fixtures, fixtures(manifest.design.families)), ...naturalProtocolDrift()];
     if (movedNow.length > 0) {
       say("stopped before seeded block " + String(block) + ": " + movedNow.join("; "));
       return 2;
@@ -455,7 +488,18 @@ export function execute(directory: string, approved: string): number {
   return 0;
 }
 
-function checkPair(problems: string[], group: RunRecord[], name: string, manifest: Manifest): void {
+function blockName(family: string, repetition: number): string {
+  return family + " r" + String(repetition);
+}
+
+/** Each scheduled block as its family and its repetition, in the manifest's order. */
+function blocksOf(manifest: Manifest): { family: string; repetition: number }[] {
+  const seen = new Map<string, { family: string; repetition: number }>();
+  for (const row of manifest.order) seen.set(blockName(row.family, row.repetition), { family: row.family, repetition: row.repetition });
+  return [...seen.values()];
+}
+
+function checkPair(problems: string[], group: RunRecord[], name: string, family: string, manifest: Manifest): void {
   const active = group.filter((one) => one.arm === "active");
   const shadow = group.filter((one) => one.arm === "shadow");
   if (active.length !== 1 || shadow.length !== 1) {
@@ -472,7 +516,7 @@ function checkPair(problems: string[], group: RunRecord[], name: string, manifes
   for (const [what, read] of fields) {
     if (new Set(group.map(read)).size > 1) problems.push(name + ": the arms did not share one " + what);
   }
-  const fixture = manifest.fixtures[name];
+  const fixture = manifest.fixtures[family];
   for (const record of group) {
     if (record.gate !== fixture?.gate) problems.push(name + ": " + record.trialId + " states gate " + record.gate);
     if (record.taskId !== fixture?.variant.taskId) problems.push(name + ": " + record.trialId + " did not run the frozen task");
@@ -485,7 +529,27 @@ function checkPair(problems: string[], group: RunRecord[], name: string, manifes
   }
 }
 
-/** Verify that all nine seeded cells have valid paired records and that no natural cell slipped in. */
+/** The two trees a seeded report diffs, held to the digests the record states for them. */
+function keptTrees(directory: string, record: RunRecord): string[] {
+  const where = record.family + "/seeded/r" + String(record.repetition) + "/" + record.arm + " " + record.trialId;
+  const trees = path.join(directory, record.trialId, "fixtures");
+  const problems: string[] = [];
+  for (const [tree, want] of [
+    ["subject", record.fixture.startTreeSha256],
+    ["final", record.fixture.finalTreeSha256],
+  ] as const) {
+    if (typeof want !== "string" || want === "") {
+      problems.push(where + ": the record states no digest for the " + tree + " tree");
+    } else if (!fs.existsSync(path.join(trees, tree))) {
+      problems.push(where + ": the attempt keeps no " + tree + " tree");
+    } else if (digest(path.join(trees, tree)) !== want) {
+      problems.push(where + ": the kept " + tree + " tree differs from the digest its record states");
+    }
+  }
+  return problems;
+}
+
+/** Verify that every scheduled seeded cell has valid paired records and that no natural cell slipped in. */
 export function verify(directory: string): string[] {
   const file = path.join(directory, "manifest.json");
   if (!fs.existsSync(file)) return ["no manifest.json under " + directory];
@@ -505,7 +569,7 @@ export function verify(directory: string): string[] {
     problems.push(...(record.infrastructure.valid ? recordProblems(record) : validate(record as unknown as Record<string, unknown>)).map((one) => where + ": " + one));
   }
   for (const row of manifest.order ?? []) {
-    const where = row.family + "/seeded/r1/" + row.arm;
+    const where = row.family + "/seeded/r" + String(row.repetition) + "/" + row.arm;
     const attempts = chain(row, held, failed);
     if (attempts.length === 0) {
       problems.push(where + ": the scheduled trial " + row.trialId + " left no attempt");
@@ -522,7 +586,7 @@ export function verify(directory: string): string[] {
       }
       const wanted = index === 0 ? null : attempts[index - 1].trialId;
       if (record.replaces !== wanted) problems.push(where + ": " + record.trialId + " has the wrong replacement link");
-      for (const [what, was, want] of [["family", record.family, row.family], ["variant", record.variant, VARIANT], ["arm", record.arm, row.arm], ["order", record.order, row.order], ["repetition", record.repetition, 1]] as [string, unknown, unknown][]) {
+      for (const [what, was, want] of [["family", record.family, row.family], ["variant", record.variant, VARIANT], ["arm", record.arm, row.arm], ["order", record.order, row.order], ["repetition", record.repetition, row.repetition]] as [string, unknown, unknown][]) {
         if (was !== want) problems.push(where + ": the record states " + what + " " + String(was) + " where the manifest scheduled " + String(want));
       }
       if (record.infrastructure.valid && index < attempts.length - 1) problems.push(where + ": a valid result was replaced");
@@ -532,13 +596,15 @@ export function verify(directory: string): string[] {
   for (const record of held) if (!claimed.has(record.trialId)) problems.push(record.trialId + ": the record belongs to no seeded schedule row");
   for (const crashed of failed) if (!claimed.has(crashed.trialId)) problems.push("the crash " + crashed.trialId + " belongs to no seeded schedule row");
   const valid = held.filter((one) => one.infrastructure.valid);
+  for (const record of valid) problems.push(...keptTrees(directory, record));
   for (const [what, read] of FROZEN) {
     if (new Set(valid.map(read)).size > 1) problems.push("the seeded round did not share " + what);
   }
-  for (const family of Object.keys(families()).sort()) {
-    checkPair(problems, valid.filter((one) => one.family === family), family, manifest);
+  for (const { family, repetition } of blocksOf(manifest)) {
+    checkPair(problems, valid.filter((one) => one.family === family && one.repetition === repetition), blockName(family, repetition), family, manifest);
   }
-  if (valid.length !== RUNS) problems.push("the seeded round holds " + String(valid.length) + " valid records where it needs " + String(RUNS));
+  const runs = manifest.order.length;
+  if (valid.length !== runs) problems.push("the seeded round holds " + String(valid.length) + " valid records where it needs " + String(runs));
   const stated: [string, (one: RunRecord) => string, string][] = [
     ["the protocol", (one) => String(one.protocol), String(manifest.frozen.protocol)],
     ["the klin binary", (one) => one.klin.binarySha256, manifest.frozen.klin.binarySha256],
@@ -575,9 +641,42 @@ function delivery(record: RunRecord): string {
   return record.arm === "active" ? "delivered" : "would-have-been-delivered";
 }
 
-/** A compact report whose columns keep catch, delivery, repair and friction distinct. */
-export function report(directory: string): string {
-  const held = records(directory).filter((one) => one.variant === VARIANT && one.infrastructure.valid);
+function counted(group: RunRecord[], read: (one: RunRecord) => boolean | null | undefined): string {
+  return String(group.filter((one) => read(one) === true).length) + " of " + String(group.length);
+}
+
+function blocksSpent(group: RunRecord[]): string {
+  const blocks = new Map<number, number>();
+  for (const one of group) {
+    const count = one.seeded?.blockedStops ?? -1;
+    blocks.set(count, (blocks.get(count) ?? 0) + 1);
+  }
+  return [...blocks]
+    .sort(([a], [b]) => a - b)
+    .map(([count, runs]) => (count < 0 ? "unknown" : String(count)) + ": " + String(runs))
+    .join(", ");
+}
+
+/** What the subject changed, from the seeded starting tree to its final tree, or why no diff could be made. */
+function repairDiff(directory: string, record: RunRecord): { diff: string; failure: string } {
+  const trees = path.join(directory, record.trialId, "fixtures");
+  const ran = spawnSync("git", ["diff", "--no-index", "--no-color", "--no-ext-diff", "subject", "final"], { cwd: trees, encoding: "utf8" });
+  if (ran.error || (ran.status !== 0 && ran.status !== 1)) {
+    return { diff: "", failure: "git diff failed: " + String(ran.error ?? ran.stderr.trim()) };
+  }
+  return { diff: ran.stdout === "" ? "the final tree equals the seeded starting tree" : ran.stdout.trimEnd(), failure: "" };
+}
+
+/**
+ * A compact report whose columns keep catch, delivery, repair and friction distinct.
+ *
+ * `problems` is the contract the report rests on: the round's own verification and every Active
+ * repair diff that could not be made. A report with problems is still rendered, for diagnosis.
+ */
+export function report(directory: string): { text: string; problems: string[] } {
+  const held = records(directory)
+    .filter((one) => one.variant === VARIANT && one.infrastructure.valid)
+    .sort((a, b) => a.family.localeCompare(b.family) || a.repetition - b.repetition || a.arm.localeCompare(b.arm));
   const problems = verify(directory);
   const lines = [
     "# Seeded Shadow/Active round",
@@ -588,13 +687,14 @@ export function report(directory: string): string {
     "",
     "## Seeded runs",
     "",
-    "| family | gate | arm | seed present | whole-run catch | Stop delivery | final repair | blocked Stops | tries | external-oracle/task outcome | final shortcut | cost |",
-    "| --- | --- | --- | --- | --- | --- | --- | ---: | ---: | --- | --- | ---: |",
-    ...held.sort((a, b) => (a.family + a.arm).localeCompare(b.family + b.arm)).map((record) =>
+    "| family | gate | arm | repetition | seed present | whole-run catch | Stop delivery | final repair | blocked Stops | tries | external-oracle/task outcome | final shortcut | cost |",
+    "| --- | --- | --- | ---: | --- | --- | --- | --- | ---: | ---: | --- | --- | ---: |",
+    ...held.map((record) =>
       row([
         record.family,
         record.gate,
         record.arm,
+        String(record.repetition),
         yesNo(record.fixture.startShortcut?.present),
         caught(record),
         delivery(record),
@@ -607,17 +707,58 @@ export function report(directory: string): string {
       ]),
     ),
     "",
+    "## By family and arm",
+    "",
+    "Blocks spent counts the runs at each number of blocked Stops. A Shadow run spends no block, so its Stop delivery and blocks spent are what klin would have delivered and blocked.",
+    "Final repair is the target endpoint; the oracle is a guardrail.",
+    "",
+    "| family | arm | runs | whole-run catch | Stop delivery | blocks spent | final repair | oracle pass |",
+    "| --- | --- | ---: | --- | --- | --- | --- | --- |",
+  ];
+  const named = [...new Set(held.map((one) => one.family))];
+  for (const family of named) {
+    for (const arm of ARMS) {
+      const group = held.filter((one) => one.family === family && one.arm === arm);
+      lines.push(
+        row([
+          family,
+          arm,
+          String(group.length),
+          counted(group, (one) => one.seeded?.wholeRun.caught),
+          counted(group, (one) => one.seeded?.stopDelivery),
+          blocksSpent(group),
+          counted(group, (one) => one.seeded?.finalRepair),
+          counted(group, (one) => one.oracle.behaviourPassed),
+        ]),
+      );
+    }
+  }
+  lines.push(
+    "",
     "## Paired cost differences",
     "",
     "Active minus Shadow, using the host's raw total session cost field where both arms recorded one.",
     "",
-  ];
-  for (const family of Object.keys(families()).sort()) {
-    const pair = held.filter((one) => one.family === family);
-    const active = pair.find((one) => one.arm === "active")?.cost;
-    const shadow = pair.find((one) => one.arm === "shadow")?.cost;
-    lines.push("- " + family + ": " + (typeof active === "number" && typeof shadow === "number" ? String(active - shadow) : "unknown"));
+  );
+  for (const family of named) {
+    for (const repetition of [...new Set(held.filter((one) => one.family === family).map((one) => one.repetition))]) {
+      const pair = held.filter((one) => one.family === family && one.repetition === repetition);
+      const active = pair.find((one) => one.arm === "active")?.cost;
+      const shadow = pair.find((one) => one.arm === "shadow")?.cost;
+      lines.push("- " + blockName(family, repetition) + ": " + (typeof active === "number" && typeof shadow === "number" ? String(active - shadow) : "unknown"));
+    }
   }
-  lines.push("", "## Contract", "", problems.length === 0 ? "Exactly 18 valid scheduled seeded runs hold the frozen contract." : problems.map((one) => "- " + one).join("\n"), "");
-  return lines.join("\n");
+  lines.push(
+    "",
+    "## Active repairs",
+    "",
+    "Each diff runs from the seeded starting tree to the final tree. Classify each repair as genuine or appeasement from it.",
+  );
+  for (const record of held.filter((one) => one.arm === "active")) {
+    const made = repairDiff(directory, record);
+    if (made.failure !== "") problems.push(record.trialId + ": no Active repair diff, " + made.failure);
+    lines.push("", "### " + blockName(record.family, record.repetition) + " " + record.trialId, "", "```diff", made.failure || made.diff, "```");
+  }
+  lines.push("", "## Contract", "", problems.length === 0 ? "Exactly " + String(held.length) + " valid scheduled seeded runs hold the frozen contract." : problems.map((one) => "- " + one).join("\n"), "");
+  return { text: lines.join("\n"), problems };
 }

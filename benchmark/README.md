@@ -403,6 +403,33 @@ node benchmark/src/cli.ts verify benchmark/runs/seeded-<stamp>
 node benchmark/src/cli.ts report benchmark/runs/seeded-<stamp>
 ```
 
+`--families` and `--repetitions` narrow and repeat that design. Each named
+family gets that many adjacent pairs, the first arms stay balanced over all
+blocks, and the manifest freezes both values under `design` with the fixture
+identity of only the families it schedules. `verify` holds every pair to its
+own block, so a family's three pairs are three cells and not one. The
+confirmation round of #307 is twelve blocks and twenty-four runs:
+
+```sh
+node benchmark/src/cli.ts seeded-plan --seed 1 \
+  --families complexity,public-api,reachability,stubs --repetitions 3
+```
+
+`report` gives the whole-run catch, Stop delivery, blocks spent, final repair
+and oracle for each family and arm, and prints each Active run's diff from the
+seeded starting tree to its final tree, which is what a genuine or appeasement
+call rests on. The diff reads the raw attempt, so run it over the round
+directory rather than the slim evidence.
+
+Both trees that diff reads are bound to the record. `fixture.startTreeSha256`
+is the subject's starting tree and `fixture.finalTreeSha256` is the final tree
+as the attempt keeps it, and `verify` fails a seeded attempt whose
+`fixtures/subject` or `fixtures/final` is missing or no longer hashes to its
+digest. `evidence-prepare` refuses a seeded attempt without `fixtures/subject`.
+`report` still renders a seeded report that does not hold its contract, for
+diagnosis, but it exits 1 and names each problem, and an Active diff that
+cannot be made is one of them.
+
 The generic `plan` accepts `--population seeded`, and `execute` detects the
 population from the manifest. Both forms use the same frozen provenance and
 retry contract as the natural round; seeded results never enter its risk,
@@ -858,7 +885,7 @@ node benchmark/src/cli.ts label-prepare benchmark/evidence/<v1-set> benchmark/ev
 node benchmark/src/cli.ts label-synthesize benchmark/evidence/labeling-<date> \
   benchmark/evidence/<v1-set> benchmark/evidence/<v2-set>
 
-node benchmark/src/cli.ts seeded-plan --seed 1             # nine planted blocks, eighteen runs
+node benchmark/src/cli.ts seeded-plan --seed 1             # nine planted blocks, eighteen runs, unless narrowed
 node benchmark/src/cli.ts seeded-execute benchmark/runs/seeded-<stamp> --manifest-sha256 <digest>
 node benchmark/src/cli.ts report benchmark/runs/seeded-<stamp> --out docs/seeded-<date>.md
 ```

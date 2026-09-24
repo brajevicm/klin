@@ -217,6 +217,7 @@ export interface RunRecord {
     promptSha256: string;
     treeSha256: string;
     startTreeSha256: string;
+    finalTreeSha256?: string;
     seed: string[];
     staged?: string[];
     uncommitted: string[];

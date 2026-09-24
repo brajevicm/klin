@@ -148,6 +148,10 @@
         "startTreeSha256": {
           "type": "string"
         },
+        "finalTreeSha256": {
+          "type": "string",
+          "description": "The final tree the attempt keeps under `fixtures/final`, digested when the record is written. A seeded report diffs it against `fixtures/subject`, and `verify` holds both kept trees to their digests. Absent from records written before #307."
+        },
         "seed": {
           "type": "array",
           "items": {

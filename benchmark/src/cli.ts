@@ -23,9 +23,9 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts probe [family]
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
-  node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded]
+  node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded [--families a,b] [--repetitions N]]
   node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
-  node benchmark/src/cli.ts seeded-plan [--into DIR] [--seed N]
+  node benchmark/src/cli.ts seeded-plan [--into DIR] [--seed N] [--families a,b] [--repetitions N]
   node benchmark/src/cli.ts seeded-execute <round-dir> --manifest-sha256 HEX
   node benchmark/src/cli.ts verify <records-dir>
   node benchmark/src/cli.ts report <records-dir> [--out FILE]
@@ -47,6 +47,14 @@ Environment:
 function flag(args: string[], name: string, fallback: string): string {
   const at = args.indexOf(name);
   return at >= 0 && at + 1 < args.length ? args[at + 1] : fallback;
+}
+
+function seededDesign(args: string[]): seeded.Design {
+  const named = flag(args, "--families", "");
+  return {
+    families: named === "" ? seeded.everyFamily().families : named.split(",").sort(),
+    repetitions: Number(flag(args, "--repetitions", "1")),
+  };
 }
 
 /**
@@ -332,7 +340,7 @@ export function main(argv: string[]): number {
   }
   if (command === "plan") {
     if (flag(args, "--population", "") === "seeded") {
-      return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")));
+      return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")), seededDesign(args));
     }
     return round.plan(flag(args, "--into", round.roundDirectory()), Number(flag(args, "--seed", "1")));
   }
@@ -349,7 +357,7 @@ export function main(argv: string[]): number {
       : round.execute(args[0], approved);
   }
   if (command === "seeded-plan") {
-    return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")));
+    return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")), seededDesign(args));
   }
   if (command === "seeded-execute") {
     const approved = flag(args, "--manifest-sha256", "");
@@ -400,12 +408,18 @@ export function main(argv: string[]): number {
     return prepareWorksheet(args);
   }
   if (command === "report") {
-    const text = report.write(args[0] ?? "");
+    const directory = args[0] ?? "";
+    const { text, problems } =
+      populationOf(directory) === "seeded" ? seeded.report(directory) : { text: report.write(directory), problems: [] };
     const out = flag(args, "--out", "");
     if (out) {
       fs.writeFileSync(out, text);
     } else {
       process.stdout.write(text);
+    }
+    if (problems.length > 0) {
+      process.stderr.write("the seeded report does not hold its contract: " + problems.join("; ") + "\n");
+      return 1;
     }
     return 0;
   }
