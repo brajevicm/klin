@@ -153,8 +153,8 @@ test("a task id names no gate, family, variant or arm", () => {
   }
 });
 
-/** The gates the committed candidate tickets have filled so far. #311 and #312 add theirs. */
-const CANDIDATE_GATES = ["complexity", "inventory", "stubs"];
+/** The gates the committed candidate tickets have filled so far. #312 adds its own. */
+const CANDIDATE_GATES = ["complexity", "doc-citations", "escapes", "inventory", "reachability", "stubs"];
 
 test("a gate has three or four candidates, no two share a declared order, and each has its rationale", () => {
   const pool = candidates();

@@ -233,6 +233,7 @@ function suiteIsGreen(language: FamilySpec["language"], tree: string, into: stri
   }
   fs.rmSync(into, { recursive: true, force: true });
   copyTree(tree, into);
+  toolchain.lend(into);
   const [head, ...rest] = command;
   const ran = spawnSync(head, rest, {
     cwd: into,

@@ -1,0 +1,4 @@
+src/errors.ts
+src/lexer.ts
+src/parser.ts
+src/evaluate.ts

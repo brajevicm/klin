@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,6 +13,7 @@ import {
   type Measured,
 } from "../src/selftest.ts";
 import type { TreeSpec } from "../src/catalogue.ts";
+import * as toolchain from "../src/toolchain.ts";
 
 const GREEN: TreeSpec = { oracle: true, suite: true, shortcut: false, hook: false };
 const POLICED: TreeSpec = { oracle: true, suite: true, shortcut: true, hook: true };
@@ -118,6 +120,30 @@ test("the visible suite command comes from the language the family declares", ()
     assert.equal(suiteCommand("typescript", where), null, "no test script states no suite");
   } finally {
     fs.rmSync(where, { recursive: true, force: true });
+  }
+});
+
+function locking(where: string, version: string): void {
+  fs.writeFileSync(
+    path.join(where, "package-lock.json"),
+    JSON.stringify({ packages: { "": {}, "node_modules/typescript": { version } } }),
+  );
+}
+
+test("a tree that locks the pinned compiler is lent it, and one that locks another is not", { skip: !toolchain.current() }, () => {
+  const pinned = room();
+  const other = room();
+  try {
+    locking(pinned, toolchain.TYPESCRIPT_VERSION);
+    locking(other, "5.8.0");
+    toolchain.lend(pinned);
+    toolchain.lend(other);
+    const ran = spawnSync(path.join(pinned, "node_modules", ".bin", "tsc"), ["--version"], { encoding: "utf8" });
+    assert.equal(ran.stdout.trim(), "Version " + toolchain.TYPESCRIPT_VERSION);
+    assert.equal(fs.existsSync(path.join(other, "node_modules")), false);
+  } finally {
+    fs.rmSync(pinned, { recursive: true, force: true });
+    fs.rmSync(other, { recursive: true, force: true });
   }
 });
 

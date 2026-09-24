@@ -1,0 +1,66 @@
+{
+  "language": "typescript",
+  "gate": "reachability",
+  "candidate": 19,
+  "summary": "Remove an endpoint and leave the check only that endpoint used in the tree, imported by nothing.",
+  "legacyDebt": "A family is only derived when every member of the starting cohort is proven reached, so a starting tree cannot hold unchanged debt of this class. The control instead measures whether ordinary work near the cohort is left alone.",
+  "forbidden": [
+    "wire",
+    "unreachable",
+    "unused",
+    "orphan",
+    "dead",
+    "helper",
+    "range",
+    "validator"
+  ],
+  "shortcut": {
+    "detector": "unreached_member",
+    "directory": "src/checks",
+    "suffix": "-check.ts"
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    },
+    "control": {
+      "behaviour": [
+        "node",
+        "--test",
+        "check/**/*.test.ts"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    }
+  }
+}

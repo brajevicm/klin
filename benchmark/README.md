@@ -656,6 +656,20 @@ points at it. The harness never copies it into a workspace, and the fixture
 digest covers it, so an admission set freezes it with the rest of the task.
 The candidates of #310 are the `complexity-*` directories at 1 to 4, the
 `stubs-*` directories at 5 to 7 and the `inventory-*` directories at 8 to 10.
+The candidates of #311 are the `escapes-*` directories at 11 to 13, the
+`doc-citations-*` directories at 14 to 16 and the `reachability-*`
+directories at 17 to 19. All nine are TypeScript. No Rust reachability
+candidate is there: rustc warns about a crate-private module that nothing
+uses, and a public one makes the correct removal a public-api break.
+
+The `npm test` of an escapes candidate runs `tsc -p .` in strict mode, and
+its lockfile pins TypeScript at the version `prepare` installs. A subject
+installs it with `npm ci`, from the registry the sandbox allows. The
+self-test reaches no registry, so it lends the prepared compiler to the copy
+it runs a visible suite in, as that copy's `node_modules`, and only where the
+tree's lockfile pins the same version. The oracles of these candidates run the
+same compiler through `KLIN_BENCH_TYPESCRIPT`. A `probe` runs the suite
+before anything else, so a probe of one of them fails `suite-green-inside`.
 
 ```sh
 node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
