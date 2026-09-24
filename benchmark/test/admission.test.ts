@@ -156,7 +156,7 @@ test("two of three exposures, three oracle passes and a clean control admit a ca
   fs.rmSync(where, { recursive: true, force: true });
 });
 
-test("a gate takes its first three admitted in declared order, and an incomplete candidate before them leaves it unsettled", () => {
+test("a candidate short of a valid run is incomplete, and a gate takes its first admitted in declared order", () => {
   const declared = [
     candidate("late", "complexity", 5),
     candidate("first", "complexity", 1),
@@ -175,6 +175,9 @@ test("a gate takes its first three admitted in declared order, and an incomplete
   assert.equal(held.candidates.find((one) => one.candidate === "short")?.verdict, "incomplete");
   assert.deepEqual(held.slots, { complexity: ["first", "second", "third"] });
   fs.rmSync(whole.where, { recursive: true, force: true });
+});
+
+test("an incomplete candidate earlier in declared order leaves its gate unsettled", () => {
   const shortFirst = setOnDisk([candidate("short", "complexity", 1), candidate("next", "complexity", 2)], {
     short: [risk(true), risk(true), { valid: false, shortcut: true }, clean],
     next: admitted,
