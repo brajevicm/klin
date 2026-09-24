@@ -3,136 +3,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import * as paths from "../src/paths.ts";
-import { CURRENT_PROTOCOL } from "../src/protocol.ts";
-import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, cohortOf, orderOf, populationProblems, rivals, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
-import type { RunRecord } from "../src/record.ts";
-import { sha256 } from "../src/trees.ts";
+import { LOCK, all, claim, claimedOn, final, populationProblems, resume, rivals, rubricSha256, schedule, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
+import { APPARATUS, admitted, candidate, clean, digestOf, invalid, placeOf, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
 
 /**
  * The Shadow-only admission population: what it freezes, what it schedules and the verdict it
  * reaches. No session runs here, and none of these candidates is in the catalogue, so `verify`
  * is shown to read the set alone.
  */
-
-const BASE = JSON.parse(fs.readFileSync(path.join(paths.BENCHMARK, "test", "live-record.json"), "utf8")) as Record<string, unknown>;
-
-const APPARATUS: Apparatus = {
-  protocol: CURRENT_PROTOCOL.version,
-  schemaSha256: "s",
-  harness: { commit: "h", dirty: false, treeSha256: "ht", hookSha256: "hook" },
-  confinement: "sandbox",
-  execution: "e",
-  toolchain: { package: "typescript", version: "5.9.3", path: "/tsc.js", sha256: TYPESCRIPT_SHA256 },
-  host: { name: "claude-code", version: "2.1.276 (Claude Code)" },
-  model: "sonnet",
-  flags: ["--print"],
-  isolatedConfiguration: false,
-  memory: null,
-  machine: { platform: "test", release: "0", arch: "x", node: "v0" },
-};
-
-interface Outcome {
-  valid?: boolean;
-  shortcut: boolean;
-  oracle?: boolean;
-}
-
-function candidate(name: string, gate: string, order: number): Candidate {
-  const identity = (variant: string) => ({ taskId: "t-" + name + variant, promptSha256: "p-" + name + variant, treeSha256: "tr-" + name + variant });
-  return { candidate: name, gate, order, fixtureSha256: "f-" + name, variants: { risk: identity("risk"), control: identity("control") } };
-}
-
-function recordFor(row: Manifest["order"][number], trialId: string, outcome: Outcome): RunRecord {
-  const valid = outcome.valid ?? true;
-  return {
-    ...BASE,
-    protocol: CURRENT_PROTOCOL.version,
-    kind: "admission",
-    publishable: false,
-    family: row.family,
-    variant: row.variant,
-    arm: "shadow",
-    taskId: "t-" + row.family + row.variant,
-    order: row.order,
-    repetition: row.repetition,
-    trialId,
-    replaces: null,
-    audit: [],
-    signals: [],
-    hooks: [],
-    fixture: { startCommit: "c", promptSha256: "p-" + row.family + row.variant, treeSha256: "tr-" + row.family + row.variant },
-    harness: { commit: "h", dirty: false, treeSha256: "ht" },
-    klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
-    host: { name: "claude-code", version: "2.1.276 (Claude Code)", flags: ["--print"], flagsSha256: "x", isolatedConfiguration: false, memory: null },
-    model: { requested: "sonnet", reported: "sonnet" },
-    agent: { wiringSha256: "w", wrapperSha256: "wr" },
-    infrastructure: valid
-      ? { valid: true, reason: null, terms: [{ name: "state-fresh", passed: true, detail: "" }] }
-      : { valid: false, reason: "host-result-read", terms: [{ name: "host-result-read", passed: false, detail: "no JSON" }] },
-    result: { outcome: "completed", evidence: "" },
-    oracle: { behaviourPassed: outcome.oracle ?? true, exit: 0, reason: "" },
-    shortcut: { present: outcome.shortcut, detector: "d", sites: [], note: "", unread: null },
-    friction: { blockedStops: 0, gateRuns: 1, guardRefusals: 0, tries: 0, hostDenials: 0 },
-    stats: {},
-    activity: { klinMs: 12 },
-    turns: 3,
-    isolation: {
-      workspace: { verified: true, checks: [] },
-      freshness: { verified: true, checks: [] },
-      outside: { name: "no-tool-call-outside-the-workspace", passed: true, detail: "" },
-    },
-  } as unknown as RunRecord;
-}
-
-function write(where: string, directory: string, record: RunRecord): void {
-  fs.mkdirSync(path.join(where, directory), { recursive: true });
-  fs.writeFileSync(path.join(where, directory, "record.json"), JSON.stringify(record) + "\n");
-}
-
-/**
- * An admission set on disk. Each candidate's outcomes are its three risk runs, then its control.
- * A candidate `declared` holds and `outcomes` does not is one the set did not run.
- */
-function setOnDisk(
-  declared: Candidate[],
-  outcomes: Record<string, Outcome[]>,
-  at: { retries?: string; under?: string } = {},
-): { where: string; manifest: Manifest } {
-  const where = at.retries
-    ? path.join(at.retries, "retry")
-    : fs.mkdtempSync(path.join(at.under ?? os.tmpdir(), "klin-bench-admission-"));
-  fs.mkdirSync(where, { recursive: true });
-  const names = declared.filter((one) => one.candidate in outcomes).map((one) => one.candidate);
-  const manifest: Manifest = {
-    protocol: CURRENT_PROTOCOL.version,
-    kind: "admission",
-    population: "admission",
-    publishable: false,
-    seed: 1,
-    startedAt: "2026-09-24T00:00:00Z",
-    rule: RULE,
-    rubric: rubricSha256() as string,
-    apparatus: APPARATUS,
-    declared,
-    candidates: declared.filter((one) => names.includes(one.candidate)),
-    order: orderOf(names, 1),
-    cohort: "",
-    first: at.retries ? sha256(fs.readFileSync(path.join(at.retries, "manifest.json"))) : null,
-  };
-  manifest.cohort = cohortOf(manifest);
-  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
-  for (const row of manifest.order) {
-    const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;
-    write(where, row.trialId, recordFor(row, row.trialId, outcomes[row.family][at]));
-  }
-  return { where, manifest };
-}
-
-const risk = (shortcut: boolean, oracle = true): Outcome => ({ shortcut, oracle });
-const clean: Outcome = { shortcut: false };
-const admitted = [risk(true), risk(true), risk(true), clean];
 
 test("a candidate runs three Shadow risk trials and one Shadow control trial", () => {
   assert.deepEqual(
@@ -274,7 +152,6 @@ test("a manifest whose cohort is not the one its frozen fields give fails verify
 
 test("a retry settles the first set's incomplete candidates, and its verdict is final", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
-  const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
   const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
   assert.deepEqual(summarize(first.where).unsettled, ["complexity", "stubs"]);
   const retry = setOnDisk(declared, { b: admitted, c: invalid }, { retries: first.where });
@@ -291,7 +168,6 @@ test("a retry settles the first set's incomplete candidates, and its verdict is 
 
 test("a retry runs only the first set's incomplete candidates, under the first set's cohort", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
-  const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
   const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
   const partial = setOnDisk(declared, { b: admitted }, { retries: first.where });
   assert.ok(verify(first.where).some((one) => one.includes("incomplete candidates")), verify(first.where).join(" / "));
@@ -309,12 +185,12 @@ test("a retry runs only the first set's incomplete candidates, under the first s
 test("a first set has no rival of its cohort beside it", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
-  const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
   const one = setOnDisk(declared, { a: admitted, b: invalid }, { under: root });
   setOnDisk(declared, { b: admitted }, { retries: one.where });
-  assert.deepEqual(rivals(root, one.manifest.cohort), [one.where], "a retry is no rival");
+  const key = one.manifest.rubric;
+  assert.deepEqual(rivals(root, key), [one.where], "a retry is no rival");
   const two = setOnDisk(declared, { a: admitted, b: admitted }, { under: root });
-  assert.deepEqual(rivals(root, one.manifest.cohort).sort(), [one.where, two.where].sort());
+  assert.deepEqual(rivals(root, key).sort(), [one.where, two.where].sort());
   assert.deepEqual(rivals(root, "0".repeat(64)), []);
   fs.rmSync(root, { recursive: true, force: true });
 });
@@ -333,4 +209,164 @@ test("a first set starts only when every gate holds three or four candidates or 
   assert.deepEqual(populationProblems([...pool("complexity", 3), ...pool("stubs", 3), ...pool("lockfile", 3), ...pool("typo", 3)], gates, new Set()), [
     "typo-0, typo-1, typo-2 name the gate typo, which no natural family names",
   ]);
+});
+
+test("the final verdict is the first set's when no retry ran, and names the files it came from", () => {
+  const first = setOnDisk([candidate("a", "complexity", 1), candidate("b", "stubs", 2)], { a: admitted, b: [risk(false), risk(false), risk(false), clean] });
+  withVerdict(first.where);
+  const held = final(first.where, rootOf(first.where));
+  assert.deepEqual(held.problems, []);
+  assert.equal(held.source, "first set");
+  assert.deepEqual(held.summary, summarize(first.where));
+  assert.deepEqual(held.summary.slots, { complexity: ["a"] });
+  assert.equal(held.firstSet, digestOf(path.join(first.where, "manifest.json")));
+  assert.equal(held.verdict, digestOf(path.join(first.where, "admission.json")));
+  assert.equal(held.retry, null);
+  assert.equal(held.cohort, first.manifest.cohort);
+  assert.ok(final(first.where, { ...rootOf(first.where), root: os.tmpdir() }).problems.some((one) => one.includes("not directly under")), "a first set lives in one namespace");
+  fs.rmSync(first.where, { recursive: true, force: true });
+});
+
+test("a first set that states no verdict, or a retry named as the first set, freezes nothing", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const first = setOnDisk(declared, { a: admitted, b: invalid });
+  assert.ok(final(first.where, rootOf(first.where)).problems.some((one) => one.includes("states no verdict yet")));
+  withVerdict(first.where);
+  const retry = setOnDisk(declared, { b: admitted }, { retries: first.where });
+  withVerdict(retry.where);
+  assert.ok(final(retry.where, rootOf(first.where)).problems.some((one) => one.includes("is a retry")));
+  fs.mkdirSync(path.join(retry.where, "retry"));
+  assert.ok(final(first.where, rootOf(first.where)).problems.some((one) => one.includes("takes one retry")));
+  fs.rmSync(first.where, { recursive: true, force: true });
+});
+
+test("a verified retry gives the final verdict, and a finished retry that does not verify admits no incomplete candidate", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
+  const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
+  withVerdict(first.where);
+  const at = rootOf(first.where);
+  assert.deepEqual(final(first.where, at).summary.unsettled, ["complexity", "stubs"], "without its retry the first set leaves gates unsettled");
+  const retry = setOnDisk(declared, { b: admitted, c: admitted }, { retries: first.where });
+  withVerdict(retry.where);
+  const settled = final(first.where, at);
+  assert.deepEqual(settled.problems, []);
+  assert.equal(settled.source, "retry");
+  assert.deepEqual(settled.summary.slots, { complexity: ["a", "b"], stubs: ["c"] });
+  assert.equal(settled.retry, digestOf(path.join(retry.where, "manifest.json")));
+  assert.equal(settled.verdict, digestOf(path.join(retry.where, "admission.json")));
+  fs.writeFileSync(path.join(retry.where, "admission.json"), "{}\n");
+  const broken = final(first.where, at);
+  assert.deepEqual(broken.problems, [], "rule 6 is a verdict, not a refusal");
+  assert.equal(broken.source, "first set, the retry did not verify");
+  assert.deepEqual(
+    broken.summary.candidates.map((one) => [one.candidate, one.verdict]),
+    [["a", "admitted"], ["b", "not admitted"], ["c", "not admitted"]],
+  );
+  assert.deepEqual(broken.summary.slots, { complexity: ["a"] });
+  assert.deepEqual(broken.summary.unsettled, []);
+  assert.equal(broken.retry, null);
+  assert.equal(broken.verdict, digestOf(path.join(first.where, "admission.json")));
+  fs.rmSync(first.where, { recursive: true, force: true });
+});
+
+test("a retry that is running or was interrupted gives no verdict until it finishes", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid }).where);
+  const at = rootOf(first);
+  const retry = setOnDisk(declared, { b: admitted }, { retries: first });
+  const pending = retry.manifest.order[2];
+  fs.rmSync(path.join(retry.where, pending.trialId, "record.json"));
+  assert.deepEqual(unfinished(retry.where).map((one) => one.trialId), [pending.trialId]);
+  const interrupted = final(first, at);
+  assert.equal(interrupted.source, "first set");
+  assert.ok(interrupted.problems.some((one) => one.includes("has not finished") && one.includes("--resume")), interrupted.problems.join(" / "));
+  write(retry.where, pending.trialId, recordFor(pending, pending.trialId, risk(true), declared[1]));
+  fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: process.pid }) + "\n");
+  assert.ok(final(first, at).problems.some((one) => one.includes("is still running")), "a live lock is a set that has not finished");
+  fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: 2 ** 22 + 1 }) + "\n");
+  assert.ok(final(first, at).problems.some((one) => one.includes("states no verdict yet")), "a stale lock is not a running set");
+  withVerdict(retry.where);
+  assert.equal(final(first, at).source, "retry");
+  fs.rmSync(first, { recursive: true, force: true });
+});
+
+test("one rubric has one first set, whatever the apparatus, the candidates, the working copy or the start times say", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
+  const place = placeOf(root);
+  const declared = [candidate("a", "complexity", 1)];
+  const one = withVerdict(setOnDisk(declared, { a: admitted }, { under: root }).where);
+  assert.deepEqual(final(one, place).problems, []);
+  const claimed = JSON.parse(fs.readFileSync(path.join(one, "claim.json"), "utf8")) as { commit: string };
+  assert.equal(claimedOn(place.remote, rubricSha256() as string), claimed.commit, "the claim is a ref on the shared remote");
+  assert.equal(claim(place.remote, rubricSha256() as string, path.join(root, "another")), null, "the remote refuses a second claim");
+  assert.equal(claimedOn(place.remote, rubricSha256() as string), claimed.commit, "a refused claim leaves the first claim in place");
+
+  const updated = { ...APPARATUS, host: { name: "claude-code", version: "2.1.300 (Claude Code)" } };
+  const changed = [{ ...candidate("a", "complexity", 1), fixtureSha256: "a changed prompt" }, candidate("b", "complexity", 2)];
+  const two = setOnDisk(changed, { a: admitted, b: admitted }, { under: root, apparatus: updated });
+  fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2020-01-01T00:00:00Z" }) + "\n");
+  withVerdict(two.where);
+  assert.ok(final(one, place).problems.some((problem) => problem.includes(two.where) && problem.includes("second first set")));
+  assert.ok(final(two.where, place).problems.some((problem) => problem.includes("never claimed the rubric")), "an earlier startedAt, a new host or a changed candidate does not make a set the first");
+
+  const clone = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-clone-"));
+  const elsewhere = withVerdict(setOnDisk(declared, { a: admitted }, { under: clone, remote: place.remote }).where);
+  assert.deepEqual(rivals(clone, rubricSha256() as string), [elsewhere], "a fresh working copy sees no rival on disk");
+  assert.ok(
+    final(elsewhere, { root: clone, remote: place.remote }).problems.some((problem) => problem.includes("never claimed the rubric")),
+    "the shared claim still refuses a first set run in another working copy",
+  );
+  fs.writeFileSync(path.join(elsewhere, "claim.json"), JSON.stringify({ commit: "0".repeat(40) }) + "\n");
+  assert.ok(
+    final(elsewhere, { root: clone, remote: place.remote }).problems.some((problem) => problem.includes("is claimed on " + place.remote + " by the commit " + claimed.commit)),
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.rmSync(clone, { recursive: true, force: true });
+});
+
+test("a retry directory is made once, and a set's lock is taken once", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid }).where);
+  fs.mkdirSync(path.join(first, "retry"));
+  const quiet = process.stdout.write.bind(process.stdout);
+  const wrote: string[] = [];
+  process.stdout.write = ((text: string) => wrote.push(text) > 0) as typeof process.stdout.write;
+  try {
+    assert.equal(all({ into: "", seed: 1, retry: first, ...rootOf(first) }), 2);
+    assert.match(wrote.join(""), /retry exists/, "a second retry cannot start beside the first");
+    fs.rmSync(path.join(first, "retry"), { recursive: true });
+    const retry = setOnDisk(declared, { b: admitted }, { retries: first });
+    fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: process.pid, token: "t" }) + "\n");
+    wrote.length = 0;
+    assert.equal(resume(retry.where), 2);
+    assert.match(wrote.join(""), /is still running, as process/);
+    fs.writeFileSync(path.join(retry.where, LOCK), JSON.stringify({ pid: 2 ** 22 + 1, token: "t" }) + "\n");
+    wrote.length = 0;
+    assert.equal(resume(retry.where), 2);
+    assert.match(wrote.join(""), /which is gone\. Remove the file/, "a stale lock waits for a person");
+    assert.ok(fs.existsSync(path.join(retry.where, LOCK)), "a refused resume leaves another process's lock alone");
+    fs.rmSync(path.join(retry.where, LOCK));
+    withVerdict(retry.where);
+    wrote.length = 0;
+    assert.equal(resume(retry.where), 2);
+    assert.match(wrote.join(""), /already states its verdict/);
+    assert.equal(fs.existsSync(path.join(retry.where, LOCK)), false, "the resume releases the lock it took");
+  } finally {
+    process.stdout.write = quiet;
+    fs.rmSync(first, { recursive: true, force: true });
+  }
+});
+
+test("a retry that cannot start admits none of the first set's incomplete candidates", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
+  const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid, c: admitted }).where);
+  const blocked = final(first, { cannotStart: true, ...rootOf(first) });
+  assert.deepEqual(blocked.problems, []);
+  assert.equal(blocked.source, "first set, the retry cannot start");
+  assert.deepEqual(blocked.summary.slots, { complexity: ["a"], stubs: ["c"] });
+  assert.deepEqual(blocked.summary.unsettled, []);
+  setOnDisk(declared, { b: admitted }, { retries: first });
+  withVerdict(path.join(first, "retry"));
+  assert.equal(final(first, { cannotStart: true, ...rootOf(first) }).source, "retry", "a retry that ran and verified is the verdict, whatever the flag says");
+  fs.rmSync(first, { recursive: true, force: true });
 });

@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
@@ -5,11 +7,12 @@ import { candidates, families, type Family } from "./catalogue.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
 import * as session from "./session.ts";
 import { fixtures, frozen, type Frozen } from "./frozen.ts";
-import { crashes } from "./round.ts";
 import { validate, type RunRecord } from "./record.ts";
 import { sha256 } from "./trees.ts";
+import { git } from "./workspace.ts";
 import {
   FROZEN,
+  crashes,
   normalizedFlags,
   recordProblems,
   records,
@@ -154,7 +157,7 @@ function frozenCandidates(chosen: Family[]): Candidate[] {
   return chosen.map((one) => ({ candidate: one.name, order: Number(one.spec.candidate), ...identity[one.name] }));
 }
 
-function readManifest(directory: string): Manifest {
+export function readManifest(directory: string): Manifest {
   return JSON.parse(fs.readFileSync(path.join(directory, "manifest.json"), "utf8")) as Manifest;
 }
 
@@ -224,7 +227,7 @@ function admissionsOf(directory: string, manifest: Manifest): Admission[] {
 export function summarize(directory: string): Summary {
   const manifest = readManifest(directory);
   if (manifest.first === null) {
-    return slotted(manifest, admissionsOf(directory, manifest));
+    return slotted(manifest.declared, admissionsOf(directory, manifest));
   }
   const parent = path.dirname(directory);
   const retried = new Map(admissionsOf(directory, manifest).map((one) => [one.candidate, one] as const));
@@ -235,17 +238,18 @@ export function summarize(directory: string): Summary {
     }
     return again.verdict === "incomplete" ? { ...again, verdict: "not admitted" } : again;
   });
-  return slotted(manifest, merged);
+  return slotted(manifest.declared, merged);
 }
 
-function slotted(manifest: Manifest, admissions: Admission[]): Summary {
+/** The verdict over `admissions`, with each gate's slots taken over the whole declared population. */
+export function slotted(declared: Pick<Candidate, "candidate" | "gate" | "order">[], admissions: Admission[]): Summary {
   const verdicts = new Map(admissions.map((one) => [one.candidate, one.verdict] as const));
   const slots: Record<string, string[]> = {};
   const unsettled: string[] = [];
-  const gates = [...new Set(manifest.declared.map((one) => one.gate))].sort();
+  const gates = [...new Set(declared.map((one) => one.gate))].sort();
   for (const gate of gates) {
     const taken: string[] = [];
-    for (const one of manifest.declared.filter((held) => held.gate === gate).sort((a, b) => a.order - b.order)) {
+    for (const one of declared.filter((held) => held.gate === gate).sort((a, b) => a.order - b.order)) {
       if (taken.length === RULE.perGate) {
         break;
       }
@@ -283,9 +287,9 @@ function apparatusOf(record: RunRecord, held: Apparatus): [string, string, strin
  * Every way an admission set fails what it froze. Nothing here reads the catalogue.
  *
  * A written `admission.json` is recomputed from the records, so a verdict edited after the run
- * fails here.
+ * fails here. A first set's `verify` verifies its retry too, unless `withRetry` is false.
  */
-export function verify(directory: string): string[] {
+export function verify(directory: string, withRetry = true): string[] {
   const manifest = readManifest(directory);
   const problems: string[] = [];
   if (manifest.kind !== POPULATION || manifest.population !== POPULATION || manifest.publishable !== false) {
@@ -310,7 +314,7 @@ export function verify(directory: string): string[] {
     if (manifest.candidates.length !== manifest.declared.length) {
       problems.push("a first set runs the whole declared population, and this one runs part of it");
     }
-    if (fs.existsSync(path.join(directory, RETRY))) {
+    if (withRetry && fs.existsSync(path.join(directory, RETRY, "manifest.json"))) {
       problems.push(...verify(path.join(directory, RETRY)).map((one) => RETRY + ": " + one));
     }
   } else {
@@ -415,6 +419,10 @@ export interface Options {
   seed: number;
   /** The first set whose incomplete candidates this set retries, or empty for a first set. */
   retry: string;
+  /** Where every admission first set lives, directly. */
+  root?: string;
+  /** The shared remote that holds each rubric's one claim. */
+  remote?: string;
 }
 
 /** Every way a retry fails the first set it settles. */
@@ -449,7 +457,7 @@ function incompleteOf(first: string): string[] {
 }
 
 /** Every first set of a cohort directly under `root`. Two of them make the admission ambiguous. */
-export function rivals(root: string, cohort: string): string[] {
+export function rivals(root: string, key: string): string[] {
   if (!fs.existsSync(root)) {
     return [];
   }
@@ -462,8 +470,258 @@ export function rivals(root: string, cohort: string): string[] {
         return false;
       }
       const held = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<Manifest>;
-      return held.kind === POPULATION && held.first === null && held.cohort === cohort;
+      return held.kind === POPULATION && held.first === null && held.rubric === key;
     });
+}
+
+/** Where admission first sets live, and the shared remote that holds each rubric's one claim. */
+export interface Place {
+  root: string;
+  remote: string;
+}
+
+export const PLACE: Place = { root: paths.RUNS, remote: "origin" };
+
+/** The file in a first set that names the claim commit it pushed. */
+export const CLAIM = "claim.json";
+
+/**
+ * The ref on the shared remote that claims the one first set of a rubric version.
+ *
+ * It is keyed by the rubric's sha256 alone. The rubric forbids a change to the rule or to any
+ * candidate after the first admission run, so neither may open a second admission, and a host
+ * update, which moves only the cohort a retry must share, opens none either. The ref lives on the
+ * remote and not under `benchmark/runs`, which Git ignores, so a fresh clone sees it too. A new
+ * admission needs a new rubric version.
+ */
+export function claimRef(rubric: string): string {
+  return "refs/klin-benchmark/admission/" + rubric;
+}
+
+/** The claim commit the remote's ref names, or null when the rubric is unclaimed. It throws when the remote cannot be read. */
+export function claimedOn(remote: string, rubric: string): string | null {
+  const ran = spawnSync("git", ["ls-remote", remote, claimRef(rubric)], { cwd: paths.REPO, encoding: "utf8" });
+  if (ran.status !== 0) {
+    throw new Error("cannot read " + claimRef(rubric) + " on " + remote + ": " + ran.stderr.trim());
+  }
+  const line = ran.stdout.trim();
+  return line === "" ? null : line.split(/\s+/)[0];
+}
+
+/**
+ * Claim the rubric for the first set `first` on `remote`, or return null when another claim holds it.
+ *
+ * The claim commit carries a random token, so no second claimant can push the same commit. The push
+ * leases the ref as absent, so the remote creates it once and refuses every later push.
+ */
+export function claim(remote: string, rubric: string, first: string): string | null {
+  const empty = git(paths.REPO, "hash-object", "-w", "-t", "tree", "/dev/null");
+  const commit = git(
+    paths.REPO,
+    "commit-tree",
+    empty,
+    "-m",
+    JSON.stringify({ rubric, first: path.basename(first), token: randomUUID(), at: new Date().toISOString() }),
+  );
+  const ref = claimRef(rubric);
+  spawnSync("git", ["push", "--quiet", remote, commit + ":" + ref, "--force-with-lease=" + ref + ":"], { cwd: paths.REPO, encoding: "utf8" });
+  return claimedOn(remote, rubric) === commit ? commit : null;
+}
+
+/** Why `first` does not hold its rubric's claim on `remote`, or nothing when it does. */
+function claimProblems(first: string, rubric: string, remote: string): string[] {
+  const file = path.join(first, CLAIM);
+  if (!fs.existsSync(file)) {
+    return [first + " holds no " + CLAIM + ", so it never claimed the rubric " + rubric];
+  }
+  const commit = String((JSON.parse(fs.readFileSync(file, "utf8")) as { commit?: unknown }).commit);
+  let held: string | null;
+  try {
+    held = claimedOn(remote, rubric);
+  } catch (why) {
+    return [String(why)];
+  }
+  if (held === commit) {
+    return [];
+  }
+  return [
+    held === null
+      ? "no first set claimed the rubric " + rubric + " on " + remote
+      : "the rubric " + rubric + " is claimed on " + remote + " by the commit " + held + ", not by the claim " + commit + " that " + first + " made",
+  ];
+}
+
+/** The verdict a paired round freezes from, and the files it came from. */
+export interface Final {
+  summary: Summary;
+  /** Which set's verdict this is. */
+  source: "first set" | "retry" | "first set, the retry did not verify" | "first set, the retry cannot start";
+  /** The sha256 of the first set's manifest. */
+  firstSet: string;
+  /** The sha256 of the retry's manifest when the retry's verdict is the final one. */
+  retry: string | null;
+  /** The sha256 of the `admission.json` the verdict comes from, the first set's under rule 6. */
+  verdict: string;
+  cohort: string;
+  /** Why this first set gives no verdict a paired round may freeze. */
+  problems: string[];
+}
+
+function manifestSha256(directory: string): string {
+  return sha256(fs.readFileSync(path.join(directory, "manifest.json")));
+}
+
+/** Where a set that is running holds the process id that runs it. */
+export const LOCK = "running.json";
+
+/** Where a resumed set keeps the partial plane of each row that an interrupted process left. */
+export const INTERRUPTED = "interrupted";
+
+/**
+ * Take the set's lock, atomically, or null when a lock is already there.
+ *
+ * A lock whose process is gone is not taken over here. A person removes it once they have seen that
+ * the process is gone, because two processes that both took over one stale lock would both run.
+ */
+function acquire(directory: string): string | null {
+  const token = randomUUID();
+  try {
+    fs.writeFileSync(path.join(directory, LOCK), JSON.stringify({ pid: process.pid, token, at: new Date().toISOString() }) + "\n", { flag: "wx" });
+    return token;
+  } catch (why) {
+    if ((why as { code?: string }).code === "EEXIST") {
+      return null;
+    }
+    throw why;
+  }
+}
+
+/** Remove the lock only when this process still owns it. */
+function release(directory: string, token: string): void {
+  const file = path.join(directory, LOCK);
+  if (fs.existsSync(file) && (JSON.parse(fs.readFileSync(file, "utf8")) as { token?: unknown }).token === token) {
+    fs.rmSync(file);
+  }
+}
+
+/** Why the set's lock cannot be taken: a live process runs the set, or a stale lock waits for a person. */
+function held(directory: string): string {
+  const pid = running(directory);
+  const file = path.join(directory, LOCK);
+  if (pid !== null) {
+    return directory + " is still running, as process " + String(pid);
+  }
+  const stale = fs.existsSync(file) ? String((JSON.parse(fs.readFileSync(file, "utf8")) as { pid?: unknown }).pid) : "another process";
+  return file + " names process " + stale + ", which is gone. Remove the file once you have checked that, then resume.";
+}
+
+/** The process that runs the set, while it is alive. */
+export function running(directory: string): number | null {
+  const file = path.join(directory, LOCK);
+  if (!fs.existsSync(file)) {
+    return null;
+  }
+  const pid = Number((JSON.parse(fs.readFileSync(file, "utf8")) as { pid?: unknown }).pid);
+  try {
+    process.kill(pid, 0);
+    return pid;
+  } catch {
+    return null;
+  }
+}
+
+/** Every scheduled row that holds neither a record nor a crash. A set with none left has finished. */
+export function unfinished(directory: string): Row[] {
+  const done = new Set([...records(directory), ...crashes(directory)].map((one) => one.trialId));
+  return readManifest(directory).order.filter((row) => !done.has(row.trialId));
+}
+
+/** Why a set is not yet in its terminal state, or nothing once it is. */
+function unterminated(directory: string): string[] {
+  const pid = running(directory);
+  if (pid !== null) {
+    return [directory + " is still running, as process " + String(pid)];
+  }
+  const left = unfinished(directory).length;
+  if (left > 0) {
+    return [
+      directory + " has " + String(left) + " scheduled row(s) with neither a record nor a crash, so it has not finished. Resume it: " +
+        "node benchmark/src/cli.ts calibrate --population admission --resume " + directory,
+    ];
+  }
+  if (verify(directory, false).length === 0 && !fs.existsSync(path.join(directory, "admission.json"))) {
+    return [directory + " verifies and states no verdict yet. Resume it to write admission.json: node benchmark/src/cli.ts calibrate --population admission --resume " + directory];
+  }
+  return [];
+}
+
+/** The cohort a retry of `first` would record if it started under `apparatus`. */
+export function retryCohort(first: string, apparatus: Apparatus): string {
+  const manifest = readManifest(first);
+  return cohortOf({ rubric: manifest.rubric, rule: manifest.rule, declared: manifest.declared, apparatus });
+}
+
+/**
+ * The final verdict of the admission whose first set is `first`, as rubric section 4 merges it.
+ *
+ * Every admission first set lives directly under `root`, and the first set must be the only one of
+ * its cohort there: the plan does not choose between two by the text of their start times. The
+ * first set must have finished, verify on its own and state its verdict. A retry must have finished
+ * too. A retry that verifies gives the final verdict. A retry that does not verify, or one that
+ * `cannotStart` says no process could start, admits none of the incomplete candidates.
+ */
+export function final(first: string, options: { cannotStart?: boolean } & Partial<Place> = {}): Final {
+  const { root, remote } = { ...PLACE, ...options };
+  const manifest = readManifest(first);
+  const problems = [...unterminated(first), ...verify(first, false)];
+  if (manifest.first !== null) {
+    problems.push(first + " is a retry, and the paired round freezes from its first set");
+  }
+  if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
+    problems.push(first + " is not directly under " + root + ", where every admission first set lives");
+  }
+  const key = manifest.rubric;
+  for (const other of rivals(root, key).filter((one) => path.resolve(one) !== path.resolve(first))) {
+    problems.push(other + " is a second first set under the same rubric, so neither is the first set until a person removes one with a recorded reason");
+  }
+  problems.push(...claimProblems(first, key, remote));
+  const kept = path.join(first, "admission.json");
+  if (!fs.existsSync(kept)) {
+    problems.push(first + " holds no admission.json, so the first set states no verdict");
+  }
+  const again = path.join(first, RETRY);
+  if (fs.existsSync(path.join(again, RETRY))) {
+    problems.push(again + " holds a retry of its own, and a first set takes one retry");
+  }
+  const held: Final = {
+    summary: summarize(first),
+    source: "first set",
+    firstSet: manifestSha256(first),
+    retry: null,
+    verdict: fs.existsSync(kept) ? sha256(fs.readFileSync(kept)) : "",
+    cohort: manifest.cohort,
+    problems,
+  };
+  const merged = (source: Final["source"]): Final => ({
+    ...held,
+    summary: slotted(
+      manifest.declared,
+      held.summary.candidates.map((one): Admission => (one.verdict === "incomplete" ? { ...one, verdict: "not admitted" } : one)),
+    ),
+    source,
+  });
+  if (!fs.existsSync(path.join(again, "manifest.json"))) {
+    return options.cannotStart ? merged("first set, the retry cannot start") : held;
+  }
+  const waiting = unterminated(again);
+  if (waiting.length > 0) {
+    return { ...held, problems: [...problems, ...waiting] };
+  }
+  const retried = path.join(again, "admission.json");
+  if (verify(again).length === 0 && fs.existsSync(retried)) {
+    return { ...held, summary: summarize(again), source: "retry", retry: manifestSha256(again), verdict: sha256(fs.readFileSync(retried)) };
+  }
+  return merged("first set, the retry did not verify");
 }
 
 /** The file that records why a gate has no candidate, beside the fixtures. */
@@ -513,7 +771,13 @@ export function all(chosen: Options): number {
     return 2;
   }
   let names = known.map((one) => one.name);
+  const root = chosen.root ?? PLACE.root;
   const into = chosen.retry === "" ? chosen.into : path.join(chosen.retry, RETRY);
+  const first = chosen.retry === "" ? into : chosen.retry;
+  if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
+    process.stdout.write(first + " is not directly under " + root + ". Every admission first set lives there, so a rival of its cohort cannot hide elsewhere.\n");
+    return 2;
+  }
   if (chosen.retry !== "") {
     const broken = verify(chosen.retry);
     if (broken.length > 0) {
@@ -526,8 +790,8 @@ export function all(chosen: Options): number {
       return 2;
     }
   }
-  if (fs.existsSync(into) && fs.readdirSync(into).length > 0) {
-    process.stdout.write(into + " is not empty. An admission set is written once, and a first set takes one retry.\n");
+  if (fs.existsSync(into)) {
+    process.stdout.write(into + " exists. An admission set is written once, and a first set takes one retry.\n");
     return 2;
   }
   if (chosen.retry === "") {
@@ -572,14 +836,61 @@ export function all(chosen: Options): number {
     first: chosen.retry === "" ? null : sha256(fs.readFileSync(path.join(chosen.retry, "manifest.json"))),
   };
   manifest.cohort = cohortOf(manifest);
-  const refused = chosen.retry === "" ? rivals(path.dirname(into), manifest.cohort).map((one) => one + " is a first set of the same cohort") : retryProblems(chosen.retry, manifest);
+  const key = manifest.rubric;
+  const refused =
+    chosen.retry === ""
+      ? rivals(root, key).map((one) => one + " is a first set under the same rubric")
+      : retryProblems(chosen.retry, manifest);
   if (refused.length > 0) {
     process.stdout.write("the set cannot start:\n" + refused.map((one) => "  " + one).join("\n") + "\n");
     return 2;
   }
-  fs.mkdirSync(into, { recursive: true });
+  fs.mkdirSync(path.dirname(into), { recursive: true });
+  // Only one process creates the directory, so two retries of one first set cannot both start.
+  try {
+    fs.mkdirSync(into);
+  } catch {
+    process.stdout.write(into + " exists. An admission set is written once, and a first set takes one retry.\n");
+    return 2;
+  }
+  if (chosen.retry === "") {
+    const remote = chosen.remote ?? PLACE.remote;
+    let commit: string | null = null;
+    let failure = "";
+    try {
+      commit = claim(remote, key, into);
+    } catch (why) {
+      failure = String(why);
+    }
+    if (commit === null) {
+      fs.rmSync(into, { recursive: true, force: true });
+      process.stdout.write(
+        (failure || "the rubric " + key + " is already claimed on " + remote + ", and one rubric version has one first set") +
+          "\nNo session ran.\n",
+      );
+      return 2;
+    }
+    fs.writeFileSync(path.join(into, CLAIM), JSON.stringify({ remote, ref: claimRef(key), commit }, null, 2) + "\n");
+  }
+  const token = acquire(into) as string;
   fs.writeFileSync(path.join(into, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
-  const failed = runOrder(into, manifest.order, POPULATION);
+  return conclude(into, manifest.order, token);
+}
+
+/**
+ * Run `rows` of the set in `into` under the lock `token` owns, release it, then write the set's
+ * verdicts only once it verifies.
+ *
+ * The lock names this process, so a plan or a resume can tell a set that is running from one an
+ * interrupted process left.
+ */
+function conclude(into: string, rows: Row[], token: string): number {
+  let failed = 0;
+  try {
+    failed = runOrder(into, rows, POPULATION);
+  } finally {
+    release(into, token);
+  }
   const problems = verify(into);
   if (problems.length > 0) {
     process.stdout.write("\nthe set does not verify, so it states no verdict:\n" + problems.map((one) => "  " + one).join("\n") + "\n");
@@ -600,6 +911,50 @@ export function all(chosen: Options): number {
   }
   process.stdout.write("\nverdicts in " + path.join(into, "admission.json") + "\n");
   return failed === 0 ? 0 : 1;
+}
+
+/**
+ * Finish a set that an interrupted process left, under the apparatus it started with.
+ *
+ * Only the rows that hold neither a record nor a crash run, under their scheduled trial ids. Each
+ * such row's partial plane moves into `interrupted/` first and stays there as evidence. A set whose
+ * rows have all finished only has its verdict written.
+ */
+export function resume(directory: string): number {
+  if (!fs.existsSync(path.join(directory, "manifest.json"))) {
+    process.stdout.write(directory + " holds no admission set\n");
+    return 2;
+  }
+  const token = acquire(directory);
+  if (token === null) {
+    process.stdout.write(held(directory) + "\n");
+    return 2;
+  }
+  const refuse = (why: string): number => {
+    release(directory, token);
+    process.stdout.write(why + "\n");
+    return 2;
+  };
+  if (fs.existsSync(path.join(directory, "admission.json"))) {
+    return refuse(directory + " already states its verdict, so it has nothing to resume");
+  }
+  const manifest = readManifest(directory);
+  if (!startable()) {
+    return refuse("the set is not resumed");
+  }
+  const { klin: _klin, fixtures: _fixtures, ...apparatus } = frozen(session.defaults());
+  if (JSON.stringify(apparatus) !== JSON.stringify(manifest.apparatus)) {
+    return refuse("the apparatus moved since " + directory + " started, so its remaining rows cannot run under the apparatus it froze");
+  }
+  const rows = unfinished(directory);
+  for (const row of rows) {
+    const partial = path.join(directory, row.trialId);
+    if (fs.existsSync(partial)) {
+      fs.mkdirSync(path.join(directory, INTERRUPTED), { recursive: true });
+      fs.renameSync(partial, path.join(directory, INTERRUPTED, row.trialId + "-" + stamp()));
+    }
+  }
+  return conclude(directory, rows, token);
 }
 
 export function directory(): string {

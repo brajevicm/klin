@@ -73,12 +73,9 @@ test("a flag's value is never read as a positional argument", () => {
 });
 
 test("an admission set starts only over candidates, and its report stays sealed", () => {
-  const held = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-held-"));
-  fs.writeFileSync(path.join(held, "manifest.json"), "{}\n");
-  const occupied = cli("calibrate", "--population", "admission", "--into", held);
-  assert.equal(occupied.status, 2);
-  assert.match(occupied.stdout, /is not empty/);
-  fs.rmSync(held, { recursive: true, force: true });
+  const elsewhere = cli("calibrate", "--population", "admission", "--into", path.join(os.tmpdir(), "klin-bench-admission-elsewhere"));
+  assert.equal(elsewhere.status, 2);
+  assert.match(elsewhere.stdout, /where every first set lives/, "a first set cannot start outside the one namespace");
   assert.match(cli("calibrate", "--population", "admision").stdout, /no population named admision/);
   assert.match(cli("calibrate", "--population", "admission", "--only", "stubs").stdout, /runs the whole declared population/);
   const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-cli-"));

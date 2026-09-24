@@ -15,7 +15,6 @@ import {
   ATTEMPTS,
   FLOOR,
   blocksByGate,
-  crash,
   execute,
   committedAt,
   frozen,
@@ -40,6 +39,7 @@ import {
 } from "../src/round.ts";
 import { execFileSync } from "node:child_process";
 import type { RunRecord } from "../src/record.ts";
+import { crash } from "../src/calibrate.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
 
 /**

@@ -691,7 +691,7 @@ escapes candidate does, so the self-test lends it the prepared compiler and a
 `fixtures/lockfile.no-candidate.md` records the check that found none.
 
 ```sh
-node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
+node benchmark/src/cli.ts calibrate --population admission [--seed N]
 ```
 
 A first set starts only over the whole declared population. Every gate that
@@ -704,6 +704,52 @@ and runs nothing, so a set cannot freeze part of the population that #310,
 This runs the Shadow arm only: each candidate's risk variant three times and
 its control once. Every record states kind `admission` and publishable false.
 A set is written once, into an empty directory, from a clean harness.
+
+Every first set lives directly under `benchmark/runs`, and the command takes no
+`--into`. Thus a rival first set cannot hide in another directory.
+
+One rubric version has one first set. Before its first session, a first set
+claims the rubric on `origin`: it pushes a claim commit to
+`refs/klin-benchmark/admission/<rubric sha256>` with
+`--force-with-lease=<ref>:`, so the remote creates the ref once and refuses
+every later push. The claim commit holds a random token, so no second claimant
+can push the same commit. The first set keeps the commit id in its own
+`claim.json`, and the plan requires the remote ref to name that commit. The
+claim is on the remote because `benchmark/runs` is ignored by Git, and a claim
+there would not reach a fresh clone. A first set that cannot push its claim
+does not start.
+
+A second first set under the same rubric cannot start in this working copy or
+in any other one. This stays true after a host update moves the cohort, and
+after a change to the rule or to a candidate, which the rubric forbids after
+the first admission run. The first-set manifest still freezes the declared population,
+and the cohort only says whether a retry can continue the first set under the
+same apparatus. If the host changes during a first set, restore the frozen
+apparatus and resume the set. If that is not possible, keep the failed set as
+evidence. A new admission of the same candidates needs a new rubric version.
+
+The command makes a set's directory with an exclusive `mkdir`, so two retries
+of one first set cannot both start. While a set runs, `running.json` in its
+directory names the process and a random token. The lock is also made with an
+exclusive create, and only the process whose token it holds removes it. A set
+is finished when no live process holds that lock and every scheduled row holds
+a record or a crash. An interrupted set is not finished, so it gives no
+verdict. Resume it under the apparatus that it froze:
+
+```sh
+node benchmark/src/cli.ts calibrate --population admission --resume SET
+```
+
+The resume takes the set's lock first, with the same exclusive create. It runs
+only the rows that hold neither a record nor a crash, under their scheduled
+trial ids. It first moves the partial plane of each such row into
+`SET/interrupted/`, where the plane stays as evidence. The resume refuses a set
+that still runs, a set that already states its verdict, and an apparatus that
+is not the frozen one. An interrupted process can leave its lock behind. The
+resume does not take over such a stale lock, because two processes that took
+over one lock would both run the set. Check that the process named in
+`running.json` is gone, remove the file, and then resume. A finished set that verifies but holds no
+`admission.json` gets its verdict written, and no session runs.
 
 The manifest freezes what the set selects on:
 
@@ -750,8 +796,9 @@ The retry runs every incomplete candidate and no other, into
 `FIRST-SET/retry`, and its manifest records the sha256 of the first set's.
 Every manifest records a cohort, the sha256 of the rubric, the rule, the
 declared population and the apparatus less the harness commit, and `verify`
-recomputes it. A first set does not start beside another first set of its
-cohort, and a retry does not start unless the first set verifies. The retry's
+recomputes it. A first set does not start while another first set under the
+same rubric holds the claim, and a retry does not start unless the first set
+verifies. The retry's
 `admission.json` holds the final verdict: the first set's complete verdicts
 stand, the retry's replace the incomplete ones, and a candidate the retry
 leaves incomplete is not admitted. `verify` on the first set verifies its retry
@@ -762,6 +809,91 @@ progress output, `admission.json` and `report` show none of them. `verify`
 holds an admission set to its frozen candidates and order. A publishable
 round's `verify` refuses an admission record or an `admission.json`, and its
 `scorecard` refuses a directory that holds an admission record.
+
+### The v3 paired round
+
+The paired round of #313 runs only the tasks that the final admission verdict
+admitted:
+
+```sh
+node benchmark/src/cli.ts plan --population v3 --admission FIRST-SET [--seed N] [--into DIR]
+node benchmark/src/cli.ts execute benchmark/runs/v3-<stamp> --manifest-sha256 <digest>
+node benchmark/src/cli.ts verify benchmark/runs/v3-<stamp>
+node benchmark/src/cli.ts scorecard benchmark/runs/v3-<stamp> --out docs/round-v3-<date>.md
+```
+
+`--admission` names the first set. The plan reads the final verdict by rubric
+section 4:
+
+- The first set must lie directly under `benchmark/runs`, must be finished,
+  must verify alone and must hold its `admission.json`.
+- The claim ref of its rubric on `origin` must name the claim commit in the
+  first set's `claim.json`. No other first set under the same rubric may lie
+  under `benchmark/runs`. If two exist, the plan
+  refuses. It does not choose between them by `startedAt`,
+  because that text binds to nothing a set records. A person removes one, and
+  records the reason.
+- A retry that has not finished stops the plan.
+- A finished retry that verifies gives the final verdict.
+- A finished retry that does not verify admits no incomplete candidate of the
+  first set.
+- A retry that holds a retry of its own stops the plan.
+
+When the first set leaves a gate unsettled and no retry ran, the plan reads
+the cohort that a retry would record under the apparatus that the plan
+freezes. It compares that cohort with the first set's cohort:
+
+- If the two cohorts are equal, the retry can still start. The plan refuses
+  and names the retry command.
+- If the two cohorts are different, no retry can start. Rule 6 then admits no
+  incomplete candidate, and the manifest states the source
+  `first set, the retry cannot start`.
+
+`execute` and `verify` do not read that source from the manifest. They read
+the cohort again from the manifest's own frozen apparatus, which `execute`
+holds the machine to before every block. So a manifest cannot claim that its
+retry could not start.
+
+The plan also refuses any declared candidate whose fixture identity is not the
+identity that the first set froze. Thus a prompt, a starting tree, an oracle
+or a detector that changed after the first admission run cannot enter the
+round, and cannot move the cohort that decides rule 6.
+
+Each admitted task gives one risk block. Each gate gives one control block of
+its first admitted task in declared order. The seed orders the blocks, and the
+first arms stay balanced, as in the natural round. The manifest states
+`population: "v3"`, the sha256 of the rubric and the admission lineage:
+
+- the digest of the first set's manifest;
+- the digest of the retry's manifest, or null;
+- the digest of the `admission.json` that the verdict came from;
+- the cohort and the verdict itself;
+- the path of the first set, relative to this repository;
+- every gate that a natural family names and that has no candidate. The
+  manifest must name exactly these gates, so no gate can drop out of the
+  report.
+
+`frozen.fixtures` holds the admitted tasks and no natural family. The probes
+still prove the confinement over the natural fixtures that they ran on.
+
+`execute` and `verify` hold a v3 manifest to its own verdict. The run order is
+the order that the seed and the verdict's slots give. The verdict is the one
+that its candidates give under the frozen rule, and it leaves no gate
+unsettled. Every frozen task is admitted under the gate and task id that
+admission ran. Both commands also read the admission set again. They fail when
+the set no longer gives the frozen verdict and digests, or when a frozen task
+is not the candidate that the first set froze. `execute` reads the fixture
+identity of the frozen tasks again before each block. The retry policy of the
+natural round applies unchanged.
+
+A v3 round has no committed protocol file. The frozen rubric, the committed
+candidates and the admission lineage take its place, and the manifest digest
+that a person approves freezes the round.
+
+The scorecard groups the blocks by gate. It adds the class of every gate under
+rubric section 11, with the candidates in declared order, and it names the
+recorded reason of a gate that has no candidate. Admission counts never enter
+the scorecard. The result document lists them from `admission.json`.
 
 ## The external oracles
 

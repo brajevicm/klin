@@ -12,6 +12,8 @@ import * as trial from "./trial.ts";
 import * as workspace from "./workspace.ts";
 import {
   FROZEN,
+  crash,
+  crashes,
   normalizedFlags,
   ordering,
   preflight,
@@ -26,8 +28,6 @@ import {
   ATTEMPTS,
   chain,
   copyProbes,
-  crash,
-  crashes,
   drift,
   frozen,
   identity,

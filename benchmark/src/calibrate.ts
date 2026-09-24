@@ -182,21 +182,68 @@ export interface Scheduled {
   repetition: number;
 }
 
+/** One scheduled trial of a round, in the order it runs. */
+export interface ScheduledRow {
+  family: string;
+  variant: string;
+  repetition: number;
+  arm: ArmName;
+  block: number;
+  order: number;
+  trialId: string;
+}
+
+export interface Crash extends ScheduledRow {
+  replaces: string | null;
+  error: string;
+  at: string;
+}
+
+/**
+ * Record a crash before a record existed, in the attempt's own directory.
+ *
+ * The directory is the trial's plane, so whatever the trial wrote before it threw stays beside
+ * `crash.json` and reaches the raw archive. The crash is an attempt: the chain counts it, the
+ * scorecard reports it by arm, and `evidence-prepare` carries the file into the slim set.
+ */
+export function crash(directory: string, row: ScheduledRow, id: string, replaces: string | null, why: unknown): void {
+  const held: Crash = { ...row, trialId: id, replaces, error: String(why), at: new Date().toISOString() };
+  fs.mkdirSync(path.join(directory, id), { recursive: true });
+  fs.writeFileSync(path.join(directory, id, "crash.json"), JSON.stringify(held, null, 2) + "\n");
+}
+
+/** Attempts that crashed before a record existed. Each stays on disk and counts as an attempt. */
+export function crashes(directory: string): Crash[] {
+  if (!fs.existsSync(directory)) {
+    return [];
+  }
+  const held: Crash[] = [];
+  for (const name of fs.readdirSync(directory).sort()) {
+    const file = path.join(directory, name, "crash.json");
+    if (fs.existsSync(file) && !fs.existsSync(path.join(directory, name, "record.json"))) {
+      held.push(JSON.parse(fs.readFileSync(file, "utf8")) as Crash);
+    }
+  }
+  return held;
+}
+
 /**
  * Run one set's order and count the trials that were not valid.
  *
  * An admission set prints no signal count, because the signals of a Shadow-only admission run stay
- * sealed until the result document.
+ * sealed until the result document. A row that states its order and trial id runs under them, so a
+ * resumed set runs its remaining rows as they were scheduled.
  */
-export function runOrder(into: string, order: Scheduled[], kind: trial.TrialOptions["kind"]): number {
+export function runOrder(into: string, order: (Scheduled & { order?: number; trialId?: string })[], kind: trial.TrialOptions["kind"]): number {
   let failed = 0;
-  order.forEach((cell, index) => {
-    const id = trialId(cell.family, cell.variant, cell.arm, index);
+  order.forEach((cell, position) => {
+    const index = cell.order ?? position;
+    const id = cell.trialId ?? trialId(cell.family, cell.variant, cell.arm, index);
     const began = Date.now();
     // The name goes out before the trial and the outcome after it, so a watched terminal shows
     // which trial is running now and how the ones before it came out.
     process.stdout.write(
-      String(index + 1) + "/" + String(order.length) + " " + cell.family + " " + cell.variant + " " + cell.arm + "\n",
+      String(position + 1) + "/" + String(order.length) + " " + cell.family + " " + cell.variant + " " + cell.arm + "\n",
     );
     try {
       const record = trial.run(cell.family, cell.variant, cell.arm, id, options(into, index, kind, cell.repetition));
@@ -223,7 +270,7 @@ export function runOrder(into: string, order: Scheduled[], kind: trial.TrialOpti
       fs.writeFileSync(
         path.join(into, id, "crash.json"),
         JSON.stringify(
-          { ...cell, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
+          { family: cell.family, variant: cell.variant, arm: cell.arm, repetition: cell.repetition, block: index, order: index, trialId: id, replaces: null, error: String(why), at: new Date().toISOString() },
           null,
           2,
         ) + "\n",
