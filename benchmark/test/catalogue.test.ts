@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ARMS, VARIANTS, candidates, cells, families, variantIn, variantNames } from "../src/catalogue.ts";
 import { DETECTORS } from "../src/detectors.ts";
+import { noCandidateReason, populationProblems } from "../src/admission.ts";
 
 /**
  * The gates issue #210 puts in this round.
@@ -153,8 +154,17 @@ test("a task id names no gate, family, variant or arm", () => {
   }
 });
 
-/** The gates the committed candidate tickets have filled so far. #312 adds its own. */
-const CANDIDATE_GATES = ["complexity", "doc-citations", "escapes", "inventory", "reachability", "stubs"];
+/** The gates the candidate tickets #310, #311 and #312 fill. lockfile records why it has none. */
+const CANDIDATE_GATES = [
+  "complexity",
+  "dead-symbols",
+  "doc-citations",
+  "escapes",
+  "inventory",
+  "public-api",
+  "reachability",
+  "stubs",
+];
 
 test("a gate has three or four candidates, no two share a declared order, and each has its rationale", () => {
   const pool = candidates();
@@ -169,4 +179,11 @@ test("a gate has three or four candidates, no two share a declared order, and ea
   }
   const orders = pool.map((one) => one.spec.candidate);
   assert.equal(new Set(orders).size, orders.length, "the declared orders " + orders.join(", ") + " repeat");
+});
+
+test("the declared population is whole, so a first admission set can start", () => {
+  const reasons = new Set(GATES.filter((gate) => fs.existsSync(noCandidateReason(gate))));
+  assert.deepEqual([...reasons], ["lockfile"]);
+  const pool = candidates().map((one) => ({ name: one.name, gate: one.spec.gate }));
+  assert.deepEqual(populationProblems(pool, GATES, reasons), []);
 });

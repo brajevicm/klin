@@ -677,6 +677,19 @@ tree's lockfile pins the same version. The oracles of these candidates run the
 same compiler through `KLIN_BENCH_TYPESCRIPT`. A `probe` runs the suite
 before anything else, so a probe of one of them fails `suite-green-inside`.
 
+The candidates of #312 are the `public-api-*` directories at 20 to 22 and
+the `dead-symbols-*` directories at 23 to 25. All six are TypeScript. A
+public-api candidate states that the package is published only in
+`package.json`, and its starting tree holds no type that shows the
+non-breaking design. Its oracle type-checks `src/` and does not compile an
+outside caller against the changed type, because that check would be the
+gate's own. The `npm test` of a dead-symbols candidate runs `tsc -p .`
+without `noUnusedLocals`, so the compiler says nothing about a private
+function that the change leaves unused. Its lockfile pins TypeScript as an
+escapes candidate does, so the self-test lends it the prepared compiler and a
+`probe` of it fails `suite-green-inside` in the same way. lockfile has no candidate, and
+`fixtures/lockfile.no-candidate.md` records the check that found none.
+
 ```sh
 node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
 ```
@@ -1207,6 +1220,8 @@ benchmark/
                          oracle and one directory per declared exemplar tree
   fixtures/<f>/seeded/   a planted variant, with its own variant.json and the
                          seed overlay the harness leaves uncommitted
+  fixtures/<gate>.no-candidate.md
+                         why a gate has no v3 admission candidate
   runs/                  ephemeral live control plane, and where records land
   runs/<round>/probes/   the probe evidence that authorized the planned round
   evidence/              committed slim evidence and its descriptors

@@ -1,0 +1,21 @@
+{
+  "name": "@tallyhouse/statement",
+  "version": "3.0.2",
+  "description": "Read bank statement exports and sum what they hold.",
+  "license": "MIT",
+  "type": "module",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test 'src/**/*.test.ts'"
+  }
+}
