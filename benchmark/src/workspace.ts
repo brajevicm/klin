@@ -5,6 +5,7 @@ import path from "node:path";
 import * as paths from "./paths.ts";
 import { copyTree, files, overlay, digest, removals, sha256 } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
+import { withoutKlin } from "./session.ts";
 
 /**
  * The subject workspace and the control plane.
@@ -381,8 +382,12 @@ function stampCommittedBase(repo: string, state: string, klinBin: string): void 
   }
 }
 
-export function signsNothing(repo: string): boolean {
-  const ran = spawnSync("git", ["config", "--get", "commit.gpgsign"], { cwd: repo, encoding: "utf8" });
+export function commitsUnsigned(repo: string): boolean {
+  const ran = spawnSync("git", ["config", "--get", "commit.gpgsign"], {
+    cwd: repo,
+    encoding: "utf8",
+    env: withoutKlin(),
+  });
   return ran.status === 0 && ran.stdout.trim() === "false";
 }
 

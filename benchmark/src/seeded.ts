@@ -19,7 +19,7 @@ import {
   shuffledBy,
   trialId,
 } from "./calibrate.ts";
-import { validate, type RunRecord } from "./record.ts";
+import { failedOn, validate, type RunRecord } from "./record.ts";
 import {
   PROBES,
   ATTEMPTS,
@@ -560,7 +560,7 @@ function row(cells: string[]): string {
 function caught(record: RunRecord): string {
   const run = record.seeded?.wholeRun;
   if (run?.caught !== true) return yesNo(run?.caught);
-  return run.status === "FAIL" && run.sites.length > 0 ? "yes" : "yes, at the Stop hook";
+  return failedOn(run) ? "yes" : "yes, at the Stop hook";
 }
 
 function delivery(record: RunRecord): string {

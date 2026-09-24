@@ -288,8 +288,11 @@ and each ended by asking a person what to do.
 own `.git/config`, which git reads over the global file. The environment is not
 the place for it: the host sets `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS`
 for its own use. The `commits-unsigned` check under `isolation.freshness` reads
-the value back through the same configuration the subject inherits, so a
-record whose subject could not commit fails `state-fresh` and is excluded.
+the value back under the environment the harness hands the host, so the
+operator's global file is read as the subject reads it. A record whose subject
+could not commit fails `state-fresh` and is excluded. The host adds its own
+`GIT_CONFIG_*` variables after that point, and today they set only
+`safe.directory` and `http.proxyAuthMethod`.
 
 ### The host's own configuration
 

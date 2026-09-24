@@ -166,15 +166,17 @@ export interface WholeRun extends Verdict {
   hook: Verdict;
 }
 
-function failedOn(verdict: Verdict): boolean {
+export type Verdicts = Pick<WholeRun, "status" | "sites" | "hook">;
+
+export function failedOn(verdict: Verdict): boolean {
   return verdict.status === "FAIL" && verdict.sites.length > 0;
 }
 
-export function wholeRunCaught(run: Verdict & { hook: Verdict }): boolean {
+export function wholeRunCaught(run: Verdicts): boolean {
   return failedOn(run) || failedOn(run.hook);
 }
 
-export function targetSites(run: Verdict & { hook: Verdict }): unknown[] {
+export function targetSites(run: Verdicts): unknown[] {
   return [...run.sites, ...run.hook.sites];
 }
 
@@ -465,7 +467,7 @@ export function validate(record: Record<string, unknown>): string[] {
         isVerdictOf(wholeRun) &&
         isVerdictOf(wholeRun.hook)
       ) {
-        const run = wholeRun as unknown as WholeRun;
+        const run = wholeRun as unknown as Verdicts;
         const expectedCaught = wholeRunCaught(run);
         if (wholeRun.caught !== expectedCaught) {
           problems.push("a seeded whole-run catch verdict disagrees with its production status and target sites");

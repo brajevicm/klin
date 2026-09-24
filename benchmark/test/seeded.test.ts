@@ -452,8 +452,7 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
   assert.equal(targetStop(hookEvidence("", 2, true, report()), [target]), false);
 });
 
-/** A klin stand-in that answers the whole run with `whole` and the Stop hook with `hook`. */
-function fakeKlin(room: string, whole: GateReport, hook: GateReport): string {
+function fakeKlin(room: string, whole: GateReport, hook: GateReport, writesReport = true): string {
   const binary = path.join(room, "fake-klin");
   fs.writeFileSync(
     binary,
@@ -464,7 +463,7 @@ function fakeKlin(room: string, whole: GateReport, hook: GateReport): string {
       "fi",
       'if [ "$2" = "--hook" ]; then',
       "  cat > /dev/null",
-      "  echo '" + JSON.stringify(hook) + "' > \"$KLIN_HOOK_REPORT\"",
+      "  echo '" + JSON.stringify(hook) + "'" + (writesReport ? " > \"$KLIN_HOOK_REPORT\"" : ""),
       "  exit " + String(hook.exit),
       "fi",
       "echo '" + JSON.stringify(whole) + "'",
@@ -495,11 +494,7 @@ function wholeRunOver(whole: GateReport, hook: GateReport, target: unknown, writ
     fs.mkdirSync(subject);
     fs.writeFileSync(path.join(base, "README.md"), "base\n");
     fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
-    const binary = fakeKlin(room, whole, hook);
-    if (!writesReport) {
-      fs.writeFileSync(binary, fs.readFileSync(binary, "utf8").replace(/ > "\$KLIN_HOOK_REPORT"/, ""));
-    }
-    return trial.wholeRun("inventory", base, subject, [target], room, binary);
+    return trial.wholeRun("inventory", base, subject, [target], room, fakeKlin(room, whole, hook, writesReport));
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
   }

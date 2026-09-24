@@ -87,7 +87,6 @@ export function overlay(source: string, target: string): string[] {
   return written;
 }
 
-/** The relative paths an overlay's `REMOVE` file names, in the order it names them. */
 export function removals(source: string): string[] {
   const listed = path.join(source, "REMOVE");
   if (!fs.existsSync(listed)) {
