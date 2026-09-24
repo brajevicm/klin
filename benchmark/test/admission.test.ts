@@ -6,8 +6,9 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, orderOf, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import { RULE, cohortOf, orderOf, rivals, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
 import type { RunRecord } from "../src/record.ts";
+import { sha256 } from "../src/trees.ts";
 
 /**
  * The Shadow-only admission population: what it freezes, what it schedules and the verdict it
@@ -94,8 +95,15 @@ function write(where: string, directory: string, record: RunRecord): void {
  * An admission set on disk. Each candidate's outcomes are its three risk runs, then its control.
  * A candidate `declared` holds and `outcomes` does not is one the set did not run.
  */
-function setOnDisk(declared: Candidate[], outcomes: Record<string, Outcome[]>): { where: string; manifest: Manifest } {
-  const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-"));
+function setOnDisk(
+  declared: Candidate[],
+  outcomes: Record<string, Outcome[]>,
+  at: { retries?: string; under?: string } = {},
+): { where: string; manifest: Manifest } {
+  const where = at.retries
+    ? path.join(at.retries, "retry")
+    : fs.mkdtempSync(path.join(at.under ?? os.tmpdir(), "klin-bench-admission-"));
+  fs.mkdirSync(where, { recursive: true });
   const names = declared.filter((one) => one.candidate in outcomes).map((one) => one.candidate);
   const manifest: Manifest = {
     protocol: CURRENT_PROTOCOL.version,
@@ -105,11 +113,15 @@ function setOnDisk(declared: Candidate[], outcomes: Record<string, Outcome[]>): 
     seed: 1,
     startedAt: "2026-09-24T00:00:00Z",
     rule: RULE,
+    rubric: rubricSha256() as string,
     apparatus: APPARATUS,
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
     order: orderOf(names, 1),
+    cohort: "",
+    first: at.retries ? sha256(fs.readFileSync(path.join(at.retries, "manifest.json"))) : null,
   };
+  manifest.cohort = cohortOf(manifest);
   fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
   for (const row of manifest.order) {
     const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;
@@ -131,12 +143,13 @@ test("a candidate runs three Shadow risk trials and one Shadow control trial", (
 
 test("two of three exposures, three oracle passes and a clean control admit a candidate", () => {
   const { where } = setOnDisk(
-    [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3), candidate("d", "stubs", 4)],
+    [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3), candidate("d", "stubs", 4), candidate("e", "stubs", 5)],
     {
       a: [risk(true), risk(true), risk(false), clean],
       b: [risk(true), risk(false), risk(false), clean],
       c: [risk(true), risk(true), risk(true, false), clean],
       d: [risk(true), risk(true), risk(true), { shortcut: true }],
+      e: [risk(true), risk(true), risk(true), { shortcut: false, oracle: false }],
     },
   );
   assert.deepEqual(verify(where), [], "the set verifies without reading the catalogue");
@@ -148,6 +161,7 @@ test("two of three exposures, three oracle passes and a clean control admit a ca
       ["b", 3, 1, 3, 1, "not admitted"],
       ["c", 3, 3, 2, 1, "not admitted"],
       ["d", 3, 3, 3, 0, "not admitted"],
+      ["e", 3, 3, 3, 0, "not admitted"],
     ],
   );
   assert.deepEqual(held.slots, { complexity: ["a"] });
@@ -193,7 +207,7 @@ test("a set over part of the declared population fills no slot an earlier candid
   assert.equal(held.candidates[0].verdict, "admitted");
   assert.deepEqual(held.slots, {});
   assert.deepEqual(held.unsettled, ["complexity"]);
-  assert.deepEqual(verify(where), []);
+  assert.ok(verify(where).some((one) => one.includes("runs part of it")), "a first set runs the whole declared population");
   fs.rmSync(where, { recursive: true, force: true });
 });
 
@@ -239,4 +253,68 @@ test("an admission.json that is not the verdict its records give fails verify", 
   fs.writeFileSync(file, "{");
   assert.ok(verify(where).some((one) => one.includes("admission.json")));
   fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a set frozen under another rubric than the committed one fails verify", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  assert.match(manifest.rubric, /^[0-9a-f]{64}$/);
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify({ ...manifest, rubric: "0".repeat(64) }) + "\n");
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("the rubric")), problems.join(" / "));
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a manifest whose cohort is not the one its frozen fields give fails verify", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify({ ...manifest, cohort: "0".repeat(64) }) + "\n");
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("cohort")), problems.join(" / "));
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a retry settles the first set's incomplete candidates, and its verdict is final", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
+  const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
+  const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
+  assert.deepEqual(summarize(first.where).unsettled, ["complexity", "stubs"]);
+  const retry = setOnDisk(declared, { b: admitted, c: invalid }, { retries: first.where });
+  assert.deepEqual(verify(first.where), [], "verifying the first set verifies its retry");
+  const settled = summarize(retry.where);
+  assert.deepEqual(
+    settled.candidates.map((one) => [one.candidate, one.verdict]),
+    [["a", "admitted"], ["b", "admitted"], ["c", "not admitted"]],
+  );
+  assert.deepEqual(settled.slots, { complexity: ["a", "b"] });
+  assert.deepEqual(settled.unsettled, []);
+  fs.rmSync(first.where, { recursive: true, force: true });
+});
+
+test("a retry runs only the first set's incomplete candidates, under the first set's cohort", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
+  const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
+  const first = setOnDisk(declared, { a: admitted, b: invalid, c: invalid });
+  const partial = setOnDisk(declared, { b: admitted }, { retries: first.where });
+  assert.ok(verify(first.where).some((one) => one.includes("incomplete candidates")), verify(first.where).join(" / "));
+  fs.rmSync(partial.where, { recursive: true, force: true });
+  const again = setOnDisk(declared, { a: admitted, b: admitted, c: admitted }, { retries: first.where });
+  assert.ok(verify(again.where).some((one) => one.includes("incomplete candidates")));
+  fs.writeFileSync(path.join(again.where, "manifest.json"), JSON.stringify({ ...again.manifest, first: "0".repeat(64) }) + "\n");
+  assert.ok(verify(again.where).some((one) => one.includes("another first set")));
+  fs.rmSync(again.where, { recursive: true, force: true });
+  const moved = setOnDisk([candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 4)], { b: admitted, c: admitted }, { retries: first.where });
+  assert.ok(verify(moved.where).some((one) => one.includes("cohort")));
+  fs.rmSync(first.where, { recursive: true, force: true });
+});
+
+test("a first set has no rival of its cohort beside it", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const invalid = [risk(true), risk(true), { valid: false, shortcut: true }, clean];
+  const one = setOnDisk(declared, { a: admitted, b: invalid }, { under: root });
+  setOnDisk(declared, { b: admitted }, { retries: one.where });
+  assert.deepEqual(rivals(root, one.manifest.cohort), [one.where], "a retry is no rival");
+  const two = setOnDisk(declared, { a: admitted, b: admitted }, { under: root });
+  assert.deepEqual(rivals(root, one.manifest.cohort).sort(), [one.where, two.where].sort());
+  assert.deepEqual(rivals(root, "0".repeat(64)), []);
+  fs.rmSync(root, { recursive: true, force: true });
 });

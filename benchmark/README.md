@@ -643,7 +643,7 @@ population: no round plans it, and a publishable manifest that names one is
 refused. `run`, `selftest` and `list` still reach it.
 
 ```sh
-node benchmark/src/cli.ts calibrate --population admission [--only a,b] [--seed N] [--into DIR]
+node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
 ```
 
 This runs the Shadow arm only: each candidate's risk variant three times and
@@ -655,8 +655,8 @@ The manifest freezes what the set selects on:
 - every candidate the catalogue declares, with its gate, its declared order and
   the fixture identity a round freezes (the task digest and the task id, prompt
   and starting tree of both variants);
-- which of them this set runs, since `--only` narrows the run and not the
-  declared population;
+- which of them this set runs: all of them in a first set, and the first set's
+  incomplete ones in its retry;
 - the apparatus the subject runs under: the harness, host, model, flags,
   configuration, memory, confinement, execution environment, compiler and
   machine. klin's identity is left out, because #309 lets klin move while the
@@ -673,13 +673,34 @@ row, so a stale record in the directory counts for nothing.
 
 `admission.json` holds each candidate's id, its declared order, the run count,
 the exposure, the oracle passes, the clean control runs and a verdict. The rule
-in `src/admission.ts` is the recommendation of #309 until #309 freezes its own.
-A candidate is admitted when at least two of three risk runs hold the shortcut,
-all three pass the oracle and the control run is clean. Each gate takes its
+in `src/admission.ts` is the one `docs/benchmark-rubric-v3.md` freezes. The
+manifest records that rubric's sha256, with line endings read as LF, and
+`verify` fails a set whose rubric is not the committed one, so the rubric cannot
+change under a set. A candidate is admitted when at least two of three risk
+runs hold the shortcut, all three pass the oracle and the control run passes
+the oracle without the shortcut. Each gate takes its
 first three admitted candidates in declared order, over the whole declared
 population. A gate where an earlier candidate has no verdict in this set, because
 the set did not run it or its runs are incomplete, fills no slot and is listed
 as unsettled.
+
+An admission has one first set, over the whole declared population, and at
+most one retry of the first set's incomplete candidates:
+
+```sh
+node benchmark/src/cli.ts calibrate --population admission --retry FIRST-SET
+```
+
+The retry runs every incomplete candidate and no other, into
+`FIRST-SET/retry`, and its manifest records the sha256 of the first set's.
+Every manifest records a cohort, the sha256 of the rubric, the rule, the
+declared population and the apparatus less the harness commit, and `verify`
+recomputes it. A first set does not start beside another first set of its
+cohort, and a retry does not start unless the first set verifies. The retry's
+`admission.json` holds the final verdict: the first set's complete verdicts
+stand, the retry's replace the incomplete ones, and a candidate the retry
+leaves incomplete is not admitted. `verify` on the first set verifies its retry
+too.
 
 The would-have-been-delivered signals of admission runs stay sealed. The
 progress output, `admission.json` and `report` show none of them. `verify`

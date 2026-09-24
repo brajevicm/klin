@@ -11,6 +11,7 @@ export const HOOK = path.join(BENCHMARK, "host", "hook");
 export const WITNESS = path.join(BENCHMARK, "host", "witness");
 export const RUNS = path.join(BENCHMARK, "runs");
 export const SCHEMA = path.join(BENCHMARK, "record.schema.json");
+export const RUBRIC = path.join(REPO, "docs", "benchmark-rubric-v3.md");
 /** Read-only helper files the harness exposes to a live probe. */
 export const ENVIRONMENT = path.join(os.tmpdir(), "klin-bench-environment");
 

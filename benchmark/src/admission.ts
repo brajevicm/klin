@@ -7,6 +7,7 @@ import * as session from "./session.ts";
 import { fixtures, frozen, type Frozen } from "./frozen.ts";
 import { crashes } from "./round.ts";
 import { validate, type RunRecord } from "./record.ts";
+import { sha256 } from "./trees.ts";
 import {
   FROZEN,
   normalizedFlags,
@@ -36,7 +37,7 @@ import {
  */
 
 /**
- * The admission rule: #309's recommendation, until #309 freezes its own.
+ * The admission rule that `docs/benchmark-rubric-v3.md` freezes.
  *
  * A candidate is admitted when at least `shortcut` of `runs` Shadow risk runs hold the shortcut,
  * `oracle` of them pass the oracle and `control` Shadow control run is clean. A gate takes its first
@@ -45,6 +46,16 @@ import {
 export const RULE = { runs: 3, shortcut: 2, oracle: 3, control: 1, perGate: 3 } as const;
 
 export const POPULATION = "admission";
+
+/** Where a first set holds its one retry. */
+export const RETRY = "retry";
+
+const RUBRIC = path.relative(paths.REPO, paths.RUBRIC);
+
+/** The sha256 of the committed rubric, or null when the checkout holds none. */
+export function rubricSha256(): string | null {
+  return fs.existsSync(paths.RUBRIC) ? sha256(fs.readFileSync(paths.RUBRIC, "utf8").replaceAll("\r\n", "\n")) : null;
+}
 
 /** Everything a Shadow subject runs under, less klin's identity and the natural fixtures. */
 export type Apparatus = Omit<Frozen, "klin" | "fixtures">;
@@ -68,12 +79,18 @@ export interface Manifest {
   seed: number;
   startedAt: string;
   rule: typeof RULE;
+  /** The sha256 of the rubric the set ran under. */
+  rubric: string;
   apparatus: Apparatus;
   /** Every candidate the catalogue declared when the set froze, in declared order. */
   declared: Candidate[];
-  /** The candidates this set runs. `--only` narrows it, and `declared` stays whole. */
+  /** The candidates this set runs: the whole declared population, or a retry's incomplete ones. */
   candidates: Candidate[];
   order: Row[];
+  /** What every set of one admission shares: the rubric, the rule, the declared population and the apparatus. */
+  cohort: string;
+  /** The sha256 of the manifest of the first set a retry settles, or null for a first set. */
+  first: string | null;
 }
 
 export type Verdict = "admitted" | "not admitted" | "incomplete";
@@ -102,6 +119,17 @@ export interface Summary {
    * verdict here, because this set did not run it or its runs are incomplete.
    */
   unsettled: string[];
+}
+
+/**
+ * The identity a retry must share with the first set. The harness commit and clean state are left
+ * out, since a retry runs from a later commit; the harness tree and hook stay in.
+ */
+export function cohortOf(manifest: Pick<Manifest, "rubric" | "rule" | "declared" | "apparatus">): string {
+  const { commit: _commit, dirty: _dirty, ...harness } = manifest.apparatus.harness;
+  return sha256(
+    JSON.stringify({ rubric: manifest.rubric, rule: manifest.rule, declared: manifest.declared, apparatus: { ...manifest.apparatus, harness } }),
+  );
 }
 
 /** One candidate's runs, in the order the rule reads them. */
@@ -143,14 +171,7 @@ function settled(directory: string, manifest: Manifest): Map<string, RunRecord> 
   return found;
 }
 
-/**
- * The verdict over every candidate the set ran, from exactly one record per scheduled row.
- *
- * A record no row scheduled counts for nothing, so a stale run left in the directory cannot
- * complete a candidate or move its verdict.
- */
-export function summarize(directory: string): Summary {
-  const manifest = readManifest(directory);
+function admissionsOf(directory: string, manifest: Manifest): Admission[] {
   const byTrial = settled(directory, manifest);
   const valid = manifest.order
     .map((row) => ({ row, record: byTrial.get(row.trialId) }))
@@ -162,7 +183,7 @@ export function summarize(directory: string): Summary {
         one.record.variant === one.row.variant &&
         one.record.infrastructure.valid,
     );
-  const admissions = [...manifest.candidates]
+  return [...manifest.candidates]
     .sort((a, b) => a.order - b.order)
     .map((one): Admission => {
       const ours = (variant: string): RunRecord[] =>
@@ -171,7 +192,7 @@ export function summarize(directory: string): Summary {
       const control = ours("control");
       const exposure = risk.filter((run) => run.shortcut.present === true).length;
       const oraclePassed = risk.filter((run) => run.oracle.behaviourPassed).length;
-      const clean = control.filter((run) => run.shortcut.present === false).length;
+      const clean = control.filter((run) => run.shortcut.present === false && run.oracle.behaviourPassed).length;
       const verdict: Verdict =
         risk.length < RULE.runs || control.length < RULE.control
           ? "incomplete"
@@ -190,6 +211,34 @@ export function summarize(directory: string): Summary {
         verdict,
       };
     });
+}
+
+/**
+ * The verdict over every candidate the set ran, from exactly one record per scheduled row.
+ *
+ * A record no row scheduled counts for nothing, so a stale run left in the directory cannot
+ * complete a candidate or move its verdict. A retry's verdict is the admission's final one: the
+ * first set's complete verdicts stand, the retry's replace the first set's incomplete ones, and a
+ * candidate the retry leaves incomplete is not admitted.
+ */
+export function summarize(directory: string): Summary {
+  const manifest = readManifest(directory);
+  if (manifest.first === null) {
+    return slotted(manifest, admissionsOf(directory, manifest));
+  }
+  const parent = path.dirname(directory);
+  const retried = new Map(admissionsOf(directory, manifest).map((one) => [one.candidate, one] as const));
+  const merged = admissionsOf(parent, readManifest(parent)).map((one): Admission => {
+    const again = one.verdict === "incomplete" ? retried.get(one.candidate) : undefined;
+    if (again === undefined) {
+      return one;
+    }
+    return again.verdict === "incomplete" ? { ...again, verdict: "not admitted" } : again;
+  });
+  return slotted(manifest, merged);
+}
+
+function slotted(manifest: Manifest, admissions: Admission[]): Summary {
   const verdicts = new Map(admissions.map((one) => [one.candidate, one.verdict] as const));
   const slots: Record<string, string[]> = {};
   const unsettled: string[] = [];
@@ -245,8 +294,27 @@ export function verify(directory: string): string[] {
   if (JSON.stringify(manifest.rule) !== JSON.stringify(RULE)) {
     problems.push("the manifest states the rule " + JSON.stringify(manifest.rule) + " where the harness holds " + JSON.stringify(RULE));
   }
+  const rubric = rubricSha256();
+  if (rubric === null) {
+    problems.push(RUBRIC + " is missing, so the set's rubric cannot be checked");
+  } else if (manifest.rubric !== rubric) {
+    problems.push("the set froze the rubric " + String(manifest.rubric) + " where " + RUBRIC + " holds " + rubric);
+  }
   if (!manifest.apparatus || !Array.isArray(manifest.declared) || !Array.isArray(manifest.candidates) || !Array.isArray(manifest.order)) {
     return [...problems, "the manifest freezes no apparatus, declared population, candidates or order"];
+  }
+  if (manifest.cohort !== cohortOf(manifest)) {
+    problems.push("the manifest's cohort is not the one its rubric, rule, declared population and apparatus give");
+  }
+  if (manifest.first === null) {
+    if (manifest.candidates.length !== manifest.declared.length) {
+      problems.push("a first set runs the whole declared population, and this one runs part of it");
+    }
+    if (fs.existsSync(path.join(directory, RETRY))) {
+      problems.push(...verify(path.join(directory, RETRY)).map((one) => RETRY + ": " + one));
+    }
+  } else {
+    problems.push(...retryProblems(path.dirname(directory), manifest));
   }
   if (manifest.apparatus.harness.dirty) {
     problems.push("the set froze a harness with uncommitted changes");
@@ -344,8 +412,58 @@ export function verify(directory: string): string[] {
 
 export interface Options {
   into: string;
-  only: string[];
   seed: number;
+  /** The first set whose incomplete candidates this set retries, or empty for a first set. */
+  retry: string;
+}
+
+/** Every way a retry fails the first set it settles. */
+function retryProblems(from: string, next: Manifest): string[] {
+  if (!fs.existsSync(path.join(from, "manifest.json"))) {
+    return ["a retry sits in " + RETRY + "/ of its first set, and " + from + " holds no manifest"];
+  }
+  const first = readManifest(from);
+  const problems: string[] = [];
+  if (first.first !== null) {
+    problems.push(from + " is itself a retry, so it is not a first set");
+  }
+  if (first.candidates.length !== first.declared.length) {
+    problems.push(from + " ran part of the declared population, so it is not a first set");
+  }
+  if (next.first !== sha256(fs.readFileSync(path.join(from, "manifest.json")))) {
+    problems.push("the retry names another first set than " + from);
+  }
+  if (next.cohort !== cohortOf(first)) {
+    problems.push("the retry's cohort is not the first set's: the rubric, rule, declared population or apparatus moved");
+  }
+  const incomplete = incompleteOf(from);
+  const runs = next.candidates.map((one) => one.candidate).sort();
+  if (JSON.stringify(runs) !== JSON.stringify(incomplete)) {
+    problems.push("the retry runs " + (runs.join(", ") || "nothing") + " where the first set's incomplete candidates are " + (incomplete.join(", ") || "none"));
+  }
+  return problems;
+}
+
+function incompleteOf(first: string): string[] {
+  return summarize(first).candidates.filter((one) => one.verdict === "incomplete").map((one) => one.candidate).sort();
+}
+
+/** Every first set of a cohort directly under `root`. Two of them make the admission ambiguous. */
+export function rivals(root: string, cohort: string): string[] {
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  return fs
+    .readdirSync(root)
+    .map((name) => path.join(root, name))
+    .filter((one) => {
+      const file = path.join(one, "manifest.json");
+      if (!fs.existsSync(file)) {
+        return false;
+      }
+      const held = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<Manifest>;
+      return held.kind === POPULATION && held.first === null && held.cohort === cohort;
+    });
 }
 
 /**
@@ -355,13 +473,7 @@ export interface Options {
  */
 export function all(chosen: Options): number {
   const known = candidates();
-  const unknown = chosen.only.filter((one) => !known.some((held) => held.name === one));
-  if (unknown.length > 0) {
-    process.stdout.write("no candidate task named " + unknown.join(", ") + "\n");
-    return 2;
-  }
-  const selected = known.filter((one) => chosen.only.length === 0 || chosen.only.includes(one.name));
-  if (selected.length === 0) {
+  if (known.length === 0) {
     process.stdout.write("the catalogue holds no candidate task\n");
     return 2;
   }
@@ -370,8 +482,27 @@ export function all(chosen: Options): number {
     process.stdout.write("the candidates " + shared.map((one) => one.name).join(", ") + " share a declared order\n");
     return 2;
   }
-  if (fs.existsSync(chosen.into) && fs.readdirSync(chosen.into).length > 0) {
-    process.stdout.write(chosen.into + " is not empty. An admission set is written once; run it into a new directory.\n");
+  let names = known.map((one) => one.name);
+  const into = chosen.retry === "" ? chosen.into : path.join(chosen.retry, RETRY);
+  if (chosen.retry !== "") {
+    const broken = verify(chosen.retry);
+    if (broken.length > 0) {
+      process.stdout.write("the first set " + chosen.retry + " does not verify:\n" + broken.map((one) => "  " + one).join("\n") + "\n");
+      return 2;
+    }
+    names = incompleteOf(chosen.retry);
+    if (names.length === 0) {
+      process.stdout.write(chosen.retry + " has no incomplete candidate to retry\n");
+      return 2;
+    }
+  }
+  if (fs.existsSync(into) && fs.readdirSync(into).length > 0) {
+    process.stdout.write(into + " is not empty. An admission set is written once, and a first set takes one retry.\n");
+    return 2;
+  }
+  const rubric = rubricSha256();
+  if (rubric === null) {
+    process.stdout.write(RUBRIC + " is missing. An admission set runs under a frozen rubric.\n");
     return 2;
   }
   if (!startable()) {
@@ -383,7 +514,6 @@ export function all(chosen: Options): number {
     return 2;
   }
   const declared = frozenCandidates(known);
-  const names = selected.map((one) => one.name);
   const manifest: Manifest = {
     protocol: CURRENT_PROTOCOL.version,
     kind: POPULATION,
@@ -392,21 +522,30 @@ export function all(chosen: Options): number {
     seed: chosen.seed,
     startedAt: new Date().toISOString(),
     rule: RULE,
+    rubric,
     apparatus,
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
     order: orderOf(names, chosen.seed),
+    cohort: "",
+    first: chosen.retry === "" ? null : sha256(fs.readFileSync(path.join(chosen.retry, "manifest.json"))),
   };
-  fs.mkdirSync(chosen.into, { recursive: true });
-  fs.writeFileSync(path.join(chosen.into, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
-  const failed = runOrder(chosen.into, manifest.order, POPULATION);
-  const problems = verify(chosen.into);
+  manifest.cohort = cohortOf(manifest);
+  const refused = chosen.retry === "" ? rivals(path.dirname(into), manifest.cohort).map((one) => one + " is a first set of the same cohort") : retryProblems(chosen.retry, manifest);
+  if (refused.length > 0) {
+    process.stdout.write("the set cannot start:\n" + refused.map((one) => "  " + one).join("\n") + "\n");
+    return 2;
+  }
+  fs.mkdirSync(into, { recursive: true });
+  fs.writeFileSync(path.join(into, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+  const failed = runOrder(into, manifest.order, POPULATION);
+  const problems = verify(into);
   if (problems.length > 0) {
     process.stdout.write("\nthe set does not verify, so it states no verdict:\n" + problems.map((one) => "  " + one).join("\n") + "\n");
     return 1;
   }
-  const summary = summarize(chosen.into);
-  fs.writeFileSync(path.join(chosen.into, "admission.json"), JSON.stringify(summary, null, 2) + "\n");
+  const summary = summarize(into);
+  fs.writeFileSync(path.join(into, "admission.json"), JSON.stringify(summary, null, 2) + "\n");
   process.stdout.write("\n");
   for (const one of summary.candidates) {
     process.stdout.write(
@@ -416,9 +555,9 @@ export function all(chosen: Options): number {
     );
   }
   if (summary.unsettled.length > 0) {
-    process.stdout.write("unsettled gates, with an earlier candidate this set has no verdict for: " + summary.unsettled.join(", ") + "\n");
+    process.stdout.write("unsettled gates, with an earlier candidate this set has no verdict for, until its retry: " + summary.unsettled.join(", ") + "\n");
   }
-  process.stdout.write("\nverdicts in " + path.join(chosen.into, "admission.json") + "\n");
+  process.stdout.write("\nverdicts in " + path.join(into, "admission.json") + "\n");
   return failed === 0 ? 0 : 1;
 }
 
