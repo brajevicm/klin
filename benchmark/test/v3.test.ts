@@ -8,31 +8,28 @@ import * as paths from "../src/paths.ts";
 import * as session from "../src/session.ts";
 import * as forensic from "../src/forensic.ts";
 import { family } from "../src/catalogue.ts";
-import { CURRENT_PROTOCOL } from "../src/protocol.ts";
-import { slotted, rubricSha256, type Admission, type Candidate } from "../src/admission.ts";
+import { final, rubricSha256, type Candidate } from "../src/admission.ts";
 import {
   V3,
+  V3_REPETITIONS,
   fixtures,
   frozen,
   manifestProblems,
   markdown,
   planV3,
-  scorecard,
   schedule,
+  scorecard,
   v3Blocks,
   v3ManifestOf,
-  V3_REPETITIONS,
   verify,
   type Frozen,
   type Lineage,
   type Manifest,
-  type Row,
 } from "../src/round.ts";
 import type { RunRecord } from "../src/record.ts";
 import { sha256 } from "../src/trees.ts";
-import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
 import { probeOnDisk } from "./probe-fixture.ts";
-import { admitted, clean, invalid, risk, setOnDisk, withVerdict } from "./admission-fixture.ts";
+import { APPARATUS, admitted, candidate, clean, invalid, recordFor, risk, setOnDisk, withVerdict } from "./admission-fixture.ts";
 
 /**
  * The v3 paired round: its blocks come from the final admission verdict, its manifest freezes that
@@ -40,6 +37,16 @@ import { admitted, clean, invalid, risk, setOnDisk, withVerdict } from "./admiss
  */
 
 const SLOTS = { complexity: ["complexity-quote", "complexity-fines"], stubs: ["stubs-slug"] };
+
+const POOL = [
+  candidate("complexity-quote", "complexity", 1),
+  candidate("complexity-shipping", "complexity", 2),
+  candidate("complexity-fines", "complexity", 3),
+  candidate("stubs-slug", "stubs", 5),
+  candidate("inventory-csv", "inventory", 8),
+];
+
+const none = [risk(false), risk(false), risk(false), clean];
 
 function quiet<T>(work: () => T): { value: T; wrote: string } {
   const wrote: string[] = [];
@@ -55,61 +62,36 @@ function quiet<T>(work: () => T): { value: T; wrote: string } {
   }
 }
 
-function admission(name: string, gate: string, order: number, verdict: Admission["verdict"]): Admission {
-  return { candidate: name, gate, order, taskId: "t-" + name, runs: 3, exposure: 3, oraclePassed: 3, control: { runs: 1, clean: 1 }, verdict };
+/** A first set over the pool that admits the three tasks of `SLOTS`, and the lineage its verdict gives. */
+function admissionOnDisk(under: string): Lineage {
+  const first = withVerdict(
+    setOnDisk(POOL, { "complexity-quote": admitted, "complexity-shipping": none, "complexity-fines": admitted, "stubs-slug": admitted, "inventory-csv": none }, { under }).where,
+  );
+  const { problems, ...verdict } = final(first);
+  assert.deepEqual(problems, []);
+  return { ...verdict, directory: path.relative(paths.REPO, first), noCandidate: ["lockfile"] };
 }
 
-function lineage(): Lineage {
-  const candidates = [
-    admission("complexity-quote", "complexity", 1, "admitted"),
-    admission("complexity-shipping", "complexity", 2, "not admitted"),
-    admission("complexity-fines", "complexity", 3, "admitted"),
-    admission("stubs-slug", "stubs", 5, "admitted"),
-    admission("inventory-csv", "inventory", 8, "not admitted"),
-  ];
-  return { source: "first set", firstSet: "a".repeat(64), retry: null, verdict: "b".repeat(64), cohort: "c".repeat(64), summary: slotted(candidates, candidates) };
-}
-
-function frozenFor(tasks: string[]): Frozen {
+function frozenFor(lineage: Lineage): Frozen {
   const held: Frozen["fixtures"] = {};
-  for (const name of tasks) {
-    const gate = name.split("-")[0];
-    held[name] = {
-      gate,
-      fixtureSha256: "f",
-      variants: {
-        risk: { taskId: "t-" + name, promptSha256: "p-" + name + "risk", treeSha256: "tr-" + name + "risk" },
-        control: { taskId: "tc-" + name, promptSha256: "p-" + name + "control", treeSha256: "tr-" + name + "control" },
-      },
-    };
+  for (const name of Object.values(lineage.summary.slots).flat()) {
+    const { candidate: _candidate, order: _order, ...identity } = POOL.find((one) => one.candidate === name) as Candidate;
+    held[name] = identity;
   }
-  return {
-    protocol: CURRENT_PROTOCOL.version,
-    schemaSha256: "s",
-    harness: { commit: "h", dirty: false, treeSha256: "ht", hookSha256: "hook" },
-    confinement: "sandbox",
-    execution: "e",
-    klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
-    toolchain: { package: "typescript", version: "5.9.3", path: "/tsc.js", sha256: TYPESCRIPT_SHA256 },
-    host: { name: "claude-code", version: "2.1.281 (Claude Code)" },
-    model: "sonnet",
-    flags: ["--print"],
-    isolatedConfiguration: false,
-    memory: null,
-    machine: { platform: "test", release: "0", arch: "x", node: "v0" },
-    fixtures: held,
-  };
+  return { ...APPARATUS, klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" }, fixtures: held };
 }
 
-const TASKS = ["complexity-fines", "complexity-quote", "stubs-slug"];
-
-function manifestFor(): Manifest {
-  const held = v3ManifestOf(1, frozenFor(TASKS), lineage(), rubricSha256() as string);
+function manifestFor(lineage: Lineage): Manifest {
+  const held = v3ManifestOf(1, frozenFor(lineage), lineage, rubricSha256() as string);
   held.probes = [
     { trialId: "probe-0000000a", family: "complexity", language: "typescript", sha256: "a".repeat(64), filesSha256: "b".repeat(64) },
     { trialId: "probe-0000000b", family: "dead-symbols", language: "rust", sha256: "c".repeat(64), filesSha256: "d".repeat(64) },
   ];
   return held;
+}
+
+function room(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-v3-"));
 }
 
 test("a v3 schedule runs one risk block per admitted task and one control block per gate, adjacent and balanced", () => {
@@ -134,75 +116,44 @@ test("a v3 schedule runs one risk block per admitted task and one control block 
 });
 
 test("a v3 manifest holds its order, fixtures and verdict to the admission and its rubric to the committed one", () => {
-  const held = manifestFor();
-  assert.equal(held.population, V3);
-  assert.deepEqual(manifestProblems(held), []);
-  const has = (edited: Manifest, text: string): void => {
-    const problems = manifestProblems(edited);
-    assert.ok(problems.some((one) => one.includes(text)), text + " not in: " + problems.join(" / "));
-  };
-  has({ ...held, rubric: "0".repeat(64) }, "the rubric");
-  has({ ...held, order: [...held.order].reverse() }, "the admission verdict give");
-  const unsettled = lineage();
-  unsettled.summary.unsettled = ["inventory"];
-  has({ ...held, admission: unsettled }, "inventory unsettled");
-  const widened = lineage();
-  widened.summary.slots = { ...widened.summary.slots, inventory: ["inventory-csv"] };
-  has({ ...held, admission: widened }, "not the one its candidates give");
-  const extra = structuredClone(held);
-  extra.frozen.fixtures["inventory-csv"] = extra.frozen.fixtures["stubs-slug"];
-  has(extra, "which the admission did not admit");
-  const regated = structuredClone(held);
-  regated.frozen.fixtures["stubs-slug"].gate = "complexity";
-  has(regated, "another gate or task id");
-  has({ ...held, admission: undefined }, "no admission verdict");
+  const under = room();
+  try {
+    const lineage = admissionOnDisk(under);
+    assert.deepEqual(lineage.summary.slots, SLOTS);
+    const held = manifestFor(lineage);
+    assert.equal(held.population, V3);
+    assert.deepEqual(manifestProblems(held), []);
+    const has = (edited: Manifest, text: string): void => {
+      const problems = manifestProblems(edited);
+      assert.ok(problems.some((one) => one.includes(text)), text + " not in: " + problems.join(" / "));
+    };
+    has({ ...held, rubric: "0".repeat(64) }, "the rubric");
+    has({ ...held, order: [...held.order].reverse() }, "the admission verdict give");
+    const unsettled = structuredClone(lineage);
+    unsettled.summary.unsettled = ["inventory"];
+    has({ ...held, admission: unsettled }, "inventory unsettled");
+    const widened = structuredClone(lineage);
+    widened.summary.slots = { ...widened.summary.slots, inventory: ["inventory-csv"] };
+    has({ ...held, admission: widened }, "not the one its candidates give");
+    has({ ...held, admission: { ...lineage, source: "retry" } }, "the source retry and the retry digest null");
+    has({ ...held, admission: { ...lineage, noCandidate: ["stubs"] } }, "gates without a candidate");
+    const extra = structuredClone(held);
+    extra.frozen.fixtures["inventory-csv"] = extra.frozen.fixtures["stubs-slug"];
+    has(extra, "which the admission did not admit");
+    const regated = structuredClone(held);
+    regated.frozen.fixtures["stubs-slug"].gate = "complexity";
+    has(regated, "another gate or task id");
+    has({ ...held, admission: undefined }, "no admission verdict");
+  } finally {
+    fs.rmSync(under, { recursive: true, force: true });
+  }
 });
 
-function recordFor(row: Row, held: Manifest, exposed: string[]): RunRecord {
-  const base = JSON.parse(fs.readFileSync(path.join(paths.BENCHMARK, "test", "live-record.json"), "utf8")) as Record<string, unknown>;
-  const planned = held.frozen.fixtures[row.family].variants[row.variant];
-  return {
-    ...base,
-    protocol: held.protocol,
-    kind: "publishable",
-    publishable: true,
-    family: row.family,
-    variant: row.variant,
-    arm: row.arm,
-    taskId: planned.taskId,
-    order: row.order,
-    repetition: row.repetition,
-    trialId: row.trialId,
-    replaces: null,
-    audit: [],
-    signals: [],
-    hooks: [],
-    fixture: { startCommit: "c", promptSha256: planned.promptSha256, treeSha256: planned.treeSha256 },
-    harness: { commit: "h", dirty: false, treeSha256: "ht" },
-    klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
-    host: { name: "claude-code", version: "2.1.281 (Claude Code)", flags: ["--print"], flagsSha256: "x", isolatedConfiguration: false, memory: null },
-    model: { requested: "sonnet", reported: "sonnet" },
-    agent: { wiringSha256: "w", wrapperSha256: "wr" },
-    infrastructure: { valid: true, reason: null, terms: [{ name: "state-fresh", passed: true, detail: "" }] },
-    result: { outcome: "completed", evidence: "" },
-    oracle: { behaviourPassed: true, exit: 0, reason: "" },
-    shortcut: { present: row.arm === "shadow" && row.variant === "risk" && exposed.includes(row.family), detector: "d", sites: [], note: "", unread: null },
-    friction: { blockedStops: 0, gateRuns: 1, guardRefusals: 0, tries: 0, hostDenials: 0 },
-    stats: {},
-    activity: { klinMs: 12 },
-    turns: 3,
-    isolation: {
-      workspace: { verified: true, checks: [] },
-      freshness: { verified: true, checks: [] },
-      outside: { name: "no-tool-call-outside-the-workspace", passed: true, detail: "" },
-    },
-  } as unknown as RunRecord;
-}
-
-test("a complete v3 round verifies, scores its admitted tasks by gate and reports every gate by challenge", () => {
-  const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-v3-"));
+test("a complete v3 round verifies against its admission set, scores by gate and reports every gate by challenge", () => {
+  const where = room();
   try {
-    const held = manifestFor();
+    const lineage = admissionOnDisk(where);
+    const held = manifestFor(lineage);
     const natural = { ...held.frozen, fixtures: fixtures() };
     held.probes = [
       ["typescript", "complexity", "probe-11111111"],
@@ -214,8 +165,16 @@ test("a complete v3 round verifies, scores its admitted tasks by gate and report
     });
     fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(held) + "\n");
     for (const row of held.order) {
+      const exposed = row.arm === "shadow" && row.variant === "risk" && ["complexity-quote", "stubs-slug"].includes(row.family);
+      const record = {
+        ...recordFor(row, row.trialId, { shortcut: exposed }, POOL.find((one) => one.candidate === row.family)),
+        kind: "publishable",
+        publishable: true,
+        arm: row.arm,
+        replaces: null,
+      } as unknown as RunRecord;
       fs.mkdirSync(path.join(where, row.trialId));
-      fs.writeFileSync(path.join(where, row.trialId, "record.json"), JSON.stringify(recordFor(row, held, ["complexity-quote", "stubs-slug"])) + "\n");
+      fs.writeFileSync(path.join(where, row.trialId, "record.json"), JSON.stringify(record) + "\n");
     }
     assert.deepEqual(verify(where), []);
     const card = scorecard(where);
@@ -228,13 +187,19 @@ test("a complete v3 round verifies, scores its admitted tasks by gate and report
     assert.deepEqual(card.challenge?.map((one) => [one.gate, one.class, one.tasks]), [
       ["complexity", "partly challenged", ["complexity-quote", "complexity-fines"]],
       ["inventory", "unchallenged", []],
+      ["lockfile", "unchallenged", []],
       ["stubs", "partly challenged", ["stubs-slug"]],
     ]);
     const text = markdown(card);
-    assert.match(text, /## Gates by challenge/);
-    assert.match(text, /\| inventory \| unchallenged \| none \| 8 inventory-csv: 3\/3 shortcut, 3\/3 oracle, 1\/1 clean control, not admitted \|/);
+    assert.match(text, /\| inventory \| unchallenged \| none \| inventory-csv \|/);
+    assert.match(text, /\| lockfile \| unchallenged \| none \| none, the reason is benchmark\/fixtures\/lockfile\.no-candidate\.md \|/);
+    assert.doesNotMatch(text, /3\/3/, "admission counts never enter the scorecard");
     assert.match(text, /The frozen v3 rubric makes the round inconclusive/);
     assert.match(text, /An unchallenged gate had no admitted task/);
+
+    const first = path.resolve(paths.REPO, lineage.directory);
+    fs.writeFileSync(path.join(first, "admission.json"), fs.readFileSync(path.join(first, "admission.json"), "utf8") + " ");
+    assert.ok(verify(where).some((one) => one.includes("no longer gives the verdict")), "an admission set edited after the plan fails the round");
   } finally {
     fs.rmSync(where, { recursive: true, force: true });
   }
@@ -254,32 +219,30 @@ function declared(name: string): Candidate {
   return { candidate: name, order: Number(task.spec.candidate), ...fixtures([task])[name] };
 }
 
-test("plan --population v3 freezes from the final verdict and refuses an unsettled gate or a moved candidate", () => {
-  const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-v3-plan-"));
+test("plan --population v3 refuses a retry that could still start or a moved candidate, and freezes the final verdict", () => {
+  const where = room();
   const kept = process.env.KLIN_BIN;
   process.env.KLIN_BIN = stubKlin(where);
   try {
-    const pool = [declared("complexity-quote"), declared("complexity-shipping"), declared("stubs-slug")];
-    const short = withVerdict(setOnDisk(pool, { "complexity-quote": admitted, "complexity-shipping": invalid, "stubs-slug": admitted }, { under: where }).where);
-    const unsettled = quiet(() => planV3(path.join(where, "unsettled"), short, 1, path.join(where, "probes")));
-    assert.equal(unsettled.value, 2, unsettled.wrote);
-    assert.match(unsettled.wrote, /leaves complexity unsettled\. Run its one retry/);
-    fs.rmSync(short, { recursive: true, force: true });
-
+    const probes = path.join(where, "probes");
     const faked = { ...declared("complexity-fines"), fixtureSha256: "moved" };
     const stale = withVerdict(setOnDisk([faked], { "complexity-fines": admitted }, { under: where }).where);
-    const changed = quiet(() => planV3(path.join(where, "changed"), stale, 1, path.join(where, "probes")));
+    const changed = quiet(() => planV3(path.join(where, "changed"), stale, 1, probes));
     assert.equal(changed.value, 2, changed.wrote);
-    assert.match(changed.wrote, /complexity-fines changed after its first admission run/);
+    assert.match(changed.wrote, /complexity-fines is not the candidate the first set froze/);
     fs.rmSync(stale, { recursive: true, force: true });
 
-    const first = withVerdict(
-      setOnDisk(pool, { "complexity-quote": admitted, "complexity-shipping": [risk(false), risk(false), risk(false), clean], "stubs-slug": admitted }, { under: where }).where,
-    );
+    const pool = [declared("complexity-quote"), declared("complexity-shipping"), declared("stubs-slug")];
+    const short = setOnDisk(pool, { "complexity-quote": admitted, "complexity-shipping": invalid, "stubs-slug": admitted }, { under: where });
+    withVerdict(short.where);
+    const startable = quiet(() => planV3(path.join(where, "startable"), short.where, 1, probes, () => short.manifest.cohort));
+    assert.equal(startable.value, 2, startable.wrote);
+    assert.match(startable.wrote, /leaves complexity unsettled\. Run its one retry/);
+
     const into = path.join(where, "round");
-    const probes = path.join(where, "probes");
-    const unproved = quiet(() => planV3(into, first, 1, probes));
+    const unproved = quiet(() => planV3(into, short.where, 1, probes));
     assert.equal(unproved.value, 2, unproved.wrote);
+    assert.doesNotMatch(unproved.wrote, /unsettled/, "a retry that cannot start settles the gate by rule 6");
     if (execFileSync("git", ["status", "--porcelain"], { cwd: paths.REPO, encoding: "utf8" }).trim() !== "") {
       assert.match(unproved.wrote, /uncommitted/);
       return;
@@ -289,19 +252,23 @@ test("plan --population v3 freezes from the final verdict and refuses an unsettl
     for (const language of ["typescript", "rust"]) {
       probeOnDisk(probes, language === "rust" ? "probe-22222222" : "probe-11111111", language, true, now, "2026-09-24T12:00:00.000Z");
     }
-    const planned = quiet(() => planV3(into, first, 1, probes));
+    const planned = quiet(() => planV3(into, short.where, 1, probes));
     assert.equal(planned.value, 0, planned.wrote);
-    assert.match(planned.wrote, /planned 4 v3 blocks, 8 runs, seed 1, from the first set's verdict/);
+    assert.match(planned.wrote, /planned 4 v3 blocks, 8 runs, seed 1, from the verdict of the first set, the retry cannot start/);
     assert.match(planned.wrote, /No session ran/);
     const held = JSON.parse(fs.readFileSync(path.join(into, "manifest.json"), "utf8")) as Manifest;
     assert.deepEqual(manifestProblems(held), []);
     assert.equal(held.population, V3);
     assert.equal(held.rubric, rubricSha256());
-    assert.equal(held.admission?.firstSet, sha256(fs.readFileSync(path.join(first, "manifest.json"))));
-    assert.equal(held.admission?.verdict, sha256(fs.readFileSync(path.join(first, "admission.json"))));
+    assert.equal(held.admission?.firstSet, sha256(fs.readFileSync(path.join(short.where, "manifest.json"))));
+    assert.deepEqual(
+      held.admission?.noCandidate,
+      ["dead-symbols", "doc-citations", "escapes", "inventory", "lockfile", "public-api", "reachability"],
+      "every natural gate this set declared no candidate for",
+    );
     assert.deepEqual(Object.keys(held.frozen.fixtures).sort(), ["complexity-quote", "stubs-slug"]);
     assert.deepEqual(held.frozen.fixtures["stubs-slug"], fixtures([family("stubs-slug")])["stubs-slug"]);
-    const again = quiet(() => planV3(into, first, 1, probes));
+    const again = quiet(() => planV3(into, short.where, 1, probes));
     assert.equal(again.value, 2);
     assert.match(again.wrote, /not regenerated/);
   } finally {

@@ -779,18 +779,31 @@ node benchmark/src/cli.ts scorecard benchmark/runs/v3-<stamp> --out docs/round-v
 section 4:
 
 - The first set must verify alone and must hold its `admission.json`.
-- The first set must be the earliest first set of its cohort in its parent
-  directory.
+- No other first set of its cohort in its parent directory started at the
+  same time or earlier. The plan sees only that directory, so keep every
+  admission set under `benchmark/runs`.
 - A retry that verifies gives the final verdict.
 - A retry that does not verify admits no incomplete candidate of the first
   set.
 - A retry that holds a retry of its own stops the plan.
 
-The plan refuses a verdict that leaves a gate unsettled, and it names the
-retry command. It also refuses an admitted task whose fixture identity is not
-the identity that the first set froze. Thus a prompt, a starting tree, an
-oracle or a detector that changed after the first admission run cannot enter
-the round.
+When the first set leaves a gate unsettled and no retry ran, the plan
+compares the cohort that a retry started now would record with the first
+set's cohort:
+
+- If the two cohorts are equal, the retry can still start. The plan refuses
+  and names the retry command.
+- If the two cohorts are different, no retry can start. Rule 6 then admits no
+  incomplete candidate, and the manifest states the source
+  `first set, the retry cannot start`.
+
+Do not plan while a retry runs. A retry that has not finished does not
+verify, so rule 6 would read it as a failed retry.
+
+The plan also refuses an admitted task whose fixture identity is not the
+identity that the first set froze. Thus a prompt, a starting tree, an oracle
+or a detector that changed after the first admission run cannot enter the
+round.
 
 Each admitted task gives one risk block. Each gate gives one control block of
 its first admitted task in declared order. The seed orders the blocks, and the
@@ -800,7 +813,9 @@ first arms stay balanced, as in the natural round. The manifest states
 - the digest of the first set's manifest;
 - the digest of the retry's manifest, or null;
 - the digest of the `admission.json` that the verdict came from;
-- the cohort and the verdict itself.
+- the cohort and the verdict itself;
+- the path of the first set, relative to this repository;
+- every gate that a natural family names and that has no candidate.
 
 `frozen.fixtures` holds the admitted tasks and no natural family. The probes
 still prove the confinement over the natural fixtures that they ran on.
@@ -809,10 +824,20 @@ still prove the confinement over the natural fixtures that they ran on.
 the order that the seed and the verdict's slots give. The verdict is the one
 that its candidates give under the frozen rule, and it leaves no gate
 unsettled. Every frozen task is admitted under the gate and task id that
-admission ran. `execute` reads the fixture identity of the frozen tasks again
-before each block. The retry policy of the natural round applies unchanged. The
-scorecard groups the blocks by gate and adds the gates by challenge of rubric
-section 11, with the admission counts of every candidate.
+admission ran. Both commands also read the admission set again. They fail when
+the set no longer gives the frozen verdict and digests, or when a frozen task
+is not the candidate that the first set froze. `execute` reads the fixture
+identity of the frozen tasks again before each block. The retry policy of the
+natural round applies unchanged.
+
+A v3 round has no committed protocol file. The frozen rubric, the committed
+candidates and the admission lineage take its place, and the manifest digest
+that a person approves freezes the round.
+
+The scorecard groups the blocks by gate. It adds the class of every gate under
+rubric section 11, with the candidates in declared order, and it names the
+recorded reason of a gate that has no candidate. Admission counts never enter
+the scorecard. The result document lists them from `admission.json`.
 
 ## The external oracles
 

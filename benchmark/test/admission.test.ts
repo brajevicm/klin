@@ -275,6 +275,23 @@ test("of two first sets of one cohort, only the one that started earliest gives 
   fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2026-09-25T00:00:00Z" }) + "\n");
   withVerdict(two.where);
   assert.deepEqual(final(one.where).problems, []);
-  assert.ok(final(two.where).problems.some((problem) => problem.includes(one.where) && problem.includes("started earlier")));
+  assert.ok(final(two.where).problems.some((problem) => problem.includes(one.where) && problem.includes("started no later")));
+  fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify(two.manifest) + "\n");
+  assert.ok(final(one.where).problems.some((problem) => problem.includes(two.where)), "a tie leaves neither set the first");
+  assert.ok(final(two.where).problems.some((problem) => problem.includes(one.where)));
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a retry that cannot start admits none of the first set's incomplete candidates", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3)];
+  const first = withVerdict(setOnDisk(declared, { a: admitted, b: invalid, c: admitted }).where);
+  const blocked = final(first, true);
+  assert.deepEqual(blocked.problems, []);
+  assert.equal(blocked.source, "first set, the retry cannot start");
+  assert.deepEqual(blocked.summary.slots, { complexity: ["a"], stubs: ["c"] });
+  assert.deepEqual(blocked.summary.unsettled, []);
+  setOnDisk(declared, { b: admitted }, { retries: first });
+  withVerdict(path.join(first, "retry"));
+  assert.equal(final(first, true).source, "retry", "a retry that ran and verified is the verdict, whatever the flag says");
+  fs.rmSync(first, { recursive: true, force: true });
 });

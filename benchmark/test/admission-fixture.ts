@@ -101,7 +101,7 @@ export function setOnDisk(
 ): { where: string; manifest: Manifest } {
   const where = at.retries
     ? path.join(at.retries, "retry")
-    : fs.mkdtempSync(path.join(at.under ?? os.tmpdir(), "klin-bench-admission-"));
+    : fs.mkdtempSync(path.join(at.under ?? fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-")), "klin-bench-admission-"));
   fs.mkdirSync(where, { recursive: true });
   const names = declared.filter((one) => one.candidate in outcomes).map((one) => one.candidate);
   const manifest: Manifest = {

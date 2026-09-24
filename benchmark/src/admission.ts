@@ -154,7 +154,7 @@ function frozenCandidates(chosen: Family[]): Candidate[] {
   return chosen.map((one) => ({ candidate: one.name, order: Number(one.spec.candidate), ...identity[one.name] }));
 }
 
-function readManifest(directory: string): Manifest {
+export function readManifest(directory: string): Manifest {
   return JSON.parse(fs.readFileSync(path.join(directory, "manifest.json"), "utf8")) as Manifest;
 }
 
@@ -471,7 +471,7 @@ export function rivals(root: string, cohort: string): string[] {
 export interface Final {
   summary: Summary;
   /** Which set's verdict this is. */
-  source: "first set" | "retry" | "first set, the retry did not verify";
+  source: "first set" | "retry" | "first set, the retry did not verify" | "first set, the retry cannot start";
   /** The sha256 of the first set's manifest. */
   firstSet: string;
   /** The sha256 of the retry's manifest when the retry's verdict is the final one. */
@@ -491,18 +491,18 @@ function manifestSha256(directory: string): string {
  * The final verdict of the admission whose first set is `first`, as rubric section 4 merges it.
  *
  * The first set must verify on its own, state its verdict and be the earliest first set of its
- * cohort beside it. A retry that verifies gives the final verdict. A retry that does not verify
- * admits none of the first set's incomplete candidates.
+ * cohort beside it. A retry that verifies gives the final verdict. A retry that does not verify,
+ * or one that `cannotStart` says no set could start now, admits none of the incomplete candidates.
  */
-export function final(first: string): Final {
+export function final(first: string, cannotStart = false): Final {
   const manifest = readManifest(first);
   const problems = verify(first, false);
   if (manifest.first !== null) {
     problems.push(first + " is a retry, and the paired round freezes from its first set");
   }
-  for (const other of rivals(path.dirname(first), manifest.cohort)) {
-    if (readManifest(other).startedAt < manifest.startedAt) {
-      problems.push(other + " is a first set of the same cohort that started earlier, so it is the first set and " + first + " counts for nothing");
+  for (const other of rivals(path.dirname(first), manifest.cohort).filter((one) => path.resolve(one) !== path.resolve(first))) {
+    if (readManifest(other).startedAt <= manifest.startedAt) {
+      problems.push(other + " is a first set of the same cohort that started no later, so " + first + " is not the first set");
     }
   }
   const kept = path.join(first, "admission.json");
@@ -522,15 +522,37 @@ export function final(first: string): Final {
     cohort: manifest.cohort,
     problems,
   };
+  const merged = (source: Final["source"]): Final => ({
+    ...held,
+    summary: slotted(
+      manifest.declared,
+      held.summary.candidates.map((one): Admission => (one.verdict === "incomplete" ? { ...one, verdict: "not admitted" } : one)),
+    ),
+    source,
+  });
   if (!fs.existsSync(path.join(again, "manifest.json"))) {
-    return held;
+    return cannotStart ? merged("first set, the retry cannot start") : held;
   }
   const retried = path.join(again, "admission.json");
   if (verify(again).length === 0 && fs.existsSync(retried)) {
     return { ...held, summary: summarize(again), source: "retry", retry: manifestSha256(again), verdict: sha256(fs.readFileSync(retried)) };
   }
-  const merged = held.summary.candidates.map((one): Admission => (one.verdict === "incomplete" ? { ...one, verdict: "not admitted" } : one));
-  return { ...held, summary: slotted(manifest.declared, merged), source: "first set, the retry did not verify" };
+  return merged("first set, the retry did not verify");
+}
+
+/**
+ * The cohort a set started now would record, or null when the checkout holds no rubric.
+ *
+ * A retry whose cohort is not its first set's cannot start, so a paired plan reads this to apply
+ * rule 6 to a retry that never ran.
+ */
+export function cohortNow(): string | null {
+  const rubric = rubricSha256();
+  if (rubric === null) {
+    return null;
+  }
+  const { klin: _klin, fixtures: _fixtures, ...apparatus } = frozen(session.defaults());
+  return cohortOf({ rubric, rule: RULE, declared: frozenCandidates(candidates()), apparatus });
 }
 
 /** The file that records why a gate has no candidate, beside the fixtures. */

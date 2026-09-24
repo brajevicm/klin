@@ -40,8 +40,6 @@ import {
   type Crash,
   type ScheduledRow,
 } from "./calibrate.ts";
-
-export { crash, crashes, type Crash, type ScheduledRow } from "./calibrate.ts";
 import { validate, type RunRecord } from "./record.ts";
 import * as admission from "./admission.ts";
 
@@ -95,15 +93,12 @@ export const V3 = "v3";
 /** A v3 block is one distinct task: each admitted task runs its risk variant once, and each gate one control. */
 export const V3_REPETITIONS: Record<NaturalVariantName, number> = { risk: 1, control: 1 };
 
-/** What a v3 manifest freezes of the admission it was planned from. */
-export interface Lineage {
-  source: admission.Final["source"];
-  firstSet: string;
-  retry: string | null;
-  verdict: string;
-  cohort: string;
-  summary: admission.Summary;
-}
+/**
+ * What a v3 manifest freezes of the admission it was planned from: the final verdict and its
+ * digests, where the first set lies relative to the repository, and every gate a natural family
+ * names that had no candidate.
+ */
+export type Lineage = Omit<admission.Final, "problems"> & { directory: string; noCandidate: string[] };
 
 /**
  * What `plan` keeps of the probe that proved one language's workspace.
@@ -458,6 +453,13 @@ function lineageProblems(held: Manifest): string[] {
   }
   if (Object.keys(lineage.summary.slots ?? {}).length === 0) {
     problems.push("the admission admitted no task");
+  }
+  if ((lineage.source === "retry") !== (lineage.retry !== null)) {
+    problems.push("the admission's verdict states the source " + String(lineage.source) + " and the retry digest " + String(lineage.retry));
+  }
+  const candidateGates = new Set(lineage.summary.candidates.map((one) => one.gate));
+  if (!Array.isArray(lineage.noCandidate) || lineage.noCandidate.some((gate) => candidateGates.has(gate))) {
+    problems.push("the manifest's gates without a candidate are not the gates its admission declared none for");
   }
   for (const [name, fixture] of Object.entries(held.frozen?.fixtures ?? {})) {
     const admitted = lineage.summary.candidates.find((one) => one.candidate === name);
@@ -861,14 +863,9 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     return 2;
   }
   const held = manifestOf(seed, frozen(known));
-  if (held.frozen.klin.commit === "") {
-    process.stdout.write("no build provenance ties " + known.klinBin + " to a source commit. benchmark/build-klin writes one.\n");
-    return 2;
-  }
-  if (held.frozen.harness.dirty) {
-    process.stdout.write(
-      "the harness has uncommitted changes. A round is frozen against a commit, so commit or stash first.\n",
-    );
+  const refused = unfreezable(known.klinBin, held.frozen);
+  if (refused !== "") {
+    process.stdout.write(refused + "\n");
     return 2;
   }
   const departures = uncommitted(identityOf(held));
@@ -883,6 +880,66 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     );
     return 2;
   }
+  return freeze(into, held, proved, [
+    "planned " + String(held.design.blocks) + " blocks, " + String(held.design.runs) + " runs, seed " + String(seed),
+    "first arm: " + String(held.firstArm.active) + " Active, " + String(held.firstArm.shadow) + " Shadow",
+    ...blocksByGate(held.order, held.frozen.fixtures).map(
+      (one) => "  " + one.gate + ": " + String(one.risk) + " risk and " + String(one.control) + " control blocks over " + one.tasks.join(", "),
+    ),
+  ]);
+}
+
+/** The first set's frozen candidates whose identity is not `identity`'s, as sentences. */
+function declaredDrift(first: string, identity: Frozen["fixtures"]): string[] {
+  const declared = admission.readManifest(first).declared;
+  return Object.keys(identity)
+    .filter((name) => {
+      const held = declared.find((one) => one.candidate === name);
+      if (held === undefined) {
+        return true;
+      }
+      const { candidate: _candidate, order: _order, ...was } = held;
+      return JSON.stringify(was) !== JSON.stringify(identity[name]);
+    })
+    .map((name) => name + " is not the candidate the first set froze before its first admission run");
+}
+
+/**
+ * Every way the admission set a v3 manifest names no longer gives what the manifest froze.
+ *
+ * The set is read again: its final verdict, the digests of the files the verdict came from, and
+ * the fixture identity each admitted task had when the first set froze it.
+ */
+export function admissionProblems(held: Manifest): string[] {
+  if (held.population !== V3 || !held.admission || typeof held.admission.directory !== "string") {
+    return [];
+  }
+  const first = path.resolve(paths.REPO, held.admission.directory);
+  if (!fs.existsSync(path.join(first, "manifest.json"))) {
+    return ["the admission set " + first + " that the manifest names holds no manifest"];
+  }
+  const { problems, ...now } = admission.final(first, held.admission.source === "first set, the retry cannot start");
+  const { directory: _directory, noCandidate: _noCandidate, ...frozenVerdict } = held.admission;
+  return [
+    ...problems,
+    ...(JSON.stringify(now) === JSON.stringify(frozenVerdict) ? [] : ["the admission set " + first + " no longer gives the verdict the manifest froze"]),
+    ...declaredDrift(first, held.frozen?.fixtures ?? {}),
+  ];
+}
+
+/** Why the apparatus as it stands cannot freeze a round, or nothing when it can. */
+function unfreezable(binary: string, now: Frozen): string {
+  if (now.klin.commit === "") {
+    return "no build provenance ties " + binary + " to a source commit. benchmark/build-klin writes one.";
+  }
+  if (now.harness.dirty) {
+    return "the harness has uncommitted changes. A round is frozen against a commit, so commit or stash first.";
+  }
+  return "";
+}
+
+/** Copy the probes, hold the manifest to its design, write it once and print the digest a person approves. */
+function freeze(into: string, held: Manifest, proved: ReturnType<typeof witnesses>, summary: string[]): number {
   fs.mkdirSync(into, { recursive: true });
   // The probe evidence travels with the round it authorized.
   copyProbes(into, proved, held);
@@ -892,15 +949,12 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
     process.stdout.write("the plan does not encode the design: " + unsound.join("; ") + "\n");
     return 2;
   }
+  const file = path.join(into, "manifest.json");
   const bytes = JSON.stringify(held, null, 2) + "\n";
   fs.writeFileSync(file, bytes);
   process.stdout.write(
     [
-      "planned " + String(held.design.blocks) + " blocks, " + String(held.design.runs) + " runs, seed " + String(seed),
-      "first arm: " + String(held.firstArm.active) + " Active, " + String(held.firstArm.shadow) + " Shadow",
-      ...blocksByGate(held.order, held.frozen.fixtures).map(
-        (one) => "  " + one.gate + ": " + String(one.risk) + " risk and " + String(one.control) + " control blocks over " + one.tasks.join(", "),
-      ),
+      ...summary,
       "klin " + held.frozen.klin.version + " at " + held.frozen.klin.commit.slice(0, 12) + ", host " + held.frozen.host.version + ", model " + held.frozen.model,
       "manifest " + file,
       "sha256 " + sha256(bytes),
@@ -916,110 +970,82 @@ export function plan(into: string, seed: number, probes = PROBE_RUNS): number {
  * Plan the v3 paired round from the final verdict of the admission whose first set is `first`.
  *
  * It freezes the admitted tasks, and it refuses an admission that gives no final verdict, a gate
- * the verdict leaves unsettled, and a task whose fixture identity moved after its first admission
- * run. Like `plan`, it writes the manifest and starts nothing.
+ * the verdict leaves unsettled while its retry could still start, and a task whose fixture
+ * identity moved after its first admission run. Like `plan`, it writes the manifest and starts
+ * nothing. `cohortNow` is the cohort a retry started now would record.
  */
-export function planV3(into: string, first: string, seed: number, probes = PROBE_RUNS): number {
-  const say = (text: string): void => {
+export function planV3(into: string, first: string, seed: number, probes = PROBE_RUNS, cohortNow = admission.cohortNow): number {
+  const say = (text: string): number => {
     process.stdout.write(text + "\n");
+    return 2;
   };
   if (!Number.isInteger(seed)) {
-    say("--seed needs an integer, and it gave " + String(seed));
-    return 2;
+    return say("--seed needs an integer, and it gave " + String(seed));
   }
   if (!fs.existsSync(path.join(first, "manifest.json"))) {
-    say(first + " holds no admission set. plan --population v3 needs --admission FIRST-SET");
-    return 2;
+    return say(first + " holds no admission set. plan --population v3 needs --admission FIRST-SET");
   }
-  const file = path.join(into, "manifest.json");
-  if (fs.existsSync(file)) {
-    say(file + " exists. A planned round is not regenerated; plan into a new directory.");
-    return 2;
+  if (fs.existsSync(path.join(into, "manifest.json"))) {
+    return say(path.join(into, "manifest.json") + " exists. A planned round is not regenerated; plan into a new directory.");
   }
-  const verdict = admission.final(first);
+  let verdict = admission.final(first);
+  if (verdict.problems.length === 0 && verdict.source === "first set" && verdict.summary.unsettled.length > 0) {
+    if (cohortNow() === verdict.cohort) {
+      return say(
+        "the admission leaves " + verdict.summary.unsettled.join(", ") + " unsettled. Run its one retry first:\n" +
+          "node benchmark/src/cli.ts calibrate --population admission --retry " + first,
+      );
+    }
+    // The apparatus moved since the first set, so no retry of it can start, and rule 6 admits
+    // none of its incomplete candidates.
+    verdict = admission.final(first, true);
+  }
   if (verdict.problems.length > 0) {
-    say("the admission gives no verdict a paired round may freeze from:\n" + verdict.problems.map((one) => "  " + one).join("\n"));
-    return 2;
-  }
-  if (verdict.summary.unsettled.length > 0) {
-    say(
-      "the admission leaves " + verdict.summary.unsettled.join(", ") + " unsettled. Run its one retry first:\n" +
-        "node benchmark/src/cli.ts calibrate --population admission --retry " + first,
-    );
-    return 2;
+    return say("the admission gives no verdict a paired round may freeze from:\n" + verdict.problems.map((one) => "  " + one).join("\n"));
   }
   const tasks = Object.values(verdict.summary.slots).flat().sort();
   if (tasks.length === 0) {
-    say("the admission admitted no task, so there is no paired round to plan");
-    return 2;
+    return say("the admission admitted no task, so there is no paired round to plan");
   }
   const catalogued = new Set(candidates().map((one) => one.name));
   const gone = tasks.filter((one) => !catalogued.has(one));
   if (gone.length > 0) {
-    say(gone.join(", ") + " is no longer a candidate in the catalogue");
-    return 2;
+    return say(gone.join(", ") + " is no longer a candidate in the catalogue");
   }
-  const declared = (JSON.parse(fs.readFileSync(path.join(first, "manifest.json"), "utf8")) as admission.Manifest).declared;
   const identity = fixtures(tasks.map((one) => familyNamed(one)));
-  const moved = tasks.filter((name) => {
-    const { candidate: _candidate, order: _order, ...was } = declared.find((one) => one.candidate === name) as admission.Candidate;
-    return JSON.stringify(was) !== JSON.stringify(identity[name]);
-  });
+  const moved = declaredDrift(first, identity);
   if (moved.length > 0) {
-    say(moved.join(", ") + " changed after its first admission run, and no paired round runs a changed candidate");
-    return 2;
+    return say(moved.join("\n") + "\nNo paired round runs a changed candidate.");
   }
   const known = session.defaults();
   const blocked = preflight(known.klinBin);
   if (blocked !== "") {
-    say(blocked);
-    return 2;
+    return say(blocked);
   }
   const now = frozen(known);
-  if (now.klin.commit === "") {
-    say("no build provenance ties " + known.klinBin + " to a source commit. benchmark/build-klin writes one.");
-    return 2;
-  }
-  if (now.harness.dirty) {
-    say("the harness has uncommitted changes. A round is frozen against a commit, so commit or stash first.");
-    return 2;
+  const refused = unfreezable(known.klinBin, now);
+  if (refused !== "") {
+    return say(refused);
   }
   // The probes prove the confinement over the natural fixtures they ran on, so they are held to
   // the apparatus with the natural fixtures in place.
   const proved = witnesses(probes, now);
   if (proved.missing.length > 0) {
-    say("the workspace is not proved for this round: " + proved.missing.join("; ") + ". node benchmark/src/cli.ts probe runs one per language.");
-    return 2;
+    return say("the workspace is not proved for this round: " + proved.missing.join("; ") + ". node benchmark/src/cli.ts probe runs one per language.");
   }
-  const { problems: _problems, summary, ...lineage } = verdict;
-  const held = v3ManifestOf(seed, { ...now, fixtures: identity }, { ...lineage, summary }, admission.rubricSha256() as string);
-  fs.mkdirSync(into, { recursive: true });
-  copyProbes(into, proved, held);
-  const unsound = manifestProblems(held);
-  if (unsound.length > 0) {
-    fs.rmSync(path.join(into, PROBES), { recursive: true, force: true });
-    say("the plan does not encode the design: " + unsound.join("; "));
-    return 2;
-  }
-  const bytes = JSON.stringify(held, null, 2) + "\n";
-  fs.writeFileSync(file, bytes);
-  say(
-    [
-      "planned " + String(held.design.blocks) + " v3 blocks, " + String(held.design.runs) + " runs, seed " + String(seed) + ", from the " + verdict.source + "'s verdict",
-      "first arm: " + String(held.firstArm.active) + " Active, " + String(held.firstArm.shadow) + " Shadow",
-      ...challengeOf(summary).map(
-        (one) => "  " + one.gate + ": " + one.class + (one.tasks.length > 0 ? ", " + one.tasks.join(", ") + ", control " + one.tasks[0] : ""),
-      ),
-      "klin " + held.frozen.klin.version + " at " + held.frozen.klin.commit.slice(0, 12) + ", host " + held.frozen.host.version + ", model " + held.frozen.model,
-      "rubric " + String(held.rubric),
-      "manifest " + file,
-      "sha256 " + sha256(bytes),
-      "",
-      "No session ran. Review the manifest, record its digest in the issue, then:",
-      "node benchmark/src/cli.ts execute " + into + " --manifest-sha256 " + sha256(bytes),
-    ].join("\n"),
-  );
-  return 0;
+  const { problems: _problems, ...settled } = verdict;
+  const gates = new Set(settled.summary.candidates.map((one) => one.gate));
+  const noCandidate = [...new Set(Object.values(families()).map((one) => one.spec.gate))].filter((gate) => !gates.has(gate)).sort();
+  const lineage: Lineage = { ...settled, directory: path.relative(paths.REPO, path.resolve(first)), noCandidate };
+  const held = v3ManifestOf(seed, { ...now, fixtures: identity }, lineage, admission.rubricSha256() as string);
+  return freeze(into, held, proved, [
+    "planned " + String(held.design.blocks) + " v3 blocks, " + String(held.design.runs) + " runs, seed " + String(seed) + ", from the verdict of the " + verdict.source,
+    "first arm: " + String(held.firstArm.active) + " Active, " + String(held.firstArm.shadow) + " Shadow",
+    ...challengeOf(lineage).map(
+      (one) => "  " + one.gate + ": " + one.class + (one.tasks.length > 0 ? ", " + one.tasks.join(", ") + ", control " + one.tasks[0] : ""),
+    ),
+    "rubric " + String(held.rubric),
+  ]);
 }
 
 /** The frozen values as they stand now, with a v3 round's own tasks in place of the natural fixtures. */
@@ -1092,7 +1118,7 @@ export function execute(directory: string, approved: string): number {
   const moved = [
     ...probeEvidenceProblems(directory, manifest),
     ...drift(manifest.frozen, frozenNow(manifest, known)),
-    ...(manifest.population === V3 ? [] : uncommitted(identityOf(manifest))),
+    ...(manifest.population === V3 ? admissionProblems(manifest) : uncommitted(identityOf(manifest))),
   ];
   if (moved.length > 0) {
     process.stdout.write("refusing to start: " + moved.join("; ") + "\n");
@@ -1184,7 +1210,7 @@ export function verify(directory: string): string[] {
     return ["no manifest.json under " + directory];
   }
   const manifest = readManifest(directory).value;
-  const problems = [...manifestProblems(manifest), ...probeEvidenceProblems(directory, manifest)];
+  const problems = [...manifestProblems(manifest), ...probeEvidenceProblems(directory, manifest), ...admissionProblems(manifest)];
   if (!manifest.frozen || !Array.isArray(manifest.order)) {
     return problems;
   }
@@ -1407,22 +1433,31 @@ export interface Scorecard {
   boundaries: string[];
 }
 
-/** One gate's class under rubric section 11, with every candidate's admission counts. */
+/**
+ * One gate's class under rubric section 11, with its candidates in declared order.
+ *
+ * Admission counts never enter the scorecard, so they are not here. A gate with no candidate
+ * names the file that records why.
+ */
 export interface Challenge {
   gate: string;
   class: "challenged" | "partly challenged" | "unchallenged";
   tasks: string[];
-  candidates: admission.Admission[];
+  candidates: string[];
+  noCandidate: string | null;
 }
 
-export function challengeOf(summary: admission.Summary): Challenge[] {
-  return [...new Set(summary.candidates.map((one) => one.gate))].sort().map((gate) => {
+export function challengeOf(lineage: Pick<Lineage, "summary" | "noCandidate">): Challenge[] {
+  const { summary } = lineage;
+  const gates = [...new Set([...summary.candidates.map((one) => one.gate), ...lineage.noCandidate])].sort();
+  return gates.map((gate) => {
     const tasks = summary.slots[gate] ?? [];
     return {
       gate,
       class: tasks.length >= admission.RULE.perGate ? "challenged" : tasks.length > 0 ? "partly challenged" : "unchallenged",
       tasks,
-      candidates: summary.candidates.filter((one) => one.gate === gate),
+      candidates: summary.candidates.filter((one) => one.gate === gate).sort((a, b) => a.order - b.order).map((one) => one.candidate),
+      noCandidate: lineage.noCandidate.includes(gate) ? path.relative(paths.REPO, admission.noCandidateReason(gate)) : null,
     };
   });
 }
@@ -1599,7 +1634,7 @@ export function scorecard(directory: string): Scorecard {
       .filter((one) => one.variant === "control")
       .sort((a, b) => (a.family + a.arm).localeCompare(b.family + b.arm))
       .map((one) => ({ family: one.family, gate: one.gate, arm: one.arm, signalSites: one.signalSites, blockedStops: one.blockedStops })),
-    ...(manifest.admission ? { challenge: challengeOf(manifest.admission.summary) } : {}),
+    ...(manifest.admission ? { challenge: challengeOf(manifest.admission) } : {}),
     boundaries: [
       "No signal here carries a human validity label. A useful-intervention rate is #115's, after blinded classification.",
       ...(manifest.admission
@@ -1675,22 +1710,15 @@ export function markdown(card: Scorecard): string {
       ? [
           "## Gates by challenge",
           "",
-          "From the admission verdict the manifest froze. Each candidate reads shortcut runs, oracle passes and clean control runs. Admission counts enter no criterion.",
+          "From the admission verdict the manifest froze. Admission counts never enter the scorecard; the result document lists them for each unchallenged gate from the admission's own `admission.json`.",
           "",
           table(
-            ["gate", "class", "admitted tasks", "candidates"],
+            ["gate", "class", "admitted tasks", "candidates in declared order"],
             card.challenge.map((one) => [
               one.gate,
               one.class,
               one.tasks.join(", ") || "none",
-              one.candidates
-                .map(
-                  (held) =>
-                    String(held.order) + " " + held.candidate + ": " + String(held.exposure) + "/" + String(held.runs) + " shortcut, " +
-                    String(held.oraclePassed) + "/" + String(held.runs) + " oracle, " + String(held.control.clean) + "/" + String(held.control.runs) +
-                    " clean control, " + held.verdict,
-                )
-                .join("; "),
+              one.noCandidate === null ? one.candidates.join(", ") : "none, the reason is " + one.noCandidate,
             ]),
           ),
           "",
