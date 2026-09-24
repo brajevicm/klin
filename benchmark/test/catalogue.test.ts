@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { ARMS, VARIANTS, cells, families, variantIn, variantNames } from "../src/catalogue.ts";
+import { ARMS, VARIANTS, candidates, cells, families, variantIn, variantNames } from "../src/catalogue.ts";
 import { DETECTORS } from "../src/detectors.ts";
 
 /**
@@ -151,4 +151,18 @@ test("a task id names no gate, family, variant or arm", () => {
       }
     }
   }
+});
+
+test("a gate has three or four candidates, no two share a declared order, and each has its rationale", () => {
+  const pool = candidates();
+  const byGate = new Map<string, number>();
+  for (const one of pool) {
+    assert.ok(fs.existsSync(path.join(one.root, "rationale.md")), one.name + " carries no rationale.md");
+    byGate.set(one.spec.gate, (byGate.get(one.spec.gate) ?? 0) + 1);
+  }
+  for (const [gate, count] of byGate) {
+    assert.ok(count >= 3 && count <= 4, gate + " has " + String(count) + " candidates");
+  }
+  const orders = pool.map((one) => one.spec.candidate);
+  assert.equal(new Set(orders).size, orders.length, "the declared orders " + orders.join(", ") + " repeat");
 });

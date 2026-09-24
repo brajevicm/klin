@@ -73,9 +73,12 @@ test("a flag's value is never read as a positional argument", () => {
 });
 
 test("an admission set starts only over candidates, and its report stays sealed", () => {
-  const none = cli("calibrate", "--population", "admission");
-  assert.equal(none.status, 2);
-  assert.match(none.stdout, /the catalogue holds no candidate task/);
+  const held = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-held-"));
+  fs.writeFileSync(path.join(held, "manifest.json"), "{}\n");
+  const occupied = cli("calibrate", "--population", "admission", "--into", held);
+  assert.equal(occupied.status, 2);
+  assert.match(occupied.stdout, /is not empty/);
+  fs.rmSync(held, { recursive: true, force: true });
   assert.match(cli("calibrate", "--population", "admision").stdout, /no population named admision/);
   assert.match(cli("calibrate", "--population", "admission", "--only", "stubs").stdout, /runs the whole declared population/);
   const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-cli-"));

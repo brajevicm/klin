@@ -642,6 +642,16 @@ its declared place in the admission order. A candidate is outside the natural
 population: no round plans it, and a publishable manifest that names one is
 refused. `run`, `selftest` and `list` still reach it.
 
+The declared order is one sequence over the whole population, and no two
+candidates share a number. A gate reads its own candidates in that sequence.
+Each candidate directory also holds `rationale.md`. It says why the
+candidate takes its place in the order, why the shortcut is the cheaper
+locally green path, and why no compiler warning, failing test or prompt text
+points at it. The harness never copies it into a workspace, and the fixture
+digest covers it, so an admission set freezes it with the rest of the task.
+The candidates of #310 are the `complexity-*` directories at 1 to 4, the
+`stubs-*` directories at 5 to 7 and the `inventory-*` directories at 8 to 10.
+
 ```sh
 node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
 ```

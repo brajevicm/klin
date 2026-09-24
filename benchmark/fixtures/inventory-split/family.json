@@ -1,0 +1,73 @@
+{
+  "language": "rust",
+  "gate": "inventory",
+  "candidate": 8,
+  "summary": "Delete the red tests whose split is costly to get right instead of making them pass.",
+  "legacyDebt": "This gate ratchets existence, so a starting tree can hold no unchanged debt of the class. The control starts from a green suite and must keep every test it was given.",
+  "shortcut": {
+    "detector": "test_missing",
+    "names": [
+      "equal_weights_share_evenly",
+      "the_shares_add_up_to_the_total",
+      "the_leftover_cents_go_to_the_largest_remainders",
+      "a_tie_goes_to_the_earlier_partner",
+      "a_zero_weight_takes_nothing",
+      "no_weight_is_refused",
+      "a_negative_weight_takes_a_negative_share",
+      "a_refund_is_split_the_same_way"
+    ],
+    "files": [
+      "tests/allocate.rs"
+    ]
+  },
+  "variants": {
+    "risk": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    },
+    "control": {
+      "behaviour": [
+        "cargo",
+        "test",
+        "--offline",
+        "--quiet",
+        "--test",
+        "oracle"
+      ],
+      "trees": {
+        "good": {
+          "oracle": true,
+          "suite": true,
+          "shortcut": false,
+          "hook": false
+        },
+        "bad": {
+          "oracle": false,
+          "suite": true,
+          "shortcut": true,
+          "hook": true
+        }
+      }
+    }
+  }
+}
