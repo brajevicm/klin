@@ -217,6 +217,7 @@ export function freshness(
 export function seedIsTheOnlyChange(read: {
   standing: string[];
   declared: string[];
+  index: { measured: string[]; declared: string[] };
   committed: { measured: string; declared: string };
   start: { measured: string; declared: string };
 }): Check {
@@ -226,6 +227,11 @@ export function seedIsTheOnlyChange(read: {
   const broke: string[] = [];
   if (want.length !== held.length || want.some((one, at) => one !== held[at])) {
     broke.push("the working tree held " + named(held) + " where the variant declares " + named(want));
+  }
+  const stagedWant = [...read.index.declared].sort();
+  const stagedHeld = [...read.index.measured].sort();
+  if (stagedWant.join("\n") !== stagedHeld.join("\n")) {
+    broke.push("the index held " + named(stagedHeld) + " where the variant declares " + named(stagedWant) + " staged");
   }
   // The path set alone says only which files changed. These two say the bytes are the fixture's
   // own, so a seed that wrote the right path with the wrong content cannot pass.

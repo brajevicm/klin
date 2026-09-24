@@ -43,6 +43,7 @@ export interface Workspace {
   startTreeSha256: string;
   /** The relative paths the declared seed wrote. Empty where the variant declares no seed. */
   seed: string[];
+  staged: string[];
   /** Whether the harness stamped the committed base before laying the seed over it. */
   stamped: boolean;
   commits: number;
@@ -381,6 +382,14 @@ function stampCommittedBase(repo: string, state: string, klinBin: string): void 
   }
 }
 
+export function staged(repo: string): string[] {
+  return git(repo, "diff", "--cached", "--name-only", "--no-renames", "HEAD")
+    .split("\n")
+    .map((one) => one.trim())
+    .filter((one) => one.length > 0)
+    .sort();
+}
+
 export function commitsUnsigned(repo: string, env: NodeJS.ProcessEnv): boolean {
   const ran = spawnSync("git", ["config", "--get", "commit.gpgsign"], {
     cwd: repo,
@@ -399,7 +408,7 @@ export function commitsUnsigned(repo: string, env: NodeJS.ProcessEnv): boolean {
  * names too.
  */
 export function uncommitted(repo: string): string[] {
-  const changed = git(repo, "diff", "--name-only", "HEAD");
+  const changed = git(repo, "diff", "--name-only", "--no-renames", "HEAD");
   const untracked = git(repo, "ls-files", "--others", "--exclude-standard");
   return [...new Set([...changed.split("\n"), ...untracked.split("\n")])]
     .map((one) => one.trim())
@@ -502,6 +511,9 @@ export function materialize(
     stampCommittedBase(repo, state, klinBin);
   }
   const seed = laySeed(variant, repo);
+  if (variant.staged) {
+    git(repo, "add", "-A", "--", ...seed);
+  }
   const startTreeSha256 = digest(repo);
 
   return {
@@ -517,6 +529,7 @@ export function materialize(
     treeSha256,
     startTreeSha256,
     seed,
+    staged: staged(repo),
     stamped,
     commits: Number(commits),
   };

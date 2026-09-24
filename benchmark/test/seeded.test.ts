@@ -157,6 +157,7 @@ function seedRead(over: Record<string, unknown> = {}): Parameters<typeof seedIsT
   return {
     standing: ["src/a.rs"],
     declared: ["src/a.rs"],
+    index: { measured: [], declared: [] },
     committed: { measured: "base", declared: "base" },
     start: { measured: "seeded", declared: "seeded" },
     ...over,
@@ -176,6 +177,17 @@ test("the declared seed must be the only uncommitted change", () => {
   const dirty = seedIsTheOnlyChange(seedRead({ standing: ["src/a.rs"], declared: [] }));
   assert.equal(dirty.passed, false);
   assert.match(dirty.detail, /where the variant declares nothing/);
+});
+
+test("the index must hold exactly what the variant declares staged", () => {
+  const staged = { measured: ["src/a.rs"], declared: ["src/a.rs"] };
+  assert.equal(seedIsTheOnlyChange(seedRead({ index: staged })).passed, true);
+  const unstaged = seedIsTheOnlyChange(seedRead({ index: { measured: [], declared: ["src/a.rs"] } }));
+  assert.equal(unstaged.passed, false);
+  assert.match(unstaged.detail, /the index held nothing where the variant declares src\/a\.rs staged/);
+  const stray = seedIsTheOnlyChange(seedRead({ index: { measured: ["src/a.rs"], declared: [] } }));
+  assert.equal(stray.passed, false);
+  assert.match(stray.detail, /the index held src\/a\.rs where the variant declares nothing staged/);
 });
 
 test("the seed is proven by its bytes and not only by its changed paths", () => {
@@ -452,7 +464,13 @@ test("target Stop metrics ignore an unrelated same-gate finding and keep review 
   assert.equal(targetStop(hookEvidence("", 2, true, report()), [target]), false);
 });
 
-function fakeKlin(room: string, whole: GateReport, hook: GateReport, writesReport = true): string {
+function fakeKlin(
+  room: string,
+  whole: GateReport,
+  hook: GateReport,
+  writesReport = true,
+  exits = { whole: whole.exit, hook: hook.exit },
+): string {
   const binary = path.join(room, "fake-klin");
   fs.writeFileSync(
     binary,
@@ -464,9 +482,10 @@ function fakeKlin(room: string, whole: GateReport, hook: GateReport, writesRepor
       'if [ "$2" = "--hook" ]; then',
       "  cat > /dev/null",
       "  echo '" + JSON.stringify(hook) + "'" + (writesReport ? " > \"$KLIN_HOOK_REPORT\"" : ""),
-      "  exit " + String(hook.exit),
+      "  exit " + String(exits.hook),
       "fi",
       "echo '" + JSON.stringify(whole) + "'",
+      "exit " + String(exits.whole),
     ].join("\n") + "\n",
   );
   fs.chmodSync(binary, 0o755);
@@ -576,6 +595,29 @@ test(
     );
   },
 );
+
+test("a verdict whose exit status contradicts its own report is refused", () => {
+  const passed = gateReport("PASS", "ok", [], []);
+  for (const [exits, label] of [
+    [{ whole: 2, hook: 0 }, "gate"],
+    [{ whole: 0, hook: 2 }, "hook"],
+  ] as const) {
+    const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-"));
+    try {
+      for (const tree of ["base", "subject"]) {
+        fs.mkdirSync(path.join(room, tree));
+        fs.writeFileSync(path.join(room, tree, "README.md"), tree + "\n");
+      }
+      const binary = fakeKlin(room, passed, passed, true, exits);
+      assert.throws(
+        () => trial.wholeRun("inventory", path.join(room, "base"), path.join(room, "subject"), [DELETED], room, binary),
+        new RegExp("seeded whole-run " + label + " exited 2 and its report states exit 0"),
+      );
+    } finally {
+      fs.rmSync(room, { recursive: true, force: true });
+    }
+  }
+});
 
 test(
   "the inventory seed reads as caught through the real Stop hook",
@@ -720,6 +762,19 @@ test("a seeded manifest dispatches to its report and is refused by the natural s
   }
 });
 
+test("a seeded task id is bound to the seeded protocol and a natural one is not", () => {
+  const tracer = family(TRACER);
+  const seeded = variantIn(tracer, "seeded");
+  const bound = (key: string, name: string, promptSha256: string) =>
+    sha256(`${key}:${TRACER}:${name}:${promptSha256}`).slice(0, 16);
+  assert.equal(seeded.taskId, bound(CURRENT_PROTOCOL.version + "/" + SEEDED_PROTOCOL.name, "seeded", seeded.promptSha256));
+  assert.notEqual(seeded.taskId, bound(String(CURRENT_PROTOCOL.version), "seeded", seeded.promptSha256));
+  for (const name of VARIANTS) {
+    const natural = tracer.variants[name];
+    assert.equal(natural.taskId, bound(String(CURRENT_PROTOCOL.version), name, natural.promptSha256));
+  }
+});
+
 test("a seeded manifest from another seeded protocol is refused", () => {
   const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
   assert.equal(manifest.seededProtocol, SEEDED_PROTOCOL.version);
@@ -792,6 +847,7 @@ test("a seeded publishable set survives verification and durable evidence packag
           treeSha256: fixture.variant.treeSha256,
           startTreeSha256: fixture.variant.startTreeSha256,
           seed: fixture.variant.seed,
+          staged: fixture.variant.staged ? fixture.variant.seed : [],
           uncommitted: fixture.variant.seed,
         },
         harness: manifest.frozen.harness,
@@ -965,6 +1021,10 @@ test(
       assert.deepEqual(held.place.seed, moved);
       assert.deepEqual(workspace.seedPaths(variantIn(family("doc-citations"), "seeded")), moved);
       assert.deepEqual(workspace.uncommitted(held.place.repo), moved);
+      assert.deepEqual(held.place.staged, moved, "the variant declares its moves staged");
+      const status = workspace.git(held.place.repo, "status", "--porcelain");
+      assert.match(status, /^R  src\/client\.ts -> src\/transport\/client\.ts$/m);
+      assert.match(status, /^R  src\/socket\.ts -> src\/transport\/socket\.ts$/m);
       assert.equal(fs.existsSync(path.join(held.place.repo, "src", "client.ts")), false);
     } finally {
       clear(held);
@@ -980,6 +1040,7 @@ test(
     try {
       assert.equal(held.place.commits, 1);
       assert.deepEqual(held.place.seed, []);
+      assert.deepEqual(held.place.staged, []);
       assert.equal(held.place.stamped, false);
       assert.deepEqual(workspace.uncommitted(held.place.repo), []);
       assert.equal(held.place.treeSha256, held.place.startTreeSha256);

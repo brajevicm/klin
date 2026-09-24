@@ -218,6 +218,7 @@ export interface RunRecord {
     treeSha256: string;
     startTreeSha256: string;
     seed: string[];
+    staged?: string[];
     uncommitted: string[];
     startShortcut: {
       present: boolean | null;

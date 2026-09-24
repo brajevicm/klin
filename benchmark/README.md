@@ -290,9 +290,15 @@ the place for it: the host sets `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS`
 for its own use. The `commits-unsigned` check under `isolation.freshness` reads
 the value back under the environment the harness hands the host, so the
 operator's global file is read as the subject reads it. A record whose subject
-could not commit fails `state-fresh` and is excluded. The host adds its own
-`GIT_CONFIG_*` variables after that point, and today they set only
-`safe.directory` and `http.proxyAuthMethod`.
+could not commit fails `state-fresh` and is excluded.
+
+The host adds its own `GIT_CONFIG_*` variables inside the session, and those
+can override a repository's configuration. So the probe proves the value the
+subject's git really reads: its environment helper runs
+`git config --bool --get commit.gpgsign` in the subject's repository, through
+the host's own Bash, and `subject-git-signs-nothing` fails unless the witnessed
+answer is `false`. `plan` and `seeded-plan` refuse a round without a passing
+probe per language, so no round runs on a host that signs.
 
 ### The host's own configuration
 
@@ -401,7 +407,9 @@ control or challenge tables.
 The planted catalogue has its own version, `SEEDED_PROTOCOL` in
 `src/protocol.ts`, and a seeded manifest states it as `seededProtocol`.
 `seeded-plan` writes the current one and `seeded-execute` and `verify` refuse
-any other. The frozen round of 2026-09-22, under
+any other. A planted variant's task id is keyed by `SEEDED_PROTOCOL` as well as
+the natural protocol, so a reworked seed whose prompt did not change still gets
+a new task id, and a natural task id stays what the frozen v2 protocol states. The frozen round of 2026-09-22, under
 `evidence/seeded-2026-09-22/`, ran the first planted catalogue and states no
 `seededProtocol`. It stays as it was published. `seeded-v2` reworks six seeds
 after that round found that both arms repaired each of them before any Stop,
@@ -410,7 +418,7 @@ because the plant stood out in `git diff`:
 - `stubs`: `wrap` leaves its long-word branch as `todo!()`, and the visible
   test the teammate added never reaches it, so the suite stays green;
 - `doc-citations`: the teammate moved `src/client.ts` and `src/socket.ts` into
-  `src/transport/` and left the README as it was;
+  `src/transport/`, staged the moves, and left the README as it was;
 - `inventory`: the teammate moved the tests into `tests/ledger.rs` and dropped
   two on the way;
 - `escapes`: the teammate's parser loses a trailing empty field, and the two
@@ -512,6 +520,15 @@ tree never changed, and `seed-as-declared` would fail every live trial of that
 fixture. A self-test case refuses such a line by name, so the defect is found
 before a session is paid for rather than after.
 
+#### A seed may be staged
+
+A variant that declares `"staged": true` has its seed paths staged with
+`git add -A` once the seed is laid, so a staged move stands in `git status` as
+a rename. The seeded manifest freezes that flag for every fixture.
+`fixture.staged` is what git reported in the index before the session, and
+`seed-as-declared` fails unless it is the seed paths for a staged variant and
+nothing for any other. Both arms of a cell must share it.
+
 ### What a seeded run measures, and what it does not
 
 Every seeded report states that the exposure was planted. Its per-run table
@@ -531,7 +548,9 @@ because ADR 0031 makes a deleted test a NOTE with exit 0 outside the hook and
 an ask-once block inside it, so the whole run alone reads an `inventory` seed
 as missed although klin names both deleted tests. `caught` holds where either
 verdict failed on a target site, and the report says `yes, at the Stop hook`
-where only the second did.
+where only the second did. Each run's exit status must equal the `exit` its
+own report states, the same rule a live Stop is held to, so a binary that
+answers one way and reports another stops the trial before its session.
 
 klin keys a test file by its path, so the `inventory` good tree fires the hook
 too: moving every test into `tests/ledger.rs` deletes `tests/split.rs`, and

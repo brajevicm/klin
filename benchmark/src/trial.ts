@@ -109,6 +109,11 @@ function verdictOf(
   } catch (why) {
     throw new Error("seeded whole-run " + label + " returned invalid JSON: " + String(why));
   }
+  if (report.exit !== ran.status) {
+    throw new Error(
+      "seeded whole-run " + label + " exited " + String(ran.status) + " and its report states exit " + String(report.exit),
+    );
+  }
   const status = (report.gates as Record<string, unknown>[]).find((one) => one.name === gate)?.status;
   if (typeof status !== "string" || !WHOLE_RUN_STATUSES.includes(status)) {
     throw new Error("seeded whole-run " + label + " returned no production verdict for " + gate);
@@ -445,6 +450,7 @@ export function run(
   const seeded = integrity.seedIsTheOnlyChange({
     standing,
     declared: place.seed,
+    index: { measured: place.staged, declared: variant.staged ? place.seed : [] },
     committed: { measured: place.treeSha256, declared: digest(base) },
     start: { measured: place.startTreeSha256, declared: digest(declared) },
   });
@@ -531,6 +537,7 @@ export function run(
       treeSha256: place.treeSha256,
       startTreeSha256: place.startTreeSha256,
       seed: place.seed,
+      staged: place.staged,
       uncommitted: standing,
       startShortcut: {
         present: started.present,

@@ -67,6 +67,7 @@ export interface SeededFixture {
     treeSha256: string;
     startTreeSha256: string;
     seed: string[];
+    staged: boolean;
   };
 }
 
@@ -156,6 +157,7 @@ export function fixtures(): Record<string, SeededFixture> {
           treeSha256: digest(base),
           startTreeSha256: digest(subject),
           seed: workspace.seedPaths(variant),
+          staged: variant.staged,
         },
       };
     }
@@ -284,6 +286,9 @@ export function manifestProblems(held: Manifest): string[] {
     }
     if (!Array.isArray(variant.seed) || variant.seed.length === 0) {
       problems.push("the seeded fixture " + name + " states no seed paths");
+    }
+    if (typeof variant.staged !== "boolean") {
+      problems.push("the seeded fixture " + name + " states no staging");
     }
   }
   problems.push(...probeProblems(held));
@@ -462,6 +467,7 @@ function checkPair(problems: string[], group: RunRecord[], name: string, manifes
     ["subject starting tree", (one) => one.fixture.startTreeSha256],
     ["prompt", (one) => one.fixture.promptSha256],
     ["seed", (one) => JSON.stringify(one.fixture.seed)],
+    ["staged index", (one) => JSON.stringify(one.fixture.staged ?? null)],
   ];
   for (const [what, read] of fields) {
     if (new Set(group.map(read)).size > 1) problems.push(name + ": the arms did not share one " + what);
@@ -474,6 +480,7 @@ function checkPair(problems: string[], group: RunRecord[], name: string, manifes
     if (record.fixture.startTreeSha256 !== fixture?.variant.startTreeSha256) problems.push(name + ": " + record.trialId + " did not start from the frozen seeded tree");
     if (record.fixture.promptSha256 !== fixture?.variant.promptSha256) problems.push(name + ": " + record.trialId + " did not run the frozen seeded prompt");
     if (JSON.stringify(record.fixture.seed) !== JSON.stringify(fixture?.variant.seed)) problems.push(name + ": " + record.trialId + " did not use the frozen seed");
+    if (JSON.stringify(record.fixture.staged ?? null) !== JSON.stringify(fixture?.variant.staged ? fixture.variant.seed : [])) problems.push(name + ": " + record.trialId + " did not start from the frozen staged index");
     if (record.seeded === undefined) problems.push(name + ": " + record.trialId + " states no seeded metrics");
   }
 }

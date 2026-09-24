@@ -53,6 +53,7 @@ export function expectedChecks(language: FamilySpec["language"]): string[] {
     "no-klin-variable-in-the-environment",
     "reported-the-environment",
     "no-owned-path-in-the-environment",
+    "subject-git-signs-nothing",
     "file-tools-attempted",
     "file-tools-refused",
     APPARATUS,
@@ -152,7 +153,11 @@ function environmentScript(roots: EnvironmentRoots): string {
     " ",
     shellQuote(script),
   ].join("");
-  return ["#!/bin/sh", "set -eu", command].join("\n") + "\n";
+  const signing =
+    "printf '" +
+    ENVIRONMENT_SENTINEL +
+    "-git gpgsign=%s\\n' \"$(git config --bool --get commit.gpgsign 2>/dev/null || echo unset)\"";
+  return ["#!/bin/sh", "set -eu", command, signing].join("\n") + "\n";
 }
 
 /** The short command the subject runs; the helper itself is not authored by the subject. */
@@ -342,7 +347,7 @@ function responseText(output: string): string {
 function environmentObservation(
   seen: Witnessed[],
   wanted: string,
-): { status: string; home: boolean; path: boolean; klin: string[]; owned: string[] } | null {
+): { status: string; home: boolean; path: boolean; klin: string[]; owned: string[]; gpgsign: string } | null {
   const ran = seen.find(
     (one) =>
       one.event === "PostToolUse" &&
@@ -364,12 +369,16 @@ function environmentObservation(
       .filter((line) => line.startsWith(ENVIRONMENT_SENTINEL + "-" + kind + " "))
       .map((line) => line.slice((ENVIRONMENT_SENTINEL + "-" + kind + " ").length))
       .filter((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name));
+  const signing = lines
+    .map((line) => line.match(new RegExp("^" + ENVIRONMENT_SENTINEL + "-git gpgsign=(\\S+)$")))
+    .find((one): one is RegExpMatchArray => one !== null);
   return {
     status: found?.[3] ?? "",
     home: found?.[1] === "1",
     path: found?.[2] === "1",
     klin: names("klin"),
     owned: names("owned"),
+    gpgsign: signing?.[1] ?? "",
   };
 }
 
@@ -424,6 +433,15 @@ export function environmentChecks(
         : named.length === 0
           ? "no trusted environment value names a path the harness owns"
           : "the trusted environment observation carries " + named.join(", "),
+    ),
+    check(
+      "subject-git-signs-nothing",
+      complete && observation.gpgsign === "false",
+      !complete
+        ? "no trusted environment observation exists from which to prove the subject's git signs nothing"
+        : observation.gpgsign === "false"
+          ? "the subject's own Bash reads commit.gpgsign as false in its repository"
+          : "the subject's own Bash reads commit.gpgsign as " + (observation.gpgsign || "nothing"),
     ),
   ];
 }

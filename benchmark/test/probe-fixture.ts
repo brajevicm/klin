@@ -73,7 +73,7 @@ export function probeOnDisk(root: string, id: string, language: string, passed: 
       tool_name: "Bash",
       tool_input: { command: environment.command },
       tool_response: {
-        stdout: ENVIRONMENT_SENTINEL + " home=1 path=1 status=0\n",
+        stdout: ENVIRONMENT_SENTINEL + " home=1 path=1 status=0\n" + ENVIRONMENT_SENTINEL + "-git gpgsign=false\n",
       },
     }),
   );

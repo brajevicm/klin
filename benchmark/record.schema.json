@@ -153,7 +153,14 @@
           "items": {
             "type": "string"
           },
-          "description": "The relative paths the declared seed overlay wrote, empty for a natural variant."
+          "description": "The relative paths the declared seed overlay wrote or removed, empty for a natural variant."
+        },
+        "staged": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What git reported staged in the index before the session began: the seed paths for a variant that declares its seed staged, and nothing otherwise. Absent from records written before seeded-v2."
         },
         "uncommitted": {
           "type": "array",
