@@ -529,6 +529,26 @@ function checkPair(problems: string[], group: RunRecord[], name: string, family:
   }
 }
 
+/** The two trees a seeded report diffs, held to the digests the record states for them. */
+function keptTrees(directory: string, record: RunRecord): string[] {
+  const where = record.family + "/seeded/r" + String(record.repetition) + "/" + record.arm + " " + record.trialId;
+  const trees = path.join(directory, record.trialId, "fixtures");
+  const problems: string[] = [];
+  for (const [tree, want] of [
+    ["subject", record.fixture.startTreeSha256],
+    ["final", record.fixture.finalTreeSha256],
+  ] as const) {
+    if (typeof want !== "string" || want === "") {
+      problems.push(where + ": the record states no digest for the " + tree + " tree");
+    } else if (!fs.existsSync(path.join(trees, tree))) {
+      problems.push(where + ": the attempt keeps no " + tree + " tree");
+    } else if (digest(path.join(trees, tree)) !== want) {
+      problems.push(where + ": the kept " + tree + " tree differs from the digest its record states");
+    }
+  }
+  return problems;
+}
+
 /** Verify that every scheduled seeded cell has valid paired records and that no natural cell slipped in. */
 export function verify(directory: string): string[] {
   const file = path.join(directory, "manifest.json");
@@ -576,6 +596,7 @@ export function verify(directory: string): string[] {
   for (const record of held) if (!claimed.has(record.trialId)) problems.push(record.trialId + ": the record belongs to no seeded schedule row");
   for (const crashed of failed) if (!claimed.has(crashed.trialId)) problems.push("the crash " + crashed.trialId + " belongs to no seeded schedule row");
   const valid = held.filter((one) => one.infrastructure.valid);
+  for (const record of valid) problems.push(...keptTrees(directory, record));
   for (const [what, read] of FROZEN) {
     if (new Set(valid.map(read)).size > 1) problems.push("the seeded round did not share " + what);
   }
@@ -636,21 +657,23 @@ function blocksSpent(group: RunRecord[]): string {
     .join(", ");
 }
 
-/** What the subject changed, from the seeded starting tree to its final tree, as the raw attempt keeps both. */
-function repairDiff(directory: string, record: RunRecord): string {
+/** What the subject changed, from the seeded starting tree to its final tree, or why no diff could be made. */
+function repairDiff(directory: string, record: RunRecord): { diff: string; failure: string } {
   const trees = path.join(directory, record.trialId, "fixtures");
-  if (!fs.existsSync(path.join(trees, "subject")) || !fs.existsSync(path.join(trees, "final"))) {
-    return "the attempt keeps no subject and final tree";
-  }
   const ran = spawnSync("git", ["diff", "--no-index", "--no-color", "--no-ext-diff", "subject", "final"], { cwd: trees, encoding: "utf8" });
   if (ran.error || (ran.status !== 0 && ran.status !== 1)) {
-    return "git diff failed: " + String(ran.error ?? ran.stderr.trim());
+    return { diff: "", failure: "git diff failed: " + String(ran.error ?? ran.stderr.trim()) };
   }
-  return ran.stdout === "" ? "the final tree equals the seeded starting tree" : ran.stdout.trimEnd();
+  return { diff: ran.stdout === "" ? "the final tree equals the seeded starting tree" : ran.stdout.trimEnd(), failure: "" };
 }
 
-/** A compact report whose columns keep catch, delivery, repair and friction distinct. */
-export function report(directory: string): string {
+/**
+ * A compact report whose columns keep catch, delivery, repair and friction distinct.
+ *
+ * `problems` is the contract the report rests on: the round's own verification and every Active
+ * repair diff that could not be made. A report with problems is still rendered, for diagnosis.
+ */
+export function report(directory: string): { text: string; problems: string[] } {
   const held = records(directory)
     .filter((one) => one.variant === VARIANT && one.infrastructure.valid)
     .sort((a, b) => a.family.localeCompare(b.family) || a.repetition - b.repetition || a.arm.localeCompare(b.arm));
@@ -732,8 +755,10 @@ export function report(directory: string): string {
     "Each diff runs from the seeded starting tree to the final tree. Classify each repair as genuine or appeasement from it.",
   );
   for (const record of held.filter((one) => one.arm === "active")) {
-    lines.push("", "### " + blockName(record.family, record.repetition) + " " + record.trialId, "", "```diff", repairDiff(directory, record), "```");
+    const made = repairDiff(directory, record);
+    if (made.failure !== "") problems.push(record.trialId + ": no Active repair diff, " + made.failure);
+    lines.push("", "### " + blockName(record.family, record.repetition) + " " + record.trialId, "", "```diff", made.failure || made.diff, "```");
   }
   lines.push("", "## Contract", "", problems.length === 0 ? "Exactly " + String(held.length) + " valid scheduled seeded runs hold the frozen contract." : problems.map((one) => "- " + one).join("\n"), "");
-  return lines.join("\n");
+  return { text: lines.join("\n"), problems };
 }

@@ -536,6 +536,7 @@ export function run(
       promptSha256: variant.promptSha256,
       treeSha256: place.treeSha256,
       startTreeSha256: place.startTreeSha256,
+      finalTreeSha256: digest(final),
       seed: place.seed,
       staged: place.staged,
       uncommitted: standing,

@@ -421,6 +421,15 @@ seeded starting tree to its final tree, which is what a genuine or appeasement
 call rests on. The diff reads the raw attempt, so run it over the round
 directory rather than the slim evidence.
 
+Both trees that diff reads are bound to the record. `fixture.startTreeSha256`
+is the subject's starting tree and `fixture.finalTreeSha256` is the final tree
+as the attempt keeps it, and `verify` fails a seeded attempt whose
+`fixtures/subject` or `fixtures/final` is missing or no longer hashes to its
+digest. `evidence-prepare` refuses a seeded attempt without `fixtures/subject`.
+`report` still renders a seeded report that does not hold its contract, for
+diagnosis, but it exits 1 and names each problem, and an Active diff that
+cannot be made is one of them.
+
 The generic `plan` accepts `--population seeded`, and `execute` detects the
 population from the manifest. Both forms use the same frozen provenance and
 retry contract as the natural round; seeded results never enter its risk,

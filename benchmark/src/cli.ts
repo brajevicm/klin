@@ -408,12 +408,18 @@ export function main(argv: string[]): number {
     return prepareWorksheet(args);
   }
   if (command === "report") {
-    const text = report.write(args[0] ?? "");
+    const directory = args[0] ?? "";
+    const { text, problems } =
+      populationOf(directory) === "seeded" ? seeded.report(directory) : { text: report.write(directory), problems: [] };
     const out = flag(args, "--out", "");
     if (out) {
       fs.writeFileSync(out, text);
     } else {
       process.stdout.write(text);
+    }
+    if (problems.length > 0) {
+      process.stderr.write("the seeded report does not hold its contract: " + problems.join("; ") + "\n");
+      return 1;
     }
     return 0;
   }

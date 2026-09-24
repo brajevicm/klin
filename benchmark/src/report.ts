@@ -138,7 +138,7 @@ export function write(directory: string): string {
   const manifestFile = path.join(directory, "manifest.json");
   if (fs.existsSync(manifestFile)) {
     const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8")) as { population?: string };
-    if (manifest.population === "seeded") return seededRound.report(directory);
+    if (manifest.population === "seeded") return seededRound.report(directory).text;
   }
   const all = records(directory);
   const held = natural(all);

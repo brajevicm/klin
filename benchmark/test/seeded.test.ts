@@ -922,11 +922,14 @@ test("a seeded publishable set survives verification and durable evidence packag
       });
       const attempt = path.join(runs, row.trialId);
       fs.mkdirSync(path.join(attempt, "state"), { recursive: true });
-      for (const directory of ["hooks", "fixtures/base", "fixtures/subject", "fixtures/final", "fixtures/scoring"]) {
+      for (const directory of ["hooks", "fixtures/base", "fixtures/scoring"]) {
         fs.mkdirSync(path.join(attempt, directory), { recursive: true });
       }
-      fs.writeFileSync(path.join(attempt, "fixtures/subject", "lib.rs"), "fn wrap() { todo!() }\n");
-      fs.writeFileSync(path.join(attempt, "fixtures/final", "lib.rs"), "fn wrap() { " + row.trialId + "() }\n");
+      const subject = workspace.subjectStartingTree(variantIn(family(row.family), "seeded"), path.join(attempt, "fixtures/subject"));
+      const final = path.join(attempt, "fixtures/final");
+      copyTree(subject, final);
+      fs.writeFileSync(path.join(final, "repair.rs"), "fn wrap() { " + row.trialId + "() }\n");
+      (record.fixture as Record<string, unknown>).finalTreeSha256 = digest(final);
       fs.writeFileSync(path.join(attempt, "record.json"), JSON.stringify(record) + "\n");
       for (const name of ["agent.json", "behaviour.json", "stats-session.json", "settings.json"]) {
         fs.writeFileSync(path.join(attempt, name), "{}\n");
@@ -934,7 +937,7 @@ test("a seeded publishable set survives verification and durable evidence packag
       fs.writeFileSync(path.join(attempt, "hook"), "#!/bin/sh\n");
       fs.writeFileSync(path.join(attempt, "state", "journal"), "state\n");
       fs.writeFileSync(path.join(attempt, "hooks", "invocation"), "hook\n");
-      for (const directory of ["fixtures/base", "fixtures/final", "fixtures/scoring"]) {
+      for (const directory of ["fixtures/base", "fixtures/scoring"]) {
         fs.writeFileSync(path.join(attempt, directory, "README.md"), directory + "\n");
       }
     }
@@ -942,7 +945,9 @@ test("a seeded publishable set survives verification and durable evidence packag
     const verified = cli("verify", runs);
     assert.equal(verified.status, 0, verified.stdout + verified.stderr);
 
-    const written = seededRound.report(runs);
+    const { text: written, problems: reported } = seededRound.report(runs);
+    assert.deepEqual(reported, []);
+    assert.equal(cli("report", runs).status, 0);
     assert.match(written, /Exactly 24 valid scheduled seeded runs hold the frozen contract/);
     assert.match(written, /\| stubs \| active \| 3 \| 0 of 3 \| 0 of 3 \| 0: 3 \| 0 of 3 \| 3 of 3 \|/);
     const active = manifest.order.find((one) => one.arm === "active" && one.family === "public-api")!;
@@ -950,6 +955,39 @@ test("a seeded publishable set survives verification and durable evidence packag
     assert.match(written, new RegExp("### public-api r" + String(active.repetition) + " " + active.trialId));
     assert.match(written, new RegExp("\\+fn wrap\\(\\) \\{ " + active.trialId));
     assert.doesNotMatch(written, new RegExp("### .* " + shadow.trialId));
+
+    const trees = path.join(runs, active.trialId, "fixtures");
+    const kept = path.join(root, "kept");
+    fs.cpSync(trees, kept, { recursive: true });
+    const activeRecord = path.join(runs, active.trialId, "record.json");
+    const recorded = fs.readFileSync(activeRecord);
+    for (const [what, needle, tamper] of [
+      ["a removed subject tree", /keeps no subject tree/, () => fs.rmSync(path.join(trees, "subject"), { recursive: true })],
+      ["an edited subject tree", /kept subject tree differs/, () => fs.writeFileSync(path.join(trees, "subject", "planted.rs"), "fn more() {}\n")],
+      ["a removed final tree", /keeps no final tree/, () => fs.rmSync(path.join(trees, "final"), { recursive: true })],
+      ["an edited final tree", /kept final tree differs/, () => fs.appendFileSync(path.join(trees, "final", "repair.rs"), "// hidden\n")],
+      ["no final digest", /no digest for the final tree/, () => {
+        const record = JSON.parse(recorded.toString("utf8")) as { fixture: Record<string, unknown> };
+        delete record.fixture.finalTreeSha256;
+        fs.writeFileSync(activeRecord, JSON.stringify(record) + "\n");
+      }],
+    ] as const) {
+      tamper();
+      const rejected = cli("verify", runs);
+      assert.equal(rejected.status, 1, what + " was accepted by verify");
+      assert.match(rejected.stdout, needle, what);
+      const unreported = cli("report", runs);
+      assert.equal(unreported.status, 1, what + " still gave a report that holds");
+      assert.match(unreported.stderr, needle, what);
+      fs.rmSync(trees, { recursive: true, force: true });
+      fs.cpSync(kept, trees, { recursive: true });
+      fs.writeFileSync(activeRecord, recorded);
+    }
+    fs.rmSync(path.join(trees, "subject"), { recursive: true });
+    const unpackaged = cli("evidence-prepare", runs, "--into", path.join(root, "unpackaged"), "--archive", path.join(root, "unpackaged.tar.gz"));
+    assert.notEqual(unpackaged.status, 0, "a seeded attempt without its subject tree was packaged");
+    assert.match(unpackaged.stdout + unpackaged.stderr, /missing fixtures\/subject/);
+    fs.cpSync(path.join(kept, "subject"), path.join(trees, "subject"), { recursive: true });
 
     const firstRecord = path.join(runs, manifest.order[0].trialId, "record.json");
     const originalRecord = JSON.parse(fs.readFileSync(firstRecord, "utf8")) as Record<string, unknown>;
