@@ -182,6 +182,51 @@ export interface Scheduled {
   repetition: number;
 }
 
+/** One scheduled trial of a round, in the order it runs. */
+export interface ScheduledRow {
+  family: string;
+  variant: string;
+  repetition: number;
+  arm: ArmName;
+  block: number;
+  order: number;
+  trialId: string;
+}
+
+export interface Crash extends ScheduledRow {
+  replaces: string | null;
+  error: string;
+  at: string;
+}
+
+/**
+ * Record a crash before a record existed, in the attempt's own directory.
+ *
+ * The directory is the trial's plane, so whatever the trial wrote before it threw stays beside
+ * `crash.json` and reaches the raw archive. The crash is an attempt: the chain counts it, the
+ * scorecard reports it by arm, and `evidence-prepare` carries the file into the slim set.
+ */
+export function crash(directory: string, row: ScheduledRow, id: string, replaces: string | null, why: unknown): void {
+  const held: Crash = { ...row, trialId: id, replaces, error: String(why), at: new Date().toISOString() };
+  fs.mkdirSync(path.join(directory, id), { recursive: true });
+  fs.writeFileSync(path.join(directory, id, "crash.json"), JSON.stringify(held, null, 2) + "\n");
+}
+
+/** Attempts that crashed before a record existed. Each stays on disk and counts as an attempt. */
+export function crashes(directory: string): Crash[] {
+  if (!fs.existsSync(directory)) {
+    return [];
+  }
+  const held: Crash[] = [];
+  for (const name of fs.readdirSync(directory).sort()) {
+    const file = path.join(directory, name, "crash.json");
+    if (fs.existsSync(file) && !fs.existsSync(path.join(directory, name, "record.json"))) {
+      held.push(JSON.parse(fs.readFileSync(file, "utf8")) as Crash);
+    }
+  }
+  return held;
+}
+
 /**
  * Run one set's order and count the trials that were not valid.
  *

@@ -763,6 +763,57 @@ holds an admission set to its frozen candidates and order. A publishable
 round's `verify` refuses an admission record or an `admission.json`, and its
 `scorecard` refuses a directory that holds an admission record.
 
+### The v3 paired round
+
+The paired round of #313 runs only the tasks that the final admission verdict
+admitted:
+
+```sh
+node benchmark/src/cli.ts plan --population v3 --admission FIRST-SET [--seed N] [--into DIR]
+node benchmark/src/cli.ts execute benchmark/runs/v3-<stamp> --manifest-sha256 <digest>
+node benchmark/src/cli.ts verify benchmark/runs/v3-<stamp>
+node benchmark/src/cli.ts scorecard benchmark/runs/v3-<stamp> --out docs/round-v3-<date>.md
+```
+
+`--admission` names the first set. The plan reads the final verdict by rubric
+section 4:
+
+- The first set must verify alone and must hold its `admission.json`.
+- The first set must be the earliest first set of its cohort in its parent
+  directory.
+- A retry that verifies gives the final verdict.
+- A retry that does not verify admits no incomplete candidate of the first
+  set.
+- A retry that holds a retry of its own stops the plan.
+
+The plan refuses a verdict that leaves a gate unsettled, and it names the
+retry command. It also refuses an admitted task whose fixture identity is not
+the identity that the first set froze. Thus a prompt, a starting tree, an
+oracle or a detector that changed after the first admission run cannot enter
+the round.
+
+Each admitted task gives one risk block. Each gate gives one control block of
+its first admitted task in declared order. The seed orders the blocks, and the
+first arms stay balanced, as in the natural round. The manifest states
+`population: "v3"`, the sha256 of the rubric and the admission lineage:
+
+- the digest of the first set's manifest;
+- the digest of the retry's manifest, or null;
+- the digest of the `admission.json` that the verdict came from;
+- the cohort and the verdict itself.
+
+`frozen.fixtures` holds the admitted tasks and no natural family. The probes
+still prove the confinement over the natural fixtures that they ran on.
+
+`execute` and `verify` hold a v3 manifest to its own verdict. The run order is
+the order that the seed and the verdict's slots give. The verdict is the one
+that its candidates give under the frozen rule, and it leaves no gate
+unsettled. Every frozen task is admitted under the gate and task id that
+admission ran. `execute` reads the fixture identity of the frozen tasks again
+before each block. The retry policy of the natural round applies unchanged. The
+scorecard groups the blocks by gate and adds the gates by challenge of rubric
+section 11, with the admission counts of every candidate.
+
 ## The external oracles
 
 Every variant has an oracle that lives outside klin and outside the agent's

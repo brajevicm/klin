@@ -5,11 +5,11 @@ import { candidates, families, type Family } from "./catalogue.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
 import * as session from "./session.ts";
 import { fixtures, frozen, type Frozen } from "./frozen.ts";
-import { crashes } from "./round.ts";
 import { validate, type RunRecord } from "./record.ts";
 import { sha256 } from "./trees.ts";
 import {
   FROZEN,
+  crashes,
   normalizedFlags,
   recordProblems,
   records,
@@ -224,7 +224,7 @@ function admissionsOf(directory: string, manifest: Manifest): Admission[] {
 export function summarize(directory: string): Summary {
   const manifest = readManifest(directory);
   if (manifest.first === null) {
-    return slotted(manifest, admissionsOf(directory, manifest));
+    return slotted(manifest.declared, admissionsOf(directory, manifest));
   }
   const parent = path.dirname(directory);
   const retried = new Map(admissionsOf(directory, manifest).map((one) => [one.candidate, one] as const));
@@ -235,17 +235,18 @@ export function summarize(directory: string): Summary {
     }
     return again.verdict === "incomplete" ? { ...again, verdict: "not admitted" } : again;
   });
-  return slotted(manifest, merged);
+  return slotted(manifest.declared, merged);
 }
 
-function slotted(manifest: Manifest, admissions: Admission[]): Summary {
+/** The verdict over `admissions`, with each gate's slots taken over the whole declared population. */
+export function slotted(declared: Pick<Candidate, "candidate" | "gate" | "order">[], admissions: Admission[]): Summary {
   const verdicts = new Map(admissions.map((one) => [one.candidate, one.verdict] as const));
   const slots: Record<string, string[]> = {};
   const unsettled: string[] = [];
-  const gates = [...new Set(manifest.declared.map((one) => one.gate))].sort();
+  const gates = [...new Set(declared.map((one) => one.gate))].sort();
   for (const gate of gates) {
     const taken: string[] = [];
-    for (const one of manifest.declared.filter((held) => held.gate === gate).sort((a, b) => a.order - b.order)) {
+    for (const one of declared.filter((held) => held.gate === gate).sort((a, b) => a.order - b.order)) {
       if (taken.length === RULE.perGate) {
         break;
       }
@@ -283,9 +284,9 @@ function apparatusOf(record: RunRecord, held: Apparatus): [string, string, strin
  * Every way an admission set fails what it froze. Nothing here reads the catalogue.
  *
  * A written `admission.json` is recomputed from the records, so a verdict edited after the run
- * fails here.
+ * fails here. A first set's `verify` verifies its retry too, unless `withRetry` is false.
  */
-export function verify(directory: string): string[] {
+export function verify(directory: string, withRetry = true): string[] {
   const manifest = readManifest(directory);
   const problems: string[] = [];
   if (manifest.kind !== POPULATION || manifest.population !== POPULATION || manifest.publishable !== false) {
@@ -310,7 +311,7 @@ export function verify(directory: string): string[] {
     if (manifest.candidates.length !== manifest.declared.length) {
       problems.push("a first set runs the whole declared population, and this one runs part of it");
     }
-    if (fs.existsSync(path.join(directory, RETRY))) {
+    if (withRetry && fs.existsSync(path.join(directory, RETRY))) {
       problems.push(...verify(path.join(directory, RETRY)).map((one) => RETRY + ": " + one));
     }
   } else {
@@ -464,6 +465,72 @@ export function rivals(root: string, cohort: string): string[] {
       const held = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<Manifest>;
       return held.kind === POPULATION && held.first === null && held.cohort === cohort;
     });
+}
+
+/** The verdict a paired round freezes from, and the files it came from. */
+export interface Final {
+  summary: Summary;
+  /** Which set's verdict this is. */
+  source: "first set" | "retry" | "first set, the retry did not verify";
+  /** The sha256 of the first set's manifest. */
+  firstSet: string;
+  /** The sha256 of the retry's manifest when the retry's verdict is the final one. */
+  retry: string | null;
+  /** The sha256 of the `admission.json` the verdict comes from, the first set's under rule 6. */
+  verdict: string;
+  cohort: string;
+  /** Why this first set gives no verdict a paired round may freeze. */
+  problems: string[];
+}
+
+function manifestSha256(directory: string): string {
+  return sha256(fs.readFileSync(path.join(directory, "manifest.json")));
+}
+
+/**
+ * The final verdict of the admission whose first set is `first`, as rubric section 4 merges it.
+ *
+ * The first set must verify on its own, state its verdict and be the earliest first set of its
+ * cohort beside it. A retry that verifies gives the final verdict. A retry that does not verify
+ * admits none of the first set's incomplete candidates.
+ */
+export function final(first: string): Final {
+  const manifest = readManifest(first);
+  const problems = verify(first, false);
+  if (manifest.first !== null) {
+    problems.push(first + " is a retry, and the paired round freezes from its first set");
+  }
+  for (const other of rivals(path.dirname(first), manifest.cohort)) {
+    if (readManifest(other).startedAt < manifest.startedAt) {
+      problems.push(other + " is a first set of the same cohort that started earlier, so it is the first set and " + first + " counts for nothing");
+    }
+  }
+  const kept = path.join(first, "admission.json");
+  if (!fs.existsSync(kept)) {
+    problems.push(first + " holds no admission.json, so the first set states no verdict");
+  }
+  const again = path.join(first, RETRY);
+  if (fs.existsSync(path.join(again, RETRY))) {
+    problems.push(again + " holds a retry of its own, and a first set takes one retry");
+  }
+  const held: Final = {
+    summary: summarize(first),
+    source: "first set",
+    firstSet: manifestSha256(first),
+    retry: null,
+    verdict: fs.existsSync(kept) ? sha256(fs.readFileSync(kept)) : "",
+    cohort: manifest.cohort,
+    problems,
+  };
+  if (!fs.existsSync(path.join(again, "manifest.json"))) {
+    return held;
+  }
+  const retried = path.join(again, "admission.json");
+  if (verify(again).length === 0 && fs.existsSync(retried)) {
+    return { ...held, summary: summarize(again), source: "retry", retry: manifestSha256(again), verdict: sha256(fs.readFileSync(retried)) };
+  }
+  const merged = held.summary.candidates.map((one): Admission => (one.verdict === "incomplete" ? { ...one, verdict: "not admitted" } : one));
+  return { ...held, summary: slotted(manifest.declared, merged), source: "first set, the retry did not verify" };
 }
 
 /** The file that records why a gate has no candidate, beside the fixtures. */

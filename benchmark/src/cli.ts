@@ -25,6 +25,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...] [--population admission [--retry FIRST-SET]]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded [--families a,b] [--repetitions N]]
+  node benchmark/src/cli.ts plan --population v3 --admission FIRST-SET [--into DIR] [--seed N]
   node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
   node benchmark/src/cli.ts seeded-plan [--into DIR] [--seed N] [--families a,b] [--repetitions N]
   node benchmark/src/cli.ts seeded-execute <round-dir> --manifest-sha256 HEX
@@ -362,6 +363,9 @@ export function main(argv: string[]): number {
     return round.protocol(Number(flag(args, "--seed", "1")), args.includes("--write"));
   }
   if (command === "plan") {
+    if (flag(args, "--population", "") === round.V3) {
+      return round.planV3(flag(args, "--into", path.join(paths.RUNS, "v3-" + calibrate.stamp())), flag(args, "--admission", ""), Number(flag(args, "--seed", "1")));
+    }
     if (flag(args, "--population", "") === "seeded") {
       return seeded.plan(flag(args, "--into", seeded.roundDirectory()), Number(flag(args, "--seed", "1")), seededDesign(args));
     }
