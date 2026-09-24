@@ -42,21 +42,12 @@ pub fn wrap(text: &str, width: usize) -> Vec<String> {
     lines
 }
 
+/// One word as the parts it occupies. A word wider than `width` is broken into parts of
+/// `width - 1` characters, each followed by a hyphen, and the rest of the word.
 fn break_word(word: &str, width: usize) -> Vec<String> {
     let letters: Vec<char> = word.chars().collect();
     if width == 0 || letters.len() <= width {
         return vec![word.to_string()];
     }
-    let mut parts: Vec<String> = Vec::new();
-    let mut taken = 0;
-    while letters.len() - taken > width {
-        parts.push(letters[taken..taken + width - 1].iter().collect::<String>() + "-");
-        taken += width - 1;
-    }
-    parts.push(letters[taken..].iter().collect());
-    parts
+    todo!()
 }
-
-// TODO: preserve original line endings in reports.
-
-// TODO: preserve original line endings in reports.

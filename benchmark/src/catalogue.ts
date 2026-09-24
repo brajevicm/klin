@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { CURRENT_PROTOCOL } from "./protocol.ts";
+import { CURRENT_PROTOCOL, SEEDED_PROTOCOL } from "./protocol.ts";
 import { sha256 } from "./trees.ts";
 
 /**
@@ -88,6 +88,7 @@ export interface VariantSpec {
    * against stays the clean committed base.
    */
   seed?: string;
+  staged?: boolean;
   start?: StartSpec;
   /** One entry per exemplar directory beside `prompt.md`, keyed by the directory's name. */
   trees: Record<string, TreeSpec>;
@@ -115,6 +116,7 @@ export interface Variant {
   shortcut: ShortcutSpec;
   /** The seed overlay's directory name, or the empty string where the variant declares none. */
   seed: string;
+  staged: boolean;
   start: StartSpec;
 }
 
@@ -123,6 +125,12 @@ export interface Family {
   root: string;
   spec: FamilySpec;
   variants: Record<NaturalVariantName, Variant> & Partial<Record<PlantedVariantName, Variant>>;
+}
+
+function protocolKey(name: VariantName): string {
+  return (PLANTED as readonly string[]).includes(name)
+    ? String(CURRENT_PROTOCOL.version) + "/" + SEEDED_PROTOCOL.name + "/" + String(SEEDED_PROTOCOL.version)
+    : String(CURRENT_PROTOCOL.version);
 }
 
 function variantOf(
@@ -142,11 +150,12 @@ function variantOf(
     root: variantRoot,
     prompt: promptBytes.toString("utf8"),
     promptSha256,
-    taskId: sha256(`${CURRENT_PROTOCOL.version}:${family}:${name}:${promptSha256}`).slice(0, 16),
+    taskId: sha256(`${protocolKey(name)}:${family}:${name}:${promptSha256}`).slice(0, 16),
     behaviour: stated.behaviour,
     trees: stated.trees,
     shortcut: stated.shortcut ?? fallback,
     seed: stated.seed ?? "",
+    staged: stated.staged ?? false,
     start: stated.start ?? CLEAN_START,
   };
 }

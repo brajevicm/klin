@@ -3,6 +3,8 @@ import path from "node:path";
 import { files, read } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
 import type { Check, HookInvocation, Isolation } from "./record.ts";
+import { commitsUnsigned } from "./workspace.ts";
+import { withoutKlin } from "./session.ts";
 
 /**
  * Subject-workspace isolation.
@@ -173,6 +175,7 @@ export function freshness(
 ): Isolation {
   const isolated = config !== "";
   const entries = fs.existsSync(state) ? fs.readdirSync(state) : [];
+  const unsigned = commitsUnsigned(repo, withoutKlin());
   const checks: Check[] = [
     check("fresh-repository", commits === 1, String(commits) + " commit(s) before the session"),
     check(
@@ -192,6 +195,13 @@ export function freshness(
         : "the trial shares the operator's host configuration, and the record keeps its memory digest",
     ),
     check("workspace-is-its-own-repository", fs.existsSync(path.join(repo, ".git")), repo),
+    check(
+      "commits-unsigned",
+      unsigned,
+      unsigned
+        ? "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        : "the subject's git reads commit.gpgsign as other than false, so its commit reaches a keyring the sandbox refuses",
+    ),
   ];
   return { verified: checks.every((one) => one.passed), checks };
 }
@@ -207,6 +217,7 @@ export function freshness(
 export function seedIsTheOnlyChange(read: {
   standing: string[];
   declared: string[];
+  index: { measured: string[]; declared: string[] };
   committed: { measured: string; declared: string };
   start: { measured: string; declared: string };
 }): Check {
@@ -216,6 +227,11 @@ export function seedIsTheOnlyChange(read: {
   const broke: string[] = [];
   if (want.length !== held.length || want.some((one, at) => one !== held[at])) {
     broke.push("the working tree held " + named(held) + " where the variant declares " + named(want));
+  }
+  const stagedWant = [...read.index.declared].sort();
+  const stagedHeld = [...read.index.measured].sort();
+  if (stagedWant.join("\n") !== stagedHeld.join("\n")) {
+    broke.push("the index held " + named(stagedHeld) + " where the variant declares " + named(stagedWant) + " staged");
   }
   // The path set alone says only which files changed. These two say the bytes are the fixture's
   // own, so a seed that wrote the right path with the wrong content cannot pass.

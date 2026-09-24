@@ -1,10 +1,31 @@
-const FIELD = /(?:^|,)(?:"((?:[^"]|"")*)"|([^,]*))/g;
-
 /** Split one line of delimited text into its fields. */
 export function parseCsvLine(line: string): string[] {
   const fields: string[] = [];
-  for (const match of line.matchAll(FIELD)) {
-    fields.push(match[1] === undefined ? match[2] : match[1].replace(/""/g, '"'));
+  let at = 0;
+  while (at < line.length) {
+    let field = "";
+    if (line[at] === '"') {
+      at += 1;
+      while (at < line.length) {
+        if (line.startsWith('""', at)) {
+          field += '"';
+          at += 2;
+        } else if (line[at] === '"') {
+          at += 1;
+          break;
+        } else {
+          field += line[at];
+          at += 1;
+        }
+      }
+    } else {
+      const end = line.indexOf(",", at);
+      const stop = end === -1 ? line.length : end;
+      field = line.slice(at, stop);
+      at = stop;
+    }
+    fields.push(field);
+    at += 1;
   }
   return fields;
 }

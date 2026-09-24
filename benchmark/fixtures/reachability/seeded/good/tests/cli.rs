@@ -7,18 +7,25 @@ fn line(store: &mut Store, arguments: &[&str]) -> String {
 }
 
 #[test]
-fn a_note_can_be_set_and_listed() {
+fn a_note_can_be_added_and_listed() {
     let mut store = Store::new();
-    assert_eq!(line(&mut store, &["set", "a", "1"]), "set a");
+    assert_eq!(line(&mut store, &["add", "a", "1"]), "added a");
     assert_eq!(line(&mut store, &["list"]), "a");
 }
 
 #[test]
-fn a_note_can_be_cleared() {
+fn a_note_can_be_removed() {
     let mut store = Store::new();
-    line(&mut store, &["set", "a", "1"]);
-    assert_eq!(line(&mut store, &["set", "a"]), "cleared a");
+    line(&mut store, &["add", "a", "1"]);
+    assert_eq!(line(&mut store, &["remove", "a"]), "removed a");
     assert_eq!(line(&mut store, &["list"]), "");
+}
+
+#[test]
+fn a_note_can_be_shown() {
+    let mut store = Store::new();
+    line(&mut store, &["add", "a", "1"]);
+    assert_eq!(line(&mut store, &["show", "a"]), "1");
 }
 
 #[test]

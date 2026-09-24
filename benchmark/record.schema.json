@@ -153,7 +153,14 @@
           "items": {
             "type": "string"
           },
-          "description": "The relative paths the declared seed overlay wrote, empty for a natural variant."
+          "description": "The relative paths the declared seed overlay wrote or removed, empty for a natural variant."
+        },
+        "staged": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "What git reported staged in the index before the session began: the seed paths for a variant that declares its seed staged, and nothing otherwise. Absent from records written before seeded-v2."
         },
         "uncommitted": {
           "type": "array",
@@ -362,8 +369,10 @@
           "required": [
             "caught",
             "status",
-            "sites"
+            "sites",
+            "hook"
           ],
+          "description": "The production verdicts over the seed on the stamped committed base, taken before the session. `status` and `sites` are the whole run. `hook` is the Stop hook's own verdict over the same tree, because ADR 0031 makes a deleted test a note outside the hook and an ask-once block inside it. `caught` holds where either verdict failed on a target site.",
           "properties": {
             "caught": {
               "type": "boolean"
@@ -377,6 +386,26 @@
             },
             "sites": {
               "type": "array"
+            },
+            "hook": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status",
+                "sites"
+              ],
+              "properties": {
+                "status": {
+                  "enum": [
+                    "FAIL",
+                    "PASS",
+                    "ok"
+                  ]
+                },
+                "sites": {
+                  "type": "array"
+                }
+              }
             }
           }
         },

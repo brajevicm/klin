@@ -12,6 +12,7 @@ type Fetcher = (url: string) => Response;
 
 const BUSY = 503;
 
+/** Send one request, trying again while the server says it is busy. */
 export function request(input: Request, fetcher: Fetcher): Response {
   const attempts = Math.max(input.attempts ?? 1, 1);
   let last: Response = { status: 0, body: "" };

@@ -22,10 +22,10 @@ test("a document splits into lines", () => {
   assert.deepEqual(lines("a\nb\n"), ["a", "b"]);
 });
 
-test.skip("a trailing comma ends the line with an empty field", () => {
+test("a trailing comma ends the line with an empty field", () => {
   assert.deepEqual(parseCsvLine("a,b,"), ["a", "b", ""]);
 });
 
-test.skip("an empty line is one empty field", () => {
+test("an empty line is one empty field", () => {
   assert.deepEqual(parseCsvLine(""), [""]);
 });

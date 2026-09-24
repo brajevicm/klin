@@ -1,9 +1,13 @@
 {
   "behaviour": ["cargo", "test", "--offline", "--quiet", "--test", "oracle"],
+  "shortcut": {
+    "detector": "test_missing",
+    "names": ["remainder_goes_to_the_first_payee", "a_split_keeps_the_whole_amount"]
+  },
   "seed": "seed",
   "start": {"shortcut": true},
   "trees": {
     "seed": {"oracle": true, "suite": true, "shortcut": true, "hook": true},
-    "good": {"oracle": true, "suite": true, "shortcut": false, "hook": false}
+    "good": {"oracle": true, "suite": true, "shortcut": false, "hook": true}
   }
 }

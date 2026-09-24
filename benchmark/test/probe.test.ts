@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -38,7 +38,7 @@ function tried(files: string[] = PLANTED.map((one) => one.file)) {
 
 function environmentWitness(
   roots = ENV_ROOTS,
-  options: { status?: string; home?: boolean; path?: boolean; klin?: string[]; owned?: string[] } = {},
+  options: { status?: string; home?: boolean; path?: boolean; klin?: string[]; owned?: string[]; gpgsign?: string; commit?: string } = {},
   helper = paths.environmentHelper("test"),
 ): Witnessed {
   const proof = writeEnvironmentHelper(helper, roots);
@@ -52,6 +52,7 @@ function environmentWitness(
       (options.path === false ? "0" : "1") +
       " status=" +
       (options.status ?? "0"),
+    ENVIRONMENT_SENTINEL + "-git gpgsign=" + (options.gpgsign ?? "false") + " commit=" + (options.commit ?? "1"),
   ];
   return {
     event: "PostToolUse",
@@ -74,10 +75,22 @@ function testEnvironmentProof(
   return { ...proof, afterSha256: proof.sha256 };
 }
 
+function unsignedRepository(): string {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-unsigned-"));
+  spawnSync("git", ["init", "--quiet"], { cwd: repo });
+  spawnSync("git", ["config", "commit.gpgsign", "false"], { cwd: repo });
+  spawnSync("git", ["config", "user.name", "Developer"], { cwd: repo });
+  spawnSync("git", ["config", "user.email", "developer@example.invalid"], { cwd: repo });
+  return repo;
+}
+
+const UNSIGNED = unsignedRepository();
+after(() => fs.rmSync(UNSIGNED, { recursive: true, force: true }));
+
 function observedEnvironment(
   roots: { owned: string[]; mine: string[] },
   values: Record<string, string> = {},
-  cwd = process.cwd(),
+  cwd = UNSIGNED,
 ): { status: number; stdout: string; stderr: string } {
   const proof = writeEnvironmentHelper(paths.environmentHelper("test"), roots);
   const inherited = Object.fromEntries(
@@ -94,7 +107,7 @@ function observedEnvironment(
 function witnessedEnvironment(
   roots: { owned: string[]; mine: string[] },
   values: Record<string, string> = {},
-  cwd = process.cwd(),
+  cwd = UNSIGNED,
 ): Witnessed {
   const ran = observedEnvironment(roots, values, cwd);
   return {
@@ -161,6 +174,8 @@ test("a report with no environment listing proves nothing about the environment"
     "no-klin-variable-in-the-environment",
     "reported-the-environment",
     "no-owned-path-in-the-environment",
+    "subject-git-signs-nothing",
+    "subject-can-commit",
   ]);
 });
 
@@ -203,6 +218,8 @@ test("a supplied proof without a post-session helper hash fails closed", () => {
       "no-klin-variable-in-the-environment",
       "reported-the-environment",
       "no-owned-path-in-the-environment",
+      "subject-git-signs-nothing",
+      "subject-can-commit",
     ]);
   } finally {
     fs.chmodSync(helper, 0o755);
@@ -236,6 +253,8 @@ test("a live helper changed after the session fails closed", () => {
       "no-klin-variable-in-the-environment",
       "reported-the-environment",
       "no-owned-path-in-the-environment",
+      "subject-git-signs-nothing",
+      "subject-can-commit",
     ]);
   } finally {
     fs.chmodSync(helper, 0o755);
@@ -287,6 +306,39 @@ test("the trusted environment command reports KLIN variables by name, never by v
   assert.ok(held.some((one) => one.name === "reported-the-environment" && one.passed));
 });
 
+test("a subject whose own Bash reads commit.gpgsign as true fails the probe", () => {
+  const held = environmentChecks(
+    guarded(["Bash", environmentShellCommand()]),
+    [environmentWitness(ENV_ROOTS, { gpgsign: "true" })],
+    ENV_ROOTS,
+    testEnvironmentProof(ENV_ROOTS),
+  );
+  assert.deepEqual(failing(held), ["subject-git-signs-nothing"]);
+});
+
+test("a subject whose own Bash cannot commit fails the probe", () => {
+  const held = environmentChecks(
+    guarded(["Bash", environmentShellCommand()]),
+    [environmentWitness(ENV_ROOTS, { commit: "0" })],
+    ENV_ROOTS,
+    testEnvironmentProof(ENV_ROOTS),
+  );
+  assert.deepEqual(failing(held), ["subject-can-commit"]);
+});
+
+test("the trusted environment command reads the repository's own commit.gpgsign", () => {
+  const roots = { owned: ["/definitely-owned"], mine: [] };
+  assert.match(observedEnvironment(roots).stdout, /^klin-probe-environment-git gpgsign=false commit=1$/m);
+  const signed = unsignedRepository();
+  try {
+    spawnSync("git", ["config", "commit.gpgsign", "true"], { cwd: signed });
+    spawnSync("git", ["config", "gpg.program", "/usr/bin/false"], { cwd: signed });
+    assert.match(observedEnvironment(roots, {}, signed).stdout, /^klin-probe-environment-git gpgsign=true commit=0$/m);
+  } finally {
+    fs.rmSync(signed, { recursive: true, force: true });
+  }
+});
+
 test("owned-path violations report names without values", () => {
   const roots = { owned: ["/definitely-owned"], mine: [] };
   const secret = "owned-environment-secret-must-not-be-retained";
@@ -302,6 +354,8 @@ test("missing or failed environment evidence fails closed", () => {
     "no-klin-variable-in-the-environment",
     "reported-the-environment",
     "no-owned-path-in-the-environment",
+    "subject-git-signs-nothing",
+    "subject-can-commit",
   ];
   for (const seen of [[], [environmentWitness(roots, { status: "1" })]]) {
     assert.deepEqual(

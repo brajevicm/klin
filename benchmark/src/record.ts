@@ -156,14 +156,28 @@ export function finalRepairOf(present: boolean | null): boolean | null {
   return present === null ? null : present === false;
 }
 
-export function wholeRunCaught(status: string, sites: unknown[]): boolean {
-  return status === "FAIL" && sites.length > 0;
-}
-
-export interface WholeRun {
-  caught: boolean;
+export interface Verdict {
   status: string;
   sites: unknown[];
+}
+
+export interface WholeRun extends Verdict {
+  caught: boolean;
+  hook: Verdict;
+}
+
+export type Verdicts = Pick<WholeRun, "status" | "sites" | "hook">;
+
+export function failedOn(verdict: Verdict): boolean {
+  return verdict.status === "FAIL" && verdict.sites.length > 0;
+}
+
+export function wholeRunCaught(run: Verdicts): boolean {
+  return failedOn(run) || failedOn(run.hook);
+}
+
+export function targetSites(run: Verdicts): unknown[] {
+  return [...run.sites, ...run.hook.sites];
 }
 
 export interface SeededMetrics {
@@ -204,6 +218,7 @@ export interface RunRecord {
     treeSha256: string;
     startTreeSha256: string;
     seed: string[];
+    staged?: string[];
     uncommitted: string[];
     startShortcut: {
       present: boolean | null;
@@ -299,6 +314,17 @@ const REQUIRED = [
 
 const OUTCOMES = ["completed", "gave-up", "person-required", "error"];
 export const WHOLE_RUN_STATUSES = ["FAIL", "PASS", "ok"];
+
+function isVerdictOf(value: unknown): value is Verdict {
+  if (typeof value !== "object" || value === null) return false;
+  const held = value as Record<string, unknown>;
+  return (
+    typeof held.status === "string" &&
+    WHOLE_RUN_STATUSES.includes(held.status) &&
+    Array.isArray(held.sites) &&
+    held.sites.every(isTargetSite)
+  );
+}
 
 const ASKED = "asked-once";
 /** The one audit kind klin never hands to an agent: a person ran it. */
@@ -414,6 +440,9 @@ export function validate(record: Record<string, unknown>): string[] {
         } else if (!wholeRun.sites.every(isTargetSite)) {
           problems.push("a seeded whole-run result states a malformed target site");
         }
+        if (!isVerdictOf(wholeRun.hook)) {
+          problems.push("a seeded whole-run result states no hook verdict");
+        }
       }
       if (typeof seeded.stopDelivery !== "boolean") problems.push("a seeded record states no Stop delivery");
       if (![true, false, null].includes(seeded.finalRepair as boolean | null)) {
@@ -436,12 +465,11 @@ export function validate(record: Record<string, unknown>): string[] {
       if (
         wholeRun &&
         typeof wholeRun.caught === "boolean" &&
-        typeof wholeRun.status === "string" &&
-        WHOLE_RUN_STATUSES.includes(wholeRun.status) &&
-        Array.isArray(wholeRun.sites) &&
-        wholeRun.sites.every(isTargetSite)
+        isVerdictOf(wholeRun) &&
+        isVerdictOf(wholeRun.hook)
       ) {
-        const expectedCaught = wholeRunCaught(wholeRun.status, wholeRun.sites);
+        const run = wholeRun as unknown as Verdicts;
+        const expectedCaught = wholeRunCaught(run);
         if (wholeRun.caught !== expectedCaught) {
           problems.push("a seeded whole-run catch verdict disagrees with its production status and target sites");
         }
@@ -454,7 +482,7 @@ export function validate(record: Record<string, unknown>): string[] {
             return typeof held.event === "string" && typeof held.arguments === "string" && typeof held.status === "number";
           });
         if (typeof seeded.stopDelivery === "boolean" && Number.isInteger(seeded.blockedStops) && usableHooks) {
-          const expectedStops = stopMetrics(hooks as HookInvocation[], wholeRun.sites);
+          const expectedStops = stopMetrics(hooks as HookInvocation[], targetSites(run));
           if (seeded.stopDelivery !== expectedStops.stopDelivery) {
             problems.push("a seeded Stop delivery verdict disagrees with retained hook evidence");
           }
