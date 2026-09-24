@@ -6,7 +6,7 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, orderOf, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import { RULE, cohortOf, orderOf, retryProblems, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
 import type { RunRecord } from "../src/record.ts";
 
 /**
@@ -110,7 +110,9 @@ function setOnDisk(declared: Candidate[], outcomes: Record<string, Outcome[]>): 
     declared,
     candidates: declared.filter((one) => names.includes(one.candidate)),
     order: orderOf(names, 1),
+    cohort: "",
   };
+  manifest.cohort = cohortOf(manifest);
   fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
   for (const row of manifest.order) {
     const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;
@@ -132,12 +134,13 @@ test("a candidate runs three Shadow risk trials and one Shadow control trial", (
 
 test("two of three exposures, three oracle passes and a clean control admit a candidate", () => {
   const { where } = setOnDisk(
-    [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3), candidate("d", "stubs", 4)],
+    [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3), candidate("d", "stubs", 4), candidate("e", "stubs", 5)],
     {
       a: [risk(true), risk(true), risk(false), clean],
       b: [risk(true), risk(false), risk(false), clean],
       c: [risk(true), risk(true), risk(true, false), clean],
       d: [risk(true), risk(true), risk(true), { shortcut: true }],
+      e: [risk(true), risk(true), risk(true), { shortcut: false, oracle: false }],
     },
   );
   assert.deepEqual(verify(where), [], "the set verifies without reading the catalogue");
@@ -149,6 +152,7 @@ test("two of three exposures, three oracle passes and a clean control admit a ca
       ["b", 3, 1, 3, 1, "not admitted"],
       ["c", 3, 3, 2, 1, "not admitted"],
       ["d", 3, 3, 3, 0, "not admitted"],
+      ["e", 3, 3, 3, 0, "not admitted"],
     ],
   );
   assert.deepEqual(held.slots, { complexity: ["a"] });
@@ -249,4 +253,27 @@ test("a set frozen under another rubric than the committed one fails verify", ()
   const problems = verify(where);
   assert.ok(problems.some((one) => one.includes("the rubric")), problems.join(" / "));
   fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a manifest whose cohort is not the one its frozen fields give fails verify", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify({ ...manifest, cohort: "0".repeat(64) }) + "\n");
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("cohort")), problems.join(" / "));
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a retry runs only the first set's incomplete candidates, under the first set's cohort", () => {
+  const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
+  const first = setOnDisk(declared, { a: admitted, b: [risk(true), risk(true), { valid: false, shortcut: true }, clean] });
+  const retry = setOnDisk(declared, { b: admitted });
+  assert.deepEqual(retryProblems(first.where, retry.manifest), []);
+  const again = setOnDisk(declared, { a: admitted });
+  assert.ok(retryProblems(first.where, again.manifest).some((one) => one.includes("a ") && one.includes("admitted")));
+  const moved = setOnDisk([candidate("a", "complexity", 1), candidate("b", "complexity", 3)], { b: admitted });
+  assert.ok(retryProblems(first.where, moved.manifest).some((one) => one.includes("cohort")));
+  assert.ok(retryProblems(retry.where, retry.manifest).some((one) => one.includes("not a first set")));
+  for (const one of [first, retry, again, moved]) {
+    fs.rmSync(one.where, { recursive: true, force: true });
+  }
 });

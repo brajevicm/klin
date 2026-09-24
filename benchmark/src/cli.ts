@@ -22,7 +22,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <variant> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family]
-  node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...] [--population admission]
+  node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...] [--population admission [--only a,b --from FIRST-SET]]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded [--families a,b] [--repetitions N]]
   node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
@@ -341,6 +341,7 @@ export function main(argv: string[]): number {
         into: flag(args, "--into", admission.directory()),
         only: flag(args, "--only", "").split(",").filter((one) => one.length > 0),
         seed: Number(flag(args, "--seed", "1")),
+        from: flag(args, "--from", ""),
       });
     }
     return calibrate.all({

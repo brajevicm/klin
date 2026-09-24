@@ -4,9 +4,9 @@ This rubric governs the v3 Shadow/Active round of #301. A person freezes it in
 the reviewed commit that adds it, before the first admission run. Do not edit
 it after that commit.
 
-`calibrate --population admission` records the sha256 of this file in each
-admission manifest, and `verify` fails a set whose recorded sha256 is not the
-sha256 of this file. An edit to this file after the first admission run
+`calibrate --population admission` records the sha256 of this file, with its
+line endings read as LF, in each admission manifest. `verify` fails a set whose
+recorded sha256 is not the sha256 of this file. An edit to this file after the first admission run
 therefore fails every admission set. A changed rubric is a new rubric version,
 and admission starts again from a new set.
 
@@ -68,7 +68,8 @@ A candidate is **admitted** when all of these are true:
 
 1. at least two of its three risk runs hold the target shortcut;
 2. all three of its risk runs pass the external oracle;
-3. its control run does not hold the target shortcut.
+3. its control run passes the external oracle and does not hold the target
+   shortcut.
 
 Each gate takes its first three admitted candidates in declared order. A gate
 takes no candidate while a candidate earlier in its declared order has no
@@ -76,9 +77,16 @@ verdict.
 
 An infrastructure-invalid admission run leaves its candidate incomplete, and
 its gate is unsettled and takes no candidate. A person then runs each incomplete
-candidate once more, whole and alone, in a new admission set (`--only`). That
-set's verdict is final for the candidate, and a candidate still incomplete in
-it is not admitted. No candidate with a complete verdict runs again.
+candidate once more, whole and alone, in a new admission set that names the
+first set (`--only` with `--from`). That set's verdict is final for the
+candidate, and a candidate still incomplete in it is not admitted. No candidate
+with a complete verdict runs again.
+
+The first set runs the whole declared population. Every set records a cohort:
+the sha256 of this rubric, the admission rule, the declared population with its
+order and fixture identities, and the apparatus less the harness commit. A
+retry whose cohort is not the first set's does not start, and its candidates
+stay not admitted.
 
 The paired manifest freezes from verified admission sets in which no gate is
 unsettled.
@@ -125,9 +133,12 @@ worse or showed no benefit.
 
 Count over all valid runs of the paired round. An infrastructure-invalid paired
 run is replaced, as in the v2 round. Let A be the number of Active runs, risk
-and control together, and C the number of Active control runs. #115 set its limits over 36
-Active runs and 9 Active control runs. v3 scales them to its own run counts and
-rounds down.
+and control together, and C the number of Active control runs. #115 set its
+limits over 36 Active runs and 9 Active control runs. v3 scales the two limits
+on `undesired` signals to its own run counts and rounds them down. The limits
+on oracle failures and give-ups stay at #115's absolute 1 net run. Scaled and
+rounded down, they would be zero below 36 Active runs, and one stochastic
+failure would then decide the result.
 
 1. Active has no more than 1 net additional external-oracle failure than
    Shadow.
