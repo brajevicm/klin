@@ -129,6 +129,11 @@ test("a seeded manifest freezes its design and only the families it schedules", 
     edit(edited);
     assert.notDeepEqual(design(edited), [], what + " was accepted");
   }
+  const undesigned = structuredClone(manifest) as { design: Partial<seededRound.Manifest["design"]> };
+  delete undesigned.design.families;
+  const named = design(undesigned as seededRound.Manifest);
+  assert.ok(named.some((one) => /names no family/.test(one)), named.join("; "));
+  assert.ok(!named.some((one) => /does not have|order/.test(one)), "a design problem led to follow-on errors: " + named.join("; "));
 });
 
 test("seeded-plan refuses a family the catalogue does not have before anything else", () => {

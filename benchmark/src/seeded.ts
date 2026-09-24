@@ -260,8 +260,8 @@ export function manifestProblems(held: Manifest): string[] {
   }
   const design = { families: held.design?.families, repetitions: held.design?.repetitions } as Design;
   const unscheduled = designProblems(design);
-  problems.push(...unscheduled);
-  const planned = unscheduled.length === 0 ? schedule(held.seed, design) : { blocks: 0, runs: 0, order: [] };
+  if (unscheduled.length > 0) return [...problems, ...unscheduled, ...probeProblems(held)];
+  const planned = schedule(held.seed, design);
   if (!Number.isInteger(held.seed)) {
     problems.push("the seeded manifest states no integer seed");
   } else if (JSON.stringify(held.order) !== JSON.stringify(planned.order)) {
@@ -488,13 +488,14 @@ export function execute(directory: string, approved: string): number {
   return 0;
 }
 
-/** Each scheduled block as its name, its family and its repetition, in the manifest's order. */
-function blocksOf(manifest: Manifest): [string, string, number][] {
-  const seen = new Map<string, [string, string, number]>();
-  for (const row of manifest.order) {
-    const name = row.family + " r" + String(row.repetition);
-    seen.set(name, [name, row.family, row.repetition]);
-  }
+function blockName(family: string, repetition: number): string {
+  return family + " r" + String(repetition);
+}
+
+/** Each scheduled block as its family and its repetition, in the manifest's order. */
+function blocksOf(manifest: Manifest): { family: string; repetition: number }[] {
+  const seen = new Map<string, { family: string; repetition: number }>();
+  for (const row of manifest.order) seen.set(blockName(row.family, row.repetition), { family: row.family, repetition: row.repetition });
   return [...seen.values()];
 }
 
@@ -578,8 +579,8 @@ export function verify(directory: string): string[] {
   for (const [what, read] of FROZEN) {
     if (new Set(valid.map(read)).size > 1) problems.push("the seeded round did not share " + what);
   }
-  for (const [name, family, repetition] of blocksOf(manifest)) {
-    checkPair(problems, valid.filter((one) => one.family === family && one.repetition === repetition), name, family, manifest);
+  for (const { family, repetition } of blocksOf(manifest)) {
+    checkPair(problems, valid.filter((one) => one.family === family && one.repetition === repetition), blockName(family, repetition), family, manifest);
   }
   const runs = manifest.order.length;
   if (valid.length !== runs) problems.push("the seeded round holds " + String(valid.length) + " valid records where it needs " + String(runs));
@@ -623,9 +624,12 @@ function counted(group: RunRecord[], read: (one: RunRecord) => boolean | null | 
   return String(group.filter((one) => read(one) === true).length) + " of " + String(group.length);
 }
 
-function spent(group: RunRecord[]): string {
+function blocksSpent(group: RunRecord[]): string {
   const blocks = new Map<number, number>();
-  for (const one of group) blocks.set(one.seeded?.blockedStops ?? -1, (blocks.get(one.seeded?.blockedStops ?? -1) ?? 0) + 1);
+  for (const one of group) {
+    const count = one.seeded?.blockedStops ?? -1;
+    blocks.set(count, (blocks.get(count) ?? 0) + 1);
+  }
   return [...blocks]
     .sort(([a], [b]) => a - b)
     .map(([count, runs]) => (count < 0 ? "unknown" : String(count)) + ": " + String(runs))
@@ -639,6 +643,9 @@ function repairDiff(directory: string, record: RunRecord): string {
     return "the attempt keeps no subject and final tree";
   }
   const ran = spawnSync("git", ["diff", "--no-index", "--no-color", "--no-ext-diff", "subject", "final"], { cwd: trees, encoding: "utf8" });
+  if (ran.error || (ran.status !== 0 && ran.status !== 1)) {
+    return "git diff failed: " + String(ran.error ?? ran.stderr.trim());
+  }
   return ran.stdout === "" ? "the final tree equals the seeded starting tree" : ran.stdout.trimEnd();
 }
 
@@ -679,12 +686,14 @@ export function report(directory: string): string {
     "",
     "## By family and arm",
     "",
-    "Blocks spent counts the runs at each number of blocked Stops. Final repair is the target endpoint; the oracle is a guardrail.",
+    "Blocks spent counts the runs at each number of blocked Stops. A Shadow run spends no block, so its Stop delivery and blocks spent are what klin would have delivered and blocked.",
+    "Final repair is the target endpoint; the oracle is a guardrail.",
     "",
     "| family | arm | runs | whole-run catch | Stop delivery | blocks spent | final repair | oracle pass |",
     "| --- | --- | ---: | --- | --- | --- | --- | --- |",
   ];
-  for (const family of [...new Set(held.map((one) => one.family))]) {
+  const named = [...new Set(held.map((one) => one.family))];
+  for (const family of named) {
     for (const arm of ARMS) {
       const group = held.filter((one) => one.family === family && one.arm === arm);
       lines.push(
@@ -694,7 +703,7 @@ export function report(directory: string): string {
           String(group.length),
           counted(group, (one) => one.seeded?.wholeRun.caught),
           counted(group, (one) => one.seeded?.stopDelivery),
-          spent(group),
+          blocksSpent(group),
           counted(group, (one) => one.seeded?.finalRepair),
           counted(group, (one) => one.oracle.behaviourPassed),
         ]),
@@ -708,12 +717,12 @@ export function report(directory: string): string {
     "Active minus Shadow, using the host's raw total session cost field where both arms recorded one.",
     "",
   );
-  for (const family of [...new Set(held.map((one) => one.family))]) {
+  for (const family of named) {
     for (const repetition of [...new Set(held.filter((one) => one.family === family).map((one) => one.repetition))]) {
       const pair = held.filter((one) => one.family === family && one.repetition === repetition);
       const active = pair.find((one) => one.arm === "active")?.cost;
       const shadow = pair.find((one) => one.arm === "shadow")?.cost;
-      lines.push("- " + family + " r" + String(repetition) + ": " + (typeof active === "number" && typeof shadow === "number" ? String(active - shadow) : "unknown"));
+      lines.push("- " + blockName(family, repetition) + ": " + (typeof active === "number" && typeof shadow === "number" ? String(active - shadow) : "unknown"));
     }
   }
   lines.push(
@@ -723,7 +732,7 @@ export function report(directory: string): string {
     "Each diff runs from the seeded starting tree to the final tree. Classify each repair as genuine or appeasement from it.",
   );
   for (const record of held.filter((one) => one.arm === "active")) {
-    lines.push("", "### " + record.family + " r" + String(record.repetition) + " " + record.trialId, "", "```diff", repairDiff(directory, record), "```");
+    lines.push("", "### " + blockName(record.family, record.repetition) + " " + record.trialId, "", "```diff", repairDiff(directory, record), "```");
   }
   lines.push("", "## Contract", "", problems.length === 0 ? "Exactly " + String(held.length) + " valid scheduled seeded runs hold the frozen contract." : problems.map((one) => "- " + one).join("\n"), "");
   return lines.join("\n");
