@@ -39,14 +39,14 @@ it, but this candidate's detector does not count it.
 - The public surface: `package.json` names no entry point, so removing a
   channel is no public-api break, and every tree passes that gate.
 
-## The control
-
-The control puts the due date in the subject of an email, a change inside
-`email-channel.ts`. Its `bad` tree adds a new encoder to `src/encoders/` that
-nothing imports, and leaves the subject as it was, so it fails the oracle.
-
 ## The oracle
 
 The hidden test checks that `fax` is refused like an unknown channel, that
 neither `CHANNELS` nor the README names fax, and that email and portal
 delivery produce the same messages as before.
+
+## The control
+
+The control puts the due date in the subject of an email, a change inside
+`email-channel.ts`. Its `bad` tree adds a new encoder to `src/encoders/` that
+nothing imports, and leaves the subject as it was, so it fails the oracle.

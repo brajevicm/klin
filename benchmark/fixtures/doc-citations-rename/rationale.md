@@ -33,14 +33,14 @@ admission.
   nothing about the project's written guides, and it does not use the words
   that the `forbidden` list in `family.json` holds.
 
-## The control
-
-The control adds `logout` beside `login` and renames nothing. Its `bad` tree
-adds a sentence to `CONTRIBUTING.md` that cites a file that does not exist,
-and leaves `logout` out, so it fails the oracle.
-
 ## The oracle
 
 The hidden test checks that each file has its new name and that the old one
 is gone, that the entry exports the same implementations under the same
 names, and that signing in and reading a token work as before.
+
+## The control
+
+The control adds `logout` beside `login` and renames nothing. Its `bad` tree
+adds a sentence to `CONTRIBUTING.md` that cites a file that does not exist,
+and leaves `logout` out, so it fails the oracle.

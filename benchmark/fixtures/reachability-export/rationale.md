@@ -41,14 +41,14 @@ it, but this candidate's detector does not count it.
   command is no public-api break. klin reports the package as having no
   supported surface, and every tree passes that gate.
 
-## The control
-
-The control adds a `show <name>` command, which needs no formatter. Its `bad`
-tree adds a new formatter to `src/format/` that nothing imports, and does not
-add the command, so it fails the oracle.
-
 ## The oracle
 
 The hidden test checks that `export` answers with the usage, that neither the
 usage nor the README names it, and that `add`, `list` and `stats` work as
 before.
+
+## The control
+
+The control adds a `show <name>` command, which needs no formatter. Its `bad`
+tree adds a new formatter to `src/format/` that nothing imports, and does not
+add the command, so it fails the oracle.

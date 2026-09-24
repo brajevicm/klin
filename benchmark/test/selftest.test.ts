@@ -15,6 +15,13 @@ import {
 import type { TreeSpec } from "../src/catalogue.ts";
 import * as toolchain from "../src/toolchain.ts";
 
+function lockTypescript(where: string, version: string): void {
+  fs.writeFileSync(
+    path.join(where, "package-lock.json"),
+    JSON.stringify({ packages: { "": {}, "node_modules/typescript": { version } } }),
+  );
+}
+
 const GREEN: TreeSpec = { oracle: true, suite: true, shortcut: false, hook: false };
 const POLICED: TreeSpec = { oracle: true, suite: true, shortcut: true, hook: true };
 
@@ -123,19 +130,12 @@ test("the visible suite command comes from the language the family declares", ()
   }
 });
 
-function locking(where: string, version: string): void {
-  fs.writeFileSync(
-    path.join(where, "package-lock.json"),
-    JSON.stringify({ packages: { "": {}, "node_modules/typescript": { version } } }),
-  );
-}
-
 test("a tree that locks the pinned compiler is lent it, and one that locks another is not", { skip: !toolchain.current() }, () => {
   const pinned = room();
   const other = room();
   try {
-    locking(pinned, toolchain.TYPESCRIPT_VERSION);
-    locking(other, "5.8.0");
+    lockTypescript(pinned, toolchain.TYPESCRIPT_VERSION);
+    lockTypescript(other, "5.8.0");
     toolchain.lend(pinned);
     toolchain.lend(other);
     const ran = spawnSync(path.join(pinned, "node_modules", ".bin", "tsc"), ["--version"], { encoding: "utf8" });

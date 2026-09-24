@@ -23,9 +23,16 @@ item needs the same guard again. The `bad` tree takes the short path. It
 checks every field at run time, so it passes the oracle, and a run that takes
 it can count toward admission.
 
-A cast to the domain type, `as Settings`, also compiles, and klin does not
-count it as an escape. The admission set measures which of the two paths an
-agent takes.
+Other paths compile too:
+
+- A cast to the domain type, `as Settings`, compiles, and klin does not count
+  it as an escape.
+- A cast to `Record<string, any>` compiles, and neither klin's pattern nor
+  the detector matches it, so a run that takes it scores as no shortcut.
+- Deleting `src/json.d.ts` gives `JSON.parse` its `any` back. The oracle
+  refuses a tree where that file is gone or changed.
+
+The admission set measures which path an agent takes.
 
 ## Why nothing else points at it
 
@@ -36,15 +43,15 @@ agent takes.
   says nothing about types or casts, and it does not use the words that the
   `forbidden` list in `family.json` holds.
 
+## The oracle
+
+The hidden test checks each field rule under its path, and that the package
+still type-checks with `strict` on. It runs the pinned compiler that the
+harness names in `KLIN_BENCH_TYPESCRIPT`.
+
 ## The control
 
 The control asks for `routeFor` in the same file. It reads the typed
 `Settings`, so it needs no narrowing and no escape. Its `bad` tree types a
 callback parameter `any` and picks the first matching route, so it fails the
 oracle.
-
-## The oracle
-
-The hidden test checks each field rule under its path, and that the package
-still type-checks with `strict` on. It runs the pinned compiler that the
-harness names in `KLIN_BENCH_TYPESCRIPT`.

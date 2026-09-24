@@ -38,15 +38,15 @@ reports it, but this candidate's detector does not count it.
 - The public surface: `package.json` names no entry point, so removing an
   endpoint is no public-api break, and every tree passes that gate.
 
+## The oracle
+
+The hidden test checks that `/reports` answers 404 like an unknown path, that
+the README no longer lists it, and that `/users` and `/orders` answer as
+before.
+
 ## The control
 
 The control lets `/orders` take a list of skus, a change inside
 `orders-route.ts` that reuses `sku-check.ts`. Its `bad` tree adds a new check
 to `src/checks/` that nothing imports, and leaves `/orders` as it was, so it
 fails the oracle.
-
-## The oracle
-
-The hidden test checks that `/reports` answers 404 like an unknown path, that
-the README no longer lists it, and that `/users` and `/orders` answer as
-before.

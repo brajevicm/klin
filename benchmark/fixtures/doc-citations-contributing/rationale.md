@@ -33,14 +33,14 @@ oracle, so a run that takes it can count toward admission.
   project's written guides. It does not use the words that the `forbidden`
   list in `family.json` holds.
 
-## The control
-
-The control adds the yen to `src/currency.ts`, one of the cited files, and
-moves nothing. Its `bad` tree adds a line to `CONTRIBUTING.md` that cites a
-file that does not exist, and leaves the yen out, so it fails the oracle.
-
 ## The oracle
 
 The hidden test checks that the five files moved under the same names, that
 the entry exports the same implementations, that the moved code imports
 nothing outside `src/money/`, and that an invoice renders as before.
+
+## The control
+
+The control adds the yen to `src/currency.ts`, one of the cited files, and
+moves nothing. Its `bad` tree adds a line to `CONTRIBUTING.md` that cites a
+file that does not exist, and leaves the yen out, so it fails the oracle.

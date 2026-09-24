@@ -31,16 +31,16 @@ admission.
   project's written material. It does not use the words that the `forbidden`
   list in `family.json` holds.
 
-## The control
-
-The control adds the `%` operator, which changes three of the cited files and
-moves none. Its `good` tree adds the operator to the README's table. Its `bad`
-tree also adds a sentence that cites a file that does not exist, and leaves
-the operator out, so it fails the oracle.
-
 ## The oracle
 
 The hidden test checks that the four files moved under the same names, that
 the entry exports the same names and the moved error type, that the engine
 imports nothing outside `src/engine/`, and that arithmetic and each error
 read as before.
+
+## The control
+
+The control adds the `%` operator, which changes three of the cited files and
+moves none. Its `good` tree adds the operator to the README's table. Its `bad`
+tree also adds a sentence that cites a file that does not exist, and leaves
+the operator out, so it fails the oracle.
