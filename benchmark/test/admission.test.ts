@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { LOCK, all, claim, claimed, final, populationProblems, resume, rivals, rubricSha256, schedule, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
-import { APPARATUS, admitted, candidate, clean, digestOf, invalid, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
+import { LOCK, all, claim, claimedOn, final, populationProblems, resume, rivals, rubricSha256, schedule, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
+import { APPARATUS, admitted, candidate, clean, digestOf, invalid, placeOf, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
 
 /**
  * The Shadow-only admission population: what it freezes, what it schedules and the verdict it
@@ -223,7 +223,7 @@ test("the final verdict is the first set's when no retry ran, and names the file
   assert.equal(held.verdict, digestOf(path.join(first.where, "admission.json")));
   assert.equal(held.retry, null);
   assert.equal(held.cohort, first.manifest.cohort);
-  assert.ok(final(first.where, { root: os.tmpdir() }).problems.some((one) => one.includes("not directly under")), "a first set lives in one namespace");
+  assert.ok(final(first.where, { ...rootOf(first.where), root: os.tmpdir() }).problems.some((one) => one.includes("not directly under")), "a first set lives in one namespace");
   fs.rmSync(first.where, { recursive: true, force: true });
 });
 
@@ -290,23 +290,38 @@ test("a retry that is running or was interrupted gives no verdict until it finis
   fs.rmSync(first, { recursive: true, force: true });
 });
 
-test("one rubric has one first set, whatever the apparatus, the candidates or the start times say", () => {
+test("one rubric has one first set, whatever the apparatus, the candidates, the working copy or the start times say", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
+  const place = placeOf(root);
   const declared = [candidate("a", "complexity", 1)];
   const one = withVerdict(setOnDisk(declared, { a: admitted }, { under: root }).where);
-  assert.deepEqual(final(one, { root }).problems, []);
-  assert.equal(claimed(root, rubricSha256() as string), path.basename(one));
+  assert.deepEqual(final(one, place).problems, []);
+  const claimed = JSON.parse(fs.readFileSync(path.join(one, "claim.json"), "utf8")) as { commit: string };
+  assert.equal(claimedOn(place.remote, rubricSha256() as string), claimed.commit, "the claim is a ref on the shared remote");
+  assert.equal(claim(place.remote, rubricSha256() as string, path.join(root, "another")), null, "the remote refuses a second claim");
+  assert.equal(claimedOn(place.remote, rubricSha256() as string), claimed.commit, "a refused claim leaves the first claim in place");
+
   const updated = { ...APPARATUS, host: { name: "claude-code", version: "2.1.300 (Claude Code)" } };
   const changed = [{ ...candidate("a", "complexity", 1), fixtureSha256: "a changed prompt" }, candidate("b", "complexity", 2)];
   const two = setOnDisk(changed, { a: admitted, b: admitted }, { under: root, apparatus: updated });
-  assert.notEqual(two.manifest.cohort, JSON.parse(fs.readFileSync(path.join(one, "manifest.json"), "utf8")).cohort, "a host update and a changed population move the cohort");
-  assert.equal(claim(root, two.manifest.rubric, two.where), false, "the rubric is claimed once");
   fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2020-01-01T00:00:00Z" }) + "\n");
   withVerdict(two.where);
-  assert.ok(final(one, { root }).problems.some((problem) => problem.includes(two.where) && problem.includes("second first set")));
-  const later = final(two.where, { root }).problems;
-  assert.ok(later.some((problem) => problem.includes("is claimed by " + path.basename(one))), "an earlier startedAt, a new host or a changed candidate does not make a set the first");
+  assert.ok(final(one, place).problems.some((problem) => problem.includes(two.where) && problem.includes("second first set")));
+  assert.ok(final(two.where, place).problems.some((problem) => problem.includes("never claimed the rubric")), "an earlier startedAt, a new host or a changed candidate does not make a set the first");
+
+  const clone = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-clone-"));
+  const elsewhere = withVerdict(setOnDisk(declared, { a: admitted }, { under: clone, remote: place.remote }).where);
+  assert.deepEqual(rivals(clone, rubricSha256() as string), [elsewhere], "a fresh working copy sees no rival on disk");
+  assert.ok(
+    final(elsewhere, { root: clone, remote: place.remote }).problems.some((problem) => problem.includes("never claimed the rubric")),
+    "the shared claim still refuses a first set run in another working copy",
+  );
+  fs.writeFileSync(path.join(elsewhere, "claim.json"), JSON.stringify({ commit: "0".repeat(40) }) + "\n");
+  assert.ok(
+    final(elsewhere, { root: clone, remote: place.remote }).problems.some((problem) => problem.includes("is claimed on " + place.remote + " by the commit " + claimed.commit)),
+  );
   fs.rmSync(root, { recursive: true, force: true });
+  fs.rmSync(clone, { recursive: true, force: true });
 });
 
 test("a retry directory is made once, and a set's lock is taken once", () => {

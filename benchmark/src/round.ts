@@ -943,11 +943,11 @@ function retryBlocked(first: string, held: Frozen): boolean {
 /**
  * Every way the admission set a v3 manifest names no longer gives what the manifest froze.
  *
- * The set is read again under `root`, where every admission first set lives: its final verdict,
+ * The set is read again where `place` says every admission first set lives: its final verdict,
  * the digests of the files the verdict came from, and the identity each admitted task had when the
  * first set froze it. Whether its retry could start is read from the frozen apparatus.
  */
-export function admissionProblems(held: Manifest, root = paths.RUNS): string[] {
+export function admissionProblems(held: Manifest, place = admission.PLACE): string[] {
   if (held.population !== V3 || !held.admission || typeof held.admission.directory !== "string" || !held.frozen) {
     return [];
   }
@@ -956,7 +956,7 @@ export function admissionProblems(held: Manifest, root = paths.RUNS): string[] {
     return ["the admission set " + first + " that the manifest names holds no manifest"];
   }
   const cannotStart = !fs.existsSync(path.join(first, admission.RETRY, "manifest.json")) && retryBlocked(first, held.frozen);
-  const { problems, ...now } = admission.final(first, { cannotStart, root });
+  const { problems, ...now } = admission.final(first, { cannotStart, ...place });
   const { directory: _directory, noCandidate: _noCandidate, ...frozenVerdict } = held.admission;
   return [
     ...problems,
@@ -1007,13 +1007,14 @@ function freeze(into: string, held: Manifest, proved: ReturnType<typeof witnesse
 /**
  * Plan the v3 paired round from the final verdict of the admission whose first set is `first`.
  *
- * Every admission first set lives directly under `root`. The plan freezes the admitted tasks. It
+ * Every admission first set lives directly under `place.root`, and its rubric's claim is on
+ * `place.remote`. The plan freezes the admitted tasks. It
  * refuses an admission that gives no final verdict, a gate the verdict leaves unsettled while a
  * retry could still start under the apparatus as it stands, and any declared candidate whose
  * fixture identity moved after the first admission run. Like `plan`, it writes the manifest and
  * starts nothing.
  */
-export function planV3(into: string, first: string, seed: number, probes = PROBE_RUNS, root = paths.RUNS): number {
+export function planV3(into: string, first: string, seed: number, probes = PROBE_RUNS, place = admission.PLACE): number {
   const say = (text: string): number => {
     process.stdout.write(text + "\n");
     return 2;
@@ -1033,7 +1034,7 @@ export function planV3(into: string, first: string, seed: number, probes = PROBE
     return say(blocked);
   }
   const now = frozen(known);
-  let verdict = admission.final(first, { root });
+  let verdict = admission.final(first, place);
   if (verdict.problems.length === 0 && verdict.source === "first set" && verdict.summary.unsettled.length > 0) {
     if (!retryBlocked(first, now)) {
       return say(
@@ -1043,7 +1044,7 @@ export function planV3(into: string, first: string, seed: number, probes = PROBE
     }
     // The apparatus moved since the first set, so no retry of it can start, and rule 6 admits
     // none of its incomplete candidates.
-    verdict = admission.final(first, { cannotStart: true, root });
+    verdict = admission.final(first, { cannotStart: true, ...place });
   }
   if (verdict.problems.length > 0) {
     return say("the admission gives no verdict a paired round may freeze from:\n" + verdict.problems.map((one) => "  " + one).join("\n"));
@@ -1120,7 +1121,7 @@ function settled(attempts: { record: RunRecord | null }[]): boolean {
  * is paid for. A block both of whose rows already hold a valid record is skipped, so a round that
  * stopped resumes where it was without touching a finished trial.
  */
-export function execute(directory: string, approved: string, admissions = paths.RUNS): number {
+export function execute(directory: string, approved: string, place = admission.PLACE): number {
   const file = path.join(directory, "manifest.json");
   if (!fs.existsSync(file)) {
     process.stdout.write("no manifest.json under " + directory + ". Plan first: node benchmark/src/cli.ts plan --into " + directory + "\n");
@@ -1150,7 +1151,7 @@ export function execute(directory: string, approved: string, admissions = paths.
   const moved = [
     ...probeEvidenceProblems(directory, manifest),
     ...drift(manifest.frozen, frozenNow(manifest, known)),
-    ...(manifest.population === V3 ? admissionProblems(manifest, admissions) : uncommitted(identityOf(manifest))),
+    ...(manifest.population === V3 ? admissionProblems(manifest, place) : uncommitted(identityOf(manifest))),
   ];
   if (moved.length > 0) {
     process.stdout.write("refusing to start: " + moved.join("; ") + "\n");
@@ -1237,15 +1238,15 @@ export function execute(directory: string, approved: string, admissions = paths.
 
 /**
  * Every way a finished publishable round fails the manifest it was frozen under. A v3 round's
- * admission first set lives directly under `admissions`.
+ * admission first set lives where `place` says, and its claim on the remote `place` names.
  */
-export function verify(directory: string, admissions = paths.RUNS): string[] {
+export function verify(directory: string, place = admission.PLACE): string[] {
   const file = path.join(directory, "manifest.json");
   if (!fs.existsSync(file)) {
     return ["no manifest.json under " + directory];
   }
   const manifest = readManifest(directory).value;
-  const problems = [...manifestProblems(manifest), ...probeEvidenceProblems(directory, manifest), ...admissionProblems(manifest, admissions)];
+  const problems = [...manifestProblems(manifest), ...probeEvidenceProblems(directory, manifest), ...admissionProblems(manifest, place)];
   if (!manifest.frozen || !Array.isArray(manifest.order)) {
     return problems;
   }
@@ -1510,7 +1511,7 @@ function add(held: Record<string, number>, key: string): void {
  * invalid attempts by arm and reason. No signal is labelled useful or noisy here and no rate that
  * would need such a label is computed.
  */
-export function scorecard(directory: string, admissions = paths.RUNS): Scorecard {
+export function scorecard(directory: string, place = admission.PLACE): Scorecard {
   const manifest = readManifest(directory).value;
   if ((manifest as Manifest & { population?: string }).population === "seeded") {
     throw new Error(directory + " is a seeded round; use report, not scorecard");
@@ -1642,7 +1643,7 @@ export function scorecard(directory: string, admissions = paths.RUNS): Scorecard
       crashed: failed.length,
     },
     invalidByArm,
-    verification: verify(directory, admissions),
+    verification: verify(directory, place),
     planned,
     cells: [...cells.values()].sort((a, b) => (a.family + a.variant + a.arm).localeCompare(b.family + b.variant + b.arm)),
     exposure: {

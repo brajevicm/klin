@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,6 +9,7 @@ import * as session from "./session.ts";
 import { fixtures, frozen, type Frozen } from "./frozen.ts";
 import { validate, type RunRecord } from "./record.ts";
 import { sha256 } from "./trees.ts";
+import { git } from "./workspace.ts";
 import {
   FROZEN,
   crashes,
@@ -419,6 +421,8 @@ export interface Options {
   retry: string;
   /** Where every admission first set lives, directly. */
   root?: string;
+  /** The shared remote that holds each rubric's one claim. */
+  remote?: string;
 }
 
 /** Every way a retry fails the first set it settles. */
@@ -470,38 +474,81 @@ export function rivals(root: string, key: string): string[] {
     });
 }
 
+/** Where admission first sets live, and the shared remote that holds each rubric's one claim. */
+export interface Place {
+  root: string;
+  remote: string;
+}
+
+export const PLACE: Place = { root: paths.RUNS, remote: "origin" };
+
+/** The file in a first set that names the claim commit it pushed. */
+export const CLAIM = "claim.json";
+
 /**
- * Where the one first set of each frozen rubric is claimed, under the root every first set lives in.
+ * The ref on the shared remote that claims the one first set of a rubric version.
  *
- * The claim is keyed by the rubric's sha256 alone. The rubric forbids a change to the rule or to any
+ * It is keyed by the rubric's sha256 alone. The rubric forbids a change to the rule or to any
  * candidate after the first admission run, so neither may open a second admission, and a host
- * update, which moves only the cohort a retry must share, opens none either. A new admission needs a
- * new rubric version.
+ * update, which moves only the cohort a retry must share, opens none either. The ref lives on the
+ * remote and not under `benchmark/runs`, which Git ignores, so a fresh clone sees it too. A new
+ * admission needs a new rubric version.
  */
-export const CLAIMS = ".admission-claims";
-
-function claimOf(root: string, key: string): string {
-  return path.join(root, CLAIMS, key);
+export function claimRef(rubric: string): string {
+  return "refs/klin-benchmark/admission/" + rubric;
 }
 
-/** The first set that claimed `key` under `root`, by its directory name, or null when none did. */
-export function claimed(root: string, key: string): string | null {
-  const file = claimOf(root, key);
-  return fs.existsSync(file) ? String((JSON.parse(fs.readFileSync(file, "utf8")) as { first?: unknown }).first) : null;
-}
-
-/** Claim `key` for the first set `first`, atomically. False when another first set holds the claim. */
-export function claim(root: string, key: string, first: string): boolean {
-  fs.mkdirSync(path.join(root, CLAIMS), { recursive: true });
-  try {
-    fs.writeFileSync(claimOf(root, key), JSON.stringify({ first: path.basename(first), at: new Date().toISOString() }) + "\n", { flag: "wx" });
-    return true;
-  } catch (why) {
-    if ((why as { code?: string }).code === "EEXIST") {
-      return false;
-    }
-    throw why;
+/** The claim commit the remote's ref names, or null when the rubric is unclaimed. It throws when the remote cannot be read. */
+export function claimedOn(remote: string, rubric: string): string | null {
+  const ran = spawnSync("git", ["ls-remote", remote, claimRef(rubric)], { cwd: paths.REPO, encoding: "utf8" });
+  if (ran.status !== 0) {
+    throw new Error("cannot read " + claimRef(rubric) + " on " + remote + ": " + ran.stderr.trim());
   }
+  const line = ran.stdout.trim();
+  return line === "" ? null : line.split(/\s+/)[0];
+}
+
+/**
+ * Claim the rubric for the first set `first` on `remote`, or return null when another claim holds it.
+ *
+ * The claim commit carries a random token, so no second claimant can push the same commit. The push
+ * leases the ref as absent, so the remote creates it once and refuses every later push.
+ */
+export function claim(remote: string, rubric: string, first: string): string | null {
+  const empty = git(paths.REPO, "hash-object", "-w", "-t", "tree", "/dev/null");
+  const commit = git(
+    paths.REPO,
+    "commit-tree",
+    empty,
+    "-m",
+    JSON.stringify({ rubric, first: path.basename(first), token: randomUUID(), at: new Date().toISOString() }),
+  );
+  const ref = claimRef(rubric);
+  spawnSync("git", ["push", "--quiet", remote, commit + ":" + ref, "--force-with-lease=" + ref + ":"], { cwd: paths.REPO, encoding: "utf8" });
+  return claimedOn(remote, rubric) === commit ? commit : null;
+}
+
+/** Why `first` does not hold its rubric's claim on `remote`, or nothing when it does. */
+function claimProblems(first: string, rubric: string, remote: string): string[] {
+  const file = path.join(first, CLAIM);
+  if (!fs.existsSync(file)) {
+    return [first + " holds no " + CLAIM + ", so it never claimed the rubric " + rubric];
+  }
+  const commit = String((JSON.parse(fs.readFileSync(file, "utf8")) as { commit?: unknown }).commit);
+  let held: string | null;
+  try {
+    held = claimedOn(remote, rubric);
+  } catch (why) {
+    return [String(why)];
+  }
+  if (held === commit) {
+    return [];
+  }
+  return [
+    held === null
+      ? "no first set claimed the rubric " + rubric + " on " + remote
+      : "the rubric " + rubric + " is claimed on " + remote + " by the commit " + held + ", not by the claim " + commit + " that " + first + " made",
+  ];
 }
 
 /** The verdict a paired round freezes from, and the files it came from. */
@@ -623,8 +670,8 @@ export function retryCohort(first: string, apparatus: Apparatus): string {
  * too. A retry that verifies gives the final verdict. A retry that does not verify, or one that
  * `cannotStart` says no process could start, admits none of the incomplete candidates.
  */
-export function final(first: string, options: { cannotStart?: boolean; root?: string } = {}): Final {
-  const root = options.root ?? paths.RUNS;
+export function final(first: string, options: { cannotStart?: boolean } & Partial<Place> = {}): Final {
+  const { root, remote } = { ...PLACE, ...options };
   const manifest = readManifest(first);
   const problems = [...unterminated(first), ...verify(first, false)];
   if (manifest.first !== null) {
@@ -637,14 +684,7 @@ export function final(first: string, options: { cannotStart?: boolean; root?: st
   for (const other of rivals(root, key).filter((one) => path.resolve(one) !== path.resolve(first))) {
     problems.push(other + " is a second first set under the same rubric, so neither is the first set until a person removes one with a recorded reason");
   }
-  const owner = claimed(root, key);
-  if (owner !== path.basename(first)) {
-    problems.push(
-      owner === null
-        ? "no first set claimed the rubric " + key + " under " + path.join(root, CLAIMS)
-        : "the rubric " + key + " is claimed by " + owner + ", not by " + path.basename(first),
-    );
-  }
+  problems.push(...claimProblems(first, key, remote));
   const kept = path.join(first, "admission.json");
   if (!fs.existsSync(kept)) {
     problems.push(first + " holds no admission.json, so the first set states no verdict");
@@ -731,7 +771,7 @@ export function all(chosen: Options): number {
     return 2;
   }
   let names = known.map((one) => one.name);
-  const root = chosen.root ?? paths.RUNS;
+  const root = chosen.root ?? PLACE.root;
   const into = chosen.retry === "" ? chosen.into : path.join(chosen.retry, RETRY);
   const first = chosen.retry === "" ? into : chosen.retry;
   if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
@@ -813,10 +853,24 @@ export function all(chosen: Options): number {
     process.stdout.write(into + " exists. An admission set is written once, and a first set takes one retry.\n");
     return 2;
   }
-  if (chosen.retry === "" && !claim(root, key, into)) {
-    fs.rmSync(into, { recursive: true, force: true });
-    process.stdout.write("the rubric " + key + " is already claimed by " + String(claimed(root, key)) + ", and one rubric version has one first set\n");
-    return 2;
+  if (chosen.retry === "") {
+    const remote = chosen.remote ?? PLACE.remote;
+    let commit: string | null = null;
+    let failure = "";
+    try {
+      commit = claim(remote, key, into);
+    } catch (why) {
+      failure = String(why);
+    }
+    if (commit === null) {
+      fs.rmSync(into, { recursive: true, force: true });
+      process.stdout.write(
+        (failure || "the rubric " + key + " is already claimed on " + remote + ", and one rubric version has one first set") +
+          "\nNo session ran.\n",
+      );
+      return 2;
+    }
+    fs.writeFileSync(path.join(into, CLAIM), JSON.stringify({ remote, ref: claimRef(key), commit }, null, 2) + "\n");
   }
   const token = acquire(into) as string;
   fs.writeFileSync(path.join(into, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");

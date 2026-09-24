@@ -29,7 +29,7 @@ import {
 import type { RunRecord } from "../src/record.ts";
 import { sha256 } from "../src/trees.ts";
 import { probeOnDisk } from "./probe-fixture.ts";
-import { APPARATUS, admitted, candidate, clean, invalid, recordFor, risk, setOnDisk, withVerdict } from "./admission-fixture.ts";
+import { APPARATUS, admitted, candidate, clean, invalid, placeOf, recordFor, risk, setOnDisk, withVerdict } from "./admission-fixture.ts";
 
 /**
  * The v3 paired round: its blocks come from the final admission verdict, its manifest freezes that
@@ -74,7 +74,7 @@ function admissionOnDisk(root: string): Lineage {
   const first = withVerdict(
     setOnDisk(POOL, { "complexity-quote": admitted, "complexity-shipping": none, "complexity-fines": admitted, "stubs-slug": admitted, "inventory-csv": none }, { under: root }).where,
   );
-  const { problems, ...verdict } = final(first, { root });
+  const { problems, ...verdict } = final(first, placeOf(root));
   assert.deepEqual(problems, []);
   return { ...verdict, directory: path.relative(paths.REPO, first), noCandidate: NO_CANDIDATE };
 }
@@ -184,8 +184,8 @@ test("a complete v3 round verifies against its admission set, scores by gate and
       fs.mkdirSync(path.join(where, row.trialId));
       fs.writeFileSync(path.join(where, row.trialId, "record.json"), JSON.stringify(record) + "\n");
     }
-    assert.deepEqual(verify(where, where), []);
-    const card = scorecard(where, where);
+    assert.deepEqual(verify(where, placeOf(where)), []);
+    const card = scorecard(where, placeOf(where));
     assert.equal(card.primary.blocks, 3);
     assert.equal(card.primary.favorable, 2);
     assert.deepEqual(card.primary.byGate.map((one) => [one.gate, one.tasks, one.favorable]), [
@@ -210,12 +210,12 @@ test("a complete v3 round verifies against its admission set, scores by gate and
 
     const first = path.resolve(paths.REPO, lineage.directory);
     fs.writeFileSync(path.join(first, "admission.json"), fs.readFileSync(path.join(first, "admission.json"), "utf8") + " ");
-    assert.ok(verify(where, where).some((one) => one.includes("no longer gives the verdict")), "an admission set edited after the plan fails the round");
+    assert.ok(verify(where, placeOf(where)).some((one) => one.includes("no longer gives the verdict")), "an admission set edited after the plan fails the round");
     const forged = structuredClone(held);
     forged.admission = { ...lineage, source: "first set, the retry cannot start" };
     fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(forged) + "\n");
     assert.ok(
-      verify(where, where).some((one) => one.includes("no longer gives the verdict")),
+      verify(where, placeOf(where)).some((one) => one.includes("no longer gives the verdict")),
       "a manifest cannot claim its retry could not start: the frozen apparatus says whether it could",
     );
   } finally {
@@ -246,7 +246,7 @@ test("plan --population v3 refuses a retry that could still start or a moved can
     const faked = { ...declared("complexity-fines"), fixtureSha256: "moved" };
     const apart = fs.mkdtempSync(path.join(where, "apart-"));
     const stale = withVerdict(setOnDisk([faked], { "complexity-fines": admitted }, { under: apart }).where);
-    const changed = quiet(() => planV3(path.join(where, "changed"), stale, 1, probes, apart));
+    const changed = quiet(() => planV3(path.join(where, "changed"), stale, 1, probes, placeOf(apart)));
     assert.equal(changed.value, 2, changed.wrote);
     assert.match(changed.wrote, /complexity-fines is not the candidate the first set froze/);
     fs.rmSync(stale, { recursive: true, force: true });
@@ -256,13 +256,13 @@ test("plan --population v3 refuses a retry that could still start or a moved can
     const { klin: _klin, fixtures: _fixtures, ...machine } = frozen(session.defaults());
     const here = fs.mkdtempSync(path.join(where, "here-"));
     const startable = withVerdict(setOnDisk(pool, outcomes, { under: here, apparatus: { ...machine, harness: { ...machine.harness, dirty: false } } }).where);
-    const refused = quiet(() => planV3(path.join(where, "startable"), startable, 1, probes, here));
+    const refused = quiet(() => planV3(path.join(where, "startable"), startable, 1, probes, placeOf(here)));
     assert.equal(refused.value, 2, refused.wrote);
     assert.match(refused.wrote, /leaves complexity unsettled\. Run its one retry/, "the apparatus as it stands could still start the retry");
 
     const short = withVerdict(setOnDisk(pool, outcomes, { under: where }).where);
     const into = path.join(where, "round");
-    const unproved = quiet(() => planV3(into, short, 1, probes, where));
+    const unproved = quiet(() => planV3(into, short, 1, probes, placeOf(where)));
     assert.equal(unproved.value, 2, unproved.wrote);
     assert.doesNotMatch(unproved.wrote, /unsettled/, "a retry that cannot start settles the gate by rule 6");
     if (execFileSync("git", ["status", "--porcelain"], { cwd: paths.REPO, encoding: "utf8" }).trim() !== "") {
@@ -274,7 +274,7 @@ test("plan --population v3 refuses a retry that could still start or a moved can
     for (const language of ["typescript", "rust"]) {
       probeOnDisk(probes, language === "rust" ? "probe-22222222" : "probe-11111111", language, true, now, "2026-09-24T12:00:00.000Z");
     }
-    const planned = quiet(() => planV3(into, short, 1, probes, where));
+    const planned = quiet(() => planV3(into, short, 1, probes, placeOf(where)));
     assert.equal(planned.value, 0, planned.wrote);
     assert.match(planned.wrote, /planned 4 v3 blocks, 8 runs, seed 1, from the verdict of the first set, the retry cannot start/);
     assert.match(planned.wrote, /No session ran/);
@@ -286,7 +286,7 @@ test("plan --population v3 refuses a retry that could still start or a moved can
     assert.deepEqual(held.admission?.noCandidate, ["dead-symbols", "doc-citations", "escapes", "inventory", "lockfile", "public-api", "reachability"]);
     assert.deepEqual(Object.keys(held.frozen.fixtures).sort(), ["complexity-quote", "stubs-slug"]);
     assert.deepEqual(held.frozen.fixtures["stubs-slug"], fixtures([family("stubs-slug")])["stubs-slug"]);
-    const again = quiet(() => planV3(into, short, 1, probes, where));
+    const again = quiet(() => planV3(into, short, 1, probes, placeOf(where)));
     assert.equal(again.value, 2);
     assert.match(again.wrote, /not regenerated/);
   } finally {

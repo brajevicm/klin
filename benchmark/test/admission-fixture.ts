@@ -4,7 +4,8 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, claim, cohortOf, orderOf, rubricSha256, summarize, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import { execFileSync } from "node:child_process";
+import { CLAIM, RULE, claim, claimRef, cohortOf, orderOf, rubricSha256, summarize, type Apparatus, type Candidate, type Manifest, type Place } from "../src/admission.ts";
 import type { RunRecord } from "../src/record.ts";
 import { sha256 } from "../src/trees.ts";
 
@@ -104,7 +105,7 @@ export function write(where: string, directory: string, record: RunRecord): void
 export function setOnDisk(
   declared: Candidate[],
   outcomes: Record<string, Outcome[]>,
-  at: { retries?: string; under?: string; apparatus?: Apparatus } = {},
+  at: { retries?: string; under?: string; apparatus?: Apparatus; remote?: string } = {},
 ): { where: string; manifest: Manifest } {
   const where = at.retries
     ? path.join(at.retries, "retry")
@@ -130,7 +131,11 @@ export function setOnDisk(
   manifest.cohort = cohortOf(manifest);
   fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
   if (!at.retries) {
-    claim(path.dirname(where), manifest.rubric, where);
+    const remote = at.remote ?? placeOf(path.dirname(where)).remote;
+    const commit = claim(remote, manifest.rubric, where);
+    if (commit !== null) {
+      fs.writeFileSync(path.join(where, CLAIM), JSON.stringify({ remote, ref: claimRef(manifest.rubric), commit }) + "\n");
+    }
   }
   for (const row of manifest.order) {
     const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;
@@ -154,7 +159,16 @@ export function digestOf(file: string): string {
   return sha256(fs.readFileSync(file));
 }
 
-/** The root a set made by `setOnDisk` lives directly under, where `final` looks for its rivals. */
-export function rootOf(where: string): { root: string } {
-  return { root: path.dirname(where) };
+/** A root for first sets, with a bare repository beside them as the shared remote that holds the claims. */
+export function placeOf(root: string): Place {
+  const remote = path.join(root, ".claims.git");
+  if (!fs.existsSync(remote)) {
+    execFileSync("git", ["init", "--quiet", "--bare", remote]);
+  }
+  return { root, remote };
+}
+
+/** The place a set made by `setOnDisk` lives in, where `final` looks for its rivals and its claim. */
+export function rootOf(where: string): Place {
+  return placeOf(path.dirname(where));
 }

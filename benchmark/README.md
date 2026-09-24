@@ -709,11 +709,20 @@ Every first set lives directly under `benchmark/runs`, and the command takes no
 `--into`. Thus a rival first set cannot hide in another directory.
 
 One rubric version has one first set. Before its first session, a first set
-claims the rubric's sha256 as `benchmark/runs/.admission-claims/<sha256>`,
-with an exclusive create. A second first set under the same rubric cannot
-start. This stays true after a host update moves the cohort, and after a
-change to the rule or to a candidate, which the rubric forbids after the first
-admission run. The first-set manifest still freezes the declared population,
+claims the rubric on `origin`: it pushes a claim commit to
+`refs/klin-benchmark/admission/<rubric sha256>` with
+`--force-with-lease=<ref>:`, so the remote creates the ref once and refuses
+every later push. The claim commit holds a random token, so no second claimant
+can push the same commit. The first set keeps the commit id in its own
+`claim.json`, and the plan requires the remote ref to name that commit. The
+claim is on the remote because `benchmark/runs` is ignored by Git, and a claim
+there would not reach a fresh clone. A first set that cannot push its claim
+does not start.
+
+A second first set under the same rubric cannot start in this working copy or
+in any other one. This stays true after a host update moves the cohort, and
+after a change to the rule or to a candidate, which the rubric forbids after
+the first admission run. The first-set manifest still freezes the declared population,
 and the cohort only says whether a retry can continue the first set under the
 same apparatus. If the host changes during a first set, restore the frozen
 apparatus and resume the set. If that is not possible, keep the failed set as
@@ -787,8 +796,9 @@ The retry runs every incomplete candidate and no other, into
 `FIRST-SET/retry`, and its manifest records the sha256 of the first set's.
 Every manifest records a cohort, the sha256 of the rubric, the rule, the
 declared population and the apparatus less the harness commit, and `verify`
-recomputes it. A first set does not start beside another first set of its
-cohort, and a retry does not start unless the first set verifies. The retry's
+recomputes it. A first set does not start while another first set under the
+same rubric holds the claim, and a retry does not start unless the first set
+verifies. The retry's
 `admission.json` holds the final verdict: the first set's complete verdicts
 stand, the retry's replace the incomplete ones, and a candidate the retry
 leaves incomplete is not admitted. `verify` on the first set verifies its retry
@@ -817,8 +827,9 @@ section 4:
 
 - The first set must lie directly under `benchmark/runs`, must be finished,
   must verify alone and must hold its `admission.json`.
-- The first set must hold the claim of its rubric. No other first set under
-  the same rubric may lie under `benchmark/runs`. If two exist, the plan
+- The claim ref of its rubric on `origin` must name the claim commit in the
+  first set's `claim.json`. No other first set under the same rubric may lie
+  under `benchmark/runs`. If two exist, the plan
   refuses. It does not choose between them by `startedAt`,
   because that text binds to nothing a set records. A person removes one, and
   records the reason.
