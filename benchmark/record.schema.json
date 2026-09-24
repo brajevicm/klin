@@ -75,12 +75,14 @@
     "kind": {
       "enum": [
         "calibration",
-        "publishable"
-      ]
+        "publishable",
+        "admission"
+      ],
+      "description": "An admission record is a Shadow-only run of a candidate task. It never enters a publishable round or a scorecard."
     },
     "publishable": {
       "type": "boolean",
-      "description": "False for every calibration record. Issue #115 excludes calibration from the scorecard."
+      "description": "False for every calibration and admission record. Issue #115 excludes calibration from the scorecard."
     },
     "family": {
       "type": "string",

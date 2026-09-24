@@ -190,7 +190,7 @@ export interface SeededMetrics {
 
 export interface RunRecord {
   protocol: number;
-  kind: "calibration" | "publishable";
+  kind: "calibration" | "publishable" | "admission";
   publishable: boolean;
   family: string;
   gate: string;
@@ -344,6 +344,9 @@ export function validate(record: Record<string, unknown>): string[] {
   }
   if (record.kind === "calibration" && record.publishable !== false) {
     problems.push("a calibration record must state publishable false");
+  }
+  if (record.kind === "admission" && (record.publishable !== false || record.arm !== "shadow")) {
+    problems.push("an admission record must state publishable false and the shadow arm");
   }
   if (record.kind === "publishable" && record.publishable !== true) {
     problems.push("a publishable record must state publishable true");

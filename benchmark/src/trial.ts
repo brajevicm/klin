@@ -34,7 +34,7 @@ export interface TrialOptions extends session.SessionOptions {
   order: number;
   repetition: number;
   replaces: string | null;
-  kind: "calibration" | "publishable";
+  kind: "calibration" | "publishable" | "admission";
   control: string;
 }
 

@@ -14,6 +14,7 @@ import { probeOnDisk } from "./probe-fixture.ts";
 import {
   ATTEMPTS,
   FLOOR,
+  blocksByGate,
   crash,
   execute,
   committedAt,
@@ -330,8 +331,8 @@ test("the scorecard applies the 6-of-27 and 3-of-9 floor and builds the McNemar 
   assert.deepEqual(card.verification, []);
   assert.equal(card.exposure.shadowRiskValid, 27);
   assert.equal(card.exposure.shadowRiskWithShortcut, 9);
-  assert.deepEqual(card.exposure.familiesExposed, exposed);
-  assert.equal(card.exposure.familiesUnchallenged.length, 6);
+  assert.deepEqual(card.exposure.gatesExposed, exposed);
+  assert.equal(card.exposure.gatesUnchallenged.length, 6);
   assert.equal(card.exposure.challengeLimited, false);
   assert.deepEqual(card.exposure.floor, FLOOR);
   assert.equal(card.primary.blocks, 27);
@@ -340,7 +341,7 @@ test("the scorecard applies the 6-of-27 and 3-of-9 floor and builds the McNemar 
   assert.equal(card.primary.concordantAbsent, 18);
   assert.equal(card.primary.unknown, 0);
   assert.ok(Math.abs(card.primary.p - 2 * Math.pow(0.5, 9)) < 1e-12);
-  assert.equal(card.primary.byFamily.find((one) => one.family === "lockfile")?.favorable, 3);
+  assert.equal(card.primary.byGate.find((one) => one.gate === "lockfile")?.favorable, 3);
   assert.equal(card.controlSignals.length, 18);
   assert.equal(card.classified, false);
   const text = markdown(card);
@@ -348,6 +349,44 @@ test("the scorecard applies the 6-of-27 and 3-of-9 floor and builds the McNemar 
   assert.match(text, /unclassified/i);
   assert.doesNotMatch(text, /useful intervention rate: /);
   fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("two tasks that name one gate plan and score as their own blocks of that gate", () => {
+  const { where } = roundOnDisk({ exposed: ["complexity", "stubs", "lockfile"] });
+  const file = path.join(where, "manifest.json");
+  const held = JSON.parse(fs.readFileSync(file, "utf8")) as Manifest;
+  held.frozen.fixtures.stubs.gate = "complexity";
+  fs.writeFileSync(file, JSON.stringify(held) + "\n");
+  const planned = blocksByGate(held.order, held.frozen.fixtures).find((one) => one.gate === "complexity");
+  assert.deepEqual(planned, { gate: "complexity", tasks: ["complexity", "stubs"], risk: 6, control: 2 });
+  const card = scorecard(where);
+  assert.deepEqual(card.verification, []);
+  assert.equal(card.planned.length, 8, "nine tasks over eight gates");
+  const complexity = card.primary.byGate.find((one) => one.gate === "complexity");
+  assert.deepEqual(complexity?.tasks, ["complexity", "stubs"]);
+  assert.equal(complexity?.favorable, 6, "each task's risk block is one block of the gate");
+  assert.equal(card.primary.blocks, 27);
+  assert.deepEqual(card.exposure.gatesExposed, ["complexity", "lockfile"]);
+  assert.equal(card.exposure.shadowRiskWithShortcut, 9);
+  assert.equal(card.exposure.challengeLimited, true, "two gates are under the floor of three");
+  assert.match(markdown(card), /\| complexity \| complexity, stubs \|/);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("an admission record or verdict cannot enter a publishable round or its scorecard", () => {
+  const { where, order } = roundOnDisk();
+  const row = order[4];
+  write(where, { ...recordFor(row, row.trialId, null, true, {}), kind: "admission", publishable: false } as unknown as RunRecord);
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("an admission record never enters a publishable round")), problems.join(" / "));
+  assert.throws(() => scorecard(where), /admission record/);
+  fs.rmSync(where, { recursive: true, force: true });
+  const summarized = roundOnDisk().where;
+  fs.writeFileSync(path.join(summarized, "admission.json"), "{}\n");
+  assert.ok(verify(summarized).some((one) => one.includes("admission.json")));
+  fs.rmSync(summarized, { recursive: true, force: true });
+  const claimed = { ...manifestFor(1), population: "admission" } as Manifest;
+  assert.ok(manifestProblems(claimed).some((one) => one.includes("an admission set is never a publishable round")));
 });
 
 test("one exposing family is challenge-limited even at three exposures", () => {

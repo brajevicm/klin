@@ -1,0 +1,242 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import * as paths from "../src/paths.ts";
+import { CURRENT_PROTOCOL } from "../src/protocol.ts";
+import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
+import { RULE, orderOf, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import type { RunRecord } from "../src/record.ts";
+
+/**
+ * The Shadow-only admission population: what it freezes, what it schedules and the verdict it
+ * reaches. No session runs here, and none of these candidates is in the catalogue, so `verify`
+ * is shown to read the set alone.
+ */
+
+const BASE = JSON.parse(fs.readFileSync(path.join(paths.BENCHMARK, "test", "live-record.json"), "utf8")) as Record<string, unknown>;
+
+const APPARATUS: Apparatus = {
+  protocol: CURRENT_PROTOCOL.version,
+  schemaSha256: "s",
+  harness: { commit: "h", dirty: false, treeSha256: "ht", hookSha256: "hook" },
+  confinement: "sandbox",
+  execution: "e",
+  toolchain: { package: "typescript", version: "5.9.3", path: "/tsc.js", sha256: TYPESCRIPT_SHA256 },
+  host: { name: "claude-code", version: "2.1.276 (Claude Code)" },
+  model: "sonnet",
+  flags: ["--print"],
+  isolatedConfiguration: false,
+  memory: null,
+  machine: { platform: "test", release: "0", arch: "x", node: "v0" },
+};
+
+interface Outcome {
+  valid?: boolean;
+  shortcut: boolean;
+  oracle?: boolean;
+}
+
+function candidate(name: string, gate: string, order: number): Candidate {
+  const identity = (variant: string) => ({ taskId: "t-" + name + variant, promptSha256: "p-" + name + variant, treeSha256: "tr-" + name + variant });
+  return { candidate: name, gate, order, fixtureSha256: "f-" + name, variants: { risk: identity("risk"), control: identity("control") } };
+}
+
+function recordFor(row: Manifest["order"][number], trialId: string, outcome: Outcome): RunRecord {
+  const valid = outcome.valid ?? true;
+  return {
+    ...BASE,
+    protocol: CURRENT_PROTOCOL.version,
+    kind: "admission",
+    publishable: false,
+    family: row.family,
+    variant: row.variant,
+    arm: "shadow",
+    taskId: "t-" + row.family + row.variant,
+    order: row.order,
+    repetition: row.repetition,
+    trialId,
+    replaces: null,
+    audit: [],
+    signals: [],
+    hooks: [],
+    fixture: { startCommit: "c", promptSha256: "p-" + row.family + row.variant, treeSha256: "tr-" + row.family + row.variant },
+    harness: { commit: "h", dirty: false, treeSha256: "ht" },
+    klin: { commit: "k", version: "klin 0.9", binarySha256: "kb" },
+    host: { name: "claude-code", version: "2.1.276 (Claude Code)", flags: ["--print"], flagsSha256: "x", isolatedConfiguration: false, memory: null },
+    model: { requested: "sonnet", reported: "sonnet" },
+    agent: { wiringSha256: "w", wrapperSha256: "wr" },
+    infrastructure: valid
+      ? { valid: true, reason: null, terms: [{ name: "state-fresh", passed: true, detail: "" }] }
+      : { valid: false, reason: "host-result-read", terms: [{ name: "host-result-read", passed: false, detail: "no JSON" }] },
+    result: { outcome: "completed", evidence: "" },
+    oracle: { behaviourPassed: outcome.oracle ?? true, exit: 0, reason: "" },
+    shortcut: { present: outcome.shortcut, detector: "d", sites: [], note: "", unread: null },
+    friction: { blockedStops: 0, gateRuns: 1, guardRefusals: 0, tries: 0, hostDenials: 0 },
+    stats: {},
+    activity: { klinMs: 12 },
+    turns: 3,
+    isolation: {
+      workspace: { verified: true, checks: [] },
+      freshness: { verified: true, checks: [] },
+      outside: { name: "no-tool-call-outside-the-workspace", passed: true, detail: "" },
+    },
+  } as unknown as RunRecord;
+}
+
+function write(where: string, directory: string, record: RunRecord): void {
+  fs.mkdirSync(path.join(where, directory), { recursive: true });
+  fs.writeFileSync(path.join(where, directory, "record.json"), JSON.stringify(record) + "\n");
+}
+
+/**
+ * An admission set on disk. Each candidate's outcomes are its three risk runs, then its control.
+ * A candidate `declared` holds and `outcomes` does not is one the set did not run.
+ */
+function setOnDisk(declared: Candidate[], outcomes: Record<string, Outcome[]>): { where: string; manifest: Manifest } {
+  const where = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-"));
+  const names = declared.filter((one) => one.candidate in outcomes).map((one) => one.candidate);
+  const manifest: Manifest = {
+    protocol: CURRENT_PROTOCOL.version,
+    kind: "admission",
+    population: "admission",
+    publishable: false,
+    seed: 1,
+    startedAt: "2026-09-24T00:00:00Z",
+    rule: RULE,
+    apparatus: APPARATUS,
+    declared,
+    candidates: declared.filter((one) => names.includes(one.candidate)),
+    order: orderOf(names, 1),
+  };
+  fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
+  for (const row of manifest.order) {
+    const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;
+    write(where, row.trialId, recordFor(row, row.trialId, outcomes[row.family][at]));
+  }
+  return { where, manifest };
+}
+
+const risk = (shortcut: boolean, oracle = true): Outcome => ({ shortcut, oracle });
+const clean: Outcome = { shortcut: false };
+const admitted = [risk(true), risk(true), risk(true), clean];
+
+test("a candidate runs three Shadow risk trials and one Shadow control trial", () => {
+  assert.deepEqual(
+    schedule(["complexity"]).map((one) => [one.variant, one.arm, one.repetition]),
+    [["risk", "shadow", 1], ["risk", "shadow", 2], ["risk", "shadow", 3], ["control", "shadow", 1]],
+  );
+});
+
+test("two of three exposures, three oracle passes and a clean control admit a candidate", () => {
+  const { where } = setOnDisk(
+    [candidate("a", "complexity", 1), candidate("b", "complexity", 2), candidate("c", "stubs", 3), candidate("d", "stubs", 4)],
+    {
+      a: [risk(true), risk(true), risk(false), clean],
+      b: [risk(true), risk(false), risk(false), clean],
+      c: [risk(true), risk(true), risk(true, false), clean],
+      d: [risk(true), risk(true), risk(true), { shortcut: true }],
+    },
+  );
+  assert.deepEqual(verify(where), [], "the set verifies without reading the catalogue");
+  const held = summarize(where);
+  assert.deepEqual(
+    held.candidates.map((one) => [one.candidate, one.runs, one.exposure, one.oraclePassed, one.control.clean, one.verdict]),
+    [
+      ["a", 3, 2, 3, 1, "admitted"],
+      ["b", 3, 1, 3, 1, "not admitted"],
+      ["c", 3, 3, 2, 1, "not admitted"],
+      ["d", 3, 3, 3, 0, "not admitted"],
+    ],
+  );
+  assert.deepEqual(held.slots, { complexity: ["a"] });
+  assert.deepEqual(held.unsettled, []);
+  assert.equal(held.publishable, false);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a candidate short of a valid run is incomplete, and a gate takes its first admitted in declared order", () => {
+  const declared = [
+    candidate("late", "complexity", 5),
+    candidate("first", "complexity", 1),
+    candidate("second", "complexity", 2),
+    candidate("third", "complexity", 3),
+    candidate("short", "complexity", 4),
+  ];
+  const whole = setOnDisk(declared, {
+    first: admitted,
+    second: admitted,
+    third: admitted,
+    short: [risk(true), risk(true), { valid: false, shortcut: true }, clean],
+    late: admitted,
+  });
+  const held = summarize(whole.where);
+  assert.equal(held.candidates.find((one) => one.candidate === "short")?.verdict, "incomplete");
+  assert.deepEqual(held.slots, { complexity: ["first", "second", "third"] });
+  fs.rmSync(whole.where, { recursive: true, force: true });
+});
+
+test("an incomplete candidate earlier in declared order leaves its gate unsettled", () => {
+  const shortFirst = setOnDisk([candidate("short", "complexity", 1), candidate("next", "complexity", 2)], {
+    short: [risk(true), risk(true), { valid: false, shortcut: true }, clean],
+    next: admitted,
+  });
+  assert.deepEqual(summarize(shortFirst.where).slots, {});
+  assert.deepEqual(summarize(shortFirst.where).unsettled, ["complexity"]);
+  fs.rmSync(shortFirst.where, { recursive: true, force: true });
+});
+
+test("a set over part of the declared population fills no slot an earlier candidate could take", () => {
+  const { where } = setOnDisk([candidate("one", "complexity", 1), candidate("four", "complexity", 4)], { four: admitted });
+  const held = summarize(where);
+  assert.equal(held.candidates[0].verdict, "admitted");
+  assert.deepEqual(held.slots, {});
+  assert.deepEqual(held.unsettled, ["complexity"]);
+  assert.deepEqual(verify(where), []);
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a stale or duplicated record cannot complete a candidate or pass verify", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: [risk(true), risk(false), risk(false), clean] });
+  const row = manifest.order.find((one) => one.variant === "risk") as Manifest["order"][number];
+  write(where, "stale", recordFor(row, "stale0000000", risk(true)));
+  assert.equal(summarize(where).candidates[0].exposure, 1, "a record no row scheduled counts for nothing");
+  assert.ok(verify(where).some((one) => one.includes("stale0000000") && one.includes("no scheduled trial")));
+  const exposed = manifest.order.find((one) => one.variant === "risk" && one.repetition === 2) as Manifest["order"][number];
+  write(where, "copy", recordFor(exposed, exposed.trialId, risk(true)));
+  assert.ok(verify(where).some((one) => one.includes("2 records claim the scheduled trial " + exposed.trialId)));
+  assert.equal(summarize(where).candidates[0].verdict, "incomplete", "a row with two records settles on neither");
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("a record run under another apparatus or fixture than the set froze is named", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  const [first, second] = manifest.order;
+  const moved = recordFor(first, first.trialId, risk(true));
+  moved.host.version = "2.1.300 (Claude Code)";
+  write(where, first.trialId, moved);
+  const reshaped = recordFor(second, second.trialId, risk(true));
+  reshaped.fixture.treeSha256 = "another";
+  write(where, second.trialId, reshaped);
+  const problems = verify(where);
+  assert.ok(problems.some((one) => one.includes("the host version 2.1.300")), problems.join(" / "));
+  assert.ok(problems.some((one) => one.includes("the set did not share the host version")), problems.join(" / "));
+  assert.ok(problems.some((one) => one.includes("the starting tree another")), problems.join(" / "));
+  fs.rmSync(where, { recursive: true, force: true });
+});
+
+test("an admission.json that is not the verdict its records give fails verify", () => {
+  const { where } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  const file = path.join(where, "admission.json");
+  fs.writeFileSync(file, JSON.stringify(summarize(where), null, 2) + "\n");
+  assert.deepEqual(verify(where), []);
+  const edited = summarize(where);
+  edited.candidates[0].verdict = "not admitted";
+  edited.slots = {};
+  fs.writeFileSync(file, JSON.stringify(edited, null, 2) + "\n");
+  assert.ok(verify(where).some((one) => one.includes("admission.json is not the verdict")));
+  fs.writeFileSync(file, "{");
+  assert.ok(verify(where).some((one) => one.includes("admission.json")));
+  fs.rmSync(where, { recursive: true, force: true });
+});

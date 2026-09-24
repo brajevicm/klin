@@ -1,9 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { ARMS, cells, families, variantNames } from "./catalogue.ts";
+import { ARMS, catalogue, cells, families, variantNames } from "./catalogue.ts";
 import * as selftest from "./selftest.ts";
 import * as calibrate from "./calibrate.ts";
+import * as admission from "./admission.ts";
 import * as probe from "./probe.ts";
 import * as report from "./report.ts";
 import * as evidence from "./evidence.ts";
@@ -21,7 +22,7 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts selftest [family ...]
   node benchmark/src/cli.ts run <family> <variant> <active|shadow> [--into DIR]
   node benchmark/src/cli.ts probe [family]
-  node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...]
+  node benchmark/src/cli.ts calibrate [--into DIR] [--seed N] [--only family,...] [--population admission]
   node benchmark/src/cli.ts protocol [--seed N] [--write]
   node benchmark/src/cli.ts plan [--into DIR] [--seed N] [--population seeded [--families a,b] [--repetitions N]]
   node benchmark/src/cli.ts execute <round-dir> --manifest-sha256 HEX
@@ -85,10 +86,10 @@ export function positionals(args: string[]): string[] {
  * all three at once.
  */
 export function wrongArguments(family: string, variant: string, arm: string): string[] {
-  const found = families()[family];
+  const found = catalogue()[family];
   const named = found
     ? (variantNames(found) as string[])
-    : [...new Set(Object.values(families()).flatMap((one) => variantNames(one) as string[]))];
+    : [...new Set(Object.values(catalogue()).flatMap((one) => variantNames(one) as string[]))];
   return [
     found ? "" : "no family named " + String(family),
     named.includes(variant)
@@ -101,9 +102,10 @@ export function wrongArguments(family: string, variant: string, arm: string): st
 }
 
 function list(): number {
-  for (const [name, family] of Object.entries(families())) {
+  for (const [name, family] of Object.entries(catalogue())) {
+    const candidate = family.spec.candidate === undefined ? "" : "candidate " + String(family.spec.candidate) + ", ";
     process.stdout.write(
-      name.padEnd(16) + family.spec.language.padEnd(12) + family.spec.summary + "\n",
+      name.padEnd(16) + family.spec.language.padEnd(12) + candidate + family.spec.summary + "\n",
     );
     for (const variant of Object.values(family.variants)) {
       process.stdout.write(
@@ -165,7 +167,9 @@ function populationOf(directory: string): string {
 function verify(directory: string): number {
   const population = populationOf(directory);
   const problems =
-    kindOf(directory) === "publishable"
+    kindOf(directory) === admission.POPULATION
+      ? admission.verify(directory)
+      : kindOf(directory) === "publishable"
       ? population === "seeded"
         ? seeded.verify(directory)
         : round.verify(directory)
@@ -327,6 +331,18 @@ export function main(argv: string[]): number {
     return Math.max(...named.map((one) => probe.run(one)));
   }
   if (command === "calibrate") {
+    const population = flag(args, "--population", "");
+    if (population !== "" && population !== admission.POPULATION) {
+      process.stdout.write("calibrate knows no population named " + population + ", only " + admission.POPULATION + "\n");
+      return 2;
+    }
+    if (population === admission.POPULATION) {
+      return admission.all({
+        into: flag(args, "--into", admission.directory()),
+        only: flag(args, "--only", "").split(",").filter((one) => one.length > 0),
+        seed: Number(flag(args, "--seed", "1")),
+      });
+    }
     return calibrate.all({
       into: flag(args, "--into", path.join(paths.RUNS, calibrate.stamp())),
       only: flag(args, "--only", "")
@@ -409,6 +425,10 @@ export function main(argv: string[]): number {
   }
   if (command === "report") {
     const directory = args[0] ?? "";
+    if (kindOf(directory) === admission.POPULATION) {
+      process.stdout.write("an admission set's signals stay sealed until the result document; its verdicts are in admission.json\n");
+      return 2;
+    }
     const { text, problems } =
       populationOf(directory) === "seeded" ? seeded.report(directory) : { text: report.write(directory), problems: [] };
     const out = flag(args, "--out", "");

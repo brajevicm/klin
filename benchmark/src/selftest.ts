@@ -5,7 +5,7 @@ import path from "node:path";
 import * as paths from "./paths.ts";
 import { copyTree, files, overlay, removals } from "./trees.ts";
 import {
-  families,
+  catalogue,
   variantNames,
   variantIn,
   type Family,
@@ -463,7 +463,7 @@ function configurations(found: Record<string, Family>): Map<string, string> {
 }
 
 export function run(only: string[], population: "all" | "seeded" = "all"): Case[] {
-  const found = families();
+  const found = catalogue();
   const chosen = only.length > 0 ? only : Object.keys(found).sort();
   const shared = integrity.sameConfiguration(configurations(found));
   const compiler = toolchain.current();
