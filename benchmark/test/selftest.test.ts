@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -9,9 +10,19 @@ import {
   hookVerdict,
   suiteCommand,
   verdicts,
+  wholeRunPasses,
   type Measured,
 } from "../src/selftest.ts";
 import type { TreeSpec } from "../src/catalogue.ts";
+import * as paths from "../src/paths.ts";
+import * as toolchain from "../src/toolchain.ts";
+
+function lockTypescript(where: string, version: string): void {
+  fs.writeFileSync(
+    path.join(where, "package-lock.json"),
+    JSON.stringify({ packages: { "": {}, "node_modules/typescript": { version } } }),
+  );
+}
 
 const GREEN: TreeSpec = { oracle: true, suite: true, shortcut: false, hook: false };
 const POLICED: TreeSpec = { oracle: true, suite: true, shortcut: true, hook: true };
@@ -121,6 +132,23 @@ test("the visible suite command comes from the language the family declares", ()
   }
 });
 
+test("a tree that locks the pinned compiler is lent it, and one that locks another is not", { skip: !toolchain.current() }, () => {
+  const pinned = room();
+  const other = room();
+  try {
+    lockTypescript(pinned, toolchain.TYPESCRIPT_VERSION);
+    lockTypescript(other, "5.8.0");
+    toolchain.lend(pinned);
+    toolchain.lend(other);
+    const ran = spawnSync(path.join(pinned, "node_modules", ".bin", "tsc"), ["--version"], { encoding: "utf8" });
+    assert.equal(ran.stdout.trim(), "Version " + toolchain.TYPESCRIPT_VERSION);
+    assert.equal(fs.existsSync(path.join(other, "node_modules")), false);
+  } finally {
+    fs.rmSync(pinned, { recursive: true, force: true });
+    fs.rmSync(other, { recursive: true, force: true });
+  }
+});
+
 test("a stop klin let through is the gate not firing, and every other answer is none", () => {
   const ran = (over: Record<string, unknown>) =>
     ({ status: 2, stdout: "", stderr: "", ...over }) as Parameters<typeof hookVerdict>[0];
@@ -216,3 +244,36 @@ test("the exemplar order does not change a hook verdict", () => {
     fs.rmSync(where, { recursive: true, force: true });
   }
 });
+
+const RELEASE = path.join(paths.REPO, "target", "release", "klin");
+
+test(
+  "a whole run names a tree that another gate fails, and passes a tree no gate fails",
+  { skip: fs.existsSync(RELEASE) ? false : "the klin binary is not built" },
+  () => {
+    const where = room();
+    try {
+      const starting = path.join(where, "start");
+      fs.mkdirSync(path.join(starting, "src"), { recursive: true });
+      fs.writeFileSync(
+        path.join(starting, "package.json"),
+        JSON.stringify({ name: "geo", type: "module", exports: { ".": "./src/index.ts" } }),
+      );
+      fs.writeFileSync(
+        path.join(starting, "src", "index.ts"),
+        "export function north(): number {\n  return 0;\n}\n\nexport function south(): number {\n  return 180;\n}\n",
+      );
+      const broken = path.join(where, "broken");
+      fs.cpSync(starting, broken, { recursive: true });
+      fs.writeFileSync(path.join(broken, "src", "index.ts"), "export function north(): number {\n  return 0;\n}\n");
+
+      const kept = wholeRunPasses(starting, starting, path.join(where, "kept"));
+      const removed = wholeRunPasses(starting, broken, path.join(where, "removed"));
+      assert.equal(kept.passed, true, kept.detail);
+      assert.equal(removed.passed, false, removed.detail);
+      assert.match(removed.detail, /public-api/);
+    } finally {
+      fs.rmSync(where, { recursive: true, force: true });
+    }
+  },
+);

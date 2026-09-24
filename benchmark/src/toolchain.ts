@@ -33,6 +33,23 @@ export function current(): Provenance | null {
   }
 }
 
+/**
+ * Lend the prepared compiler to a tree whose lockfile pins the same one, as its own `node_modules`.
+ *
+ * A subject installs a locked compiler with `npm ci`, and a copy the self-test runs has no
+ * registry. A tree that locks any other version, or holds a `node_modules` already, is left alone.
+ */
+export function lend(tree: string): void {
+  const own = path.join(tree, "node_modules");
+  const lock = path.join(tree, "package-lock.json");
+  if (!current() || fs.existsSync(own) || !fs.existsSync(lock)) return;
+  const locked = JSON.parse(fs.readFileSync(lock, "utf8")) as {
+    packages?: Record<string, { version?: string }>;
+  };
+  if (locked.packages?.["node_modules/typescript"]?.version !== TYPESCRIPT_VERSION) return;
+  fs.symlinkSync(path.join(paths.BENCHMARK, "node_modules"), own);
+}
+
 export function requirement(): string {
   return current()
     ? ""
