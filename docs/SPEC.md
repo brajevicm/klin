@@ -1127,7 +1127,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
 | `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
-| `lockfile` | dependency added without a lockfile entry, pin removed | manifest + name | `unlocked`, `unpinned` rise | yes | shipped, Rust, npm and Go |
+| `lockfile` | dependency added without a lockfile entry, pin removed, pin the lockfile does not record | manifest + name | `unlocked`, `unpinned`, `stale` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
 
 `inventory` has two identities. A test file is keyed by path. A test
@@ -1176,7 +1176,8 @@ and printed with the NOTE.
 
 
 `lockfile` proves one thing: every dependency the manifest names has an entry
-in the lockfile beside it, and no pin the base held is gone. It cannot prove
+in the lockfile beside it, no pin the base held is gone, and the lockfile
+records the version of each exact pin. It cannot prove
 that a package exists in a registry, because it runs offline. A dependency
 that does not exist fails the project's own install, when the `build` step
 runs one. A derived build runs no install, so a declared dependency that was
@@ -1677,14 +1678,26 @@ binary, so a project whose tests carry another mark has no function
 identity, and only its test files are ratcheted.
 
 **`lockfile` reads the manifest and the lockfile beside it.** A site is the
-manifest's repository path plus the dependency name, and it carries two
-values, both higher is worse: `unlocked` is 1 when the lockfile holds no entry
-for the name, and `unpinned` is 1 when the manifest's specifier is a range or
-absent. Exact means a Cargo requirement that starts with `=`, an npm
-specifier that starts with a digit and holds no operator and no wildcard
-segment, and every Go `require`, which states one version. A path, git or
+manifest's repository path plus the dependency name, and it carries three
+values, all higher is worse: `unlocked` is 1 when the lockfile holds no entry
+for the name, `unpinned` is 1 when the manifest's specifier is a range or
+absent, and `stale` is 1 when the manifest states an exact version, the
+lockfile holds the name, and no version it records for this manifest is that
+pin. A dependency that one table states as a range and another as an exact
+version is `unpinned` and is still judged for staleness at its exact version.
+A version is the pin when it equals it. A pin of one or two numbers, such as
+Cargo's `=1.2` or npm's `1.2`, also holds every release that starts with it
+and a dot, so `=1.2` holds `1.2.5` and `1.0.0-alpha` does not hold
+`1.0.0-alpha.1`. A version that names a path, `link:` or `file:`, is a
+workspace package with no registry release to compare, and it holds every pin.
+A lockfile that records several versions of one name is stale only when none
+of them is the pin. A range is never judged for staleness, because it has no
+single version to compare. Exact means a Cargo requirement that
+starts with `=`, an npm specifier that starts with a digit and holds no
+operator and no wildcard segment, and every Go `require`, which states one
+version. A path, git or
 workspace dependency has no registry behind it and no version to pin, so it
-carries 0 for both values and can never fail. The manifest tables read are
+carries 0 for every value and can never fail. The manifest tables read are
 Cargo's `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and
 `[workspace.dependencies]`, including the `[dependencies.name]` sub-table
 form, the dotted-key form, an inline table on one line or several, and any
@@ -1696,22 +1709,43 @@ the lockfile is searched for, so a renamed dependency is found. A comment is
 cut off before the line is read, so a brace inside one opens no inline table.
 The npm tables are `dependencies`, `devDependencies`,
 `optionalDependencies` and `peerDependencies`. Go reads both forms of the
-`require` directive, with a module a `replace` directive sends to a local
-path treated as having no registry. The lockfile is the nearest one at or
+`require` directive. A `replace` directive applies to the version it names,
+or to every version when it names none. One that sends a module to a local
+path gives it no registry, and one that sends it to another module or version
+makes klin look up that module and judge that version, because `go.sum`
+records the replacement. The lockfile is the nearest one at or
 above the manifest's own directory, which is how a workspace member finds the
-one lockfile its members share. `Cargo.lock` gives the `name` of each
-`[[package]]` block, `package-lock.json` gives the keys of `packages` with
-everything up to the last `node_modules/` stripped and the keys of the nested
-`dependencies` tree that version 1 writes, and `go.sum` gives the first field
-of each line. A dependency the base manifest did not name is a site only when
-it is `unlocked`, so a new dependency with a range and a lockfile entry is
-not a finding, while a pin the base held and a lockfile entry the base held
-are both `worsened` when they go. `pnpm-lock.yaml` gives names from the direct
+one lockfile its members share. `Cargo.lock` gives the `name` and `version` of
+each `[[package]]` block, in either order, `package-lock.json` gives the keys of
+`packages` with everything up to the last `node_modules/` stripped and the
+keys of the nested `dependencies` tree that version 1 writes, and `go.sum`
+gives the first field of each line, with the second field as its version once
+a `/go.mod` suffix is cut off. So a Go module is stale when `go.sum` holds no
+line for the version its `require` states. npm and pnpm resolve each name
+for each manifest, so klin judges a manifest's pin against the entry for the
+manifest's own directory, relative to the lockfile, and then against the
+root's. npm writes that entry as `<directory>/node_modules/<name>`, or as a
+top-level key of the version 1 `dependencies` tree, and a link takes the
+version of the package it links. pnpm writes it under `importers`, or in the
+top-level dependency tables of a lockfile that has no importers. The pnpm
+`packages` mapping and the npm entries nested in another package's
+`node_modules` count only toward `unlocked`, so a pinned name that the
+lockfile holds only there is stale. Cargo and Yarn record no resolution per
+manifest, and klin judges a pin against every version they record. A
+dependency the base manifest did not name is a
+site only when it is `unlocked` or `stale`, so a new dependency with a range
+and a lockfile entry is not a finding, while a pin the base held and a
+lockfile entry the base held are both `worsened` when they go. Staleness the
+base already had is held, so a new one is `new` and one that grew is
+`worsened`. `pnpm-lock.yaml` gives names from the direct
 keys under its `packages` mapping: older versions use `/name/version` or
 `/name@version`, and current versions use `name@version`, with a peer suffix
-ignored after the version. `yarn.lock` v1 gives names from top-level selectors
-after `# yarn lockfile v1`; Yarn 2 and later gives them from top-level locator
-keys after `__metadata.version`. Selectors and locators are split at the
+ignored after the version: the `(...)` of current versions and the `_...` of
+version 5. The version in the key is the one it records.
+`yarn.lock` v1 gives names from top-level selectors after
+`# yarn lockfile v1`; Yarn 2 and later gives them from top-level locator keys
+after `__metadata.version`. Both give the version from the `version` line
+under each key. Selectors and locators are split at the
 package-name separator, preserving scoped names. The line readers recognize
 only those markers and key shapes; an unrecognized shape is a NOTE and no
 finding rather than an empty lockfile. A JSON lockfile klin cannot parse is a
@@ -1727,7 +1761,16 @@ is a tool error naming the file, because the work broke it and the agent can
 fix it. A manifest that did not parse at the base and parses now is judged
 against a base that named no dependency. Every manifest and lockfile is read
 once per tree, the base's through one git process, and a lockfile several
-manifests share is parsed once. Only the npm reader can
+manifests share is parsed once. An accepted entry that gives no `stale` holds
+a `stale` of 0, so an entry written before the value existed stays valid and
+holds no staleness. The remedy has one part for each value that failed, in the
+text and in each finding's `fix_advice`: every nonzero value of a new finding,
+and each value that rose on a worsened one.
+`unlocked` asks for the project's own install, so the lockfile records the
+dependency, `unpinned` asks for the base's exact version back or an exact
+version for a new dependency, and `stale` asks for an install again, so the
+lockfile records the pinned version. The failure names a dependency that the
+lockfile beside the manifest does not lock at an exact pin. Only the npm reader can
 reject a manifest, because the Cargo and Go readers are line scans. The check
 judges every manifest under `--changed` as well, because a lockfile change
 judges a manifest whose own text did not change and the whole set is a
@@ -1753,11 +1796,37 @@ handful of files. Pinned by
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
 `a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
-`two_manifests_that_share_one_lockfile_are_each_judged_against_it` and
-`under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged`
-in `tests/lockfile.rs`. Known limit: the Cargo and Go readers are line
+`two_manifests_that_share_one_lockfile_are_each_judged_against_it`,
+`under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged`,
+`a_manifest_pin_the_lockfile_records_at_another_version_fails_as_worsened`,
+`a_new_pin_the_lockfile_records_at_another_version_fails_as_new`,
+`npm_judges_the_version_under_a_package_root_and_not_a_nested_one`,
+`every_lockfile_reader_fails_a_pin_it_records_at_another_version`,
+`a_range_with_a_lockfile_entry_at_any_version_passes`,
+`staleness_the_base_already_had_is_held`,
+`a_lockfile_with_several_versions_of_one_name_is_stale_only_when_none_equals_the_pin`,
+`a_new_dependency_missing_from_the_lockfile_gets_a_remedy_that_names_the_install`,
+`a_finding_with_several_values_prints_the_remedy_for_each`,
+`a_pnpm_5_peer_suffix_is_no_part_of_the_name_or_the_version`,
+`a_go_module_a_replace_sends_to_another_version_is_judged_at_that_version`,
+`an_exact_pin_beside_a_range_of_the_same_dependency_is_still_judged_for_stale`,
+`an_npm_pin_with_only_a_nested_lockfile_entry_is_stale`,
+`an_npm_workspace_link_is_judged_at_the_version_of_the_package_it_links`,
+`each_npm_workspace_manifest_is_judged_against_its_own_entry_and_then_the_root`,
+`a_cargo_lock_block_is_read_whatever_the_order_of_its_fields`,
+`only_a_pin_with_fewer_than_three_numbers_holds_the_versions_it_is_a_prefix_of`,
+`a_go_replace_applies_only_to_the_version_it_names_and_judges_its_target`,
+`a_pnpm_manifest_is_judged_against_its_own_importer_and_not_the_package_pool`,
+`a_pnpm_5_root_dependency_section_is_its_importer`,
+`a_worsened_finding_prints_only_the_remedy_of_the_value_that_rose`,
+`a_stale_pin_fails_under_a_condition_that_names_it` and
+`an_accepted_entry_that_gives_no_stale_holds_no_staleness` in
+`tests/lockfile.rs`. Known limit: the Cargo and Go readers are line
 scans, so a manifest that states a dependency in a shape the scan does not
-know contributes no site rather than a wrong one.
+know contributes no site rather than a wrong one. Known limit: a Yarn
+lockfile records no resolution per manifest, so in a Yarn workspace a pin
+passes when any workspace resolved the name to it. This can hide staleness,
+and it cannot report staleness that is not there.
 
 **`layering` judges resolved dependencies against a person's layers.** It is a
 Policy check: with no section it does not run. The section holds `layers`, a
@@ -4104,7 +4173,8 @@ Core:
   file is held, `differential` fails every result, `run` writes the report
   before it is read, a report older than a changed file is ERR.
 - `lockfile`: a manifest entry with no lockfile entry fails, a removed pin
-  fails, a path dependency is not judged, a new dependency with a range and a
+  fails, a pin the lockfile records at another version fails and a base one
+  is held, a path dependency is not judged, a new dependency with a range and a
   lockfile entry is green, a deleted lockfile fails every dependency, a
   workspace lockfile above the member manifest is found, both npm lockfile
   versions are read, an unreadable format is a NOTE, a malformed supported

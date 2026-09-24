@@ -24,7 +24,7 @@ use crate::modules::{
     self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
 };
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
@@ -870,7 +870,7 @@ fn evaluator() -> Evaluator<'static> {
         metrics: &[EDGE],
         unit: "dependency edge(s)",
         condition: "where a dependency crosses a layer the policy forbids or closes a cycle",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::Fixed(REMEDY),
         ceiling: None,
         format_metrics: show,
         nested: None,

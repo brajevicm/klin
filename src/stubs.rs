@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::check::{Context, Sink};
 use crate::config::Error;
 use crate::markers::{self, Args, Kind, Language};
-use crate::ratchet::{Evaluator, Values};
+use crate::ratchet::{Evaluator, Remedy, Values};
 use crate::reference::Key;
 use crate::scope;
 
@@ -87,9 +87,11 @@ pub const KIND: Kind = Kind {
         metrics: &["count"],
         unit: "stub site(s)",
         condition: "where the code stands in for work nobody did",
-        fix_advice: "Do what the marker stands in for. A placeholder an agent left behind is \
-                     not work, and accepting one is a decision for a person, in the config, in \
-                     a reviewed commit.",
+        fix_advice: Remedy::Fixed(
+            "Do what the marker stands in for. A placeholder an agent left behind is \
+             not work, and accepting one is a decision for a person, in the config, in \
+             a reviewed commit.",
+        ),
         ceiling: None,
         format_metrics: show,
         nested: None,

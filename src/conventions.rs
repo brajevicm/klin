@@ -21,7 +21,7 @@ use crate::check::{Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::coverage::Files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Selector};
 use crate::syntax::pattern::{self, Pattern};
@@ -363,7 +363,7 @@ fn judged(
         metrics: METRICS,
         unit: "site(s)",
         condition: &condition,
-        fix_advice: &rule.convention.remedy,
+        fix_advice: Remedy::Fixed(&rule.convention.remedy),
         ceiling: None,
         format_metrics: show,
         nested: None,

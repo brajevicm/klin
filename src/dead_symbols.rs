@@ -17,7 +17,7 @@ use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
@@ -504,7 +504,7 @@ fn evaluator() -> Evaluator<'static> {
         metrics: &[DEAD],
         unit: "dead symbol(s)",
         condition: "where no reference named the declaration exists outside its own declaration",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::Fixed(REMEDY),
         ceiling: None,
         format_metrics: show,
         nested: None,

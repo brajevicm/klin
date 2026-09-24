@@ -18,7 +18,7 @@ use crate::config::Error;
 use crate::coverage::{self, Coverage};
 use crate::git::Repo;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
@@ -358,7 +358,7 @@ fn evaluator() -> Evaluator<'static> {
         metrics: &[MISSING],
         unit: "test site(s)",
         condition: "where the base holds a test site the working tree no longer has",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::Fixed(REMEDY),
         ceiling: None,
         format_metrics: show,
         nested: None,

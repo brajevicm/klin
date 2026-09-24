@@ -484,11 +484,26 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
 /// For each new finding, the one whose group it prints inside, or `None` where it leads.
 pub type Nesting = fn(&[Finding]) -> Vec<Option<usize>>;
 
+#[derive(Clone, Copy)]
+pub enum Remedy<'a> {
+    Fixed(&'a str),
+    ByValues(fn(&[&Values]) -> String),
+}
+
+impl Remedy<'_> {
+    fn text(self, values: &[&Values]) -> String {
+        match self {
+            Remedy::Fixed(text) => text.to_string(),
+            Remedy::ByValues(built) => built(values),
+        }
+    }
+}
+
 pub struct Evaluator<'a> {
     pub metrics: &'a [&'a str],
     pub unit: &'a str,
     pub condition: &'a str,
-    pub fix_advice: &'a str,
+    pub fix_advice: Remedy<'a>,
     /// The ceiling in force, printed beside every failure and carried in the JSON. `None` for a
     /// gate whose only ceiling is the value the base holds, which each failure already names.
     /// Spec 4.7, 8.6.
@@ -663,7 +678,7 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
             );
         }
     }
-    let _ = writeln!(out, "{}", evaluator.fix_advice);
+    let _ = writeln!(out, "{}", remedy(comparison, evaluator));
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside
@@ -718,6 +733,33 @@ fn came_from(finding: &Finding, entry: &Values) -> String {
         was if was.is_empty() || was == finding.file => String::new(),
         was => format!(" at {was}"),
     }
+}
+
+fn remedy(comparison: &Comparison, evaluator: &Evaluator) -> String {
+    let failing: Vec<Values> = comparison
+        .unmatched_findings
+        .iter()
+        .map(|finding| finding.values.clone())
+        .chain(
+            comparison
+                .rose
+                .iter()
+                .map(|(finding, entry)| risen(finding, entry, evaluator.metrics)),
+        )
+        .collect();
+    let failing: Vec<&Values> = failing.iter().collect();
+    evaluator.fix_advice.text(&failing)
+}
+
+fn risen(finding: &Finding, entry: &Values, metrics: &[&str]) -> Values {
+    metrics
+        .iter()
+        .filter_map(|metric| {
+            let now = finding.values.get(*metric)?;
+            let rose = now.as_f64()? > entry.get(*metric)?.as_f64()?;
+            rose.then(|| (metric.to_string(), now.clone()))
+        })
+        .collect()
 }
 
 fn text(entry: &Values, key: &str) -> String {
@@ -776,7 +818,14 @@ fn collect(comparison: &Comparison, evaluator: &Evaluator, gate: &str, records: 
         out.insert("id".into(), identity(gate, finding).into());
         out.insert("values".into(), Value::Object(finding.values.clone()));
         out.insert("condition".into(), evaluator.condition.into());
-        out.insert("fix_advice".into(), evaluator.fix_advice.into());
+        let values = entry.map_or_else(
+            || finding.values.clone(),
+            |entry| risen(finding, entry, evaluator.metrics),
+        );
+        out.insert(
+            "fix_advice".into(),
+            evaluator.fix_advice.text(&[&values]).into(),
+        );
         out.insert(
             "ceiling".into(),
             evaluator.ceiling.map_or(Value::Null, Into::into),

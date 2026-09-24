@@ -18,7 +18,7 @@ use crate::config::{Config, Error};
 use crate::coverage;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::{self, Key};
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
@@ -558,7 +558,7 @@ fn evaluator() -> Evaluator<'static> {
         metrics: &[UNREACHED],
         unit: "unreached file(s)",
         condition: "where no other file references a declaration of the file",
-        fix_advice: REMEDY,
+        fix_advice: Remedy::Fixed(REMEDY),
         ceiling: None,
         format_metrics: show,
         nested: None,
