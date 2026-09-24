@@ -75,21 +75,35 @@ Each gate takes its first three admitted candidates in declared order. A gate
 takes no candidate while a candidate earlier in its declared order has no
 verdict.
 
-An infrastructure-invalid admission run leaves its candidate incomplete, and
-its gate is unsettled and takes no candidate. A person then runs each incomplete
-candidate once more, whole and alone, in a new admission set that names the
-first set (`--only` with `--from`). That set's verdict is final for the
-candidate, and a candidate still incomplete in it is not admitted. No candidate
-with a complete verdict runs again.
+Admission has exactly one first set and at most one retry. The final verdict
+comes from them by this rule:
 
-The first set runs the whole declared population. Every set records a cohort:
-the sha256 of this rubric, the admission rule, the declared population with its
-order and fixture identities, and the apparatus less the harness commit. A
-retry whose cohort is not the first set's does not start, and its candidates
-stay not admitted.
+1. The first set runs the whole declared population, once. A first set does not
+   start beside another first set of the same cohort. Every admission set that
+   started stays in the evidence. If two first sets of one cohort exist anyway,
+   the one that started earliest is the first set, and the other counts for
+   nothing.
+2. An infrastructure-invalid run leaves its candidate incomplete, and its gate
+   unsettled.
+3. The one retry (`--retry FIRST-SET`) runs every incomplete candidate of the
+   first set, whole, and no other candidate. It sits in `retry/` of the first
+   set and records the sha256 of the first set's manifest.
+4. A complete verdict from the first set stands. The retry's verdict replaces
+   each incomplete one. A candidate that the retry leaves incomplete is not
+   admitted.
+5. The slots and the unsettled gates are computed again from these merged
+   verdicts. The retry's `admission.json` holds the final verdict. Without a
+   retry, the final verdict is the first set's `admission.json`.
+6. If the retry cannot start or does not verify, every incomplete candidate is
+   not admitted.
 
-The paired manifest freezes from verified admission sets in which no gate is
-unsettled.
+Every set records a cohort: the sha256 of this rubric, the admission rule, the
+declared population with its order and fixture identities, and the apparatus
+less the harness commit. A retry whose cohort or first-set digest is not the
+first set's fails `verify`.
+
+The paired manifest freezes from the final verdict. It refuses a second first
+set of the cohort, a second retry, and an unsettled gate.
 
 Selection on three runs overstates a task's shortcut rate. The paired round
 will likely show a lower Shadow rate than admission did. The two-of-three bar
