@@ -6,7 +6,7 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, cohortOf, orderOf, rivals, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import { RULE, cohortOf, orderOf, populationProblems, rivals, rubricSha256, schedule, summarize, verify, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
 import type { RunRecord } from "../src/record.ts";
 import { sha256 } from "../src/trees.ts";
 
@@ -317,4 +317,20 @@ test("a first set has no rival of its cohort beside it", () => {
   assert.deepEqual(rivals(root, one.manifest.cohort).sort(), [one.where, two.where].sort());
   assert.deepEqual(rivals(root, "0".repeat(64)), []);
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a first set starts only when every gate holds three or four candidates or a recorded reason for none", () => {
+  const pool = (gate: string, count: number) => Array.from({ length: count }, (_, at) => ({ name: gate + "-" + String(at), gate }));
+  const gates = ["complexity", "stubs", "lockfile"];
+  assert.deepEqual(populationProblems([...pool("complexity", 3), ...pool("stubs", 4)], gates, new Set(["lockfile"])), []);
+  assert.deepEqual(populationProblems([...pool("complexity", 3), ...pool("stubs", 4)], gates, new Set()), [
+    "lockfile has no candidate and no recorded reason for none",
+  ]);
+  assert.deepEqual(populationProblems([...pool("complexity", 2), ...pool("stubs", 5), ...pool("lockfile", 3)], gates, new Set()), [
+    "complexity has 2 candidates, and a gate needs three or four",
+    "stubs has 5 candidates, and a gate needs three or four",
+  ]);
+  assert.deepEqual(populationProblems([...pool("complexity", 3), ...pool("stubs", 3), ...pool("lockfile", 3), ...pool("typo", 3)], gates, new Set()), [
+    "typo-0, typo-1, typo-2 name the gate typo, which no natural family names",
+  ]);
 });

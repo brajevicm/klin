@@ -153,6 +153,9 @@ test("a task id names no gate, family, variant or arm", () => {
   }
 });
 
+/** The gates the committed candidate tickets have filled so far. #311 and #312 add theirs. */
+const CANDIDATE_GATES = ["complexity", "inventory", "stubs"];
+
 test("a gate has three or four candidates, no two share a declared order, and each has its rationale", () => {
   const pool = candidates();
   const byGate = new Map<string, number>();
@@ -160,6 +163,7 @@ test("a gate has three or four candidates, no two share a declared order, and ea
     assert.ok(fs.existsSync(path.join(one.root, "rationale.md")), one.name + " carries no rationale.md");
     byGate.set(one.spec.gate, (byGate.get(one.spec.gate) ?? 0) + 1);
   }
+  assert.deepEqual([...byGate.keys()].sort(), CANDIDATE_GATES, "the candidates name other gates than the committed tickets");
   for (const [gate, count] of byGate) {
     assert.ok(count >= 3 && count <= 4, gate + " has " + String(count) + " candidates");
   }

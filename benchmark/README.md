@@ -661,6 +661,13 @@ The candidates of #310 are the `complexity-*` directories at 1 to 4, the
 node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
 ```
 
+A first set starts only over the whole declared population. Every gate that
+a natural family names must hold three or four candidates, or a recorded
+reason for none in `fixtures/<gate>.no-candidate.md`, and no candidate may
+name another gate. Until then the command names each gate that falls short
+and runs nothing, so a set cannot freeze part of the population that #310,
+#311 and #312 write.
+
 This runs the Shadow arm only: each candidate's risk variant three times and
 its control once. Every record states kind `admission` and publishable false.
 A set is written once, into an empty directory, from a clean harness.
