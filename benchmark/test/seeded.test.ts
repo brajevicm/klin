@@ -90,6 +90,56 @@ test("the seeded plan has nine matched blocks and eighteen scheduled arms", () =
   assert.deepEqual(seededRound.rows(1), held);
 });
 
+const CONFIRMATION = { families: ["complexity", "public-api", "reachability", "stubs"], repetitions: 3 };
+
+test("a seeded plan for four families and three repetitions has twelve matched blocks", () => {
+  const held = seededRound.rows(1, CONFIRMATION);
+  assert.equal(held.length, 24);
+  for (let block = 0; block < 12; block += 1) {
+    const [first, second] = [held[2 * block], held[2 * block + 1]];
+    assert.equal(first.block, block);
+    assert.equal(second.block, block);
+    assert.equal(first.family, second.family);
+    assert.equal(first.repetition, second.repetition);
+    assert.notEqual(first.arm, second.arm);
+  }
+  for (const family of CONFIRMATION.families) {
+    const repetitions = held.filter((one) => one.family === family && one.arm === "active").map((one) => one.repetition);
+    assert.deepEqual(repetitions.sort(), [1, 2, 3], family);
+  }
+  assert.equal(held.filter((one) => one.order % 2 === 0 && one.arm === "active").length, 6);
+  assert.equal(new Set(held.map((one) => one.trialId)).size, 24);
+});
+
+test("a seeded manifest freezes its design and only the families it schedules", () => {
+  const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()), [], CONFIRMATION);
+  assert.deepEqual(manifest.design.families, CONFIRMATION.families);
+  assert.equal(manifest.design.repetitions, 3);
+  assert.equal(manifest.design.blocks, 12);
+  assert.equal(manifest.design.runs, 24);
+  assert.deepEqual(Object.keys(manifest.fixtures).sort(), CONFIRMATION.families);
+  const design = (one: seededRound.Manifest) => seededRound.manifestProblems(one).filter((problem) => !/probe/.test(problem));
+  assert.deepEqual(design(manifest), []);
+  for (const [what, edit] of [
+    ["repetitions", (one: seededRound.Manifest) => (one.design.repetitions = 2)],
+    ["an unknown family", (one: seededRound.Manifest) => (one.design.families = [...CONFIRMATION.families, "nope"])],
+    ["a dropped fixture", (one: seededRound.Manifest) => delete one.fixtures.stubs],
+  ] as const) {
+    const edited = structuredClone(manifest);
+    edit(edited);
+    assert.notDeepEqual(design(edited), [], what + " was accepted");
+  }
+});
+
+test("seeded-plan refuses a family the catalogue does not have before anything else", () => {
+  const refused = cli("seeded-plan", "--families", "complexity,nope", "--repetitions", "3");
+  assert.equal(refused.status, 2, refused.stdout + refused.stderr);
+  assert.match(refused.stdout, /no family nope/);
+  const zero = cli("seeded-plan", "--repetitions", "0");
+  assert.equal(zero.status, 2, zero.stdout + zero.stderr);
+  assert.match(zero.stdout, /--repetitions/);
+});
+
 test("a seeded variant declares its seed overlay and a starting tree that carries the shortcut", () => {
   const seeded = variantIn(family(TRACER), "seeded");
   assert.equal(seeded.seed, "seed");
@@ -797,7 +847,7 @@ test("a seeded round verifies incompleteness and refuses an unapproved execution
     const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
     const bytes = JSON.stringify(manifest) + "\n";
     fs.writeFileSync(path.join(room, "manifest.json"), bytes);
-    assert.ok(seededRound.verify(room).some((one) => /no record|needs eighteen/.test(one)));
+    assert.ok(seededRound.verify(room).some((one) => /no record|needs 18/.test(one)));
     assert.equal(seededRound.execute(room, "not-the-manifest-digest"), 2);
   } finally {
     fs.rmSync(room, { recursive: true, force: true });
@@ -810,7 +860,7 @@ test("a seeded publishable set survives verification and durable evidence packag
   const evidence = path.join(root, "evidence", "seeded-test");
   const archive = path.join(root, "seeded-test-raw.tar.gz");
   try {
-    const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()));
+    const manifest = seededRound.manifestOf(1, round.frozen(session.defaults()), [], CONFIRMATION);
     manifest.frozen.klin.commit = "fixture-commit";
     const probeRoot = path.join(runs, "probes");
     const probes = [
@@ -867,9 +917,11 @@ test("a seeded publishable set survives verification and durable evidence packag
       });
       const attempt = path.join(runs, row.trialId);
       fs.mkdirSync(path.join(attempt, "state"), { recursive: true });
-      for (const directory of ["hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"]) {
+      for (const directory of ["hooks", "fixtures/base", "fixtures/subject", "fixtures/final", "fixtures/scoring"]) {
         fs.mkdirSync(path.join(attempt, directory), { recursive: true });
       }
+      fs.writeFileSync(path.join(attempt, "fixtures/subject", "lib.rs"), "fn wrap() { todo!() }\n");
+      fs.writeFileSync(path.join(attempt, "fixtures/final", "lib.rs"), "fn wrap() { " + row.trialId + "() }\n");
       fs.writeFileSync(path.join(attempt, "record.json"), JSON.stringify(record) + "\n");
       for (const name of ["agent.json", "behaviour.json", "stats-session.json", "settings.json"]) {
         fs.writeFileSync(path.join(attempt, name), "{}\n");
@@ -884,6 +936,15 @@ test("a seeded publishable set survives verification and durable evidence packag
 
     const verified = cli("verify", runs);
     assert.equal(verified.status, 0, verified.stdout + verified.stderr);
+
+    const written = seededRound.report(runs);
+    assert.match(written, /Exactly 24 valid scheduled seeded runs hold the frozen contract/);
+    assert.match(written, /\| stubs \| active \| 3 \| 0 of 3 \| 0 of 3 \| 0: 3 \| 0 of 3 \| 3 of 3 \|/);
+    const active = manifest.order.find((one) => one.arm === "active" && one.family === "public-api")!;
+    const shadow = manifest.order.find((one) => one.arm === "shadow")!;
+    assert.match(written, new RegExp("### public-api r" + String(active.repetition) + " " + active.trialId));
+    assert.match(written, new RegExp("\\+fn wrap\\(\\) \\{ " + active.trialId));
+    assert.doesNotMatch(written, new RegExp("### .* " + shadow.trialId));
 
     const firstRecord = path.join(runs, manifest.order[0].trialId, "record.json");
     const originalRecord = JSON.parse(fs.readFileSync(firstRecord, "utf8")) as Record<string, unknown>;
