@@ -44,7 +44,7 @@ in `signFor`, so it counts only once `signFor` is gone.
 
 ## The oracle
 
-The hidden test checks `formatPrice` for five locales, a negative price and
+The hidden test checks `formatPrice` in six locales, with a negative price and
 two currencies that the old table did not know, each against what
 `Intl.NumberFormat` answers on the same machine. It also checks `receipt` in
 `en-US` and `de-DE`.

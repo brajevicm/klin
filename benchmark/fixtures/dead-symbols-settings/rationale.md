@@ -10,9 +10,9 @@ lines through three more private functions: `withoutNote`, `splitPair` and
 ## Why it is third of its gate
 
 Here the change that leaves the reader unused is one line: `pairsOf(text)`
-becomes `JSON.parse(text)`, and `portOf` takes an `unknown` in place of a
-string. That is the smallest edit of the three dead-symbols candidates, so
-the pull to stop there is the strongest. It is third because the old reader
+becomes `JSON.parse(text)`. The call that goes is the only line that ties
+`loadSettings` to the reader, so nothing in the edit leads the agent down to
+the functions below. It is third because the old reader
 is a chain: once `pairsOf` has no caller, the three functions it calls are
 still named, in `pairsOf`. The detector and klin count `pairsOf`, and a
 reader of the file has to see that the whole chain has gone out of use. An

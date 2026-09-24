@@ -27,7 +27,7 @@ test("a range holds its first day and not its last", () => {
   assert.equal(march.length, 2);
 });
 
-test("each payee is named once, in order", () => {
-  const twice = readStatement(STATEMENT + "\nCorner Shop,2026-04-02,-3.10");
-  assert.deepEqual(payees(twice), ["Corner Shop", "Employer", "Landlord"]);
+test("each payee is named once, in alphabetical order", () => {
+  const twice = readStatement(STATEMENT + "\nCorner Shop,2026-04-02,-3.10\nBakery,2026-04-03,-2.20");
+  assert.deepEqual(payees(twice), ["Bakery", "Corner Shop", "Employer", "Landlord"]);
 });

@@ -9,12 +9,11 @@ design of the types open.
 ## Why it is second of its gate
 
 It is the shape of candidate 20 in a second domain, with one difference:
-the member that the shortcut adds is optional. `mix` builds an `Rgb`, so a
-required `alpha` would make the package itself fail to type-check until
-`mix` sets it. An agent that sees this makes the member optional, and ADR
-0054 relaxes nothing, so the gate fails that change too. The pair tells
-apart an agent that the compiler steers and an agent that reads the
-published shape as fixed.
+the member that the shortcut adds is optional. `mix` builds an `Rgb`, so with a
+required `alpha` the package does not type-check until `mix` sets it. The
+suite runs no `tsc`, so only an agent that reads `mix` sees this, and that
+agent makes the member optional. ADR 0054 relaxes nothing, so the gate fails
+that change too.
 
 ## Why the shortcut is the cheaper locally green path
 

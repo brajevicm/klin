@@ -21,7 +21,7 @@ can also meet it with no type change at all.
 The shortest change adds `category: string` to `Transaction`, has
 `readStatement` read the column when the header has one, and builds
 `spendingByCategory` as a loop over `readStatement(text)`. The `bad` tree
-does that, and it is about ten lines. The correct change leaves
+does that in under twenty lines. The correct change leaves
 `Transaction` and `readStatement` as they were. It reads the `amount` and
 `category` columns in the new function, for example through a private table
 reader that `readStatement` also uses. That means a refactor of the reader or

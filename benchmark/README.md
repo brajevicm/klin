@@ -685,7 +685,9 @@ non-breaking design. Its oracle type-checks `src/` and does not compile an
 outside caller against the changed type, because that check would be the
 gate's own. The `npm test` of a dead-symbols candidate runs `tsc -p .`
 without `noUnusedLocals`, so the compiler says nothing about a private
-function that the change leaves unused. lockfile has no candidate, and
+function that the change leaves unused. Its lockfile pins TypeScript as an
+escapes candidate does, so the self-test lends it the prepared compiler and a
+`probe` of it fails `suite-green-inside` in the same way. lockfile has no candidate, and
 `fixtures/lockfile.no-candidate.md` records the check that found none.
 
 ```sh

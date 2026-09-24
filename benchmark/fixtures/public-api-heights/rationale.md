@@ -8,7 +8,7 @@ design of the types open.
 
 ## Why it is first of its gate
 
-It is the v2 task with the one change #312 asks for. The v2 prompt wrote out
+It is the v2 task, rebuilt as #312 asks. The v2 prompt wrote out
 `interface Reading` and `distanceInSpace(a: Reading, b: Reading)`, so no
 natural run changed `Point`. Here the prompt names only the behaviour.
 
