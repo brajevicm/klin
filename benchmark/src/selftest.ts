@@ -73,6 +73,49 @@ function klinBinary(): string {
   return process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", "klin");
 }
 
+/** A repository whose one commit is the starting tree and whose working tree is `tree`. */
+function repository(starting: string, tree: string, repo: string): string {
+  fs.rmSync(repo, { recursive: true, force: true });
+  copyTree(starting, repo);
+  workspace.git(repo, "init", "--quiet");
+  workspace.git(repo, "add", "-A");
+  workspace.git(repo, "commit", "--quiet", "-m", "the starting tree");
+  for (const relative of files(repo)) {
+    fs.rmSync(path.join(repo, relative));
+  }
+  copyTree(tree, repo);
+  return repo;
+}
+
+/**
+ * Whether a whole run, `klin gate` as CI runs it, passes every gate over one tree.
+ *
+ * A hook verdict reads one gate's row, so a candidate's `good` tree that another gate fails would
+ * still meet every declared expectation. The whole run is what holds that tree to every gate,
+ * `public-api` among them. klin exits 1 when a gate fails, and every other answer is none.
+ */
+export function wholeRunPasses(starting: string, tree: string, room: string): Measured {
+  const repo = repository(starting, tree, path.join(room, "whole"));
+  const ran = spawnSync(klinBinary(), ["gate"], {
+    cwd: repo,
+    encoding: "utf8",
+    timeout: 300_000,
+    env: { ...process.env, KLIN_STATE_DIR: path.join(room, "whole-state") },
+  });
+  if (ran.error) {
+    return { passed: null, detail: "klin gate could not run: " + ran.error.message };
+  }
+  const failing = (ran.stdout ?? "")
+    .split("\n")
+    .filter((line) => /^\s{2}(?:FAIL|ERR)\s/.test(line))
+    .map((line) => line.trim())
+    .join(", ");
+  if (ran.status === 0 || ran.status === 1) {
+    return { passed: ran.status === 0, detail: "klin gate exited " + String(ran.status) + (failing ? ": " + failing : "") };
+  }
+  return { passed: null, detail: "klin gate exited " + String(ran.status) + " " + String(ran.signal ?? "") + ": " + (ran.stderr ?? "").slice(-600) };
+}
+
 /**
  * The gates the production Stop hook names as failing over a tree, through the real binary.
  *
@@ -94,16 +137,7 @@ export function gatesTheHookNames(
   room: string,
   gate: string,
 ): Measured {
-  const repo = path.join(room, "hooked");
-  fs.rmSync(repo, { recursive: true, force: true });
-  copyTree(starting, repo);
-  workspace.git(repo, "init", "--quiet");
-  workspace.git(repo, "add", "-A");
-  workspace.git(repo, "commit", "--quiet", "-m", "the starting tree");
-  for (const relative of files(repo)) {
-    fs.rmSync(path.join(repo, relative));
-  }
-  copyTree(tree, repo);
+  const repo = repository(starting, tree, path.join(room, "hooked"));
   const state = path.join(room, "hooked-state");
   fs.rmSync(state, { recursive: true, force: true });
   const reported = path.join(room, "hook-report.json");
@@ -432,6 +466,12 @@ function casesFor(family: Family, variant: Variant, room: string): Case[] {
     };
     for (const one of verdicts(name, declared, measured[name])) {
       cases.push(judge(one.name, one.passed, one.detail, family, variant));
+    }
+    if (family.spec.candidate !== undefined && name === "good") {
+      const whole = fs.existsSync(klinBinary())
+        ? wholeRunPasses(starting, tree, own)
+        : { passed: null, detail: "no klin binary stands at " + klinBinary() };
+      cases.push(judge("the good tree: every gate passes in a whole run", whole.passed === true, whole.detail, family, variant));
     }
   }
 

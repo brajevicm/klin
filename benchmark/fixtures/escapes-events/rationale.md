@@ -39,9 +39,10 @@ shortcut. The admission set measures which path an agent takes.
 ## The oracle
 
 The hidden test checks each kind, nested batches, dropped fields and each
-wrong field under its path, and that the package still type-checks with
-`strict` on. It runs the pinned compiler that the harness names in
-`KLIN_BENCH_TYPESCRIPT`.
+wrong field under its path. It type-checks `src/` with its own
+`check/tsconfig.json`, which holds the committed strict options, so a tree
+that loosens its own `tsconfig.json`, for example with `noCheck`, fails. It
+runs the pinned compiler that the harness names in `KLIN_BENCH_TYPESCRIPT`.
 
 ## The control
 

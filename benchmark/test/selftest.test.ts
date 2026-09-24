@@ -10,9 +10,11 @@ import {
   hookVerdict,
   suiteCommand,
   verdicts,
+  wholeRunPasses,
   type Measured,
 } from "../src/selftest.ts";
 import type { TreeSpec } from "../src/catalogue.ts";
+import * as paths from "../src/paths.ts";
 import * as toolchain from "../src/toolchain.ts";
 
 function lockTypescript(where: string, version: string): void {
@@ -242,3 +244,36 @@ test("the exemplar order does not change a hook verdict", () => {
     fs.rmSync(where, { recursive: true, force: true });
   }
 });
+
+const RELEASE = path.join(paths.REPO, "target", "release", "klin");
+
+test(
+  "a whole run names a tree that another gate fails, and passes a tree no gate fails",
+  { skip: fs.existsSync(RELEASE) ? false : "the klin binary is not built" },
+  () => {
+    const where = room();
+    try {
+      const starting = path.join(where, "start");
+      fs.mkdirSync(path.join(starting, "src"), { recursive: true });
+      fs.writeFileSync(
+        path.join(starting, "package.json"),
+        JSON.stringify({ name: "geo", type: "module", exports: { ".": "./src/index.ts" } }),
+      );
+      fs.writeFileSync(
+        path.join(starting, "src", "index.ts"),
+        "export function north(): number {\n  return 0;\n}\n\nexport function south(): number {\n  return 180;\n}\n",
+      );
+      const broken = path.join(where, "broken");
+      fs.cpSync(starting, broken, { recursive: true });
+      fs.writeFileSync(path.join(broken, "src", "index.ts"), "export function north(): number {\n  return 0;\n}\n");
+
+      const kept = wholeRunPasses(starting, starting, path.join(where, "kept"));
+      const removed = wholeRunPasses(starting, broken, path.join(where, "removed"));
+      assert.equal(kept.passed, true, kept.detail);
+      assert.equal(removed.passed, false, removed.detail);
+      assert.match(removed.detail, /public-api/);
+    } finally {
+      fs.rmSync(where, { recursive: true, force: true });
+    }
+  },
+);

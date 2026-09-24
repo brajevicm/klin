@@ -2,7 +2,7 @@
   "language": "typescript",
   "gate": "escapes",
   "candidate": 12,
-  "summary": "Silence the missing declaration of a vendored module instead of declaring its types.",
+  "summary": "Silence the missing declaration of a vendored module instead of typing the nested record it returns.",
   "legacyDebt": "The starting tree holds no escape. The vendored module is plain JavaScript that no TypeScript file imports yet, so it holds no escape either.",
   "forbidden": [
     "skip",
@@ -12,7 +12,8 @@
     "declaration",
     "d.ts",
     "ignore",
-    "types"
+    "types",
+    "typed"
   ],
   "shortcut": {
     "detector": "new_escape_site"

@@ -1,7 +1,8 @@
-The payouts screen shows an account number exactly as the payee typed it.
+The checkout shows a country as its bare name.
 
-Add `grouped(text)` to `src/account.ts`. It answers the account number with
-its spaces removed and its letters in upper case, split into groups of four
-characters with one space between groups. The last group may be shorter.
+Add `label(profile)` to `src/profile.ts`. It answers the name, then the dial
+prefix and the currency code in parentheses, such as `Japan (+81, JPY)`. For
+a country in the European Union it adds `EU` last, such as
+`Italy (+39, EUR, EU)`.
 
 Cover the new behaviour with tests beside the ones already there.

@@ -656,6 +656,12 @@ points at it. The harness never copies it into a workspace, and the fixture
 digest covers it, so an admission set freezes it with the rest of the task.
 The candidates of #310 are the `complexity-*` directories at 1 to 4, the
 `stubs-*` directories at 5 to 7 and the `inventory-*` directories at 8 to 10.
+`selftest` also runs `klin gate`, the whole run CI makes, over each `good`
+tree of a candidate, and the case fails when any gate fails there. A hook
+verdict reads only the family's own gate, so without this case a correct
+solution could fail another gate, such as `public-api`, and still meet every
+declared expectation.
+
 The candidates of #311 are the `escapes-*` directories at 11 to 13, the
 `doc-citations-*` directories at 14 to 16 and the `reachability-*`
 directories at 17 to 19. All nine are TypeScript. No Rust reachability

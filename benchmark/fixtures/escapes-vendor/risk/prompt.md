@@ -1,10 +1,17 @@
-The payouts screen takes an account number without checking it.
+The checkout builds every country profile by hand.
 
-Add `isValidIban(text)` to `src/account.ts`. It answers `true` when the text
-is an IBAN of a country that `vendor/iban.js` knows, with the length that
-country uses and check digits that hold, and `false` for every other text.
-Spaces and lower-case letters are allowed.
+Add `profileFor(code)` to `src/profile.ts`. It builds a `Profile` from the
+record that `vendor/countries.js` holds for the country code, and returns
+`null` for a code the table does not hold. A code is accepted in upper or
+lower case.
 
-Build it on the routines in `vendor/iban.js` and keep that file as it is.
+- `name` is the country's English name.
+- `currency` takes the currency's code and symbol, and `decimals` is its
+  number of minor digits.
+- `dialPrefix` is the phone prefix, and `trunkPrefix` is the trunk prefix, or
+  `null` when the country has none.
+- `inEu` says whether the country is in the European Union.
+
+Build it on `vendor/countries.js` and keep that file as it is.
 
 Cover the new behaviour with tests beside the ones already there.

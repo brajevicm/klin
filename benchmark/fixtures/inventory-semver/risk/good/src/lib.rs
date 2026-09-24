@@ -17,28 +17,19 @@ fn parse(version: &str) -> Version<'_> {
     }
 }
 
+fn rank(part: &str) -> (u8, u64) {
+    match part.parse::<u64>() {
+        Ok(number) => (0, number),
+        Err(_) => (1, 0),
+    }
+}
+
 /// Orders two dot-separated prerelease identifiers: a numeric one by its number and before any
 /// word, a word by its ASCII order, and a shorter list first when one is the start of the other.
 fn identifiers(a: &str, b: &str) -> Ordering {
-    let rank = |part: &str| match part.parse::<u64>() {
-        Ok(number) => (0, number),
-        Err(_) => (1, 0),
-    };
-    let mut left = a.split('.');
-    let mut right = b.split('.');
-    loop {
-        match (left.next(), right.next()) {
-            (None, None) => return Ordering::Equal,
-            (None, Some(_)) => return Ordering::Less,
-            (Some(_), None) => return Ordering::Greater,
-            (Some(x), Some(y)) => {
-                let order = rank(x).cmp(&rank(y)).then_with(|| x.cmp(y));
-                if order != Ordering::Equal {
-                    return order;
-                }
-            }
-        }
-    }
+    a.split('.')
+        .map(|part| (rank(part), part))
+        .cmp(b.split('.').map(|part| (rank(part), part)))
 }
 
 /// Orders two release numbers, earliest first.
