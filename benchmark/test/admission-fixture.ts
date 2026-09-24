@@ -4,7 +4,7 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { TYPESCRIPT_SHA256 } from "../src/toolchain.ts";
-import { RULE, claim, cohortOf, orderOf, rubricSha256, selectionKeyOf, summarize, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
+import { RULE, claim, cohortOf, orderOf, rubricSha256, summarize, type Apparatus, type Candidate, type Manifest } from "../src/admission.ts";
 import type { RunRecord } from "../src/record.ts";
 import { sha256 } from "../src/trees.ts";
 
@@ -130,7 +130,7 @@ export function setOnDisk(
   manifest.cohort = cohortOf(manifest);
   fs.writeFileSync(path.join(where, "manifest.json"), JSON.stringify(manifest) + "\n");
   if (!at.retries) {
-    claim(path.dirname(where), selectionKeyOf(manifest), where);
+    claim(path.dirname(where), manifest.rubric, where);
   }
   for (const row of manifest.order) {
     const at = row.variant === "risk" ? row.repetition - 1 : RULE.runs + row.repetition - 1;

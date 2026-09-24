@@ -466,22 +466,18 @@ export function rivals(root: string, key: string): string[] {
         return false;
       }
       const held = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<Manifest>;
-      return held.kind === POPULATION && held.first === null && selectionKeyOf(held as Manifest) === key;
+      return held.kind === POPULATION && held.first === null && held.rubric === key;
     });
 }
 
 /**
- * What one admission selects over: the rubric, the rule and the declared population.
+ * Where the one first set of each frozen rubric is claimed, under the root every first set lives in.
  *
- * It leaves the apparatus and the seed out, so exactly one first set may ever claim it. A host
- * update moves the cohort, which only says whether a retry can continue the first set; it opens no
- * second admission of the same candidates.
+ * The claim is keyed by the rubric's sha256 alone. The rubric forbids a change to the rule or to any
+ * candidate after the first admission run, so neither may open a second admission, and a host
+ * update, which moves only the cohort a retry must share, opens none either. A new admission needs a
+ * new rubric version.
  */
-export function selectionKeyOf(manifest: Pick<Manifest, "rubric" | "rule" | "declared">): string {
-  return sha256(JSON.stringify({ rubric: manifest.rubric, rule: manifest.rule, declared: manifest.declared }));
-}
-
-/** Where the one first set of each selection key is claimed, under the root every first set lives in. */
 export const CLAIMS = ".admission-claims";
 
 function claimOf(root: string, key: string): string {
@@ -637,16 +633,16 @@ export function final(first: string, options: { cannotStart?: boolean; root?: st
   if (path.resolve(path.dirname(first)) !== path.resolve(root)) {
     problems.push(first + " is not directly under " + root + ", where every admission first set lives");
   }
-  const key = selectionKeyOf(manifest);
+  const key = manifest.rubric;
   for (const other of rivals(root, key).filter((one) => path.resolve(one) !== path.resolve(first))) {
-    problems.push(other + " is a second first set of the same selection key, so neither is the first set until a person removes one with a recorded reason");
+    problems.push(other + " is a second first set under the same rubric, so neither is the first set until a person removes one with a recorded reason");
   }
   const owner = claimed(root, key);
   if (owner !== path.basename(first)) {
     problems.push(
       owner === null
-        ? "no first set claimed the selection key " + key + " under " + path.join(root, CLAIMS)
-        : "the selection key " + key + " is claimed by " + owner + ", not by " + path.basename(first),
+        ? "no first set claimed the rubric " + key + " under " + path.join(root, CLAIMS)
+        : "the rubric " + key + " is claimed by " + owner + ", not by " + path.basename(first),
     );
   }
   const kept = path.join(first, "admission.json");
@@ -800,10 +796,10 @@ export function all(chosen: Options): number {
     first: chosen.retry === "" ? null : sha256(fs.readFileSync(path.join(chosen.retry, "manifest.json"))),
   };
   manifest.cohort = cohortOf(manifest);
-  const key = selectionKeyOf(manifest);
+  const key = manifest.rubric;
   const refused =
     chosen.retry === ""
-      ? rivals(root, key).map((one) => one + " is a first set of the same selection key")
+      ? rivals(root, key).map((one) => one + " is a first set under the same rubric")
       : retryProblems(chosen.retry, manifest);
   if (refused.length > 0) {
     process.stdout.write("the set cannot start:\n" + refused.map((one) => "  " + one).join("\n") + "\n");
@@ -819,7 +815,7 @@ export function all(chosen: Options): number {
   }
   if (chosen.retry === "" && !claim(root, key, into)) {
     fs.rmSync(into, { recursive: true, force: true });
-    process.stdout.write("the selection key " + key + " is already claimed by " + String(claimed(root, key)) + ", and one admission has one first set\n");
+    process.stdout.write("the rubric " + key + " is already claimed by " + String(claimed(root, key)) + ", and one rubric version has one first set\n");
     return 2;
   }
   const token = acquire(into) as string;

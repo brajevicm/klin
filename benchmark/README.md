@@ -708,13 +708,14 @@ A set is written once, into an empty directory, from a clean harness.
 Every first set lives directly under `benchmark/runs`, and the command takes no
 `--into`. Thus a rival first set cannot hide in another directory.
 
-One admission has one first set. Its selection key is the sha256 of the rubric,
-the rule and the declared population, and it leaves the apparatus and the seed
-out. Before its first session, a first set claims its key as
-`benchmark/runs/.admission-claims/<key>`, with an exclusive create. A second
-first set of the same key cannot start, even after a host update moves the
-cohort. The cohort only says whether a retry can continue the first set under
-the same apparatus. If the host changes during a first set, restore the frozen
+One rubric version has one first set. Before its first session, a first set
+claims the rubric's sha256 as `benchmark/runs/.admission-claims/<sha256>`,
+with an exclusive create. A second first set under the same rubric cannot
+start. This stays true after a host update moves the cohort, and after a
+change to the rule or to a candidate, which the rubric forbids after the first
+admission run. The first-set manifest still freezes the declared population,
+and the cohort only says whether a retry can continue the first set under the
+same apparatus. If the host changes during a first set, restore the frozen
 apparatus and resume the set. If that is not possible, keep the failed set as
 evidence. A new admission of the same candidates needs a new rubric version.
 
@@ -816,8 +817,8 @@ section 4:
 
 - The first set must lie directly under `benchmark/runs`, must be finished,
   must verify alone and must hold its `admission.json`.
-- The first set must hold the claim of its selection key. No other first set
-  of the same key may lie under `benchmark/runs`. If two exist, the plan
+- The first set must hold the claim of its rubric. No other first set under
+  the same rubric may lie under `benchmark/runs`. If two exist, the plan
   refuses. It does not choose between them by `startedAt`,
   because that text binds to nothing a set records. A person removes one, and
   records the reason.

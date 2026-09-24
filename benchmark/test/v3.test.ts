@@ -244,8 +244,9 @@ test("plan --population v3 refuses a retry that could still start or a moved can
   try {
     const probes = path.join(where, "probes");
     const faked = { ...declared("complexity-fines"), fixtureSha256: "moved" };
-    const stale = withVerdict(setOnDisk([faked], { "complexity-fines": admitted }, { under: where }).where);
-    const changed = quiet(() => planV3(path.join(where, "changed"), stale, 1, probes, where));
+    const apart = fs.mkdtempSync(path.join(where, "apart-"));
+    const stale = withVerdict(setOnDisk([faked], { "complexity-fines": admitted }, { under: apart }).where);
+    const changed = quiet(() => planV3(path.join(where, "changed"), stale, 1, probes, apart));
     assert.equal(changed.value, 2, changed.wrote);
     assert.match(changed.wrote, /complexity-fines is not the candidate the first set froze/);
     fs.rmSync(stale, { recursive: true, force: true });

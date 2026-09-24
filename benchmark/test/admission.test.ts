@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { LOCK, all, claim, claimed, final, populationProblems, resume, rivals, rubricSha256, schedule, selectionKeyOf, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
+import { LOCK, all, claim, claimed, final, populationProblems, resume, rivals, rubricSha256, schedule, summarize, unfinished, verify, type Manifest } from "../src/admission.ts";
 import { APPARATUS, admitted, candidate, clean, digestOf, invalid, recordFor, risk, rootOf, setOnDisk, withVerdict, write } from "./admission-fixture.ts";
 
 /**
@@ -187,7 +187,7 @@ test("a first set has no rival of its cohort beside it", () => {
   const declared = [candidate("a", "complexity", 1), candidate("b", "complexity", 2)];
   const one = setOnDisk(declared, { a: admitted, b: invalid }, { under: root });
   setOnDisk(declared, { b: admitted }, { retries: one.where });
-  const key = selectionKeyOf(one.manifest);
+  const key = one.manifest.rubric;
   assert.deepEqual(rivals(root, key), [one.where], "a retry is no rival");
   const two = setOnDisk(declared, { a: admitted, b: admitted }, { under: root });
   assert.deepEqual(rivals(root, key).sort(), [one.where, two.where].sort());
@@ -290,21 +290,22 @@ test("a retry that is running or was interrupted gives no verdict until it finis
   fs.rmSync(first, { recursive: true, force: true });
 });
 
-test("one selection key has one first set, whatever the apparatus or the start times say", () => {
+test("one rubric has one first set, whatever the apparatus, the candidates or the start times say", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-admission-root-"));
   const declared = [candidate("a", "complexity", 1)];
   const one = withVerdict(setOnDisk(declared, { a: admitted }, { under: root }).where);
   assert.deepEqual(final(one, { root }).problems, []);
-  assert.equal(claimed(root, selectionKeyOf(JSON.parse(fs.readFileSync(path.join(one, "manifest.json"), "utf8")) as Manifest)), path.basename(one));
+  assert.equal(claimed(root, rubricSha256() as string), path.basename(one));
   const updated = { ...APPARATUS, host: { name: "claude-code", version: "2.1.300 (Claude Code)" } };
-  const two = setOnDisk(declared, { a: admitted }, { under: root, apparatus: updated });
-  assert.notEqual(two.manifest.cohort, JSON.parse(fs.readFileSync(path.join(one, "manifest.json"), "utf8")).cohort, "a host update moves the cohort");
-  assert.equal(claim(root, selectionKeyOf(two.manifest), two.where), false, "the claim is taken once");
+  const changed = [{ ...candidate("a", "complexity", 1), fixtureSha256: "a changed prompt" }, candidate("b", "complexity", 2)];
+  const two = setOnDisk(changed, { a: admitted, b: admitted }, { under: root, apparatus: updated });
+  assert.notEqual(two.manifest.cohort, JSON.parse(fs.readFileSync(path.join(one, "manifest.json"), "utf8")).cohort, "a host update and a changed population move the cohort");
+  assert.equal(claim(root, two.manifest.rubric, two.where), false, "the rubric is claimed once");
   fs.writeFileSync(path.join(two.where, "manifest.json"), JSON.stringify({ ...two.manifest, startedAt: "2020-01-01T00:00:00Z" }) + "\n");
   withVerdict(two.where);
   assert.ok(final(one, { root }).problems.some((problem) => problem.includes(two.where) && problem.includes("second first set")));
   const later = final(two.where, { root }).problems;
-  assert.ok(later.some((problem) => problem.includes("is claimed by " + path.basename(one))), "an earlier startedAt or a new host does not make a set the first");
+  assert.ok(later.some((problem) => problem.includes("is claimed by " + path.basename(one))), "an earlier startedAt, a new host or a changed candidate does not make a set the first");
   fs.rmSync(root, { recursive: true, force: true });
 });
 
