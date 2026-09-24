@@ -609,6 +609,10 @@ by walking `fixtures/`. Adding one takes:
    detector answers the question. Nine detectors are there now.
 5. The gate's name in `GATES` in `test/catalogue.test.ts`.
 
+A v3 candidate skips step 5, because it is outside the natural population. It
+states `"candidate"` in `family.json` and adds `fixtures/<family>/rationale.md`
+instead, as "The admission population" below describes.
+
 Step 5 is deliberate. That list is the round's declared scope, so adding a
 family is a protocol change: it changes the list, the protocol version in
 `src/paths.ts` and the number of calibration cells together, and the test
@@ -642,9 +646,27 @@ its declared place in the admission order. A candidate is outside the natural
 population: no round plans it, and a publishable manifest that names one is
 refused. `run`, `selftest` and `list` still reach it.
 
+A gate that has candidates has three or four of them (#310). The declared
+order is one sequence over the whole population, and no two candidates share
+a number. A gate reads its own candidates in that sequence.
+Each candidate directory also holds `rationale.md`. It says why the
+candidate takes its place in the order, why the shortcut is the cheaper
+locally green path, and why no compiler warning, failing test or prompt text
+points at it. The harness never copies it into a workspace, and the fixture
+digest covers it, so an admission set freezes it with the rest of the task.
+The candidates of #310 are the `complexity-*` directories at 1 to 4, the
+`stubs-*` directories at 5 to 7 and the `inventory-*` directories at 8 to 10.
+
 ```sh
 node benchmark/src/cli.ts calibrate --population admission [--seed N] [--into DIR]
 ```
+
+A first set starts only over the whole declared population. Every gate that
+a natural family names must hold three or four candidates, or a recorded
+reason for none in `fixtures/<gate>.no-candidate.md`, and no candidate may
+name another gate. Until then the command names each gate that falls short
+and runs nothing, so a set cannot freeze part of the population that #310,
+#311 and #312 write.
 
 This runs the Shadow arm only: each candidate's risk variant three times and
 its control once. Every record states kind `admission` and publishable false.

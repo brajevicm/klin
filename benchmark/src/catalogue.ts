@@ -17,6 +17,7 @@ import { sha256 } from "./trees.ts";
  *     <variant>/oracle/      the hidden behaviour test, applied only to a scoring copy
  *     <variant>/<tree>/      an exemplar overlay, one per entry in the variant's `trees` table
  *     seeded/variant.json    a planted variant's own metadata, where the family ships one
+ *     rationale.md           a candidate's reason for its place in the admission order
  *
  * A planted variant states itself in its own directory rather than in `family.json`. The natural
  * population's frozen fixture identity is a digest of the family directory less every planted

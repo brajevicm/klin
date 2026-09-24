@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as paths from "./paths.ts";
-import { candidates, type Family } from "./catalogue.ts";
+import { candidates, families, type Family } from "./catalogue.ts";
 import { CURRENT_PROTOCOL } from "./protocol.ts";
 import * as session from "./session.ts";
 import { fixtures, frozen, type Frozen } from "./frozen.ts";
@@ -466,6 +466,36 @@ export function rivals(root: string, cohort: string): string[] {
     });
 }
 
+/** The file that records why a gate has no candidate, beside the fixtures. */
+export function noCandidateReason(gate: string): string {
+  return path.join(paths.FIXTURES, gate + ".no-candidate.md");
+}
+
+/**
+ * Why the declared population is not yet the whole one the rubric freezes.
+ *
+ * Every gate a natural family names holds three or four candidates, or a recorded reason for
+ * none, and no candidate names a gate outside them. A first set frozen before that would freeze
+ * a cohort that later tickets could only replace, so it does not start.
+ */
+export function populationProblems(pool: { name: string; gate: string }[], gates: string[], reasons: Set<string>): string[] {
+  const problems: string[] = [];
+  for (const gate of gates) {
+    const count = pool.filter((one) => one.gate === gate).length;
+    if (count === 0 && !reasons.has(gate)) {
+      problems.push(gate + " has no candidate and no recorded reason for none");
+    } else if (count > 0 && (count < 3 || count > 4)) {
+      problems.push(gate + " has " + String(count) + " candidates, and a gate needs three or four");
+    }
+  }
+  const strays = pool.filter((one) => !gates.includes(one.gate));
+  for (const gate of [...new Set(strays.map((one) => one.gate))]) {
+    const named = strays.filter((one) => one.gate === gate).map((one) => one.name);
+    problems.push(named.join(", ") + " name the gate " + gate + ", which no natural family names");
+  }
+  return problems;
+}
+
 /**
  * Freeze an admission set, run it, and write its verdicts only once the set verifies.
  *
@@ -499,6 +529,17 @@ export function all(chosen: Options): number {
   if (fs.existsSync(into) && fs.readdirSync(into).length > 0) {
     process.stdout.write(into + " is not empty. An admission set is written once, and a first set takes one retry.\n");
     return 2;
+  }
+  if (chosen.retry === "") {
+    const gates = [...new Set(Object.values(families()).map((one) => one.spec.gate))].sort();
+    const reasons = new Set(gates.filter((gate) => fs.existsSync(noCandidateReason(gate))));
+    const incomplete = populationProblems(known.map((one) => ({ name: one.name, gate: one.spec.gate })), gates, reasons);
+    if (incomplete.length > 0) {
+      process.stdout.write(
+        "the declared population is incomplete, so a first set would freeze part of it:\n" + incomplete.map((one) => "  " + one).join("\n") + "\n",
+      );
+      return 2;
+    }
   }
   const rubric = rubricSha256();
   if (rubric === null) {
