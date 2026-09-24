@@ -331,7 +331,12 @@ export function main(argv: string[]): number {
     return Math.max(...named.map((one) => probe.run(one)));
   }
   if (command === "calibrate") {
-    if (flag(args, "--population", "") === admission.POPULATION) {
+    const population = flag(args, "--population", "");
+    if (population !== "" && population !== admission.POPULATION) {
+      process.stdout.write("calibrate knows no population named " + population + ", only " + admission.POPULATION + "\n");
+      return 2;
+    }
+    if (population === admission.POPULATION) {
       return admission.all({
         into: flag(args, "--into", admission.directory()),
         only: flag(args, "--only", "").split(",").filter((one) => one.length > 0),

@@ -8,7 +8,7 @@ import { sha256 } from "./trees.ts";
  * The fixture catalogue: task directories, each with a risk and a control variant. A task that
  * states a candidate order belongs to the admission population and to no round.
  *
- * A family directory holds:
+ * A task directory holds:
  *
  *     family.json            the metadata below, for the natural population
  *     base/                  the starting tree, copied into every subject workspace

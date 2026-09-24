@@ -196,6 +196,11 @@ export function all(chosen: Options): number {
     process.stdout.write("the catalogue holds no candidate task\n");
     return 2;
   }
+  const shared = known.filter((one) => known.some((other) => other !== one && other.spec.candidate === one.spec.candidate));
+  if (shared.length > 0) {
+    process.stdout.write("the candidates " + shared.map((one) => one.name).join(", ") + " share a declared order\n");
+    return 2;
+  }
   if (!startable()) {
     return 2;
   }

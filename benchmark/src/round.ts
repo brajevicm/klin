@@ -282,7 +282,8 @@ function gateOf(fixtures: Frozen["fixtures"], task: string): string {
 /** A schedule's blocks grouped by gate, each task's blocks its own. */
 export function blocksByGate(order: ScheduledRow[], fixtures: Frozen["fixtures"]): GateBlocks[] {
   const held = new Map<string, GateBlocks>();
-  for (const row of order.filter((one) => one.order % 2 === 0)) {
+  const seen = new Set<number>();
+  for (const row of order.filter((one) => !seen.has(one.block) && seen.add(one.block))) {
     const gate = gateOf(fixtures, row.family);
     const one = held.get(gate) ?? { gate, tasks: [], risk: 0, control: 0 };
     if (!one.tasks.includes(row.family)) {
@@ -1374,9 +1375,10 @@ export function scorecard(directory: string): Scorecard {
       .map((one) => ({ family: one.family, gate: one.gate, arm: one.arm, signalSites: one.signalSites, blockedStops: one.blockedStops })),
     boundaries: [
       "No signal here carries a human validity label. A useful-intervention rate is #115's, after blinded classification.",
-      "The 27 risk blocks are repeated stochastic executions of nine fixed families, not 27 independent tasks. The McNemar test assumes the blocks are conditionally independent repeats and generalizes to nothing beyond these fixtures, this model and this host.",
+      "The " + String(pairs.size) + " risk blocks are repeated stochastic executions of " + String(planned.flatMap((one) => one.tasks).length) +
+        " fixed tasks, not " + String(pairs.size) + " independent tasks. The McNemar test assumes the blocks are conditionally independent repeats and generalizes to nothing beyond these fixtures, this model and this host.",
       "A gate with no Shadow exposure is unchallenged for catch and repair. Its concordant absent pairs are evidence of neither help nor harm.",
-      "The nine control blocks are descriptive negative controls. They are not pooled into the primary test and support no population false-positive rate.",
+      "The " + String(planned.reduce((sum, one) => sum + one.control, 0)) + " control blocks are descriptive negative controls. They are not pooled into the primary test and support no population false-positive rate.",
       "klin_ms is feedback latency on small fixtures. Large-repository performance is SPEC 13's claim and is evidenced elsewhere.",
       "Reaching the challenge floor does not itself imply a product effect.",
     ],
