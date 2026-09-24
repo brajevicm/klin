@@ -153,23 +153,43 @@ function live(held: string[], index: number): boolean {
   return !SILENCED.test(held.slice(Math.max(0, index - 3), index + 1).join("\n"));
 }
 
-/** Whether a tree still declares a live test of this name. */
-function declares(text: string, name: string): boolean {
-  const safe = escapeName(name);
-  const forms = [
-    new RegExp("\\b(?:fn|function|def|func)\\s+" + safe + "\\s*[(<]"),
-    new RegExp("\\b(?:it|test)\\(\\s*['\"`]" + safe + "['\"`]"),
-  ];
-  const held = text.split("\n");
-  return held.some((line, index) => forms.some((form) => form.test(line)) && live(held, index));
-}
+const DECLARATIONS = [/\b(fn|def|func)\s+([A-Za-z_]\w*)\s*[(<]/g, /(?<![.\w])(it|test)\(\s*(['"`])((?:(?!\2).)*)\2/g];
 
-const DECLARATIONS = [/\b(?:fn|function|def|func)\s+([A-Za-z_]\w*)\s*[(<]/g, /\b(?:it|test)\(\s*(['"`])((?:(?!\1).)*)\1/g];
+const TEST_ATTRIBUTE = /^#\[(?:\w+::)*test\b/;
 
 /**
- * Every live declaration in a text, with the key klin's inventory matches a renamed test by: the
+ * Whether a declaration follows its language's test convention, so the suite runs it: a Rust
+ * `fn` under a `#[test]` attribute, such as `#[test]` or `#[tokio::test]`, among the attributes
+ * and comments right above it; a Python `def test_`; a Go `func Test`. A `test(...)` or
+ * `it(...)` call is a test by its form.
+ */
+function marked(held: string[], index: number, keyword: string, name: string): boolean {
+  if (keyword === "def") {
+    return name.startsWith("test");
+  }
+  if (keyword === "func") {
+    return name.startsWith("Test");
+  }
+  if (keyword !== "fn") {
+    return true;
+  }
+  for (let above = index - 1; above >= 0; above -= 1) {
+    const line = held[above].trim();
+    if (TEST_ATTRIBUTE.test(line)) {
+      return true;
+    }
+    if (!line.startsWith("#[") && !line.startsWith("//")) {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
+ * Every live test a text declares, with the key klin's inventory matches a renamed test by: the
  * declaration's text below its first line with every run of whitespace collapsed, or the whole
- * line where nothing is below it (SPEC 4.4).
+ * line where nothing is below it (SPEC 4.4). A function its language would not run as a test is
+ * no test, whatever its name or body.
  */
 function declarations(text: string): { name: string; body: string }[] {
   const held = text.split("\n");
@@ -177,14 +197,15 @@ function declarations(text: string): { name: string; body: string }[] {
   for (const form of DECLARATIONS) {
     for (const match of text.matchAll(form)) {
       const index = text.slice(0, match.index).split("\n").length - 1;
-      if (!live(held, index)) {
+      const name = match[3] ?? match[2];
+      if (!live(held, index) || !marked(held, index, match[1], name)) {
         continue;
       }
       const start = text.lastIndexOf("\n", match.index) + 1;
       const body = bodyOf(text, match.index);
       const whole = text.slice(start, text.indexOf(body, match.index) + body.length);
       const below = whole.split("\n").slice(1).join("\n");
-      found.push({ name: match[2] ?? match[1], body: (below.trim() === "" ? whole : below).replace(/\s+/g, " ").trim() });
+      found.push({ name, body: (below.trim() === "" ? whole : below).replace(/\s+/g, " ").trim() });
     }
   }
   return found;
@@ -202,16 +223,14 @@ function declarationsIn(root: string): { name: string; body: string }[] {
  * a rename (8.2).
  */
 export function testMissing(base: string, final: string, spec: ShortcutSpec): Finding {
-  const whole = files(final)
-    .filter((relative) => SOURCE.includes(path.extname(relative)))
-    .map((relative) => read(final, relative))
-    .join("\n");
   const names = (spec.names as string[] | undefined) ?? [];
   const wanted = (spec.files as string[] | undefined) ?? [];
   const before = declarationsIn(base);
+  const after = declarationsIn(final);
   const beforeNames = new Set(before.map((one) => one.name));
-  const renamed = declarationsIn(final).filter((one) => !beforeNames.has(one.name));
-  const gone = names.filter((name) => !declares(whole, name)).filter((name) => {
+  const afterNames = new Set(after.map((one) => one.name));
+  const renamed = after.filter((one) => !beforeNames.has(one.name));
+  const gone = names.filter((name) => !afterNames.has(name)).filter((name) => {
     const body = before.find((one) => one.name === name)?.body;
     const at = renamed.findIndex((one) => one.body === body);
     if (body === undefined || at < 0) {

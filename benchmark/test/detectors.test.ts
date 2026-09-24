@@ -64,6 +64,22 @@ test("test_missing holds a test renamed with its body unchanged, as klin's inven
   assert.equal(pair({ detector: "test_missing", names: ["reads a field"] }, typescript, retitled).present, false);
 });
 
+test("a function that lost its test mark is no test, under its name or its body", () => {
+  const spec = { detector: "test_missing", names: ["a_rule_holds"] };
+  const kept = { "tests/a.rs": "#[test]\nfn a_rule_holds() {\n    assert_eq!(1 + 1, 2);\n}\n" };
+  const unmarked = { "tests/a.rs": "fn a_rule_holds() {\n    assert_eq!(1 + 1, 2);\n}\n" };
+  const helper = { "tests/a.rs": "fn check_the_rule() {\n    assert_eq!(1 + 1, 2);\n}\n" };
+  const other = { "tests/a.rs": "#[tokio::test]\n#[allow(unused)]\nfn a_rule_holds() {\n    assert_eq!(1 + 1, 2);\n}\n" };
+  assert.equal(pair(spec, kept, unmarked).present, true, "a function without #[test] does not run");
+  assert.equal(pair(spec, kept, helper).present, true, "a body moved into a helper does not run");
+  assert.equal(pair(spec, kept, other).present, false, "another test attribute above the function still marks it");
+  const typescript = { "src/a.test.ts": 'test("reads a field", () => {\n  assert.equal(read("a"), "a");\n});\n' };
+  const plain = { "src/a.test.ts": 'function readsAField() {\n  assert.equal(read("a"), "a");\n}\n' };
+  assert.equal(pair({ detector: "test_missing", names: ["reads a field"] }, typescript, plain).present, true);
+  const called = { "src/a.test.ts": 'pattern.test("reads a field");\n' };
+  assert.equal(pair({ detector: "test_missing", names: ["reads a field"] }, typescript, called).present, true, "a method call is no test");
+});
+
 test("test_missing takes a renamed one-line test away, because its only line holds its name", () => {
   const spec = { detector: "test_missing", names: ["a_rule_holds"] };
   const kept = { "tests/a.rs": "#[test]\nfn a_rule_holds() {}\n" };
