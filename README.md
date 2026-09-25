@@ -12,14 +12,14 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 **Claude Code · Codex · Cursor**
 
-```sh
+```
 FAIL  complexity
       FAIL: 1 function(s) got worse — the ratchet only tightens:
         src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines
       Reduce the function's responsibility or decision complexity.
 ```
 
-## Install
+## Install klin on macOS or Linux
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
@@ -159,9 +159,9 @@ Hooks alone are klin's **Feedback** level. Make the independent CI check require
 
 ## Tested on real coding-agent work
 
-We tested klin across repeated Shadow/Active coding-agent runs and used what we found to harden the product before release.
+We tested klin across repeated controlled coding-agent runs and used what we found to harden the product before release.
 
-The latest validation showed clean positive repair behavior across every challenged pair, with no harmful paired outcomes or undesired signals. A separate seeded confirmation found no repair-by-appeasement.
+In the latest validation, every case that exposed the target regression was repaired with klin active, with no undesired signals. A separate seeded confirmation found no repair-by-appeasement.
 
 ## Documentation
 
