@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a JSON file holds settings over the defaults (0.737959ms)\n✔ a port that is not a whole number from 1 to 65535 is refused (0.247333ms)\n✔ the address comes from the JSON settings (0.081375ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 80.948084\n",
+  "stderr": "",
+  "reason": ""
+}

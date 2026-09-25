@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/93fa3671f624/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "2a33a6e9-ee89-437e-9d34-6d8e8e19c48a",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "9836b36c9534355383b030f5f609a9ecbccf902af444ba3d35fc60e629f4a6d1",
+  "sessionId": "2a33a6e9-ee89-437e-9d34-6d8e8e19c48a",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":36340,\"stop_reason\":\"end_turn\",\"session_id\":\"2a33a6e9-ee89-437e-9d34-6d8e8e19c48a\",\"total_cost_usd\":0.152982,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":17125,\"cache_read_input_tokens\":271070,\"output_tokens\":3024,\"output_tokens_details\":{\"thinking_tokens\":449},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17125,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":119,\"cache_read_input_tokens\":43403,\"cache_creation_input_tokens\":467,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":467},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":3024,\"cacheReadInputTokens\":271070,\"cacheCreationInputTokens\":17125,\"webSearchRequests\":0,\"costUSD\":0.152982,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":449,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Moved `currency.ts`, `discount.ts`, `rounding.ts`, `tax.ts`, and `totals.ts` into `src/money/`, updated the relative imports in `src/invoice.ts` and `src/index.ts` accordingly, and left `src/index.ts`'s public exports unchanged so callers see no difference.\",\"ttft_ms\":3273,\"type\":\"result\",\"duration_ms\":39174,\"uuid\":\"d3ecf00c-a4b9-4f8c-9567-173aedad953b\",\"ttft_stream_ms\":3271,\"time_to_request_ms\":336,\"first_content_frame_ms\":3272,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 36340,
+    "stop_reason": "end_turn",
+    "session_id": "2a33a6e9-ee89-437e-9d34-6d8e8e19c48a",
+    "total_cost_usd": 0.152982,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 17125,
+      "cache_read_input_tokens": 271070,
+      "output_tokens": 3024,
+      "output_tokens_details": {
+        "thinking_tokens": 449
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 17125,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 119,
+          "cache_read_input_tokens": 43403,
+          "cache_creation_input_tokens": 467,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 467
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 3024,
+        "cacheReadInputTokens": 271070,
+        "cacheCreationInputTokens": 17125,
+        "webSearchRequests": 0,
+        "costUSD": 0.152982,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 449,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Moved `currency.ts`, `discount.ts`, `rounding.ts`, `tax.ts`, and `totals.ts` into `src/money/`, updated the relative imports in `src/invoice.ts` and `src/index.ts` accordingly, and left `src/index.ts`'s public exports unchanged so callers see no difference.",
+    "ttft_ms": 3273,
+    "type": "result",
+    "duration_ms": 39174,
+    "uuid": "d3ecf00c-a4b9-4f8c-9567-173aedad953b",
+    "ttft_stream_ms": 3271,
+    "time_to_request_ms": 336,
+    "first_content_frame_ms": 3272,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:11:27.465Z",
+  "endedAt": "2026-09-24T22:12:16.339Z",
+  "wallMs": 48875,
+  "timedOut": false
+}

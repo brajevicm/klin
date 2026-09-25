@@ -5,7 +5,7 @@ import { sha256 } from "./trees.ts";
 
 export const LOCKED_LABELS_SHA256 = "223bc66b760d18f51a6e4cc2196de5e4d03b2adaf10cc7b997aed24bd13c96dd";
 /** The v3 labels, locked in their own commit before the v3 join is read. Null until a person locks them. */
-export const LOCKED_V3_LABELS_SHA256: string | null = null;
+export const LOCKED_V3_LABELS_SHA256: string | null = "c79b438aa9b2e5f95c777ccd534bac2b40fd1fe19166ee44b74e664c09bd8e28";
 
 export const LABELS = ["valid-regression", "valid-review", "undesired"] as const;
 export type Label = (typeof LABELS)[number];

@@ -1,0 +1,123 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "denyRead": [
+        "/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde",
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work",
+        "/Users/brajevicm/Workspace/klin"
+      ],
+      "allowRead": [
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/probe-00174cde/repo",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/probe-00174cde/repo",
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment",
+        "~/.cargo",
+        "~/.rustup",
+        "~/.npm",
+        "/Users/brajevicm/.local/share/fnm/node-versions/v24.17.0/installation",
+        "/opt/homebrew/Cellar/node/26.9.0",
+        "/bin/sh"
+      ],
+      "denyWrite": [
+        "/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde",
+        "/Users/brajevicm/Workspace/klin"
+      ],
+      "allowWrite": [
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/probe-00174cde/repo",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/probe-00174cde/repo",
+        "~/.cargo",
+        "~/.rustup",
+        "~/.npm"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "crates.io",
+        "index.crates.io",
+        "static.crates.io"
+      ],
+      "strictAllowlist": true
+    }
+  },
+  "permissions": {
+    "blockReadsOutsideWorkingDirectories": true,
+    "deny": [
+      "Edit(//private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment/**)",
+      "Edit(//var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde/74c3b0d7ec4f6fb34068f42f\" radius",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde/74c3b0d7ec4f6fb34068f42f\" radius",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde/74c3b0d7ec4f6fb34068f42f\" guard",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde/daa4d5dda7fcfc2408d2cac4\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde/74c3b0d7ec4f6fb34068f42f\" gate --hook --changed",
+            "timeout": 900
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Read|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/probe/probe-00174cde/daa4d5dda7fcfc2408d2cac4\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

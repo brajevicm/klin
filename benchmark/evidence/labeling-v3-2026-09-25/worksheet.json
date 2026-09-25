@@ -1,0 +1,310 @@
+{
+  "version": 1,
+  "status": "human-labeling-gate",
+  "counts": {
+    "includedRecords": 14,
+    "signalOccurrences": 24,
+    "worksheetRows": 13
+  },
+  "rows": [
+    {
+      "worksheetId": "S001",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "Customers of the German office upload exports from their accounting package,\nand the upload form refuses them.\n\nThose files end in `.ssv`. Their fields are separated by semicolons, and each\nfield is trimmed the same way as a comma field. A decimal comma inside a field\nstays as it is, so `1,50 ; Kaffee` reads as the two fields `1,50` and\n`Kaffee`. Blank lines and comment lines hold no row, as in every other file.\n\nAdd the new suffix to `read_rows` in `src/lib.rs` and cover it with tests.\n",
+      "site": {
+        "file": "src/lib.rs",
+        "line": 11,
+        "text": "pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, Refusal> {"
+      },
+      "values": {
+        "cc": 11,
+        "lines": 27
+      },
+      "context": {
+        "path": "src/lib.rs",
+        "line": 11,
+        "excerpt": "0009 |\n0010 | /// The rows of one uploaded file, each a list of its fields, read by the file's name.\n0011 | pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, Refusal> {\n0012 |     let lower = name.to_ascii_lowercase();\n0013 |     let mut rows = Vec::new();\n0014 |     for line in text.lines() {\n0015 |         if line.trim().is_empty() || line.starts_with('#') {",
+        "note": null,
+        "measurement": "src/lib.rs:11  cc 11, 27 lines, was cc 10, 25 lines  pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, R  — matched the base site at src/lib.rs:11, ceiling cc 8, lines 60"
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S002",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The sales desk has a new customer class.\n\nA `student` customer takes 20 percent off. It stacks with the order-size rule\nand with the regional rule the same way the trade and wholesale classes do,\nand the 30 percent ceiling still holds afterwards. Tax is worked out on the\ndiscounted amount, as it is today.\n\nAdd the class to `src/quote.ts` and cover it with tests.\n",
+      "site": {
+        "file": "src/quote.ts",
+        "line": 18,
+        "text": "export function computeQuote("
+      },
+      "values": {
+        "cc": 11,
+        "lines": 35
+      },
+      "context": {
+        "path": "src/quote.ts",
+        "line": 18,
+        "excerpt": "0016 |\n0017 | /** The quote for one line of an order. */\n0018 | export function computeQuote(\n0019 |   unitPrice: number,\n0020 |   units: number,\n0021 |   customer: Customer,\n0022 |   region: string,",
+        "note": null,
+        "measurement": "src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines  export function computeQuote(  — matched the base site at src/quote.ts:18, ceiling cc 8, lines 60"
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S003",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The parcel counter now sends to the Channel Islands and the Canaries.\n\nAdd a zone called `islands` to `src/rate.ts`. The first kilogram costs 12\neuros and each started kilogram after it costs 2.40. The heavy-parcel\nsurcharge and the fuel surcharge apply the same way as for every zone outside\nthe country. The carrier offers no express service to the islands, so an\nexpress parcel to that zone is refused like an unknown zone.\n\nCover the new zone with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/rate.ts",
+        "line": 20,
+        "text": "export function shippingRate(parcel: Parcel): number {"
+      },
+      "values": {
+        "cc": 12,
+        "lines": 36
+      },
+      "context": {
+        "path": "src/rate.ts",
+        "line": 20,
+        "excerpt": "0018 |\n0019 | /** The price of sending one parcel, in euros. */\n0020 | export function shippingRate(parcel: Parcel): number {\n0021 |   if (!(parcel.weightKg > 0) || parcel.weightKg > MAX_KG) {\n0022 |     throw new Error(\"a parcel weighs more than 0 and at most \" + MAX_KG + \" kg\");\n0023 |   }\n0024 |   let first = 0;",
+        "note": null,
+        "measurement": "src/rate.ts:20  cc 12, 36 lines, was cc 10, 30 lines  export function shippingRate(parcel: Parcel): number {  — matched the base site at src/rate.ts:20, ceiling cc 8, lines 60"
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S004",
+      "signalCategory": "regression",
+      "gate": "complexity",
+      "taskIntent": "The parcel counter now sends to the Channel Islands and the Canaries.\n\nAdd a zone called `islands` to `src/rate.ts`. The first kilogram costs 12\neuros and each started kilogram after it costs 2.40. The heavy-parcel\nsurcharge and the fuel surcharge apply the same way as for every zone outside\nthe country. The carrier offers no express service to the islands, so an\nexpress parcel to that zone is refused like an unknown zone.\n\nCover the new zone with tests beside the ones already there.\n",
+      "site": {
+        "file": "src/rate.ts",
+        "line": 20,
+        "text": "export function shippingRate(parcel: Parcel): number {"
+      },
+      "values": {
+        "cc": 13,
+        "lines": 36
+      },
+      "context": {
+        "path": "src/rate.ts",
+        "line": 20,
+        "excerpt": "0018 |\n0019 | /** The price of sending one parcel, in euros. */\n0020 | export function shippingRate(parcel: Parcel): number {\n0021 |   if (!(parcel.weightKg > 0) || parcel.weightKg > MAX_KG) {\n0022 |     throw new Error(\"a parcel weighs more than 0 and at most \" + MAX_KG + \" kg\");\n0023 |   }\n0024 |   let first = 0;",
+        "note": null,
+        "measurement": "src/rate.ts:20  cc 13, 36 lines, was cc 10, 30 lines  export function shippingRate(parcel: Parcel): number {  — matched the base site at src/rate.ts:20, ceiling cc 8, lines 60"
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit."
+    },
+    {
+      "worksheetId": "S005",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The money code should sit in one folder.\n\nMove the rounding, currency, tax, discount and totals code into `src/money/`,\nkeeping each file's name. `src/index.ts` stays the one entry a caller\nimports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "CONTRIBUTING.md",
+        "line": 98,
+        "text": "src/totals.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/totals.ts"
+      },
+      "context": {
+        "path": "CONTRIBUTING.md",
+        "line": 98,
+        "excerpt": "0096 | - The printed form of an invoice is built in `src/invoice.ts`.\n0097 | - Line totals, their tax and the invoice total are added up in\n0098 |   `src/totals.ts`.\n0099 | - Tax bands and their rates are in `src/tax.ts`. A new band starts there, and\n0100 |   it needs a review from finance.\n0101 | - Percentage discounts are applied in `src/discount.ts`.\n0102 | - Half-even rounding is `src/rounding.ts`. Every rounded amount goes through",
+        "note": null,
+        "measurement": "CONTRIBUTING.md:98  not under the roots — likely src/money/totals.ts  src/totals.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S006",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The money code should sit in one folder.\n\nMove the rounding, currency, tax, discount and totals code into `src/money/`,\nkeeping each file's name. `src/index.ts` stays the one entry a caller\nimports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "CONTRIBUTING.md",
+        "line": 99,
+        "text": "src/tax.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/tax.ts"
+      },
+      "context": {
+        "path": "CONTRIBUTING.md",
+        "line": 99,
+        "excerpt": "0097 | - Line totals, their tax and the invoice total are added up in\n0098 |   `src/totals.ts`.\n0099 | - Tax bands and their rates are in `src/tax.ts`. A new band starts there, and\n0100 |   it needs a review from finance.\n0101 | - Percentage discounts are applied in `src/discount.ts`.\n0102 | - Half-even rounding is `src/rounding.ts`. Every rounded amount goes through\n0103 |   it.",
+        "note": null,
+        "measurement": "CONTRIBUTING.md:99  not under the roots — likely src/money/tax.ts  src/tax.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S007",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The money code should sit in one folder.\n\nMove the rounding, currency, tax, discount and totals code into `src/money/`,\nkeeping each file's name. `src/index.ts` stays the one entry a caller\nimports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "CONTRIBUTING.md",
+        "line": 101,
+        "text": "src/discount.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/discount.ts"
+      },
+      "context": {
+        "path": "CONTRIBUTING.md",
+        "line": 101,
+        "excerpt": "0099 | - Tax bands and their rates are in `src/tax.ts`. A new band starts there, and\n0100 |   it needs a review from finance.\n0101 | - Percentage discounts are applied in `src/discount.ts`.\n0102 | - Half-even rounding is `src/rounding.ts`. Every rounded amount goes through\n0103 |   it.\n0104 | - Currency symbols and the printed form of an amount are in\n0105 |   `src/currency.ts`.",
+        "note": null,
+        "measurement": "CONTRIBUTING.md:101  not under the roots — likely src/money/discount.ts  src/discount.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S008",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The money code should sit in one folder.\n\nMove the rounding, currency, tax, discount and totals code into `src/money/`,\nkeeping each file's name. `src/index.ts` stays the one entry a caller\nimports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "CONTRIBUTING.md",
+        "line": 102,
+        "text": "src/rounding.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/rounding.ts"
+      },
+      "context": {
+        "path": "CONTRIBUTING.md",
+        "line": 102,
+        "excerpt": "0100 |   it needs a review from finance.\n0101 | - Percentage discounts are applied in `src/discount.ts`.\n0102 | - Half-even rounding is `src/rounding.ts`. Every rounded amount goes through\n0103 |   it.\n0104 | - Currency symbols and the printed form of an amount are in\n0105 |   `src/currency.ts`.\n0106 |",
+        "note": null,
+        "measurement": "CONTRIBUTING.md:102  not under the roots — likely src/money/rounding.ts  src/rounding.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S009",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The evaluation engine should sit in its own folder.\n\nMove the lexer, the parser, the evaluator and the error type into\n`src/engine/`, keeping each file's name. `src/index.ts` stays the one entry a\ncaller imports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "README.md",
+        "line": 103,
+        "text": "src/lexer.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/lexer.ts"
+      },
+      "context": {
+        "path": "README.md",
+        "line": 103,
+        "excerpt": "0101 | ### From text to tokens\n0102 |\n0103 | `src/lexer.ts` splits the text into numbers and symbols and records where each\n0104 | one starts. It refuses a character that is neither, which is where\n0105 | `unexpected x` comes from.\n0106 |\n0107 | ### From tokens to a tree",
+        "note": null,
+        "measurement": "README.md:103  not under the roots — likely src/engine/lexer.ts  src/lexer.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S010",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The money code should sit in one folder.\n\nMove the rounding, currency, tax, discount and totals code into `src/money/`,\nkeeping each file's name. `src/index.ts` stays the one entry a caller\nimports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "CONTRIBUTING.md",
+        "line": 105,
+        "text": "src/currency.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/currency.ts"
+      },
+      "context": {
+        "path": "CONTRIBUTING.md",
+        "line": 105,
+        "excerpt": "0103 |   it.\n0104 | - Currency symbols and the printed form of an amount are in\n0105 |   `src/currency.ts`.\n0106 |",
+        "note": null,
+        "measurement": "CONTRIBUTING.md:105  not under the roots — likely src/money/currency.ts  src/currency.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S011",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The evaluation engine should sit in its own folder.\n\nMove the lexer, the parser, the evaluator and the error type into\n`src/engine/`, keeping each file's name. `src/index.ts` stays the one entry a\ncaller imports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "README.md",
+        "line": 109,
+        "text": "src/parser.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/parser.ts"
+      },
+      "context": {
+        "path": "README.md",
+        "line": 109,
+        "excerpt": "0107 | ### From tokens to a tree\n0108 |\n0109 | `src/parser.ts` reads the tokens by recursive descent, one function for each\n0110 | level of precedence, and builds a tree of numbers, negations and binary\n0111 | operations. The other parse errors come from here.\n0112 |\n0113 | ### From a tree to a number",
+        "note": null,
+        "measurement": "README.md:109  not under the roots — likely src/engine/parser.ts  src/parser.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S012",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The evaluation engine should sit in its own folder.\n\nMove the lexer, the parser, the evaluator and the error type into\n`src/engine/`, keeping each file's name. `src/index.ts` stays the one entry a\ncaller imports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "README.md",
+        "line": 115,
+        "text": "src/evaluate.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/evaluate.ts"
+      },
+      "context": {
+        "path": "README.md",
+        "line": 115,
+        "excerpt": "0113 | ### From a tree to a number\n0114 |\n0115 | `src/evaluate.ts` walks the tree and works out the number. Division by zero is\n0116 | found here.\n0117 |\n0118 | ### The error type\n0119 |",
+        "note": null,
+        "measurement": "README.md:115  not under the roots — likely src/engine/evaluate.ts  src/evaluate.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    },
+    {
+      "worksheetId": "S013",
+      "signalCategory": "regression",
+      "gate": "doc-citations",
+      "taskIntent": "The evaluation engine should sit in its own folder.\n\nMove the lexer, the parser, the evaluator and the error type into\n`src/engine/`, keeping each file's name. `src/index.ts` stays the one entry a\ncaller imports, and nothing a caller can see may change.\n",
+      "site": {
+        "file": "README.md",
+        "line": 120,
+        "text": "src/errors.ts"
+      },
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/errors.ts"
+      },
+      "context": {
+        "path": "README.md",
+        "line": 120,
+        "excerpt": "0118 | ### The error type\n0119 |\n0120 | `src/errors.ts` holds `CalcError`, which carries the message and the offset.\n0121 | Every step throws it and nothing else.\n0122 |",
+        "note": null,
+        "measurement": "README.md:120  not under the roots — likely src/engine/errors.ts  src/errors.ts  — nothing matched"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it."
+    }
+  ]
+}

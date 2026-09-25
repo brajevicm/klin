@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/ab99f3f88d8e/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "1757ae8f-d530-449a-94fb-dc8798356212",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "dd8d48e9050b0b4f6bc2f22535ce7eb67b74d4e4e95d0816bd60b1dd7c2c36b8",
+  "sessionId": "1757ae8f-d530-449a-94fb-dc8798356212",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":26213,\"stop_reason\":\"end_turn\",\"session_id\":\"1757ae8f-d530-449a-94fb-dc8798356212\",\"total_cost_usd\":0.1236744,\"usage\":{\"input_tokens\":12,\"cache_creation_input_tokens\":14605,\"cache_read_input_tokens\":221052,\"output_tokens\":2102,\"output_tokens_details\":{\"thinking_tokens\":482},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14605,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":110,\"cache_read_input_tokens\":40869,\"cache_creation_input_tokens\":481,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":481},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":12,\"outputTokens\":2102,\"cacheReadInputTokens\":221052,\"cacheCreationInputTokens\":14605,\"webSearchRequests\":0,\"costUSD\":0.1236744,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":482,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":8,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 5 tests pass. Added `\\\"student\\\"` to the `Customer` type in `src/quote.ts:1` with a 20% discount (`src/quote.ts:33-35`) that stacks with the size/region rules under the existing 30% ceiling, and added two tests covering the unstacked case and the ceiling-capped stacking case.\",\"ttft_ms\":1968,\"type\":\"result\",\"duration_ms\":28294,\"uuid\":\"ca790b90-6061-4097-9ad7-bd10e795ed57\",\"ttft_stream_ms\":1481,\"time_to_request_ms\":259,\"first_content_frame_ms\":1481,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 26213,
+    "stop_reason": "end_turn",
+    "session_id": "1757ae8f-d530-449a-94fb-dc8798356212",
+    "total_cost_usd": 0.1236744,
+    "usage": {
+      "input_tokens": 12,
+      "cache_creation_input_tokens": 14605,
+      "cache_read_input_tokens": 221052,
+      "output_tokens": 2102,
+      "output_tokens_details": {
+        "thinking_tokens": 482
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14605,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 110,
+          "cache_read_input_tokens": 40869,
+          "cache_creation_input_tokens": 481,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 481
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 12,
+        "outputTokens": 2102,
+        "cacheReadInputTokens": 221052,
+        "cacheCreationInputTokens": 14605,
+        "webSearchRequests": 0,
+        "costUSD": 0.1236744,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 482,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 8,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 5 tests pass. Added `\"student\"` to the `Customer` type in `src/quote.ts:1` with a 20% discount (`src/quote.ts:33-35`) that stacks with the size/region rules under the existing 30% ceiling, and added two tests covering the unstacked case and the ceiling-capped stacking case.",
+    "ttft_ms": 1968,
+    "type": "result",
+    "duration_ms": 28294,
+    "uuid": "ca790b90-6061-4097-9ad7-bd10e795ed57",
+    "ttft_stream_ms": 1481,
+    "time_to_request_ms": 259,
+    "first_content_frame_ms": 1481,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:44:28.646Z",
+  "endedAt": "2026-09-24T23:44:58.687Z",
+  "wallMs": 30042,
+  "timedOut": false
+}

@@ -1,0 +1,101 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "denyRead": [
+        "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c684d09e837f",
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work",
+        "/Users/brajevicm/Workspace/klin"
+      ],
+      "allowRead": [
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c684d09e837f/repo",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c684d09e837f/repo",
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment",
+        "~/.cargo",
+        "~/.rustup",
+        "~/.npm",
+        "/Users/brajevicm/.local/share/fnm/node-versions/v24.17.0/installation",
+        "/opt/homebrew/Cellar/node/26.9.0",
+        "/bin/sh"
+      ],
+      "denyWrite": [
+        "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c684d09e837f",
+        "/Users/brajevicm/Workspace/klin"
+      ],
+      "allowWrite": [
+        "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c684d09e837f/repo",
+        "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c684d09e837f/repo",
+        "~/.cargo",
+        "~/.rustup",
+        "~/.npm"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "crates.io",
+        "index.crates.io",
+        "static.crates.io"
+      ],
+      "strictAllowlist": true
+    }
+  },
+  "permissions": {
+    "blockReadsOutsideWorkingDirectories": true,
+    "deny": [
+      "Edit(//private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment/**)",
+      "Edit(//var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-environment/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c684d09e837f/dde5791ee6e86412b00e574e\" radius",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c684d09e837f/dde5791ee6e86412b00e574e\" radius",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c684d09e837f/dde5791ee6e86412b00e574e\" guard",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c684d09e837f/dde5791ee6e86412b00e574e\" gate --hook --changed",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

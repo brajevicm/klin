@@ -1,0 +1,166 @@
+{
+  "activity": {
+    "klin_ms": 768,
+    "stops": 2
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 5,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 5,
+    "open": 0,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790324420,
+      "gate": "doc-citations",
+      "id": "25854d983ef17a7a",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 98,
+        "text": "src/totals.ts"
+      },
+      "label": "broken citation",
+      "last": 1790324432,
+      "line": 98,
+      "outcome": "fixed-next",
+      "prompt": "The money code should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/totals.ts",
+      "time": 1790324420,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/totals.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790324420,
+      "gate": "doc-citations",
+      "id": "62ef9e1596ccd540",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 99,
+        "text": "src/tax.ts"
+      },
+      "label": "broken citation",
+      "last": 1790324432,
+      "line": 99,
+      "outcome": "fixed-next",
+      "prompt": "The money code should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/tax.ts",
+      "time": 1790324420,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/tax.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790324420,
+      "gate": "doc-citations",
+      "id": "000353a4c56be782",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 101,
+        "text": "src/discount.ts"
+      },
+      "label": "broken citation",
+      "last": 1790324432,
+      "line": 101,
+      "outcome": "fixed-next",
+      "prompt": "The money code should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/discount.ts",
+      "time": 1790324420,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/discount.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790324420,
+      "gate": "doc-citations",
+      "id": "a1ad175bf0d1b78f",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 102,
+        "text": "src/rounding.ts"
+      },
+      "label": "broken citation",
+      "last": 1790324432,
+      "line": 102,
+      "outcome": "fixed-next",
+      "prompt": "The money code should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/rounding.ts",
+      "time": 1790324420,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/rounding.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790324420,
+      "gate": "doc-citations",
+      "id": "834daa19cad7d912",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 105,
+        "text": "src/currency.ts"
+      },
+      "label": "broken citation",
+      "last": 1790324432,
+      "line": 105,
+      "outcome": "fixed-next",
+      "prompt": "The money code should sit in one folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/currency.ts",
+      "time": 1790324420,
+      "tries": 1,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/currency.ts"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 2,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

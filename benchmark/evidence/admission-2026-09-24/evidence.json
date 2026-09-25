@@ -1,0 +1,15 @@
+{
+  "setId": "admission-2026-09-24",
+  "recordProtocol": 5,
+  "kind": "admission",
+  "archive": "admission-2026-09-24-raw.tar.gz",
+  "archiveSha256": "5e9de076a014fb939a2ace7e0c6b49bb292061623b286f2da645d1fc81d33027",
+  "archiveBytes": 3348433,
+  "attempts": 100,
+  "validRuns": 100,
+  "scheduledValidRuns": 100,
+  "runManifestSha256": "49036df135343a21f208314375f2e8676c3a7bf886e3ee135c4a0942b3166ce6",
+  "rawFilesManifestSha256": "c3ff679ef616e472cae94384fb8369612445e977d8284decccc40dd5a97f29c0",
+  "release": "https://github.com/brajevicm/klin/releases/tag/benchmark-admission-v3-2026-09-24",
+  "sigstoreBundle": "https://github.com/brajevicm/klin/releases/download/benchmark-admission-v3-2026-09-24/admission-2026-09-24-raw.tar.gz.sigstore.json"
+}

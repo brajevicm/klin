@@ -1,0 +1,61 @@
+{
+  "activity": {
+    "klin_ms": 435,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/router.test.ts",
+      "first": 1790291268,
+      "gate": "inventory",
+      "id": "b9953f42dd4c5ef2",
+      "key": {
+        "file": "src/router.test.ts",
+        "gate": "inventory",
+        "line": 15,
+        "text": "test(\"a report covers the days from and to\", () => {"
+      },
+      "label": "missing test",
+      "last": 1790291268,
+      "line": 15,
+      "outcome": "open",
+      "prompt": "Reports moved to the analytics service.",
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+      "text": "test(\"a report covers the days from and to\", () => {",
+      "time": 1790291268,
+      "tries": 0,
+      "values": {
+        "missing": 1
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "activity": {
+    "klin_ms": 422,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/cli.test.ts",
+      "first": 1790285364,
+      "gate": "inventory",
+      "id": "5e599cbf0359f9cc",
+      "key": {
+        "file": "src/cli.test.ts",
+        "gate": "inventory",
+        "line": 31,
+        "text": "test(\"export writes every note as a CSV row\", () => {"
+      },
+      "label": "missing test",
+      "last": 1790285364,
+      "line": 31,
+      "outcome": "open",
+      "prompt": "Nobody uses the `export` command of the note keeper, and it is going away.",
+      "remedy": "If a test failed because the code is wrong, restore the test and fix the code. If the removal is intended, say why in your reply and stop again.",
+      "text": "test(\"export writes every note as a CSV row\", () => {",
+      "time": 1790285364,
+      "tries": 0,
+      "values": {
+        "missing": 1
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

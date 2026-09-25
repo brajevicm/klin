@@ -1,0 +1,1047 @@
+{
+  "protocol": 5,
+  "kind": "admission",
+  "publishable": false,
+  "family": "stubs-slug",
+  "gate": "stubs",
+  "taskId": "8451ed2deb25debc",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "b69c8d614f11",
+  "order": 85,
+  "repetition": 2,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "7df48481c85c848ede1978129024dd56e23dd38b",
+    "promptSha256": "9c065d10e32ce0ae0f68b1f6d9f0596baaec5d281f3283ca23e0133323fd8c19",
+    "treeSha256": "cf24a5aae54732faf267eed41c329020b20c12c6dd069fec632aaf97425547e0",
+    "startTreeSha256": "cf24a5aae54732faf267eed41c329020b20c12c6dd069fec632aaf97425547e0",
+    "finalTreeSha256": "8af547599c1e65300a4d45f9ff99224fc5c8626754829e7ff64811ad9d7a9806",
+    "seed": [],
+    "staged": [],
+    "uncommitted": [],
+    "startShortcut": {
+      "present": false,
+      "detector": "new_stub_site",
+      "sites": [],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "db9a028dc31f02eca04b2637ad1925bf36794a25",
+    "dirty": false,
+    "treeSha256": "eb196b2481a7b2604f77bbe8d3ab618ea3d681dea67d24cdb433ba0bf56bc4ee"
+  },
+  "klin": {
+    "commit": "db9a028dc31f02eca04b2637ad1925bf36794a25",
+    "version": "klin 0.3.0",
+    "binarySha256": "50d4fef90b22870d129e359d1499997527664b14222f0f1283d20e44c7bb842c"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.281 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/b69c8d614f11/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "d007f13d-4fad-42d5-ba3e-b4220fd99047",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "86ac50818c86b4d623c420a79984a83cd3ea754c668c4dc1267a69c8128240eb",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.35884340000000003,
+  "startedAt": "2026-09-24T23:31:33.449Z",
+  "endedAt": "2026-09-24T23:33:34.838Z",
+  "wallMs": 121390,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the working tree stood clean before the session, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found no target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "the trial took no pre-session stamp and klin's state held nothing"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": false,
+    "detector": "new_stub_site",
+    "sites": [],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "7c923ad32d6fad1e",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "complexity",
+      "label": "tangled function",
+      "file": "src/lib.rs",
+      "line": 53,
+      "text": "fn fixed_spelling(character: char) -> Option<&'static str> {",
+      "values": {
+        "cc": 11,
+        "lines": 15
+      },
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790292814,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:31:34Z",
+      "ended": "2026-09-24T23:31:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:31:34Z",
+      "ended": "2026-09-24T23:31:34Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find . -maxdepth 3 -name \"*.rs\" -o -name \"Cargo.toml\" | grep -v target",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:31:37Z",
+      "ended": "2026-09-24T23:31:37Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls ~/.cargo/registry/cache/*/ 2>/dev/null | grep -i unicode | head -50; echo \"---\"; ls ~/.cargo/registry/src/*/ 2>/dev/null | grep -i unicode-normalization",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:31:45Z",
+      "ended": "2026-09-24T23:31:45Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -ri \"unicode\" ~/.cargo/registry/src/*/unicode-normalization-0.1.25/src/lib.rs | grep -i version | head -20",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:31:49Z",
+      "ended": "2026-09-24T23:31:49Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -n \"UNICODE_VERSION\" ~/.cargo/registry/src/*/unicode-normalization-0.1.25/src/tables.rs | head -5",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:31:51Z",
+      "ended": "2026-09-24T23:31:51Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "ls ~/.cargo/registry/index.crates.io-1949cf8c6b5b557f/.cache/un 2>/dev/null; find ~/.cargo/registry/index* -iname \"unicode-normalization*\" 2>/dev/null",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:32:02Z",
+      "ended": "2026-09-24T23:32:02Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -n \"pub fn\\|pub trait\\|is_combining_mark\\|decompose_canonical\" ~/.cargo/registry/src/*/unicode-normalization-0.1.25/src/lib.rs | head -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:32:05Z",
+      "ended": "2026-09-24T23:32:05Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -n \"fn nfd\\|fn nfc\\|fn nfkd\" ~/.cargo/registry/src/*/unicode-normalization-0.1.25/src/lib.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:32:09Z",
+      "ended": "2026-09-24T23:32:09Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 9,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "sed -n '155,200p' ~/.cargo/registry/src/*/unicode-normalization-0.1.25/src/lib.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:32:19Z",
+      "ended": "2026-09-24T23:32:19Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 10,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b69c8d614f11/repo/Cargo.toml",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:32:54Z",
+      "ended": "2026-09-24T23:32:54Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 11,
+      "event": "PreToolUse",
+      "tool": "Write",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b69c8d614f11/repo/src/lib.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:33:02Z",
+      "ended": "2026-09-24T23:33:03Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 12,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b69c8d614f11/repo/tests/slug.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:33:13Z",
+      "ended": "2026-09-24T23:33:13Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 13,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b69c8d614f11/repo/tests/slug.rs",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:33:18Z",
+      "ended": "2026-09-24T23:33:18Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 14,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo test --offline 2>&1 | tail -80",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:33:21Z",
+      "ended": "2026-09-24T23:33:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 15,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "cargo fmt --check 2>&1; echo \"---clippy---\"; cargo clippy --offline 2>&1 | tail -40",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:33:27Z",
+      "ended": "2026-09-24T23:33:27Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 16,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "git diff --stat",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:33:29Z",
+      "ended": "2026-09-24T23:33:29Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 17,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):\n  window: turn — base b0c7a1b, the turn stamp, taken 1 minute(s) ago\n  changed: 4 file(s) against the base — the scoped gates judge those; CI judges everything\n  derived: build cargo build --all-targets from Cargo.toml, one command per manifest\n  pinned: complexity cc 8\n  pinned: complexity lines 60\n  FAIL  complexity\n        FAIL: 1 new function(s) over the complexity gate (cyclomatic > 8 or body > 60 lines), beyond the 0 the base holds:\n          src/lib.rs:53  cc 11, 15 lines  fn fixed_spelling(character: char) -> Option<&'static str> {  — nothing matched, ceiling cc 8, lines 60\n        Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.\nklin: 10 gate(s), 1 failed.\n",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "one command per manifest",
+            "section": "build",
+            "value": "cargo build --all-targets"
+          },
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "Cargo.toml"
+            ]
+          },
+          {
+            "key": "test roots",
+            "rule": "the roots that match a language's test convention",
+            "section": "inventory",
+            "value": [
+              "tests"
+            ]
+          }
+        ],
+        "exit": 2,
+        "findings": [
+          {
+            "ceiling": "cc 8, lines 60",
+            "condition": "over the complexity gate (cyclomatic > 8 or body > 60 lines)",
+            "file": "src/lib.rs",
+            "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "gate": "complexity",
+            "id": "7c923ad32d6fad1e",
+            "line": 53,
+            "matched": null,
+            "outcome": "new",
+            "text": "fn fixed_spelling(character: char) -> Option<&'static str> {",
+            "values": {
+              "cc": 11,
+              "lines": 15
+            }
+          }
+        ],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 19,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 10,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 19,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 4,
+            "ms": 24,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 1,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "FAIL",
+            "surface": null,
+            "work": {
+              "parses": 4,
+              "reads": 4
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 4,
+              "ms": 5,
+              "parses": 4,
+              "reads": 4,
+              "shared": 0,
+              "states": 3
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 586,
+              "declaration_text_bytes": 906,
+              "declarations": 23,
+              "export_leaves": 0,
+              "export_text_bytes": 0,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 0,
+              "files": 4,
+              "import_text_bytes": 262,
+              "imports": 3,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 46,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.4193548387096775,
+              "reference_canonical_allocation_ratio_milli": 1419,
+              "reference_canonical_allocations": 44,
+              "reference_canonical_bytes": 343,
+              "reference_distinct_names": 31,
+              "reference_name_bytes": 1121,
+              "reference_representation_after_bytes": 2832,
+              "reference_representation_before_bytes": 5664,
+              "references": 177,
+              "signature_bytes": 846,
+              "signatures": 23,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 83,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 19,
+                "distinct_names": 46,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 4,
+                "query_ms": 0,
+                "references": 144
+              },
+              "base_ms": 77,
+              "before": {
+                "declarations": 4,
+                "distinct_names": 16,
+                "files": 2,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 32
+              },
+              "layout": {
+                "cache_name_ms": 20,
+                "changes_ms": 0,
+                "ignored_ms": 7,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 21,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 18,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 4
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": {
+              "dependencies": 0,
+              "dispatches": {
+                "rust": 2,
+                "typescript": 0
+              },
+              "edges": 0,
+              "modules": 2,
+              "ms": 1,
+              "sources": 2
+            },
+            "held": 0,
+            "ms": 1,
+            "name": "public-api",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": {
+              "dispatches": {
+                "rust": 2,
+                "typescript": 0
+              },
+              "holes": 0,
+              "items": 2,
+              "measured": 2,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 2
+            },
+            "work": null
+          }
+        ],
+        "notes": [],
+        "status": "FAIL",
+        "summary": "klin: 10 gate(s), 1 failed.",
+        "window": {
+          "after": "the working tree",
+          "before": "b0c7a1bb487ff48d04c09954457df350ca85cc49",
+          "how": "the turn stamp, taken 1 minute(s) ago",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-24T23:33:33Z",
+      "ended": "2026-09-24T23:33:34Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 1
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 384,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 1,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 1,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "src/lib.rs",
+        "first": 1790292814,
+        "gate": "complexity",
+        "id": "7c923ad32d6fad1e",
+        "key": {
+          "file": "src/lib.rs",
+          "gate": "complexity",
+          "line": 53,
+          "text": "fn fixed_spelling(character: char) -> Option<&'static str> {"
+        },
+        "label": "tangled function",
+        "last": 1790292814,
+        "line": 53,
+        "outcome": "open",
+        "prompt": "The magazine now publishes articles from its French, German, Scandinavian,",
+        "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "text": "fn fixed_spelling(character: char) -> Option<&'static str> {",
+        "time": 1790292814,
+        "tries": 0,
+        "values": {
+          "cc": 11,
+          "lines": 15
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 384
+  },
+  "turns": 20,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b69c8d614f11/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/b69c8d614f11"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/b69c8d614f11/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/b69c8d614f11/repo"
+        },
+        {
+          "name": "commits-unsigned",
+          "passed": true,
+          "detail": "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the working tree stood clean before the session, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found no target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "the trial took no pre-session stamp and klin's state held nothing"
+    }
+  }
+}

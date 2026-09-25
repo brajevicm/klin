@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 350,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1790290464,
+      "gate": "escapes",
+      "id": "8983fcb82a1efa54",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "escapes",
+        "line": 22,
+        "text": "(true, true) => x.parse::<u64>().unwrap().cmp(&y.parse::<u64>().unwrap()),"
+      },
+      "label": "escape hatch",
+      "last": 1790290464,
+      "line": 22,
+      "outcome": "open",
+      "prompt": "The `versions` crate orders the release numbers the release tooling reads",
+      "remedy": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "(true, true) => x.parse::<u64>().unwrap().cmp(&y.parse::<u64>().unwrap()),",
+      "time": 1790290464,
+      "tries": 0,
+      "values": {
+        "count": 2,
+        "escape": "unwrap"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

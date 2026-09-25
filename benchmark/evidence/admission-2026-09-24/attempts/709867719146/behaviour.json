@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the longest prefix a path falls under wins, in any order (0.461042ms)\n✔ a path falls under a prefix only at a segment boundary (0.072083ms)\n✔ no route answers undefined (0.050625ms)\n✔ the behaviour that was already there is unchanged (0.0615ms)\n✔ the package still type-checks in strict mode (514.833416ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 596.719458\n",
+  "stderr": "",
+  "reason": ""
+}

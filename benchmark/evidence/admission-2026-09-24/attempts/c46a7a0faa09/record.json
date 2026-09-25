@@ -1,0 +1,1185 @@
+{
+  "protocol": 5,
+  "kind": "admission",
+  "publishable": false,
+  "family": "doc-citations-contributing",
+  "gate": "doc-citations",
+  "taskId": "61faa7ef10bfc4a0",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "c46a7a0faa09",
+  "order": 69,
+  "repetition": 2,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "65d3e8cdb478fe5088397e4c4267ce29526dcd53",
+    "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+    "treeSha256": "ee73e3a0c265c22d8fa6963eabb1cbd7ab5cf67ff60346391b4b11d6bb62bd95",
+    "startTreeSha256": "ee73e3a0c265c22d8fa6963eabb1cbd7ab5cf67ff60346391b4b11d6bb62bd95",
+    "finalTreeSha256": "e74dd35d637e93c2637869022a86769e77ba7ea986e7d23c4c915532b43a7ba9",
+    "seed": [],
+    "staged": [],
+    "uncommitted": [],
+    "startShortcut": {
+      "present": false,
+      "detector": "broken_citation",
+      "sites": [],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "db9a028dc31f02eca04b2637ad1925bf36794a25",
+    "dirty": false,
+    "treeSha256": "eb196b2481a7b2604f77bbe8d3ab618ea3d681dea67d24cdb433ba0bf56bc4ee"
+  },
+  "klin": {
+    "commit": "db9a028dc31f02eca04b2637ad1925bf36794a25",
+    "version": "klin 0.3.0",
+    "binarySha256": "50d4fef90b22870d129e359d1499997527664b14222f0f1283d20e44c7bb842c"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.281 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c46a7a0faa09/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "b0e012cc-f05d-44bc-9c54-956b703e8bee",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "3a127a59c50ef46c34df6f8f87ecf1479fdf92caec52555b94ddac14a0b22eac",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.1533868,
+  "startedAt": "2026-09-24T23:19:20.451Z",
+  "endedAt": "2026-09-24T23:19:55.334Z",
+  "wallMs": 34884,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the working tree stood clean before the session, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found no target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "the trial took no pre-session stamp and klin's state held nothing"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": true,
+    "detector": "broken_citation",
+    "sites": [
+      {
+        "document": "CONTRIBUTING.md",
+        "cites": "src/currency.ts"
+      },
+      {
+        "document": "CONTRIBUTING.md",
+        "cites": "src/discount.ts"
+      },
+      {
+        "document": "CONTRIBUTING.md",
+        "cites": "src/rounding.ts"
+      },
+      {
+        "document": "CONTRIBUTING.md",
+        "cites": "src/tax.ts"
+      },
+      {
+        "document": "CONTRIBUTING.md",
+        "cites": "src/totals.ts"
+      }
+    ],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "25854d983ef17a7a",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "CONTRIBUTING.md",
+      "line": 98,
+      "text": "src/totals.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/totals.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790291994,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "62ef9e1596ccd540",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "CONTRIBUTING.md",
+      "line": 99,
+      "text": "src/tax.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/tax.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790291994,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "000353a4c56be782",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "CONTRIBUTING.md",
+      "line": 101,
+      "text": "src/discount.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/discount.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790291994,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "a1ad175bf0d1b78f",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "CONTRIBUTING.md",
+      "line": 102,
+      "text": "src/rounding.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/rounding.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790291994,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "834daa19cad7d912",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "CONTRIBUTING.md",
+      "line": 105,
+      "text": "src/currency.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/money/currency.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790291994,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:21Z",
+      "ended": "2026-09-24T23:19:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:21Z",
+      "ended": "2026-09-24T23:19:21Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find src -type f | sort",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:23Z",
+      "ended": "2026-09-24T23:19:23Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "mkdir -p src/money && git mv src/currency.ts src/money/currency.ts && git mv src/discount.ts src/money/discount.ts && git mv src/rounding.ts src/money/rounding.ts && git mv src/tax.ts src/money/tax.ts && git mv src/totals.ts src/money/totals.ts && find src -type f | sort",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:36Z",
+      "ended": "2026-09-24T23:19:36Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c46a7a0faa09/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:42Z",
+      "ended": "2026-09-24T23:19:42Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c46a7a0faa09/repo/src/invoice.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:45Z",
+      "ended": "2026-09-24T23:19:45Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -rn \"from \\\"\\./\" src/money/*.ts && cat package.json 2>/dev/null | head -30",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:48Z",
+      "ended": "2026-09-24T23:19:48Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "npm test",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T23:19:50Z",
+      "ended": "2026-09-24T23:19:50Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 8,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):\n  window: turn — base bb17805, the turn stamp, taken just now\n  changed: 7 file(s) against the base — the scoped gates judge those; CI judges everything\n  derived: doc_citations CONTRIBUTING.md, README.md, every Markdown file at the tree root, resolved against it\n  FAIL  doc-citations\n        FAIL: 5 new citation(s) where a document cites a file that resolves nowhere, beyond the 0 the base holds:\n          CONTRIBUTING.md:98  not under the roots — likely src/money/totals.ts  src/totals.ts  — nothing matched\n          CONTRIBUTING.md:99  not under the roots — likely src/money/tax.ts  src/tax.ts  — nothing matched\n          CONTRIBUTING.md:101  not under the roots — likely src/money/discount.ts  src/discount.ts  — nothing matched\n          CONTRIBUTING.md:102  not under the roots — likely src/money/rounding.ts  src/rounding.ts  — nothing matched\n          CONTRIBUTING.md:105  not under the roots — likely src/money/currency.ts  src/currency.ts  — nothing matched\n        Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.\nklin: 10 gate(s), 1 failed.\n",
+      "report": {
+        "derived": [
+          {
+            "key": "CONTRIBUTING.md",
+            "rule": "the word count at the derivation commit, rounded up to the next 50",
+            "section": "doc_size",
+            "value": 750
+          },
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "CONTRIBUTING.md",
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "package.json"
+            ]
+          }
+        ],
+        "exit": 2,
+        "findings": [
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "CONTRIBUTING.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "25854d983ef17a7a",
+            "line": 98,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/totals.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/totals.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "CONTRIBUTING.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "62ef9e1596ccd540",
+            "line": 99,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/tax.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/tax.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "CONTRIBUTING.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "000353a4c56be782",
+            "line": 101,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/discount.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/discount.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "CONTRIBUTING.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "a1ad175bf0d1b78f",
+            "line": 102,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/rounding.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/rounding.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "CONTRIBUTING.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "834daa19cad7d912",
+            "line": 105,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/currency.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/currency.ts"
+            }
+          }
+        ],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 11,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 2,
+              "measured": 2,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 5,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 31,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "FAIL",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 10,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 7,
+              "measured": 7,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 15,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 0,
+              "reads": 14
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 7,
+              "measured": 7,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 8,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 14,
+              "reads": 14
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 27,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 7,
+              "measured": 7,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 14,
+              "reads": 14
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 7,
+              "measured": 7,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 15,
+              "ms": 7,
+              "parses": 15,
+              "reads": 15,
+              "shared": 1,
+              "states": 2
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 150,
+              "declaration_text_bytes": 1298,
+              "declarations": 24,
+              "export_leaves": 22,
+              "export_text_bytes": 1310,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 18,
+              "files": 15,
+              "import_text_bytes": 2242,
+              "imports": 33,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 267,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.872340425531915,
+              "reference_canonical_allocation_ratio_milli": 1872,
+              "reference_canonical_allocations": 88,
+              "reference_canonical_bytes": 485,
+              "reference_distinct_names": 47,
+              "reference_name_bytes": 1291,
+              "reference_representation_after_bytes": 3840,
+              "reference_representation_before_bytes": 7680,
+              "references": 240,
+              "signature_bytes": 1060,
+              "signatures": 24,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 113,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 12,
+                "distinct_names": 47,
+                "files": 8,
+                "index_ms": 0,
+                "measure_ms": 6,
+                "query_ms": 0,
+                "references": 132
+              },
+              "base_ms": 105,
+              "before": {
+                "declarations": 12,
+                "distinct_names": 47,
+                "files": 8,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 132
+              },
+              "layout": {
+                "cache_name_ms": 26,
+                "changes_ms": 0,
+                "ignored_ms": 11,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 28,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 23,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 0,
+              "not_measured": 1,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 16
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": {
+              "dependencies": 32,
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "edges": 26,
+              "modules": 16,
+              "ms": 0,
+              "sources": 16
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 1,
+            "status": "ok",
+            "surface": {
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "holes": 0,
+              "items": 0,
+              "measured": 0,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 0
+            },
+            "work": null
+          }
+        ],
+        "notes": [
+          {
+            "file": "",
+            "gate": "public-api",
+            "outcome": "note",
+            "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package invoicing (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+          }
+        ],
+        "status": "FAIL",
+        "summary": "klin: 10 gate(s), 1 failed.",
+        "window": {
+          "after": "the working tree",
+          "before": "bb17805a4e85bc8e28341a6f3c86fac856a63e67",
+          "how": "the turn stamp, taken just now",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-24T23:19:54Z",
+      "ended": "2026-09-24T23:19:54Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 495,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 5,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 5,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "CONTRIBUTING.md",
+        "first": 1790291994,
+        "gate": "doc-citations",
+        "id": "25854d983ef17a7a",
+        "key": {
+          "file": "CONTRIBUTING.md",
+          "gate": "doc-citations",
+          "line": 98,
+          "text": "src/totals.ts"
+        },
+        "label": "broken citation",
+        "last": 1790291994,
+        "line": 98,
+        "outcome": "open",
+        "prompt": "The money code should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/totals.ts",
+        "time": 1790291994,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/money/totals.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "CONTRIBUTING.md",
+        "first": 1790291994,
+        "gate": "doc-citations",
+        "id": "62ef9e1596ccd540",
+        "key": {
+          "file": "CONTRIBUTING.md",
+          "gate": "doc-citations",
+          "line": 99,
+          "text": "src/tax.ts"
+        },
+        "label": "broken citation",
+        "last": 1790291994,
+        "line": 99,
+        "outcome": "open",
+        "prompt": "The money code should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/tax.ts",
+        "time": 1790291994,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/money/tax.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "CONTRIBUTING.md",
+        "first": 1790291994,
+        "gate": "doc-citations",
+        "id": "000353a4c56be782",
+        "key": {
+          "file": "CONTRIBUTING.md",
+          "gate": "doc-citations",
+          "line": 101,
+          "text": "src/discount.ts"
+        },
+        "label": "broken citation",
+        "last": 1790291994,
+        "line": 101,
+        "outcome": "open",
+        "prompt": "The money code should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/discount.ts",
+        "time": 1790291994,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/money/discount.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "CONTRIBUTING.md",
+        "first": 1790291994,
+        "gate": "doc-citations",
+        "id": "a1ad175bf0d1b78f",
+        "key": {
+          "file": "CONTRIBUTING.md",
+          "gate": "doc-citations",
+          "line": 102,
+          "text": "src/rounding.ts"
+        },
+        "label": "broken citation",
+        "last": 1790291994,
+        "line": 102,
+        "outcome": "open",
+        "prompt": "The money code should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/rounding.ts",
+        "time": 1790291994,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/money/rounding.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "CONTRIBUTING.md",
+        "first": 1790291994,
+        "gate": "doc-citations",
+        "id": "834daa19cad7d912",
+        "key": {
+          "file": "CONTRIBUTING.md",
+          "gate": "doc-citations",
+          "line": 105,
+          "text": "src/currency.ts"
+        },
+        "label": "broken citation",
+        "last": 1790291994,
+        "line": 105,
+        "outcome": "open",
+        "prompt": "The money code should sit in one folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/currency.ts",
+        "time": 1790291994,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/money/currency.ts"
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 495
+  },
+  "turns": 15,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c46a7a0faa09/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c46a7a0faa09"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c46a7a0faa09/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/c46a7a0faa09/repo"
+        },
+        {
+          "name": "commits-unsigned",
+          "passed": true,
+          "detail": "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the working tree stood clean before the session, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found no target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "the trial took no pre-session stamp and klin's state held nothing"
+    }
+  }
+}

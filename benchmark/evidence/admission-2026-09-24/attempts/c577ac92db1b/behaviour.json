@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a receipt line names the zone, the charged weight, the service and the price (0.468917ms)\n✔ a whole weight is charged as it is (0.074792ms)\n✔ the prices that were already there are unchanged (0.065708ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 78.592084\n",
+  "stderr": "",
+  "reason": ""
+}

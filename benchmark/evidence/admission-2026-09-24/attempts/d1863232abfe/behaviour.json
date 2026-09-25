@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a list of valid skus answers with the list as given (0.773916ms)\n✔ one bad item refuses the whole list with the single-sku reason (0.099ms)\n✔ a single sku and the other endpoints answer as before (0.194625ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 80.936375\n",
+  "stderr": "",
+  "reason": ""
+}

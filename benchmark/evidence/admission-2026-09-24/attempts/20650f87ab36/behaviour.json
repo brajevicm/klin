@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the days in one week are counted (0.454583ms)\n✔ a weekend is not counted (0.072167ms)\n✔ an end that is not after the start counts nothing (0.063292ms)\n✔ counting back gives the days that were added (1.088417ms)\n✔ adding days is unchanged (0.068ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 82.504375\n",
+  "stderr": "",
+  "reason": ""
+}

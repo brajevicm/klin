@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/f5548ff63f81/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "4bff9f91-ad79-45f5-a50d-0a2c2d4cb118",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "1f7791142143c64cc36bd05a20249409905446411b847488983bdd7d4f6e7b67",
+  "sessionId": "4bff9f91-ad79-45f5-a50d-0a2c2d4cb118",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":32663,\"stop_reason\":\"end_turn\",\"session_id\":\"4bff9f91-ad79-45f5-a50d-0a2c2d4cb118\",\"total_cost_usd\":0.16059180000000003,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":16905,\"cache_read_input_tokens\":308549,\"output_tokens\":3123,\"output_tokens_details\":{\"thinking_tokens\":290},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16905,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":127,\"cache_read_input_tokens\":43158,\"cache_creation_input_tokens\":492,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":492},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":3123,\"cacheReadInputTokens\":308549,\"cacheCreationInputTokens\":16905,\"webSearchRequests\":0,\"costUSD\":0.16059180000000003,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":290,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 4 tests pass. Fax delivery is fully removed: `deliver.ts` and `CHANNELS` no longer reference it, `fax-channel.ts` and the now-unused `tiff-encoder.ts` are deleted, the README only mentions email/portal, and the test suite verifies fax throws `unsupported channel fax` alongside the existing unknown-channel case.\",\"ttft_ms\":3339,\"type\":\"result\",\"duration_ms\":35000,\"uuid\":\"5a3c92c2-1365-4590-b031-3db2af23cedf\",\"ttft_stream_ms\":1429,\"time_to_request_ms\":262,\"first_content_frame_ms\":1429,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 32663,
+    "stop_reason": "end_turn",
+    "session_id": "4bff9f91-ad79-45f5-a50d-0a2c2d4cb118",
+    "total_cost_usd": 0.16059180000000003,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 16905,
+      "cache_read_input_tokens": 308549,
+      "output_tokens": 3123,
+      "output_tokens_details": {
+        "thinking_tokens": 290
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16905,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 127,
+          "cache_read_input_tokens": 43158,
+          "cache_creation_input_tokens": 492,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 492
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 3123,
+        "cacheReadInputTokens": 308549,
+        "cacheCreationInputTokens": 16905,
+        "webSearchRequests": 0,
+        "costUSD": 0.16059180000000003,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 290,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 4 tests pass. Fax delivery is fully removed: `deliver.ts` and `CHANNELS` no longer reference it, `fax-channel.ts` and the now-unused `tiff-encoder.ts` are deleted, the README only mentions email/portal, and the test suite verifies fax throws `unsupported channel fax` alongside the existing unknown-channel case.",
+    "ttft_ms": 3339,
+    "type": "result",
+    "duration_ms": 35000,
+    "uuid": "5a3c92c2-1365-4590-b031-3db2af23cedf",
+    "ttft_stream_ms": 1429,
+    "time_to_request_ms": 262,
+    "first_content_frame_ms": 1429,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:56:47.533Z",
+  "endedAt": "2026-09-24T22:57:24.139Z",
+  "wallMs": 36607,
+  "timedOut": false
+}

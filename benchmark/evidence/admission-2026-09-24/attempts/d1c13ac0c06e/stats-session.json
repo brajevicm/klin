@@ -1,0 +1,88 @@
+{
+  "activity": {
+    "klin_ms": 400,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 2,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 2,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1790285277,
+      "gate": "complexity",
+      "id": "01fbb54685d04815",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "complexity",
+        "line": 9,
+        "text": "pub fn slug(title: &str) -> String {"
+      },
+      "label": "tangled function",
+      "last": 1790285277,
+      "line": 9,
+      "outcome": "open",
+      "prompt": "The magazine now publishes articles from its French, German, Scandinavian,",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "pub fn slug(title: &str) -> String {",
+      "time": 1790285277,
+      "tries": 0,
+      "values": {
+        "cc": 9,
+        "lines": 33
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1790285277,
+      "gate": "complexity",
+      "id": "4686438bb427334f",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "complexity",
+        "line": 45,
+        "text": "fn undecomposed_letters(character: char) -> Option<&'static str> {"
+      },
+      "label": "tangled function",
+      "last": 1790285277,
+      "line": 45,
+      "outcome": "open",
+      "prompt": "The magazine now publishes articles from its French, German, Scandinavian,",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "fn undecomposed_letters(character: char) -> Option<&'static str> {",
+      "time": 1790285277,
+      "tries": 0,
+      "values": {
+        "cc": 12,
+        "lines": 15
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

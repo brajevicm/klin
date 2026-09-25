@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the busiest person logged the most hours (0.427667ms)\n✔ a tie goes to whoever comes first (0.069042ms)\n✔ both layouts print as they did (0.12675ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 76.038833\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the package still type-checks with its statement reader (544.179209ms)\n✔ each payee is named once, in alphabetical order (0.7005ms)\n✔ the sums that were already there are unchanged (0.113833ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 622.253958\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a laptop costs five euros from the first day (0.444584ms)\n✔ a laptop fee stops at fifty euros (0.071542ms)\n✔ a laptop two months late adds the replacement fee (0.053542ms)\n✔ a child pays half for a laptop (0.048167ms)\n✔ the senior waiver does not cover a laptop (0.054666ms)\n✔ the items that were already there are unchanged (0.071291ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 76.277375\n",
+  "stderr": "",
+  "reason": ""
+}

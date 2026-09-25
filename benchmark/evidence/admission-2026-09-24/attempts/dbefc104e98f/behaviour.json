@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a price is written the way the buyer's locale writes the currency (12.272291ms)\n✔ a currency the old table did not know is written too (0.187666ms)\n✔ a receipt writes every price in the buyer's locale (0.336167ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 93.51025\n",
+  "stderr": "",
+  "reason": ""
+}

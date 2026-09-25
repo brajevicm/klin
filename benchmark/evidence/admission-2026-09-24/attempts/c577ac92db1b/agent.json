@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c577ac92db1b/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "df559ae1-4bc8-4964-829e-f728f4bae3e5",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "7e851a824d3b4a20612e8d27ccee8d3d8ac4a3149e6c8994552a5fe6be1ffc34",
+  "sessionId": "df559ae1-4bc8-4964-829e-f728f4bae3e5",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":22984,\"stop_reason\":\"end_turn\",\"session_id\":\"df559ae1-4bc8-4964-829e-f728f4bae3e5\",\"total_cost_usd\":0.1365598,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":14768,\"cache_read_input_tokens\":300729,\"output_tokens\":1731,\"output_tokens_details\":{\"thinking_tokens\":33},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14768,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":92,\"cache_read_input_tokens\":40813,\"cache_creation_input_tokens\":700,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":700},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":1731,\"cacheReadInputTokens\":300729,\"cacheCreationInputTokens\":14768,\"webSearchRequests\":0,\"costUSD\":0.1365598,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":33,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":9,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 8 tests pass. Added `receiptLine(parcel)` to `src/rate.ts:52-56` and three new tests in `src/rate.test.ts` covering the given example, a fractional-weight/single-decimal price case, and an exact whole-kilogram express case.\",\"ttft_ms\":2100,\"type\":\"result\",\"duration_ms\":24879,\"uuid\":\"9a821f7d-7e43-44ba-9b3b-e8129d06237e\",\"ttft_stream_ms\":1563,\"time_to_request_ms\":243,\"first_content_frame_ms\":1564,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 22984,
+    "stop_reason": "end_turn",
+    "session_id": "df559ae1-4bc8-4964-829e-f728f4bae3e5",
+    "total_cost_usd": 0.1365598,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 14768,
+      "cache_read_input_tokens": 300729,
+      "output_tokens": 1731,
+      "output_tokens_details": {
+        "thinking_tokens": 33
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14768,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 92,
+          "cache_read_input_tokens": 40813,
+          "cache_creation_input_tokens": 700,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 700
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 1731,
+        "cacheReadInputTokens": 300729,
+        "cacheCreationInputTokens": 14768,
+        "webSearchRequests": 0,
+        "costUSD": 0.1365598,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 33,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 9,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 8 tests pass. Added `receiptLine(parcel)` to `src/rate.ts:52-56` and three new tests in `src/rate.test.ts` covering the given example, a fractional-weight/single-decimal price case, and an exact whole-kilogram express case.",
+    "ttft_ms": 2100,
+    "type": "result",
+    "duration_ms": 24879,
+    "uuid": "9a821f7d-7e43-44ba-9b3b-e8129d06237e",
+    "ttft_stream_ms": 1563,
+    "time_to_request_ms": 243,
+    "first_content_frame_ms": 1564,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:24:33.532Z",
+  "endedAt": "2026-09-24T21:25:00.171Z",
+  "wallMs": 26640,
+  "timedOut": false
+}

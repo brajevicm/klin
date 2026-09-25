@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ plain fields are written as they are (0.426959ms)\n✔ a field with a comma, a quote or a line break is quoted (0.079167ms)\n✔ what is written reads back the same (0.40525ms)\n✔ reading is unchanged (0.069083ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 78.255625\n",
+  "stderr": "",
+  "reason": ""
+}

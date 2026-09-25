@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ Good Friday and Easter Monday are skipped (1.8735ms)\n✔ the May bank holidays are skipped (0.103291ms)\n✔ the August bank holiday is skipped (0.068583ms)\n✔ Christmas and Boxing Day are skipped, with a weekday in place of a weekend one (0.071333ms)\n✔ New Year's Day is skipped, with a weekday in place of a weekend one (0.080333ms)\n✔ ordinary weeks are unchanged (0.064833ms)\n✔ the rules hold in years far from this one (0.111084ms)\n✔ a substitute day stands in whatever the year (0.086125ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 80.677917\n",
+  "stderr": "",
+  "reason": ""
+}

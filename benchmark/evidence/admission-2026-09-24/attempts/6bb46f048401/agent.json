@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/6bb46f048401/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "1af07fe8-1f8a-458a-907f-c627f8c9333b",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "dacb0a6138a4971be970a9f8c4de00bbe6c511cfa992c7116550385cad94b1ff",
+  "sessionId": "1af07fe8-1f8a-458a-907f-c627f8c9333b",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":32408,\"stop_reason\":\"end_turn\",\"session_id\":\"1af07fe8-1f8a-458a-907f-c627f8c9333b\",\"total_cost_usd\":0.1497212,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":16168,\"cache_read_input_tokens\":305036,\"output_tokens\":2401,\"output_tokens_details\":{\"thinking_tokens\":435},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16168,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":52,\"cache_read_input_tokens\":42154,\"cache_creation_input_tokens\":759,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":759},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":2401,\"cacheReadInputTokens\":305036,\"cacheCreationInputTokens\":16168,\"webSearchRequests\":0,\"costUSD\":0.1497212,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":435,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":8,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Added `latest(versions)` to `src/lib.rs:56-64` and covered it with four new tests in `tests/order.rs`.\",\"ttft_ms\":3042,\"type\":\"result\",\"duration_ms\":36115,\"uuid\":\"e5b950a1-f495-4cde-bfb6-6c757ecbda2f\",\"ttft_stream_ms\":1420,\"time_to_request_ms\":247,\"first_content_frame_ms\":1421,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 32408,
+    "stop_reason": "end_turn",
+    "session_id": "1af07fe8-1f8a-458a-907f-c627f8c9333b",
+    "total_cost_usd": 0.1497212,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 16168,
+      "cache_read_input_tokens": 305036,
+      "output_tokens": 2401,
+      "output_tokens_details": {
+        "thinking_tokens": 435
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16168,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 52,
+          "cache_read_input_tokens": 42154,
+          "cache_creation_input_tokens": 759,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 759
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 2401,
+        "cacheReadInputTokens": 305036,
+        "cacheCreationInputTokens": 16168,
+        "webSearchRequests": 0,
+        "costUSD": 0.1497212,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 435,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 8,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Added `latest(versions)` to `src/lib.rs:56-64` and covered it with four new tests in `tests/order.rs`.",
+    "ttft_ms": 3042,
+    "type": "result",
+    "duration_ms": 36115,
+    "uuid": "e5b950a1-f495-4cde-bfb6-6c757ecbda2f",
+    "ttft_stream_ms": 1420,
+    "time_to_request_ms": 247,
+    "first_content_frame_ms": 1421,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:38:20.942Z",
+  "endedAt": "2026-09-24T23:38:58.795Z",
+  "wallMs": 37854,
+  "timedOut": false
+}

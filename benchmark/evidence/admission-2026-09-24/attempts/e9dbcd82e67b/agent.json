@@ -1,0 +1,139 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/e9dbcd82e67b/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "adba4d76-940c-4af6-af36-d7140f8f0471",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "9b397c61fe60ad3897c04a468169aa1fbe9f13557c3f1d8147484f78da473a52",
+  "sessionId": "adba4d76-940c-4af6-af36-d7140f8f0471",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":134115,\"stop_reason\":\"end_turn\",\"session_id\":\"adba4d76-940c-4af6-af36-d7140f8f0471\",\"total_cost_usd\":0.5522981999999999,\"usage\":{\"input_tokens\":56,\"cache_creation_input_tokens\":38879,\"cache_read_input_tokens\":1428101,\"output_tokens\":11105,\"output_tokens_details\":{\"thinking_tokens\":4706},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":38879,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":270,\"cache_read_input_tokens\":65140,\"cache_creation_input_tokens\":484,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":484},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":56,\"outputTokens\":11105,\"cacheReadInputTokens\":1428101,\"cacheCreationInputTokens\":38879,\"webSearchRequests\":0,\"costUSD\":0.5522981999999999,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":4706,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[{\"tool_name\":\"Read\",\"tool_use_id\":\"toolu_01Fu6CBavPNyoqGQUh4g6qJR\",\"tool_input\":{\"file_path\":\"/Users/brajevicm/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/east-asian-width-0.1.0/src/lib.rs\",\"offset\":80,\"limit\":170}}],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":28,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Clean build with no warnings. Summary of changes:\\n\\n- **`Cargo.toml`**: added `east-asian-width` (East Asian Width property lookup) and `unicode-general-category` (Unicode 16.0 general category lookup, confirmed via its `UNICODE_VERSION` constant) as dependencies.\\n- **`src/lib.rs`**: `width` now sums a per-character `column_width`: 0 for general category Mn/Me (combining marks), 2 for East Asian Width Wide/Fullwidth, 1 otherwise.\\n- **`tests/render.rs`**: added tests for a combining accent taking no column, wide characters (Chinese, kana, Hangul, fullwidth Latin, emoji) taking two columns, and a full table mixing wide and combining characters that stays aligned.\",\"ttft_ms\":2374,\"type\":\"result\",\"duration_ms\":146939,\"uuid\":\"6429d16b-c576-479b-8ebf-ba64dddbb5dc\",\"ttft_stream_ms\":1389,\"time_to_request_ms\":313,\"first_content_frame_ms\":1390,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 134115,
+    "stop_reason": "end_turn",
+    "session_id": "adba4d76-940c-4af6-af36-d7140f8f0471",
+    "total_cost_usd": 0.5522981999999999,
+    "usage": {
+      "input_tokens": 56,
+      "cache_creation_input_tokens": 38879,
+      "cache_read_input_tokens": 1428101,
+      "output_tokens": 11105,
+      "output_tokens_details": {
+        "thinking_tokens": 4706
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 38879,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 270,
+          "cache_read_input_tokens": 65140,
+          "cache_creation_input_tokens": 484,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 484
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 56,
+        "outputTokens": 11105,
+        "cacheReadInputTokens": 1428101,
+        "cacheCreationInputTokens": 38879,
+        "webSearchRequests": 0,
+        "costUSD": 0.5522981999999999,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 4706,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [
+      {
+        "tool_name": "Read",
+        "tool_use_id": "toolu_01Fu6CBavPNyoqGQUh4g6qJR",
+        "tool_input": {
+          "file_path": "/Users/brajevicm/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/east-asian-width-0.1.0/src/lib.rs",
+          "offset": 80,
+          "limit": 170
+        }
+      }
+    ],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 28,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Clean build with no warnings. Summary of changes:\n\n- **`Cargo.toml`**: added `east-asian-width` (East Asian Width property lookup) and `unicode-general-category` (Unicode 16.0 general category lookup, confirmed via its `UNICODE_VERSION` constant) as dependencies.\n- **`src/lib.rs`**: `width` now sums a per-character `column_width`: 0 for general category Mn/Me (combining marks), 2 for East Asian Width Wide/Fullwidth, 1 otherwise.\n- **`tests/render.rs`**: added tests for a combining accent taking no column, wide characters (Chinese, kana, Hangul, fullwidth Latin, emoji) taking two columns, and a full table mixing wide and combining characters that stays aligned.",
+    "ttft_ms": 2374,
+    "type": "result",
+    "duration_ms": 146939,
+    "uuid": "6429d16b-c576-479b-8ebf-ba64dddbb5dc",
+    "ttft_stream_ms": 1389,
+    "time_to_request_ms": 313,
+    "first_content_frame_ms": 1390,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:57:24.600Z",
+  "endedAt": "2026-09-24T22:59:53.372Z",
+  "wallMs": 148773,
+  "timedOut": false
+}

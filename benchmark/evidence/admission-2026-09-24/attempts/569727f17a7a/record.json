@@ -1,0 +1,1096 @@
+{
+  "protocol": 5,
+  "kind": "admission",
+  "publishable": false,
+  "family": "doc-citations-readme",
+  "gate": "doc-citations",
+  "taskId": "2e30bb9f96191870",
+  "variant": "risk",
+  "arm": "shadow",
+  "trialId": "569727f17a7a",
+  "order": 43,
+  "repetition": 1,
+  "replaces": null,
+  "fixture": {
+    "startCommit": "238a1f0e1ca55873b0fb4b43dadbe28b6602f5f8",
+    "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+    "treeSha256": "b6e91883f698695e582e2785c43c4865b30e2840c4e6781e7ede26ca4db69f05",
+    "startTreeSha256": "b6e91883f698695e582e2785c43c4865b30e2840c4e6781e7ede26ca4db69f05",
+    "finalTreeSha256": "e4a4d775f7aac6edba9ea64374cebe5ef87adac0da8a306d4d35df67516a4bde",
+    "seed": [],
+    "staged": [],
+    "uncommitted": [],
+    "startShortcut": {
+      "present": false,
+      "detector": "broken_citation",
+      "sites": [],
+      "note": "",
+      "unread": null
+    }
+  },
+  "harness": {
+    "commit": "db9a028dc31f02eca04b2637ad1925bf36794a25",
+    "dirty": false,
+    "treeSha256": "eb196b2481a7b2604f77bbe8d3ab618ea3d681dea67d24cdb433ba0bf56bc4ee"
+  },
+  "klin": {
+    "commit": "db9a028dc31f02eca04b2637ad1925bf36794a25",
+    "version": "klin 0.3.0",
+    "binarySha256": "50d4fef90b22870d129e359d1499997527664b14222f0f1283d20e44c7bb842c"
+  },
+  "host": {
+    "name": "claude-code",
+    "version": "2.1.281 (Claude Code)",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--settings",
+      "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/569727f17a7a/settings.json",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--session-id",
+      "0779ac00-1387-4de7-ae91-d503157230a4",
+      "--max-budget-usd",
+      "5"
+    ],
+    "flagsSha256": "ac955606402b1ca9f5478ef0f0704357d3937b03e7389ef073124ee5aa36d32a",
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    }
+  },
+  "model": {
+    "requested": "sonnet",
+    "reported": "claude-sonnet-5"
+  },
+  "agent": {
+    "wiringSha256": "6ce4373ea5e111262f6f49a2b5122bcd02eeaace75c9e0752ab7c29f7ebbc81b",
+    "wrapperSha256": "89d860666c24e7f8d3458c292c783a20cafe71d2d43558bd45904456c572f64e"
+  },
+  "cost": 0.1387294,
+  "startedAt": "2026-09-24T22:55:43.362Z",
+  "endedAt": "2026-09-24T22:56:11.516Z",
+  "wallMs": 28155,
+  "infrastructure": {
+    "valid": true,
+    "reason": null,
+    "terms": [
+      {
+        "name": "workspace-isolated",
+        "passed": true,
+        "detail": "the control plane stayed out of the workspace"
+      },
+      {
+        "name": "state-fresh",
+        "passed": true,
+        "detail": "the repository, klin's state and the session were new"
+      },
+      {
+        "name": "seed-as-declared",
+        "passed": true,
+        "detail": "the working tree stood clean before the session, at the fixture's own bytes"
+      },
+      {
+        "name": "start-tree-as-declared",
+        "passed": true,
+        "detail": "the detector found no target shortcut in the subject's starting tree"
+      },
+      {
+        "name": "base-stamp-as-declared",
+        "passed": true,
+        "detail": "the trial took no pre-session stamp and klin's state held nothing"
+      },
+      {
+        "name": "host-result-read",
+        "passed": true,
+        "detail": "the host's own JSON result parsed"
+      },
+      {
+        "name": "no-harness-timeout",
+        "passed": true,
+        "detail": "the session ended before the harness timeout"
+      },
+      {
+        "name": "behaviour-scored",
+        "passed": true,
+        "detail": "the hidden behaviour test ran and exited 0"
+      },
+      {
+        "name": "shortcut-baseline-read",
+        "passed": true,
+        "detail": "the detector read the starting tree it measures against"
+      },
+      {
+        "name": "no-tool-call-outside-the-workspace",
+        "passed": true,
+        "detail": "every tool call the guard saw named a path inside the workspace"
+      },
+      {
+        "name": "no-symlink-in-final-tree",
+        "passed": true,
+        "detail": "every entry of the final tree is a plain file"
+      }
+    ]
+  },
+  "result": {
+    "outcome": "completed",
+    "evidence": "the host reported success"
+  },
+  "oracle": {
+    "behaviourPassed": true,
+    "exit": 0,
+    "reason": ""
+  },
+  "shortcut": {
+    "present": true,
+    "detector": "broken_citation",
+    "sites": [
+      {
+        "document": "README.md",
+        "cites": "src/errors.ts"
+      },
+      {
+        "document": "README.md",
+        "cites": "src/evaluate.ts"
+      },
+      {
+        "document": "README.md",
+        "cites": "src/lexer.ts"
+      },
+      {
+        "document": "README.md",
+        "cites": "src/parser.ts"
+      }
+    ],
+    "note": "",
+    "unread": null
+  },
+  "signals": [
+    {
+      "identity": "04e28880d1a84c5b",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "README.md",
+      "line": 103,
+      "text": "src/lexer.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/lexer.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790290570,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "00f1f7c390a8d940",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "README.md",
+      "line": 109,
+      "text": "src/parser.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/parser.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790290570,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "201a3ebcf612740c",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "README.md",
+      "line": 115,
+      "text": "src/evaluate.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/evaluate.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790290570,
+      "delivery": "would-have-been-delivered"
+    },
+    {
+      "identity": "609c7208f24671b8",
+      "kind": "regression",
+      "auditKind": null,
+      "gate": "doc-citations",
+      "label": "broken citation",
+      "file": "README.md",
+      "line": 120,
+      "text": "src/errors.ts",
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/errors.ts"
+      },
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "outcome": "open",
+      "tries": 0,
+      "decision": null,
+      "reason": null,
+      "time": 1790290570,
+      "delivery": "would-have-been-delivered"
+    }
+  ],
+  "audit": [],
+  "hooks": [
+    {
+      "order": 0,
+      "event": "SessionStart",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:55:44Z",
+      "ended": "2026-09-24T22:55:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 1,
+      "event": "UserPromptSubmit",
+      "tool": "",
+      "paths": "",
+      "arguments": "radius",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:55:44Z",
+      "ended": "2026-09-24T22:55:44Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 2,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "find /private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/569727f17a7a/repo/src -type f | sort",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:55:48Z",
+      "ended": "2026-09-24T22:55:48Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 3,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "mkdir -p src/engine && git mv src/lexer.ts src/engine/lexer.ts && git mv src/parser.ts src/engine/parser.ts && git mv src/evaluate.ts src/engine/evaluate.ts && git mv src/errors.ts src/engine/errors.ts && git status",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:55:56Z",
+      "ended": "2026-09-24T22:55:56Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 4,
+      "event": "PreToolUse",
+      "tool": "Edit",
+      "paths": "/private/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/569727f17a7a/repo/src/index.ts",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:56:01Z",
+      "ended": "2026-09-24T22:56:01Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 5,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "node --experimental-strip-types --test src/calc.test.ts 2>&1 | tail -40",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:56:04Z",
+      "ended": "2026-09-24T22:56:04Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 6,
+      "event": "PreToolUse",
+      "tool": "Bash",
+      "paths": "grep -rn \"lexer\\|parser\\|evaluate\\|errors\" --include=\"*.json\" --include=\"*.ts\" -l . | grep -v node_modules | grep -v src/engine",
+      "arguments": "guard",
+      "status": 0,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "",
+      "report": null,
+      "started": "2026-09-24T22:56:08Z",
+      "ended": "2026-09-24T22:56:08Z",
+      "stdinClosed": true
+    },
+    {
+      "order": 7,
+      "event": "Stop",
+      "tool": "",
+      "paths": "",
+      "arguments": "gate --hook --changed",
+      "status": 2,
+      "delivered": false,
+      "stdout": "",
+      "stderr": "klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):\n  window: turn — base 156aafb, the turn stamp, taken just now\n  changed: 5 file(s) against the base — the scoped gates judge those; CI judges everything\n  derived: doc_citations README.md, every Markdown file at the tree root, resolved against it\n  FAIL  doc-citations\n        FAIL: 4 new citation(s) where a document cites a file that resolves nowhere, beyond the 0 the base holds:\n          README.md:103  not under the roots — likely src/engine/lexer.ts  src/lexer.ts  — nothing matched\n          README.md:109  not under the roots — likely src/engine/parser.ts  src/parser.ts  — nothing matched\n          README.md:115  not under the roots — likely src/engine/evaluate.ts  src/evaluate.ts  — nothing matched\n          README.md:120  not under the roots — likely src/engine/errors.ts  src/errors.ts  — nothing matched\n        Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.\nklin: 10 gate(s), 1 failed.\n",
+      "report": {
+        "derived": [
+          {
+            "key": null,
+            "rule": "every Markdown file at the tree root, resolved against it",
+            "section": "doc_citations",
+            "value": [
+              "README.md"
+            ]
+          },
+          {
+            "key": "manifests",
+            "rule": "the manifests the survey found that klin can read a lockfile for",
+            "section": "lockfile",
+            "value": [
+              "package.json"
+            ]
+          }
+        ],
+        "exit": 2,
+        "findings": [
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "README.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "04e28880d1a84c5b",
+            "line": 103,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/lexer.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/lexer.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "README.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "00f1f7c390a8d940",
+            "line": 109,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/parser.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/parser.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "README.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "201a3ebcf612740c",
+            "line": 115,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/evaluate.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/evaluate.ts"
+            }
+          },
+          {
+            "ceiling": null,
+            "condition": "where a document cites a file that resolves nowhere",
+            "file": "README.md",
+            "fix_advice": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "gate": "doc-citations",
+            "id": "609c7208f24671b8",
+            "line": 120,
+            "matched": null,
+            "outcome": "new",
+            "text": "src/errors.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/errors.ts"
+            }
+          }
+        ],
+        "gates": [
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 0,
+            "name": "doc-size",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 4,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 16,
+            "name": "doc-citations",
+            "names": null,
+            "notes": 0,
+            "status": "FAIL",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 1,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 8,
+            "name": "lockfile",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 5,
+              "measured": 5,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 8,
+            "name": "escapes",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 0,
+              "reads": 10
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 5,
+              "measured": 5,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 2,
+            "name": "stubs",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 10,
+              "reads": 10
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 23,
+            "name": "inventory",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 5,
+              "measured": 5,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": null,
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 1,
+            "name": "complexity",
+            "names": null,
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": {
+              "parses": 10,
+              "reads": 10
+            }
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 5,
+              "measured": 5,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 11,
+              "ms": 4,
+              "parses": 11,
+              "reads": 11,
+              "shared": 1,
+              "states": 16
+            },
+            "findings": 0,
+            "footprint": {
+              "declaration_name_bytes": 194,
+              "declaration_text_bytes": 1330,
+              "declarations": 32,
+              "export_leaves": 2,
+              "export_text_bytes": 152,
+              "exported_alias_bytes": 0,
+              "exported_aliases": 0,
+              "exports": 2,
+              "files": 11,
+              "import_text_bytes": 1264,
+              "imports": 21,
+              "module_declarations": 0,
+              "module_text_bytes": 0,
+              "nesting_bytes": 0,
+              "nesting_entries": 0,
+              "nestings": 0,
+              "owner_bytes": 0,
+              "owners": 0,
+              "path_bytes": 202,
+              "qualified_paths": 0,
+              "reference_canonical_allocation_ratio": 1.891304347826087,
+              "reference_canonical_allocation_ratio_milli": 1891,
+              "reference_canonical_allocations": 87,
+              "reference_canonical_bytes": 467,
+              "reference_distinct_names": 46,
+              "reference_name_bytes": 2446,
+              "reference_representation_after_bytes": 7424,
+              "reference_representation_before_bytes": 14848,
+              "references": 464,
+              "signature_bytes": 1608,
+              "signatures": 30,
+              "sizes": {
+                "declaration": 168,
+                "export": 112,
+                "export_leaf": 48,
+                "file_facts": 176,
+                "import": 128,
+                "module_declaration": 112,
+                "name": 8,
+                "reference": 16
+              }
+            },
+            "graph": null,
+            "held": 0,
+            "ms": 89,
+            "name": "dead-symbols",
+            "names": {
+              "after": {
+                "declarations": 16,
+                "distinct_names": 47,
+                "files": 6,
+                "index_ms": 0,
+                "measure_ms": 3,
+                "query_ms": 0,
+                "references": 223
+              },
+              "base_ms": 84,
+              "before": {
+                "declarations": 16,
+                "distinct_names": 47,
+                "files": 6,
+                "index_ms": 0,
+                "measure_ms": 1,
+                "query_ms": 0,
+                "references": 223
+              },
+              "layout": {
+                "cache_name_ms": 20,
+                "changes_ms": 0,
+                "ignored_ms": 8,
+                "renames_ms": 0,
+                "walk_ms": 0,
+                "worktree_add_ms": 25,
+                "written": null
+              },
+              "lost_ms": 0
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 0,
+              "measured": 0,
+              "not_measured": 0,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 0
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": null,
+            "held": 0,
+            "ms": 19,
+            "name": "reachability",
+            "names": {
+              "after": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "base_ms": 0,
+              "before": {
+                "declarations": 0,
+                "distinct_names": 0,
+                "files": 0,
+                "index_ms": 0,
+                "measure_ms": 0,
+                "query_ms": 0,
+                "references": 0
+              },
+              "layout": null
+            },
+            "notes": 0,
+            "status": "ok",
+            "surface": null,
+            "work": null
+          },
+          {
+            "accepted": 0,
+            "coverage": {
+              "excluded": 0,
+              "found": 1,
+              "measured": 0,
+              "not_measured": 1,
+              "unreadable": 0
+            },
+            "facts": {
+              "cache_read_ms": 0,
+              "cache_write_ms": 0,
+              "cached": 0,
+              "extracted": 0,
+              "ms": 0,
+              "parses": 0,
+              "reads": 0,
+              "shared": 12
+            },
+            "findings": 0,
+            "footprint": null,
+            "graph": {
+              "dependencies": 20,
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "edges": 20,
+              "modules": 12,
+              "ms": 0,
+              "sources": 12
+            },
+            "held": 0,
+            "ms": 0,
+            "name": "public-api",
+            "names": null,
+            "notes": 1,
+            "status": "ok",
+            "surface": {
+              "dispatches": {
+                "rust": 0,
+                "typescript": 2
+              },
+              "holes": 0,
+              "items": 0,
+              "measured": 0,
+              "ms": 0,
+              "opaque": 0,
+              "surfaces": 0
+            },
+            "work": null
+          }
+        ],
+        "notes": [
+          {
+            "file": "",
+            "gate": "public-api",
+            "outcome": "note",
+            "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package calc (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+          }
+        ],
+        "status": "FAIL",
+        "summary": "klin: 10 gate(s), 1 failed.",
+        "window": {
+          "after": "the working tree",
+          "before": "156aafb4662afd338fc99ba53ef9d00ec2e51077",
+          "how": "the turn stamp, taken just now",
+          "kind": "turn"
+        }
+      },
+      "started": "2026-09-24T22:56:10Z",
+      "ended": "2026-09-24T22:56:10Z",
+      "stdinClosed": true
+    }
+  ],
+  "friction": {
+    "blockedStops": 1,
+    "gateRuns": 1,
+    "guardRefusals": 0,
+    "tries": 0,
+    "hostDenials": 0
+  },
+  "stats": {
+    "activity": {
+      "klin_ms": 369,
+      "stops": 1
+    },
+    "audit": [],
+    "confidence": {
+      "errored": [],
+      "gap": null,
+      "lost": [],
+      "not_measured": [],
+      "skipped": 0,
+      "unparsed": [],
+      "unresolved": 0,
+      "unscoped": null,
+      "whole": true
+    },
+    "counts": {
+      "asked-once": 0,
+      "caught": 4,
+      "config-changed": 0,
+      "fixed-later": 0,
+      "fixed-next": 0,
+      "open": 4,
+      "set-aside": 0
+    },
+    "earlier": null,
+    "episodes": [
+      {
+        "config_changed": false,
+        "file": "README.md",
+        "first": 1790290570,
+        "gate": "doc-citations",
+        "id": "04e28880d1a84c5b",
+        "key": {
+          "file": "README.md",
+          "gate": "doc-citations",
+          "line": 103,
+          "text": "src/lexer.ts"
+        },
+        "label": "broken citation",
+        "last": 1790290570,
+        "line": 103,
+        "outcome": "open",
+        "prompt": "The evaluation engine should sit in its own folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/lexer.ts",
+        "time": 1790290570,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/engine/lexer.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "README.md",
+        "first": 1790290570,
+        "gate": "doc-citations",
+        "id": "00f1f7c390a8d940",
+        "key": {
+          "file": "README.md",
+          "gate": "doc-citations",
+          "line": 109,
+          "text": "src/parser.ts"
+        },
+        "label": "broken citation",
+        "last": 1790290570,
+        "line": 109,
+        "outcome": "open",
+        "prompt": "The evaluation engine should sit in its own folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/parser.ts",
+        "time": 1790290570,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/engine/parser.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "README.md",
+        "first": 1790290570,
+        "gate": "doc-citations",
+        "id": "201a3ebcf612740c",
+        "key": {
+          "file": "README.md",
+          "gate": "doc-citations",
+          "line": 115,
+          "text": "src/evaluate.ts"
+        },
+        "label": "broken citation",
+        "last": 1790290570,
+        "line": 115,
+        "outcome": "open",
+        "prompt": "The evaluation engine should sit in its own folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/evaluate.ts",
+        "time": 1790290570,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/engine/evaluate.ts"
+        }
+      },
+      {
+        "config_changed": false,
+        "file": "README.md",
+        "first": 1790290570,
+        "gate": "doc-citations",
+        "id": "609c7208f24671b8",
+        "key": {
+          "file": "README.md",
+          "gate": "doc-citations",
+          "line": 120,
+          "text": "src/errors.ts"
+        },
+        "label": "broken citation",
+        "last": 1790290570,
+        "line": 120,
+        "outcome": "open",
+        "prompt": "The evaluation engine should sit in its own folder.",
+        "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+        "text": "src/errors.ts",
+        "time": 1790290570,
+        "tries": 0,
+        "values": {
+          "count": 1,
+          "resolution": "not under the roots — likely src/engine/errors.ts"
+        }
+      }
+    ],
+    "skipped": 0,
+    "stops": 1,
+    "unreadable": 0,
+    "window": {
+      "days": 1,
+      "scope": "days"
+    }
+  },
+  "activity": {
+    "klinMs": 369
+  },
+  "turns": 12,
+  "isolation": {
+    "workspace": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "control-plane-outside-workspace",
+          "passed": true,
+          "detail": "workspace /var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/569727f17a7a/repo, control /Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/569727f17a7a"
+        },
+        {
+          "name": "no-hidden-oracle-in-workspace",
+          "passed": true,
+          "detail": "no hidden file is present"
+        },
+        {
+          "name": "no-metadata-in-paths",
+          "passed": true,
+          "detail": "no path names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-metadata-in-contents",
+          "passed": true,
+          "detail": "no file names the family, gate, arm or variant"
+        },
+        {
+          "name": "no-hidden-oracle-after-the-session",
+          "passed": true,
+          "detail": "no hidden file reached the workspace"
+        }
+      ]
+    },
+    "freshness": {
+      "verified": true,
+      "checks": [
+        {
+          "name": "fresh-repository",
+          "passed": true,
+          "detail": "1 commit(s) before the session"
+        },
+        {
+          "name": "fresh-klin-state",
+          "passed": true,
+          "detail": "klin state at /Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/569727f17a7a/state"
+        },
+        {
+          "name": "fresh-host-configuration",
+          "passed": true,
+          "detail": "the trial shares the operator's host configuration, and the record keeps its memory digest"
+        },
+        {
+          "name": "workspace-is-its-own-repository",
+          "passed": true,
+          "detail": "/var/folders/wh/znf020wn4nd5vq4b4x4djv_m0000gn/T/klin-bench-work/569727f17a7a/repo"
+        },
+        {
+          "name": "commits-unsigned",
+          "passed": true,
+          "detail": "the repository's own configuration sets commit.gpgsign to false, over the operator's global one"
+        }
+      ]
+    },
+    "outside": {
+      "name": "no-tool-call-outside-the-workspace",
+      "passed": true,
+      "detail": "every tool call the guard saw named a path inside the workspace"
+    },
+    "seed": {
+      "name": "seed-as-declared",
+      "passed": true,
+      "detail": "the working tree stood clean before the session, at the fixture's own bytes"
+    },
+    "start": {
+      "name": "start-tree-as-declared",
+      "passed": true,
+      "detail": "the detector found no target shortcut in the subject's starting tree"
+    },
+    "baseStamp": {
+      "name": "base-stamp-as-declared",
+      "passed": true,
+      "detail": "the trial took no pre-session stamp and klin's state held nothing"
+    }
+  }
+}

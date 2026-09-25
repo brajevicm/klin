@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the report is the list, whatever else a caller passes (0.416875ms)\n✔ the week is the list and its total (0.08775ms)\n✔ no grid line is printed (0.127208ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 78.712958\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/ec8126771968/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "21fca642-ff41-4bc9-bf50-237769ea19b0",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "ccb31816641091f07b50e8a938dec484772b83abb3ed7ad4d42e3abec66330c9",
+  "sessionId": "21fca642-ff41-4bc9-bf50-237769ea19b0",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":72769,\"stop_reason\":\"end_turn\",\"session_id\":\"21fca642-ff41-4bc9-bf50-237769ea19b0\",\"total_cost_usd\":0.2851662,\"usage\":{\"input_tokens\":22,\"cache_creation_input_tokens\":27829,\"cache_read_input_tokens\":472081,\"output_tokens\":7939,\"output_tokens_details\":{\"thinking_tokens\":2330},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":27829,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":188,\"cache_read_input_tokens\":54012,\"cache_creation_input_tokens\":562,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":562},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":22,\"outputTokens\":7939,\"cacheReadInputTokens\":472081,\"cacheCreationInputTokens\":27829,\"webSearchRequests\":0,\"costUSD\":0.2851662,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":2330,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":11,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 14 tests pass, including type-checking.\\n\\nAdded `src/events.ts` with `decode(delivery)`, which validates the delivery body against the four `LedgerEvent` shapes and throws path-prefixed errors (e.g. `body.events[1].cents must be a positive integer`) for anything invalid. Covered it with `src/events.test.ts`, testing successful decodes (credit/debit/transfer/nested batch) and each failure path (non-object body, unknown/missing type, bad field types, non-positive/non-integer cents, and nested-batch error paths).\",\"ttft_ms\":2840,\"type\":\"result\",\"duration_ms\":76788,\"uuid\":\"4c470f6d-5d35-4fa9-bb26-680dcfab11c7\",\"ttft_stream_ms\":1197,\"time_to_request_ms\":237,\"first_content_frame_ms\":1198,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 72769,
+    "stop_reason": "end_turn",
+    "session_id": "21fca642-ff41-4bc9-bf50-237769ea19b0",
+    "total_cost_usd": 0.2851662,
+    "usage": {
+      "input_tokens": 22,
+      "cache_creation_input_tokens": 27829,
+      "cache_read_input_tokens": 472081,
+      "output_tokens": 7939,
+      "output_tokens_details": {
+        "thinking_tokens": 2330
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 27829,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 188,
+          "cache_read_input_tokens": 54012,
+          "cache_creation_input_tokens": 562,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 562
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 22,
+        "outputTokens": 7939,
+        "cacheReadInputTokens": 472081,
+        "cacheCreationInputTokens": 27829,
+        "webSearchRequests": 0,
+        "costUSD": 0.2851662,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 2330,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 11,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 14 tests pass, including type-checking.\n\nAdded `src/events.ts` with `decode(delivery)`, which validates the delivery body against the four `LedgerEvent` shapes and throws path-prefixed errors (e.g. `body.events[1].cents must be a positive integer`) for anything invalid. Covered it with `src/events.test.ts`, testing successful decodes (credit/debit/transfer/nested batch) and each failure path (non-object body, unknown/missing type, bad field types, non-positive/non-integer cents, and nested-batch error paths).",
+    "ttft_ms": 2840,
+    "type": "result",
+    "duration_ms": 76788,
+    "uuid": "4c470f6d-5d35-4fa9-bb26-680dcfab11c7",
+    "ttft_stream_ms": 1197,
+    "time_to_request_ms": 237,
+    "first_content_frame_ms": 1198,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:14:46.922Z",
+  "endedAt": "2026-09-24T23:16:05.427Z",
+  "wallMs": 78507,
+  "timedOut": false
+}

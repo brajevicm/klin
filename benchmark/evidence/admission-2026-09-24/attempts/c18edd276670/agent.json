@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/c18edd276670/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "93f09114-e981-4d91-b079-b232730676f3",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "2366e5f5909ee71c61b1bf914b796423c92bce0bc8deceab454643d1514d256b",
+  "sessionId": "93f09114-e981-4d91-b079-b232730676f3",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":26106,\"stop_reason\":\"end_turn\",\"session_id\":\"93f09114-e981-4d91-b079-b232730676f3\",\"total_cost_usd\":0.1665704,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":16566,\"cache_read_input_tokens\":351052,\"output_tokens\":3006,\"output_tokens_details\":{\"thinking_tokens\":69},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16566,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":122,\"cache_read_input_tokens\":42910,\"cache_creation_input_tokens\":401,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":401},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":3006,\"cacheReadInputTokens\":351052,\"cacheCreationInputTokens\":16566,\"webSearchRequests\":0,\"costUSD\":0.1665704,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":69,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":16,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Fax delivery is fully removed: `CHANNELS` is now `[\\\"email\\\", \\\"portal\\\"]`, `deliver` with `channel: \\\"fax\\\"` throws `unsupported channel fax`, the fax channel/TIFF encoder files are deleted, the README no longer mentions fax, and the suite covers both the removal and unchanged email/portal behavior.\",\"ttft_ms\":2025,\"type\":\"result\",\"duration_ms\":28406,\"uuid\":\"d9fdd83d-8699-4a88-a6e3-b142c609be69\",\"ttft_stream_ms\":1574,\"time_to_request_ms\":280,\"first_content_frame_ms\":1574,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 26106,
+    "stop_reason": "end_turn",
+    "session_id": "93f09114-e981-4d91-b079-b232730676f3",
+    "total_cost_usd": 0.1665704,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 16566,
+      "cache_read_input_tokens": 351052,
+      "output_tokens": 3006,
+      "output_tokens_details": {
+        "thinking_tokens": 69
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16566,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 122,
+          "cache_read_input_tokens": 42910,
+          "cache_creation_input_tokens": 401,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 401
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 3006,
+        "cacheReadInputTokens": 351052,
+        "cacheCreationInputTokens": 16566,
+        "webSearchRequests": 0,
+        "costUSD": 0.1665704,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 69,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 16,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Fax delivery is fully removed: `CHANNELS` is now `[\"email\", \"portal\"]`, `deliver` with `channel: \"fax\"` throws `unsupported channel fax`, the fax channel/TIFF encoder files are deleted, the README no longer mentions fax, and the suite covers both the removal and unchanged email/portal behavior.",
+    "ttft_ms": 2025,
+    "type": "result",
+    "duration_ms": 28406,
+    "uuid": "d9fdd83d-8699-4a88-a6e3-b142c609be69",
+    "ttft_stream_ms": 1574,
+    "time_to_request_ms": 280,
+    "first_content_frame_ms": 1574,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:30:55.496Z",
+  "endedAt": "2026-09-24T21:31:26.516Z",
+  "wallMs": 31022,
+  "timedOut": false
+}

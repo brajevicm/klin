@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ an invoice email names the due date in its subject (0.474084ms)\n✔ the other channels keep their subjects and every body is unchanged (0.247333ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 76.697375\n",
+  "stderr": "",
+  "reason": ""
+}

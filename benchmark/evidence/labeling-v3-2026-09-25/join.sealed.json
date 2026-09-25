@@ -1,0 +1,903 @@
+{
+  "version": 1,
+  "status": "sealed-before-human-labeling",
+  "counts": {
+    "includedRecords": 14,
+    "signalOccurrences": 24,
+    "worksheetRows": 13
+  },
+  "evidence": [
+    {
+      "round": "v3",
+      "setId": "v3-2026-09-25",
+      "manifestSha256": "cf47bba66f1674e7092a0f995b42ceb28654098412ea0ec76caae9c3d1dc8a0b",
+      "archiveSha256": "d1b5b38fde84138ea7f9a0f9f4c22f3212c8f2221a492a415cc6358bf77f65fc",
+      "archiveBytes": 576187,
+      "includedRecords": 14,
+      "signalOccurrences": 24
+    }
+  ],
+  "rows": [
+    {
+      "worksheetId": "S001",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "7739408946ff",
+          "family": "complexity-importer",
+          "variant": "risk",
+          "arm": "active",
+          "order": 8,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "16199d22d4a5dee5",
+          "promptSha256": "9a19050cc98a24af75f9ae7d6e29a70bcfd1b4bf0c6e54ad395abf221cfd0f12",
+          "gate": "complexity",
+          "signal": {
+            "identity": "bd639b25ab6e97b8",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 11,
+            "text": "pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, Refusal> {",
+            "values": {
+              "cc": 11,
+              "lines": 27
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324203,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "6c665c7e6610",
+          "family": "complexity-importer",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 9,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "16199d22d4a5dee5",
+          "promptSha256": "9a19050cc98a24af75f9ae7d6e29a70bcfd1b4bf0c6e54ad395abf221cfd0f12",
+          "gate": "complexity",
+          "signal": {
+            "identity": "bd639b25ab6e97b8",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/lib.rs",
+            "line": 11,
+            "text": "pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, Refusal> {",
+            "values": {
+              "cc": 11,
+              "lines": 27
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324267,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S002",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "0ad7aaa18c53",
+          "family": "complexity-quote",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 2,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "1e88331d21670005",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790323960,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "19f9f2d24a1e",
+          "family": "complexity-quote",
+          "variant": "risk",
+          "arm": "active",
+          "order": 3,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "1e88331d21670005",
+          "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+          "gate": "complexity",
+          "signal": {
+            "identity": "94b38723a816421c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/quote.ts",
+            "line": 18,
+            "text": "export function computeQuote(",
+            "values": {
+              "cc": 11,
+              "lines": 35
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790323987,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S003",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "c2488587dc41",
+          "family": "complexity-shipping",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 4,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "daebbcb7d4ea45d1",
+          "promptSha256": "363660dde21575d4ac54543088b3a5df1f4c543ab41c6793b32c65b934a9d918",
+          "gate": "complexity",
+          "signal": {
+            "identity": "13e4068e472dff12",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/rate.ts",
+            "line": 20,
+            "text": "export function shippingRate(parcel: Parcel): number {",
+            "values": {
+              "cc": 12,
+              "lines": 36
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324042,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S004",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "b360dda32d89",
+          "family": "complexity-shipping",
+          "variant": "risk",
+          "arm": "active",
+          "order": 5,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "daebbcb7d4ea45d1",
+          "promptSha256": "363660dde21575d4ac54543088b3a5df1f4c543ab41c6793b32c65b934a9d918",
+          "gate": "complexity",
+          "signal": {
+            "identity": "13e4068e472dff12",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "complexity",
+            "label": "tangled function",
+            "file": "src/rate.ts",
+            "line": 20,
+            "text": "export function shippingRate(parcel: Parcel): number {",
+            "values": {
+              "cc": 13,
+              "lines": 36
+            },
+            "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324075,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S005",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "0e05d6310f24",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 12,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "25854d983ef17a7a",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 98,
+            "text": "src/totals.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/totals.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324380,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "7426600f53b3",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "active",
+          "order": 13,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "25854d983ef17a7a",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 98,
+            "text": "src/totals.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/totals.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324420,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S006",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "0e05d6310f24",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 12,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "62ef9e1596ccd540",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 99,
+            "text": "src/tax.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/tax.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324380,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "7426600f53b3",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "active",
+          "order": 13,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "62ef9e1596ccd540",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 99,
+            "text": "src/tax.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/tax.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324420,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S007",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "0e05d6310f24",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 12,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "000353a4c56be782",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 101,
+            "text": "src/discount.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/discount.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324380,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "7426600f53b3",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "active",
+          "order": 13,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "000353a4c56be782",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 101,
+            "text": "src/discount.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/discount.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324420,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S008",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "0e05d6310f24",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 12,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "a1ad175bf0d1b78f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 102,
+            "text": "src/rounding.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/rounding.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324380,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "7426600f53b3",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "active",
+          "order": 13,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "a1ad175bf0d1b78f",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 102,
+            "text": "src/rounding.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/rounding.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324420,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S009",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "e0718e59d358",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "active",
+          "order": 0,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "04e28880d1a84c5b",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 103,
+            "text": "src/lexer.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/lexer.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790323881,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "e85115366244",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 1,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "04e28880d1a84c5b",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 103,
+            "text": "src/lexer.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/lexer.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790323925,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S010",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "0e05d6310f24",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 12,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "834daa19cad7d912",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 105,
+            "text": "src/currency.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/currency.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790324380,
+            "delivery": "would-have-been-delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "7426600f53b3",
+          "family": "doc-citations-contributing",
+          "variant": "risk",
+          "arm": "active",
+          "order": 13,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "61faa7ef10bfc4a0",
+          "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "834daa19cad7d912",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "CONTRIBUTING.md",
+            "line": 105,
+            "text": "src/currency.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/money/currency.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790324420,
+            "delivery": "delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S011",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "e0718e59d358",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "active",
+          "order": 0,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "00f1f7c390a8d940",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 109,
+            "text": "src/parser.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/parser.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790323881,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "e85115366244",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 1,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "00f1f7c390a8d940",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 109,
+            "text": "src/parser.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/parser.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790323925,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S012",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "e0718e59d358",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "active",
+          "order": 0,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "201a3ebcf612740c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 115,
+            "text": "src/evaluate.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/evaluate.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790323881,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "e85115366244",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 1,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "201a3ebcf612740c",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 115,
+            "text": "src/evaluate.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/evaluate.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790323925,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    },
+    {
+      "worksheetId": "S013",
+      "occurrences": [
+        {
+          "round": "v3",
+          "trialId": "e0718e59d358",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "active",
+          "order": 0,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "609c7208f24671b8",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 120,
+            "text": "src/errors.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/errors.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "fixed-next",
+            "tries": 1,
+            "decision": null,
+            "reason": null,
+            "time": 1790323881,
+            "delivery": "delivered"
+          }
+        },
+        {
+          "round": "v3",
+          "trialId": "e85115366244",
+          "family": "doc-citations-readme",
+          "variant": "risk",
+          "arm": "shadow",
+          "order": 1,
+          "repetition": 1,
+          "replaces": null,
+          "taskId": "2e30bb9f96191870",
+          "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+          "gate": "doc-citations",
+          "signal": {
+            "identity": "609c7208f24671b8",
+            "kind": "regression",
+            "auditKind": null,
+            "gate": "doc-citations",
+            "label": "broken citation",
+            "file": "README.md",
+            "line": 120,
+            "text": "src/errors.ts",
+            "values": {
+              "count": 1,
+              "resolution": "not under the roots — likely src/engine/errors.ts"
+            },
+            "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+            "outcome": "open",
+            "tries": 0,
+            "decision": null,
+            "reason": null,
+            "time": 1790323925,
+            "delivery": "would-have-been-delivered"
+          }
+        }
+      ]
+    }
+  ]
+}

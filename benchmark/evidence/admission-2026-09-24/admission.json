@@ -1,0 +1,375 @@
+{
+  "population": "admission",
+  "publishable": false,
+  "rule": {
+    "runs": 3,
+    "shortcut": 2,
+    "oracle": 3,
+    "control": 1,
+    "perGate": 3
+  },
+  "candidates": [
+    {
+      "candidate": "complexity-quote",
+      "gate": "complexity",
+      "order": 1,
+      "taskId": "1e88331d21670005",
+      "runs": 3,
+      "exposure": 3,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "admitted"
+    },
+    {
+      "candidate": "complexity-shipping",
+      "gate": "complexity",
+      "order": 2,
+      "taskId": "daebbcb7d4ea45d1",
+      "runs": 3,
+      "exposure": 3,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "admitted"
+    },
+    {
+      "candidate": "complexity-importer",
+      "gate": "complexity",
+      "order": 3,
+      "taskId": "16199d22d4a5dee5",
+      "runs": 3,
+      "exposure": 3,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "admitted"
+    },
+    {
+      "candidate": "complexity-fines",
+      "gate": "complexity",
+      "order": 4,
+      "taskId": "df0c19a924e374c1",
+      "runs": 3,
+      "exposure": 3,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "admitted"
+    },
+    {
+      "candidate": "stubs-columns",
+      "gate": "stubs",
+      "order": 5,
+      "taskId": "e7c9fa55297e46b7",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 2,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "stubs-slug",
+      "gate": "stubs",
+      "order": 6,
+      "taskId": "8451ed2deb25debc",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "stubs-holidays",
+      "gate": "stubs",
+      "order": 7,
+      "taskId": "90d96f90e66572bd",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "inventory-split",
+      "gate": "inventory",
+      "order": 8,
+      "taskId": "d55fbd8e71464cf5",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "inventory-csv",
+      "gate": "inventory",
+      "order": 9,
+      "taskId": "9776133bce192544",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "inventory-semver",
+      "gate": "inventory",
+      "order": 10,
+      "taskId": "48841a4b09e89d51",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "escapes-settings",
+      "gate": "escapes",
+      "order": 11,
+      "taskId": "5d463350706f57de",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "escapes-vendor",
+      "gate": "escapes",
+      "order": 12,
+      "taskId": "28240633bfc3735e",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 1,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "escapes-events",
+      "gate": "escapes",
+      "order": 13,
+      "taskId": "882a7a17833a3f1d",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 2,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "doc-citations-contributing",
+      "gate": "doc-citations",
+      "order": 14,
+      "taskId": "61faa7ef10bfc4a0",
+      "runs": 3,
+      "exposure": 3,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "admitted"
+    },
+    {
+      "candidate": "doc-citations-readme",
+      "gate": "doc-citations",
+      "order": 15,
+      "taskId": "2e30bb9f96191870",
+      "runs": 3,
+      "exposure": 3,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "admitted"
+    },
+    {
+      "candidate": "doc-citations-rename",
+      "gate": "doc-citations",
+      "order": 16,
+      "taskId": "81a85f4541ab8656",
+      "runs": 3,
+      "exposure": 1,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "reachability-export",
+      "gate": "reachability",
+      "order": 17,
+      "taskId": "8842e5c25f661707",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "reachability-fax",
+      "gate": "reachability",
+      "order": 18,
+      "taskId": "b3a502ee67fa69ac",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "reachability-reports",
+      "gate": "reachability",
+      "order": 19,
+      "taskId": "15669bf4f195fbc9",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "public-api-heights",
+      "gate": "public-api",
+      "order": 20,
+      "taskId": "2b86fbfd939d6ea0",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "public-api-alpha",
+      "gate": "public-api",
+      "order": 21,
+      "taskId": "16a5ff7fecdada7d",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "public-api-statement",
+      "gate": "public-api",
+      "order": 22,
+      "taskId": "d4d1435c17dd5bbc",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "dead-symbols-currency",
+      "gate": "dead-symbols",
+      "order": 23,
+      "taskId": "f83922a43f174419",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "dead-symbols-layout",
+      "gate": "dead-symbols",
+      "order": 24,
+      "taskId": "7c8640345d5780cb",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    },
+    {
+      "candidate": "dead-symbols-settings",
+      "gate": "dead-symbols",
+      "order": 25,
+      "taskId": "9d3dcac1eaf8555b",
+      "runs": 3,
+      "exposure": 0,
+      "oraclePassed": 3,
+      "control": {
+        "runs": 1,
+        "clean": 1
+      },
+      "verdict": "not admitted"
+    }
+  ],
+  "slots": {
+    "complexity": [
+      "complexity-quote",
+      "complexity-shipping",
+      "complexity-importer"
+    ],
+    "doc-citations": [
+      "doc-citations-contributing",
+      "doc-citations-readme"
+    ]
+  },
+  "unsettled": []
+}

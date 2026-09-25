@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "exit": 1,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a known code builds its profile (0.766125ms)\n✔ an empty trunk is null, and the minor digits are the decimals (0.1095ms)\n✔ a code is accepted in either case and keeps the upper-case form (0.062583ms)\n✔ a code the table does not hold is null (0.069667ms)\n✔ a built profile works with the code that was already there (0.135833ms)\n✔ the shared table is kept as it is (0.363166ms)\n✖ the package still type-checks in strict mode (527.6715ms)\nℹ tests 7\nℹ suites 0\nℹ pass 6\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 611.718375\n\n✖ failing tests:\n\ntest at check/profile.test.ts:57:1\n✖ the package still type-checks in strict mode (527.6715ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  + actual - expected\n  \n  + \"src does not type-check under the committed strict options: src/profile.ts(1,25): error TS7016: Could not find a declaration file for module '../vendor/countries.js'. '/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/f56bea3e4dfa/fixtures/scoring/vendor/countries.js' implicitly has an 'any' type.\\n\"\n  - ''\n  \n      at TestContext.<anonymous> (file:///Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/f56bea3e4dfa/fixtures/scoring/check/profile.test.ts:58:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1306:25)\n      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)\n      at Test.postRun (node:internal/test_runner/test:1447:19)\n      at Test.run (node:internal/test_runner/test:1372:12)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: \"src does not type-check under the committed strict options: src/profile.ts(1,25): error TS7016: Could not find a declaration file for module '../vendor/countries.js'. '/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/f56bea3e4dfa/fixtures/scoring/vendor/countries.js' implicitly has an 'any' type.\\n\",\n    expected: '',\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+  "stderr": "",
+  "reason": ""
+}

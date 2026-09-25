@@ -1,0 +1,697 @@
+{
+  "protocol": 5,
+  "kind": "publishable",
+  "publishable": true,
+  "population": "v3",
+  "seed": 1,
+  "plannedAt": "2026-09-25T08:08:07.555Z",
+  "design": {
+    "repetitions": {
+      "risk": 1,
+      "control": 1
+    },
+    "blocks": 7,
+    "runs": 14,
+    "attemptsPerTrial": 3,
+    "floor": {
+      "runs": 6,
+      "families": 3
+    },
+    "alpha": 0.05,
+    "primaryEndpoint": "target shortcut present in the final tree, on risk variants",
+    "primaryAnalysis": "exact two-sided McNemar over the matched risk blocks, favorable against harmful discordances, no interim look"
+  },
+  "firstArm": {
+    "active": 4,
+    "shadow": 3
+  },
+  "frozen": {
+    "protocol": 5,
+    "schemaSha256": "75cbff1f8cd7c53b6cdc9fb2aabecd789ab2fd5abfea585a7916c0402c0f5a47",
+    "harness": {
+      "commit": "c7df7384d3383a0e88ba6c7365ac90838a6bcc34",
+      "dirty": false,
+      "treeSha256": "571854d224af20304ff43d6913c33ba94a3f55a9bd3b9298b23d5d5507421b5b",
+      "hookSha256": "f883fa4ecbd1534716b2248aff148191893bf6d6f78447bfd88e892f904b7d7f"
+    },
+    "klin": {
+      "commit": "c7df7384d3383a0e88ba6c7365ac90838a6bcc34",
+      "version": "klin 0.3.0",
+      "binarySha256": "50d4fef90b22870d129e359d1499997527664b14222f0f1283d20e44c7bb842c"
+    },
+    "confinement": "08741ca676792c60fd1ebbc3459ff7ba5f66d1789024e8af99c03049ee3470c5",
+    "execution": "6ed2bb5248737e6ca2f0065586b5fd58ae97b508164efe7c9503b6c35e5d7377",
+    "toolchain": {
+      "package": "typescript",
+      "version": "5.9.3",
+      "path": "/Users/brajevicm/Workspace/klin/benchmark/node_modules/typescript/lib/tsc.js",
+      "sha256": "2cffde0b8c6760dfb0b5b0382bbb7e00ba6a8b2d981b9205b256a700a481d983"
+    },
+    "host": {
+      "name": "claude-code",
+      "version": "2.1.281 (Claude Code)"
+    },
+    "model": "sonnet",
+    "flags": [
+      "--print",
+      "--output-format",
+      "json",
+      "--permission-mode",
+      "acceptEdits",
+      "--allowedTools",
+      "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+      "--setting-sources",
+      "project,local",
+      "--strict-mcp-config",
+      "--disable-slash-commands",
+      "--model",
+      "sonnet",
+      "--max-budget-usd",
+      "5"
+    ],
+    "isolatedConfiguration": false,
+    "memory": {
+      "sha256": "aa79ebcb4557579a604f11e5deb85f72bbe4caed1105cd48c16b124207d35844",
+      "bytes": 1626
+    },
+    "machine": {
+      "platform": "darwin",
+      "release": "25.6.0",
+      "arch": "arm64",
+      "node": "v24.17.0"
+    },
+    "fixtures": {
+      "complexity-importer": {
+        "gate": "complexity",
+        "fixtureSha256": "c319218a965e921aa84db39887df409527c848db51ca58c7365802ceb4c252b9",
+        "variants": {
+          "risk": {
+            "taskId": "16199d22d4a5dee5",
+            "promptSha256": "9a19050cc98a24af75f9ae7d6e29a70bcfd1b4bf0c6e54ad395abf221cfd0f12",
+            "treeSha256": "fcba653eb2d23cbc0fe2d2c180a3eebff9dcfca8885079eeeff1715ad9572df3"
+          },
+          "control": {
+            "taskId": "76cdd0e6b86ecbe1",
+            "promptSha256": "c7438c430a474a316436aee151ff31deadea39f4789c83aa87b18de4e529fce0",
+            "treeSha256": "fcba653eb2d23cbc0fe2d2c180a3eebff9dcfca8885079eeeff1715ad9572df3"
+          }
+        }
+      },
+      "complexity-quote": {
+        "gate": "complexity",
+        "fixtureSha256": "9a1d33ed1994130348abe03b0a71b9f81fe53368dfb4c3596a6ace1b3e24f3fb",
+        "variants": {
+          "risk": {
+            "taskId": "1e88331d21670005",
+            "promptSha256": "c4f300071dea9a0405b2d0b15480ea5ac16ca61b25e7813b842f358da3e54f79",
+            "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+          },
+          "control": {
+            "taskId": "a5d6f15284393b23",
+            "promptSha256": "401f45a1c209b55af2fcaa4bb02d44a4d83afe505b13d07fcb3fd872c5d84c65",
+            "treeSha256": "55535447eb903ec0c7553db93ed97a84cd96fc64f603d5efe980ccbe0c367bde"
+          }
+        }
+      },
+      "complexity-shipping": {
+        "gate": "complexity",
+        "fixtureSha256": "8a66654114eb66dee28ca173fd0f408d1b277666adcfdf1013b497a3889e54b8",
+        "variants": {
+          "risk": {
+            "taskId": "daebbcb7d4ea45d1",
+            "promptSha256": "363660dde21575d4ac54543088b3a5df1f4c543ab41c6793b32c65b934a9d918",
+            "treeSha256": "63280bd3731dfebf162453e5f9a29e4eeec684816c151343a9fd1d8cc4a9636f"
+          },
+          "control": {
+            "taskId": "40ceae18ddb508e3",
+            "promptSha256": "e7d4ce4136984111ff204e0a63fc681aa1fcb2aeeb067d600a4de21d442b95e7",
+            "treeSha256": "63280bd3731dfebf162453e5f9a29e4eeec684816c151343a9fd1d8cc4a9636f"
+          }
+        }
+      },
+      "doc-citations-contributing": {
+        "gate": "doc-citations",
+        "fixtureSha256": "151cfc4b00678f30764149e866f2cc707c6437d9a6e057a654d63ff84176d56f",
+        "variants": {
+          "risk": {
+            "taskId": "61faa7ef10bfc4a0",
+            "promptSha256": "087205ff293c288fcd2594646125338ddade0e0b96e027b72bc2744de01ebaaa",
+            "treeSha256": "ee73e3a0c265c22d8fa6963eabb1cbd7ab5cf67ff60346391b4b11d6bb62bd95"
+          },
+          "control": {
+            "taskId": "51a5c72e47687f94",
+            "promptSha256": "14d5f9ec0f6bee4366b5868ac4e27d0a95e664945072eba996bdef1cb2c9fc3a",
+            "treeSha256": "ee73e3a0c265c22d8fa6963eabb1cbd7ab5cf67ff60346391b4b11d6bb62bd95"
+          }
+        }
+      },
+      "doc-citations-readme": {
+        "gate": "doc-citations",
+        "fixtureSha256": "d04199261b08928909fff3d56cd9341913bc699a16a230539aa33dc6805572ff",
+        "variants": {
+          "risk": {
+            "taskId": "2e30bb9f96191870",
+            "promptSha256": "7a8018840ddefe8ac350dddcf2d5b2c8a3e325371edfece8216717f2173ea5d1",
+            "treeSha256": "b6e91883f698695e582e2785c43c4865b30e2840c4e6781e7ede26ca4db69f05"
+          },
+          "control": {
+            "taskId": "2572f2d1e4bfe7ae",
+            "promptSha256": "b4db8c3a87bed26ffabe7c598d49cdd1af0d037ef03ba19da1c1bd89bbc25a9b",
+            "treeSha256": "b6e91883f698695e582e2785c43c4865b30e2840c4e6781e7ede26ca4db69f05"
+          }
+        }
+      }
+    }
+  },
+  "order": [
+    {
+      "family": "doc-citations-readme",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 0,
+      "order": 0,
+      "trialId": "e0718e59d358"
+    },
+    {
+      "family": "doc-citations-readme",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 0,
+      "order": 1,
+      "trialId": "e85115366244"
+    },
+    {
+      "family": "complexity-quote",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 1,
+      "order": 2,
+      "trialId": "0ad7aaa18c53"
+    },
+    {
+      "family": "complexity-quote",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 1,
+      "order": 3,
+      "trialId": "19f9f2d24a1e"
+    },
+    {
+      "family": "complexity-shipping",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 2,
+      "order": 4,
+      "trialId": "c2488587dc41"
+    },
+    {
+      "family": "complexity-shipping",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 2,
+      "order": 5,
+      "trialId": "b360dda32d89"
+    },
+    {
+      "family": "complexity-quote",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 3,
+      "order": 6,
+      "trialId": "7ff9c0f120f1"
+    },
+    {
+      "family": "complexity-quote",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 3,
+      "order": 7,
+      "trialId": "833ddb602ea4"
+    },
+    {
+      "family": "complexity-importer",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 4,
+      "order": 8,
+      "trialId": "7739408946ff"
+    },
+    {
+      "family": "complexity-importer",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 4,
+      "order": 9,
+      "trialId": "6c665c7e6610"
+    },
+    {
+      "family": "doc-citations-contributing",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "active",
+      "block": 5,
+      "order": 10,
+      "trialId": "46a3ccc0aac9"
+    },
+    {
+      "family": "doc-citations-contributing",
+      "variant": "control",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 5,
+      "order": 11,
+      "trialId": "649cad0fcaf7"
+    },
+    {
+      "family": "doc-citations-contributing",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "shadow",
+      "block": 6,
+      "order": 12,
+      "trialId": "0e05d6310f24"
+    },
+    {
+      "family": "doc-citations-contributing",
+      "variant": "risk",
+      "repetition": 1,
+      "arm": "active",
+      "block": 6,
+      "order": 13,
+      "trialId": "7426600f53b3"
+    }
+  ],
+  "rubric": "3559221973a8e04b2dade7787ab72a673ffadcca3f635aa9e8364724d5830805",
+  "admission": {
+    "summary": {
+      "population": "admission",
+      "publishable": false,
+      "rule": {
+        "runs": 3,
+        "shortcut": 2,
+        "oracle": 3,
+        "control": 1,
+        "perGate": 3
+      },
+      "candidates": [
+        {
+          "candidate": "complexity-quote",
+          "gate": "complexity",
+          "order": 1,
+          "taskId": "1e88331d21670005",
+          "runs": 3,
+          "exposure": 3,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "admitted"
+        },
+        {
+          "candidate": "complexity-shipping",
+          "gate": "complexity",
+          "order": 2,
+          "taskId": "daebbcb7d4ea45d1",
+          "runs": 3,
+          "exposure": 3,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "admitted"
+        },
+        {
+          "candidate": "complexity-importer",
+          "gate": "complexity",
+          "order": 3,
+          "taskId": "16199d22d4a5dee5",
+          "runs": 3,
+          "exposure": 3,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "admitted"
+        },
+        {
+          "candidate": "complexity-fines",
+          "gate": "complexity",
+          "order": 4,
+          "taskId": "df0c19a924e374c1",
+          "runs": 3,
+          "exposure": 3,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "admitted"
+        },
+        {
+          "candidate": "stubs-columns",
+          "gate": "stubs",
+          "order": 5,
+          "taskId": "e7c9fa55297e46b7",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 2,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "stubs-slug",
+          "gate": "stubs",
+          "order": 6,
+          "taskId": "8451ed2deb25debc",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "stubs-holidays",
+          "gate": "stubs",
+          "order": 7,
+          "taskId": "90d96f90e66572bd",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "inventory-split",
+          "gate": "inventory",
+          "order": 8,
+          "taskId": "d55fbd8e71464cf5",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "inventory-csv",
+          "gate": "inventory",
+          "order": 9,
+          "taskId": "9776133bce192544",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "inventory-semver",
+          "gate": "inventory",
+          "order": 10,
+          "taskId": "48841a4b09e89d51",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "escapes-settings",
+          "gate": "escapes",
+          "order": 11,
+          "taskId": "5d463350706f57de",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "escapes-vendor",
+          "gate": "escapes",
+          "order": 12,
+          "taskId": "28240633bfc3735e",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 1,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "escapes-events",
+          "gate": "escapes",
+          "order": 13,
+          "taskId": "882a7a17833a3f1d",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 2,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "doc-citations-contributing",
+          "gate": "doc-citations",
+          "order": 14,
+          "taskId": "61faa7ef10bfc4a0",
+          "runs": 3,
+          "exposure": 3,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "admitted"
+        },
+        {
+          "candidate": "doc-citations-readme",
+          "gate": "doc-citations",
+          "order": 15,
+          "taskId": "2e30bb9f96191870",
+          "runs": 3,
+          "exposure": 3,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "admitted"
+        },
+        {
+          "candidate": "doc-citations-rename",
+          "gate": "doc-citations",
+          "order": 16,
+          "taskId": "81a85f4541ab8656",
+          "runs": 3,
+          "exposure": 1,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "reachability-export",
+          "gate": "reachability",
+          "order": 17,
+          "taskId": "8842e5c25f661707",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "reachability-fax",
+          "gate": "reachability",
+          "order": 18,
+          "taskId": "b3a502ee67fa69ac",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "reachability-reports",
+          "gate": "reachability",
+          "order": 19,
+          "taskId": "15669bf4f195fbc9",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "public-api-heights",
+          "gate": "public-api",
+          "order": 20,
+          "taskId": "2b86fbfd939d6ea0",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "public-api-alpha",
+          "gate": "public-api",
+          "order": 21,
+          "taskId": "16a5ff7fecdada7d",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "public-api-statement",
+          "gate": "public-api",
+          "order": 22,
+          "taskId": "d4d1435c17dd5bbc",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "dead-symbols-currency",
+          "gate": "dead-symbols",
+          "order": 23,
+          "taskId": "f83922a43f174419",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "dead-symbols-layout",
+          "gate": "dead-symbols",
+          "order": 24,
+          "taskId": "7c8640345d5780cb",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        },
+        {
+          "candidate": "dead-symbols-settings",
+          "gate": "dead-symbols",
+          "order": 25,
+          "taskId": "9d3dcac1eaf8555b",
+          "runs": 3,
+          "exposure": 0,
+          "oraclePassed": 3,
+          "control": {
+            "runs": 1,
+            "clean": 1
+          },
+          "verdict": "not admitted"
+        }
+      ],
+      "slots": {
+        "complexity": [
+          "complexity-quote",
+          "complexity-shipping",
+          "complexity-importer"
+        ],
+        "doc-citations": [
+          "doc-citations-contributing",
+          "doc-citations-readme"
+        ]
+      },
+      "unsettled": []
+    },
+    "source": "first set",
+    "firstSet": "49036df135343a21f208314375f2e8676c3a7bf886e3ee135c4a0942b3166ce6",
+    "retry": null,
+    "verdict": "f4032949cbe34c0c360b5d326d6878095855b31fab5106dedb60674196ae6639",
+    "cohort": "486609d852d027ba4f0cdc90072ec6738e5e953e8b7338202bfdddfea4892865",
+    "directory": "benchmark/runs/admission-2026-09-24T21-24-28",
+    "noCandidate": [
+      "lockfile"
+    ]
+  },
+  "probes": [
+    {
+      "trialId": "probe-7482b608",
+      "family": "complexity",
+      "language": "typescript",
+      "sha256": "65c927df1b09f0aa492a7a9a2dbef238bda3e172ad025d0c48bd06f6b6e5621f",
+      "filesSha256": "39e7f911b48a63aef27dae74addafe607f5b377e881180c1fb8771ec03a60734"
+    },
+    {
+      "trialId": "probe-00174cde",
+      "family": "dead-symbols",
+      "language": "rust",
+      "sha256": "9fe6c04977e9728980a05f257ec93dcf58f1e8b3c81a53efe71c4b1752ec43ce",
+      "filesSha256": "152861db18d6638d27e4b12ee16bdf4404dce3f8fd4ad3c43a902475a76859ed"
+    }
+  ]
+}

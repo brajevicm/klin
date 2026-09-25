@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ fax is refused like a channel that never existed (0.620417ms)\n✔ neither the channel list nor the README names fax (0.540125ms)\n✔ email and portal delivery work as before (0.200833ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 77.428625\n",
+  "stderr": "",
+  "reason": ""
+}

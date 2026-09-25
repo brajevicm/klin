@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/299b2ac17785/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "a73d891c-0e9b-4342-9fff-8d0ccbb3a305",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "db934e263ee9530e4e3c564e1bfba2c691455810cf31e648565eb6f1c361248b",
+  "sessionId": "a73d891c-0e9b-4342-9fff-8d0ccbb3a305",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":44618,\"stop_reason\":\"end_turn\",\"session_id\":\"a73d891c-0e9b-4342-9fff-8d0ccbb3a305\",\"total_cost_usd\":0.1550312,\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":17436,\"cache_read_input_tokens\":184086,\"output_tokens\":4845,\"output_tokens_details\":{\"thinking_tokens\":3342},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17436,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":175,\"cache_read_input_tokens\":43515,\"cache_creation_input_tokens\":666,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":666},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":10,\"outputTokens\":4845,\"cacheReadInputTokens\":184086,\"cacheCreationInputTokens\":17436,\"webSearchRequests\":0,\"costUSD\":0.1550312,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":3342,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":8,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 7 tests pass. The old `compare` only did a naive numeric split on the whole string, so build metadata leaked into the numeric comparison and pre-release identifiers were never given SemVer semantics. I rewrote `src/lib.rs` to strip build metadata, compare the core version numerically, then apply proper SemVer pre-release precedence (no pre-release beats any pre-release; identifiers compare numerically when both are numbers, numeric ranks below alphanumeric, and a longer identifier list outranks its prefix).\",\"ttft_ms\":1993,\"type\":\"result\",\"duration_ms\":48198,\"uuid\":\"84179d02-fc20-491a-9a03-e439885770a3\",\"ttft_stream_ms\":1598,\"time_to_request_ms\":233,\"first_content_frame_ms\":1598,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 44618,
+    "stop_reason": "end_turn",
+    "session_id": "a73d891c-0e9b-4342-9fff-8d0ccbb3a305",
+    "total_cost_usd": 0.1550312,
+    "usage": {
+      "input_tokens": 10,
+      "cache_creation_input_tokens": 17436,
+      "cache_read_input_tokens": 184086,
+      "output_tokens": 4845,
+      "output_tokens_details": {
+        "thinking_tokens": 3342
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 17436,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 175,
+          "cache_read_input_tokens": 43515,
+          "cache_creation_input_tokens": 666,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 666
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 10,
+        "outputTokens": 4845,
+        "cacheReadInputTokens": 184086,
+        "cacheCreationInputTokens": 17436,
+        "webSearchRequests": 0,
+        "costUSD": 0.1550312,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 3342,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 8,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 7 tests pass. The old `compare` only did a naive numeric split on the whole string, so build metadata leaked into the numeric comparison and pre-release identifiers were never given SemVer semantics. I rewrote `src/lib.rs` to strip build metadata, compare the core version numerically, then apply proper SemVer pre-release precedence (no pre-release beats any pre-release; identifiers compare numerically when both are numbers, numeric ranks below alphanumeric, and a longer identifier list outranks its prefix).",
+    "ttft_ms": 1993,
+    "type": "result",
+    "duration_ms": 48198,
+    "uuid": "84179d02-fc20-491a-9a03-e439885770a3",
+    "ttft_stream_ms": 1598,
+    "time_to_request_ms": 233,
+    "first_content_frame_ms": 1598,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:51:49.550Z",
+  "endedAt": "2026-09-24T22:52:39.509Z",
+  "wallMs": 49961,
+  "timedOut": false
+}

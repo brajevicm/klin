@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the package still type-checks with its route code (535.975542ms)\n✔ a height difference alone is the whole distance in space (0.138125ms)\n✔ the distance in space combines the ground leg and the climb (0.076292ms)\n✔ the ground measurements over two coordinates are what they were (0.101542ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 615.756292\n",
+  "stderr": "",
+  "reason": ""
+}

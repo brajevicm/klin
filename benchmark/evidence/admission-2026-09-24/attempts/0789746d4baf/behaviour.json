@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a label names the country, its prefix and its currency (0.429ms)\n✔ a country in the European Union says so last (0.069167ms)\n✔ the behaviour that was already there is unchanged (0.103416ms)\n✔ the package still type-checks in strict mode (510.443167ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 587.579375\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the remainder takes the sign of the left side (0.682541ms)\n✔ the remainder has the precedence of multiplication and division (0.107542ms)\n✔ a remainder by zero fails as a division by zero does (0.223709ms)\n✔ the behaviour that was already there is unchanged (0.090792ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 79.711042\n",
+  "stderr": "",
+  "reason": ""
+}

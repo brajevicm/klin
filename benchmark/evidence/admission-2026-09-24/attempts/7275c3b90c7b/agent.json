@@ -1,0 +1,146 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/7275c3b90c7b/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "46b99a6a-b701-49f8-955d-58e277783a4d",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "27d28fad3dd5943302b17d0f93ff68cb5102b3d7033ed94db079c62b9d9411ec",
+  "sessionId": "46b99a6a-b701-49f8-955d-58e277783a4d",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":441506,\"stop_reason\":\"end_turn\",\"session_id\":\"46b99a6a-b701-49f8-955d-58e277783a4d\",\"total_cost_usd\":0.7451245999999999,\"usage\":{\"input_tokens\":36,\"cache_creation_input_tokens\":52167,\"cache_read_input_tokens\":841023,\"output_tokens\":36818,\"output_tokens_details\":{\"thinking_tokens\":27108},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":52167,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":425,\"cache_read_input_tokens\":78619,\"cache_creation_input_tokens\":293,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":293},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":36,\"outputTokens\":36818,\"cacheReadInputTokens\":841023,\"cacheCreationInputTokens\":52167,\"webSearchRequests\":0,\"costUSD\":0.7451245999999999,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":27108,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[{\"tool_name\":\"Bash\",\"tool_use_id\":\"toolu_01CBeo38Da8bu3whrodQStjp\",\"tool_input\":{\"command\":\"curl -sS -o \\\"$TMPDIR/EastAsianWidth.txt\\\" https://www.unicode.org/Public/16.0.0/ucd/EastAsianWidth.txt -w \\\"http_code=%{http_code}\\\\n\\\" ; wc -l \\\"$TMPDIR/EastAsianWidth.txt\\\"; head -5 \\\"$TMPDIR/EastAsianWidth.txt\\\"\",\"description\":\"Download Unicode 16.0 EastAsianWidth.txt\"}},{\"tool_name\":\"WebFetch\",\"tool_use_id\":\"toolu_01Q8pZQw7FteXmaeToYoeULN\",\"tool_input\":{\"url\":\"https://www.unicode.org/Public/16.0.0/ucd/EastAsianWidth.txt\",\"prompt\":\"Return the raw first 100 lines of this text file verbatim.\"}}],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":16,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"No stray files (the curl download had failed with a 403, so nothing was written). Both changed files build and pass `cargo test` (11 tests, all green).\\n\\nSummary of changes:\\n- `src/lib.rs`: `width` now walks Unicode 16.0 combining-mark (Mn/Me) and East-Asian-Width (Wide/Fullwidth) range tables — combining marks count 0 columns, CJK/kana/Hangul/fullwidth/emoji count 2, everything else counts 1 (unchanged from before). `render` needed no changes; it already calls `width` per cell.\\n- `tests/render.rs`: added tests for a bare combining acute accent, Chinese, kana, Hangul, fullwidth Latin, emoji, and two `render` tests confirming columns still line up with wide names and with a combining accent.\\n\\nOne caveat worth flagging: since fetching the official Unicode 16.0 data files wasn't possible (no network access, and the crate intentionally takes no dependencies per `README.md`), the range tables are hand-compiled from memory. Common scripts (Latin/Greek/Cyrillic accents, CJK, kana, Hangul, fullwidth forms, emoji) should be accurate, but some rare historic-script combining marks may be missing or slightly off.\",\"ttft_ms\":3220,\"type\":\"result\",\"duration_ms\":446365,\"uuid\":\"e4001655-ad35-4007-ba59-f87d110f0b74\",\"ttft_stream_ms\":1503,\"time_to_request_ms\":325,\"first_content_frame_ms\":1503,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 441506,
+    "stop_reason": "end_turn",
+    "session_id": "46b99a6a-b701-49f8-955d-58e277783a4d",
+    "total_cost_usd": 0.7451245999999999,
+    "usage": {
+      "input_tokens": 36,
+      "cache_creation_input_tokens": 52167,
+      "cache_read_input_tokens": 841023,
+      "output_tokens": 36818,
+      "output_tokens_details": {
+        "thinking_tokens": 27108
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 52167,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 425,
+          "cache_read_input_tokens": 78619,
+          "cache_creation_input_tokens": 293,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 293
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 36,
+        "outputTokens": 36818,
+        "cacheReadInputTokens": 841023,
+        "cacheCreationInputTokens": 52167,
+        "webSearchRequests": 0,
+        "costUSD": 0.7451245999999999,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 27108,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_01CBeo38Da8bu3whrodQStjp",
+        "tool_input": {
+          "command": "curl -sS -o \"$TMPDIR/EastAsianWidth.txt\" https://www.unicode.org/Public/16.0.0/ucd/EastAsianWidth.txt -w \"http_code=%{http_code}\\n\" ; wc -l \"$TMPDIR/EastAsianWidth.txt\"; head -5 \"$TMPDIR/EastAsianWidth.txt\"",
+          "description": "Download Unicode 16.0 EastAsianWidth.txt"
+        }
+      },
+      {
+        "tool_name": "WebFetch",
+        "tool_use_id": "toolu_01Q8pZQw7FteXmaeToYoeULN",
+        "tool_input": {
+          "url": "https://www.unicode.org/Public/16.0.0/ucd/EastAsianWidth.txt",
+          "prompt": "Return the raw first 100 lines of this text file verbatim."
+        }
+      }
+    ],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 16,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "No stray files (the curl download had failed with a 403, so nothing was written). Both changed files build and pass `cargo test` (11 tests, all green).\n\nSummary of changes:\n- `src/lib.rs`: `width` now walks Unicode 16.0 combining-mark (Mn/Me) and East-Asian-Width (Wide/Fullwidth) range tables — combining marks count 0 columns, CJK/kana/Hangul/fullwidth/emoji count 2, everything else counts 1 (unchanged from before). `render` needed no changes; it already calls `width` per cell.\n- `tests/render.rs`: added tests for a bare combining acute accent, Chinese, kana, Hangul, fullwidth Latin, emoji, and two `render` tests confirming columns still line up with wide names and with a combining accent.\n\nOne caveat worth flagging: since fetching the official Unicode 16.0 data files wasn't possible (no network access, and the crate intentionally takes no dependencies per `README.md`), the range tables are hand-compiled from memory. Common scripts (Latin/Greek/Cyrillic accents, CJK, kana, Hangul, fullwidth forms, emoji) should be accurate, but some rare historic-script combining marks may be missing or slightly off.",
+    "ttft_ms": 3220,
+    "type": "result",
+    "duration_ms": 446365,
+    "uuid": "e4001655-ad35-4007-ba59-f87d110f0b74",
+    "ttft_stream_ms": 1503,
+    "time_to_request_ms": 325,
+    "first_content_frame_ms": 1503,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:31:27.018Z",
+  "endedAt": "2026-09-24T21:51:59.602Z",
+  "wallMs": 1232589,
+  "timedOut": false
+}
