@@ -460,3 +460,31 @@ test("an edited slim probe file is caught against the raw archive", () => {
     fs.rmSync(place.root, { recursive: true, force: true });
   }
 });
+
+test("admission evidence keeps its verdict and its claim, bound to the raw archive", () => {
+  const place = fixture();
+  try {
+    for (const file of [path.join(place.runs, "manifest.json"), path.join(place.runs, "attempt-a", "record.json")]) {
+      const read = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
+      fs.writeFileSync(file, JSON.stringify({ ...read, kind: "admission" }) + "\n");
+    }
+    const incomplete = command("evidence-prepare", place.runs, "--into", place.evidence, "--archive", place.archive);
+    assert.equal(incomplete.status, 2, incomplete.stdout);
+    assert.match(incomplete.stdout, /the admission set has no admission\.json/);
+    fs.writeFileSync(path.join(place.runs, "admission.json"), "{\"slots\":{}}\n");
+    fs.writeFileSync(path.join(place.runs, "claim.json"), "{\"commit\":\"c\"}\n");
+    prepare(place);
+    assert.match(fs.readFileSync(path.join(place.evidence, "README.md"), "utf8"), /Shadow-only v3 admission/);
+    const verified = command("evidence-verify", place.evidence, "--archive", place.archive);
+    assert.equal(verified.status, 0, verified.stdout);
+    fs.writeFileSync(path.join(place.evidence, "admission.json"), "{\"slots\":{\"complexity\":[\"a\"]}}\n");
+    const edited = command("evidence-verify", place.evidence, "--archive", place.archive);
+    assert.notEqual(edited.status, 0);
+    assert.match(edited.stdout, /admission\.json differs/);
+    fs.rmSync(path.join(place.evidence, "claim.json"));
+    const missing = command("evidence-verify", place.evidence, "--archive", place.archive);
+    assert.match(missing.stdout, /the admission evidence has no claim\.json/);
+  } finally {
+    fs.rmSync(place.root, { recursive: true, force: true });
+  }
+});

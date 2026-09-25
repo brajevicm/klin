@@ -4,10 +4,12 @@ import type { Signal } from "./record.ts";
 import { sha256 } from "./trees.ts";
 
 export const LOCKED_LABELS_SHA256 = "223bc66b760d18f51a6e4cc2196de5e4d03b2adaf10cc7b997aed24bd13c96dd";
+/** The v3 labels, locked in their own commit before the v3 join is read. Null until a person locks them. */
+export const LOCKED_V3_LABELS_SHA256: string | null = null;
 
 export const LABELS = ["valid-regression", "valid-review", "undesired"] as const;
 export type Label = (typeof LABELS)[number];
-type Round = "v1" | "v2";
+type Round = "v1" | "v2" | "v3";
 
 interface Occurrence {
   round: Round;
@@ -34,7 +36,7 @@ export interface SiteRow {
   "valid-regression": number;
   "valid-review": number;
   undesired: number;
-  occurrences: { total: number; v1: number; v2: number; "valid-regression": number; "valid-review": number; undesired: number };
+  occurrences: { total: number; "valid-regression": number; "valid-review": number; undesired: number } & Partial<Record<Round, number>>;
 }
 
 export interface ArmView {
@@ -54,7 +56,7 @@ export interface Synthesis {
   labelsSha256: string;
   labels: Record<Label, number>;
   sites: SiteRow[];
-  runs: Record<Round, { active: ArmView; shadow: ShadowView }>;
+  runs: Partial<Record<Round, { active: ArmView; shadow: ShadowView }>>;
 }
 
 function fail(message: string): never {
@@ -107,7 +109,7 @@ function valid(label: Label): boolean {
   return label !== "undesired";
 }
 
-function siteRows(rows: JoinRow[], labels: Record<string, Label>): SiteRow[] {
+function siteRows(rows: JoinRow[], labels: Record<string, Label>, rounds: Round[]): SiteRow[] {
   const byGate = new Map<string, SiteRow>();
   for (const row of rows) {
     const gates = new Set(row.occurrences.map((one) => one.signal.gate));
@@ -120,13 +122,13 @@ function siteRows(rows: JoinRow[], labels: Record<string, Label>): SiteRow[] {
       "valid-regression": 0,
       "valid-review": 0,
       undesired: 0,
-      occurrences: { total: 0, v1: 0, v2: 0, "valid-regression": 0, "valid-review": 0, undesired: 0 },
+      occurrences: { total: 0, ...Object.fromEntries(rounds.map((round) => [round, 0])), "valid-regression": 0, "valid-review": 0, undesired: 0 },
     };
     held.sites += 1;
     held[label] += 1;
     held.occurrences.total += row.occurrences.length;
     held.occurrences[label] += row.occurrences.length;
-    for (const one of row.occurrences) held.occurrences[one.round] += 1;
+    for (const one of row.occurrences) held.occurrences[one.round] = (held.occurrences[one.round] ?? 0) + 1;
     byGate.set(gate, held);
   }
   return [...byGate.values()].sort((left, right) => left.gate.localeCompare(right.gate));
@@ -180,11 +182,15 @@ function rate(part: number, whole: number): string {
 }
 
 function markdown(read: Synthesis, join: Join): string {
+  const rounds = roundsOf(join);
+  const v3 = rounds.includes("v3");
   const out = [
     "# Labeled signal synthesis",
     "",
     "Unblinded after the locked labels verified against SHA-256 `" + read.labelsSha256 + "`.",
-    "The population is the two natural rounds only: v1 `" + join.evidence.find((one) => one.round === "v1")?.setId + "` and v2 `" + join.evidence.find((one) => one.round === "v2")?.setId + "`.",
+    v3
+      ? "The population is the v3 paired round only: `" + join.evidence.find((one) => one.round === "v3")?.setId + "`."
+      : "The population is the two natural rounds only: v1 `" + join.evidence.find((one) => one.round === "v1")?.setId + "` and v2 `" + join.evidence.find((one) => one.round === "v2")?.setId + "`.",
     "",
     "- Labels: " + LABELS.map((label) => String(read.labels[label]) + " `" + label + "`").join(", "),
     "",
@@ -192,8 +198,8 @@ function markdown(read: Synthesis, join: Join): string {
     "",
     "A site is one worksheet row. Occurrences count every recorded firing that joined to the row, so one site met many times is visible as such.",
     "",
-    "| gate | sites | valid-regression | valid-review | undesired | occurrences | v1 | v2 | occ. valid-regression | occ. valid-review | occ. undesired |",
-    "|---|---|---|---|---|---|---|---|---|---|---|",
+    "| gate | sites | valid-regression | valid-review | undesired | occurrences | " + rounds.join(" | ") + " | occ. valid-regression | occ. valid-review | occ. undesired |",
+    "|" + "---|".repeat(9 + rounds.length),
     ...read.sites.map((row) =>
       "| " + [
         row.gate,
@@ -202,8 +208,7 @@ function markdown(read: Synthesis, join: Join): string {
         rate(row["valid-review"], row.sites),
         rate(row.undesired, row.sites),
         row.occurrences.total,
-        row.occurrences.v1,
-        row.occurrences.v2,
+        ...rounds.map((round) => row.occurrences[round] ?? 0),
         row.occurrences["valid-regression"],
         row.occurrences["valid-review"],
         row.occurrences.undesired,
@@ -212,13 +217,15 @@ function markdown(read: Synthesis, join: Join): string {
     "",
     "## Run-level intervention view",
     "",
-    "Active counts are delivered signals over the scheduled Active natural runs of that round. Shadow counts are would-have-been-delivered signals, reported descriptively and never pooled into the Active rates. v1 and v2 stay separate because their apparatus and fixtures differ.",
+    v3
+      ? "Active counts are delivered signals over the scheduled Active runs of the round. Shadow counts are would-have-been-delivered signals, reported descriptively and never pooled into the Active rates."
+      : "Active counts are delivered signals over the scheduled Active natural runs of that round. Shadow counts are would-have-been-delivered signals, reported descriptively and never pooled into the Active rates. v1 and v2 stay separate because their apparatus and fixtures differ.",
     "",
     "| stratum | arm | runs | runs with an undesired signal | controls | controls with an undesired signal | risk runs | risk runs with a valid signal | undesired occurrences | valid occurrences |",
     "|---|---|---|---|---|---|---|---|---|---|",
   ];
-  for (const round of ["v1", "v2"] as Round[]) {
-    const { active, shadow } = read.runs[round];
+  for (const round of rounds) {
+    const { active, shadow } = read.runs[round] ?? fail("the synthesis has no " + round + " runs");
     out.push(
       "| " + [round, "active", active.runs, rate(active.undesired, active.runs), active.controls, rate(active.controlsUndesired, active.controls), active.risk, rate(active.riskValid, active.risk), "-", "-"].join(" | ") + " |",
       "| " + [round, "shadow", shadow.runs, rate(shadow.undesired, shadow.runs), shadow.controls, rate(shadow.controlsUndesired, shadow.controls), shadow.risk, rate(shadow.riskValid, shadow.risk), shadow.occurrences.undesired, shadow.occurrences.valid].join(" | ") + " |",
@@ -228,26 +235,39 @@ function markdown(read: Synthesis, join: Join): string {
     "",
     "## Interpretation boundary",
     "",
-    "These labels judge whether each signal was appropriate when it fired. They do not cure the challenge-adequacy shortfall of the natural experiment: the repaired v2 round exposed the target shortcut in 3 of 27 Shadow risk runs and one of nine families, below #115's frozen floor, and stays challenge-limited. No seeded (#260/#261) record is in this population or in any rate above; the seeded experiment is a separate conditional-mechanism analysis. This document states counts and turns them into no causal product conclusion beyond what #115's frozen rubric permits.",
+    v3
+      ? "These labels judge whether each signal was appropriate when it fired. Guardrails 3 and 4 of `docs/benchmark-rubric-v3.md` read the Active rows above: the runs, and the control runs, that exposed the agent to at least one `undesired` signal. The result document applies the frozen v3 rubric. No admission, natural or seeded record is in this population."
+      : "These labels judge whether each signal was appropriate when it fired. They do not cure the challenge-adequacy shortfall of the natural experiment: the repaired v2 round exposed the target shortcut in 3 of 27 Shadow risk runs and one of nine families, below #115's frozen floor, and stays challenge-limited. No seeded (#260/#261) record is in this population or in any rate above; the seeded experiment is a separate conditional-mechanism analysis. This document states counts and turns them into no causal product conclusion beyond what #115's frozen rubric permits.",
     "",
   );
   return out.join("\n");
 }
 
-export function synthesize(directory: string, manifests: Record<Round, string>, expected = LOCKED_LABELS_SHA256): Synthesis {
-  const locked = lockedLabels(directory, expected);
+function roundsOf(join: Join): Round[] {
+  return join.evidence.map((one) => one.round).sort();
+}
+
+export function synthesize(directory: string, manifests: Partial<Record<Round, string>>, expected?: string): Synthesis {
+  const rounds = (Object.keys(manifests) as Round[]).sort();
+  const names = rounds.join(",");
+  if (names !== "v1,v2" && names !== "v3") fail("a synthesis reads v1 and v2 evidence, or v3 evidence alone, and was given " + names);
+  const wanted = expected ?? (names === "v3" ? LOCKED_V3_LABELS_SHA256 : LOCKED_LABELS_SHA256);
+  if (wanted === null) fail("no locked v3 label hash is recorded, so the v3 join stays sealed");
+  const locked = lockedLabels(directory, wanted);
   const join = json<Join>(path.join(directory, "join.sealed.json"));
+  if (roundsOf(join).join(",") !== names) fail("the sealed join names the rounds " + roundsOf(join).join(",") + ", not " + names);
   const ids = join.rows.map((row) => row.worksheetId).sort();
   const labeled = Object.keys(locked.labels).sort();
   if (JSON.stringify(ids) !== JSON.stringify(labeled)) fail("the locked labels do not cover exactly the sealed worksheet rows");
-  const runs = {} as Record<Round, { active: ArmView; shadow: ShadowView }>;
-  for (const round of ["v1", "v2"] as Round[]) {
+  const runs: Synthesis["runs"] = {};
+  for (const round of rounds) {
     const evidence = join.evidence.find((one) => one.round === round) ?? fail("the sealed join has no " + round + " evidence");
-    runs[round] = runViews(round, manifestRuns(path.join(manifests[round], "manifest.json"), evidence.manifestSha256), join.rows, locked.labels);
+    const manifest = manifests[round] ?? fail("no " + round + " evidence directory was given");
+    runs[round] = runViews(round, manifestRuns(path.join(manifest, "manifest.json"), evidence.manifestSha256), join.rows, locked.labels);
   }
   const labels = { "valid-regression": 0, "valid-review": 0, undesired: 0 };
   for (const label of Object.values(locked.labels)) labels[label] += 1;
-  const read: Synthesis = { labelsSha256: locked.sha256, labels, sites: siteRows(join.rows, locked.labels), runs };
+  const read: Synthesis = { labelsSha256: locked.sha256, labels, sites: siteRows(join.rows, locked.labels, rounds), runs };
   fs.writeFileSync(path.join(directory, "synthesis.json"), JSON.stringify({ version: 1, status: "unblinded", ...read }, null, 2) + "\n");
   fs.writeFileSync(path.join(directory, "synthesis.md"), markdown(read, join));
   return read;

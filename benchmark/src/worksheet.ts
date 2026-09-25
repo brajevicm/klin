@@ -6,8 +6,10 @@ import * as evidence from "./evidence.ts";
 import type { Signal } from "./record.ts";
 import { digest, files, sha256 } from "./trees.ts";
 
+export type Round = "v1" | "v2" | "v3";
+
 export interface EvidenceInput {
-  name: "v1" | "v2";
+  name: Round;
   directory: string;
   archive: string;
 }
@@ -49,7 +51,7 @@ export interface Preparation {
   rows: WorksheetRow[];
 }
 
-export const FROZEN_EVIDENCE: Record<"v1" | "v2", FrozenEvidence> = {
+export const FROZEN_EVIDENCE: Partial<Record<Round, FrozenEvidence>> = {
   v1: {
     setId: "publishable-2026-09-18",
     recordProtocol: 4,
@@ -65,6 +67,14 @@ export const FROZEN_EVIDENCE: Record<"v1" | "v2", FrozenEvidence> = {
     rawFilesManifestSha256: "7ad3d7ffeaab81b28d47d9cc3843512159ea75d7f58b13d2ba7d211a1164386c",
     archiveSha256: "d5e43f2fef13f078431a3f156df5ce057c55f95d8f3ce607976705dd878790d8",
     archiveBytes: 2004555,
+  },
+  v3: {
+    setId: "v3-2026-09-25",
+    recordProtocol: 5,
+    runManifestSha256: "cf47bba66f1674e7092a0f995b42ceb28654098412ea0ec76caae9c3d1dc8a0b",
+    rawFilesManifestSha256: "8608b5d350d8d620a11e4e13b389f91fcf1b92d9b3b5cc6e5c47982fabe97883",
+    archiveSha256: "d1b5b38fde84138ea7f9a0f9f4c22f3212c8f2221a492a415cc6358bf77f65fc",
+    archiveBytes: 576187,
   },
 };
 
@@ -86,7 +96,7 @@ interface Attempt {
 }
 
 interface SelectedRun {
-  round: "v1" | "v2";
+  round: Round;
   row: ManifestRow;
   record: RawRecord;
   raw: string;
@@ -480,6 +490,9 @@ function applyTool(snapshot: Snapshot, base: Snapshot, payload: RawRecord): void
   }
 }
 
+/** klin's reports clip a site's text to 70 characters, or 60 in the conventions report, so a stop is matched on this prefix. */
+const REPORTED_TEXT = 60;
+
 function stopMeasurement(directory: string, signal: Signal): string | null {
   const report = ["stderr", "stdout"]
     .map((name) => {
@@ -490,7 +503,7 @@ function stopMeasurement(directory: string, signal: Signal): string | null {
   const lines = report.split(/\r?\n/).map((one) => one.trim()).filter((one) => one.length > 0);
   const file = text(signal.file, "signal file");
   const location = file + ":" + String(typeof signal.line === "number" ? signal.line : 0);
-  const wanted = typeof signal.text === "string" && signal.text !== "file" ? signal.text : file;
+  const wanted = Array.from(typeof signal.text === "string" && signal.text !== "file" ? signal.text : file).slice(0, REPORTED_TEXT).join("");
   const exact = lines.filter((one) => one.includes(location) && one.includes(wanted));
   if (exact.length === 1) return exact[0];
   const fallback = lines.filter((one) => one.includes(wanted));
@@ -798,14 +811,15 @@ function write(into: string, rows: WorksheetRow[], counts: Counts, joins: { work
 export function prepare(
   inputs: EvidenceInput[],
   into: string,
-  frozen: Record<"v1" | "v2", FrozenEvidence> = FROZEN_EVIDENCE,
+  frozen: Partial<Record<Round, FrozenEvidence>> = FROZEN_EVIDENCE,
 ): Preparation {
-  if (inputs.length !== 2 || new Set(inputs.map((one) => one.name)).size !== 2 || !inputs.some((one) => one.name === "v1") || !inputs.some((one) => one.name === "v2")) {
-    fail("worksheet preparation needs exactly one v1 and one v2 evidence set");
+  const names = inputs.map((one) => one.name).sort().join(",");
+  if (names !== "v1,v2" && names !== "v3") {
+    fail("worksheet preparation needs exactly one v1 and one v2 evidence set, or one v3 evidence set");
   }
   const sets: LoadedSet[] = [];
   try {
-    for (const input of inputs) sets.push(load(input, frozen[input.name]));
+    for (const input of inputs) sets.push(load(input, frozen[input.name] ?? fail("no frozen identity is recorded for the " + input.name + " evidence")));
     const groups = new Map<string, Group>();
     for (const set of sets) {
       for (const run of set.runs) {
