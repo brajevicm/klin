@@ -12,7 +12,12 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 **Claude Code · Codex · Cursor**
 
-<!-- PRE-RELEASE: Replace with one authentic klin regression/output from #259/#262. -->
+```sh
+FAIL  complexity
+      FAIL: 1 function(s) got worse — the ratchet only tightens:
+        src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines
+      Reduce the function's responsibility or decision complexity.
+```
 
 ## Install
 
@@ -118,15 +123,13 @@ An agent can finish the task and still make something else worse. klin catches s
 - **Architecture drifts.** A new dependency cycle appears, code crosses a configured layer, or a project convention is broken.
 - **Guardrails get bypassed.** A test disappears or gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch.
 - **The work isn't actually finished.** The change leaves behind a new TODO, placeholder, or not-implemented stub, or adds code that nothing can reach.
-- **A public API breaks.** An exported contract changes or disappears even though the repo still builds.
-- **Dependencies fall out of sync.** A manifest changes without the corresponding lockfile update.
+- **A public contract changes.** An exported surface disappears or its declared contract changes, even though the repository still builds.
+- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or the lockfile still records a different version.
 - **References in docs go stale.** Code moves, but documentation still points to the old location.
 
 Already use a static analysis tool? If it emits SARIF, its findings can go through the same ratchet.
 
 See the [configuration reference](docs/REFERENCE.md) for exact check and language coverage.
-
-<!-- PRE-RELEASE: Revisit the examples and their ordering after #259/#261/#262. Prefer high-value regressions with strong validation evidence and low feedback friction. -->
 
 ## Keep your existing tools
 
@@ -156,9 +159,9 @@ Hooks alone are klin's **Feedback** level. Make the independent CI check require
 
 ## Tested on real coding-agent work
 
-We tested klin across repeated coding-agent runs covering the kinds of regressions it is designed to catch, then used the results to harden the product before release.
+We tested klin across repeated Shadow/Active coding-agent runs and used what we found to harden the product before release.
 
-The validation surfaced both useful interventions and gaps in our own checks. We fixed the issues we found, added regression coverage, and kept the underlying methodology and evidence public.
+The latest validation showed clean positive repair behavior across every challenged pair, with no harmful paired outcomes or undesired signals. A separate seeded confirmation found no repair-by-appeasement.
 
 ## Documentation
 
@@ -166,6 +169,7 @@ The validation surfaced both useful interventions and gaps in our own checks. We
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
 - [Trust and enforcement](docs/THREAT_MODEL.md)
 - [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md)
+- [Coding-agent validation](docs/benchmark-result-2026-09-25.md)
 
 Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
 Security issue? [Follow the private reporting instructions](SECURITY.md).
