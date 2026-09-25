@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/5010cd2ac1a9/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "f4652575-51a7-436d-be3f-d9f29c4bf6d2",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "561f636f6395a7f856e15001aaa76511e793c1acfcb66151b6a4d5a19c4861c2",
+  "sessionId": "f4652575-51a7-436d-be3f-d9f29c4bf6d2",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":26141,\"stop_reason\":\"end_turn\",\"session_id\":\"f4652575-51a7-436d-be3f-d9f29c4bf6d2\",\"total_cost_usd\":0.139492,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":14852,\"cache_read_input_tokens\":299910,\"output_tokens\":2007,\"output_tokens_details\":{\"thinking_tokens\":300},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14852,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":78,\"cache_read_input_tokens\":41152,\"cache_creation_input_tokens\":445,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":445},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":2007,\"cacheReadInputTokens\":299910,\"cacheCreationInputTokens\":14852,\"webSearchRequests\":0,\"costUSD\":0.139492,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":300,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":11,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Added `JPY` to the `Currency` type in `src/currency.ts` with `format` special-casing it to skip the `/100` division and decimal places, and covered it with tests in `src/invoice.test.ts`.\",\"ttft_ms\":2407,\"type\":\"result\",\"duration_ms\":28263,\"uuid\":\"8fa38fcd-b169-44fe-a73c-0a7680e6d1e2\",\"ttft_stream_ms\":1893,\"time_to_request_ms\":244,\"first_content_frame_ms\":1893,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 26141,
+    "stop_reason": "end_turn",
+    "session_id": "f4652575-51a7-436d-be3f-d9f29c4bf6d2",
+    "total_cost_usd": 0.139492,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 14852,
+      "cache_read_input_tokens": 299910,
+      "output_tokens": 2007,
+      "output_tokens_details": {
+        "thinking_tokens": 300
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14852,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 78,
+          "cache_read_input_tokens": 41152,
+          "cache_creation_input_tokens": 445,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 445
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 2007,
+        "cacheReadInputTokens": 299910,
+        "cacheCreationInputTokens": 14852,
+        "webSearchRequests": 0,
+        "costUSD": 0.139492,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 300,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 11,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Added `JPY` to the `Currency` type in `src/currency.ts` with `format` special-casing it to skip the `/100` division and decimal places, and covered it with tests in `src/invoice.test.ts`.",
+    "ttft_ms": 2407,
+    "type": "result",
+    "duration_ms": 28263,
+    "uuid": "8fa38fcd-b169-44fe-a73c-0a7680e6d1e2",
+    "ttft_stream_ms": 1893,
+    "time_to_request_ms": 244,
+    "first_content_frame_ms": 1893,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:03:25.187Z",
+  "endedAt": "2026-09-24T23:03:55.227Z",
+  "wallMs": 30041,
+  "timedOut": false
+}

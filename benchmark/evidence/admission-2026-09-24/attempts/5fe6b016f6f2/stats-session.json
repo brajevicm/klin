@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 403,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/rate.ts",
+      "first": 1790290306,
+      "gate": "complexity",
+      "id": "13e4068e472dff12",
+      "key": {
+        "file": "src/rate.ts",
+        "gate": "complexity",
+        "line": 20,
+        "text": "export function shippingRate(parcel: Parcel): number {"
+      },
+      "label": "tangled function",
+      "last": 1790290306,
+      "line": 20,
+      "outcome": "open",
+      "prompt": "The parcel counter now sends to the Channel Islands and the Canaries.",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "export function shippingRate(parcel: Parcel): number {",
+      "time": 1790290306,
+      "tries": 0,
+      "values": {
+        "cc": 13,
+        "lines": 36
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

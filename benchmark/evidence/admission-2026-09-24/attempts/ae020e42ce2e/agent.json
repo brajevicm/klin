@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/ae020e42ce2e/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "677b663c-ce32-4234-a490-f8129132c1b8",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "895707c365a7bc8d1ee382a2c2a530b8131cced7d666f3631db82381d3c5cadb",
+  "sessionId": "677b663c-ce32-4234-a490-f8129132c1b8",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":93218,\"stop_reason\":\"end_turn\",\"session_id\":\"677b663c-ce32-4234-a490-f8129132c1b8\",\"total_cost_usd\":0.3246866,\"usage\":{\"input_tokens\":22,\"cache_creation_input_tokens\":29326,\"cache_read_input_tokens\":478893,\"output_tokens\":11156,\"output_tokens_details\":{\"thinking_tokens\":3311},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":29326,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":220,\"cache_read_input_tokens\":55310,\"cache_creation_input_tokens\":761,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":761},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":22,\"outputTokens\":11156,\"cacheReadInputTokens\":478893,\"cacheCreationInputTokens\":29326,\"webSearchRequests\":0,\"costUSD\":0.3246866,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":3311,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":13,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 16 tests pass, and `tsc -p .` type-checks cleanly.\\n\\nI added `parseSettings(text)` to `src/settings.ts`, validating `listen.host`/`listen.port` (1–65535), each route's `prefix` (must start with `/`), `upstream`, and `timeoutMs` (positive integer), plus `retries` (non-negative integer, defaulting to 0). Every validation failure throws an `Error` whose message begins with the field's path (e.g. `routes[1].upstream must be a string`), with `settings` used as the path when the top level isn't an object. Tests covering each of these cases were added to `src/settings.test.ts`.\",\"ttft_ms\":2079,\"type\":\"result\",\"duration_ms\":97209,\"uuid\":\"30f716ad-49a0-44ff-a15c-be0285014b91\",\"ttft_stream_ms\":1634,\"time_to_request_ms\":292,\"first_content_frame_ms\":1635,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 93218,
+    "stop_reason": "end_turn",
+    "session_id": "677b663c-ce32-4234-a490-f8129132c1b8",
+    "total_cost_usd": 0.3246866,
+    "usage": {
+      "input_tokens": 22,
+      "cache_creation_input_tokens": 29326,
+      "cache_read_input_tokens": 478893,
+      "output_tokens": 11156,
+      "output_tokens_details": {
+        "thinking_tokens": 3311
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 29326,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 220,
+          "cache_read_input_tokens": 55310,
+          "cache_creation_input_tokens": 761,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 761
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 22,
+        "outputTokens": 11156,
+        "cacheReadInputTokens": 478893,
+        "cacheCreationInputTokens": 29326,
+        "webSearchRequests": 0,
+        "costUSD": 0.3246866,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 3311,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 13,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 16 tests pass, and `tsc -p .` type-checks cleanly.\n\nI added `parseSettings(text)` to `src/settings.ts`, validating `listen.host`/`listen.port` (1–65535), each route's `prefix` (must start with `/`), `upstream`, and `timeoutMs` (positive integer), plus `retries` (non-negative integer, defaulting to 0). Every validation failure throws an `Error` whose message begins with the field's path (e.g. `routes[1].upstream must be a string`), with `settings` used as the path when the top level isn't an object. Tests covering each of these cases were added to `src/settings.test.ts`.",
+    "ttft_ms": 2079,
+    "type": "result",
+    "duration_ms": 97209,
+    "uuid": "30f716ad-49a0-44ff-a15c-be0285014b91",
+    "ttft_stream_ms": 1634,
+    "time_to_request_ms": 292,
+    "first_content_frame_ms": 1635,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:29:20.022Z",
+  "endedAt": "2026-09-24T23:30:58.906Z",
+  "wallMs": 98884,
+  "timedOut": false
+}

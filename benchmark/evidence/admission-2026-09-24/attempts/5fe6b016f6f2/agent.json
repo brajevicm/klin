@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/5fe6b016f6f2/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "a31e604c-f3c3-4f7a-9106-c1806c19f76d",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "b30e97cadda45b06a9b5f8df28099612f29554da7bae82179a2657a7dc33322a",
+  "sessionId": "a31e604c-f3c3-4f7a-9106-c1806c19f76d",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":26702,\"stop_reason\":\"end_turn\",\"session_id\":\"a31e604c-f3c3-4f7a-9106-c1806c19f76d\",\"total_cost_usd\":0.136741,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":15073,\"cache_read_input_tokens\":261205,\"output_tokens\":2418,\"output_tokens_details\":{\"thinking_tokens\":686},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":15073,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":107,\"cache_read_input_tokens\":41256,\"cache_creation_input_tokens\":562,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":562},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":2418,\"cacheReadInputTokens\":261205,\"cacheCreationInputTokens\":15073,\"webSearchRequests\":0,\"costUSD\":0.136741,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":686,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":7,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 9 tests pass. Added the `islands` zone (12€ first kg, 2.40€/kg after, heavy/fuel surcharges apply, express refused) to `src/rate.ts`, plus four new tests in `src/rate.test.ts` covering light, multi-kg, heavy, and express-refused cases.\",\"ttft_ms\":1597,\"type\":\"result\",\"duration_ms\":28525,\"uuid\":\"451b6c2c-db9c-4942-a96c-7a21ec8b6b3e\",\"ttft_stream_ms\":1216,\"time_to_request_ms\":234,\"first_content_frame_ms\":1217,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 26702,
+    "stop_reason": "end_turn",
+    "session_id": "a31e604c-f3c3-4f7a-9106-c1806c19f76d",
+    "total_cost_usd": 0.136741,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 15073,
+      "cache_read_input_tokens": 261205,
+      "output_tokens": 2418,
+      "output_tokens_details": {
+        "thinking_tokens": 686
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 15073,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 107,
+          "cache_read_input_tokens": 41256,
+          "cache_creation_input_tokens": 562,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 562
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 2418,
+        "cacheReadInputTokens": 261205,
+        "cacheCreationInputTokens": 15073,
+        "webSearchRequests": 0,
+        "costUSD": 0.136741,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 686,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 7,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 9 tests pass. Added the `islands` zone (12€ first kg, 2.40€/kg after, heavy/fuel surcharges apply, express refused) to `src/rate.ts`, plus four new tests in `src/rate.test.ts` covering light, multi-kg, heavy, and express-refused cases.",
+    "ttft_ms": 1597,
+    "type": "result",
+    "duration_ms": 28525,
+    "uuid": "451b6c2c-db9c-4942-a96c-7a21ec8b6b3e",
+    "ttft_stream_ms": 1216,
+    "time_to_request_ms": 234,
+    "first_content_frame_ms": 1217,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:51:17.117Z",
+  "endedAt": "2026-09-24T22:51:49.070Z",
+  "wallMs": 31953,
+  "timedOut": false
+}

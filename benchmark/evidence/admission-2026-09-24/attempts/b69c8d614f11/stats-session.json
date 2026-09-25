@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 384,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1790292814,
+      "gate": "complexity",
+      "id": "7c923ad32d6fad1e",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "complexity",
+        "line": 53,
+        "text": "fn fixed_spelling(character: char) -> Option<&'static str> {"
+      },
+      "label": "tangled function",
+      "last": 1790292814,
+      "line": 53,
+      "outcome": "open",
+      "prompt": "The magazine now publishes articles from its French, German, Scandinavian,",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "fn fixed_spelling(character: char) -> Option<&'static str> {",
+      "time": 1790292814,
+      "tries": 0,
+      "values": {
+        "cc": 11,
+        "lines": 15
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

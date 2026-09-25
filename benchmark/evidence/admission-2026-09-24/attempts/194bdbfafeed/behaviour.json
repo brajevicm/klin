@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a whole settings file reads as it is written (0.845667ms)\n✔ left-out retries are zero (0.157541ms)\n✔ an empty route list is a route list (0.074167ms)\n✔ a top level that is not an object is refused under settings (0.216ms)\n✔ each missing field is refused under its path (0.195209ms)\n✔ each value of the wrong kind is refused under its path (0.231375ms)\n✔ the package still type-checks in strict mode (586.230917ms)\nℹ tests 7\nℹ suites 0\nℹ pass 7\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 669.961375\n",
+  "stderr": "",
+  "reason": ""
+}

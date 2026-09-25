@@ -1,0 +1,139 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/d1c13ac0c06e/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "6a0c7530-629b-4f7a-bb95-f75bb49c2d69",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "53105b8bf516c3324b3c1e6d66d56ff6ed62ee065a47ed510be3ba5c1190475c",
+  "sessionId": "6a0c7530-629b-4f7a-bb95-f75bb49c2d69",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":129763,\"stop_reason\":\"end_turn\",\"session_id\":\"6a0c7530-629b-4f7a-bb95-f75bb49c2d69\",\"total_cost_usd\":0.498118,\"usage\":{\"input_tokens\":56,\"cache_creation_input_tokens\":31524,\"cache_read_input_tokens\":1297100,\"output_tokens\":11249,\"output_tokens_details\":{\"thinking_tokens\":4717},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":31524,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":353,\"cache_read_input_tokens\":57702,\"cache_creation_input_tokens\":567,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":567},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":56,\"outputTokens\":11249,\"cacheReadInputTokens\":1297100,\"cacheCreationInputTokens\":31524,\"webSearchRequests\":0,\"costUSD\":0.498118,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":4717,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[{\"tool_name\":\"Grep\",\"tool_use_id\":\"toolu_01C7HdvcZUi45zmA7FFqwqQZ\",\"tool_input\":{\"pattern\":\"pub fn decompose_canonical\",\"path\":\"/Users/brajevicm/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-normalization-0.1.25/src/char.rs\",\"-A\":15}}],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":28,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"No warnings, build is clean. Here's a summary of the changes:\\n\\n- `src/lib.rs`: `slug` now handles three cases per character — ASCII alphanumerics pass through as before; letters with no Unicode decomposition (æ, œ, ß, þ, ð/đ, ø, ł, ħ, ŧ, dotless ı) map to a fixed digraph/letter via `undecomposed_letters`; everything else is run through `unicode_normalization::char::decompose_canonical` (a full/recursive NFD decomposition), and if the first resulting character is an ASCII letter, that's used — otherwise the character is dropped like punctuation, exactly as before.\\n- Added the `unicode-normalization` dependency to `Cargo.toml`/`Cargo.lock`.\\n- `tests/slug.rs`: added 13 tests covering the `Crème brûlée` / `Việt` examples, each of the ten special-cased letters (uppercase and lowercase), and standalone combining marks being dropped.\\n\\nAll 16 tests pass (`cargo test`).\",\"ttft_ms\":1892,\"type\":\"result\",\"duration_ms\":142285,\"uuid\":\"5d8e16e1-bf8d-46c4-8f82-10f239bca0ea\",\"ttft_stream_ms\":1102,\"time_to_request_ms\":246,\"first_content_frame_ms\":1102,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 129763,
+    "stop_reason": "end_turn",
+    "session_id": "6a0c7530-629b-4f7a-bb95-f75bb49c2d69",
+    "total_cost_usd": 0.498118,
+    "usage": {
+      "input_tokens": 56,
+      "cache_creation_input_tokens": 31524,
+      "cache_read_input_tokens": 1297100,
+      "output_tokens": 11249,
+      "output_tokens_details": {
+        "thinking_tokens": 4717
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 31524,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 353,
+          "cache_read_input_tokens": 57702,
+          "cache_creation_input_tokens": 567,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 567
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 56,
+        "outputTokens": 11249,
+        "cacheReadInputTokens": 1297100,
+        "cacheCreationInputTokens": 31524,
+        "webSearchRequests": 0,
+        "costUSD": 0.498118,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 4717,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [
+      {
+        "tool_name": "Grep",
+        "tool_use_id": "toolu_01C7HdvcZUi45zmA7FFqwqQZ",
+        "tool_input": {
+          "pattern": "pub fn decompose_canonical",
+          "path": "/Users/brajevicm/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/unicode-normalization-0.1.25/src/char.rs",
+          "-A": 15
+        }
+      }
+    ],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 28,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "No warnings, build is clean. Here's a summary of the changes:\n\n- `src/lib.rs`: `slug` now handles three cases per character — ASCII alphanumerics pass through as before; letters with no Unicode decomposition (æ, œ, ß, þ, ð/đ, ø, ł, ħ, ŧ, dotless ı) map to a fixed digraph/letter via `undecomposed_letters`; everything else is run through `unicode_normalization::char::decompose_canonical` (a full/recursive NFD decomposition), and if the first resulting character is an ASCII letter, that's used — otherwise the character is dropped like punctuation, exactly as before.\n- Added the `unicode-normalization` dependency to `Cargo.toml`/`Cargo.lock`.\n- `tests/slug.rs`: added 13 tests covering the `Crème brûlée` / `Việt` examples, each of the ten special-cased letters (uppercase and lowercase), and standalone combining marks being dropped.\n\nAll 16 tests pass (`cargo test`).",
+    "ttft_ms": 1892,
+    "type": "result",
+    "duration_ms": 142285,
+    "uuid": "5d8e16e1-bf8d-46c4-8f82-10f239bca0ea",
+    "ttft_stream_ms": 1102,
+    "time_to_request_ms": 246,
+    "first_content_frame_ms": 1102,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:25:33.564Z",
+  "endedAt": "2026-09-24T21:27:57.676Z",
+  "wallMs": 144114,
+  "timedOut": false
+}

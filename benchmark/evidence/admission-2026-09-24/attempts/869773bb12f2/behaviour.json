@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the package still type-checks with its mixing code (536.318792ms)\n✔ a solid colour hides what is under it, and a clear one shows it (0.587875ms)\n✔ each channel weighs the top by its opacity and the bottom by the rest (0.114417ms)\n✔ colours given as three channels work as they did (0.115375ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 615.717209\n",
+  "stderr": "",
+  "reason": ""
+}

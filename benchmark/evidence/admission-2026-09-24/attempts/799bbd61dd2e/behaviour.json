@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a good token signs out and is written to the audit trail (2.8885ms)\n✔ a token that does not read writes nothing (0.124459ms)\n✔ signing in works as before (0.094666ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 86.568083\n",
+  "stderr": "",
+  "reason": ""
+}

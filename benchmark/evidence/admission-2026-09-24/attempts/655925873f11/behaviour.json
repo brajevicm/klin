@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the package still type-checks with its mixing code (524.895958ms)\n✔ black on white is the widest contrast, in either order (0.1625ms)\n✔ the ratio is rounded to two places (0.084042ms)\n✔ the colour arithmetic that was already there is unchanged (0.101916ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 604.970875\n",
+  "stderr": "",
+  "reason": ""
+}

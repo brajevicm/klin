@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ export answers with the usage, and the usage no longer names it (0.543584ms)\n✔ the README no longer names the command (0.393ms)\n✔ add, list and stats keep working (13.845833ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 93.468584\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ each kind decodes to its event (0.860542ms)\n✔ a batch decodes every event it holds, a batch included (0.112792ms)\n✔ a field the kind does not carry is left out (0.102708ms)\n✔ a decoded event applies to the ledger (0.11525ms)\n✔ a body that is not an object is refused at body (0.23225ms)\n✔ an unknown or missing kind is refused at body.type (0.07725ms)\n✔ each wrong field is refused under its path (0.197291ms)\n✔ the package still type-checks in strict mode (509.666667ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 590.328875\n",
+  "stderr": "",
+  "reason": ""
+}

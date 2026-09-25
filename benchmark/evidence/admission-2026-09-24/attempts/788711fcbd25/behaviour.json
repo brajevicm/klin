@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a known code builds its profile (0.772875ms)\n✔ an empty trunk is null, and the minor digits are the decimals (0.106458ms)\n✔ a code is accepted in either case and keeps the upper-case form (0.067041ms)\n✔ a code the table does not hold is null (0.067458ms)\n✔ a built profile works with the code that was already there (0.140833ms)\n✔ the shared table is kept as it is (0.376167ms)\n✔ the package still type-checks in strict mode (514.024083ms)\nℹ tests 7\nℹ suites 0\nℹ pass 7\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 597.438583\n",
+  "stderr": "",
+  "reason": ""
+}

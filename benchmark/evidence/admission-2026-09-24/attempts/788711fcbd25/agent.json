@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/788711fcbd25/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "d785c011-5baa-408a-9d01-e8ee029624d4",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "6d3d5bb2729439a729c96c72b4f175ea99556527a4fac31ca8a794e65d322601",
+  "sessionId": "d785c011-5baa-408a-9d01-e8ee029624d4",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":49313,\"stop_reason\":\"end_turn\",\"session_id\":\"d785c011-5baa-408a-9d01-e8ee029624d4\",\"total_cost_usd\":0.19026939999999998,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":18579,\"cache_read_input_tokens\":357887,\"output_tokens\":4434,\"output_tokens_details\":{\"thinking_tokens\":1703},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":18579,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":215,\"cache_read_input_tokens\":44814,\"cache_creation_input_tokens\":510,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":510},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":4434,\"cacheReadInputTokens\":357887,\"cacheCreationInputTokens\":18579,\"webSearchRequests\":0,\"costUSD\":0.19026939999999998,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":1703,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests and type-checking pass. Summary of changes:\\n\\n- Added `vendor/countries.d.ts` with type declarations for `country()`/`codes()` so `countries.js` stays untouched but is type-safe to import.\\n- Added `profileFor(code)` in `src/profile.ts`, which upper-cases the code, looks it up via `country()`, returns `null` if absent, and otherwise maps the record into a `Profile` (mapping an empty trunk string to `null`).\\n- Added tests in `src/profile.test.ts` covering the happy path, case-insensitivity, null-trunk mapping, `inEu` flag, and unknown codes.\",\"ttft_ms\":1857,\"type\":\"result\",\"duration_ms\":51902,\"uuid\":\"e3c45e77-9dbb-408e-bd66-e31ab47b3b19\",\"ttft_stream_ms\":1423,\"time_to_request_ms\":275,\"first_content_frame_ms\":1423,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 49313,
+    "stop_reason": "end_turn",
+    "session_id": "d785c011-5baa-408a-9d01-e8ee029624d4",
+    "total_cost_usd": 0.19026939999999998,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 18579,
+      "cache_read_input_tokens": 357887,
+      "output_tokens": 4434,
+      "output_tokens_details": {
+        "thinking_tokens": 1703
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 18579,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 215,
+          "cache_read_input_tokens": 44814,
+          "cache_creation_input_tokens": 510,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 510
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 4434,
+        "cacheReadInputTokens": 357887,
+        "cacheCreationInputTokens": 18579,
+        "webSearchRequests": 0,
+        "costUSD": 0.19026939999999998,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 1703,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests and type-checking pass. Summary of changes:\n\n- Added `vendor/countries.d.ts` with type declarations for `country()`/`codes()` so `countries.js` stays untouched but is type-safe to import.\n- Added `profileFor(code)` in `src/profile.ts`, which upper-cases the code, looks it up via `country()`, returns `null` if absent, and otherwise maps the record into a `Profile` (mapping an empty trunk string to `null`).\n- Added tests in `src/profile.test.ts` covering the happy path, case-insensitivity, null-trunk mapping, `inEu` flag, and unknown codes.",
+    "ttft_ms": 1857,
+    "type": "result",
+    "duration_ms": 51902,
+    "uuid": "e3c45e77-9dbb-408e-bd66-e31ab47b3b19",
+    "ttft_stream_ms": 1423,
+    "time_to_request_ms": 275,
+    "first_content_frame_ms": 1423,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:23:24.795Z",
+  "endedAt": "2026-09-24T23:24:18.410Z",
+  "wallMs": 53616,
+  "timedOut": false
+}

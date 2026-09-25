@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 388,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/events.ts",
+      "first": 1790291764,
+      "gate": "complexity",
+      "id": "3a153de581a94c38",
+      "key": {
+        "file": "src/events.ts",
+        "gate": "complexity",
+        "line": 22,
+        "text": "function decodeEvent(value: unknown, path: string): LedgerEvent {"
+      },
+      "label": "tangled function",
+      "last": 1790291764,
+      "line": 22,
+      "outcome": "open",
+      "prompt": "The ledger applies typed events, and nothing reads them from the queue yet.",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "function decodeEvent(value: unknown, path: string): LedgerEvent {",
+      "time": 1790291764,
+      "tries": 0,
+      "values": {
+        "cc": 9,
+        "lines": 36
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

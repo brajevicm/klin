@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a yen amount prints with no decimals (3.008542ms)\n✔ a yen invoice renders its totals in yen (0.581333ms)\n✔ the other currencies print as before (0.212167ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 148.533416\n",
+  "stderr": "",
+  "reason": ""
+}

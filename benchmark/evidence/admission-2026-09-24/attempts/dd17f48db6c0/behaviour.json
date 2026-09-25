@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a single event touches its accounts (0.754125ms)\n✔ a batch touches every account its events touch, once and sorted (0.088625ms)\n✔ the behaviour that was already there is unchanged (0.110875ms)\n✔ the package still type-checks in strict mode (508.102ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 588.162125\n",
+  "stderr": "",
+  "reason": ""
+}

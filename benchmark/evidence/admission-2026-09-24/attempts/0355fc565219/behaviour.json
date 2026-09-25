@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the package still type-checks with its route code (512.619167ms)\n✔ the midpoint is the mean of each coordinate (0.518625ms)\n✔ each coordinate is rounded to six places (0.077167ms)\n✔ the measurements that were already there are unchanged (0.11175ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 602.920042\n",
+  "stderr": "",
+  "reason": ""
+}

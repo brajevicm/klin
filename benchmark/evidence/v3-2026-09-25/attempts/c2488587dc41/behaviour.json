@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a light parcel to the islands pays the first kilogram only (0.4225ms)\n✔ every started kilogram to the islands after the first is charged (0.068ms)\n✔ a heavy parcel to the islands takes the surcharge (0.055542ms)\n✔ express to the islands is refused (0.109ms)\n✔ the zones that were already there are unchanged (0.087625ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 77.216292\n",
+  "stderr": "",
+  "reason": ""
+}

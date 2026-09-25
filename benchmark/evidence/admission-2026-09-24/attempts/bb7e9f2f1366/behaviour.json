@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a range runs from the lowest price to the highest (0.538875ms)\n✔ prices that all match are one price (0.083875ms)\n✔ a single price is written as it was (0.223958ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 77.453333\n",
+  "stderr": "",
+  "reason": ""
+}

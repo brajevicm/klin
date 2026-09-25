@@ -1,0 +1,140 @@
+{
+  "activity": {
+    "klin_ms": 463,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 4,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 4,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "README.md",
+      "first": 1790323925,
+      "gate": "doc-citations",
+      "id": "04e28880d1a84c5b",
+      "key": {
+        "file": "README.md",
+        "gate": "doc-citations",
+        "line": 103,
+        "text": "src/lexer.ts"
+      },
+      "label": "broken citation",
+      "last": 1790323925,
+      "line": 103,
+      "outcome": "open",
+      "prompt": "The evaluation engine should sit in its own folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/lexer.ts",
+      "time": 1790323925,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/lexer.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "README.md",
+      "first": 1790323925,
+      "gate": "doc-citations",
+      "id": "00f1f7c390a8d940",
+      "key": {
+        "file": "README.md",
+        "gate": "doc-citations",
+        "line": 109,
+        "text": "src/parser.ts"
+      },
+      "label": "broken citation",
+      "last": 1790323925,
+      "line": 109,
+      "outcome": "open",
+      "prompt": "The evaluation engine should sit in its own folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/parser.ts",
+      "time": 1790323925,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/parser.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "README.md",
+      "first": 1790323925,
+      "gate": "doc-citations",
+      "id": "201a3ebcf612740c",
+      "key": {
+        "file": "README.md",
+        "gate": "doc-citations",
+        "line": 115,
+        "text": "src/evaluate.ts"
+      },
+      "label": "broken citation",
+      "last": 1790323925,
+      "line": 115,
+      "outcome": "open",
+      "prompt": "The evaluation engine should sit in its own folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/evaluate.ts",
+      "time": 1790323925,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/evaluate.ts"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "README.md",
+      "first": 1790323925,
+      "gate": "doc-citations",
+      "id": "609c7208f24671b8",
+      "key": {
+        "file": "README.md",
+        "gate": "doc-citations",
+        "line": 120,
+        "text": "src/errors.ts"
+      },
+      "label": "broken citation",
+      "last": 1790323925,
+      "line": 120,
+      "outcome": "open",
+      "prompt": "The evaluation engine should sit in its own folder.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/errors.ts",
+      "time": 1790323925,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots — likely src/engine/errors.ts"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

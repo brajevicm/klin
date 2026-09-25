@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/f56bea3e4dfa/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "15b9aa6e-91fa-4c63-87a4-b765bfc6c729",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "e491fd927bc846b9fe60a33896d28b77e29ec7b7b726f4b602cf5e87f696be84",
+  "sessionId": "15b9aa6e-91fa-4c63-87a4-b765bfc6c729",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":41335,\"stop_reason\":\"end_turn\",\"session_id\":\"15b9aa6e-91fa-4c63-87a4-b765bfc6c729\",\"total_cost_usd\":0.2035374,\"usage\":{\"input_tokens\":22,\"cache_creation_input_tokens\":18555,\"cache_read_input_tokens\":443217,\"output_tokens\":4063,\"output_tokens_details\":{\"thinking_tokens\":938},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":18555,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":186,\"cache_read_input_tokens\":44773,\"cache_creation_input_tokens\":527,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":527},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":22,\"outputTokens\":4063,\"cacheReadInputTokens\":443217,\"cacheCreationInputTokens\":18555,\"webSearchRequests\":0,\"costUSD\":0.2035374,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":938,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. `vendor/countries.js` was left untouched.\\n\\nAdded `profileFor(code)` to `src/profile.ts:12` — normalizes the code to upper case, looks it up via `country()` from `vendor/countries.js`, returns `null` for unknown codes, and maps the vendor record's fields into a `Profile` (mapping an empty trunk string to `null`). Added four tests in `src/profile.test.ts` covering a normal lookup, the empty-trunk→null conversion, lower-case code handling, and the unknown-code `null` case.\",\"ttft_ms\":1725,\"type\":\"result\",\"duration_ms\":44906,\"uuid\":\"91af0cdf-137f-428c-9e9d-cf49d4610ce2\",\"ttft_stream_ms\":1371,\"time_to_request_ms\":234,\"first_content_frame_ms\":1371,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 41335,
+    "stop_reason": "end_turn",
+    "session_id": "15b9aa6e-91fa-4c63-87a4-b765bfc6c729",
+    "total_cost_usd": 0.2035374,
+    "usage": {
+      "input_tokens": 22,
+      "cache_creation_input_tokens": 18555,
+      "cache_read_input_tokens": 443217,
+      "output_tokens": 4063,
+      "output_tokens_details": {
+        "thinking_tokens": 938
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 18555,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 186,
+          "cache_read_input_tokens": 44773,
+          "cache_creation_input_tokens": 527,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 527
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 22,
+        "outputTokens": 4063,
+        "cacheReadInputTokens": 443217,
+        "cacheCreationInputTokens": 18555,
+        "webSearchRequests": 0,
+        "costUSD": 0.2035374,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 938,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. `vendor/countries.js` was left untouched.\n\nAdded `profileFor(code)` to `src/profile.ts:12` — normalizes the code to upper case, looks it up via `country()` from `vendor/countries.js`, returns `null` for unknown codes, and maps the vendor record's fields into a `Profile` (mapping an empty trunk string to `null`). Added four tests in `src/profile.test.ts` covering a normal lookup, the empty-trunk→null conversion, lower-case code handling, and the unknown-code `null` case.",
+    "ttft_ms": 1725,
+    "type": "result",
+    "duration_ms": 44906,
+    "uuid": "91af0cdf-137f-428c-9e9d-cf49d4610ce2",
+    "ttft_stream_ms": 1371,
+    "time_to_request_ms": 234,
+    "first_content_frame_ms": 1371,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:56:00.369Z",
+  "endedAt": "2026-09-24T21:56:47.092Z",
+  "wallMs": 46724,
+  "timedOut": false
+}

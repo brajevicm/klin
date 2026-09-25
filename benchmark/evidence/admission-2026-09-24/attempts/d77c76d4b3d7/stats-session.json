@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 376,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/quote.ts",
+      "first": 1790291065,
+      "gate": "complexity",
+      "id": "94b38723a816421c",
+      "key": {
+        "file": "src/quote.ts",
+        "gate": "complexity",
+        "line": 18,
+        "text": "export function computeQuote("
+      },
+      "label": "tangled function",
+      "last": 1790291065,
+      "line": 18,
+      "outcome": "open",
+      "prompt": "The sales desk has a new customer class.",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "export function computeQuote(",
+      "time": 1790291065,
+      "tries": 0,
+      "values": {
+        "cc": 11,
+        "lines": 35
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

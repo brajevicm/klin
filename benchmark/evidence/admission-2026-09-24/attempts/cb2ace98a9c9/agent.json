@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/cb2ace98a9c9/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "dcf2ed81-ca2b-4d7d-831d-d3c767c9a1e1",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "40c1d380736fa5007abb32616a25c00b884535df5f9150461be5bd160f6c9967",
+  "sessionId": "dcf2ed81-ca2b-4d7d-831d-d3c767c9a1e1",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":26668,\"stop_reason\":\"end_turn\",\"session_id\":\"dcf2ed81-ca2b-4d7d-831d-d3c767c9a1e1\",\"total_cost_usd\":0.1700428,\"usage\":{\"input_tokens\":20,\"cache_creation_input_tokens\":16102,\"cache_read_input_tokens\":386374,\"output_tokens\":2832,\"output_tokens_details\":{\"thinking_tokens\":56},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16102,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":78,\"cache_read_input_tokens\":42460,\"cache_creation_input_tokens\":387,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":387},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":20,\"outputTokens\":2832,\"cacheReadInputTokens\":386374,\"cacheCreationInputTokens\":16102,\"webSearchRequests\":0,\"costUSD\":0.1700428,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":56,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Typecheck and tests pass. Removed the grid layout entirely: `render`/`weekly` now take only `entries`, the `Layout` type and grid helpers are gone, and the grid test was dropped from `report.test.ts`.\",\"ttft_ms\":2862,\"type\":\"result\",\"duration_ms\":29431,\"uuid\":\"f984033f-d8c8-4df9-8c5b-8ea3355a538a\",\"ttft_stream_ms\":1013,\"time_to_request_ms\":285,\"first_content_frame_ms\":1013,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 26668,
+    "stop_reason": "end_turn",
+    "session_id": "dcf2ed81-ca2b-4d7d-831d-d3c767c9a1e1",
+    "total_cost_usd": 0.1700428,
+    "usage": {
+      "input_tokens": 20,
+      "cache_creation_input_tokens": 16102,
+      "cache_read_input_tokens": 386374,
+      "output_tokens": 2832,
+      "output_tokens_details": {
+        "thinking_tokens": 56
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16102,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 78,
+          "cache_read_input_tokens": 42460,
+          "cache_creation_input_tokens": 387,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 387
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 20,
+        "outputTokens": 2832,
+        "cacheReadInputTokens": 386374,
+        "cacheCreationInputTokens": 16102,
+        "webSearchRequests": 0,
+        "costUSD": 0.1700428,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 56,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Typecheck and tests pass. Removed the grid layout entirely: `render`/`weekly` now take only `entries`, the `Layout` type and grid helpers are gone, and the grid test was dropped from `report.test.ts`.",
+    "ttft_ms": 2862,
+    "type": "result",
+    "duration_ms": 29431,
+    "uuid": "f984033f-d8c8-4df9-8c5b-8ea3355a538a",
+    "ttft_stream_ms": 1013,
+    "time_to_request_ms": 285,
+    "first_content_frame_ms": 1013,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:17:44.370Z",
+  "endedAt": "2026-09-24T22:18:15.580Z",
+  "wallMs": 31211,
+  "timedOut": false
+}

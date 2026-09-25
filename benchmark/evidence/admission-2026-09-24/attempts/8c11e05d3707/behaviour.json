@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the package still type-checks with its statement reader (559.562417ms)\n✔ spending is summed per category, in cents, as a positive number (0.588ms)\n✔ money in and a zero amount are no spending (0.09175ms)\n✔ a statement read without categories answers as it did (0.344792ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 639.854458\n",
+  "stderr": "",
+  "reason": ""
+}

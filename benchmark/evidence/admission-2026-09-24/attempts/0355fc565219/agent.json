@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/0355fc565219/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "bc90e1bc-0012-4e2c-9af6-4ff4e50eba67",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "ae53632cdd8a49e827c347ec144a380acc923add4fa90800b8810bcc3021e847",
+  "sessionId": "bc90e1bc-0012-4e2c-9af6-4ff4e50eba67",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":27832,\"stop_reason\":\"end_turn\",\"session_id\":\"bc90e1bc-0012-4e2c-9af6-4ff4e50eba67\",\"total_cost_usd\":0.1475804,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":14846,\"cache_read_input_tokens\":339602,\"output_tokens\":2024,\"output_tokens_details\":{\"thinking_tokens\":51},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14846,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":90,\"cache_read_input_tokens\":41126,\"cache_creation_input_tokens\":465,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":465},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":2024,\"cacheReadInputTokens\":339602,\"cacheCreationInputTokens\":14846,\"webSearchRequests\":0,\"costUSD\":0.1475804,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":51,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":9,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Added `midpoint(a, b)` to `src/index.ts:33-38`, which rounds the averaged latitude/longitude to six decimal places, plus three new tests in `src/index.test.ts` covering identity, independent averaging, and rounding.\",\"ttft_ms\":2237,\"type\":\"result\",\"duration_ms\":30620,\"uuid\":\"df333129-274d-45b1-858a-5d0936c84422\",\"ttft_stream_ms\":1394,\"time_to_request_ms\":234,\"first_content_frame_ms\":1394,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 27832,
+    "stop_reason": "end_turn",
+    "session_id": "bc90e1bc-0012-4e2c-9af6-4ff4e50eba67",
+    "total_cost_usd": 0.1475804,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 14846,
+      "cache_read_input_tokens": 339602,
+      "output_tokens": 2024,
+      "output_tokens_details": {
+        "thinking_tokens": 51
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14846,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 90,
+          "cache_read_input_tokens": 41126,
+          "cache_creation_input_tokens": 465,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 465
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 2024,
+        "cacheReadInputTokens": 339602,
+        "cacheCreationInputTokens": 14846,
+        "webSearchRequests": 0,
+        "costUSD": 0.1475804,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 51,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 9,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Added `midpoint(a, b)` to `src/index.ts:33-38`, which rounds the averaged latitude/longitude to six decimal places, plus three new tests in `src/index.test.ts` covering identity, independent averaging, and rounding.",
+    "ttft_ms": 2237,
+    "type": "result",
+    "duration_ms": 30620,
+    "uuid": "df333129-274d-45b1-858a-5d0936c84422",
+    "ttft_stream_ms": 1394,
+    "time_to_request_ms": 234,
+    "first_content_frame_ms": 1394,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:53:10.329Z",
+  "endedAt": "2026-09-24T21:53:42.574Z",
+  "wallMs": 32246,
+  "timedOut": false
+}

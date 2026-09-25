@@ -1,0 +1,11 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  window: turn — base e2ea1c3, the turn stamp, taken 1 minute(s) ago
+  changed: 3 file(s) against the base — the scoped gates judge those; CI judges everything
+  derived: build cargo build --all-targets from Cargo.toml, one command per manifest
+  derived: doc_citations README.md, report.md, every Markdown file at the tree root, resolved against it
+  FAIL  doc-citations
+        FAIL: 2 new citation(s) where a document cites a file that resolves nowhere, beyond the 0 the base holds:
+          report.md:62  no file of that name under the roots x2  settings.json  — nothing matched
+          report.md:101  not under the roots  .../probe/probe-00174cde/settings.json  — nothing matched
+        Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.
+klin: 10 gate(s), 1 failed.

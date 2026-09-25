@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/8c11e05d3707/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "bc58afd9-7704-4c3e-86a9-cb47d820aa1b",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "599cfa8ab503232582457067f53b07f10e7990f75203a9eb6e0a02b4f1a26892",
+  "sessionId": "bc58afd9-7704-4c3e-86a9-cb47d820aa1b",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":41215,\"stop_reason\":\"end_turn\",\"session_id\":\"bc58afd9-7704-4c3e-86a9-cb47d820aa1b\",\"total_cost_usd\":0.16797920000000002,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":16916,\"cache_read_input_tokens\":309216,\"output_tokens\":3844,\"output_tokens_details\":{\"thinking_tokens\":1101},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16916,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":106,\"cache_read_input_tokens\":43011,\"cache_creation_input_tokens\":650,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":650},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":3844,\"cacheReadInputTokens\":309216,\"cacheCreationInputTokens\":16916,\"webSearchRequests\":0,\"costUSD\":0.16797920000000002,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":1101,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":9,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 7 tests pass. Added `spendingByCategory(text)` in `src/index.ts:38` — sums negative-amount rows by category, in cents, ignoring non-negative rows — with a shared `parseHeader` helper factored out of `readStatement`, plus four new tests in `src/index.test.ts`.\",\"ttft_ms\":4346,\"type\":\"result\",\"duration_ms\":46507,\"uuid\":\"fbfae445-bd87-49ce-930a-fc6742c4ca69\",\"ttft_stream_ms\":1563,\"time_to_request_ms\":274,\"first_content_frame_ms\":1564,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 41215,
+    "stop_reason": "end_turn",
+    "session_id": "bc58afd9-7704-4c3e-86a9-cb47d820aa1b",
+    "total_cost_usd": 0.16797920000000002,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 16916,
+      "cache_read_input_tokens": 309216,
+      "output_tokens": 3844,
+      "output_tokens_details": {
+        "thinking_tokens": 1101
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16916,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 106,
+          "cache_read_input_tokens": 43011,
+          "cache_creation_input_tokens": 650,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 650
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 3844,
+        "cacheReadInputTokens": 309216,
+        "cacheCreationInputTokens": 16916,
+        "webSearchRequests": 0,
+        "costUSD": 0.16797920000000002,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 1101,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 9,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 7 tests pass. Added `spendingByCategory(text)` in `src/index.ts:38` — sums negative-amount rows by category, in cents, ignoring non-negative rows — with a shared `parseHeader` helper factored out of `readStatement`, plus four new tests in `src/index.test.ts`.",
+    "ttft_ms": 4346,
+    "type": "result",
+    "duration_ms": 46507,
+    "uuid": "fbfae445-bd87-49ce-930a-fc6742c4ca69",
+    "ttft_stream_ms": 1563,
+    "time_to_request_ms": 274,
+    "first_content_frame_ms": 1564,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:21:59.328Z",
+  "endedAt": "2026-09-24T23:22:47.773Z",
+  "wallMs": 48446,
+  "timedOut": false
+}

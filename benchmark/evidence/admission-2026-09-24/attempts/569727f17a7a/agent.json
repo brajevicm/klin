@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/569727f17a7a/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "0779ac00-1387-4de7-ae91-d503157230a4",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "ac955606402b1ca9f5478ef0f0704357d3937b03e7389ef073124ee5aa36d32a",
+  "sessionId": "0779ac00-1387-4de7-ae91-d503157230a4",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":24272,\"stop_reason\":\"end_turn\",\"session_id\":\"0779ac00-1387-4de7-ae91-d503157230a4\",\"total_cost_usd\":0.1387294,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":16151,\"cache_read_input_tokens\":268687,\"output_tokens\":2036,\"output_tokens_details\":{\"thinking_tokens\":182},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16151,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":101,\"cache_read_input_tokens\":42561,\"cache_creation_input_tokens\":335,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":335},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":2036,\"cacheReadInputTokens\":268687,\"cacheCreationInputTokens\":16151,\"webSearchRequests\":0,\"costUSD\":0.1387294,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":182,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"Both only reference `./index.ts`, which is unchanged from a caller's perspective. Done: lexer, parser, evaluator, and error type are now in `src/engine/`, `src/index.ts` imports from there and its public API (`calculate`, `CalcError`) is unchanged, and tests pass.\",\"ttft_ms\":1974,\"type\":\"result\",\"duration_ms\":26559,\"uuid\":\"9062def2-08a4-4b83-a3fb-d95be80337c0\",\"ttft_stream_ms\":1908,\"time_to_request_ms\":253,\"first_content_frame_ms\":1909,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 24272,
+    "stop_reason": "end_turn",
+    "session_id": "0779ac00-1387-4de7-ae91-d503157230a4",
+    "total_cost_usd": 0.1387294,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 16151,
+      "cache_read_input_tokens": 268687,
+      "output_tokens": 2036,
+      "output_tokens_details": {
+        "thinking_tokens": 182
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16151,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 101,
+          "cache_read_input_tokens": 42561,
+          "cache_creation_input_tokens": 335,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 335
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 2036,
+        "cacheReadInputTokens": 268687,
+        "cacheCreationInputTokens": 16151,
+        "webSearchRequests": 0,
+        "costUSD": 0.1387294,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 182,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Both only reference `./index.ts`, which is unchanged from a caller's perspective. Done: lexer, parser, evaluator, and error type are now in `src/engine/`, `src/index.ts` imports from there and its public API (`calculate`, `CalcError`) is unchanged, and tests pass.",
+    "ttft_ms": 1974,
+    "type": "result",
+    "duration_ms": 26559,
+    "uuid": "9062def2-08a4-4b83-a3fb-d95be80337c0",
+    "ttft_stream_ms": 1908,
+    "time_to_request_ms": 253,
+    "first_content_frame_ms": 1909,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:55:43.362Z",
+  "endedAt": "2026-09-24T22:56:11.516Z",
+  "wallMs": 28155,
+  "timedOut": false
+}

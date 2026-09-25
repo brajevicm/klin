@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ plain fields split on commas (0.846875ms)\n✔ a quoted field keeps its commas (0.07725ms)\n✔ a doubled quote inside a quoted field is one quote (0.071667ms)\n✔ CRLF and a missing last line ending end a row (0.066292ms)\n✔ a quoted field keeps its line breaks (0.067167ms)\n✔ a quoted field keeps a CRLF inside it (0.052917ms)\nℹ tests 6\nℹ suites 0\nℹ pass 6\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 80.419333\n",
+  "stderr": "",
+  "reason": ""
+}

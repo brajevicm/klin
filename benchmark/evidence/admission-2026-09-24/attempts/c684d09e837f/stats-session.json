@@ -1,0 +1,62 @@
+{
+  "activity": {
+    "klin_ms": 406,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 1,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 1,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "src/lib.rs",
+      "first": 1790291561,
+      "gate": "complexity",
+      "id": "bd639b25ab6e97b8",
+      "key": {
+        "file": "src/lib.rs",
+        "gate": "complexity",
+        "line": 11,
+        "text": "pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, Refusal> {"
+      },
+      "label": "tangled function",
+      "last": 1790291561,
+      "line": 11,
+      "outcome": "open",
+      "prompt": "Customers of the German office upload exports from their accounting package,",
+      "remedy": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+      "text": "pub fn read_rows(name: &str, text: &str) -> Result<Vec<Vec<String>>, Refusal> {",
+      "time": 1790291561,
+      "tries": 0,
+      "values": {
+        "cc": 11,
+        "lines": 27
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}

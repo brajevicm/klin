@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/15cfb29fedf2/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "cc54e842-fc61-4b50-b5e4-1e2213c64d6b",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "d42230970b3bd70e41a4c64d2af61f993aeda5114c6a68dedc90a7916ccbcc38",
+  "sessionId": "cc54e842-fc61-4b50-b5e4-1e2213c64d6b",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":23236,\"stop_reason\":\"end_turn\",\"session_id\":\"cc54e842-fc61-4b50-b5e4-1e2213c64d6b\",\"total_cost_usd\":0.125585,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":14304,\"cache_read_input_tokens\":260405,\"output_tokens\":1626,\"output_tokens_details\":{\"thinking_tokens\":14},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":14304,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":53,\"cache_read_input_tokens\":40533,\"cache_creation_input_tokens\":516,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":516},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":1626,\"cacheReadInputTokens\":260405,\"cacheCreationInputTokens\":14304,\"webSearchRequests\":0,\"costUSD\":0.125585,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":14,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":8,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All 7 tests pass. Added `formatFee(cents)` to `src/fee.ts` and covered it with tests in `src/fee.test.ts`.\",\"ttft_ms\":2456,\"type\":\"result\",\"duration_ms\":25217,\"uuid\":\"97cee206-35c9-4279-a1f8-a34366a11b17\",\"ttft_stream_ms\":1258,\"time_to_request_ms\":250,\"first_content_frame_ms\":1258,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 23236,
+    "stop_reason": "end_turn",
+    "session_id": "cc54e842-fc61-4b50-b5e4-1e2213c64d6b",
+    "total_cost_usd": 0.125585,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 14304,
+      "cache_read_input_tokens": 260405,
+      "output_tokens": 1626,
+      "output_tokens_details": {
+        "thinking_tokens": 14
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 14304,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 53,
+          "cache_read_input_tokens": 40533,
+          "cache_creation_input_tokens": 516,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 516
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 1626,
+        "cacheReadInputTokens": 260405,
+        "cacheCreationInputTokens": 14304,
+        "webSearchRequests": 0,
+        "costUSD": 0.125585,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 14,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 8,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All 7 tests pass. Added `formatFee(cents)` to `src/fee.ts` and covered it with tests in `src/fee.test.ts`.",
+    "ttft_ms": 2456,
+    "type": "result",
+    "duration_ms": 25217,
+    "uuid": "97cee206-35c9-4279-a1f8-a34366a11b17",
+    "ttft_stream_ms": 1258,
+    "time_to_request_ms": 250,
+    "first_content_frame_ms": 1258,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T23:25:27.513Z",
+  "endedAt": "2026-09-24T23:25:54.418Z",
+  "wallMs": 26906,
+  "timedOut": false
+}

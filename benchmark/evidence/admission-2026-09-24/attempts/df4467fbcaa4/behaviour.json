@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the timeout defaults to thirty seconds (0.484459ms)\n✔ the file sets the timeout in milliseconds (0.079917ms)\n✔ a timeout that is not a whole number of at least 1 is refused (0.238666ms)\n✔ the other settings read as they did (0.096958ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 77.821458\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ a fee prints in euros with two decimal places (0.467167ms)\n✔ a large fee groups its thousands (0.075208ms)\n✔ the fees that were already there are unchanged (0.087667ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 73.894625\n",
+  "stderr": "",
+  "reason": ""
+}

@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/bb7e9f2f1366/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "c0fa2055-308c-457d-a1df-02565cc112df",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "bb4df453b928a7aaedf63f8c8edabb439c903c8f27e96f51866b3d7a7050424e",
+  "sessionId": "c0fa2055-308c-457d-a1df-02565cc112df",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":17720,\"stop_reason\":\"end_turn\",\"session_id\":\"c0fa2055-308c-457d-a1df-02565cc112df\",\"total_cost_usd\":0.12106900000000001,\"usage\":{\"input_tokens\":14,\"cache_creation_input_tokens\":13750,\"cache_read_input_tokens\":259105,\"output_tokens\":1422,\"output_tokens_details\":{\"thinking_tokens\":27},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":13750,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":84,\"cache_read_input_tokens\":40050,\"cache_creation_input_tokens\":445,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":445},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":14,\"outputTokens\":1422,\"cacheReadInputTokens\":259105,\"cacheCreationInputTokens\":13750,\"webSearchRequests\":0,\"costUSD\":0.12106900000000001,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":27,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":8,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Added `priceRange(prices, currency)` in `src/money.ts:12` that finds the min/max and formats them with `formatPrice`, collapsing to a single price when they match, plus two new tests in `src/money.test.ts`.\",\"ttft_ms\":1921,\"type\":\"result\",\"duration_ms\":19529,\"uuid\":\"249d6878-6923-4437-a8d8-4e6e39385f55\",\"ttft_stream_ms\":1158,\"time_to_request_ms\":250,\"first_content_frame_ms\":1158,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 17720,
+    "stop_reason": "end_turn",
+    "session_id": "c0fa2055-308c-457d-a1df-02565cc112df",
+    "total_cost_usd": 0.12106900000000001,
+    "usage": {
+      "input_tokens": 14,
+      "cache_creation_input_tokens": 13750,
+      "cache_read_input_tokens": 259105,
+      "output_tokens": 1422,
+      "output_tokens_details": {
+        "thinking_tokens": 27
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 13750,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 84,
+          "cache_read_input_tokens": 40050,
+          "cache_creation_input_tokens": 445,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 445
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 14,
+        "outputTokens": 1422,
+        "cacheReadInputTokens": 259105,
+        "cacheCreationInputTokens": 13750,
+        "webSearchRequests": 0,
+        "costUSD": 0.12106900000000001,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 27,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 8,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Added `priceRange(prices, currency)` in `src/money.ts:12` that finds the min/max and formats them with `formatPrice`, collapsing to a single price when they match, plus two new tests in `src/money.test.ts`.",
+    "ttft_ms": 1921,
+    "type": "result",
+    "duration_ms": 19529,
+    "uuid": "249d6878-6923-4437-a8d8-4e6e39385f55",
+    "ttft_stream_ms": 1158,
+    "time_to_request_ms": 250,
+    "first_content_frame_ms": 1158,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:55:21.837Z",
+  "endedAt": "2026-09-24T22:55:42.950Z",
+  "wallMs": 21114,
+  "timedOut": false
+}

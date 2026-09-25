@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/489c3c8a3679/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "7e31df11-e9ba-46e8-8123-d24a280c546e",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "9aa31ceaa3bf6694749693b0ad1a7eec5baa8c6d2e07e76ddedce070f6cc6d72",
+  "sessionId": "7e31df11-e9ba-46e8-8123-d24a280c546e",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":39414,\"stop_reason\":\"end_turn\",\"session_id\":\"7e31df11-e9ba-46e8-8123-d24a280c546e\",\"total_cost_usd\":0.1716128,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":16719,\"cache_read_input_tokens\":349654,\"output_tokens\":3477,\"output_tokens_details\":{\"thinking_tokens\":976},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16719,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":220,\"cache_read_input_tokens\":43029,\"cache_creation_input_tokens\":435,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":435},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":18,\"outputTokens\":3477,\"cacheReadInputTokens\":349654,\"cacheCreationInputTokens\":16719,\"webSearchRequests\":0,\"costUSD\":0.1716128,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":976,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":12,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Changes:\\n\\n- `src/money.ts`: `formatPrice` now takes `(cents, currency, locale)` and delegates to `Intl.NumberFormat(locale, { style: \\\"currency\\\", currency }).format(cents / 100)`, dropping the old hand-rolled sign/comma logic.\\n- `src/receipt.ts`: `receipt` takes locale as a third argument and passes it through to every `formatPrice` call.\\n- `src/money.test.ts`: updated all calls to pass a locale, and added a test comparing `formatPrice(123456, \\\"EUR\\\", \\\"de-DE\\\")` directly against native `Intl.NumberFormat` output.\",\"ttft_ms\":6123,\"type\":\"result\",\"duration_ms\":45944,\"uuid\":\"da2eba78-98b6-4ce8-a3af-fcd4cd976185\",\"ttft_stream_ms\":5625,\"time_to_request_ms\":4154,\"first_content_frame_ms\":5625,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 39414,
+    "stop_reason": "end_turn",
+    "session_id": "7e31df11-e9ba-46e8-8123-d24a280c546e",
+    "total_cost_usd": 0.1716128,
+    "usage": {
+      "input_tokens": 18,
+      "cache_creation_input_tokens": 16719,
+      "cache_read_input_tokens": 349654,
+      "output_tokens": 3477,
+      "output_tokens_details": {
+        "thinking_tokens": 976
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16719,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 220,
+          "cache_read_input_tokens": 43029,
+          "cache_creation_input_tokens": 435,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 435
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 3477,
+        "cacheReadInputTokens": 349654,
+        "cacheCreationInputTokens": 16719,
+        "webSearchRequests": 0,
+        "costUSD": 0.1716128,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 976,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 12,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Changes:\n\n- `src/money.ts`: `formatPrice` now takes `(cents, currency, locale)` and delegates to `Intl.NumberFormat(locale, { style: \"currency\", currency }).format(cents / 100)`, dropping the old hand-rolled sign/comma logic.\n- `src/receipt.ts`: `receipt` takes locale as a third argument and passes it through to every `formatPrice` call.\n- `src/money.test.ts`: updated all calls to pass a locale, and added a test comparing `formatPrice(123456, \"EUR\", \"de-DE\")` directly against native `Intl.NumberFormat` output.",
+    "ttft_ms": 6123,
+    "type": "result",
+    "duration_ms": 45944,
+    "uuid": "da2eba78-98b6-4ce8-a3af-fcd4cd976185",
+    "ttft_stream_ms": 5625,
+    "time_to_request_ms": 4154,
+    "first_content_frame_ms": 5625,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T22:18:55.505Z",
+  "endedAt": "2026-09-24T22:19:44.513Z",
+  "wallMs": 49009,
+  "timedOut": false
+}

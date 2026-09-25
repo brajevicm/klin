@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the engine moved into src/engine under the same names (0.50575ms)\n✔ the entry exports the same names, and the moved error type (1.011625ms)\n✔ the engine depends on nothing outside src/engine, and the entry depends on it (1.240583ms)\n✔ arithmetic reads as before (0.344708ms)\n✔ errors read as before (0.198459ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 90.252458\n",
+  "stderr": "",
+  "reason": ""
+}

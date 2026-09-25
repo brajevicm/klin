@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "exit": 0,
+  "command": [
+    "node",
+    "--test",
+    "check/**/*.test.ts"
+  ],
+  "stdout": "✔ the money code moved into src/money under the same names (2.865875ms)\n✔ the entry exports the moved implementations under the same names (0.503959ms)\n✔ the moved code depends on nothing outside src/money (0.828958ms)\n✔ an invoice still renders as before (0.185417ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 94.04675\n",
+  "stderr": "",
+  "reason": ""
+}

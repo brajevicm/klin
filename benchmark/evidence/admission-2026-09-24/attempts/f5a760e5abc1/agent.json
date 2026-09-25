@@ -1,0 +1,129 @@
+{
+  "flags": [
+    "--print",
+    "--output-format",
+    "json",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Bash,Edit,Write,Read,Glob,Grep,TodoWrite",
+    "--setting-sources",
+    "project,local",
+    "--settings",
+    "/Users/brajevicm/Workspace/klin/benchmark/runs/admission-2026-09-24T21-24-28/f5a760e5abc1/settings.json",
+    "--strict-mcp-config",
+    "--disable-slash-commands",
+    "--model",
+    "sonnet",
+    "--session-id",
+    "3dde1191-d88a-4a0e-b2bf-e162f719d95e",
+    "--max-budget-usd",
+    "5"
+  ],
+  "flagsSha256": "61ed4fd9b755f87cc10e256620cb9de9b0706ebff039ed843f0b7f30904c4d1a",
+  "sessionId": "3dde1191-d88a-4a0e-b2bf-e162f719d95e",
+  "exit": 0,
+  "stdout": "{\"duration_api_ms\":25180,\"stop_reason\":\"end_turn\",\"session_id\":\"3dde1191-d88a-4a0e-b2bf-e162f719d95e\",\"total_cost_usd\":0.15798119999999996,\"usage\":{\"input_tokens\":16,\"cache_creation_input_tokens\":16690,\"cache_read_input_tokens\":309596,\"output_tokens\":2927,\"output_tokens_details\":{\"thinking_tokens\":59},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":16690,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":106,\"cache_read_input_tokens\":43060,\"cache_creation_input_tokens\":375,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":375},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-sonnet-5\":{\"inputTokens\":16,\"outputTokens\":2927,\"cacheReadInputTokens\":309596,\"cacheCreationInputTokens\":16690,\"webSearchRequests\":0,\"costUSD\":0.15798119999999996,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"thinkingTokens\":59,\"canonicalModel\":\"claude-sonnet-5\",\"provider\":\"firstParty\",\"costBasis\":\"list\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"is_error\":false,\"num_turns\":15,\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"All tests pass. Fax delivery is fully removed: `deliver.ts`/`CHANNELS` now only support `email` and `portal`, the fax channel and TIFF encoder source files are deleted, the README no longer mentions fax, and the test suite checks that `fax` is rejected the same as any unknown channel.\",\"ttft_ms\":2262,\"type\":\"result\",\"duration_ms\":27618,\"uuid\":\"32ab5e63-bb98-4b26-b540-351f1d8e5065\",\"ttft_stream_ms\":1400,\"time_to_request_ms\":337,\"first_content_frame_ms\":1401,\"queued_turn_count\":0,\"result_index\":0}\n",
+  "stderr": "",
+  "agent": {
+    "duration_api_ms": 25180,
+    "stop_reason": "end_turn",
+    "session_id": "3dde1191-d88a-4a0e-b2bf-e162f719d95e",
+    "total_cost_usd": 0.15798119999999996,
+    "usage": {
+      "input_tokens": 16,
+      "cache_creation_input_tokens": 16690,
+      "cache_read_input_tokens": 309596,
+      "output_tokens": 2927,
+      "output_tokens_details": {
+        "thinking_tokens": 59
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 16690,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "not_available",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 106,
+          "cache_read_input_tokens": 43060,
+          "cache_creation_input_tokens": 375,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 375
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard"
+    },
+    "modelUsage": {
+      "claude-sonnet-5": {
+        "inputTokens": 16,
+        "outputTokens": 2927,
+        "cacheReadInputTokens": 309596,
+        "cacheCreationInputTokens": 16690,
+        "webSearchRequests": 0,
+        "costUSD": 0.15798119999999996,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "thinkingTokens": 59,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+      "spawned": 0,
+      "requested": {
+        "background": 0,
+        "foreground": 0,
+        "unset": 0
+      },
+      "started_in_background": 0,
+      "max_depth": 0,
+      "spawned_by_subagents": 0,
+      "completed": 0,
+      "failed": 0,
+      "killed": {
+        "parent": 0,
+        "user": 0,
+        "system": 0
+      },
+      "refused": {
+        "depth_limit": 0,
+        "concurrency_limit": 0,
+        "budget": 0
+      },
+      "by_type": {}
+    },
+    "is_error": false,
+    "num_turns": 15,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "All tests pass. Fax delivery is fully removed: `deliver.ts`/`CHANNELS` now only support `email` and `portal`, the fax channel and TIFF encoder source files are deleted, the README no longer mentions fax, and the test suite checks that `fax` is rejected the same as any unknown channel.",
+    "ttft_ms": 2262,
+    "type": "result",
+    "duration_ms": 27618,
+    "uuid": "32ab5e63-bb98-4b26-b540-351f1d8e5065",
+    "ttft_stream_ms": 1400,
+    "time_to_request_ms": 337,
+    "first_content_frame_ms": 1401,
+    "queued_turn_count": 0,
+    "result_index": 0
+  },
+  "startedAt": "2026-09-24T21:55:29.468Z",
+  "endedAt": "2026-09-24T21:55:59.880Z",
+  "wallMs": 30413,
+  "timedOut": false
+}

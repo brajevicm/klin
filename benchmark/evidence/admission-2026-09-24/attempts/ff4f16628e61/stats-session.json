@@ -1,0 +1,218 @@
+{
+  "activity": {
+    "klin_ms": 426,
+    "stops": 1
+  },
+  "audit": [],
+  "confidence": {
+    "errored": [],
+    "gap": null,
+    "lost": [],
+    "not_measured": [],
+    "skipped": 0,
+    "unparsed": [],
+    "unresolved": 0,
+    "unscoped": null,
+    "whole": true
+  },
+  "counts": {
+    "asked-once": 0,
+    "caught": 7,
+    "config-changed": 0,
+    "fixed-later": 0,
+    "fixed-next": 0,
+    "open": 7,
+    "set-aside": 0
+  },
+  "earlier": null,
+  "episodes": [
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "35dd03afb8b389e0",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 37,
+        "text": "src/passwordHash.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 37,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/passwordHash.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 2,
+        "resolution": "not under the roots"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "a7f044e6ff7c166c",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 39,
+        "text": "src/sessionToken.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 39,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/sessionToken.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 2,
+        "resolution": "not under the roots"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "b0b709c2733f474f",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 42,
+        "text": "rateLimit.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 42,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "rateLimit.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "no file of that name under the roots"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "1ea967f540c10247",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 48,
+        "text": "auditLog.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 48,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "auditLog.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "no file of that name under the roots"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "b014a00cb49dfea3",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 55,
+        "text": "src/userStore.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 55,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/userStore.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "47b1d033e6780fdc",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 56,
+        "text": "src/rateLimit.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 56,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/rateLimit.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots"
+      }
+    },
+    {
+      "config_changed": false,
+      "file": "CONTRIBUTING.md",
+      "first": 1790288049,
+      "gate": "doc-citations",
+      "id": "08e06619e2e1e146",
+      "key": {
+        "file": "CONTRIBUTING.md",
+        "gate": "doc-citations",
+        "line": 57,
+        "text": "src/auditLog.ts"
+      },
+      "label": "broken citation",
+      "last": 1790288049,
+      "line": 57,
+      "outcome": "open",
+      "prompt": "The team now names files in kebab case.",
+      "remedy": "Point the citation at where the file is now (a bare filename resolves when exactly one file under the roots has that name), or delete the sentence that cites it.",
+      "text": "src/auditLog.ts",
+      "time": 1790288049,
+      "tries": 0,
+      "values": {
+        "count": 1,
+        "resolution": "not under the roots"
+      }
+    }
+  ],
+  "skipped": 0,
+  "stops": 1,
+  "unreadable": 0,
+  "window": {
+    "scope": "session"
+  }
+}
