@@ -12,6 +12,7 @@ import { final, rubricSha256, type Candidate } from "../src/admission.ts";
 import {
   V3,
   V3_REPETITIONS,
+  admissionProblems,
   fixtures,
   frozen,
   manifestProblems,
@@ -296,5 +297,18 @@ test("plan --population v3 refuses a retry that could still start or a moved can
       process.env.KLIN_BIN = kept;
     }
     fs.rmSync(where, { recursive: true, force: true });
+  }
+});
+
+test("a moved apparatus does not change the verdict of a first set that leaves no gate unsettled", () => {
+  const under = room();
+  try {
+    const lineage = admissionOnDisk(under);
+    assert.deepEqual(lineage.summary.unsettled, []);
+    const held = manifestFor(lineage);
+    held.frozen.harness = { ...held.frozen.harness, treeSha256: "moved" };
+    assert.deepEqual(admissionProblems(held, placeOf(under)), []);
+  } finally {
+    fs.rmSync(under, { recursive: true, force: true });
   }
 });

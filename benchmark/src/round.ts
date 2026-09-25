@@ -942,6 +942,20 @@ function retryBlocked(first: string, held: Frozen): boolean {
 }
 
 /**
+ * The final verdict of the admission whose first set is `first`, under the apparatus `held`.
+ *
+ * Rule 6 applies only when the first set leaves a gate unsettled, no retry ran, and the apparatus
+ * moved the cohort, so no retry of it can start. `plan`, `execute` and `verify` all read it here.
+ */
+function finalUnder(first: string, held: Frozen, place: admission.Place): admission.Final {
+  const verdict = admission.final(first, place);
+  if (verdict.problems.length === 0 && verdict.source === "first set" && verdict.summary.unsettled.length > 0 && retryBlocked(first, held)) {
+    return admission.final(first, { cannotStart: true, ...place });
+  }
+  return verdict;
+}
+
+/**
  * Every way the admission set a v3 manifest names no longer gives what the manifest froze.
  *
  * The set is read again where `place` says every admission first set lives: its final verdict,
@@ -956,8 +970,7 @@ export function admissionProblems(held: Manifest, place = admission.PLACE): stri
   if (!fs.existsSync(path.join(first, "manifest.json"))) {
     return ["the admission set " + first + " that the manifest names holds no manifest"];
   }
-  const cannotStart = !fs.existsSync(path.join(first, admission.RETRY, "manifest.json")) && retryBlocked(first, held.frozen);
-  const { problems, ...now } = admission.final(first, { cannotStart, ...place });
+  const { problems, ...now } = finalUnder(first, held.frozen, place);
   const { directory: _directory, noCandidate: _noCandidate, ...frozenVerdict } = held.admission;
   return [
     ...problems,
@@ -1035,17 +1048,12 @@ export function planV3(into: string, first: string, seed: number, probes = PROBE
     return say(blocked);
   }
   const now = frozen(known);
-  let verdict = admission.final(first, place);
+  const verdict = finalUnder(first, now, place);
   if (verdict.problems.length === 0 && verdict.source === "first set" && verdict.summary.unsettled.length > 0) {
-    if (!retryBlocked(first, now)) {
-      return say(
-        "the admission leaves " + verdict.summary.unsettled.join(", ") + " unsettled. Run its one retry first:\n" +
-          "node benchmark/src/cli.ts calibrate --population admission --retry " + first,
-      );
-    }
-    // The apparatus moved since the first set, so no retry of it can start, and rule 6 admits
-    // none of its incomplete candidates.
-    verdict = admission.final(first, { cannotStart: true, ...place });
+    return say(
+      "the admission leaves " + verdict.summary.unsettled.join(", ") + " unsettled. Run its one retry first:\n" +
+        "node benchmark/src/cli.ts calibrate --population admission --retry " + first,
+    );
   }
   if (verdict.problems.length > 0) {
     return say("the admission gives no verdict a paired round may freeze from:\n" + verdict.problems.map((one) => "  " + one).join("\n"));
