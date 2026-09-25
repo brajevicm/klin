@@ -854,7 +854,10 @@ freezes. It compares that cohort with the first set's cohort:
 `execute` and `verify` do not read that source from the manifest. They read
 the cohort again from the manifest's own frozen apparatus, which `execute`
 holds the machine to before every block. So a manifest cannot claim that its
-retry could not start.
+retry could not start. They read the cohort only when the first set leaves a
+gate unsettled, as the plan does. A first set that leaves no gate unsettled
+gives the source `first set` under any apparatus, because rule 6 then has no
+incomplete candidate to decide.
 
 The plan also refuses any declared candidate whose fixture identity is not the
 identity that the first set froze. Thus a prompt, a starting tree, an oracle
