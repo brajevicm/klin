@@ -1201,7 +1201,9 @@ resolved only when every signal in the row has one of those outcomes, and an
 `label-prepare` verifies both publishable natural evidence sets and their raw
 archives, reconstructs only signal-time context from each frozen base tree,
 and writes a blinded worksheet plus a sealed join. It stops before human labels,
-synthesis and issue filing.
+synthesis and issue filing. Given one v3 evidence set and `--archive-v3`, it
+prepares the worksheet of the v3 paired round alone, held to the identity that
+`FROZEN_EVIDENCE.v3` in `src/worksheet.ts` records. No v1 or v2 row enters it.
 
 `label-synthesize` runs after a person has labeled every row and locked the
 file. It refuses to open the sealed join unless `labels.locked.json` is
@@ -1210,7 +1212,10 @@ code records, then writes `synthesis.json` and `synthesis.md` beside them: the
 site-level label counts per gate with occurrence counts, and the run-level
 intervention view per round, Active and Shadow apart, with the manifests as
 the run denominators. A label edited after unblinding fails the hash, so a
-changed analysis needs a new versioned lock.
+changed analysis needs a new versioned lock. Given the v3 evidence set alone, it
+checks the lock against `LOCKED_V3_LABELS_SHA256` instead, and while that is
+null it opens nothing. The v3 lock is committed first, and the hash in the code
+in a later commit, before any synthesis runs.
 
 `protocols/shadow-active-v2/protocol.json` is the treatment-independent design
 for the repaired round, committed before run 1: the protocol number, the frozen seed, the sample plan,

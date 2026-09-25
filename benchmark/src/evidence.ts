@@ -14,7 +14,10 @@ const PROBES = "probes";
 const FORENSIC_DIRS = ["state", "hooks", "fixtures/base", "fixtures/final", "fixtures/scoring"];
 /** A seeded report diffs this tree against the final one, so a seeded attempt must keep it. */
 const SEEDED_START = "fixtures/subject";
-const KINDS = new Set(["calibration", "publishable"]);
+const KINDS = new Set(["calibration", "publishable", "admission"]);
+type Kind = "calibration" | "publishable" | "admission";
+/** An admission set's verdict and its claim on the rubric sit beside its manifest, and the slim set keeps both. */
+const ADMISSION_FILES = ["admission.json", "claim.json"];
 
 interface Hash {
   sha256: string;
@@ -59,7 +62,7 @@ export interface EvidenceDescriptor {
   reason?: string;
   setId: string;
   recordProtocol: number;
-  kind: "calibration" | "publishable";
+  kind: Kind;
   archive: string;
   archiveSha256: string;
   archiveBytes: number;
@@ -149,7 +152,7 @@ function outside(source: string, target: string, what: string): void {
   }
 }
 
-function kindOf(read: Manifest, where: string): "calibration" | "publishable" {
+function kindOf(read: Manifest, where: string): Kind {
   if (!Number.isInteger(read.protocol)) {
     fail(where + " states no integer protocol");
   }
@@ -160,10 +163,10 @@ function kindOf(read: Manifest, where: string): "calibration" | "publishable" {
     fail(where + " states a malformed run order");
   }
   if (typeof read.kind !== "string" || !KINDS.has(read.kind)) {
-    fail(where + " states no calibration or publishable kind");
+    fail(where + " states no calibration, publishable or admission kind");
   }
-  const kind = read.kind as "calibration" | "publishable";
-  const wanted = kind === "calibration" ? false : true;
+  const kind = read.kind as Kind;
+  const wanted = kind === "publishable";
   if (read.publishable !== wanted) {
     fail(where + ": " + kind + " evidence must state publishable " + String(wanted));
   }
@@ -392,9 +395,17 @@ function setReadme(directory: string, read: Manifest, archiveName: string): void
       "",
       ...(read.publishable === false
         ? [
-            "**This set is not publishable.** It was collected to validate the apparatus, not to",
-            "measure the product, and it is excluded from #115's scorecard. Every record in it",
-            "states `publishable: false`. Do not read a product conclusion from these runs.",
+            ...(read.kind === "admission"
+              ? [
+                  "**This set is not publishable.** It is the Shadow-only v3 admission, and its verdict",
+                  "is `admission.json`. Every record in it states `publishable: false`. Admission counts",
+                  "never enter a scorecard.",
+                ]
+              : [
+                  "**This set is not publishable.** It was collected to validate the apparatus, not to",
+                  "measure the product, and it is excluded from #115's scorecard. Every record in it",
+                  "states `publishable: false`. Do not read a product conclusion from these runs.",
+                ]),
             "",
           ]
         : []),
@@ -441,7 +452,7 @@ export function prepare(source: string, into: string, archiveFile: string): Evid
   const rawManifest = manifestText(before);
 
   fs.mkdirSync(evidenceRoot, { recursive: true });
-  for (const name of ["attempts", PROBES, "manifest.json", "files.sha256", "evidence.json", "README.md"]) {
+  for (const name of ["attempts", PROBES, "manifest.json", "files.sha256", "evidence.json", "README.md", ...ADMISSION_FILES]) {
     fs.rmSync(path.join(evidenceRoot, name), { recursive: true, force: true });
   }
   fs.writeFileSync(path.join(evidenceRoot, "manifest.json"), sourceManifest.bytes);
@@ -452,6 +463,14 @@ export function prepare(source: string, into: string, archiveFile: string): Evid
     fail("the source evidence is incomplete: " + scheduled.join(", "));
   }
   copyProbes(sourceRoot, evidenceRoot, sourceManifest.value);
+  if (sourceManifest.value.kind === "admission") {
+    for (const name of ADMISSION_FILES) {
+      if (!regular(path.join(sourceRoot, name))) {
+        fail("the admission set has no " + name);
+      }
+      fs.copyFileSync(path.join(sourceRoot, name), path.join(evidenceRoot, name));
+    }
+  }
   setReadme(evidenceRoot, sourceManifest.value, path.basename(archivePath));
   archive(sourceRoot, archivePath);
 
@@ -480,12 +499,12 @@ function problemsForDescriptor(read: EvidenceDescriptor, manifest: Manifest, dir
     return ["evidence.json is not an object"];
   }
   if (!KINDS.has(read.kind)) {
-    problems.push("evidence.json states no calibration or publishable kind");
+    problems.push("evidence.json states no calibration, publishable or admission kind");
   }
   if (read.kind !== manifest.kind) {
     problems.push("evidence.json and manifest.json state different kinds");
   }
-  const wanted = read.kind === "calibration" ? false : true;
+  const wanted = read.kind === "publishable";
   if (manifest.publishable !== wanted) {
     problems.push("manifest.json confuses calibration and publishable evidence");
   }
@@ -554,6 +573,11 @@ function extract(archiveFile: string): { directory: string; state: EvidenceState
 
 function slimFiles(directory: string): Map<string, string> {
   const expected = new Map<string, string>();
+  for (const name of ADMISSION_FILES) {
+    if (regular(path.join(directory, name))) {
+      expected.set(name, path.join(directory, name));
+    }
+  }
   // The probe evidence is copied byte for byte, so every file of it is bound to the archive the
   // same way an attempt's slim files are.
   const probesRoot = path.join(directory, PROBES);
@@ -685,6 +709,11 @@ export function verify(directory: string, archiveFile = ""): string[] {
     kindOf(manifest, path.join(directory, "manifest.json"));
   } catch (why) {
     problems.push(String(why));
+  }
+  if (manifest.kind === "admission") {
+    for (const name of ADMISSION_FILES.filter((one) => !regular(path.join(directory, one)))) {
+      problems.push("the admission evidence has no " + name);
+    }
   }
 
   const manifestFile = path.join(directory, "manifest.json");

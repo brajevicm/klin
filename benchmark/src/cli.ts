@@ -34,7 +34,9 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts scorecard <round-dir> [--out FILE]
   node benchmark/src/cli.ts audit <evidence-dir> [--archive FILE] [--out FILE]
   node benchmark/src/cli.ts label-prepare <v1-evidence> <v2-evidence> --archive-v1 FILE --archive-v2 FILE --into DIR
+  node benchmark/src/cli.ts label-prepare <v3-evidence> --archive-v3 FILE --into DIR
   node benchmark/src/cli.ts label-synthesize <labeling-dir> <v1-evidence> <v2-evidence>
+  node benchmark/src/cli.ts label-synthesize <labeling-dir> <v3-evidence>
   node benchmark/src/cli.ts evidence-prepare <runs-dir> --into DIR --archive FILE
   node benchmark/src/cli.ts evidence-verify <evidence-dir> [--archive FILE]
 
@@ -243,21 +245,23 @@ function auditEvidence(directory: string, args: string[]): number {
 }
 
 function prepareWorksheet(args: string[]): number {
-  const [v1, v2] = positionals(args);
+  const given = positionals(args);
   const into = flag(args, "--into", "");
-  const archiveV1 = flag(args, "--archive-v1", "");
-  const archiveV2 = flag(args, "--archive-v2", "");
-  if (!v1 || !v2 || into === "" || archiveV1 === "" || archiveV2 === "") {
+  const inputs: worksheet.EvidenceInput[] =
+    given.length === 1
+      ? [{ name: "v3", directory: given[0], archive: flag(args, "--archive-v3", "") }]
+      : [
+          { name: "v1", directory: given[0] ?? "", archive: flag(args, "--archive-v1", "") },
+          { name: "v2", directory: given[1] ?? "", archive: flag(args, "--archive-v2", "") },
+        ];
+  if (into === "" || inputs.some((one) => one.directory === "" || one.archive === "")) {
     process.stdout.write(
-      "label-prepare needs v1 and v2 evidence directories, --archive-v1 FILE, --archive-v2 FILE and --into DIR\n\n" + USAGE,
+      "label-prepare needs v1 and v2 evidence directories with --archive-v1 FILE and --archive-v2 FILE, or one v3 evidence directory with --archive-v3 FILE, and --into DIR\n\n" + USAGE,
     );
     return 2;
   }
   try {
-    const read = worksheet.prepare([
-      { name: "v1", directory: v1, archive: archiveV1 },
-      { name: "v2", directory: v2, archive: archiveV2 },
-    ], into);
+    const read = worksheet.prepare(inputs, into);
     process.stdout.write(
       "prepared blinded worksheet with " +
         String(read.counts.includedRecords) +
@@ -275,13 +279,13 @@ function prepareWorksheet(args: string[]): number {
 }
 
 function synthesizeLabels(args: string[]): number {
-  const [labeling, v1, v2] = positionals(args);
-  if (!labeling || !v1 || !v2) {
-    process.stdout.write("label-synthesize needs a labeling directory and the v1 and v2 evidence directories\n\n" + USAGE);
+  const [labeling, ...sets] = positionals(args);
+  if (!labeling || (sets.length !== 1 && sets.length !== 2)) {
+    process.stdout.write("label-synthesize needs a labeling directory and the v1 and v2 evidence directories, or the v3 one\n\n" + USAGE);
     return 2;
   }
   try {
-    const read = synthesis.synthesize(labeling, { v1, v2 });
+    const read = synthesis.synthesize(labeling, sets.length === 1 ? { v3: sets[0] } : { v1: sets[0], v2: sets[1] });
     process.stdout.write(
       "verified locked labels " + read.labelsSha256 + " and wrote synthesis.json and synthesis.md: " +
         synthesis.LABELS.map((label) => String(read.labels[label]) + " " + label).join(", ") +

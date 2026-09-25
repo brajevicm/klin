@@ -21,7 +21,9 @@ node benchmark/src/cli.ts evidence-verify benchmark/evidence/<set> \
 
 The committed set contains the manifest, a per-file SHA-256 manifest, the
 descriptor, and the machine-readable files needed for the scorecard and run
-accounting. The external archive contains the complete forensic tree,
+accounting. An admission set (kind `admission`, publishable false) also keeps its
+`admission.json` verdict and its `claim.json`, and `evidence-verify` binds both
+to the raw archive. The external archive contains the complete forensic tree,
 including raw hooks, klin state and fixture copies. `evidence-prepare` hashes
 the source before and after packaging and writes no authoritative descriptor
 when the source changed.

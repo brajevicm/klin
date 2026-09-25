@@ -6,7 +6,7 @@ import path from "node:path";
 import { CURRENT_PROTOCOL } from "../src/protocol.ts";
 import { digest, sha256 } from "../src/trees.ts";
 import { prepare as prepareEvidence } from "../src/evidence.ts";
-import { prepare, type EvidenceInput, type FrozenEvidence } from "../src/worksheet.ts";
+import { prepare, type EvidenceInput, type FrozenEvidence, type Round } from "../src/worksheet.ts";
 
 interface SetOptions {
   newSource?: string;
@@ -14,6 +14,7 @@ interface SetOptions {
   signalLine?: number;
   tool?: string;
   stop?: boolean;
+  reported?: string;
 }
 
 function set(root: string, id: string, arm: string, options: SetOptions = {}): EvidenceInput {
@@ -98,7 +99,7 @@ function set(root: string, id: string, arm: string, options: SetOptions = {}): E
     );
     fs.writeFileSync(
       path.join(attempt, "hooks", "2", "stderr"),
-      "src/main.ts:" + String(signalLine) + " cc 9, 1 lines, was cc 8, 1 lines " + signalText + "\n",
+      "src/main.ts:" + String(signalLine) + " cc 9, 1 lines, was cc 8, 1 lines " + (options.reported ?? signalText) + "\n",
     );
   }
   fs.writeFileSync(
@@ -110,14 +111,15 @@ function set(root: string, id: string, arm: string, options: SetOptions = {}): E
       order: [{ family: "demo", variant: "risk", arm, order: 0, repetition: 1, trialId: id }],
     }) + "\n",
   );
-  const directory = path.join(root, id, id === "v1" ? "publishable-2026-09-18" : "v2-2026-09-20");
+  const name: Round = id === "v1" || id === "v3" ? id : "v2";
+  const directory = path.join(root, id, { v1: "publishable-2026-09-18", v2: "v2-2026-09-20", v3: "v3-2026-09-25" }[name]);
   const archive = path.join(root, id + ".tar.gz");
   prepareEvidence(runs, directory, archive);
-  return { name: id === "v1" ? "v1" : "v2", directory, archive };
+  return { name, directory, archive };
 }
 
-function expectations(inputs: EvidenceInput[]): Record<"v1" | "v2", FrozenEvidence> {
-  const result = {} as Record<"v1" | "v2", FrozenEvidence>;
+function expectations(inputs: EvidenceInput[]): Partial<Record<Round, FrozenEvidence>> {
+  const result: Partial<Record<Round, FrozenEvidence>> = {};
   for (const input of inputs) {
     const descriptor = JSON.parse(fs.readFileSync(path.join(input.directory, "evidence.json"), "utf8")) as Record<string, unknown>;
     result[input.name] = {
@@ -265,6 +267,39 @@ test("ambiguous replacement chains are rejected", () => {
       () => prepareSynthetic(inputs, path.join(root, "worksheet")),
       /has ambiguous replacements for v1: v1-child-1, v1-child-2/,
     );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a v3 worksheet reads the v3 round alone and stays blind to arm and order", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-worksheet-v3-"));
+  try {
+    const v3 = set(root, "v3", "shadow");
+    const into = path.join(root, "labeling");
+    const read = prepareSynthetic([v3], into);
+    assert.equal(read.counts.worksheetRows, 1);
+    const worksheet = fs.readFileSync(path.join(into, "worksheet.json"), "utf8");
+    for (const hidden of ["shadow", "active", "\"order\"", "\"arm\"", "oracle", "\"v3\""]) {
+      assert.equal(worksheet.includes(hidden), false, hidden + " reached the worksheet");
+    }
+    assert.match(fs.readFileSync(path.join(into, "join.sealed.json"), "utf8"), /"round": "v3"/);
+    assert.throws(() => prepare([v3], path.join(root, "unfrozen"), {}), /no frozen identity is recorded for the v3 evidence/);
+    assert.throws(() => prepare([v3, set(root, "v1", "active")], path.join(root, "mixed")), /or one v3 evidence set/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a stop whose report clipped a long declaration still gives the signal-time context", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-worksheet-clip-"));
+  try {
+    const long = "export function main(name: string, text: string, rows: string[][]): number {";
+    const source = long + " return 2; }\n";
+    const v3 = set(root, "v3", "active", { newSource: source, signalText: long, reported: Array.from(long).slice(0, 70).join("") });
+    const read = prepareSynthetic([v3], path.join(root, "labeling"));
+    assert.equal(read.rows[0].context.path, "src/main.ts");
+    assert.match(read.rows[0].context.measurement, /cc 9/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

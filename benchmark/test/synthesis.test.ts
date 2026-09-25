@@ -118,3 +118,35 @@ test("the synthesis verifies the locked labels before it joins and reports both 
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("a v3 synthesis stays sealed until a v3 lock is recorded and reads the v3 round alone", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-synthesis-v3-"));
+  try {
+    const v3 = manifest(root, "v3", [
+      { arm: "active", variant: "risk", trialId: "a-risk" },
+      { arm: "active", variant: "control", trialId: "a-control" },
+      { arm: "shadow", variant: "risk", trialId: "s-risk" },
+    ]);
+    const directory = path.join(root, "labeling");
+    fs.mkdirSync(directory);
+    const join = {
+      evidence: [{ round: "v3", setId: "v3-set", manifestSha256: sha256(fs.readFileSync(path.join(v3, "manifest.json"))) }],
+      rows: [
+        { worksheetId: "S001", occurrences: [occurrence("v3", "a-risk", "active", "risk", "complexity"), occurrence("v3", "s-risk", "shadow", "risk", "complexity")] },
+        { worksheetId: "S002", occurrences: [occurrence("v3", "a-control", "active", "control", "doc-citations")] },
+      ],
+    };
+    fs.writeFileSync(path.join(directory, "join.sealed.json"), JSON.stringify(join) + "\n");
+    const labels = JSON.stringify({ S001: "valid-regression", S002: "undesired" }) + "\n";
+    fs.writeFileSync(path.join(directory, "labels.locked.json"), labels);
+    fs.writeFileSync(path.join(directory, "labels.locked.sha256"), sha256(labels) + "  labels.locked.json\n");
+    assert.throws(() => synthesize(directory, { v3 }), /no locked v3 label hash is recorded/);
+    assert.throws(() => synthesize(directory, { v1: v3, v2: v3 }, sha256(labels)), /sealed join names the rounds v3/);
+    const read = synthesize(directory, { v3 }, sha256(labels));
+    assert.deepEqual(read.runs.v3?.active, { runs: 2, undesired: 1, controls: 1, controlsUndesired: 1, risk: 1, riskValid: 1 });
+    assert.deepEqual(read.sites.map((row) => [row.gate, row.occurrences.v3, row.occurrences.v1]), [["complexity", 2, undefined], ["doc-citations", 1, undefined]]);
+    assert.match(fs.readFileSync(path.join(directory, "synthesis.md"), "utf8"), /v3 paired round only: `v3-set`/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
