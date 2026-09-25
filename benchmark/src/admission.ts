@@ -15,6 +15,7 @@ import {
   crashes,
   normalizedFlags,
   recordProblems,
+  refusals,
   records,
   runOrder,
   shuffled,
@@ -906,6 +907,10 @@ function conclude(into: string, rows: Row[], token: string): number {
         String(one.control.clean) + "/" + String(one.control.runs) + " clean  " + one.verdict + "\n",
     );
   }
+  const refused = refusals(records(into));
+  if (refused.length > 0) {
+    process.stdout.write("host refusals for a person to read:\n" + refused.map((one) => "  " + one).join("\n") + "\n");
+  }
   if (summary.unsettled.length > 0) {
     process.stdout.write("unsettled gates, with an earlier candidate this set has no verdict for, until its retry: " + summary.unsettled.join(", ") + "\n");
   }
@@ -939,6 +944,10 @@ export function resume(directory: string): number {
     return refuse(directory + " already states its verdict, so it has nothing to resume");
   }
   const manifest = readManifest(directory);
+  const rows = unfinished(directory);
+  if (rows.length === 0) {
+    return conclude(directory, rows, token);
+  }
   if (!startable()) {
     return refuse("the set is not resumed");
   }
@@ -946,7 +955,6 @@ export function resume(directory: string): number {
   if (JSON.stringify(apparatus) !== JSON.stringify(manifest.apparatus)) {
     return refuse("the apparatus moved since " + directory + " started, so its remaining rows cannot run under the apparatus it froze");
   }
-  const rows = unfinished(directory);
   for (const row of rows) {
     const partial = path.join(directory, row.trialId);
     if (fs.existsSync(partial)) {

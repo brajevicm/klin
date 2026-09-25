@@ -370,3 +370,24 @@ test("a retry that cannot start admits none of the first set's incomplete candid
   assert.equal(final(first, { cannotStart: true, ...rootOf(first) }).source, "retry", "a retry that ran and verified is the verdict, whatever the flag says");
   fs.rmSync(first, { recursive: true, force: true });
 });
+
+test("a host refusal fails no record, and a finished set gets its verdict under any apparatus", () => {
+  const { where, manifest } = setOnDisk([candidate("a", "complexity", 1)], { a: admitted });
+  const row = manifest.order[0];
+  const refused = recordFor(row, row.trialId, risk(true));
+  refused.friction.hostDenials = 2;
+  write(where, row.trialId, refused);
+  assert.deepEqual(verify(where), []);
+  const quiet = process.stdout.write.bind(process.stdout);
+  const wrote: string[] = [];
+  process.stdout.write = ((text: string) => wrote.push(text) > 0) as typeof process.stdout.write;
+  try {
+    assert.equal(resume(where), 0, wrote.join(""));
+  } finally {
+    process.stdout.write = quiet;
+  }
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(where, "admission.json"), "utf8")), summarize(where));
+  assert.match(wrote.join(""), new RegExp(row.trialId + ": the host refused 2 tool call"));
+  assert.equal(fs.existsSync(path.join(where, LOCK)), false);
+  fs.rmSync(where, { recursive: true, force: true });
+});

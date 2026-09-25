@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { records, verify } from "./calibrate.ts";
+import { records, refusals, verify } from "./calibrate.ts";
 import { VARIANTS } from "./catalogue.ts";
 import type { RunRecord } from "./record.ts";
 import * as seededRound from "./seeded.ts";
@@ -187,6 +187,10 @@ export function write(directory: string): string {
     problems.length === 0
       ? "Every record holds the protocol's contract."
       : problems.map((one) => "- " + one).join("\n"),
+    "",
+    "## Host refusals for a person to read",
+    "",
+    refusals(all).map((one) => "- " + one).join("\n") || "No host refused a tool call.",
     "",
     "## Where the arms named different models",
     "",

@@ -524,18 +524,26 @@ export function recordProblems(record: RunRecord): string[] {
   if (record.oracle.reason.includes("klin")) {
     problems.push("the oracle named klin");
   }
-  // Under the trial's confinement a denial has two readings, and the record cannot tell them
-  // apart: the sandbox refused a subject that went looking, or it refused a call the task
-  // needed. The first is a fact about the subject and the second changes what was measured, so
-  // a person reads `hooks` and `isolation.outside` and decides.
-  if (record.friction.hostDenials > 0) {
-    problems.push(
-      "the host refused " +
-        String(record.friction.hostDenials) +
-        " tool call(s) of its own, so either the subject went looking or the trial did not run the task the fixture states",
-    );
-  }
   return problems;
+}
+
+/**
+ * The valid runs whose host refused a tool call of its own, for a person to read.
+ *
+ * Under the trial's confinement a denial has two readings, and the record cannot tell them
+ * apart: the sandbox refused a subject that went looking, or it refused a call the task
+ * needed. The validity terms and `isolation.outside` already judge the first, so a refusal
+ * does not fail the record. A person reads `hooks` and the host's own denials and decides.
+ */
+export function refusals(held: RunRecord[]): string[] {
+  return held
+    .filter((record) => record.infrastructure.valid && record.friction.hostDenials > 0)
+    .sort((a, b) => a.trialId.localeCompare(b.trialId))
+    .map(
+      (record) =>
+        record.family + "/" + record.variant + "/" + record.arm + " " + record.trialId + ": the host refused " +
+        String(record.friction.hostDenials) + " tool call(s) of its own",
+    );
 }
 
 /** Every way a calibration set fails what the protocol requires of it. */
