@@ -35,6 +35,7 @@ import {
   preflight,
   recordProblems,
   records,
+  refusals,
   shuffledBy,
   trialId,
   type Crash,
@@ -1441,6 +1442,7 @@ export interface Scorecard {
   runs: { scheduled: number; attempts: number; valid: number; invalid: number; replacements: number; crashed: number };
   invalidByArm: Record<string, Record<string, number>>;
   verification: string[];
+  refusals: string[];
   planned: GateBlocks[];
   cells: Cell[];
   exposure: {
@@ -1644,6 +1646,7 @@ export function scorecard(directory: string, place = admission.PLACE): Scorecard
     },
     invalidByArm,
     verification: verify(directory, place),
+    refusals: refusals(held),
     planned,
     cells: [...cells.values()].sort((a, b) => (a.family + a.variant + a.arm).localeCompare(b.family + b.variant + b.arm)),
     exposure: {
@@ -1737,6 +1740,10 @@ export function markdown(card: Scorecard): string {
     "## Verification",
     "",
     card.verification.length === 0 ? "Every record holds the frozen manifest." : card.verification.map((one) => "- " + one).join("\n"),
+    "",
+    "### Host refusals for a person to read",
+    "",
+    card.refusals.length === 0 ? "No host refused a tool call." : card.refusals.map((one) => "- " + one).join("\n"),
     "",
     "## Planned blocks by gate",
     "",

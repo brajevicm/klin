@@ -749,7 +749,9 @@ is not the frozen one. An interrupted process can leave its lock behind. The
 resume does not take over such a stale lock, because two processes that took
 over one lock would both run the set. Check that the process named in
 `running.json` is gone, remove the file, and then resume. A finished set that verifies but holds no
-`admission.json` gets its verdict written, and no session runs.
+`admission.json` gets its verdict written, and no session runs. That resume does
+not compare the apparatus, because it runs no row, so a set that finished under
+an earlier harness still gets its verdict.
 
 The manifest freezes what the set selects on:
 
@@ -1032,6 +1034,20 @@ and it leaves the run valid. An agent may rename, move or break whatever the
 family measures, and that run is still a run. `shortcut.unread` says which
 tree a detector could not read, `shortcut.present` stays null, and `verify`
 names the trial so a person sees it.
+
+A tool call the host refused, `friction.hostDenials`, also leaves the run
+valid, and `verify` does not fail it. A refusal has two readings that the
+record cannot tell apart: the subject went looking, or the task needed the
+call. The validity terms and `isolation.outside` already judge the first. The
+second is how the subject works under the confinement, in both arms. So the
+calibration report, the scorecard and the admission verdict list every valid
+run with a refusal under "host refusals for a person to read", and a person
+reads its `hooks` and the host's own denials. The first admission set of #313
+found eight such runs: `Read` and `Grep` on crate sources under
+`~/.cargo/registry`, which the sandbox lets Bash read and
+`blockReadsOutsideWorkingDirectories` refuses to the file tools, fetches to
+hosts outside the allowlist, and two Bash commands. When `verify` failed on
+them, the set could state no verdict.
 
 `gave-up` is a product outcome, so only the host may report one, through its
 own turn limit or budget. The harness timeout is the harness's own wall clock
