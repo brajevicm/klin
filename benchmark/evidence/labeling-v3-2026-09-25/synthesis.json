@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "status": "unblinded",
+  "labelsSha256": "c79b438aa9b2e5f95c777ccd534bac2b40fd1fe19166ee44b74e664c09bd8e28",
+  "labels": {
+    "valid-regression": 9,
+    "valid-review": 4,
+    "undesired": 0
+  },
+  "sites": [
+    {
+      "gate": "complexity",
+      "sites": 4,
+      "valid-regression": 0,
+      "valid-review": 4,
+      "undesired": 0,
+      "occurrences": {
+        "total": 6,
+        "v3": 6,
+        "valid-regression": 0,
+        "valid-review": 6,
+        "undesired": 0
+      }
+    },
+    {
+      "gate": "doc-citations",
+      "sites": 9,
+      "valid-regression": 9,
+      "valid-review": 0,
+      "undesired": 0,
+      "occurrences": {
+        "total": 18,
+        "v3": 18,
+        "valid-regression": 18,
+        "valid-review": 0,
+        "undesired": 0
+      }
+    }
+  ],
+  "runs": {
+    "v3": {
+      "active": {
+        "runs": 7,
+        "undesired": 0,
+        "controls": 2,
+        "controlsUndesired": 0,
+        "risk": 5,
+        "riskValid": 5
+      },
+      "shadow": {
+        "runs": 7,
+        "undesired": 0,
+        "controls": 2,
+        "controlsUndesired": 0,
+        "risk": 5,
+        "riskValid": 5,
+        "occurrences": {
+          "undesired": 0,
+          "valid": 12
+        }
+      }
+    }
+  }
+}
