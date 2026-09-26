@@ -11,9 +11,8 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
-Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
-The remote URL still says `detent`, which GitHub redirects to `klin`, so no command needs
-`--repo`.
+Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone,
+so no command needs `--repo`.
 
 ## Pull requests as a triage surface
 

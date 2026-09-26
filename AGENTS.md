@@ -38,6 +38,19 @@ Do not edit `klin.json` or the hooks to make a gate pass, and do not add an
 entry to the `accepted` list. That list records debt a person accepted. Only a
 person writes it, in a reviewed commit. A gate that fails names code to fix.
 
+## Work and verification
+
+Work each ticket on its own branch and land it through a pull request. Run
+the tests the change touches, and write in the pull request which tests ran
+and which did not. The owner runs the full Rust suite and the `KLIN_PERF_ROW`
+rows. Work confined to `benchmark/` runs
+`node --test 'benchmark/test/**/*.test.ts'` and
+`node benchmark/src/cli.ts selftest` instead of Rust tests.
+
+A ticket's evidence label, such as "false positive", is a claim. Before it
+drives a gate change, read the run's `record.json` under
+`benchmark/evidence/<round>/attempts/<id>/` and the ADRs that cite the run.
+
 ## Agent skills
 
 ### Issue tracker
