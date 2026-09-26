@@ -3636,7 +3636,11 @@ structure. Configured Rust and TypeScript module families exercise
 with the current binary, the dense rows also write a `layering` section with
 one layer per language and `acyclic` set, so every row builds both module
 graphs and finds their cycles, and each gate row prints `graph_modules`,
-`graph_dependencies` and `graph_ms`. The warm hook asserts that `layering`
+`graph_sources`, `graph_dependencies`, `graph_edges`, `graph_ms` and
+`graph_dispatches_<language>`, so a row tells semantic modules from the
+physical files they hold, and dependency sites from the distinct module pairs
+those sites join. The `public-api` row also prints
+`surface_dispatches_<language>`. The warm hook asserts that `layering`
 reads and parses no source of its own, because it takes every structural
 outcome an earlier gate of the stop already held. A binary named by
 `KLIN_BIN` reads no `layering` section, so its rows leave the section out.
@@ -3671,9 +3675,12 @@ of the changed files' base paths into it, its removal, and `worktree prune`.
 Those medians are an estimate of a candidate, not a measurement of klin. The `dead-symbols` row also
 prints the `footprint` group of 11.2, each counter as `footprint_<name>` and
 each type size as `footprint_size_<name>`, so one row carries the population,
-sparsity and byte proxies of the facts that run held. A row that runs one
+sparsity and byte proxies of the facts that run held. `KLIN_PERF_CASE=warm20` or `warm100` runs
+one targeted warm scenario of either dense row, so a 1M warm row needs no cold
+or strict run. A row that runs one
 targeted warm scenario prints the structural cache's file count and bytes
-after its stops, where a full row prints them beside the peak memory. A second warm hook
+after its stops and the peak RSS of one more warm hook, where a full row
+prints them beside the peak memory. A second warm hook
 row removes the structural cache of 8.4 before each stop, so it measures a
 stop that extracts the base and writes the cache, beside the first row's
 stop that reads it. After the rows, one untimed stop writes the structural
