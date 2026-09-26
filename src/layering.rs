@@ -620,7 +620,9 @@ fn edges(
     let mut names = Names::new(side);
     let graph = &side.graph;
     for (at, dependency) in graph.dependencies.iter().enumerate() {
-        let Some(verdict) = verdict(policy, placed, cycles, graph, dependency) else {
+        let Some(verdict) = verdict(policy, placed, cycles, graph, dependency).filter(|verdict| {
+            verdict.forbidden.is_some() || verdict.cyclic || verdict.straddled.is_some()
+        }) else {
             continue;
         };
         let file = graph.source(dependency);
@@ -1086,6 +1088,21 @@ mod tests {
         assert_eq!(forbidden.count(), 6);
         assert_eq!(edges.len(), 6 + count * 2);
         assert!(ambiguous.is_empty());
+    }
+
+    /// A site the section allows and no cycle closes names no module, so a passing graph pays
+    /// for no report name. #221.
+    #[test]
+    fn an_allowed_site_names_no_module() {
+        let modules = vec![module("a/x.rs", &["a/x.rs"]), module("a/y.rs", &["a/y.rs"])];
+        let side = side(modules, vec![site(0, 1, 0, 1)]);
+        let policy = policy(&[]);
+        let placed = policy.placed(&side.graph);
+        let cycles = policy.cycles(&side, &placed).unwrap();
+        work();
+        let (edges, ambiguous) = edges(&policy, (&side, &placed), Some(&cycles));
+        assert_eq!(work()[NAMED], 0);
+        assert!(edges.is_empty() && ambiguous.is_empty());
     }
 
     /// A module whose files straddle two layers, or the scope, is never placed by one of them:

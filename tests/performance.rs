@@ -124,16 +124,13 @@ fn performance_fixture() {
     let case = perf_case();
     match std::env::var("KLIN_PERF_ROW").as_deref() {
         Err(_) => {
-            require_300k_case(case);
+            require_full_case(case);
             base_rows();
         }
         Ok("structural_300k") => run_fixture(5_000, DENSE_300K, case),
-        Ok("structural_1m") => {
-            require_300k_case(case);
-            run_fixture(5_000, DENSE_1M, PerfCase::Full);
-        }
+        Ok("structural_1m") => run_fixture(5_000, DENSE_1M, case),
         Ok("source_areas") => {
-            require_300k_case(case);
+            require_full_case(case);
             source_area_rows();
         }
         Ok(other) => {
@@ -142,10 +139,10 @@ fn performance_fixture() {
     }
 }
 
-fn require_300k_case(case: PerfCase) {
+fn require_full_case(case: PerfCase) {
     assert!(
         case == PerfCase::Full,
-        "KLIN_PERF_CASE=warm20 or warm100 requires KLIN_PERF_ROW=structural_300k"
+        "KLIN_PERF_CASE=warm20 or warm100 requires KLIN_PERF_ROW=structural_300k or structural_1m"
     );
 }
 
@@ -774,6 +771,11 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         _ => {
             let (files, bytes) = fixture.structural_cache();
             println!("structural cache: files={files}, bytes={bytes}");
+            let rss = peak_rss(fixture, &["gate", "--hook", "--changed"]);
+            println!(
+                "resource: warm_hook_peak_rss_kb={}",
+                rss.map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
+            );
             let experiment = worktree_experiment(fixture.tree.root())
                 .into_iter()
                 .map(|(name, ms)| format!("{name}={ms}"))
@@ -1026,6 +1028,15 @@ fn work_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Value) {
         ),
     ] {
         counters(times, name, &gate[group], group, fields);
+    }
+    for group in ["graph", "surface"] {
+        counters(
+            times,
+            name,
+            &gate[group]["dispatches"],
+            &format!("{group}_dispatches"),
+            &["rust", "typescript"],
+        );
     }
 }
 
