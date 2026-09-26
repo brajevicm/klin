@@ -48,8 +48,8 @@ rows. Work confined to `benchmark/` runs
 `node benchmark/src/cli.ts selftest` instead of Rust tests.
 
 A ticket's evidence label, such as "false positive", is a claim. Before it
-drives a gate change, read the run's `record.json` under
-`benchmark/evidence/<round>/attempts/<id>/` and the ADRs that cite the run.
+drives a gate change, read the run's record in its attempt directory under
+`benchmark/evidence/` and the ADRs that cite the run.
 
 ## Agent skills
 
