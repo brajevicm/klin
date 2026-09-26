@@ -110,7 +110,7 @@ impl Adapter for Cursor {
             .parent()
             .is_some_and(|dir| dir.ends_with("plugins/local"));
         let found = match copied {
-            true => "a klin plugin copy is at",
+            true => "a local klin plugin is at",
             false => "Cursor installed the klin plugin at",
         };
         format!(

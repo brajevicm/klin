@@ -148,8 +148,8 @@ pub fn claim(at: &Path, identity: &str) -> Option<Claim> {
     if std::fs::create_dir_all(&dir).is_err() {
         return Some(Claim(None));
     }
-    swept(&dir);
     let path = dir.join(format!("{:016x}", hash(identity.as_bytes())));
+    swept(&dir, &path);
     let mut open = std::fs::OpenOptions::new();
     open.write(true);
     if let Ok(file) = open.clone().create_new(true).open(&path) {
@@ -186,12 +186,18 @@ fn settled_within(file: &std::fs::File, window: Duration) -> bool {
         .is_some_and(|age| age < window)
 }
 
-/// Every claim no copy holds that finished longer ago than any copy could still arrive.
-fn swept(dir: &Path) {
+/// Every claim no copy holds that finished longer ago than any copy could still arrive, except
+/// this event's own: another copy of it may have opened that file already, and a new file under
+/// the same name would let both copies act.
+fn swept(dir: &Path, own: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
-    for path in entries.flatten().map(|entry| entry.path()) {
+    for path in entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path != own)
+    {
         let Ok(file) = std::fs::OpenOptions::new().write(true).open(&path) else {
             continue;
         };

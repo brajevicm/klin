@@ -241,7 +241,7 @@ fn the_same_stop_again_after_the_copies_settled_is_gated() {
     );
 
     run(&tree, &["gate", "--hook", "--changed"], &stop);
-    std::thread::sleep(std::time::Duration::from_millis(2100));
+    std::thread::sleep(std::time::Duration::from_millis(2500));
     run(&tree, &["gate", "--hook", "--changed"], &stop);
 
     assert_eq!(journal(&tree, "stop").len(), 2);

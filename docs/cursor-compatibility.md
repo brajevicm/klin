@@ -64,3 +64,13 @@ Cursor 3.20.21 accepted `permission: ask` on `beforeShellExecution` and still
 proceeded under one verified configuration. That is a host enforcement gap,
 so klin refuses the operation until Cursor provides an enforced question
 channel.
+
+## Still to probe: two copies in one Cursor session
+
+Cursor runs the hooks in Claude Code's settings files beside its own by
+default, so a repository that commits klin's hooks for both hosts runs two
+copies in Cursor. Spec 9.8 makes one copy take each event only when both
+copies read the same identity fields. What Cursor sends to an imported Claude
+Code hook, whether it loads the Claude Code klin plugin, and whether an empty
+answer keeps the other copy's `followup_message` are not yet measured.
+`HOST_COMPATIBILITY.md` lists them under "Event identity".
