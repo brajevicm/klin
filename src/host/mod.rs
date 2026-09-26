@@ -32,6 +32,32 @@ pub enum HookFile {
     Flat { version: u64 },
 }
 
+/// The fields that name one Claude Code or Codex event, the same in every copy of klin's hooks
+/// the host runs for it. Claude Code names the prompt `prompt_id` and Codex names the turn
+/// `turn_id`; a stop under one prompt differs from the stop before it in `stop_hook_active` or
+/// the message it ends on. Measured on Claude Code 2.1.283 and Codex 0.157.1. Spec 9.8.
+const CLAUDE_CODE_AND_CODEX_IDENTITY: &[&str] = &[
+    "session_id",
+    "hook_event_name",
+    "prompt_id",
+    "turn_id",
+    "tool_use_id",
+    "source",
+    "stop_hook_active",
+    "last_assistant_message",
+];
+
+/// The fields that scope an event within its session: a prompt, a turn, a message, a tool call,
+/// or what started the session. A payload that names none of them cannot tell a copy of one
+/// prompt from the next prompt, so it names no event to share. Spec 9.8.
+const SCOPED: &[&str] = &[
+    "prompt_id",
+    "turn_id",
+    "generation_id",
+    "tool_use_id",
+    "source",
+];
+
 /// The shared plugin hook and both generated routes must cover every tool either host emits.
 const CLAUDE_CODE_AND_CODEX_MATCHER: &str =
     "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
@@ -95,13 +121,13 @@ pub trait Adapter: Sync {
         HookFile::Nested
     }
     /// The settings file that enables klin's plugin for a write into `root`, or into the home
-    /// directory when `shared`. The plugin carries the hooks itself, so the file klin would
-    /// write must then stay as it is. Section 19.3.
+    /// directory when `shared`. The plugin carries the hooks itself, so on this machine one of
+    /// the two copies yields on each event. Section 19.3, 9.8.
     fn plugin_enabled(&self, root: &Path, shared: bool) -> Option<PathBuf>;
-    /// What an install says when `proof` shows klin's plugin already carries the hooks.
-    fn plugin_owns(&self, proof: &Path) -> String {
+    /// What an install says when `proof` shows klin's plugin also carries the hooks.
+    fn plugin_serves(&self, proof: &Path) -> String {
         format!(
-            "hooks supplied by the klin plugin, which {} enables.",
+            "the klin plugin, which {} enables, also serves this host",
             proof.display()
         )
     }
@@ -109,6 +135,10 @@ pub trait Adapter: Sync {
     /// under `hook_event_name`; the harness protocol of 9.7 names its own field.
     fn event_name(&self, payload: &Value) -> String {
         text(payload.get("hook_event_name"))
+    }
+    /// The payload fields whose values name one event. Spec 9.8.
+    fn identity_fields(&self) -> &'static [&'static str] {
+        CLAUDE_CODE_AND_CODEX_IDENTITY
     }
     /// Whether an event with no `--host` has this host's shape.
     fn placed(&self, payload: &Value) -> bool;
@@ -173,6 +203,9 @@ pub struct Event {
     /// The text of a `UserPromptSubmit` event. Empty for every other event and for a host that
     /// sends none. Spec 9.6.
     pub prompt: String,
+    /// What names this event in every copy of klin's hooks the host runs for it, so one copy
+    /// takes it and the others yield. Empty when the event names no session. Spec 9.8.
+    pub identity: String,
 }
 
 impl Event {
@@ -189,6 +222,7 @@ impl Event {
             continued: false,
             session: String::new(),
             prompt: String::new(),
+            identity: String::new(),
         }
     }
 }
@@ -220,6 +254,9 @@ pub fn read(flag: Option<&str>) -> Option<Event> {
     let mut event = host.event(&payload);
     event.root = host.root(&payload);
     event.prompted = !name.is_empty() && host.prompt_event() == name;
+    if !event.session.is_empty() && SCOPED.iter().any(|field| payload.get(field).is_some()) {
+        event.identity = identity(&payload, host.identity_fields());
+    }
     Some(event)
 }
 
@@ -292,6 +329,14 @@ fn plugin_named_klin(named: &str) -> bool {
         || named
             .strip_prefix("klin")
             .is_some_and(|rest| rest.starts_with('@'))
+}
+
+/// Each named field the payload holds, with its value, one to a line.
+fn identity(payload: &Value, fields: &[&str]) -> String {
+    fields
+        .iter()
+        .filter_map(|field| payload.get(field).map(|value| format!("{field}={value}\n")))
+        .collect()
 }
 
 fn text(value: Option<&Value>) -> String {

@@ -40,6 +40,47 @@ Do not record a surface as covered because it carries the same vendor name.
 A row moves to a verified version, date and `PASS` only after a run that
 concluded. An inconclusive run never rewrites a row.
 
+## Event identity
+
+Spec 9.8 makes one copy of klin's hooks take effect per host event. It reads
+the fields below. Two copies of one event carry the same values, and two
+different events differ in at least one of them.
+
+| host | how recorded | session | prompt or turn | tool call | stop |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code 2.1.283 | probe, macOS, 2026-09-26: two project hook copies per event, `claude -p` | `session_id` | `prompt_id`, on every event after session start | `tool_use_id` | `stop_hook_active`, `last_assistant_message` |
+| Codex CLI 0.157.1 | probe, macOS, 2026-09-26: two project hook copies per event, `codex exec`, hooks trusted for the run | `session_id` | `turn_id`, on every event after session start | `tool_use_id` | `stop_hook_active`, `last_assistant_message` |
+| Cursor | Cursor's hooks reference, not yet probed | `conversation_id` | `generation_id`, on every event | `tool_use_id` on `preToolUse`; `command` and `cwd` on `beforeShellExecution` | `loop_count`, `status` |
+
+What the probes showed:
+
+- Each copy of one event received a byte-identical payload, and the host
+  started the copies within 6 milliseconds of each other.
+- A session start carries no prompt or turn id on either host. `source`
+  (`startup`, `resume`, `clear`, `compact`) scopes it.
+- Claude Code ran two parallel `Write` calls one after the other, each with its
+  own `tool_use_id`.
+- After a stop hook blocked, both hosts sent the second stop with the same
+  `prompt_id` or `turn_id`, `stop_hook_active: true` and the new
+  `last_assistant_message`.
+
+Cursor runs the hooks in Claude Code's settings files by default, beside its
+own: `.claude/settings.local.json`, `.claude/settings.json` and
+`~/.claude/settings.json`, at a lower priority than Cursor's own hooks. The
+setting is "Include Third-Party Plugins, Skills, and Other Configs" under
+Cursor Settings → Agents → Third-Party Imports. It maps `SessionStart`,
+`UserPromptSubmit`, `PreToolUse` and `Stop` to `sessionStart`,
+`beforeSubmitPrompt`, `preToolUse` and `stop`. This comes from Cursor's
+third-party hooks reference.
+
+Still unverified, and waiting for a person to drive a real Cursor session:
+
+- the payload Cursor sends to a hook it imported from Claude Code's settings,
+  and whether its identity fields match those of the native copy,
+- whether Cursor also loads the Claude Code klin plugin,
+- whether an empty answer from a copy that yields leaves the other copy's
+  `followup_message` in Cursor's merge.
+
 ## The weekly canary
 
 `.github/workflows/host-compatibility.yml` runs `ci/host-canary.sh` once a

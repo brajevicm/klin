@@ -66,6 +66,9 @@ pub struct Args {
     host: Option<String>,
 }
 
+/// Every copy of klin's hooks the host runs for one call gives the same answer, so a copy that
+/// yields still refuses: a call's identity that matched another call would otherwise open it.
+/// Only the copy that took the call journals it. Spec 9.8.
 pub fn run(args: &Args) -> u8 {
     let Some(event) = host::read(args.host.as_deref()) else {
         return 0;
@@ -77,6 +80,7 @@ pub fn run(args: &Args) -> u8 {
     if (refused || delivered != 0)
         && let Some(paths) = guarded.paths()
         && let (Some(root), Some(at)) = (paths.config.parent(), paths.state.as_deref())
+        && let Some(_claim) = state::claim(at, &event.identity)
     {
         let named = match refused {
             true => reason,

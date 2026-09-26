@@ -2,6 +2,9 @@
 
 > Amends ADR 0023 and ADR 0046, which made the native plugin the preferred
 > local product experience and the standalone route the alternative.
+>
+> ADR 0055 amends the consequence that `klin install` writes no hooks a
+> plugin already supplies. It now writes them, and one copy takes each event.
 
 A native plugin gives a person klin's hooks and no `klin` command. No host
 puts a plugin's `bin/` on the person's own PATH: Claude Code adds it to the

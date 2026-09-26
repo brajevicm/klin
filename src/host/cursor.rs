@@ -9,6 +9,23 @@ use super::{
 /// Cursor's native events, not Claude Code's translated ones. `cursor_version` is the field
 /// Claude Code never sends, and Cursor sends it on every request.
 const VERSION: &str = "cursor_version";
+/// The fields that name one Cursor event. Every request carries `conversation_id` and
+/// `generation_id`, and `generation_id` changes with each message, a follow-up included; a tool
+/// call adds `tool_use_id`, or its command and where it runs, and a stop its `loop_count`. From
+/// Cursor's hooks reference. Spec 9.8.
+const IDENTITY: &[&str] = &[
+    "conversation_id",
+    "generation_id",
+    "session_id",
+    "hook_event_name",
+    "tool_use_id",
+    "tool_name",
+    "tool_input",
+    "command",
+    "cwd",
+    "status",
+    "loop_count",
+];
 /// The one event that carries a command the agent is about to run at the top level.
 const SHELL_EVENT: &str = "beforeShellExecution";
 
@@ -85,32 +102,26 @@ impl Adapter for Cursor {
     }
 
     /// Cursor records no enabled state klin can read, and it skips a local copy where local
-    /// plugin imports are off, so a copy on disk proves the files and not that Cursor loads
-    /// them. Writing hooks beside a loaded copy would run the lifecycle twice, so the hooks stay
-    /// with the copy and the line says how to move off it.
-    /// A local copy is the person's to remove. A marketplace install is Cursor's, so the line
-    /// names Cursor's own plugin controls instead.
-    fn plugin_owns(&self, proof: &Path) -> String {
+    /// plugin imports are off, so a copy on disk proves the files and not that Cursor loads them.
+    /// The line names the copy and says it may run.
+    fn plugin_serves(&self, proof: &Path) -> String {
         let plugin = proof.parent().and_then(Path::parent).unwrap_or(proof);
         let copied = plugin
             .parent()
             .is_some_and(|dir| dir.ends_with("plugins/local"));
-        match copied {
-            true => format!(
-                "no hooks written, because a klin plugin copy is at {}. Cursor records no \
-                 enabled state klin can read. To commit the hooks instead, remove it, reload \
-                 Cursor and run klin install again.",
-                plugin.display()
-            ),
-            false => format!(
-                "no hooks written, because Cursor installed the klin plugin at {}. Cursor \
-                 records no enabled state klin can read. To commit the hooks instead, disable \
-                 or uninstall the plugin in Cursor and run klin install again. A plugin your \
-                 organization requires cannot share a repository with committed hooks, because \
-                 both would run.",
-                plugin.display()
-            ),
-        }
+        let found = match copied {
+            true => "a klin plugin copy is at",
+            false => "Cursor installed the klin plugin at",
+        };
+        format!(
+            "{found} {}, which Cursor may load, because it records no enabled state klin can \
+             read",
+            plugin.display()
+        )
+    }
+
+    fn identity_fields(&self) -> &'static [&'static str] {
+        IDENTITY
     }
 
     fn placed(&self, payload: &Value) -> bool {

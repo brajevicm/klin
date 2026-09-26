@@ -113,6 +113,10 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.hook && !config::present(args.config.as_deref(), start) {
         return Ok(0);
     }
+    let identity = event.as_ref().map_or("", |event| event.identity.as_str());
+    let Some(_claim) = state::claimed(start, identity) else {
+        return Ok(0);
+    };
     let loaded = Project::load(args.config.as_deref(), start);
     if !args.hook {
         let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));

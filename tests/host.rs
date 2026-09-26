@@ -38,6 +38,8 @@ const A_CLAUDE_AMBIGUOUS_COMMAND_WITH_PERMISSION_MODE: &str = r#"{"hook_event_na
 /// which Codex version last carried it.
 const A_CODEX_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
 const A_CODEX_SECOND_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":true}"#;
+/// A later stop of the same turn ends on another message, which Codex sends with it. Spec 9.8.
+const A_CODEX_THIRD_STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":true,"last_assistant_message":"fixed"}"#;
 /// Cursor's event shape, measured on Cursor 3.20.21 on 2026-09-16; the payloads carry that
 /// version. `docs/cursor-compatibility.md` holds the measurements, `docs/HOST_COMPATIBILITY.md`
 /// the support row.
@@ -370,7 +372,7 @@ fn a_codex_continuation_over_a_changed_tree_spends_the_second_gate_block() {
     assert!(second.says("gate block 2 of 2"), "{}", second.out);
 
     tree.words("README.md", 32);
-    let third = stop(&tree, A_CODEX_SECOND_STOP, &[]);
+    let third = stop(&tree, A_CODEX_THIRD_STOP, &[]);
     assert_eq!(third.code, 0, "{}", third.out);
     assert!(third.says("has blocked 2 stops"), "{}", third.out);
 }

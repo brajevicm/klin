@@ -99,6 +99,11 @@ impl Adapter for Generic {
         }
     }
 
+    /// A custom harness runs one copy of klin per event, so nothing names an event to share.
+    fn identity_fields(&self) -> &'static [&'static str] {
+        &[]
+    }
+
     fn placed(&self, payload: &Value) -> bool {
         payload.get(PROTOCOL).is_some()
     }

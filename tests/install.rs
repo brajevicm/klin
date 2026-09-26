@@ -349,7 +349,7 @@ fn install_with_no_provable_host_names_the_supported_ones() {
 }
 
 /// An enabled plugin is host evidence on its own, so a repository with no marker directory is
-/// still reported rather than refused.
+/// still reconciled rather than refused.
 #[test]
 fn install_proves_a_host_from_an_enabled_plugin_alone() {
     let tree = a_repository();
@@ -359,32 +359,33 @@ fn install_proves_a_host_from_an_enabled_plugin_alone() {
     let at = home_of(&home);
     let run = tree.run_with(&[("HOME", at.as_str())], &["install"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("claude: hooks supplied by the klin plugin"),
-        "{}",
-        run.out
-    );
-    assert!(!tree.path(".claude/settings.json").exists(), "{}", run.out);
+    assert!(run.says("claude: reconciled"), "{}", run.out);
+    assert!(tree.path(".claude/settings.json").is_file(), "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
 }
 
-/// The plugin registers the same events, so a second copy of them runs klin twice on every
-/// event. #147.
+/// A teammate without the plugin still gets the hooks from the repository. On a machine where
+/// the plugin runs too, one copy of each event yields to the other, so the run says so. #317.
 #[test]
-fn install_adds_no_hooks_where_the_plugin_owns_the_host() {
+fn install_writes_the_hooks_and_the_skill_beside_the_plugin_and_says_the_copy_yields() {
     let tree = a_repository();
     tree.write(".claude/settings.json", A_PLUGIN);
 
     let run = tree.run(&["install"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
-    assert!(run.says("supplied by the klin plugin"), "{}", run.out);
-    assert!(run.says(".claude/settings.json"), "{}", run.out);
+    assert_ne!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
+    assert_eq!(
+        settings(&tree)["enabledPlugins"],
+        serde_json::json!({"klin@klin-marketplace": true})
+    );
     assert!(
-        !tree.path(".claude/skills/klin/SKILL.md").exists(),
+        tree.path(".claude/skills/klin/SKILL.md").is_file(),
         "{}",
         run.out
     );
+    assert!(run.says("the klin plugin"), "{}", run.out);
+    assert!(run.says("the committed copy yields"), "{}", run.out);
+    assert!(run.says("Commit the host files"), "{}", run.out);
 }
 
 #[test]
@@ -802,10 +803,10 @@ fn install_user_outside_a_repository_opts_no_repository_in() {
     );
 }
 
-/// A host reads its user file and the repository's together, so a project write over a
-/// user-scope install would double every event. #147.
+/// A host reads its user file and the repository's together, so on this machine a committed
+/// copy yields to the person's own entries. #317.
 #[test]
-fn install_adds_nothing_where_the_persons_own_file_already_holds_klins_entries() {
+fn install_writes_the_hooks_where_the_persons_own_file_already_holds_klins_entries() {
     let tree = a_repository();
     let home = Tree::bare();
     home.write(".claude/settings.json", "{}\n");
@@ -815,15 +816,16 @@ fn install_adds_nothing_where_the_persons_own_file_already_holds_klins_entries()
 
     let run = tree.run_with(&environment, &["install", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!tree.path(".claude/settings.json").exists(), "{}", run.out);
-    assert!(run.says("klin install --user"), "{}", run.out);
+    assert!(tree.path(".claude/settings.json").is_file(), "{}", run.out);
+    assert!(run.says(&home.at(".claude/settings.json")), "{}", run.out);
+    assert!(run.says("the committed copy yields"), "{}", run.out);
 }
 
 const A_CURSOR_PLUGIN: &str = r#"{"name":"klin","version":"0.1.1"}"#;
 
 /// Cursor documents local development plugins under `plugins/local/<name>`.
 #[test]
-fn install_adds_nothing_when_the_local_cursor_plugin_is_installed() {
+fn install_writes_beside_the_local_cursor_plugin() {
     let tree = a_repository();
     tree.write(
         ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
@@ -832,50 +834,52 @@ fn install_adds_nothing_when_the_local_cursor_plugin_is_installed() {
 
     let run = tree.run(&["install", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
     assert!(
-        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        tree.path(".agents/skills/klin/SKILL.md").is_file(),
         "{}",
         run.out
     );
-    assert!(run.says("plugin"), "{}", run.out);
+    assert!(
+        run.says(&tree.at(".cursor/plugins/local/klin")),
+        "{}",
+        run.out
+    );
+    assert!(run.says("the committed copy yields"), "{}", run.out);
 }
 
-/// Cursor records no enabled state klin can read, so a plugin copy on disk holds the hooks back
-/// whether or not Cursor loads it. The run names the copy and how to move to committed hooks,
-/// and once the copy is gone the same command writes them. Spec 19.3.
+/// The committed hooks do not wait on the plugin: once the copy is gone they run with no second
+/// install. #317.
 #[test]
-fn a_cursor_plugin_copy_names_its_removal_and_then_the_hooks_are_written() {
+fn after_the_cursor_plugin_copy_is_removed_the_committed_hooks_run() {
     let tree = a_repository();
     tree.write(
         ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
         A_CURSOR_PLUGIN,
     );
-
-    let held = tree.run(&["install", "--host", "cursor"]);
-    assert_eq!(held.code, 0, "{}", held.out);
-    assert!(
-        held.says(&tree.at(".cursor/plugins/local/klin")),
-        "{}",
-        held.out
-    );
-    assert!(held.says("remove it"), "{}", held.out);
+    assert_eq!(tree.run(&["install", "--host", "cursor"]).code, 0);
+    assert!(tree.path(".cursor/hooks.json").is_file());
+    tree.base();
 
     std::fs::remove_dir_all(tree.path(".cursor/plugins")).unwrap_or_else(|why| panic!("{why}"));
-    let moved = tree.run(&["install", "--host", "cursor"]);
-    assert_eq!(moved.code, 0, "{}", moved.out);
-    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", moved.out);
-    assert!(
-        tree.path(".agents/skills/klin/SKILL.md").is_file(),
-        "{}",
-        moved.out
-    );
+    let prompt = serde_json::json!({
+        "conversation_id": "c1",
+        "generation_id": "g1",
+        "hook_event_name": "beforeSubmitPrompt",
+        "cursor_version": "3.21.18",
+        "workspace_roots": [tree.root()],
+        "prompt": "go",
+    });
+    let run = harness::feed(tree.root(), &["radius"], &prompt.to_string());
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(tree.field("prompts"), "1", "{}", run.out);
 }
 
 /// Cursor marketplace installs observed in 3.20.21 live under
 /// `plugins/cache/<marketplace>/<plugin>/<revision>`.
 #[test]
-fn install_adds_nothing_when_a_marketplace_cursor_plugin_is_installed() {
+fn install_writes_beside_a_marketplace_cursor_plugin() {
     let tree = a_repository();
     let home = Tree::bare();
     home.write(
@@ -886,15 +890,14 @@ fn install_adds_nothing_when_a_marketplace_cursor_plugin_is_installed() {
 
     let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
+    assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
     assert!(
-        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        tree.path(".agents/skills/klin/SKILL.md").is_file(),
         "{}",
         run.out
     );
-    assert!(run.says("plugin"), "{}", run.out);
-    assert!(run.says("in Cursor"), "{}", run.out);
-    assert!(!run.says("remove it"), "{}", run.out);
+    assert!(run.says("Cursor installed the klin plugin"), "{}", run.out);
+    assert!(run.says("the committed copy yields"), "{}", run.out);
 }
 
 /// klin reads the two layouts Cursor installs a plugin into and no other, so a klin manifest
@@ -922,19 +925,20 @@ const A_CODEX_PLUGIN_OFF: &str =
 /// Codex CLI lists its plugins in `config.toml`, and a plugin table is on unless it says
 /// `enabled = false`. Spec 19.3.
 #[test]
-fn install_adds_nothing_when_the_codex_plugin_is_enabled() {
+fn install_writes_beside_the_enabled_codex_plugin() {
     let tree = a_repository();
     tree.write(".codex/config.toml", A_CODEX_PLUGIN);
 
     let run = tree.run(&["install", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!tree.path(".codex/hooks.json").exists(), "{}", run.out);
+    assert!(tree.path(".codex/hooks.json").is_file(), "{}", run.out);
     assert!(
-        !tree.path(".agents/skills/klin/SKILL.md").exists(),
+        tree.path(".agents/skills/klin/SKILL.md").is_file(),
         "{}",
         run.out
     );
     assert!(run.says("config.toml"), "{}", run.out);
+    assert!(run.says("the committed copy yields"), "{}", run.out);
 }
 
 #[test]
@@ -1008,7 +1012,7 @@ fn install_user_writes_where_the_plugin_is_enabled_in_the_repository_alone() {
 }
 
 #[test]
-fn install_user_adds_nothing_when_the_persons_plugin_is_enabled() {
+fn install_user_writes_beside_the_persons_plugin() {
     let tree = a_repository();
     let home = Tree::bare();
     home.write(".claude/settings.json", A_PLUGIN);
@@ -1017,13 +1021,13 @@ fn install_user_adds_nothing_when_the_persons_plugin_is_enabled() {
     let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
-    assert_eq!(written["hooks"], Value::Null, "{}", run.out);
+    assert_ne!(written["hooks"], Value::Null, "{}", run.out);
     assert!(
-        !home.path(".claude/skills/klin/SKILL.md").exists(),
+        home.path(".claude/skills/klin/SKILL.md").is_file(),
         "{}",
         run.out
     );
-    assert!(run.says("plugin"), "{}", run.out);
+    assert!(run.says("the copy klin wrote yields"), "{}", run.out);
 }
 
 #[test]
@@ -1209,16 +1213,16 @@ fn install_user_says_to_commit_the_marker_it_wrote() {
     );
 }
 
-/// A run that wrote the marker and no host file must not tell a person to commit hooks that
-/// were never written.
+/// A second run beside the plugin writes nothing and says the integration is current.
 #[test]
-fn install_speaks_of_no_hooks_where_the_plugin_owns_every_host() {
+fn a_second_install_beside_the_plugin_is_already_current() {
     let tree = a_repository();
     tree.write(".claude/settings.json", A_PLUGIN);
+    assert_eq!(tree.run(&["install"]).code, 0);
 
     let run = tree.run(&["install"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(tree.path("klin.json").is_file(), "{}", run.out);
     assert!(!run.says("Commit the host files"), "{}", run.out);
     assert!(run.says("already current"), "{}", run.out);
+    assert!(run.says("the committed copy yields"), "{}", run.out);
 }
