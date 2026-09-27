@@ -136,9 +136,9 @@ pub trait Adapter: Sync {
     fn event_name(&self, payload: &Value) -> String {
         text(payload.get("hook_event_name"))
     }
-    /// The payload fields whose values name one event. Spec 9.8.
-    fn identity_fields(&self) -> &'static [&'static str] {
-        CLAUDE_CODE_AND_CODEX_IDENTITY
+    /// What names one event in every copy of klin's hooks the host runs for it. Spec 9.8.
+    fn identity(&self, payload: &Value) -> String {
+        named(payload, CLAUDE_CODE_AND_CODEX_IDENTITY)
     }
     /// Whether an event with no `--host` has this host's shape.
     fn placed(&self, payload: &Value) -> bool;
@@ -255,7 +255,7 @@ pub fn read(flag: Option<&str>) -> Option<Event> {
     event.root = host.root(&payload);
     event.prompted = !name.is_empty() && host.prompt_event() == name;
     if !event.session.is_empty() && SCOPED.iter().any(|field| payload.get(field).is_some()) {
-        event.identity = identity(&payload, host.identity_fields());
+        event.identity = host.identity(&payload);
     }
     Some(event)
 }
@@ -332,7 +332,7 @@ fn plugin_named_klin(named: &str) -> bool {
 }
 
 /// Each named field the payload holds, with its value, one to a line.
-fn identity(payload: &Value, fields: &[&str]) -> String {
+fn named(payload: &Value, fields: &[&str]) -> String {
     fields
         .iter()
         .filter_map(|field| payload.get(field).map(|value| format!("{field}={value}\n")))

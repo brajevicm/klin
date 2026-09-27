@@ -65,12 +65,19 @@ proceeded under one verified configuration. That is a host enforcement gap,
 so klin refuses the operation until Cursor provides an enforced question
 channel.
 
-## Still to probe: two copies in one Cursor session
+## Measured on Cursor 3.22.7, 2026-09-27: several copies of one event
 
-Cursor runs the hooks in Claude Code's settings files beside its own by
-default, so a repository that commits klin's hooks for both hosts runs two
-copies in Cursor. Spec 9.8 makes one copy take each event only when both
-copies read the same identity fields. What Cursor sends to an imported Claude
-Code hook, whether it loads the Claude Code klin plugin, and whether an empty
-answer keeps the other copy's `followup_message` are not yet measured.
-`HOST_COMPATIBILITY.md` lists them under "Event identity".
+A person drove Cursor 3.22.7 on macOS over a probe repository for #317. It held
+logging hooks in `.cursor/hooks.json`, in `.claude/settings.json`, and in a
+Claude Code plugin enabled for the project. The hooks used the same events and
+matchers as klin's.
+
+| Behaviour | Result |
+|---|---|
+| hooks in Claude Code's settings files | run beside Cursor's own, with Third-Party Imports on (the default) |
+| a Claude Code plugin the project enables | runs too |
+| the payload each copy gets | byte-identical, in Cursor's shape and with Cursor's event names |
+| a shell call | `beforeShellExecution` for Cursor's own hook, `preToolUse` on the `Shell` tool for the imported and plugin copies |
+| one copy answers a stop with `followup_message`, the others print nothing | the follow-up is submitted, whichever copy answered |
+
+Spec 9.8 reads these results. `HOST_COMPATIBILITY.md` has the identity fields.

@@ -11,8 +11,9 @@ use super::{
 const VERSION: &str = "cursor_version";
 /// The fields that name one Cursor event. Every request carries `conversation_id` and
 /// `generation_id`, and `generation_id` changes with each message, a follow-up included; a tool
-/// call adds `tool_use_id`, or its command and where it runs, and a stop its `loop_count`. From
-/// Cursor's hooks reference. Spec 9.8.
+/// call adds `tool_use_id`, and a stop its `loop_count`. Cursor 3.22.7 sent every copy of one
+/// event the same payload: its own hooks, the hooks it imported from Claude Code's settings, and
+/// a Claude Code plugin's. Spec 9.8.
 const IDENTITY: &[&str] = &[
     "conversation_id",
     "generation_id",
@@ -120,8 +121,18 @@ impl Adapter for Cursor {
         )
     }
 
-    fn identity_fields(&self) -> &'static [&'static str] {
-        IDENTITY
+    /// A shell call reaches Cursor's own hook as `beforeShellExecution`, with the command at the
+    /// top level, and an imported Claude Code hook as `preToolUse` on the `Shell` tool, with the
+    /// command under `tool_input` and a `tool_use_id` the other copy never sees. So a shell call
+    /// is named by its message and its command. Two equal commands in one message then share a
+    /// name, which costs a journal line and no refusal: every guard copy still answers. Spec 9.8.
+    fn identity(&self, payload: &Value) -> String {
+        if !tool(payload).eq_ignore_ascii_case("shell") {
+            return super::named(payload, IDENTITY);
+        }
+        let mut named = super::named(payload, &["conversation_id", "generation_id"]);
+        named.push_str(&format!("shell={}\n", command(payload)));
+        named
     }
 
     fn placed(&self, payload: &Value) -> bool {

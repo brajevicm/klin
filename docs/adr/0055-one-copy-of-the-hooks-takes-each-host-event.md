@@ -21,7 +21,7 @@ the skill.**
 
 - Each copy claims the event's identity in the state directory before it acts.
   The identity is the values of the payload fields that name one event. The
-  probes of #317 recorded them for Claude Code and Codex CLI
+  probes of #317 recorded them for Claude Code, Codex CLI and Cursor
   (`docs/HOST_COMPATIBILITY.md`).
 - A copy yields when another copy holds the claim or let it go less than two
   seconds before. The host starts the copies of one event together, and the
@@ -50,7 +50,8 @@ A copy that starts more than two seconds after the other copy finished acts
 again. The first run of a plugin wrapper that downloads its binary can do
 this once per version.
 
-The Cursor probe is still open: what Cursor sends to a hook it imported from
-Claude Code's settings, whether it loads the Claude Code klin plugin, and
-whether an empty answer keeps the other copy's `followup_message`. The ledger
-names these as unverified until a person records them.
+A person probed Cursor 3.22.7. It sends every copy the same payload, and it
+also runs a Claude Code plugin that the project enables. A shell call reaches
+the native copy and an imported copy as two different events, so a Cursor
+shell call is named by its message and its command. Two equal commands in one
+message then write one journal line between them, and each copy still refuses.

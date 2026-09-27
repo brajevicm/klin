@@ -246,3 +246,51 @@ fn the_same_stop_again_after_the_copies_settled_is_gated() {
 
     assert_eq!(journal(&tree, "stop").len(), 2);
 }
+
+/// Cursor sends a shell call to its own `beforeShellExecution` hook, and to a hook it imported
+/// from Claude Code's settings as `preToolUse` with the `Shell` tool. Measured on Cursor 3.22.7.
+#[test]
+fn a_cursor_shell_call_seen_by_a_native_and_an_imported_copy_journals_once() {
+    let tree = tree();
+    let common = json!({
+        "conversation_id": "c1",
+        "generation_id": "g1",
+        "session_id": "c1",
+        "model": "m",
+        "cursor_version": "3.22.7",
+        "workspace_roots": [tree.root()],
+        "transcript_path": null,
+        "user_email": null,
+    });
+    let imported = with(
+        common.clone(),
+        json!({
+            "hook_event_name": "preToolUse",
+            "tool_name": "Shell",
+            "tool_input": {"command": "rm klin.json", "cwd": "", "timeout": 30000},
+            "tool_use_id": "tool_1",
+            "cwd": "",
+        }),
+    );
+    let native = with(
+        common,
+        json!({
+            "hook_event_name": "beforeShellExecution",
+            "command": "rm klin.json",
+            "cwd": "",
+            "sandbox": false,
+        }),
+    );
+
+    let first = run(&tree, &["guard"], &imported);
+    let second = run(&tree, &["guard"], &native);
+
+    assert_eq!(
+        (first.code, second.code),
+        (2, 2),
+        "{}\n{}",
+        first.out,
+        second.out
+    );
+    assert_eq!(journal(&tree, "guard").len(), 1);
+}

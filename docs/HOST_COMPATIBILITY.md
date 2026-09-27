@@ -50,7 +50,7 @@ different events differ in at least one of them.
 | --- | --- | --- | --- | --- | --- |
 | Claude Code 2.1.283 | probe, macOS, 2026-09-26: two project hook copies per event, `claude -p` | `session_id` | `prompt_id`, on every event after session start | `tool_use_id` | `stop_hook_active`, `last_assistant_message` |
 | Codex CLI 0.157.1 | probe, macOS, 2026-09-26: two project hook copies per event, `codex exec`, hooks trusted for the run | `session_id` | `turn_id`, on every event after session start | `tool_use_id` | `stop_hook_active`, `last_assistant_message` |
-| Cursor | Cursor's hooks reference, not yet probed | `conversation_id` | `generation_id`, on every event | `tool_use_id` on `preToolUse`; `command` and `cwd` on `beforeShellExecution` | `loop_count`, `status` |
+| Cursor 3.22.7 | probe, macOS, 2026-09-27: a native copy, a copy imported from `.claude/settings.json` and a Claude Code plugin copy per event, driven by a person | `conversation_id`, equal to `session_id` | `generation_id`, on every event but session start, new for each message and each follow-up | `tool_use_id` on `preToolUse`; a shell call by `generation_id` and its command | `loop_count`, `status` |
 
 What the probes showed:
 
@@ -73,13 +73,22 @@ Cursor Settings → Agents → Third-Party Imports. It maps `SessionStart`,
 `beforeSubmitPrompt`, `preToolUse` and `stop`. This comes from Cursor's
 third-party hooks reference.
 
-Still unverified, and waiting for a person to drive a real Cursor session:
+What the Cursor probe showed:
 
-- the payload Cursor sends to a hook it imported from Claude Code's settings,
-  and whether its identity fields match those of the native copy,
-- whether Cursor also loads the Claude Code klin plugin,
-- whether an empty answer from a copy that yields leaves the other copy's
-  `followup_message` in Cursor's merge.
+- Cursor ran all three copies, so it loads a Claude Code plugin that the
+  project enables, beside its own hooks.
+- Every copy of one event got a byte-identical payload in Cursor's shape,
+  with Cursor's event names. An imported copy got no Claude Code field. The
+  copies of one event started at most 158 milliseconds apart.
+- A shell call reached Cursor's own hook as `beforeShellExecution` and the
+  imported and plugin copies as `preToolUse` on the `Shell` tool, with a
+  `tool_use_id` the native copy never saw. The imported copies got it even
+  under klin's Claude Code matcher, which names `Bash`.
+- A stop that one copy answered with `followup_message`, while the other two
+  printed nothing, had its follow-up submitted. This held for each of the three
+  copies.
+- Each follow-up and each stop after it carried a new `generation_id`, and
+  `loop_count` rose from 0 to 1. A second chat got its own `conversation_id`.
 
 ## The weekly canary
 

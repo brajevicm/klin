@@ -2963,7 +2963,12 @@ name it, as each host sends them (`docs/HOST_COMPATIBILITY.md`):
   `last_assistant_message`, where the payload holds them.
 - Cursor: `conversation_id`, `generation_id`, `session_id`,
   `hook_event_name`, `tool_use_id`, `tool_name`, `tool_input`, `command`,
-  `cwd`, `status` and `loop_count`.
+  `cwd`, `status` and `loop_count`. Cursor sends every copy the same payload
+  in its own shape, including a copy it imported from Claude Code's settings
+  or a Claude Code plugin. A shell call is the one exception: Cursor's own
+  hook receives it as `beforeShellExecution` and an imported one as
+  `preToolUse` on the `Shell` tool. So a shell call is named by
+  `conversation_id`, `generation_id` and its command alone.
 - A custom harness (9.7): none. It runs one copy per event.
 
 An event has an identity only when its payload names a session and one field
