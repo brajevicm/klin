@@ -7,8 +7,7 @@ verified, not what is expected to work.
 `tests/host.rs` and `tests/plugin.rs` stay the deterministic contract: they
 prove klin still speaks the host contract klin last verified. They cannot
 prove the current stable host still loads the plugin, runs the lifecycle and
-honors klin's answer. That is what the weekly canary and the release smoke
-cover.
+honors klin's answer. That is what the canary and the release smoke cover.
 
 `docs/cursor-compatibility.md` holds the detailed measured evidence for
 Cursor. This file does not replace it.
@@ -90,10 +89,10 @@ What the Cursor probe showed:
 - Each follow-up and each stop after it carried a new `generation_id`, and
   `loop_count` rose from 0 to 1. A second chat got its own `conversation_id`.
 
-## The weekly canary
+## The canary
 
-`.github/workflows/host-compatibility.yml` runs `ci/host-canary.sh` once a
-week, and on manual dispatch. It is not part of PR gating.
+`.github/workflows/host-compatibility.yml` runs `ci/host-canary.sh` when a
+person dispatches it. It is not part of PR gating.
 
 Each host gets one small journey in a disposable Git repository that holds a
 `klin.json` and one document under a ceiling:
