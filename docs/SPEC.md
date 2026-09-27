@@ -4715,9 +4715,9 @@ binary is a NOTE per 5.2, not a failure.
 
 ### 19.3 The standalone route: `klin install`
 
-The standalone route is the one documents lead with (19.0, ADR 0053, ADR 0055). On this
-route the binary comes from 19.1, and `klin install` is the one command that
-installs and repairs the integration. It serves the person who wants the
+The standalone route is the one documents lead with (19.0, ADR 0053, ADR 0055,
+ADR 0056). On this route the binary comes from 19.1, and `klin install` is the
+one command that installs and repairs the integration. It serves the person who wants the
 `klin` command, a team that wants hooks committed and covered by CODEOWNERS,
 and a host surface that loads no plugin. A plugin user may take it later for
 the command, and the hooks it commits serve a teammate without the plugin. ADR
@@ -4739,11 +4739,15 @@ repository opts no repository in and says so. `--user` MUST NOT write a
 **Host selection.** A supported host is a candidate when `--host NAME` names
 it, when the scope holds that host's own configuration directory, or when klin
 can prove that host's native plugin is enabled for that scope. A marker
-directory is evidence of the host and never of the install. Where no host is
-provable and no `--host` is given, the command MUST refuse to guess, and the
-refusal names the supported `--host` values. Where several hosts are provable,
-every one of them is reconciled unless `--host` narrows the run. `--host` may
-be named again for a second host.
+directory is evidence of the host and never of the install. Where several
+hosts are provable, every one of them is reconciled unless `--host` narrows
+the run. Where a repository holds no host's configuration directory and no
+`--host` is given, every first-class host is reconciled, and the run says so
+and names `--host`: a repository serves a team whose hosts klin cannot see,
+and a hook file for a host nobody runs does nothing. A plugin the person's
+home enables does not narrow this, so what the repository gets does not
+depend on who runs the install (ADR 0056). Under `--user` a home that proves
+no host is refused, and the refusal names the supported `--host` values. `--host` may be named again for a second host.
 
 **A plugin beside the committed hooks.** A selected host whose native plugin
 already supplies klin's hooks still receives its explicit entries and the
@@ -4808,7 +4812,10 @@ This is how a person on the binary route receives a later fix without deleting
 a hook file by hand.
 
 Each line klin writes resolves `klin` on PATH before it runs it and ends the
-hook when none resolves, the way the plugin's own lines do (19.2). A person
+hook when none resolves, the way the plugin's own lines do (19.2). After PATH
+it looks in `~/.local/bin`, where the install script of 19.1 puts the binary,
+because a host started from the terminal that ran the installer has no such
+PATH yet (ADR 0056). A `klin` that PATH resolves still wins. A person
 who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event. The one exception is the stop of a repository that
 holds a `klin.json` at its Git root, which the line resolves with `git

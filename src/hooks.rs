@@ -26,7 +26,7 @@ const NO_HOME: &str = "--user writes the host files of one person on this machin
 #[derive(clap::Args)]
 pub struct Args {
     /// The host to install for, named again for a second one (default: every host this
-    /// repository proves)
+    /// repository proves, or all of them where it proves none)
     #[arg(long = "host")]
     hosts: Vec<String>,
     /// Install into the host files of one person on this machine, rather than this
@@ -119,9 +119,10 @@ impl Scope {
 /// one component per host klin knows. A host file that cannot be read or is not the shape the
 /// host reads fails here, where no file has been touched yet. Section 19.3.
 fn planned(args: &Args, scope: &Scope) -> Result<Vec<Component>, Error> {
-    let wanted = selected(args, scope)?;
+    let (wanted, why) = chosen(args, scope)?;
     let mut skills = Vec::new();
     let mut components = vec![opt_in(scope)];
+    components.extend(why);
     for host in ADAPTERS.iter().copied() {
         let named = wanted.iter().any(|one| one.name() == host.name());
         components.push(match named {
@@ -252,9 +253,42 @@ fn opt_in(scope: &Scope) -> Component {
     }
 }
 
-/// The hosts this run reconciles: the ones `--host` names, or every host the scope proves. A
-/// scope that proves none is refused rather than guessed at, because a hook file klin invented
-/// gates nothing. Section 19.3.
+/// The hosts this run serves, and the line that says why where klin chose every one of them
+/// rather than the hosts the scope proves.
+fn chosen(
+    args: &Args,
+    scope: &Scope,
+) -> Result<(Vec<&'static dyn Adapter>, Option<Component>), Error> {
+    if !shows_no_host(args, scope) {
+        return Ok((selected(args, scope)?, None));
+    }
+    let why = Component {
+        said: format!(
+            "klin: this repository shows no host, so every host klin knows gets its hooks — \
+             name fewer with --host, one of {}.",
+            names()
+        ),
+        targets: Vec::new(),
+        host: false,
+    };
+    Ok((ADAPTERS.to_vec(), Some(why)))
+}
+
+/// Whether this run reconciles every host: a repository run that names none and holds no
+/// host's directory. The repository serves a team whose hosts klin cannot see, and a hook file
+/// for a host nobody runs does nothing. A plugin in the person's own home is no directory of the
+/// repository's, so what the repository gets does not depend on who runs the install. Section
+/// 19.3, ADR 0056.
+fn shows_no_host(args: &Args, scope: &Scope) -> bool {
+    args.hosts.is_empty()
+        && !scope.user
+        && !ADAPTERS
+            .iter()
+            .any(|host| scope.at.join(host.marker()).is_dir())
+}
+
+/// The hosts this run reconciles: the ones `--host` names, or every host the scope proves. One
+/// person's home that proves none is refused rather than guessed at. Section 19.3.
 fn selected(args: &Args, scope: &Scope) -> Result<Vec<&'static dyn Adapter>, Error> {
     if !args.hosts.is_empty() {
         return args.hosts.iter().map(|name| by_name(name)).collect();
@@ -506,7 +540,9 @@ fn array<'a>(
 
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
-/// would otherwise see a failed hook on every event of every session. The stop of a repository
+/// would otherwise see a failed hook on every event of every session. After PATH it looks where
+/// the installer puts klin, because a host started from the terminal that ran the installer has
+/// no such PATH yet. The stop of a repository
 /// that opted in says how to install it instead, so a teammate who cloned the committed hooks
 /// learns what they are for. It looks for the marker at the Git root, because a session may
 /// start below it. It is a `systemMessage` alone: Cursor submits a `followup_message`
@@ -519,7 +555,10 @@ fn line(arguments: &str) -> String {
         ),
         false => "exit 0".to_string(),
     };
-    format!("command -v klin > /dev/null 2>&1 || {missing}; klin {arguments}")
+    format!(
+        "PATH=\"$PATH:$HOME/.local/bin\"; command -v klin > /dev/null 2>&1 || {missing}; \
+         klin {arguments}"
+    )
 }
 
 const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \

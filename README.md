@@ -22,17 +22,11 @@ FAIL  complexity
 ## Install klin on macOS or Linux
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-```
-
-Then, in a new terminal, turn klin on in your repository:
-
-```sh
 cd your-repo
-klin install --host claude    # or: codex, cursor
+sh -c 'i=$(curl --proto "=https" --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh) && sh -c "$i" && ~/.local/bin/klin install'
 ```
 
-This writes `klin.json` and the hooks for that host. Commit them, and your teammates get the same checks. If the klin plugin also runs on your machine, klin runs once per event and the other copy stays quiet.
+This installs klin, then writes `klin.json` and the hooks for each host your repository already uses, or for Claude Code, Codex and Cursor when it shows none. Commit them, and your teammates get the same checks. `--host claude`, `--host codex` or `--host cursor` narrows the list. If the klin plugin also runs on your machine, klin runs once per event and the other copy stays quiet.
 
 Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 

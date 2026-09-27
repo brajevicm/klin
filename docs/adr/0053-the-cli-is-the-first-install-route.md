@@ -5,6 +5,9 @@
 >
 > ADR 0055 amends the consequence that `klin install` writes no hooks a
 > plugin already supplies. It now writes them, and one copy takes each event.
+>
+> ADR 0056 makes the two commands one, run from the repository, and drops the
+> need for `--host` in it. `--host` still narrows the hosts.
 
 A native plugin gives a person klin's hooks and no `klin` command. No host
 puts a plugin's `bin/` on the person's own PATH: Claude Code adds it to the

@@ -211,15 +211,15 @@ fn the_readme_names_the_codex_hook_trust_step() {
     );
 }
 
-/// The README leads with the installer and `klin install`, which give the person the `klin`
-/// command on every first-class host, offers the three plugins after them as the host-managed
-/// alternative, gives the repository opt-in a plugin user takes, and points any other harness at
-/// the harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1,
-/// 19.4, ADR 0053.
+/// The README leads with one command run from the repository: the installer, then the
+/// installed binary by its full path, because PATH does not hold it until a new terminal. It
+/// offers the three plugins after it as the host-managed alternative, gives the repository
+/// opt-in a plugin user takes, and points any other harness at the harness protocol without
+/// promising that the binary alone connects it. Spec 19.0, 19.1, 19.4, ADR 0053, ADR 0056.
 #[test]
 fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     let readme = text(README);
-    let installer = readme.find("klin-installer.sh | sh").unwrap_or(usize::MAX);
+    let installer = readme.find("klin-installer.sh").unwrap_or(usize::MAX);
     let plugin = readme.find("/plugin install").unwrap_or(0);
 
     assert!(
@@ -227,12 +227,13 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
         "the README does not lead with the installer"
     );
     assert!(
-        !block(&readme, "klin-installer.sh").contains("klin install"),
-        "the README runs klin in the block that installs it, before PATH holds it"
+        text("dist-workspace.toml").contains(r#"install-path = "~/.local/bin""#),
+        "the installer puts klin somewhere other than the path the README runs it from and \
+         the hook lines look in"
     );
     for said in [
         "**Claude Code · Codex · Cursor**",
-        "klin install --host claude",
+        "`--host claude`",
         "### Or use your host's plugin",
         "A plugin's checks stay quiet until the repository opts in",
         "`{}` is a complete configuration.",
@@ -244,6 +245,58 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
         "does not make that harness first-class",
     ] {
         assert!(readme.contains(said), "the README omits {said}");
+    }
+}
+
+/// A `curl` that stands in for the release download: it answers the installer URL alone, with
+/// the body given, and fails like `curl -f` on anything else.
+fn fake_curl(body: &str) -> String {
+    format!("#!/bin/sh\ncase \"$*\" in *klin-installer.sh*) ;; *) exit 22 ;; esac\n{body}\n")
+}
+
+/// An installer that puts a klin in `~/.local/bin` which records where it ran and with what.
+const AN_INSTALLER: &str = r#"cat <<'SH'
+mkdir -p "$HOME/.local/bin"
+printf '#!/bin/sh\necho "$PWD $*" > "$HOME/ran"\n' > "$HOME/.local/bin/klin"
+chmod +x "$HOME/.local/bin/klin"
+SH"#;
+
+/// The README's install is one command run from the repository, in any shell a person types
+/// it into, and it runs klin only once the installer succeeded. A download that fails runs no klin, not even one an earlier install
+/// left in `~/.local/bin`. The installed klin runs by its full path, before PATH holds it. #318.
+#[test]
+fn the_readmes_install_runs_klin_only_after_the_installer_succeeded() {
+    let script = block(&text(README), "klin-installer.sh");
+    for (curl, left_behind, runs) in [("exit 22", true, false), (AN_INSTALLER, false, true)] {
+        let work = Tree::bare();
+        work.write("your-repo/.keep", "");
+        work.write("bin/curl", &fake_curl(curl));
+        executable(&work.path("bin/curl"));
+        let home = Tree::bare();
+        if left_behind {
+            home.write(
+                ".local/bin/klin",
+                "#!/bin/sh\necho \"$PWD $*\" > \"$HOME/ran\"\n",
+            );
+            executable(&home.path(".local/bin/klin"));
+        }
+
+        let path = format!("{}:/usr/bin:/bin", work.path("bin").display());
+        let home_dir = home.root().display().to_string();
+        let run = ran(
+            SHELL,
+            &["-c", &script],
+            work.root(),
+            &[("PATH", path.as_str()), ("HOME", home_dir.as_str())],
+        );
+        let klin_ran = fs::read_to_string(home.path("ran")).unwrap_or_default();
+        assert_eq!(run.code == 0, runs, "{curl}: {}", run.out);
+        assert_eq!(
+            klin_ran.trim().ends_with("/your-repo install"),
+            runs,
+            "{curl}: {klin_ran}{}",
+            run.out
+        );
     }
 }
 
