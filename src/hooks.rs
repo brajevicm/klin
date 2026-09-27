@@ -119,24 +119,10 @@ impl Scope {
 /// one component per host klin knows. A host file that cannot be read or is not the shape the
 /// host reads fails here, where no file has been touched yet. Section 19.3.
 fn planned(args: &Args, scope: &Scope) -> Result<Vec<Component>, Error> {
-    let everyone = shows_no_host(args, scope);
-    let wanted = match everyone {
-        true => ADAPTERS.to_vec(),
-        false => selected(args, scope)?,
-    };
+    let (wanted, why) = chosen(args, scope)?;
     let mut skills = Vec::new();
     let mut components = vec![opt_in(scope)];
-    if everyone {
-        components.push(Component {
-            said: format!(
-                "klin: this repository shows no host, so every host klin knows gets its hooks \
-                 — name fewer with --host, one of {}.",
-                names()
-            ),
-            targets: Vec::new(),
-            host: false,
-        });
-    }
+    components.extend(why);
     for host in ADAPTERS.iter().copied() {
         let named = wanted.iter().any(|one| one.name() == host.name());
         components.push(match named {
@@ -265,6 +251,27 @@ fn opt_in(scope: &Scope) -> Component {
             host: false,
         },
     }
+}
+
+/// The hosts this run serves, and the line that says why where klin chose every one of them
+/// rather than the hosts the scope proves.
+fn chosen(
+    args: &Args,
+    scope: &Scope,
+) -> Result<(Vec<&'static dyn Adapter>, Option<Component>), Error> {
+    if !shows_no_host(args, scope) {
+        return Ok((selected(args, scope)?, None));
+    }
+    let why = Component {
+        said: format!(
+            "klin: this repository shows no host, so every host klin knows gets its hooks — \
+             name fewer with --host, one of {}.",
+            names()
+        ),
+        targets: Vec::new(),
+        host: false,
+    };
+    Ok((ADAPTERS.to_vec(), Some(why)))
 }
 
 /// Whether this run reconciles every host: a repository run that names none and holds no
