@@ -4741,11 +4741,13 @@ it, when the scope holds that host's own configuration directory, or when klin
 can prove that host's native plugin is enabled for that scope. A marker
 directory is evidence of the host and never of the install. Where several
 hosts are provable, every one of them is reconciled unless `--host` narrows
-the run. Where a repository proves no host and no `--host` is given, every
-first-class host is reconciled: a repository serves a team whose hosts klin
-cannot see, and a hook file for a host nobody runs does nothing (ADR 0056).
-Under `--user` a home that proves no host is refused, and the refusal names
-the supported `--host` values. `--host` may be named again for a second host.
+the run. Where a repository holds no host's configuration directory and no
+`--host` is given, every first-class host is reconciled, and the run says so
+and names `--host`: a repository serves a team whose hosts klin cannot see,
+and a hook file for a host nobody runs does nothing. A plugin the person's
+home enables does not narrow this, so what the repository gets does not
+depend on who runs the install (ADR 0056). Under `--user` a home that proves
+no host is refused, and the refusal names the supported `--host` values. `--host` may be named again for a second host.
 
 **A plugin beside the committed hooks.** A selected host whose native plugin
 already supplies klin's hooks still receives its explicit entries and the

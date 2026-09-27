@@ -119,9 +119,24 @@ impl Scope {
 /// one component per host klin knows. A host file that cannot be read or is not the shape the
 /// host reads fails here, where no file has been touched yet. Section 19.3.
 fn planned(args: &Args, scope: &Scope) -> Result<Vec<Component>, Error> {
-    let wanted = selected(args, scope)?;
+    let everyone = shows_no_host(args, scope);
+    let wanted = match everyone {
+        true => ADAPTERS.to_vec(),
+        false => selected(args, scope)?,
+    };
     let mut skills = Vec::new();
     let mut components = vec![opt_in(scope)];
+    if everyone {
+        components.push(Component {
+            said: format!(
+                "klin: this repository shows no host, so every host klin knows gets its hooks \
+                 — name fewer with --host, one of {}.",
+                names()
+            ),
+            targets: Vec::new(),
+            host: false,
+        });
+    }
     for host in ADAPTERS.iter().copied() {
         let named = wanted.iter().any(|one| one.name() == host.name());
         components.push(match named {
@@ -252,10 +267,21 @@ fn opt_in(scope: &Scope) -> Component {
     }
 }
 
-/// The hosts this run reconciles: the ones `--host` names, or every host the scope proves. A
-/// repository that proves none gets every host, because it serves a team whose hosts klin cannot
-/// see and a hook file for a host nobody runs does nothing. One person's home that proves none
-/// is refused rather than guessed at. Section 19.3, ADR 0056.
+/// Whether this run reconciles every host: a repository run that names none and holds no
+/// host's directory. The repository serves a team whose hosts klin cannot see, and a hook file
+/// for a host nobody runs does nothing. A plugin in the person's own home is no directory of the
+/// repository's, so what the repository gets does not depend on who runs the install. Section
+/// 19.3, ADR 0056.
+fn shows_no_host(args: &Args, scope: &Scope) -> bool {
+    args.hosts.is_empty()
+        && !scope.user
+        && !ADAPTERS
+            .iter()
+            .any(|host| scope.at.join(host.marker()).is_dir())
+}
+
+/// The hosts this run reconciles: the ones `--host` names, or every host the scope proves. One
+/// person's home that proves none is refused rather than guessed at. Section 19.3.
 fn selected(args: &Args, scope: &Scope) -> Result<Vec<&'static dyn Adapter>, Error> {
     if !args.hosts.is_empty() {
         return args.hosts.iter().map(|name| by_name(name)).collect();
@@ -266,7 +292,6 @@ fn selected(args: &Args, scope: &Scope) -> Result<Vec<&'static dyn Adapter>, Err
         .filter(|host| provable(*host, scope))
         .collect();
     match proven.is_empty() {
-        true if !scope.user => Ok(ADAPTERS.to_vec()),
         true => Err(Error(format!(
             "{}: no host klin knows is configured here, and none has klin's plugin enabled — \
              name one with --host, one of {}",

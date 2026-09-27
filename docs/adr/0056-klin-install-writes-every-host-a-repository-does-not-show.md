@@ -18,9 +18,14 @@ Codex user sees that step.
 
 ## The decision
 
-**Where the repository shows no host, `klin install` writes all three
-first-class hosts.** `--host` still narrows the run to the hosts it names, and
-a repository that shows one or more hosts still gets only those.
+**Where the repository shows no host directory, `klin install` writes all
+three first-class hosts,** and it says so and names `--host`. `--host` still
+narrows the run to the hosts it names, and a repository that shows one or more
+host directories still gets only the hosts it proves.
+
+A klin plugin enabled in the person's own home does not count here. It is
+evidence of one person's machine, not of the repository, and counting it would
+make a plugin user commit one host where a teammate commits three.
 
 The README installs klin in one command run from the repository: the
 installer, then the installed binary by its full path,

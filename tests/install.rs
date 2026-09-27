@@ -344,6 +344,8 @@ fn install_with_no_provable_host_writes_every_first_class_host() {
     let run = tree.run(&["install"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
+    assert!(run.says("shows no host"), "{}", run.out);
+    assert!(run.says("--host"), "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
         [line("gate --hook --changed")],
@@ -386,11 +388,12 @@ fn install_user_with_no_provable_host_names_the_supported_ones() {
     }
 }
 
-/// An enabled plugin is host evidence on its own, so a repository with no marker directory is
-/// still reconciled rather than refused.
+/// An enabled plugin is host evidence on its own, so a repository that shows another host
+/// reconciles the plugin's host beside it.
 #[test]
 fn install_proves_a_host_from_an_enabled_plugin_alone() {
     let tree = a_repository();
+    tree.write(".cursor/rules", "\n");
     let home = Tree::bare();
     home.write(".claude/settings.json", A_PLUGIN);
 
@@ -399,7 +402,27 @@ fn install_proves_a_host_from_an_enabled_plugin_alone() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("claude: reconciled"), "{}", run.out);
     assert!(tree.path(".claude/settings.json").is_file(), "{}", run.out);
-    assert!(tree.path("klin.json").is_file(), "{}", run.out);
+    assert!(run.says("codex: no integration requested."), "{}", run.out);
+}
+
+/// What the repository gets does not depend on who runs the install: a plugin in one person's
+/// home is no host directory of the repository's, so the repository still gets every host.
+#[test]
+fn install_writes_every_host_where_only_the_persons_plugin_shows_one() {
+    let tree = a_repository();
+    let home = Tree::bare();
+    home.write(".claude/settings.json", A_PLUGIN);
+
+    let at = home_of(&home);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["install"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    for file in [
+        ".claude/settings.json",
+        ".codex/hooks.json",
+        ".cursor/hooks.json",
+    ] {
+        assert!(tree.path(file).is_file(), "{file}: {}", run.out);
+    }
 }
 
 /// A teammate without the plugin still gets the hooks from the repository. On a machine where
