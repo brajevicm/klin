@@ -4,6 +4,9 @@
 > `klin init --hooks` as the explicit-hooks route. ADR 0053 amends it in turn:
 > the plugin is no longer the preferred local product experience, and
 > documents lead with `klin install`.
+>
+> ADR 0055 amends plugin ownership: `klin install` writes the hooks and the
+> skill beside a plugin, and one copy of the hooks takes each host event.
 
 klin maintains a native plugin for Claude Code, for Codex CLI and for Cursor.
 A plugin carries the host hooks, the skill and a pinned wrapper that fetches a

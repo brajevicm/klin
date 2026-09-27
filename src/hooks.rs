@@ -79,16 +79,23 @@ impl Scope {
         })
     }
 
-    /// The person's own file for this host, when it already holds klin's entries and a
-    /// repository write would double them. A host reads both files, so two copies of one entry
-    /// run the lifecycle twice: two gates race for one turn stamp, and the prompt counter of
-    /// 6.2 moves by two.
+    /// The person's own file for this host, when it already holds klin's entries beside the
+    /// repository's. A host reads both files and runs both copies, so on this machine one of
+    /// them yields on each event. Spec 9.8.
     fn covered_by_user(&self, host: &dyn Adapter) -> Option<PathBuf> {
         if self.user {
             return None;
         }
         let file = std::env::home_dir()?.join(host.hook_file());
         holds_klin(&file).then_some(file)
+    }
+
+    /// What the file this run writes is called, beside another copy of klin's hooks.
+    fn copy(&self) -> &'static str {
+        match self.user {
+            true => "the copy klin wrote",
+            false => "the committed copy",
+        }
     }
 
     /// The last line: what the host files klin wrote mean, or that there were none to write.
@@ -295,32 +302,35 @@ fn names() -> String {
         .join(", ")
 }
 
-/// What one selected host needs: nothing where klin's hooks already run over the file klin
-/// would write, and otherwise that file with klin's entries brought to today's contract.
+/// What one selected host needs: its file with klin's entries brought to today's contract, and
+/// the skill. Where a plugin or the person's own file already runs klin's hooks here, the line
+/// says so: the host runs both copies on this machine, and one of them yields on each event.
+/// Section 19.3, 9.8.
 fn component(
     host: &'static dyn Adapter,
     scope: &Scope,
     skills: &mut Vec<PathBuf>,
 ) -> Result<Component, Error> {
-    if let Some(proof) = host.plugin_enabled(&scope.at, scope.user) {
-        return Ok(told(host, host.plugin_owns(&proof)));
-    }
-    if let Some(user) = scope.covered_by_user(host) {
-        return Ok(told(
-            host,
-            format!(
-                "hooks already installed for every repository in {} — change them there with \
-                 klin install --user.",
-                user.display()
-            ),
-        ));
-    }
+    let beside = host
+        .plugin_enabled(&scope.at, scope.user)
+        .map(|proof| host.plugin_serves(&proof))
+        .or_else(|| {
+            scope
+                .covered_by_user(host)
+                .map(|user| format!("{} also holds klin's hooks", user.display()))
+        });
     let mut component = reconciled(host, &scope.at.join(host.hook_file()))?;
     let (target, said) = skill(host, scope, skills)?;
     if let Some(target) = target {
         component.targets.push(target);
     }
-    if let Some(said) = said {
+    let said = said.into_iter().chain(beside.map(|beside| {
+        format!(
+            "{beside}, so on this machine {} yields on each event the other copy took first",
+            scope.copy()
+        )
+    }));
+    for said in said {
         let prefix = component.said.trim_end_matches('.');
         component.said = format!("{prefix}; {said}.");
     }

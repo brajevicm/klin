@@ -139,3 +139,9 @@ _Avoid_: standalone integration
 klin's versioned event and decision contract in `harness-protocol/`, which a
 custom harness integration implements.
 _Avoid_: generic contract, universal adapter, SDK
+
+**Copy**:
+One set of klin's hooks a host runs for an event: a plugin's, a repository's,
+a person's, or Claude Code's settings read by Cursor. One copy takes each
+event and the others yield.
+_Avoid_: duplicate, instance

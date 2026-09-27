@@ -69,7 +69,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.report {
         return radius::asked(start, out);
     }
-    let Some((event, named, at)) = opening(start, out) else {
+    let Some((event, named, at, _claim)) = opening(start, out) else {
         return Ok(0);
     };
     let start = named.as_path();
@@ -100,20 +100,19 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     Ok(0)
 }
 
-/// Read and place the hook event once, resolve its tree, and stop before a turn opens when the
-/// event is the exact follow-up a prior stop recorded.
-fn opening(start: &Path, out: &mut String) -> Option<(Option<host::Event>, PathBuf, PathBuf)> {
+/// Read and place the hook event once, resolve its tree, and stop before a turn opens when
+/// another copy of klin's hooks took the event, or when the event is the exact follow-up a prior
+/// stop recorded. The claim comes first, so the copy that yields consumes no follow-up.
+fn opening(
+    start: &Path,
+    out: &mut String,
+) -> Option<(Option<host::Event>, PathBuf, PathBuf, state::Claim)> {
     let event = host::read(None);
     let root = event
         .as_ref()
         .and_then(|event| event.root.clone())
         .unwrap_or_else(|| start.to_path_buf());
     state::dir(&root)?;
-    if event.as_ref().is_some_and(|event| {
-        event.prompted && handoff::consumes(&root, &event.session, &event.prompt)
-    }) {
-        return None;
-    }
     let at = match state::ready(&root) {
         Ok(at) => at,
         Err(why) => {
@@ -121,7 +120,14 @@ fn opening(start: &Path, out: &mut String) -> Option<(Option<host::Event>, PathB
             return None;
         }
     };
-    Some((event, root, at))
+    let identity = event.as_ref().map_or("", |event| event.identity.as_str());
+    let claim = state::claim(&at, identity)?;
+    if event.as_ref().is_some_and(|event| {
+        event.prompted && handoff::consumes(&root, &event.session, &event.prompt)
+    }) {
+        return None;
+    }
+    Some((event, root, at, claim))
 }
 
 /// The prompt line of spec 9.6 and 11.4: the counter, the session and excerpt from the event,

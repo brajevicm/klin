@@ -1060,11 +1060,12 @@ report exists to discourage.
 Nothing into the working tree. `init` writes `klin.json` and hook files, and
 only when a person runs it.
 
-klin's own state is five things: the turn stamp with the prompt mark of
+klin's own state is six things: the turn stamp with the prompt mark of
 6.2.1, the build stamp, the handoff records of 9.1 under `handed/`, the
-cache, which holds the survey of 6.6 and the structural cache of 8.4, and the
-journal of 9.6. All are per working tree. The cache is safe to delete. All
-five are guarded, because the
+event claims of 9.8 under `claims/`, the cache, which holds the survey of 6.6
+and the structural cache of 8.4, and the journal of 9.6. All are per working
+tree. The cache is safe to delete. All
+six are guarded, because the
 guard guards the directory they share (9.4). Deleting the turn stamp buys
 nothing, because a stop without one judges the whole branch (6.2). They live
 in the state directory:
@@ -2945,6 +2946,66 @@ version the event sent and the version it speaks, refuses every tool call and
 blocks every stop while that mismatch stands, and MUST NOT read the event as
 another host's.
 
+### 9.8 One copy per host event
+
+A host may run several copies of klin's hooks for one event on one machine: a
+native plugin beside committed project hooks or user-scope hooks, and Cursor,
+which runs the hooks in Claude Code's settings files beside its own by
+default. Exactly one copy takes effect per event. klin compares no hook
+line and knows nothing about the other copies. Each copy reads the same
+payload, because the host sends one event to all of them.
+
+**The event's identity.** An event's identity is the values of the fields that
+name it, as each host sends them (`docs/HOST_COMPATIBILITY.md`):
+
+- Claude Code and Codex CLI: `session_id`, `hook_event_name`, `prompt_id`,
+  `turn_id`, `tool_use_id`, `source`, `stop_hook_active` and
+  `last_assistant_message`, where the payload holds them.
+- Cursor: `conversation_id`, `generation_id`, `session_id`,
+  `hook_event_name`, `tool_use_id`, `tool_name`, `tool_input`, `command`,
+  `cwd`, `status` and `loop_count`. Cursor sends every copy the same payload
+  in its own shape, including a copy it imported from Claude Code's settings
+  or a Claude Code plugin. A shell call is the one exception: Cursor's own
+  hook receives it as `beforeShellExecution` and an imported one as
+  `preToolUse` on the `Shell` tool. So a shell call is named by
+  `conversation_id`, `generation_id` and its command alone.
+- A custom harness (9.7): none. It runs one copy per event.
+
+An event has an identity only when its payload names a session and one field
+that scopes the event inside the session: `prompt_id`, `turn_id`,
+`generation_id`, `tool_use_id` or `source`. A payload without both cannot tell
+two copies of one prompt from two prompts, or two sessions from each other.
+Such an event is run by every copy, as before this section.
+
+**The claim.** Each copy that acts on an event first claims its identity in
+`claims/` in the state directory (7.4). The claim is held while the copy acts.
+A copy yields when another copy holds the claim, or when that copy let the
+claim go less than two seconds before. The host starts every copy of one event
+together and starts the next event only after all of them answered. So a late
+copy arrives within a process start of the first one, and two different
+events with one identity are a model turn apart. A claim older than the window
+belongs to an earlier event, and the copy that finds it takes it. A copy that
+cannot write the state directory acts, because an event run twice is the
+older failure and an event run by no copy would drop a block.
+
+**What a copy that yields does.**
+
+- `klin radius` prints nothing and exits 0. It moves no stamp, no mark and no
+  prompt counter, writes no journal line and consumes no follow-up of 9.1.
+  The claim comes before the follow-up is consumed.
+- `klin gate --hook` prints nothing and exits 0, and runs no gate. It cannot
+  weaken the other copy's block: Claude Code and Codex apply the most
+  restrictive answer across hooks.
+- `klin guard` gives its answer as every copy does, and writes no journal
+  line. The guard's answer is the same in every copy, and a copy that let a
+  call through because another call had the same identity would open that
+  call. So only the journal line depends on the claim.
+
+Two different events, and events from two sessions on one worktree, never
+have one identity. A late copy whose wrapper took longer than the window to
+start, such as a plugin wrapper that downloads its binary on first run, acts
+on the event again, so for that one event the prompt counter moves twice.
+
 ## 10. Runner and CI Contract
 
 - `klin gate` runs every applicable gate in catalogue order, which is cheapest
@@ -4654,13 +4715,13 @@ binary is a NOTE per 5.2, not a failure.
 
 ### 19.3 The standalone route: `klin install`
 
-The standalone route is the one documents lead with (19.0, ADR 0053). On this
+The standalone route is the one documents lead with (19.0, ADR 0053, ADR 0055). On this
 route the binary comes from 19.1, and `klin install` is the one command that
 installs and repairs the integration. It serves the person who wants the
 `klin` command, a team that wants hooks committed and covered by CODEOWNERS,
 and a host surface that loads no plugin. A plugin user may take it later for
-the command alone: plugin ownership below keeps it from writing a second copy
-of the hooks. ADR 0046 records the command.
+the command, and the hooks it commits serve a teammate without the plugin. ADR
+0046 records the command.
 
 `klin install` does three things in one run: it opts the repository in, it
 selects the hosts to serve, and it reconciles the explicit hook files klin
@@ -4684,12 +4745,15 @@ refusal names the supported `--host` values. Where several hosts are provable,
 every one of them is reconciled unless `--host` narrows the run. `--host` may
 be named again for a second host.
 
-**Plugin ownership.** A selected host whose native plugin already supplies
-klin's hooks MUST receive no explicit entries, and the run names the file that
-proves the plugin. The plugin registers the same host events, so a second copy
-of them runs klin twice on every event: two gates race for one turn stamp, and
-the prompt counter of 6.2 moves by two. Each host's adapter knows where that
-host lists its enabled plugins. Claude Code lists them under `enabledPlugins`
+**A plugin beside the committed hooks.** A selected host whose native plugin
+already supplies klin's hooks still receives its explicit entries and the
+skill, and the run names the file that proves the plugin and says that on this
+machine the committed copy yields on each event the plugin took first. The
+plugin registers the same host events, so the host runs both copies, and 9.8
+makes one of them take effect. A teammate without the plugin gets the
+committed hooks, and a person who removes the plugin keeps them with no second
+install. Each host's adapter knows where that host lists its enabled plugins.
+Claude Code lists them under `enabledPlugins`
 in its settings files: for a repository write klin reads the repository's, the
 local ones beside them and the user's, and for a user write the user's alone,
 because a plugin one repository enables gates that repository and not the
@@ -4701,9 +4765,10 @@ cache is `.cursor/plugins/cache/<marketplace>/<plugin>/<revision>`. klin
 reads `.cursor-plugin/plugin.json` named `klin` at exactly those two depths,
 under the project and the user's home, and a klin manifest anywhere else
 under `plugins`, such as a marketplace's own source, is not an installed
-plugin. A repository write is held back the
-same way by a user file that already holds klin's entries, and the run names
-the command that changes them.
+plugin. Cursor records no enabled state klin can read, so the run says that
+Cursor may load the copy it names. A repository write beside a user file that
+already holds klin's entries is written the same way, and the run names that
+file.
 
 **Reconciliation.** The files klin writes are:
 
@@ -4752,14 +4817,12 @@ the line names the install command in a `systemMessage` alone, so a teammate
 who cloned the committed hooks learns what they are for. Cursor shows the
 person no stop field that is not also a prompt, so on Cursor the notice is
 written and not shown (`docs/cursor-compatibility.md`). A host whose klin
-plugin is enabled gets no committed hooks and no skill (plugin ownership
-above), and the run says so and names what the person changes to commit them,
-so a document need not repeat it. Cursor records no enabled state klin can
-read, so a klin plugin Cursor installed holds the hooks back whether or not
-Cursor loads it, and the run names where it is. For a local copy the run says
-to remove it and reload Cursor. For a marketplace install it says to disable
-or uninstall it in Cursor, because the cache is Cursor's, and a plugin an
-organization requires cannot share a repository with committed hooks. Codex
+plugin is enabled gets the committed hooks and the skill all the same, and the
+run says that the committed copy yields on this machine (above, 9.8). Cursor
+runs the hooks in Claude Code's settings files by default, beside its own
+(`docs/HOST_COMPATIBILITY.md`), so a repository that commits klin's hooks for
+both hosts runs two copies in Cursor, and 9.8 makes one of them take effect
+there too. Codex
 skips a project hook file's hooks until the person trusts them through
 `/hooks`, as it does a plugin's (19.2), so a document that gives the
 standalone route for Codex names that step.
@@ -4771,14 +4834,14 @@ At project scope the selected hosts receive:
 - Claude Code: `.claude/skills/klin/SKILL.md`
 - Codex and Cursor: `.agents/skills/klin/SKILL.md`
 
-At user scope, `klin install --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that owns the selected host and scope supplies the skill, so klin writes no explicit duplicate.
+At user scope, `klin install --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that serves the selected host and scope carries the skill too, and klin writes the standalone copy all the same, so a teammate without the plugin has it.
 
 Skill targets participate in the same preflight as hooks. A missing file is written, a byte-identical file is already current, and a different existing file is an explicit conflict that is never overwritten. A later binary may reconcile an older standalone file only when klin can prove it owns that file; without that proof, the different file is preserved and refused. The conflict is found before the marker or any host integration is written. Rerunning `klin install` is the reconciliation step after a binary update.
 
 The standalone route copies the skill only. Slash commands and other host-specific command surfaces remain plugin-owned. User scope is local to one machine and does not reach a cloud or remote agent.
 
 **Preflight and partial failure.** One run may touch several files. It MUST
-resolve the repository root, the selected hosts, plugin ownership, every
+resolve the repository root, the selected hosts, the plugins beside them, every
 target path and every host file's shape before it writes anything, so a
 deterministic error leaves every file as it was. Each owned file is written
 whole, through a neighbour and a rename, so a run that dies partway leaves the
@@ -4798,7 +4861,8 @@ remove the lines. No flag is named `--global` (19.0).
 
 **Output.** A run prints one line per component: the repository marker, and
 each host klin knows with what happened to it — reconciled, already current,
-supplied by the plugin, or not requested. The marker's own line says to commit
+or not requested — and, where a plugin or a user file also serves the host,
+that the committed copy yields on this machine. The marker's own line says to commit
 it, because the repository's opt-in travels with the repository at either
 scope. One closing line follows, and it speaks of the host files alone: a run
 that wrote none of them MUST NOT tell a person to commit hooks, and MUST say

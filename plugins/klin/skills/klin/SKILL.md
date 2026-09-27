@@ -69,8 +69,8 @@ is visible in the diff a person reviews.
 ## Installation ownership
 
 The native Claude Code, Codex CLI and Cursor plugins already carry this skill.
-When a native plugin owns the selected host and scope, do not install a second
-copy with the standalone route.
+A repository may commit the standalone copy beside them, and where both copies
+of the hooks run, one of them yields on each event.
 
 The standalone command is klin install. It opts a project into klin by writing
 klin.json at the repository root, selects hosts from evidence or from

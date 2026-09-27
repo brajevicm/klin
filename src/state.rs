@@ -110,3 +110,99 @@ pub fn lock(at: &Path, budget: Duration) -> Option<Lock> {
         std::thread::sleep(WAITED);
     }
 }
+
+/// Where each copy of klin's hooks records the host event it took. Spec 9.8.
+const CLAIMS: &str = "claims";
+/// How long after the copy that took an event finished a copy of the same event still yields
+/// to it. The host starts every copy of one event together and the next event only after all of
+/// them answered, so the gap between copies is a process start, and two events that name the
+/// same fields are a model turn apart.
+/// ponytail: one fixed window, a copy whose wrapper downloads the binary for longer runs the
+/// event again; record the copy's own start time if that shows up.
+const SETTLED: Duration = Duration::from_secs(2);
+/// How long a claim file outlives its event before a later claim removes it.
+const KEPT: Duration = Duration::from_secs(3600);
+
+/// One copy's hold on a host event, from before it acts until after. Dropping it stamps the
+/// time the event finished and lets it go. Spec 9.8.
+pub struct Claim(Option<std::fs::File>);
+
+impl Drop for Claim {
+    fn drop(&mut self) {
+        if let Some(file) = &self.0 {
+            let _ = file.set_modified(std::time::SystemTime::now());
+            let _ = file.unlock();
+        }
+    }
+}
+
+/// The claim on the event `identity` names, or `None` when another copy of klin's hooks holds
+/// it or finished it moments ago, and this copy yields. An event that names nothing, and a
+/// state directory klin cannot write, are claimed by every copy: running an event twice is the
+/// old failure, and running it never would drop a block. Spec 9.8.
+pub fn claim(at: &Path, identity: &str) -> Option<Claim> {
+    if identity.is_empty() {
+        return Some(Claim(None));
+    }
+    let dir = at.join(CLAIMS);
+    if std::fs::create_dir_all(&dir).is_err() {
+        return Some(Claim(None));
+    }
+    let path = dir.join(format!("{:016x}", hash(identity.as_bytes())));
+    swept(&dir, &path);
+    let mut open = std::fs::OpenOptions::new();
+    open.write(true);
+    if let Ok(file) = open.clone().create_new(true).open(&path) {
+        let _ = file.lock();
+        return Some(Claim(Some(file)));
+    }
+    let Ok(file) = open.open(&path) else {
+        return Some(Claim(None));
+    };
+    if file.try_lock().is_err() || settled_within(&file, SETTLED) {
+        return None;
+    }
+    let _ = file.set_modified(std::time::SystemTime::now());
+    Some(Claim(Some(file)))
+}
+
+/// The same, for a caller that has not resolved the state directory. A tree klin cannot keep
+/// state for claims nothing, so every copy acts.
+pub fn claimed(root: &Path, identity: &str) -> Option<Claim> {
+    if identity.is_empty() {
+        return Some(Claim(None));
+    }
+    match ready(root) {
+        Ok(at) => claim(&at, identity),
+        Err(_) => Some(Claim(None)),
+    }
+}
+
+fn settled_within(file: &std::fs::File, window: Duration) -> bool {
+    file.metadata()
+        .and_then(|held| held.modified())
+        .ok()
+        .and_then(|at| at.elapsed().ok())
+        .is_some_and(|age| age < window)
+}
+
+/// Every claim no copy holds that finished longer ago than any copy could still arrive, except
+/// this event's own: another copy of it may have opened that file already, and a new file under
+/// the same name would let both copies act.
+fn swept(dir: &Path, own: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for path in entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path != own)
+    {
+        let Ok(file) = std::fs::OpenOptions::new().write(true).open(&path) else {
+            continue;
+        };
+        if !settled_within(&file, KEPT) && file.try_lock().is_ok() {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+}

@@ -40,6 +40,56 @@ Do not record a surface as covered because it carries the same vendor name.
 A row moves to a verified version, date and `PASS` only after a run that
 concluded. An inconclusive run never rewrites a row.
 
+## Event identity
+
+Spec 9.8 makes one copy of klin's hooks take effect per host event. It reads
+the fields below. Two copies of one event carry the same values, and two
+different events differ in at least one of them.
+
+| host | how recorded | session | prompt or turn | tool call | stop |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code 2.1.283 | probe, macOS, 2026-09-26: two project hook copies per event, `claude -p` | `session_id` | `prompt_id`, on every event after session start | `tool_use_id` | `stop_hook_active`, `last_assistant_message` |
+| Codex CLI 0.157.1 | probe, macOS, 2026-09-26: two project hook copies per event, `codex exec`, hooks trusted for the run | `session_id` | `turn_id`, on every event after session start | `tool_use_id` | `stop_hook_active`, `last_assistant_message` |
+| Cursor 3.22.7 | probe, macOS, 2026-09-27: a native copy, a copy imported from `.claude/settings.json` and a Claude Code plugin copy per event, driven by a person | `conversation_id`, equal to `session_id` | `generation_id`, on every event but session start, new for each message and each follow-up | `tool_use_id` on `preToolUse`; a shell call by `generation_id` and its command | `loop_count`, `status` |
+
+What the probes showed:
+
+- Each copy of one event received a byte-identical payload, and the host
+  started the copies within 6 milliseconds of each other.
+- A session start carries no prompt or turn id on either host. `source`
+  (`startup`, `resume`, `clear`, `compact`) scopes it.
+- Claude Code ran two parallel `Write` calls one after the other, each with its
+  own `tool_use_id`.
+- After a stop hook blocked, both hosts sent the second stop with the same
+  `prompt_id` or `turn_id`, `stop_hook_active: true` and the new
+  `last_assistant_message`.
+
+Cursor runs the hooks in Claude Code's settings files by default, beside its
+own: `.claude/settings.local.json`, `.claude/settings.json` and
+`~/.claude/settings.json`, at a lower priority than Cursor's own hooks. The
+setting is "Include Third-Party Plugins, Skills, and Other Configs" under
+Cursor Settings → Agents → Third-Party Imports. It maps `SessionStart`,
+`UserPromptSubmit`, `PreToolUse` and `Stop` to `sessionStart`,
+`beforeSubmitPrompt`, `preToolUse` and `stop`. This comes from Cursor's
+third-party hooks reference.
+
+What the Cursor probe showed:
+
+- Cursor ran all three copies, so it loads a Claude Code plugin that the
+  project enables, beside its own hooks.
+- Every copy of one event got a byte-identical payload in Cursor's shape,
+  with Cursor's event names. An imported copy got no Claude Code field. The
+  copies of one event started at most 158 milliseconds apart.
+- A shell call reached Cursor's own hook as `beforeShellExecution` and the
+  imported and plugin copies as `preToolUse` on the `Shell` tool, with a
+  `tool_use_id` the native copy never saw. The imported copies got it even
+  under klin's Claude Code matcher, which names `Bash`.
+- A stop that one copy answered with `followup_message`, while the other two
+  printed nothing, had its follow-up submitted. This held for each of the three
+  copies.
+- Each follow-up and each stop after it carried a new `generation_id`, and
+  `loop_count` rose from 0 to 1. A second chat got its own `conversation_id`.
+
 ## The weekly canary
 
 `.github/workflows/host-compatibility.yml` runs `ci/host-canary.sh` once a
