@@ -228,7 +228,8 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     );
     assert!(
         text("dist-workspace.toml").contains(r#"install-path = "~/.local/bin""#),
-        "the installer puts klin somewhere other than the path the README runs it from"
+        "the installer puts klin somewhere other than the path the README runs it from and \
+         the hook lines look in"
     );
     for said in [
         "**Claude Code · Codex · Cursor**",
@@ -260,8 +261,8 @@ printf '#!/bin/sh\necho "$PWD $*" > "$HOME/ran"\n' > "$HOME/.local/bin/klin"
 chmod +x "$HOME/.local/bin/klin"
 SH"#;
 
-/// The README's install is one command run from the repository, and it runs klin only once the
-/// installer succeeded. A download that fails runs no klin, not even one an earlier install
+/// The README's install is one command run from the repository, in any shell a person types
+/// it into, and it runs klin only once the installer succeeded. A download that fails runs no klin, not even one an earlier install
 /// left in `~/.local/bin`. The installed klin runs by its full path, before PATH holds it. #318.
 #[test]
 fn the_readmes_install_runs_klin_only_after_the_installer_succeeded() {
