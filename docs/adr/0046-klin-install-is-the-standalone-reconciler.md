@@ -7,6 +7,9 @@
 >
 > ADR 0055 amends plugin ownership: `klin install` writes the hooks and the
 > skill beside a plugin, and one copy of the hooks takes each host event.
+>
+> ADR 0056 amends host selection: a repository with no host evidence and no
+> `--host` gets every first-class host, and only `--user` still refuses.
 
 klin maintains a native plugin for Claude Code, for Codex CLI and for Cursor.
 A plugin carries the host hooks, the skill and a pinned wrapper that fetches a

@@ -26,7 +26,7 @@ const NO_HOME: &str = "--user writes the host files of one person on this machin
 #[derive(clap::Args)]
 pub struct Args {
     /// The host to install for, named again for a second one (default: every host this
-    /// repository proves)
+    /// repository proves, or all of them where it proves none)
     #[arg(long = "host")]
     hosts: Vec<String>,
     /// Install into the host files of one person on this machine, rather than this
@@ -253,8 +253,9 @@ fn opt_in(scope: &Scope) -> Component {
 }
 
 /// The hosts this run reconciles: the ones `--host` names, or every host the scope proves. A
-/// scope that proves none is refused rather than guessed at, because a hook file klin invented
-/// gates nothing. Section 19.3.
+/// repository that proves none gets every host, because it serves a team whose hosts klin cannot
+/// see and a hook file for a host nobody runs does nothing. One person's home that proves none
+/// is refused rather than guessed at. Section 19.3, ADR 0056.
 fn selected(args: &Args, scope: &Scope) -> Result<Vec<&'static dyn Adapter>, Error> {
     if !args.hosts.is_empty() {
         return args.hosts.iter().map(|name| by_name(name)).collect();
@@ -265,6 +266,7 @@ fn selected(args: &Args, scope: &Scope) -> Result<Vec<&'static dyn Adapter>, Err
         .filter(|host| provable(*host, scope))
         .collect();
     match proven.is_empty() {
+        true if !scope.user => Ok(ADAPTERS.to_vec()),
         true => Err(Error(format!(
             "{}: no host klin knows is configured here, and none has klin's plugin enabled — \
              name one with --host, one of {}",

@@ -211,11 +211,11 @@ fn the_readme_names_the_codex_hook_trust_step() {
     );
 }
 
-/// The README leads with the installer and `klin install`, which give the person the `klin`
-/// command on every first-class host, offers the three plugins after them as the host-managed
-/// alternative, gives the repository opt-in a plugin user takes, and points any other harness at
-/// the harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1,
-/// 19.4, ADR 0053.
+/// The README leads with one command run from the repository: the installer, then the
+/// installed binary by its full path, because PATH does not hold it until a new terminal. It
+/// offers the three plugins after it as the host-managed alternative, gives the repository
+/// opt-in a plugin user takes, and points any other harness at the harness protocol without promising that the binary alone connects it. Spec 19.0, 19.1,
+/// 19.4, ADR 0053, ADR 0056.
 #[test]
 fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     let readme = text(README);
@@ -226,13 +226,18 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
         installer < plugin,
         "the README does not lead with the installer"
     );
+    let install = block(&readme, "klin-installer.sh");
     assert!(
-        !block(&readme, "klin-installer.sh").contains("klin install"),
-        "the README runs klin in the block that installs it, before PATH holds it"
+        install.starts_with("cd ") && install.ends_with("| sh && ~/.local/bin/klin install"),
+        "the README's install is not one command run from the repository: {install}"
+    );
+    assert!(
+        text("dist-workspace.toml").contains(r#"install-path = "~/.local/bin""#),
+        "the installer puts klin somewhere other than the path the README runs it from"
     );
     for said in [
         "**Claude Code · Codex · Cursor**",
-        "klin install --host claude",
+        "`--host claude`",
         "### Or use your host's plugin",
         "A plugin's checks stay quiet until the repository opts in",
         "`{}` is a complete configuration.",

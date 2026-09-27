@@ -335,12 +335,50 @@ fn install_refuses_a_host_klin_does_not_know() {
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
 }
 
-/// A repository that proves no host is not guessed at: a hook file klin invented gates nothing.
+/// A repository that shows no host serves a team whose hosts klin cannot see, so it gets all
+/// three: a hook file for a host nobody uses does nothing. ADR 0056, #318.
 #[test]
-fn install_with_no_provable_host_names_the_supported_ones() {
+fn install_with_no_provable_host_writes_every_first_class_host() {
     let tree = a_repository();
 
     let run = tree.run(&["install"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(tree.path("klin.json").is_file(), "{}", run.out);
+    assert_eq!(
+        commands(&settings(&tree), "Stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+    assert_eq!(
+        commands(&codex_settings(&tree), "Stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+    assert_eq!(
+        cursor_commands(&cursor_settings(&tree), "stop"),
+        [line("gate --hook --changed")],
+        "{}",
+        run.out
+    );
+    for skill in [
+        ".claude/skills/klin/SKILL.md",
+        ".agents/skills/klin/SKILL.md",
+    ] {
+        assert_eq!(skill_at(&tree.path(skill)), CANONICAL_SKILL, "{skill}");
+    }
+}
+
+/// One person's home shows the hosts that person runs, so a home that shows none is still
+/// refused rather than guessed at.
+#[test]
+fn install_user_with_no_provable_host_names_the_supported_ones() {
+    let tree = a_repository();
+    let home = Tree::bare();
+
+    let at = home_of(&home);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("--host"), "{}", run.out);
     for host in ["claude", "codex", "cursor"] {
