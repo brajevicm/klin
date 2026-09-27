@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>klin social preview</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --ink: #0f172a;
+    --muted: #667085;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #e5e7eb;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+                 "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    display: grid;
+    place-items: center;
+    padding: 32px;
+  }
+
+  .artboard {
+    width: 1280px;
+    height: 640px;
+    background: var(--bg);
+    overflow: hidden;
+    position: relative;
+    padding: 68px 82px;
+  }
+
+  .logo {
+    width: 226px;
+    height: auto;
+    display: block;
+  }
+
+  .logo svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .accent {
+    width: 44px;
+    height: 4px;
+    border-radius: 999px;
+    background: #10b981;
+    margin-top: 46px;
+  }
+
+  .copy {
+    margin-top: 20px;
+    max-width: 1010px;
+  }
+
+  h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 68px;
+    line-height: 1.01;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 30px 0 0;
+    color: var(--muted);
+    font-size: 27px;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    font-weight: 400;
+  }
+
+  @media (max-width: 1344px) {
+    body {
+      place-items: start center;
+      overflow: auto;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="artboard" role="img" aria-label="klin social preview">
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" width="370" height="128" viewBox="0 0 370 128" role="img" aria-label="klin">
+  <title>klin</title>
+<g transform="translate(16 30.42) scale(0.98)">
+<path d="
+M 1 61
+Q 0 61 0 62
+V 71
+Q 0 72 1 72
+H 34
+Q 35 72 35 71
+V 59
+Q 35 58 36 58
+H 53
+Q 54 58 54 57
+V 46
+Q 54 45 55 45
+H 77
+Q 78 45 78 44
+V 34
+Q 78 33 77 33
+H 43
+Q 42 33 42 34
+V 45
+Q 42 46 41 46
+H 23
+Q 22 46 22 47
+V 60
+Q 22 61 21 61
+Z
+" fill="#0F172A"/>
+<path d="M 59.272,24.614 L 89.810,3.329 Q 91.000,2.500 92.450,2.500 L 95.550,2.500 Q 98.000,2.500 98.000,5.100 L 98.000,31.300 Q 98.000,33.500 96.090,32.408 L 85.172,26.170 Q 84.000,25.500 82.650,25.500 L 59.550,25.500 Q 58.000,25.500 59.272,24.614 Z" fill="#10B981"/>
+</g>
+  <path d="M70 0V700H196V313H214L378 496H542L313 256L550 0H388L214 197H196V0Z" transform="translate(140.000000 100.000000) scale(0.096000 -0.096000)" fill="#0F172A"/>
+  <path d="M70 0V700H196V0Z" transform="translate(191.264000 100.000000) scale(0.096000 -0.096000)" fill="#0F172A"/>
+  <path d="M70 0V496H196V0ZM133 554Q99 554 75.5 576.0Q52 598 52 634Q52 670 75.5 692.0Q99 714 133 714Q168 714 191.0 692.0Q214 670 214 634Q214 598 191.0 576.0Q168 554 133 554Z" transform="translate(213.920000 100.000000) scale(0.096000 -0.096000)" fill="#0F172A"/>
+  <path d="M70 0V496H194V431H212Q224 457 257.0 480.5Q290 504 357 504Q415 504 458.5 477.5Q502 451 526.0 404.5Q550 358 550 296V0H424V286Q424 342 396.5 370.0Q369 398 318 398Q260 398 228.0 359.5Q196 321 196 252V0Z" transform="translate(236.576000 100.000000) scale(0.096000 -0.096000)" fill="#0F172A"/>
+</svg>
+
+    </div>
+
+    <div class="accent" aria-hidden="true"></div>
+
+    <section class="copy">
+      <h1>Catch regressions while<br>the agent can still fix them</h1>
+      <p>Deterministic quality control for coding agents.</p>
+    </section>
+  </main>
+</body>
+</html>
