@@ -18,6 +18,12 @@ Cursor. This file does not replace it.
 For 1.0, klin supports the **current stable local or native plugin surface**
 of Claude Code, Codex and Cursor.
 
+Today a person has verified each of the three by hand on the standalone
+route, where `klin install` writes the project hooks. The plugin rows are not
+verified yet. The plugin wrapper downloads the pinned release, and a private
+repository serves no anonymous download, so until the repository is public a
+plugin runs whatever `klin` is on PATH, or nothing.
+
 klin makes no compatibility promise for:
 
 - old or minimum-supported host versions,
@@ -36,6 +42,9 @@ Do not record a surface as covered because it carries the same vendor name.
 | Claude Code | local plugin marketplace plus `claude plugin install klin@klin` | not yet recorded | ubuntu-latest | — | not yet run | not recorded | the canary needs `ANTHROPIC_API_KEY`; without it a run is inconclusive, not a pass |
 | Codex | `codex plugin add klin@klin` | not yet recorded | ubuntu-latest | — | not yet run | not recorded | Codex does not trust plugin hooks on install, and no headless trust flow is documented. The canary is inconclusive until `CODEX_TRUST_COMMAND` names a CI-only trust step |
 | Cursor | native plugin at `~/.cursor/plugins/local/klin` | 3.20.21 | macOS | 2026-09-16 | not automatable | not recorded | hook behavior measured by hand, see `cursor-compatibility.md`. No documented route says the headless agent loads a local plugin, so the canary stops at `INCONCLUSIVE` and this row is release-smoke-only. `CURSOR_HEADLESS_PLUGINS=1` lets the canary go further once somebody verifies such a route |
+| Claude Code | standalone: `klin install --host claude` project hooks | 2.1.283 | macOS 26.6.2 | 2026-09-26 | not run | PASS, by hand | klin built from source on a development branch, commit not recorded |
+| Codex | standalone: `klin install --host codex` project hooks | 0.157.1 | macOS 26.6.2 | 2026-09-26 | not run | PASS, by hand | the same klin build |
+| Cursor | standalone: `klin install --host cursor` project hooks | 3.22.7 | macOS 26.6.2 | 2026-09-26 | not run | PASS, by hand | the same klin build |
 
 A row moves to a verified version, date and `PASS` only after a run that
 concluded. An inconclusive run never rewrites a row.

@@ -115,7 +115,7 @@ An agent can finish the task and still make something else worse. klin catches s
 
 - **Complexity creeps up.** A function becomes too complex or too large for the repo's current bar.
 - **Architecture drifts.** A new dependency cycle appears, code crosses a configured layer, or a project convention is broken.
-- **Guardrails get bypassed.** A test disappears or gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch.
+- **Guardrails get bypassed.** A newly skipped test, `@ts-ignore`, `eslint-disable`, or another escape hatch fails the gate. When a test is deleted, the agent's hook asks about it once and CI shows it as a note.
 - **The work isn't actually finished.** The change leaves behind a new TODO, placeholder, or not-implemented stub, or adds code that nothing can reach.
 - **A public contract changes.** An exported surface disappears or its declared contract changes, even though the repository still builds.
 - **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or the lockfile still records a different version.
@@ -151,11 +151,11 @@ Hooks alone are klin's **Feedback** level. Make the independent CI check require
 
 [See the trust model and enforcement boundaries](docs/THREAT_MODEL.md).
 
-## Tested on real coding-agent work
+## Tested with a coding agent
 
-We tested klin across repeated controlled coding-agent runs and used what we found to harden the product before release.
+We ran klin in Claude Code with Sonnet on small test repositories and compared sessions that got klin's feedback with sessions that did not. In the latest round, the agent took a shortcut unprompted in five tasks, all of them in two checks: complexity and stale doc citations. In all five, the problem was gone from the final change when the agent got klin's feedback, and still there when it did not. Five cases are too few for a conclusive result, and the other checks never came up.
 
-In the latest validation, every case that exposed the target regression was repaired with klin active, with no undesired signals. A separate seeded confirmation found no repair-by-appeasement.
+[Read the full result](docs/benchmark-result-2026-09-25.md).
 
 ## Documentation
 
