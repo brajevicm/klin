@@ -44,8 +44,9 @@ fn cursor_settings(tree: &Tree) -> Value {
     settings_at(&tree.path(".cursor/hooks.json"))
 }
 
-/// The hook line klin writes for one klin command. Every line resolves the binary first, and
-/// the stop says how to install it where the repository opted in.
+/// The hook line klin writes for one klin command. Every line resolves the binary first, on
+/// PATH and then where the installer puts it, and the stop says how to install it where the
+/// repository opted in.
 fn line(arguments: &str) -> String {
     let missing = match arguments.starts_with("gate") {
         true => format!(
@@ -54,7 +55,10 @@ fn line(arguments: &str) -> String {
         ),
         false => "exit 0".to_string(),
     };
-    format!("command -v klin > /dev/null 2>&1 || {missing}; klin {arguments}")
+    format!(
+        "PATH=\"$PATH:$HOME/.local/bin\"; command -v klin > /dev/null 2>&1 || {missing}; \
+         klin {arguments}"
+    )
 }
 
 const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \
@@ -156,12 +160,13 @@ fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
 }
 
 /// What a hook line prints on stdout from `cwd`, a session that started there, where PATH
-/// resolves git and no `klin`.
+/// resolves git and no `klin`, and the home holds no installed one.
 fn without_klin(cwd: &std::path::Path, line: &str) -> String {
     let done = std::process::Command::new("/bin/sh")
         .args(["-c", line])
         .current_dir(cwd)
         .env("PATH", "/usr/bin:/bin")
+        .env("HOME", cwd)
         .env("CLAUDE_PROJECT_DIR", cwd)
         .output()
         .unwrap_or_else(|why| panic!("sh could not run: {why}"));
@@ -747,6 +752,7 @@ fn a_written_hook_line_says_nothing_when_no_binary_resolves() {
                 .args(["-c", &command])
                 .current_dir(tree.root())
                 .env("PATH", "")
+                .env("HOME", tree.root())
                 .env_remove("CLAUDE_PROJECT_DIR")
                 .output();
             let Ok(done) = outcome else {
@@ -756,6 +762,49 @@ fn a_written_hook_line_says_nothing_when_no_binary_resolves() {
             assert!(done.stdout.is_empty(), "{event}: {command}");
             assert!(done.stderr.is_empty(), "{event}: {command}");
         }
+    }
+}
+
+/// The installer puts klin in `~/.local/bin`, and the terminal that ran it has no such PATH
+/// until a new one starts. A host started from that terminal still runs the hooks, so every
+/// line finds klin there after PATH. #318.
+#[test]
+fn a_written_hook_line_finds_klin_where_the_installer_put_it() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tree = a_repository();
+    assert_eq!(
+        tree.run(&[
+            "install", "--host", "claude", "--host", "codex", "--host", "cursor"
+        ])
+        .code,
+        0
+    );
+    let home = Tree::bare();
+    home.write(".local/bin/klin", "#!/bin/sh\necho \"installed klin $*\"\n");
+    let installed = home.path(".local/bin/klin");
+    std::fs::set_permissions(&installed, std::fs::Permissions::from_mode(0o755))
+        .unwrap_or_else(|why| panic!("{why}"));
+
+    let stops = [
+        commands(&settings(&tree), "Stop"),
+        commands(&codex_settings(&tree), "Stop"),
+        cursor_commands(&cursor_settings(&tree), "stop"),
+    ]
+    .concat();
+    for stop in &stops {
+        let done = std::process::Command::new("/bin/sh")
+            .args(["-c", stop])
+            .current_dir(tree.root())
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", home.root())
+            .output()
+            .unwrap_or_else(|why| panic!("sh could not run: {why}"));
+        assert_eq!(
+            String::from_utf8_lossy(&done.stdout).trim(),
+            "installed klin gate --hook --changed",
+            "{stop}"
+        );
     }
 }
 

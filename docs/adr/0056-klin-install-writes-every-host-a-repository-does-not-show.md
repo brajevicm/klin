@@ -29,8 +29,17 @@ make a plugin user commit one host where a teammate commits three.
 
 The README installs klin in one command run from the repository: the
 installer, then the installed binary by its full path,
-`curl … | sh && ~/.local/bin/klin install`. The release configuration puts the
-binary in `~/.local/bin`, so the full path works before PATH does.
+`installer=$(curl …) && sh -c "$installer" && ~/.local/bin/klin install`. The
+release configuration puts the binary in `~/.local/bin`, so the full path
+works before PATH does. The download is held in a variable rather than piped,
+because a pipeline exits with the status of its last command: a `curl` that
+failed would hand `sh` nothing, `sh` would exit 0, and a klin an earlier
+install left behind would run.
+
+The terminal that ran the installer still has no `~/.local/bin` on PATH, and
+a host started from it runs the hooks with that PATH. So each hook line klin
+writes looks in `~/.local/bin` after PATH. Before this, the README's new
+terminal hid the gap.
 
 `--user` keeps the refusal. A person's home shows the hosts that person runs,
 and a home that shows none has no team whose hosts klin cannot see.

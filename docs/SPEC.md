@@ -4812,7 +4812,10 @@ This is how a person on the binary route receives a later fix without deleting
 a hook file by hand.
 
 Each line klin writes resolves `klin` on PATH before it runs it and ends the
-hook when none resolves, the way the plugin's own lines do (19.2). A person
+hook when none resolves, the way the plugin's own lines do (19.2). After PATH
+it looks in `~/.local/bin`, where the install script of 19.1 puts the binary,
+because a host started from the terminal that ran the installer has no such
+PATH yet (ADR 0056). A `klin` that PATH resolves still wins. A person
 who never installed the binary, or who removed it, sees nothing rather than a
 failed hook on every event. The one exception is the stop of a repository that
 holds a `klin.json` at its Git root, which the line resolves with `git

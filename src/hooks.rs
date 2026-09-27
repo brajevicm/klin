@@ -540,7 +540,9 @@ fn array<'a>(
 
 /// Every line klin writes resolves the binary before it runs it, and ends the hook when none
 /// resolves. A person who uninstalls klin, or installs it where the hook's shell does not look,
-/// would otherwise see a failed hook on every event of every session. The stop of a repository
+/// would otherwise see a failed hook on every event of every session. After PATH it looks where
+/// the installer puts klin, because a host started from the terminal that ran the installer has
+/// no such PATH yet. The stop of a repository
 /// that opted in says how to install it instead, so a teammate who cloned the committed hooks
 /// learns what they are for. It looks for the marker at the Git root, because a session may
 /// start below it. It is a `systemMessage` alone: Cursor submits a `followup_message`
@@ -553,7 +555,10 @@ fn line(arguments: &str) -> String {
         ),
         false => "exit 0".to_string(),
     };
-    format!("command -v klin > /dev/null 2>&1 || {missing}; klin {arguments}")
+    format!(
+        "PATH=\"$PATH:$HOME/.local/bin\"; command -v klin > /dev/null 2>&1 || {missing}; \
+         klin {arguments}"
+    )
 }
 
 const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \
