@@ -19,6 +19,7 @@ const CURSOR_MARKET: &str = ".cursor-plugin/marketplace.json";
 const TAGGED_MARKETS: [(&str, &str); 2] =
     [(MARKET, "plugins/klin"), (CODEX_MARKET, "./plugins/klin")];
 const README: &str = "README.md";
+const DIST_WORKSPACE: &str = "dist-workspace.toml";
 const SHARED_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
@@ -138,7 +139,7 @@ fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
 }
 
 /// cargo-release pushes nothing, so the release commit reaches `main` only through the
-/// promotion after the pre-release smoke. ADR 0029, spec 19.2.
+/// promotion after the release smoke. ADR 0029, spec 19.2.
 #[test]
 fn cargo_release_pushes_nothing_by_itself() {
     let push = cargo_release_config()
@@ -146,6 +147,41 @@ fn cargo_release_pushes_nothing_by_itself() {
         .and_then(cargo_toml::Value::as_bool);
 
     assert_eq!(push, Some(false), "cargo-release pushes the release itself");
+}
+
+/// A release stays off `releases/latest`, the installer and `klin update` until the release
+/// smoke passed: `cut-release` makes it a draft prerelease, `dist` publishes that draft and
+/// leaves both flags alone, and `promote-release` marks it Latest. ADR 0029, spec 19.2.
+#[test]
+fn a_release_becomes_latest_only_at_the_promotion() {
+    let published = text(".github/workflows/release.yml");
+    let drafted = line_with(".github/workflows/cut-release.yml", "gh release create");
+    let promoted = line_with(".github/workflows/promote-release.yml", "gh release edit");
+
+    assert!(
+        text(DIST_WORKSPACE)
+            .lines()
+            .any(|line| line.trim() == "create-release = false"),
+        "dist creates the release itself, as Latest"
+    );
+    for flag in ["gh release create", "--latest", "--prerelease=false"] {
+        assert!(
+            !published.contains(flag),
+            "dist's release workflow runs {flag}"
+        );
+    }
+    for flag in ["--draft", "--prerelease"] {
+        assert!(
+            drafted.contains(flag),
+            "cut-release omits {flag}: {drafted}"
+        );
+    }
+    for flag in ["--prerelease=false", "--latest"] {
+        assert!(
+            promoted.contains(flag),
+            "promote-release omits {flag}: {promoted}"
+        );
+    }
 }
 
 #[test]
@@ -237,7 +273,7 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
         "the README does not lead with the installer"
     );
     assert!(
-        text("dist-workspace.toml").contains(r#"install-path = "~/.local/bin""#),
+        text(DIST_WORKSPACE).contains(r#"install-path = "~/.local/bin""#),
         "the installer puts klin somewhere other than the path the README runs it from and \
          the hook lines look in"
     );
@@ -951,6 +987,13 @@ fn json(relative: &str) -> serde_json::Value {
     match serde_json::from_str(&text(relative)) {
         Ok(held) => held,
         Err(why) => panic!("{relative} is not JSON: {why}"),
+    }
+}
+
+fn line_with(relative: &str, holds: &str) -> String {
+    match text(relative).lines().find(|line| line.contains(holds)) {
+        Some(line) => line.to_string(),
+        None => panic!("no line of {relative} holds {holds}"),
     }
 }
 

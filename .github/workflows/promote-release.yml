@@ -4,13 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: The released version that main takes after the pre-release smoke, such as 0.4.0
+        description: The released version that main takes after the release smoke, such as 0.4.0
         type: string
         required: true
 
 jobs:
   promote:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -27,3 +29,4 @@ jobs:
           test "$(gh release view "v$VERSION" --json isDraft --jq .isDraft)" = false
           git merge --no-edit "v$VERSION"
           git push origin main
+          gh release edit "v$VERSION" --prerelease=false --latest

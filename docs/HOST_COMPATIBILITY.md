@@ -126,23 +126,20 @@ whenever that word is not `PASS`.
 Only `COMPAT` fails the job. `INFRA` and `INCONCLUSIVE` keep their evidence
 and leave the ledger untouched.
 
-## Pre-release smoke
+## Release smoke
 
 Run the smoke after `cut-release` pushes a new tag and `dist` publishes its
-release, and before `promote-release` merges the tag into `main`. Until the
-promotion, plugin users stay on the last release (ADR 0029). Verify each host
-by hand on a clean profile with the current stable version. Record the host
-version, OS, klin version, date and PASS or FAIL in the ledger above.
+release as a prerelease, and before `promote-release` merges the tag into
+`main` and marks the release Latest. Until the promotion, plugin users, the
+installer and `klin update` stay on the last release (ADR 0029). Verify each
+host by hand on a clean profile with the current stable version. Record the
+host version, OS, klin version, date and PASS or FAIL in the ledger above.
 
-When the smoke fails:
-
-1. Do not promote the tag.
-2. Mark the last good release as Latest again with
-   `gh release edit vX.Y.Z --latest`. `dist` made the failed release Latest,
-   so the installer and `klin update` serve it until then.
-3. Fix the plugin, then cut the version after the failed tag with the
-   `version` input of `cut-release`. `main` still holds the version before the
-   failed tag, so a `level` input names the failed version again.
+When the smoke fails, do not promote the tag. Its release stays a prerelease,
+so no route serves it as Latest. Fix the plugin, then cut the version after the
+failed tag with the `version` input of `cut-release`. `main` still holds the
+version before the failed tag, so a `level` input names the failed version
+again.
 
 Install from the new tag through the documented commands, with the tag
 appended:

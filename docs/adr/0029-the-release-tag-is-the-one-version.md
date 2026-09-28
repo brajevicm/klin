@@ -7,8 +7,9 @@
 > The amendment below (#338) makes the Claude Code and Codex marketplace
 > entries name the plugin at the release tag, so a plugin user gets the plugin
 > files of the release the wrapper runs. The `ref` of each entry is one more
-> place the version is written. A release now pushes its tag alone, and `main`
-> takes the tag only after the pre-release smoke.
+> place the version is written. A release now pushes its tag alone and stays a
+> prerelease, and `main` takes the tag and the release becomes Latest only
+> after the release smoke.
 
 klin reaches a person through several routes: the Claude Code plugin and its
 wrapper, the install script, a GitHub Action, and a release page someone
@@ -48,10 +49,10 @@ outlive every plugin update.
 ## Consequences
 
 A release is one version bump and one tag. No channel can drift from the tag,
-because none holds a version of its own. The plugin reaches a new tag last,
-when `main` takes it. The Action lives in this repository so that the same
-tag pins it, which reverses the separate `klin-action` repository issue #100
-asked for.
+because none holds a version of its own. The plugin, the installer and `klin
+update` reach a new tag at its promotion, after the release smoke. The
+Action lives in this repository so that the same tag pins it, which reverses
+the separate `klin-action` repository issue #100 asked for.
 
 Homebrew and npm are not enabled. `dist` generates both when they are wanted,
 and neither changes this decision, because both would download from the same
@@ -100,33 +101,52 @@ release, so a moved v0.3.0 would give two installs of 0.3.0 different files.
 #336 makes the next release immutable, and the tag of an immutable release
 cannot move. v0.3.0 does not become immutable after the fact.
 
-### A release reaches plugin users when `main` takes its tag
+### A release reaches its users when it is promoted
 
-`main` now decides which release a plugin user installs, so a release has two
-steps:
+`main` now decides which release a plugin user installs, and GitHub's Latest
+release decides what the installer and `klin update` install. So a release has
+two steps:
 
 1. `cut-release` makes the release commit and the tag, and pushes the tag
-   alone, because `cargo-release` pushes nothing (`push = false`). `dist`
-   publishes the release from the tag. The installer and the Action can use
-   it at once, and plugin users stay on the last release.
-2. A person runs the pre-release smoke of `docs/HOST_COMPATIBILITY.md`
+   alone, because `cargo-release` pushes nothing (`push = false`). It then
+   makes the release a draft prerelease, with the title and notes that `dist
+   plan` gives. `dist` uploads the artifacts to that draft and publishes it
+   (`create-release = false`), and the release stays a prerelease. Plugin
+   users, `releases/latest`, the installer and `klin update` stay on the last
+   release. The Action can use the new tag at once.
+2. A person runs the release smoke of `docs/HOST_COMPATIBILITY.md`
    against that tag, through the documented commands with the tag appended.
-   When the smoke passes, `promote-release` merges the tag into `main`. From
-   that commit on, both marketplaces install the new release.
+   When the smoke passes, `promote-release` merges the tag into `main` and
+   marks the release Latest. From then on, both marketplaces, the installer
+   and `klin update` serve the new release.
+
+Nothing checks the smoke. A run of `promote-release` is the person's
+statement that it passed. `promote-release` pushes `main` directly, as
+`cut-release` did before. When #336 makes checks on `main` required, the
+workflow must be allowed to push, or it must promote through a pull request.
+#336 owns that.
 
 A release from a laptop has the same steps. `cargo release` makes the commit
-and the tag. The person pushes only the tag and resets local `main` to
-`origin/main`, because a push of that `main`, or a branch cut from it, would
-carry the release commit into `main` before the smoke. The promotion merges
-the tag later. A CLI test fails when the release configuration lets
-`cargo-release` push.
+and the tag. The person pushes only the tag and makes the draft as
+`cut-release` does: `gh release create vX.Y.Z --draft --prerelease
+--verify-tag`, with the title and notes that `dist plan` gives. Then the
+person resets local `main` to `origin/main`, because a push of that `main`, or
+a branch cut from it, would carry the release commit into `main` before the
+smoke. The promotion merges the tag later. CLI tests fail when the release
+configuration lets `cargo-release` push, or lets a release become Latest before
+the promotion.
+
+When `cut-release` fails after it pushed the tag, a person makes the draft the
+same way and re-runs the failed jobs of the Release workflow. A candidate that
+became Latest by mistake goes back with `gh release edit vX.Y.Z --prerelease`,
+and `gh release edit --latest` on the last promoted tag makes that release
+Latest again.
 
 `cut-release` starts from `main`, so the next release starts after the
-promotion. A tag that fails the smoke is not promoted. `dist` made its release
-Latest, so the installer and `klin update` serve it until a person marks the
-last good release as Latest again with `gh release edit vX.Y.Z --latest`. The
-fix ships as the next version, cut with an exact `version`, because `main`
-still holds the version before the failed tag.
+promotion. A tag that fails the smoke is not promoted, and its release stays a
+prerelease that no route serves as Latest. The fix ships as the next version,
+cut with an exact `version`, because `main` still holds the version before the
+failed tag.
 
 ### Rejected options
 
@@ -143,6 +163,14 @@ still holds the version before the failed tag.
 - A smoke before the tag exists. The wrapper fetches the binary of the
   version its manifest pins, so plugin files from before the release commit
   run against the last binary, and the smoke would try neither release.
+- A job after `dist`'s announce step that makes the release a prerelease. The
+  release would be Latest until that job ran.
+- An edit of the generated `release.yml`. ADR 0026 leaves that file to
+  `dist`, and `create-release = false` is the setting `dist` offers for a
+  release that another step makes.
+- A release candidate version, such as `v0.4.0-rc.1`, which `dist` marks as a
+  prerelease by itself. The smoke would try the candidate, and the version
+  that users get would be a second build that nobody smoked.
 
 ### Consequences
 
@@ -164,3 +192,6 @@ still holds the version before the failed tag.
   already copies the plugin from the release tag. A Team Marketplace import
   reads the branch the team imports, and that route has no recorded
   verification (spec 19.2).
+- Homebrew and npm, once enabled, would publish at the tag, before the
+  promotion, because `dist` decides from the version string and not from the
+  prerelease flag on GitHub.

@@ -4630,10 +4630,12 @@ the user scope, and no flag is called `--global`.
 A pushed tag `vX.Y.Z` builds the binary for macOS and Linux, on x86_64 and
 arm64, and attaches the four archives, a `.sha256` beside each one, a
 `sha256.sum` over all of them, and the install script to a GitHub release.
-`dist` runs that pipeline, so its artifact names and its install script are
-what a route consumes. ADR 0026 records that choice. `klin --version` prints
-the version the binary was built from, which is the tag without its `v`. Every
-route below downloads from that release and MUST verify the checksum.
+The release stays a prerelease until the promotion of 19.2 marks it Latest,
+so `releases/latest` names the last promoted release. `dist` runs that
+pipeline, so its artifact names and its install script are what a route
+consumes. ADR 0026 records that choice. `klin --version` prints the version
+the binary was built from, which is the tag without its `v`. Every route below
+downloads from that release and MUST verify the checksum.
 
 Two routes ship:
 
@@ -4740,11 +4742,13 @@ A plugin installed from either marketplace then holds the files of the release
 its manifest names, as long as the tag does not move, and a commit to `main`
 that changes `plugins/klin` reaches a plugin user only with the next release.
 The release commit rewrites the `ref` with the manifests. A release MUST push
-its tag alone, and `main` MUST take the tag only after the pre-release smoke
-of `docs/HOST_COMPATIBILITY.md` passed. CLI tests fail when a `ref` is not `v`
+its tag alone and MUST stay a prerelease until the promotion. `main` MUST take
+the tag, and the release MUST become Latest, only after the release smoke of
+`docs/HOST_COMPATIBILITY.md` passed. CLI tests fail when a `ref` is not `v`
 followed by the crate version, when the release would rewrite a marketplace
 file anywhere but its `ref`, and when the release configuration lets
-`cargo-release` push. ADR 0029 records the decision.
+`cargo-release` push or lets a release become Latest before the promotion. ADR
+0029 records the decision.
 
 The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
@@ -5055,6 +5059,6 @@ so it is green on arrival. The plugin pins its own version and upgrades when
 the plugin does, through `/plugin marketplace update` or the host's
 auto-update. Every other route upgrades when the person asks. `klin update`
 runs the `klin-update` beside the binary, or the one PATH resolves, which
-installs the newest release over the current one, and its exit code is the
-updater's. Where no updater is found, `klin update` says so, names the
+installs the Latest release of 19.1 over the current one, and its exit code is
+the updater's. Where no updater is found, `klin update` says so, names the
 installer, and exits 2. ADR 0029 records that one tag names every route.
