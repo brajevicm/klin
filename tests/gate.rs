@@ -1136,6 +1136,22 @@ fn a_file_no_grammar_read_at_the_base_either_is_a_note_after_a_rename() {
 }
 
 #[test]
+fn a_rename_one_grammar_reads_at_both_paths_keeps_the_note() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.js", "function ( { ) unbalanced");
+    tree.base();
+    tree.git(&["mv", "src/broken.js", "src/broken.mjs"]);
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.mjs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn fine() -> i32 { 1 }\n");

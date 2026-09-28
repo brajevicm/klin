@@ -55,9 +55,9 @@ as held when the base holds a form in the same file with the same text and
 reason, paired one to one, so a second copy of a held form is new.
 
 A file that the base could measure and the change makes unmeasurable stays
-exit 2 outside the hook. That includes a rename from another extension,
-because the base's bytes were read under a grammar the base path may not
-select. A file the base did not hold stays exit 2 too, a `lockfile` manifest
+exit 2 outside the hook. That includes a rename from a path another grammar
+reads, because the base's bytes were read under a grammar the base path does
+not select. A rename between two paths one grammar reads keeps the NOTE. A file the base did not hold stays exit 2 too, a `lockfile` manifest
 included. #133 noted such a manifest so that a fixture invalid on purpose
 could never keep the gate red. The base rule now covers that: only the change
 that adds the fixture fails outside the hook, a person closes it with

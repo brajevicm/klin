@@ -12,7 +12,7 @@ use crate::config::Error;
 use crate::git::{Boolean, Repo, Staged};
 use crate::project::{self, Project, Tree};
 use crate::state;
-use crate::syntax::structural::{Cache, Outcome, Unchanged, selected_extensions};
+use crate::syntax::structural::{Cache, Outcome, Unchanged, same_grammar, selected_extensions};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -124,18 +124,22 @@ impl Prior {
         &self.tree
     }
 
+    /// The path the base holds each file at that the change renamed, by the path it has today.
+    pub fn renamed(&self) -> &HashMap<String, String> {
+        &self.renamed
+    }
+
     /// The files a measurement of this base could not read that the base could not read under
-    /// its own path either. A file renamed from another extension is left out: the layout read
-    /// its base bytes under today's grammar, which is a reading the base may never have made.
+    /// its own path either. A file renamed from a path another grammar reads is left out: the
+    /// layout read its base bytes under today's grammar, which is a reading the base never made.
     /// ADR 0021, spec 8.6.
     pub fn unread_either(&self, unreadable: &[String]) -> Vec<String> {
-        let extension = |path: &str| Path::new(path).extension().map(ToOwned::to_owned);
         unreadable
             .iter()
             .filter(|file| {
                 self.renamed
                     .get(*file)
-                    .is_none_or(|was| extension(was) == extension(file))
+                    .is_none_or(|was| same_grammar(was, file))
             })
             .cloned()
             .collect()

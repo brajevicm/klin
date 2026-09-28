@@ -17,7 +17,6 @@ use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::changed;
 use crate::check::{Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::modules::{
@@ -255,9 +254,8 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
             structural::Unchanged::publish,
         );
     out.record(|records| records.facts = Some(before.cost + after.cost));
-    let renamed = changed::renamed(&project.changes(commit)?);
     Ok((
-        side(prior.tree(), &before, &renamed)?,
+        side(prior.tree(), &before, prior.renamed())?,
         side(project.tree(), &after, &HashMap::new())?,
     ))
 }

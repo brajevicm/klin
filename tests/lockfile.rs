@@ -454,6 +454,43 @@ fn a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base() {
     );
 }
 
+#[test]
+fn a_lockfile_only_the_base_could_not_read_is_named_at_the_base() {
+    let tree = derived_tree();
+    tree.write(
+        "tools/a/package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0"}}"#,
+    );
+    tree.write(
+        "tools/a/yarn.lock",
+        "left-pad@1.0.0:\n  version \"1.0.0\"\n",
+    );
+    tree.base();
+    assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
+    tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
+    tree.git(&["mv", "tools/a/yarn.lock", "tools/b/yarn.lock"]);
+    tree.write(
+        "tools/b/yarn.lock",
+        "# yarn lockfile v1\n\nleft-pad@1.0.0:\n  version \"1.0.0\"\n",
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let json = tree.run(&["gate", "--gate", "lockfile", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(
+            "tools/a/yarn.lock at the base is a lockfile format klin cannot read yet, so the \
+             dependencies of tools/b/package.json are not judged"
+        ),
+        "{}",
+        run.out
+    );
+    assert!(
+        json.says("\"file\":\"tools/b/package.json\""),
+        "{}",
+        json.out
+    );
+}
+
 /// The manifests are the ones the survey finds, so a manifest klin cannot parse in either tree is
 /// a fixture and a NOTE, and no person's list can claim otherwise. Spec 8.2.1, ADR 0040.
 #[test]

@@ -351,10 +351,7 @@ pub fn unread(
     code: u8,
     out: &mut Sink,
 ) -> u8 {
-    let base: HashSet<&str> = match at.hook() {
-        true => HashSet::new(),
-        false => base.iter().map(String::as_str).collect(),
-    };
+    let base: HashSet<&str> = base.iter().map(String::as_str).collect();
     let (noted, refused): (Vec<&Unparsed>, Vec<&Unparsed>) = unparsed
         .iter()
         .filter(|file| at.only.is_none_or(|only| only.contains(&file.file)))

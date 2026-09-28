@@ -557,14 +557,8 @@ fn reading(
         return Ok(noted);
     }
     let before = before.unwrap_or_default();
-    if let Some(at) = now.unreadable.clone().or_else(|| before.unreadable.clone()) {
-        return Ok(Reading::Noted(
-            at.clone(),
-            format!(
-                "{at} is a lockfile format klin cannot read yet, so the dependencies of \
-                 {manifest} are not judged"
-            ),
-        ));
+    if let Some(noted) = unreadable(&now, &before, manifest) {
+        return Ok(noted);
     }
     if now.lockfile.is_none() && before.lockfile.is_none() {
         return Ok(Reading::Noted(
@@ -576,6 +570,24 @@ fn reading(
         ));
     }
     Ok(Reading::Judged(now, before))
+}
+
+/// The NOTE for a lockfile klin found and cannot read, filed under the manifest it leaves unjudged.
+/// Today's lockfile is named when it is the one klin cannot read, and otherwise the base's, at the
+/// path the base held it at, which today's tree may no longer hold.
+fn unreadable(now: &State, before: &State, manifest: &str) -> Option<Reading> {
+    let (at, tree) = match (&now.unreadable, &before.unreadable) {
+        (Some(at), _) => (at, ""),
+        (None, Some(at)) => (at, " at the base"),
+        (None, None) => return None,
+    };
+    Some(Reading::Noted(
+        manifest.to_string(),
+        format!(
+            "{at}{tree} is a lockfile format klin cannot read yet, so the dependencies of \
+             {manifest} are not judged"
+        ),
+    ))
 }
 
 /// A manifest klin cannot parse now is a tool error when it parsed at the base, because the work

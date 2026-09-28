@@ -1752,8 +1752,10 @@ after `__metadata.version`. Both give the version from the `version` line
 under each key. Selectors and locators are split at the
 package-name separator, preserving scoped names. The line readers recognize
 only those markers and key shapes; an unrecognized shape is a NOTE and no
-finding rather than an empty lockfile. A JSON lockfile klin cannot parse is a
-tool error naming the file. A manifest with no lockfile in either tree is a
+finding rather than an empty lockfile. That NOTE is filed under the manifest
+and names the lockfile. A lockfile only the base held unreadable is named at
+its base path, followed by `at the base`. A JSON lockfile klin cannot parse
+is a tool error naming the file. A manifest with no lockfile in either tree is a
 NOTE and no finding, and a lockfile only the base held makes every
 dependency of that manifest `unlocked`, so deleting a lockfile fails. A
 manifest klin cannot parse now and that did not parse at the base is a NOTE
@@ -1807,6 +1809,7 @@ handful of files. Pinned by
 `a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook`,
 `a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note`,
 `a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base`,
+`a_lockfile_only_the_base_could_not_read_is_named_at_the_base`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
 `a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
 `two_manifests_that_share_one_lockfile_are_each_judged_against_it`,
@@ -2498,8 +2501,9 @@ Every check MUST:
   file with the same text and reason, at any line, paired one to one. A check
   that reads the base's copy of a renamed file under today's path, which every
   check but `conventions` does, does not count a file the window renamed from
-  another extension, because the base may have measured it under its own
-  path. So that file stays exit 2. `conventions` reads the base's copy under
+  a path another grammar reads, such as `.ts` to `.tsx`, because the base may
+  have read it under its own path. So that file stays exit 2. A rename between
+  two paths one grammar reads, such as `.js` to `.mjs`, counts. `conventions` reads the base's copy under
   the path the base holds it at, so its own measurement already decides. In
   the hook each of them is a NOTE, because the agent has no remedy. A file the
   base did not hold stays exit 2 outside the hook, a `lockfile` manifest
@@ -2510,6 +2514,7 @@ Every check MUST:
   `a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand`,
   `an_extension_changing_rename_reads_the_base_bytes_under_the_new_grammar`,
   `a_file_no_grammar_read_at_the_base_either_is_a_note_after_a_rename`,
+  `a_rename_one_grammar_reads_at_both_paths_keeps_the_note`,
   `a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict` and
   `an_unparsed_file_is_named_by_each_caller_as_before`.
 - run under `klin gate` and under its own subcommand with the same output
