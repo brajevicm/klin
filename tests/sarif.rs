@@ -378,3 +378,61 @@ fn an_entry_with_no_name_names_the_key_it_is_missing() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("has no \"name\""), "{}", run.out);
 }
+
+#[test]
+fn a_run_that_never_exits_is_stopped_at_the_limit_and_named() {
+    let tree = tree(
+        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "sleep 60; echo never"}]}"#,
+    );
+
+    let started = std::time::Instant::now();
+    let run = tree.run_with(
+        &[("KLIN_COMMAND_LIMIT", "1")],
+        &["gate", "--gate", "eslint"],
+    );
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("sleep 60; echo never"), "{}", run.out);
+    assert!(run.says("the 1 second limit"), "{}", run.out);
+}
+
+#[test]
+fn the_commands_of_one_run_share_twice_the_limit() {
+    let tree = tree(
+        r#"{"sarif": [
+            {"name": "first", "report": "first.sarif", "run": "sleep 60"},
+            {"name": "second", "report": "second.sarif", "run": "sleep 60"},
+            {"name": "third", "report": "third.sarif", "run": "sleep 60"}
+        ]}"#,
+    );
+
+    let started = std::time::Instant::now();
+    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "1")], &["gate"]);
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the 1 second limit"), "{}", run.out);
+    assert!(
+        run.says("klin did not start it, because the 2 second deadline from klin's start passed"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_build_draws_on_the_limit_the_sarif_commands_share() {
+    let tree = tree(
+        r#"{"build": "sleep 1", "sarif": [
+            {"name": "first", "report": "first.sarif", "run": "sleep 60"},
+            {"name": "second", "report": "second.sarif", "run": "sleep 60"}
+        ]}"#,
+    );
+
+    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "2")], &["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the 2 second limit"), "{}", run.out);
+    assert!(
+        run.says("klin stopped it at the 4 second deadline from klin's start"),
+        "{}",
+        run.out
+    );
+}

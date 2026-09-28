@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 use serde_json::Value;
 
@@ -8,6 +7,7 @@ use crate::check::{self, Said};
 use crate::config::{self, Config, Error};
 use crate::project::Project;
 use crate::scope;
+use crate::shell;
 use crate::survey;
 
 const BUILD: &str = config::BUILD.name;
@@ -304,20 +304,10 @@ fn built(root: &Path, entry: &Entry) -> (Option<Failure>, Option<String>) {
     (ran(&at, &run, how), line)
 }
 
-/// One command in the shell, at the directory it runs in, in the environment the hook itself
-/// was given. Spec 9.3.
-fn shell(at: &Path, run: &str) -> std::io::Result<std::process::Output> {
-    Command::new("sh")
-        .arg("-c")
-        .arg(run)
-        .current_dir(at)
-        .output()
-}
-
 /// What the shell made of one command, which is the whole test klin applies: it reads no shell
 /// message and guesses no tool name. ADR 0048.
 fn ran(at: &Path, run: &str, how: How) -> Option<Failure> {
-    let done = match shell(at, run) {
+    let done = match shell::output(at, run) {
         Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
         Ok(done) => done,
     };

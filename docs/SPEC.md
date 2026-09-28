@@ -2136,19 +2136,20 @@ there:
 ]
 ```
 
-With `run`, klin deletes `report`, executes the command in the working tree
-the way it runs `build`, then reads `report`. A report that is missing after
-`run` is ERR. The report path SHOULD be under `.gitignore`, so the stamp of
-6.5 does not carry it. The report is fresh by construction, because the only file at
-that path is one the tool wrote over the tree klin is about to judge. The
-command's exit status is not judged, because a linter exits non-zero when it
-finds something. In the hook this is the RECOMMENDED form. Without `run`,
-klin reads the report as it finds it, and that form belongs in CI, where the
-same job wrote the report one step earlier. There, a report older than any
-file the window changed is ERR, because a report that predates the change
-cannot describe it. Executing the tool in the `after` tree has no dependency
-problem: the working tree has its dependencies installed, or the build would
-fail first.
+With `run`, klin deletes `report`, executes the command in the working tree the
+way it runs `build`, under the same limit and deadline (9.3), then reads
+`report`. A report that is missing after `run` is ERR, and so is a command
+still running at the limit or the deadline, named with the one it reached. The
+report path SHOULD be under `.gitignore`, so the stamp of 6.5 does not carry
+it. The report is fresh by construction, because the only file at that path is
+one the tool wrote over the tree klin is about to judge. The command's exit
+status is not judged, because a linter exits non-zero when it finds something.
+In the hook this is the RECOMMENDED form. Without `run`, klin reads the report
+as it finds it, and that form belongs in CI, where the same job wrote the
+report one step earlier. There, a report older than any file the window changed
+is ERR, because a report that predates the change cannot describe it. Executing
+the tool in the `after` tree has no dependency problem: the working tree has
+its dependencies installed, or the build would fail first.
 
 Each entry of the section is its own gate, named by its own `name`, because
 nothing in a tree says which scanner an entry runs. The section MUST be a list,
@@ -2739,6 +2740,31 @@ applies to a derived JavaScript command alone: a derived `cargo` or `go`
 command, and every command a person wrote, run exactly as they read, in the
 environment the hook itself was given. A tool a project installed but did not
 put on `PATH` is therefore found, and the NOTE below is not told for it.
+
+Each build command runs for at most 300 seconds, and klin stops every build and
+`run` command of one run at 600 seconds after klin started, so a later command
+gets only what is left before that deadline, and a command with no time left
+does not start. The deadline counts klin's own work between commands too. The
+host gives the Stop hook 900 seconds, so when klin starts as the stop begins,
+no command is still running when the host's time runs out, and whatever klin
+does after its last command has at least 300 seconds. Time the host spends
+before klin starts, such as a `cargo run` that compiles klin first, is not
+counted. When a command reaches its limit or the deadline, klin stops it and
+the build fails with a message that names the command and the limit or deadline
+it reached. `klin.json` cannot change either: a person whose build takes longer
+sets `build` to `false` and lets CI build. A run MAY take `KLIN_COMMAND_LIMIT`
+in seconds for tests. It sets the limit of each command, from 1 to 300 seconds,
+and the deadline is twice it. Any other value is an error, so the override can
+shorten the limit and the deadline and never raise them.
+
+Each command runs in a process group of its own. When the command's shell
+exits, when it reaches its limit or the deadline, and when a hangup, an
+interrupt or a terminate signal ends klin, klin sends a kill signal to every
+process left in that group before it goes on. So a command that starts a
+process in the background leaves nothing running that could change the tree
+after klin judged it. A process that makes a group of its own leaves klin's
+reach, and so does every process when klin is killed with a signal it cannot
+catch.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
@@ -3606,12 +3632,17 @@ journal cannot prove. No word of the agent's glossary appears in the text.
   version change, and the survey cache and the structural cache both key on
   the version.
 - No check MAY read the network.
-- The only clock a judgment reads is a pinned dated ceiling (5.5), read in
-  UTC, and `KLIN_TODAY` overrides it. The report age check of 8.3 compares
-  file times and is the one other place time enters a verdict. The `ms` of
-  11.2 and the `time` and `timing` of 11.4 are measurements about the run,
-  recorded and never judged, so they do not break determinism: every field a
-  verdict depends on is still a pure function of the trees.
+- The only clock a judgment reads is a pinned dated ceiling (5.5), read in UTC,
+  and `KLIN_TODAY` overrides it. The report age check of 8.3 compares file
+  times, and the command limit and deadline of 9.3 stop a build or `run`
+  command that outlives them. These are the two other places time enters a
+  verdict, and in both two machines can judge one tree differently: file times
+  can differ between checkouts, and a command that ends just under its limit or
+  the deadline on one machine and just over it on another passes on the first
+  and fails on the second. Every other field a verdict depends on is a pure
+  function of the trees. The `ms` of 11.2 and the `time` and `timing` of 11.4
+  are measurements about the run, recorded and never judged, so they do not
+  break determinism.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
 - A derived number or reachability family is a pure function of the derivation

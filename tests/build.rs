@@ -931,3 +931,128 @@ fn a_passing_project_local_compile_tells_no_note() {
     assert_eq!(ran(&tree), "the project compiler\n", "{}", run.out);
     assert!(!run.says("could not run"), "{}", run.out);
 }
+
+const LEAVES_A_DESCENDANT: &str = r#""build": "sleep 60 > /dev/null 2>&1 & echo $! > descendant","#;
+const WAITS_ON_A_DESCENDANT: &str = r#""build": "sleep 60 & echo $! > descendant; wait","#;
+
+fn limited(tree: &Tree, limit: &str) -> harness::Run {
+    harness::feed_with(
+        tree.root(),
+        &[("KLIN_COMMAND_LIMIT", limit)],
+        &["gate", "--hook"],
+        A_STOP,
+    )
+}
+
+/// The descendant a build recorded is gone, or a zombie no one can run, within five seconds.
+fn gone(tree: &Tree) -> bool {
+    let pid = std::fs::read_to_string(tree.path("descendant")).unwrap_or_default();
+    let pid = pid.trim();
+    assert!(!pid.is_empty(), "the build recorded no descendant");
+    (0..50).any(|_| {
+        let state = std::process::Command::new("ps")
+            .args(["-o", "stat=", "-p", pid])
+            .output()
+            .map(|done| String::from_utf8_lossy(&done.stdout).trim().to_string())
+            .unwrap_or_default();
+        let dead = state.is_empty() || state.starts_with('Z');
+        if !dead {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        dead
+    })
+}
+
+#[test]
+fn a_build_that_never_exits_is_stopped_at_the_limit_and_named() {
+    let tree = tree(WAITS_ON_A_DESCENDANT);
+
+    let started = std::time::Instant::now();
+    let run = limited(&tree, "1");
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the tree does not build"), "{}", run.out);
+    assert!(
+        run.says("sleep 60 & echo $! > descendant; wait"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("the 1 second limit"), "{}", run.out);
+    assert!(gone(&tree), "{}", run.out);
+}
+
+#[test]
+fn a_build_that_exits_leaves_no_descendant_running() {
+    let tree = tree(LEAVES_A_DESCENDANT);
+
+    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(gone(&tree), "{}", run.out);
+}
+
+/// klin ends by the signal it was sent while a build waits on a descendant, and the
+/// descendant ends with it, long before the build's limit.
+fn ended_by(name: &str, number: i32) {
+    use std::io::Write;
+    use std::os::unix::process::ExitStatusExt;
+
+    let tree = tree(WAITS_ON_A_DESCENDANT);
+    let started = std::time::Instant::now();
+    let mut klin = std::process::Command::new(harness::binary())
+        .args(["gate", "--hook"])
+        .env("HOME", harness::empty_home())
+        .current_dir(tree.root())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .expect("klin starts");
+    let _ = klin
+        .stdin
+        .take()
+        .map(|mut stdin| stdin.write_all(A_STOP.as_bytes()));
+    let recorded = (0..100).any(|_| {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::fs::read_to_string(tree.path("descendant")).is_ok_and(|pid| pid.ends_with('\n'))
+    });
+    assert!(recorded, "the build never started");
+
+    let sent = std::process::Command::new("kill")
+        .args(["-s", name, &klin.id().to_string()])
+        .status();
+    assert!(sent.is_ok_and(|sent| sent.success()));
+    let ended = klin.wait().expect("klin ends");
+    assert_eq!(ended.signal(), Some(number), "{ended:?}");
+    assert!(started.elapsed().as_secs() < 30);
+    assert!(gone(&tree));
+}
+
+#[test]
+fn a_signal_that_ends_klin_ends_the_build_it_runs() {
+    ended_by("TERM", 15);
+}
+
+#[test]
+fn an_interrupt_that_ends_klin_ends_the_build_it_runs() {
+    ended_by("INT", 2);
+}
+
+#[test]
+fn a_hangup_that_ends_klin_ends_the_build_it_runs() {
+    ended_by("HUP", 1);
+}
+
+#[test]
+fn the_test_override_cannot_raise_the_limit() {
+    for limit in ["301", "0"] {
+        let tree = tree(r#""build": "true","#);
+        let run = limited(&tree, limit);
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert!(
+            run.says(&format!("KLIN_COMMAND_LIMIT is \"{limit}\"")),
+            "{}",
+            run.out
+        );
+        assert!(run.says("from 1 to 300"), "{}", run.out);
+    }
+}
