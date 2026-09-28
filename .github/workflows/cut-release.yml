@@ -31,4 +31,8 @@ jobs:
       - env:
           LEVEL: ${{ inputs.level }}
           VERSION: ${{ inputs.version }}
-        run: cargo release "${VERSION:-$LEVEL}" --execute --no-confirm
+        run: |
+          cargo release "${VERSION:-$LEVEL}" --execute --no-confirm
+          tag=$(git describe --tags --exact-match HEAD)
+          git push origin "refs/tags/$tag"
+          echo "dist now publishes $tag. Plugin users get it only after the pre-release smoke in docs/HOST_COMPATIBILITY.md passes and promote-release merges it into main." >> "$GITHUB_STEP_SUMMARY"

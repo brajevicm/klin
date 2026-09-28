@@ -69,17 +69,29 @@ install_host() {
   say "host version: $(cat "$ART/host-version.txt")"
 }
 
+install_failed() {
+  local url tag
+  url=$(jq -r '.plugins[0].source.url' "$CHECKOUT/$1")
+  tag=$(jq -r '.plugins[0].source.ref' "$CHECKOUT/$1")
+  run env GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$url" "refs/tags/$tag"
+  case $? in
+    0) verdict COMPAT "$2" ;;
+    2) verdict INFRA "klin's marketplace names $tag, which $url does not hold, so no host can install the plugin" ;;
+    *) verdict INFRA "klin's plugin source $url could not be fetched at $tag, so the host never saw the plugin" ;;
+  esac
+}
+
 install_plugin() {
   case "$HOST" in
     claude)
       run claude plugin marketplace add "$CHECKOUT" || verdict COMPAT "the current Claude Code rejected klin's marketplace manifest"
-      run claude plugin install klin@klin || verdict COMPAT "the current Claude Code rejected the klin plugin"
+      run claude plugin install klin@klin || install_failed .claude-plugin/marketplace.json "the current Claude Code rejected the klin plugin"
       claude plugin list --json > "$ART/plugins.json" 2>&1
       grep -q '"klin"' "$ART/plugins.json" || verdict COMPAT "the current Claude Code does not list klin after a successful install"
       ;;
     codex)
       run codex plugin marketplace add "$CHECKOUT" || verdict COMPAT "the current Codex rejected klin's marketplace manifest"
-      run codex plugin add klin@klin || verdict COMPAT "the current Codex rejected the klin plugin"
+      run codex plugin add klin@klin || install_failed .agents/plugins/marketplace.json "the current Codex rejected the klin plugin"
       # Codex does not trust plugin hooks on install. In CI only, the trust step is
       # supplied by configuration, because no headless trust flow is documented.
       if [ -n "${CODEX_TRUST_COMMAND:-}" ]; then
@@ -120,7 +132,6 @@ evidence() {
   git -C "$REPO" status --porcelain -- README.md > "$ART/tree.txt"
   git -C "$REPO" status --porcelain > "$ART/tree-all.txt"
   [ -f "$JOURNAL" ] && cp "$JOURNAL" "$ART/journal.jsonl"
-  command -v jq > /dev/null || verdict INFRA "the runner has no jq, so no evidence could be read"
 
   if [ ! -f "$JOURNAL" ]; then
     grep -q 'klin is not installed' "$ART/session.log" &&
@@ -153,6 +164,7 @@ evidence() {
   verdict PASS "the host loaded the plugin, ran the lifecycle, invoked Stop and honored klin's failing report"
 }
 
+command -v jq > /dev/null || verdict INFRA "the runner has no jq, so the canary cannot read klin's files or its evidence"
 install_host
 repo
 install_plugin

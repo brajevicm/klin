@@ -16,6 +16,8 @@ const CURSOR_MANIFEST: &str = "plugins/klin/.cursor-plugin/plugin.json";
 const MARKET: &str = ".claude-plugin/marketplace.json";
 const CODEX_MARKET: &str = ".agents/plugins/marketplace.json";
 const CURSOR_MARKET: &str = ".cursor-plugin/marketplace.json";
+const TAGGED_MARKETS: [(&str, &str); 2] =
+    [(MARKET, "plugins/klin"), (CODEX_MARKET, "./plugins/klin")];
 const README: &str = "README.md";
 const SHARED_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
@@ -95,27 +97,55 @@ fn the_cursor_manifest_names_the_cursor_hooks_file() {
 
 /// Claude Code and Codex read a marketplace from the default branch, so each entry names the
 /// plugin at the release tag the manifests pin, and a commit to `main` reaches a plugin user
-/// only when the next release rewrites the tag. ADR 0029, spec 19.2.
+/// only once `main` names the next tag. Each entry spells the path as its host documents it:
+/// Claude Code the bare path, Codex the `./` form. ADR 0029, spec 19.2.
 #[test]
 fn the_claude_code_and_codex_marketplaces_name_the_plugin_at_the_pinned_release() {
-    let tagged = serde_json::json!({
-        "source": "git-subdir",
-        "url": "https://github.com/brajevicm/klin.git",
-        "path": PLUGIN,
-        "ref": format!("v{PINNED}"),
-    });
-    let cargo_toml = text("Cargo.toml");
-
-    for market in [MARKET, CODEX_MARKET] {
+    for (market, path) in TAGGED_MARKETS {
         let entry = json(market)["plugins"][0].clone();
 
         assert_eq!(entry["name"], "klin", "{market}");
-        assert_eq!(entry["source"], tagged, "{market}");
-        assert!(
-            cargo_toml.contains(&format!("file = \"{market}\"")),
-            "the release does not rewrite {market}"
+        assert_eq!(
+            entry["source"],
+            serde_json::json!({
+                "source": "git-subdir",
+                "url": "https://github.com/brajevicm/klin.git",
+                "path": path,
+                "ref": format!("v{PINNED}"),
+            }),
+            "{market}"
         );
     }
+}
+
+/// The release commit rewrites each marketplace ref to the new tag and nothing else. The test
+/// applies the rewrites `Cargo.toml` configures, as cargo-release does, for a version no
+/// release has. ADR 0029, spec 19.2.
+#[test]
+fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
+    let version = "9.9.9";
+
+    for (market, _) in TAGGED_MARKETS {
+        let mut tagged = json(market);
+        tagged["plugins"][0]["source"]["ref"] = Value::from(format!("v{version}"));
+
+        let rewritten = match serde_json::from_str::<Value>(&after_cargo_release(market, version)) {
+            Ok(held) => held,
+            Err(why) => panic!("the release leaves {market} unreadable: {why}"),
+        };
+        assert_eq!(rewritten, tagged, "{market}");
+    }
+}
+
+/// cargo-release pushes nothing, so the release commit reaches `main` only through the
+/// promotion after the pre-release smoke. ADR 0029, spec 19.2.
+#[test]
+fn cargo_release_pushes_nothing_by_itself() {
+    let push = cargo_release_config()
+        .get("push")
+        .and_then(cargo_toml::Value::as_bool);
+
+    assert_eq!(push, Some(false), "cargo-release pushes the release itself");
 }
 
 #[test]
@@ -922,6 +952,65 @@ fn json(relative: &str) -> serde_json::Value {
         Ok(held) => held,
         Err(why) => panic!("{relative} is not JSON: {why}"),
     }
+}
+
+fn cargo_release_config() -> cargo_toml::Value {
+    let manifest = match cargo_toml::Manifest::from_str(&text("Cargo.toml")) {
+        Ok(manifest) => manifest,
+        Err(why) => panic!("Cargo.toml is not a manifest: {why}"),
+    };
+    match manifest
+        .package
+        .and_then(|package| package.metadata)
+        .and_then(|metadata| metadata.get("release").cloned())
+    {
+        Some(release) => release,
+        None => panic!("Cargo.toml has no [package.metadata.release]"),
+    }
+}
+
+fn after_cargo_release(relative: &str, version: &str) -> String {
+    let rewrites: Vec<cargo_toml::Value> = cargo_release_config()
+        .get("pre-release-replacements")
+        .and_then(cargo_toml::Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|rewrite| rewrite.get("file").and_then(cargo_toml::Value::as_str) == Some(relative))
+        .collect();
+    assert!(
+        !rewrites.is_empty(),
+        "the release does not rewrite {relative}"
+    );
+
+    rewrites.iter().fold(text(relative), |held, rewrite| {
+        let field = |key: &str| {
+            rewrite
+                .get(key)
+                .and_then(cargo_toml::Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
+        let search = match regex::Regex::new(&field("search")) {
+            Ok(search) => search,
+            Err(why) => panic!("the release searches {relative} with a bad pattern: {why}"),
+        };
+        assert_eq!(
+            rewrite
+                .get("exactly")
+                .and_then(cargo_toml::Value::as_integer),
+            Some(1),
+            "the release does not rewrite {relative} exactly once"
+        );
+        assert_eq!(
+            search.find_iter(&held).count(),
+            1,
+            "the release pattern misses {relative}"
+        );
+        search
+            .replace_all(&held, field("replace").replace("{{version}}", version))
+            .into_owned()
+    })
 }
 
 fn json_file(path: &Path, label: &str) -> Value {

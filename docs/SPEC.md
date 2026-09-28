@@ -4734,12 +4734,17 @@ Cloud Agents.
 marketplace from the repository's default branch, and a relative path there
 copies the plugin as `main` holds it. Their two entries MUST therefore name
 `plugins/klin` at the release tag `vX.Y.Z` that the manifests pin, through the
-`git-subdir` source both hosts document. A plugin installed from either
-marketplace then holds the files of the release its manifest names, and a
-commit to `main` that changes `plugins/klin` reaches a plugin user only with
-the next release. The release commit rewrites the `ref` with the manifests,
-and a CLI test fails when the `ref` is not `v` followed by the crate version.
-ADR 0029 records the decision.
+`git-subdir` source both hosts document. Each entry MUST spell the path as its
+host documents it: `plugins/klin` for Claude Code, `./plugins/klin` for Codex.
+A plugin installed from either marketplace then holds the files of the release
+its manifest names, as long as the tag does not move, and a commit to `main`
+that changes `plugins/klin` reaches a plugin user only with the next release.
+The release commit rewrites the `ref` with the manifests. A release MUST push
+its tag alone, and `main` MUST take the tag only after the pre-release smoke
+of `docs/HOST_COMPATIBILITY.md` passed. CLI tests fail when a `ref` is not `v`
+followed by the crate version, when the release would rewrite a marketplace
+file anywhere but its `ref`, and when the release configuration lets
+`cargo-release` push. ADR 0029 records the decision.
 
 The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools

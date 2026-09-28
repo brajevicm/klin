@@ -120,7 +120,7 @@ whenever that word is not `PASS`.
 | --- | --- | --- |
 | `PASS` | the whole journey held | green |
 | `COMPAT` | the host changed under klin: a rejected manifest, a lifecycle hook that no longer runs, an event klin can no longer place, or an ignored block | red |
-| `INFRA` | the host package, the runner, the network or klin's own pinned-release download failed, so the journey never started | green, with a warning |
+| `INFRA` | the host package, the runner, the network, the fetch of klin's plugin source at its tag or klin's own pinned-release download failed, so the journey never started | green, with a warning |
 | `INCONCLUSIVE` | no entitlement, no documented trust step, or a turn that changed no file, so the observed point was never reached | green, with a warning |
 
 Only `COMPAT` fails the job. `INFRA` and `INCONCLUSIVE` keep their evidence
@@ -128,13 +128,33 @@ and leave the ledger untouched.
 
 ## Pre-release smoke
 
-Before a release that claims first-class host support, verify each host by
-hand on a clean profile with the current stable version. Record the host
+Run the smoke after `cut-release` pushes a new tag and `dist` publishes its
+release, and before `promote-release` merges the tag into `main`. Until the
+promotion, plugin users stay on the last release (ADR 0029). Verify each host
+by hand on a clean profile with the current stable version. Record the host
 version, OS, klin version, date and PASS or FAIL in the ledger above.
+
+When the smoke fails:
+
+1. Do not promote the tag.
+2. Mark the last good release as Latest again with
+   `gh release edit vX.Y.Z --latest`. `dist` made the failed release Latest,
+   so the installer and `klin update` serve it until then.
+3. Fix the plugin, then cut the version after the failed tag with the
+   `version` input of `cut-release`. `main` still holds the version before the
+   failed tag, so a `level` input names the failed version again.
+
+Install from the new tag through the documented commands, with the tag
+appended:
+
+- Claude Code: `/plugin marketplace add brajevicm/klin#vX.Y.Z`, then
+  `/plugin install klin@klin`.
+- Codex: `codex plugin marketplace add brajevicm/klin --ref vX.Y.Z`, then
+  `codex plugin add klin@klin`.
 
 For every host:
 
-1. the plugin installs or loads through the documented user route,
+1. the plugin installs or loads from the new tag through those commands,
 2. a repository with a `klin.json` invokes klin,
 3. the guard refuses an attempted write to `klin.json`,
 4. a deterministic failing stop reaches the agent through the host's block or
@@ -145,7 +165,8 @@ Codex adds two steps:
 1. review and trust klin's hooks through the normal `/hooks` trust flow,
 2. start a fresh session and prove the trusted hooks run.
 
-Cursor adds one step: the documented plugin copy and window reload.
+Cursor adds one step: the documented plugin copy with `--branch vX.Y.Z`, and a
+window reload.
 
 This smoke exists because marketplace, trust and reload flows have no reliable
 headless API. Do not build UI automation to avoid it.

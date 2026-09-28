@@ -9,7 +9,7 @@
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/brajevicm/klin.git",
-        "path": "plugins/klin",
+        "path": "./plugins/klin",
         "ref": "v0.3.0"
       },
       "policy": {
