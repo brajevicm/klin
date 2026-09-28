@@ -390,8 +390,122 @@ fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() 
     );
 }
 
-/// The manifests are the ones the survey finds, so a manifest klin cannot parse in either tree is
-/// a fixture and a NOTE, and no person's list can claim otherwise. Spec 8.2.1, ADR 0040.
+#[test]
+fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook() {
+    let tree = derived_tree();
+    tree.base();
+    tree.write("testdata/broken/package.json", "{ not json");
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let stop = harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--gate", "lockfile"],
+        r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("testdata/broken/package.json is not valid JSON")
+            && run.says("add it to the section's `except`"),
+        "{}",
+        run.out
+    );
+    assert_eq!(stop.code, 0, "{}", stop.out);
+}
+
+#[test]
+fn a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note() {
+    let tree = derived_tree();
+    tree.write("tools/a/package.json", "{ not json");
+    tree.base();
+    assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
+    tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
+    let run = tree.run(&["gate", "--gate", "lockfile", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: tools/b/package.json is not valid JSON"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base() {
+    let tree = derived_tree();
+    tree.write(
+        "tools/a/package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0"}}"#,
+    );
+    tree.write("tools/a/package-lock.json", NPM_V3);
+    tree.base();
+    assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
+    tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
+    tree.write(
+        "tools/b/package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"}}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("1 dependenc(ies) got worse")
+            && run.says(
+                "unlocked 1, unpinned 0, stale 0, was unlocked 0, unpinned 0, stale 0  left-pad"
+            ),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_lockfile_only_the_base_could_not_read_is_named_at_the_base() {
+    let tree = derived_tree();
+    tree.write(
+        "tools/a/package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0"}}"#,
+    );
+    tree.write(
+        "tools/a/yarn.lock",
+        "left-pad@1.0.0:\n  version \"1.0.0\"\n",
+    );
+    tree.base();
+    assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
+    tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
+    tree.git(&["mv", "tools/a/yarn.lock", "tools/b/yarn.lock"]);
+    tree.write(
+        "tools/b/yarn.lock",
+        "# yarn lockfile v1\n\nleft-pad@1.0.0:\n  version \"1.0.0\"\n",
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let json = tree.run(&["gate", "--gate", "lockfile", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(
+            "tools/a/yarn.lock at the base is a lockfile format klin cannot read yet, so the \
+             dependencies of tools/b/package.json are not judged"
+        ),
+        "{}",
+        run.out
+    );
+    assert!(
+        json.says("\"file\":\"tools/b/package.json\""),
+        "{}",
+        json.out
+    );
+}
+
+#[test]
+fn a_manifest_renamed_to_another_format_has_no_base_to_hide_behind() {
+    let tree = derived_tree();
+    tree.base();
+    tree.git(&["mv", "Cargo.toml", "package.json"]);
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("package.json is not valid JSON")
+            && run.says("the base did not hold package.json"),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
     let tree = Tree::new();

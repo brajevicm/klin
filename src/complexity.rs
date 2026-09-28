@@ -350,7 +350,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = sweep.files.coverage(at.only).said(out);
-    let (prior, before, before_work) = at_the_base(&spec, at, out)?;
+    let mut owned = None;
+    let laid = base::laid(at.prior, &mut owned, || base::own(at, out))?;
+    let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
     let code = evaluator(&spec).evaluate(
@@ -368,22 +370,20 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     );
     let code = coverage::lost_said(&lost, at, code, out);
-    Ok(syntax::unread(&sweep.unparsed, at, code, out))
+    Ok(syntax::unread(
+        &sweep.unparsed,
+        || laid.unread_either(&before.unreadable),
+        at,
+        code,
+        out,
+    ))
 }
 
 fn at_the_base(
     spec: &Spec,
     at: &Context,
-    out: &mut Sink,
+    prior: &base::Prior,
 ) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
-    let owned;
-    let prior = match at.prior {
-        Some(prior) => prior,
-        None => {
-            owned = base::own(at, out)?;
-            &owned
-        }
-    };
     let project = at.project;
     let selection = Selection {
         scope: Scope::at_base(

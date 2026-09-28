@@ -456,8 +456,8 @@ fn a_glob_of_another_crate_is_a_hole_by_hand_and_a_note_in_the_hook() {
     let tree = Tree::new();
     library(&tree);
     tree.write("klin.json", r#"{"build": []}"#);
-    tree.write("src/lib.rs", &format!("{LIB}pub use serde::*;\n"));
     tree.base();
+    tree.write("src/lib.rs", &format!("{LIB}pub use serde::*;\n"));
 
     let run = by_hand(&tree);
     let stop = hook(&tree);
@@ -474,11 +474,42 @@ fn a_glob_of_another_crate_is_a_hole_by_hand_and_a_note_in_the_hook() {
 }
 
 #[test]
+fn a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict() {
+    let tree = Tree::new();
+    library(&tree);
+    tree.write("klin.json", r#"{"build": []}"#);
+    tree.write("src/lib.rs", &format!("{LIB}pub use serde::*;\n"));
+    tree.base();
+
+    for args in [&["public-api"][..], &["public-api", "--strict"]] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+        assert!(
+            run.says("NOTE: 1 form(s) inside a supported public surface could not be resolved")
+                && run.says("serde::* globs another crate"),
+            "{args:?}: {}",
+            run.out
+        );
+    }
+    tree.write(
+        "src/lib.rs",
+        &format!("{LIB}pub use serde::*;\npub use tokio::*;\n"),
+    );
+    let run = by_hand(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("FAIL: 1 form(s) inside a supported public surface could not be resolved")
+            && run.says("tokio::* globs another crate"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_module_no_file_answers_inside_a_library_is_a_hole_of_this_gate() {
     let tree = Tree::new();
     library(&tree);
     tree.write("src/lib.rs", &format!("{LIB}pub mod missing;\n"));
-    tree.base();
 
     let run = by_hand(&tree);
 
@@ -691,8 +722,6 @@ fn an_ambiguous_star_export_is_a_hole() {
             "export * from \"./util\";",
         ),
     );
-    tree.base();
-
     let run = by_hand(&tree);
 
     assert_eq!(run.code, 2, "{}", run.out);

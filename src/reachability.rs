@@ -188,10 +188,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
+    let prior = base::whole(at, &commit)?;
+    let unread_at_base = || prior.unread_either(&before.files.unreadable);
     let code = coverage_result(
         code,
         at,
-        (&before, &before_families),
+        (&before, &before_families, unread_at_base),
         (&after, &families),
         out,
     );
@@ -525,7 +527,11 @@ fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
 fn coverage_result(
     code: u8,
     at: &Context,
-    (before, before_families): (&Measurement, &[Family]),
+    (before, before_families, unread_at_base): (
+        &Measurement,
+        &[Family],
+        impl FnOnce() -> Vec<String>,
+    ),
     (after, families): (&Measurement, &[Family]),
     out: &mut Sink,
 ) -> u8 {
@@ -550,7 +556,7 @@ fn coverage_result(
             language: file.language,
         })
         .collect();
-    syntax::unread(&unparsed, at, code, out)
+    syntax::unread(&unparsed, unread_at_base, at, code, out)
 }
 
 fn evaluator() -> Evaluator<'static> {

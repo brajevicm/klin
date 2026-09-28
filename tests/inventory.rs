@@ -626,6 +626,25 @@ fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
 }
 
 #[test]
+fn a_test_file_no_grammar_read_at_the_base_either_is_a_note() {
+    let tree = Tree::new();
+    tree.write("tests/suite.rs", "%%% not rust %%%\n");
+    tree.base();
+    for args in [
+        &["gate", "--gate", "inventory"][..],
+        &["gate", "--gate", "inventory", "--strict"],
+    ] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+        assert!(
+            run.says("NOTE: 1 file(s) the grammar could not parse"),
+            "{args:?}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
 fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
     let tree = Tree::new();
     tree.write(

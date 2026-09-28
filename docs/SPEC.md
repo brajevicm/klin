@@ -40,7 +40,7 @@ and Derived, and asks `CONTEXT.md` to take them.
 | 0009, 0013 | The hook compares against the merge-base with the default branch. | The hook compares against the turn stamp. `klin gate` and CI keep the merge-base. | The merge-base is the wrong window for a turn. It is empty after a commit on the default branch, it grows with the branch, and ADR 0013 exists only to patch that. Section 6. |
 | 0010 | Under `--strict` an unaccounted gate is exit 2. | Every applicable gate runs unless its section is `false`. The failure has nothing left to catch. | A gate whose section is derived cannot be unaccounted. Section 10. |
 | 0007 | Config keys preserve compatibility for differential tests. | One key vocabulary across sections. The differential test goes. | ADR 0009 already weakened the reason to a preference. `sources` in one section and `roots` in the next is a cost a user pays for a test klin no longer needs. |
-| 0003 | A file no grammar reads is exit 2 everywhere. | In the hook it is a NOTE. Outside the hook it stays exit 2. | An agent cannot fix a grammar. Blocking a stop on it costs a turn per stop with no remedy. |
+| 0003 | A file no grammar reads is exit 2 everywhere. | In the hook it is a NOTE. Outside the hook it stays exit 2, unless the base held it and no grammar read it there either (8.6). | An agent cannot fix a grammar. Blocking a stop on it costs a turn per stop with no remedy. |
 | 0011 | A non-reader naming a guarded path is refused. | It is `ask`. Only a clear write is `deny`. | Four read-only commands were refused in the session that wrote this draft. Section 9.4. ADR 0027 keeps the `ask` and shrinks the guarded set to `klin.json`. |
 | 0004 | The host's cap on consecutive blocks bounds the loop. | klin bounds its own blocks. | The cap is not in the host's current documentation. Section 9.3. |
 | 0015 | klin's state lives in `.klin/` at the tree root, with one `.gitignore` line. | State lives in the git directory, or under `KLIN_STATE_DIR`. No ignore line. | Per-worktree state has a native home that git never tracks and never lists. Section 7.4. |
@@ -474,9 +474,9 @@ a tree is worse than itself. That is the first stop of the hook, whose first
 stamp is the working tree as it stands. When the trees differ, as under `klin
 gate` by hand against a merge-base, the run fails on new or worsened findings
 only. A stale citation, a missing lockfile entry or a long document that the
-base already holds is `held`, not `new`. A build that already fails, or a
-file no grammar reads, is judged under section 14 and is not part of this
-promise.
+base already holds is `held`, not `new`. A file klin could not measure at
+the base either is a NOTE (8.6), so it keeps this promise too. A build that
+already fails is judged under section 14 and is not part of this promise.
 
 Under `--hook` the file is the marker that the repository opted in. When no
 `klin.json` resolves, `klin gate --hook` MUST exit 0, print nothing and write
@@ -1752,20 +1752,30 @@ after `__metadata.version`. Both give the version from the `version` line
 under each key. Selectors and locators are split at the
 package-name separator, preserving scoped names. The line readers recognize
 only those markers and key shapes; an unrecognized shape is a NOTE and no
-finding rather than an empty lockfile. A JSON lockfile klin cannot parse is a
-tool error naming the file. A manifest with no lockfile in either tree is a
+finding rather than an empty lockfile. That NOTE is filed under the manifest
+and names the lockfile. A lockfile only the base held unreadable is named at
+its base path, followed by `at the base`. A JSON lockfile klin cannot parse
+is a tool error naming the file. A manifest with no lockfile in either tree is a
 NOTE and no finding, and a lockfile only the base held makes every
 dependency of that manifest `unlocked`, so deleting a lockfile fails. A
-manifest klin cannot parse now, and that did not parse at the base or that
-the base did not hold, is a NOTE naming the manifest in every run, hook or not
-(8.6). It judges none of that manifest's dependencies, and every other
-manifest is still judged, so a fixture that is invalid on purpose does not
-turn the gate red. A manifest that parsed at the base and does not parse now
+manifest klin cannot parse now and that did not parse at the base is a NOTE
+naming the manifest in every run, hook or not (8.6). It judges none of that
+manifest's dependencies, and every other manifest is still judged, so a
+fixture that is invalid on purpose does not turn the gate red. A manifest
+klin cannot parse now that the base did not hold is a tool error outside the
+hook, because the work added the hole: the error says to make it parse or to
+add it to `except`. In the hook it is the same NOTE, because the agent cannot
+edit `except`. Once the change is in the base, the manifest is a NOTE in
+every run. A manifest that parsed at the base and does not parse now
 is a tool error naming the file, because the work broke it and the agent can
 fix it. A manifest that did not parse at the base and parses now is judged
 against a base that named no dependency. Every manifest and lockfile is read
-once per tree, the base's through one git process, and a lockfile several
-manifests share is parsed once. An accepted entry that gives no `stale` holds
+once per tree, the base's through one git process. The base judges a manifest
+the window renamed at the path it had there, beside the lockfile it had there,
+so a rename keeps its base. A manifest renamed from another format, such as
+`Cargo.toml` to `package.json`, has no comparable base, because its base bytes
+were written for another reader, so it is judged as one the base did not
+hold. A lockfile several manifests share is parsed once. An accepted entry that gives no `stale` holds
 a `stale` of 0, so an entry written before the value existed stays valid and
 holds no staleness. The remedy has one part for each value that failed, in the
 text and in each finding's `fix_advice`: every nonzero value of a new finding,
@@ -1798,6 +1808,11 @@ handful of files. Pinned by
 `a_malformed_lockfile_is_a_tool_error_naming_the_file`,
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
+`a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook`,
+`a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note`,
+`a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base`,
+`a_lockfile_only_the_base_could_not_read_is_named_at_the_base`,
+`a_manifest_renamed_to_another_format_has_no_base_to_hide_behind`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
 `a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
 `two_manifests_that_share_one_lockfile_are_each_judged_against_it`,
@@ -1921,7 +1936,8 @@ is new debt and a move inside a layer is held.
 A module that two files answer, a module no file answers, a path above the
 crate root, and a TypeScript specifier with no candidate or with two are
 unresolved. Where the scope selects the file that writes it, or where a manifest
-writes it, each is a NOTE in the hook and exit 2 elsewhere. A
+writes it, each is a NOTE in the hook and exit 2 elsewhere, unless the base
+holds it too, which is a NOTE in every run (8.6). A
 file on disk that the file list leaves out, such as generated source git
 ignores, is counted as external. The `OK:` line counts the dependency sites judged, the
 files attached by a manifest and by a conventional root, the Rust files no
@@ -1940,6 +1956,8 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_workspace_member_that_inherits_its_edition_is_attached_by_its_manifest`,
 `a_file_two_targets_reach_is_judged_as_a_module_of_each`,
 `a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook`,
+`a_module_two_files_answered_at_the_base_too_is_a_note_by_hand_and_under_strict`,
+`a_second_copy_of_a_form_the_base_could_not_resolve_is_new`,
 `typescript_relative_imports_resolve_and_package_imports_are_counted_not_guessed`,
 `two_typescript_files_one_specifier_names_are_unresolved`,
 `a_new_cycle_fails_and_a_cycle_the_base_holds_is_held`,
@@ -2100,7 +2118,8 @@ stars provide, an export form klin recognizes and cannot list, a path through
 a module no file answers, and an unresolved module or specifier inside a
 surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while other
 findings still print, because a green run must not imply a surface it claims
-to support was completely measured. The `OK:` line counts the items and
+to support was completely measured. A hole the base holds too is a NOTE in
+every run (8.6). The `OK:` line counts the items and
 surfaces judged, how many are measured and opaque, the library targets and
 entry points found, and the packages or targets with no supported surface.
 `klin public-api --report` prints the working tree's derived contract without
@@ -2474,12 +2493,33 @@ Every check MUST:
   loss among the files in its scope. The JSON carries the loss as a `lost`
   record under the gate's notes (11.2).
 - name a file it could not measure. Outside the hook that is exit 2, with or
-  without `--strict` (ADR 0021). In the hook it is a NOTE, because the agent
-  has no remedy. One exception narrows ADR 0021: a `lockfile` manifest klin
-  cannot parse now and could not parse at the base
-  or which the base did not hold, is a NOTE in every run (8.2.1). A tooling
-  repository keeps such a manifest as a fixture on purpose, so it is not a
-  hole the work opened, and no run could ever end green around it.
+  without `--strict` (ADR 0021), when the base could measure the file or did
+  not hold it, because the change opened that hole. A file the base held and
+  could not measure either is a NOTE in every run. It is not a hole the work
+  opened, and no run could ever end green around it, so a tree that holds one
+  is green the day klin arrives (5.1). The rule covers a file no grammar reads
+  and a form a resolver supports and could not resolve. The base's side is the
+  check's own measurement of `before`: a file counts when that measurement
+  could not read it, and a form counts when the base holds a form in the same
+  file with the same text and reason, at any line, paired one to one. A check
+  that reads the base's copy of a renamed file under today's path, which every
+  check but `conventions` does, does not count a file the window renamed from
+  a path another grammar reads, such as `.ts` to `.tsx`, because the base may
+  have read it under its own path. So that file stays exit 2. A rename between
+  two paths one grammar reads, such as `.js` to `.mjs`, counts. `conventions` reads the base's copy under
+  the path the base holds it at, so its own measurement already decides. In
+  the hook each of them is a NOTE, because the agent has no remedy. A file the
+  base did not hold stays exit 2 outside the hook, a `lockfile` manifest
+  included (8.2.1): the change that adds a fixture invalid on purpose also
+  adds it to `except`, and once it is in the base it is a NOTE.
+  Pinned by
+  `a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict`,
+  `a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand`,
+  `an_extension_changing_rename_reads_the_base_bytes_under_the_new_grammar`,
+  `a_file_no_grammar_read_at_the_base_either_is_a_note_after_a_rename`,
+  `a_rename_one_grammar_reads_at_both_paths_keeps_the_note`,
+  `a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict` and
+  `an_unparsed_file_is_named_by_each_caller_as_before`.
 - run under `klin gate` and under its own subcommand with the same output
 - carry tests through the binary only, on a throwaway tree with a base
 
@@ -3233,14 +3273,16 @@ One object on stdout. Fields:
 - `notes` entries of `{gate, outcome, file, text}`, plus the site's `line`
   and `values` where the note has them. `outcome` says which kind each one
   is: `unmatched` for an accepted entry that matched nothing, `unparsed` for
-  a file a grammar refused in the hook, `lost` for a file `before` measured
+  a file a grammar refused in the hook or that the base held refused too
+  (8.6), `lost` for a file `before` measured
   and `after` did not (8.6), `not-measured` for a known-language file with
   no structural adapter, `derivation` for a derived ceiling whose recorded
   scope fell back or differs from today's (5.4), `unresolved` for a
   dependency form `layering` supports and could not resolve, or a form inside
   a public surface `public-api` recognizes and could not resolve, in the hook
-  (8.2.1), and `note` for what a check left out of its count. Outside the hook
-  an `unresolved` record is in `findings`, beside `error` and `unparsed`.
+  or held at the base (8.2.1, 8.6), and `note` for what a check left out of
+  its count. Outside the hook any other `unresolved` record is in `findings`,
+  beside `error` and `unparsed`.
   `text` carries the reason, as the `NOTE:` line printed it.
 - `exit` integer, the code the run returns. It is not read off
   `status`: a build failure that has spent its blocks is an `ERROR` run that
@@ -3847,7 +3889,8 @@ Two flags change the failure model, and nothing else does. `--hook` turns a
 failure the agent cannot fix into a NOTE, or sends it to stderr with exit 1,
 so a stop is never blocked on it. `--strict` turns a hole a person's CI must
 not miss into exit 2. `klin gate` with neither flag exits 2 on every hole ADR
-0003 named and passes with a NOTE on the holes that `--strict` adds (10).
+0003 named that the base did not hold too (8.6), and passes with a NOTE on the
+holes that `--strict` adds (10).
 klin cannot see CI, so no row says "CI". A row that names no mode behaves the
 same in all three.
 
@@ -3859,7 +3902,7 @@ same in all three.
 | `turn` file and ref both missing in the hook | a branch window from the base of 6.3, or from HEAD when none resolves, a NOTE names the missing stamp, and the stop writes that base as the stamp |
 | The commit the stamp was taken over is outside current HEAD history in the hook | a branch window from the base of 6.3 for the current checkout, a NOTE names the commit HEAD no longer holds, and the stop writes that base as the stamp, red, keeping the prompt counter, dropping `asked` and `intervened`, leaving the handoff records of 9.1, which belong to a host session, and deleting both `refs/worktree/klin/turn` and `refs/worktree/klin/mark` (6.2) |
 | Git cannot answer whether HEAD history holds that commit | the turn window stays, because only a proven divergence is a turn the checkout left (6.2) |
-| A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. Hook: a NOTE, told to the person through `systemMessage` on a stop that ends (9.1). |
+| A file no grammar reads | Outside the hook: the gate names it and exits 2, other findings still print. A file the base held and no grammar read there either is a NOTE, `--strict` included (8.6). Hook: a NOTE, told to the person through `systemMessage` on a stop that ends (9.1). |
 | A deleted test (8.2) | Hook: blocks the first stop that finds it, once. The next stop lets it through as a NOTE, tells the person, and ends green. Outside the hook: a NOTE, `--strict` included. |
 | The build fails in the hook | block with the build output, no gate runs. Outside the hook the build step does not run (ADR 0012). |
 | Host event unreadable in the hook | report to stderr and exit 1, never block |
@@ -4285,7 +4328,8 @@ Core:
   workspace lockfile above the member manifest is found, both npm lockfile
   versions are read, an unreadable format is a NOTE, a malformed supported
   lockfile is a tool error, a manifest klin cannot parse at either commit is a
-  NOTE, a manifest the work broke is a tool error, and two manifests that
+  NOTE, a manifest the work broke or added unparseable is a tool error outside
+  the hook, and two manifests that
   share a lockfile are each judged against it.
 - `layering`: a new forbidden edge fails and a base one is held, same-layer
   and `can_use: null` dependencies pass, overlapping layers and retired keys

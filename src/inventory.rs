@@ -95,11 +95,13 @@ impl Function {
     }
 }
 
-/// What the function level of this gate measured: every test function the base holds, and the
-/// files in the working tree no grammar read. ADR 0003.
+/// What the function level of this gate measured: every test function the base holds, the
+/// files in the working tree no grammar read, and the files the base holds that no grammar read
+/// either. ADR 0003, ADR 0021.
 struct Measured {
     functions: Vec<Function>,
     unparsed: Vec<Unparsed>,
+    unread_at_base: Vec<String>,
 }
 
 /// One tree walked for test functions: the sites it holds, and the files no grammar read.
@@ -114,11 +116,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let today = today(project)?;
     said(project, out);
     let commit = base::commit(config.root(), at, out)?;
+    let mut owned = None;
+    let prior = base::laid(at.prior, &mut owned, || {
+        base::materialize(project, &commit, None)
+    })?;
     let Found {
         judged,
         mut paired,
         measured,
-    } = found(at, &commit, &today)?;
+    } = found(at, (&commit, prior), &today)?;
     let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
         measured.functions.into_iter().partition(Function::orphaned);
     if let Some(only) = at.only {
@@ -145,7 +151,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
-    Ok(syntax::unread(&measured.unparsed, at, code, out))
+    Ok(syntax::unread(
+        &measured.unparsed,
+        || prior.unread_either(&measured.unread_at_base),
+        at,
+        code,
+        out,
+    ))
 }
 
 /// What the base holds of tests: the test files it judges, the ones whose subject went too, and
@@ -158,17 +170,9 @@ struct Found {
 
 /// The base laid out, when the runner did not lay it out already, and read under the scope it
 /// records, which is also the scope the working tree is read under.
-fn found(at: &Context, commit: &str, today: &Scope) -> Result<Found, Error> {
+fn found(at: &Context, (commit, prior): (&str, &Prior), today: &Scope) -> Result<Found, Error> {
     let project = at.project;
     let config = &project.config;
-    let owned;
-    let prior = match at.prior {
-        Some(prior) => prior,
-        None => {
-            owned = base::materialize(project, commit, None)?;
-            &owned
-        }
-    };
     let tests = Tests {
         roots: &project.facts().found.test_roots,
         scope: Scope::at_base(config, SECTION, prior.root(), today),
@@ -252,7 +256,10 @@ fn standing(held: usize, gone: usize) -> String {
 fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Error> {
     let config = &at.project.config;
     let after = walked(tests, at.project.tree())?;
-    let before = walked(tests, prior.tree())?.tests;
+    let Walk {
+        tests: before,
+        unparsed: unread_at_base,
+    } = walked(tests, prior.tree())?;
     let found = still_there(&before, &after.tests);
     let refused: BTreeSet<&str> = after
         .unparsed
@@ -271,6 +278,7 @@ fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Erro
             })
             .collect(),
         unparsed: after.unparsed,
+        unread_at_base: unread_at_base.into_iter().map(|file| file.file).collect(),
     })
 }
 

@@ -1093,6 +1093,80 @@ fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
     );
 }
 
+#[test]
+fn a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.rs", "fn ( { ) unbalanced");
+    tree.base();
+
+    for args in [&["gate"][..], &["gate", "--strict"]] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+        assert!(
+            run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.rs"),
+            "{args:?}: {}",
+            run.out
+        );
+    }
+    let run = tree.run(&["gate", "--json"]);
+    let report = run.json();
+    assert_eq!(
+        outcomes(list(&report, "notes")),
+        [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
+        "{}",
+        run.out
+    );
+    assert!(list(&report, "findings").is_empty(), "{}", run.out);
+}
+
+#[test]
+fn a_file_no_grammar_read_at_the_base_either_is_a_note_after_a_rename() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.rs", "fn ( { ) unbalanced");
+    tree.base();
+    tree.git(&["mv", "src/broken.rs", "src/moved.rs"]);
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/moved.rs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_rename_one_grammar_reads_at_both_paths_keeps_the_note() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.js", "function ( { ) unbalanced");
+    tree.base();
+    tree.git(&["mv", "src/broken.js", "src/broken.mjs"]);
+
+    let run = tree.run(&["gate", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.mjs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand() {
+    let tree = tree(EVERY_GATE);
+    tree.write("src/broken.rs", "fn fine() -> i32 { 1 }\n");
+    tree.base();
+    tree.write("src/broken.rs", "fn ( { ) unbalanced");
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("FAIL: 1 file(s) the grammar could not parse"),
+        "{}",
+        run.out
+    );
+}
+
 const WORKFLOW: &str = include_str!("../.github/workflows/quality.yml");
 
 fn ci_arguments() -> Vec<&'static str> {

@@ -6,13 +6,13 @@ use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
-use crate::changed::{Change, blobs};
+use crate::changed::{self, Change, blobs};
 use crate::check::{Context, Sink};
 use crate::config::Error;
 use crate::git::{Boolean, Repo, Staged};
 use crate::project::{self, Project, Tree};
 use crate::state;
-use crate::syntax::structural::{Cache, Outcome, Unchanged, selected_extensions};
+use crate::syntax::structural::{Cache, Outcome, Unchanged, same_grammar, selected_extensions};
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -25,6 +25,8 @@ pub struct Prior {
     tree: Tree,
     from_worktree: Cell<Option<PathBuf>>,
     layout: Cell<Option<Layout>>,
+    /// The path the base holds each file at that the change renamed, by the path it has today.
+    renamed: HashMap<String, String>,
 }
 
 /// What laying the whole base out took, part by part, so a warm run's base cost is not one
@@ -62,6 +64,7 @@ impl Prior {
             dir,
             from_worktree: Cell::new(from_worktree),
             layout: Cell::new(None),
+            renamed: HashMap::new(),
         }
     }
 
@@ -119,6 +122,27 @@ impl Prior {
     /// The base tree's file list, read once for every gate that measures it. ADR 0038.
     pub fn tree(&self) -> &Tree {
         &self.tree
+    }
+
+    /// The path the base holds each file at that the change renamed, by the path it has today.
+    pub fn renamed(&self) -> &HashMap<String, String> {
+        &self.renamed
+    }
+
+    /// The files a measurement of this base could not read that the base could not read under
+    /// its own path either. A file renamed from a path another grammar reads is left out: the
+    /// layout read its base bytes under today's grammar, which is a reading the base never made.
+    /// ADR 0021, spec 8.6.
+    pub fn unread_either(&self, unreadable: &[String]) -> Vec<String> {
+        unreadable
+            .iter()
+            .filter(|file| {
+                self.renamed
+                    .get(*file)
+                    .is_none_or(|was| same_grammar(was, file))
+            })
+            .cloned()
+            .collect()
     }
 }
 
@@ -200,9 +224,10 @@ fn checked_out(
         })?;
     let at = dir.path().join(inside);
     let _ = std::fs::create_dir_all(&at);
-    let prior = Prior::new(Tree::at(&at), dir, Some(root.to_path_buf()));
+    let mut prior = Prior::new(Tree::at(&at), dir, Some(root.to_path_buf()));
     prior.add(|layout| &mut layout.worktree_add, started.elapsed());
     let changes = prior.spent(|layout| &mut layout.changes, || project.changes(before))?;
+    prior.renamed = changed::renamed(&changes);
     prior.spent(
         |layout| &mut layout.renames,
         || {
@@ -320,7 +345,8 @@ fn held(project: &Project, laid: Laid, dir: tempfile::TempDir, changes: &[Change
     let tree = Tree::listed(&laid.root, laid.files);
     tree.extracted()
         .hold(laid.cache, laid.outcomes, changes, laid.read);
-    let prior = Prior::new(tree, dir, Some(project.root().to_path_buf()));
+    let mut prior = Prior::new(tree, dir, Some(project.root().to_path_buf()));
+    prior.renamed = changed::renamed(changes);
     prior.layout.set(Some(laid.layout));
     prior
 }
@@ -483,7 +509,8 @@ fn written(
 ) -> Result<Prior, Error> {
     let root = project.root();
     let at = dir.path().to_path_buf();
-    let prior = Prior::new(Tree::at(&at), dir, None);
+    let mut prior = Prior::new(Tree::at(&at), dir, None);
+    prior.renamed = changed::renamed(changes);
     let requested: Vec<(&str, &Change)> = changes
         .iter()
         .filter_map(|change| change.was.as_deref().map(|was| (was, change)))
@@ -622,6 +649,19 @@ fn global_attributes() -> Option<PathBuf> {
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
     Some(config.join("git/attributes"))
+}
+
+/// The base the runner laid out, or the one `lay` lays out for this check into `own`, which the
+/// caller keeps for as long as it reads the base.
+pub fn laid<'p>(
+    prior: Option<&'p Prior>,
+    own: &'p mut Option<Prior>,
+    lay: impl FnOnce() -> Result<Prior, Error>,
+) -> Result<&'p Prior, Error> {
+    match prior {
+        Some(prior) => Ok(prior),
+        None => Ok(own.insert(lay()?)),
+    }
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.

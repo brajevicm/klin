@@ -146,7 +146,9 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    let code = coverage_result(code, at, &before, &after, out);
+    let prior = base::whole(at, &commit)?;
+    let unread_at_base = || prior.unread_either(&before.files.unreadable);
+    let code = coverage_result(code, at, (&before, unread_at_base), &after, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)
 }
@@ -293,7 +295,7 @@ fn dead_findings(
 fn coverage_result(
     code: u8,
     at: &Context,
-    before: &structural::Measurement,
+    (before, unread_at_base): (&structural::Measurement, impl FnOnce() -> Vec<String>),
     after: &structural::Measurement,
     out: &mut Sink,
 ) -> u8 {
@@ -304,7 +306,7 @@ fn coverage_result(
         code,
         out,
     );
-    syntax::unread(&after.unparsed, at, code, out)
+    syntax::unread(&after.unparsed, unread_at_base, at, code, out)
 }
 
 fn reports(

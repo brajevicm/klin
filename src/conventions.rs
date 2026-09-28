@@ -303,7 +303,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let mut before = at_the_base(&rules, at, out)?;
     let code = every_convention(config, &rules, (&mut after, &mut before), at, out)?;
     let code = holes_said(&holes(&conventions, &places), at, code, out);
-    Ok(syntax::unread(&after.unparsed, at, code, out))
+    Ok(syntax::unread(
+        &after.unparsed,
+        || before.files.unreadable,
+        at,
+        code,
+        out,
+    ))
 }
 
 /// Every convention resolved, or the first one whose language or pattern a person must settle.
