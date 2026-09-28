@@ -240,7 +240,7 @@ pub struct Target {
 /// the order means nothing. One file may hold several modules, and one file under two targets is
 /// a module under each. A Rust module is one file or inline in one, and a TypeScript module is
 /// one file; a resolver for another language may group several files into one module. A Rust
-/// module also knows its place in its target's tree; a TypeScript module stands alone. ADR 0047.
+/// module also knows its place in its target's tree; a TypeScript module stands alone. ADR 0058.
 pub struct Module {
     pub name: String,
     pub sources: Vec<String>,
@@ -462,7 +462,7 @@ impl ModuleGraph {
     /// The identity that tells one module apart from every other across the base and the working
     /// tree: the kind and root of the target that owns it under current paths, then its
     /// `identity`, which the caller made once. A file two targets reach is a different module
-    /// under each. A module no target owns is its identity alone. ADR 0047.
+    /// under each. A module no target owns is its identity alone. ADR 0058.
     pub fn semantic(
         &self,
         module: usize,

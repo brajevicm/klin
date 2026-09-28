@@ -2,7 +2,9 @@
 
 > Supersedes ADR 0002. ADR 0030 amends the last paragraph: Codex CLI installs
 > this same plugin. ADR 0053 makes the standalone route the one documents lead
-> with; the plugin stays the complete install of the hooks alone.
+> with; the plugin stays the complete install of the hooks alone. ADR 0040
+> retires the `version` key of `klin.json`, so no repository pins a second
+> version beside the plugin's.
 
 ADR 0002 kept the binary out of the Claude Code plugin for two reasons. A
 repository pinned a klin version beside its baselines, and a second binary
@@ -37,9 +39,9 @@ install for Claude Code. No `init` runs. The first stop is gated.
 This is the one place klin touches the network, and it is install, not
 measurement. The determinism rule for checks is untouched.
 
-The plugin pins its own klin version and upgrades when the plugin does. A
-repository that also pins `version` in `klin.json` sees a note when the two
-differ.
+The plugin pins its own klin version and upgrades when the plugin does.
+`klin.json` names no version (ADR 0040), so nothing in a repository can
+disagree with that pin.
 
 Cursor and Codex CLI have no plugin that carries a binary. For them the binary
 comes from an install route and `klin install` writes the host's hook file

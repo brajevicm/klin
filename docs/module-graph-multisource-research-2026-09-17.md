@@ -7,7 +7,7 @@ Issue #219 asks one narrow question before structural language #3:
 > Rust/TypeScript architecture with a universal build/language framework?
 
 This note records the answer against current `main`. It changes no runtime
-behavior. ADR 0047 records the resulting decision; #220 owns implementation
+behavior. ADR 0058 records the resulting decision; #220 owns implementation
 and #221 owns admission on the existing Rust/TypeScript performance fixture.
 
 ## Current-main constraints

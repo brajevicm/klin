@@ -1,6 +1,9 @@
 # klin Specification
 
-Status: Draft v0, 2026-09-08
+Status: pre-1.0, updated 2026-09-28. This document describes klin as it
+ships from `main`. Until the stability contract of #344, a release may still
+change any surface. A section that describes behavior klin does not ship says
+so.
 
 This specification, accepted ADRs and klin's CLI tests define klin's behaviour.
 ADR 0025 retires the external behavioural reference obligation. Gaps and
@@ -238,8 +241,8 @@ Nine components, in one binary.
    host's shape. Section 9.
 8. **Guard** refuses or questions an agent's tool call that would change the
    configuration, the hooks or the code owners.
-9. **Reporter** prints text for a person, JSON for a harness, and SARIF for a
-   code scanning host.
+9. **Reporter** prints text for a person and JSON for a harness. SARIF
+   output for a code scanning host is not shipped (11.3).
 
 Three layers hold these. The measurement layer is checks and the ratchet
 engine. The policy layer is config, survey and the window chooser. The
@@ -889,7 +892,7 @@ Candidates, in order:
    `branch`.
 
 The first candidate that resolves wins. None resolving is exit 2 with the list
-of what was tried. `--base REF` overrides the list.
+of what was tried. No flag overrides the list.
 
 ### 6.4 A base equal to HEAD
 
@@ -1861,7 +1864,7 @@ kind are counted as external. A `mod` declaration is containment and never a
 dependency.
 
 A module is its resolver's identity and holds one or more physical files, each
-once and in no meaningful order (ADR 0047). A Rust or a TypeScript module holds
+once and in no meaningful order (ADR 0058). A Rust or a TypeScript module holds
 one; a resolver for a later language may group several. Structural facts stay
 per file. Each file a resolver attaches counts on its own in the coverage
 line, so a module of ten files is ten attached files. A dependency is a
@@ -3225,10 +3228,14 @@ A finding has no column, so the JSON carries none rather than a wrong one.
 
 ### 11.3 SARIF
 
-`--sarif PATH` writes SARIF 2.1.0 to the file `PATH` names, with one rule per
-gate and one result per failing finding (#65). Text output on stdout is
+Not shipped: klin has no `--sarif` flag. #65 recorded the design below and
+closed without shipping it. #207 keeps the problem for the next product
+decision.
+
+`--sarif PATH` would write SARIF 2.1.0 to the file `PATH` names, with one rule
+per gate and one result per failing finding (#65). Text output on stdout is
 unchanged by the flag, which is why the log goes to a file and not to stdout
-the way `--json` does. `--sarif` with `--json` is a usage error.
+the way `--json` does. `--sarif` with `--json` would be a usage error.
 
 ### 11.4 The journal record
 
@@ -4426,7 +4433,7 @@ Core, in this order:
 - [x] `sarif`, `after` only, delete `report`, `run`, read `report`, scoped to
       changed lines
 - [x] `lockfile`, Rust, npm and Go, with pnpm, yarn, Poetry and uv deferred
-- [ ] `CONTEXT.md` takes Window and Derived, README names the two
+- [x] `CONTEXT.md` takes Window and Derived, README names the two
       conformance levels
 - [x] New ADRs for each row of section 0 that is accepted, and one for the
       stamp as a parented, ref-held commit
@@ -4439,7 +4446,8 @@ Next, after core is green, each with an unsolved problem named in section 8:
 Distribution, in this order, because each step depends on the one before:
 
 - [x] Release pipeline: four binaries and a checksum file per tag (#62)
-- [ ] Install script with `--version`
+- [x] Install script, one per release, so a URL under a tag pins the version
+      and the script needs no `--version` flag (19.1)
 - [x] The Claude Code plugin with `hooks.json` and the `bin/klin` wrapper (#66)
 - [x] Explicit hooks for Codex and its host adapter (#68)
 - [x] Explicit hooks for Cursor and its host adapter (#67)
@@ -4453,17 +4461,20 @@ Recommended:
 
 - [x] Configuration reference (#18) generated from each check's declared keys
       and derivation rules, section 5.8
-- [ ] `--sarif` output
+- [ ] `--sarif` output (11.3). #65 closed without it.
 
-Before calling it 1.0:
+Before calling it 1.0. This list is the v0 draft's. #207 holds the current
+1.0 criteria, and #344 will write the stability contract:
 
 - [x] Performance numbers from section 13 recorded on a fixture
 - [x] Large-repository budgets and the controlled-release regression rule in
       section 13 (#182)
-- [ ] A task comparison with and without klin on a small set of agent tasks,
+- [x] A task comparison with and without klin on a small set of agent tasks,
       recording regressions caught, legitimate changes blocked, extra repair
-      turns and hook latency. This is a benchmark, not a test, and it is what
-      shows the tool is useful rather than correct.
+      turns and hook latency. This is a benchmark, not a test. Three
+      publishable rounds ran, and the last one was inconclusive
+      (`docs/benchmark-result-2026-09-25.md`). Since 2026-09-25 the benchmark
+      is internal regression tooling and no longer gates 1.0 (#207).
 - [ ] The hook-output facts in 9.3 verified against the host's documentation
 - [x] Cursor adapter, or the README stays silent on it
 
@@ -4930,14 +4941,15 @@ is missing rather than claiming equivalence with a native one.
 
 ### 19.5 CI
 
-The Action installs the pinned version and runs `klin gate --strict` with
-`fetch-depth: 0`, and an `args` input appends flags such as `--gate` names or
-`--sarif`. The version comes from the `version` input, then the `version` key
-in `klin.json`, then the tag the workflow pinned the Action at, then the
-latest release. The Action runs the install script under that release's tag
-URL, and that script verifies the checksum, so a mismatch fails the job
-before any gate runs. A workflow without the Action runs the same script and
-the same command.
+The Action installs the pinned version and runs `klin gate --strict` over
+the workflow's own checkout, which needs `fetch-depth: 0` for the base commit
+to resolve. An `args` input appends flags such as `--gate` names or
+`--json`. The version comes from the `version` input, then the tag the
+workflow pinned the Action at, then the latest release. The Action never reads
+`klin.json`, which holds no version (ADR 0040). The Action runs the install
+script under that release's tag URL, and that script verifies the checksum, so
+a mismatch fails the job before any gate runs. A workflow without the Action
+runs the same script and the same command.
 
 ### 19.6 Upgrades
 

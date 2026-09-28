@@ -1,10 +1,10 @@
 name: klin
-description: Install a pinned klin release and run klin gate --strict. Spec 19.4.
+description: Install a pinned klin release and run klin gate --strict. Spec 19.5.
 inputs:
   version:
     description: >-
-      The release to install, without the v. When empty, the version klin.json
-      names, then the tag this action is pinned at, then the latest release.
+      The release to install, without the v. When empty, the tag this action is
+      pinned at, then the latest release.
     required: false
     default: ""
   args:
@@ -22,7 +22,6 @@ runs:
       run: |
         set -euo pipefail
         version="$INPUT_VERSION"
-        [ -n "$version" ] || version=$(jq -r '.version // empty' klin.json 2>/dev/null || true)
         [ -n "$version" ] || case "$ACTION_REF" in v[0-9]*) version="${ACTION_REF#v}" ;; esac
         if [ -n "$version" ]; then
           url="https://github.com/brajevicm/klin/releases/download/v$version/klin-installer.sh"
