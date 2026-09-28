@@ -964,7 +964,7 @@ fn gone(tree: &Tree) -> bool {
 }
 
 #[test]
-fn a_build_that_never_exits_is_stopped_at_the_limit_with_every_descendant() {
+fn a_build_that_never_exits_is_stopped_at_the_limit_and_named() {
     let tree = tree(WAITS_ON_A_DESCENDANT);
 
     let started = std::time::Instant::now();
