@@ -2137,9 +2137,9 @@ there:
 ```
 
 With `run`, klin deletes `report`, executes the command in the working tree
-the way it runs `build`, under the same 300 second limit (9.3), then reads
-`report`. A report that is missing after `run` is ERR, and so is a command
-still running at the limit, named with the limit. The report path SHOULD be
+the way it runs `build`, under the same limits (9.3), then reads `report`. A
+report that is missing after `run` is ERR, and so is a command still running
+at a limit, named with the limit. The report path SHOULD be
 under `.gitignore`, so the stamp of 6.5 does not carry it. The report is fresh by construction, because the only file at
 that path is one the tool wrote over the tree klin is about to judge. The
 command's exit status is not judged, because a linter exits non-zero when it
@@ -2741,14 +2741,26 @@ command, and every command a person wrote, run exactly as they read, in the
 environment the hook itself was given. A tool a project installed but did not
 put on `PATH` is therefore found, and the NOTE below is not told for it.
 
-Each build command runs for at most 300 seconds. The host gives the Stop hook
-900 seconds, so one command that never exits still leaves most of that time to
-the rest of the stop. The limit applies to each command, so several slow
-commands in one stop can still reach the host's timeout. At the limit klin
-stops the command and every process in its process group, and the build fails
-with a message that names the command and the limit. `klin.json` cannot change the limit: a person whose build takes longer
-sets `build` to `false` and lets CI build. A run MAY take
-`KLIN_COMMAND_LIMIT` in seconds for tests.
+Each build command runs for at most 300 seconds, and the build and `run`
+commands of one klin run share 600 seconds between them, so a later command
+gets only what is left. The host gives the Stop hook 900 seconds, so the
+commands of a stop, hung or slow, leave at least 300 seconds to the rest of
+the stop.
+When a command reaches either limit, klin stops it and the build fails with a
+message that names the command and the limit it reached. `klin.json` cannot
+change either limit: a person whose build takes longer sets `build` to `false`
+and lets CI build. A run MAY take `KLIN_COMMAND_LIMIT` in seconds for tests. It
+sets the limit of each command, from 1 to 300 seconds, and the shared limit is
+twice it. Any other value is an error, so the override can shorten the limits
+and never raise them.
+
+Each command runs in a process group of its own. When the command's shell
+exits, when it reaches a limit, and when a hangup, an interrupt or a terminate
+signal ends klin, klin kills every process left in that group before it goes
+on. So a command that starts a process in the background leaves nothing
+running that could change the tree after klin judged it. A process that makes
+a group of its own leaves klin's reach, and so does every process when klin is
+killed with a signal it cannot catch.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
@@ -3618,11 +3630,14 @@ journal cannot prove. No word of the agent's glossary appears in the text.
 - No check MAY read the network.
 - The only clock a judgment reads is a pinned dated ceiling (5.5), read in
   UTC, and `KLIN_TODAY` overrides it. The report age check of 8.3 compares
-  file times, and the command limit of 9.3 stops a build or `run` command
-  that outlives it. These are the two other places time enters a verdict.
-  The `ms` of 11.2 and the `time` and `timing` of 11.4 are measurements about the run,
-  recorded and never judged, so they do not break determinism: every field a
-  verdict depends on is still a pure function of the trees.
+  file times, and the command limits of 9.3 stop a build or `run` command
+  that outlives them. These are the two other places time enters a verdict,
+  and the command limits are the one place where two machines can judge one
+  tree differently: a command that ends just under its limit on one machine
+  and just over it on another passes on the first and fails on the second.
+  Every other field a verdict depends on is a pure function of the trees. The
+  `ms` of 11.2 and the `time` and `timing` of 11.4 are measurements about the
+  run, recorded and never judged, so they do not break determinism.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
 - A derived number or reachability family is a pure function of the derivation

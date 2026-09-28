@@ -395,3 +395,25 @@ fn a_run_that_never_exits_is_stopped_at_the_limit_and_named() {
     assert!(run.says("sleep 60; echo never"), "{}", run.out);
     assert!(run.says("the 1 second limit"), "{}", run.out);
 }
+
+#[test]
+fn the_commands_of_one_run_share_twice_the_limit() {
+    let tree = tree(
+        r#"{"sarif": [
+            {"name": "first", "report": "first.sarif", "run": "sleep 60"},
+            {"name": "second", "report": "second.sarif", "run": "sleep 60"},
+            {"name": "third", "report": "third.sarif", "run": "sleep 60"}
+        ]}"#,
+    );
+
+    let started = std::time::Instant::now();
+    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "1")], &["gate"]);
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the 1 second limit"), "{}", run.out);
+    assert!(
+        run.says("the 2 second limit that the commands of one run share"),
+        "{}",
+        run.out
+    );
+}
