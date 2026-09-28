@@ -2,6 +2,9 @@
 
 > Amends ADR 0023, whose last paragraph said Codex CLI has no plugin that
 > carries a binary.
+>
+> ADR 0029 amends the marketplace entries (#338): both name the plugin through
+> a `git-subdir` source at the release tag, so neither is a path string.
 
 ADR 0023 made the Claude Code plugin the whole install for that host: the
 hooks, a skill, two commands, and a wrapper that fetches the pinned release.

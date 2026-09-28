@@ -93,20 +93,29 @@ fn the_cursor_manifest_names_the_cursor_hooks_file() {
     assert!(at(&format!("{PLUGIN}/{named}")).is_file(), "{named}");
 }
 
+/// Claude Code and Codex read a marketplace from the default branch, so each entry names the
+/// plugin at the release tag the manifests pin, and a commit to `main` reaches a plugin user
+/// only when the next release rewrites the tag. ADR 0029, spec 19.2.
 #[test]
-fn the_codex_marketplace_entry_points_at_the_same_plugin() {
-    let entry = json(CODEX_MARKET)["plugins"][0].clone();
-    let path = entry["source"]["path"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
+fn the_claude_code_and_codex_marketplaces_name_the_plugin_at_the_pinned_release() {
+    let tagged = serde_json::json!({
+        "source": "git-subdir",
+        "url": "https://github.com/brajevicm/klin.git",
+        "path": PLUGIN,
+        "ref": format!("v{PINNED}"),
+    });
+    let cargo_toml = text("Cargo.toml");
 
-    assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
-    assert_eq!(
-        entry["source"]["source"].as_str().unwrap_or_default(),
-        "local"
-    );
-    assert_eq!(at(&path), at(PLUGIN), "{path}");
+    for market in [MARKET, CODEX_MARKET] {
+        let entry = json(market)["plugins"][0].clone();
+
+        assert_eq!(entry["name"], "klin", "{market}");
+        assert_eq!(entry["source"], tagged, "{market}");
+        assert!(
+            cargo_toml.contains(&format!("file = \"{market}\"")),
+            "the release does not rewrite {market}"
+        );
+    }
 }
 
 #[test]
@@ -115,41 +124,12 @@ fn the_cursor_marketplace_entry_points_at_the_same_plugin() {
     let path = entry["source"].as_str().unwrap_or_default().to_string();
 
     assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
-    assert_eq!(at(&path), at(PLUGIN), "{path}");
+    assert_eq!(path, PLUGIN, "Cursor documents the bare form");
     assert!(
         at(&path).join(".cursor-plugin/plugin.json").is_file(),
         "{}",
         path
     );
-}
-
-/// The three marketplaces name one directory in three spellings, and they are not
-/// interchangeable. Claude Code 2.1.273 refuses a relative source without the `./` prefix as
-/// `source: Invalid input`, Codex lists no plugin at all for one, and Cursor documents the bare
-/// form. A tidy-up that makes the three agree fails here rather than in a person's install.
-/// Spec 19.2.
-#[test]
-fn each_marketplace_spells_the_plugin_path_as_its_host_requires() {
-    let claude = json(MARKET)["plugins"][0]["source"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-    let codex = json(CODEX_MARKET)["plugins"][0]["source"]["path"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-    let cursor = json(CURSOR_MARKET)["plugins"][0]["source"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-
-    assert_eq!(
-        claude,
-        format!("./{PLUGIN}"),
-        "Claude Code needs the prefix"
-    );
-    assert_eq!(codex, format!("./{PLUGIN}"), "Codex needs the prefix");
-    assert_eq!(cursor, PLUGIN, "Cursor documents the bare form");
 }
 
 #[test]
@@ -432,16 +412,6 @@ fn a_wrapper_without_its_manifest_says_so_and_lets_the_turn_end() {
         "{}",
         run.out
     );
-}
-
-#[test]
-fn the_marketplace_entry_points_at_the_plugin() {
-    let entry = json(MARKET)["plugins"][0].clone();
-    let source = entry["source"].as_str().unwrap_or_default().to_string();
-    let named = at(&source).join(".claude-plugin/plugin.json");
-
-    assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
-    assert!(named.is_file(), "{} is missing", named.display());
 }
 
 #[test]

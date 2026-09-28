@@ -14,6 +14,8 @@ tag-message = "Release {{version}}"
 pre-release-replacements = [
   { file = "plugins/klin/.claude-plugin/plugin.json", search = "\"version\": \"[0-9.]+\"", replace = "\"version\": \"{{version}}\"", exactly = 1 },
   { file = "plugins/klin/.cursor-plugin/plugin.json", search = "\"version\": \"[0-9.]+\"", replace = "\"version\": \"{{version}}\"", exactly = 1 },
+  { file = ".claude-plugin/marketplace.json", search = "\"ref\": \"v[0-9.]+\"", replace = "\"ref\": \"v{{version}}\"", exactly = 1 },
+  { file = ".agents/plugins/marketplace.json", search = "\"ref\": \"v[0-9.]+\"", replace = "\"ref\": \"v{{version}}\"", exactly = 1 },
   { file = "README.md", search = "brajevicm/klin@v[0-9.]+", replace = "brajevicm/klin@v{{version}}", exactly = 1 },
   { file = "README.md", search = "--branch v[0-9.]+", replace = "--branch v{{version}}", exactly = 1 },
 ]

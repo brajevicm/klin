@@ -7,8 +7,10 @@
     {
       "name": "klin",
       "source": {
-        "source": "local",
-        "path": "./plugins/klin"
+        "source": "git-subdir",
+        "url": "https://github.com/brajevicm/klin.git",
+        "path": "plugins/klin",
+        "ref": "v0.3.0"
       },
       "policy": {
         "installation": "AVAILABLE"

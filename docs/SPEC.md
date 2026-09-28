@@ -4696,21 +4696,24 @@ shell default form such as `${CLAUDE_PLUGIN_ROOT:-}` was left unsubstituted
 and expanded to nothing. Claude Code exports the variable and reads the bare
 form the same way, so the hook lines name the plugin root in that form and no
 other, and the same lines run on both hosts. Codex finds the plugin through a
-marketplace file of its own at `.agents/plugins/marketplace.json`, which points
-at the same directory as Claude Code's `.claude-plugin/marketplace.json`. The
-install is `codex plugin marketplace add brajevicm/klin` and `codex plugin add
-klin@klin`. Installing a plugin does not trust its hooks: Codex skips an
-untrusted plugin's hooks until the person reviews and trusts the current hook
-definition through the CLI `/hooks` surface, and a fresh session then runs
-them, so the install documentation names both steps. The Codex IDE extension's
-contract loads no plugins, so klin's plugin support MUST NOT be described as
-covering it; that surface takes the standalone route of 19.3.
+marketplace file of its own at `.agents/plugins/marketplace.json`, which names
+the same plugin at the same release tag as Claude Code's
+`.claude-plugin/marketplace.json`. The install is `codex plugin marketplace
+add brajevicm/klin` and `codex plugin add klin@klin`. Installing a plugin does
+not trust its hooks: Codex skips an untrusted plugin's hooks until the person
+reviews and trusts the current hook definition through the CLI `/hooks`
+surface, and a fresh session then runs them, so the install documentation
+names both steps. The Codex IDE extension's contract loads no plugins, so
+klin's plugin support MUST NOT be described as covering it; that surface takes
+the standalone route of 19.3.
 
 **Cursor.** klin maintains a native Cursor plugin. Cursor finds it through
 `.cursor-plugin/marketplace.json` at the repository root, which points at the
-same directory. Cursor Teams import that repository under Dashboard → Plugins
-→ Team Marketplaces. A person without a team marketplace copies `plugins/klin`
-from the release tag the manifests pin to `~/.cursor/plugins/local/klin` and
+same directory. Cursor documents only a path source, so this entry names the
+directory in the marketplace's own tree and no tag. Cursor Teams import that
+repository under Dashboard → Plugins → Team Marketplaces. A person without a
+team marketplace copies `plugins/klin` from the release tag the manifests pin
+to `~/.cursor/plugins/local/klin` and
 reloads the window, which is a user-scope install for that machine alone. A
 copy made again from that tag takes a released plugin and never a wrapper from
 an unreleased branch (ADR 0029). The copy instructions a document gives MUST
@@ -4726,6 +4729,17 @@ it is the route for an environment that loads a repository's hooks but not a
 person's own. A user-scope Cursor hook or skill is local to that machine. This
 document MUST NOT call it global, and MUST NOT imply that it reaches Cursor
 Cloud Agents.
+
+**The release a marketplace installs.** Claude Code and Codex read a
+marketplace from the repository's default branch, and a relative path there
+copies the plugin as `main` holds it. Their two entries MUST therefore name
+`plugins/klin` at the release tag `vX.Y.Z` that the manifests pin, through the
+`git-subdir` source both hosts document. A plugin installed from either
+marketplace then holds the files of the release its manifest names, and a
+commit to `main` that changes `plugins/klin` reaches a plugin user only with
+the next release. The release commit rewrites the `ref` with the manifests,
+and a CLI test fails when the `ref` is not `v` followed by the crate version.
+ADR 0029 records the decision.
 
 The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
