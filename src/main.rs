@@ -48,6 +48,7 @@ mod write;
 
 use std::path::Path;
 use std::process::ExitCode;
+use std::sync::LazyLock;
 
 use clap::{Parser, Subcommand};
 
@@ -144,7 +145,7 @@ enum Tool {
 /// The guard and the updater answer before the working directory is read, because neither needs
 /// it. Everything else prints through `report`.
 fn main() -> ExitCode {
-    shell::start();
+    LazyLock::force(&shell::STARTED);
     match Cli::parse().command {
         Command::Runner(Runner::Guard(args)) => ExitCode::from(guard::run(&args)),
         Command::Tool(Tool::Update) => ExitCode::from(update::run()),

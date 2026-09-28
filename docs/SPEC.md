@@ -2741,20 +2741,21 @@ command, and every command a person wrote, run exactly as they read, in the
 environment the hook itself was given. A tool a project installed but did not
 put on `PATH` is therefore found, and the NOTE below is not told for it.
 
-Each build command runs for at most 300 seconds, and every build and `run`
-command of one klin run must end by 600 seconds after klin started, so a later
-command gets only what is left before that deadline, and a command with no time
-left does not start. The deadline counts klin's own work between commands too.
-The host gives the Stop hook 900 seconds, so no command is still running when
-the host's time runs out, and whatever klin does after its last command has at
-least 300 seconds. When a command reaches its limit or the deadline, klin stops
-it and the build fails with a message that names the command and the limit or
-deadline it reached. `klin.json` cannot change either: a person whose build
-takes longer sets `build` to `false` and lets CI build. A run MAY take
-`KLIN_COMMAND_LIMIT` in seconds for tests. It sets the limit of each command,
-from 1 to 300 seconds, and the deadline is twice it. Any other value is an
-error, so the override can shorten the limit and the deadline and never raise
-them.
+Each build command runs for at most 300 seconds, and klin stops every build and
+`run` command of one run at 600 seconds after klin started, so a later command
+gets only what is left before that deadline, and a command with no time left
+does not start. The deadline counts klin's own work between commands too. The
+host gives the Stop hook 900 seconds, so when klin starts as the stop begins,
+no command is still running when the host's time runs out, and whatever klin
+does after its last command has at least 300 seconds. Time the host spends
+before klin starts, such as a `cargo run` that compiles klin first, is not
+counted. When a command reaches its limit or the deadline, klin stops it and
+the build fails with a message that names the command and the limit or deadline
+it reached. `klin.json` cannot change either: a person whose build takes longer
+sets `build` to `false` and lets CI build. A run MAY take `KLIN_COMMAND_LIMIT`
+in seconds for tests. It sets the limit of each command, from 1 to 300 seconds,
+and the deadline is twice it. Any other value is an error, so the override can
+shorten the limit and the deadline and never raise them.
 
 Each command runs in a process group of its own. When the command's shell
 exits, when it reaches its limit or the deadline, and when a hangup, an

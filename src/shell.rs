@@ -3,7 +3,7 @@ use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom};
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
+use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
 use rustix::process::{Pid, Signal, WaitId, WaitIdOptions, kill_process_group, waitid};
@@ -15,12 +15,13 @@ const LIMIT: Duration = Duration::from_secs(300);
 /// The process group of the command running now. Its lock is held from the spawn until the group
 /// is recorded, so a signal that arrives in between waits for the group it must kill.
 static RUNNING: Mutex<Option<Pid>> = Mutex::new(None);
-/// The moment klin started, which the deadline every command must end by counts from.
-static START: OnceLock<Instant> = OnceLock::new();
+/// The moment klin started, which `main` forces first, and which the deadline every command is
+/// stopped at counts from. Spec 9.3.
+pub static STARTED: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 /// One command a build or sarif entry names, in the shell, at the directory it runs in, in the
 /// environment the hook itself was given, in a process group of its own. When the command ends,
-/// reaches its limit, or klin is told to stop, klin kills every process left in that group, and
+/// reaches its limit or the deadline, or klin is told to stop, klin kills every process left in that group, and
 /// its output is kept in files, so nothing it left behind can hold klin open. Spec 8.3, 9.3.
 pub fn output(at: &Path, command: &str) -> Result<Output> {
     let (time, limit) = bound()?;
@@ -55,18 +56,13 @@ fn running() -> MutexGuard<'static, Option<Pid>> {
     RUNNING.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Marks the moment klin started. Spec 9.3.
-pub fn start() {
-    START.get_or_init(Instant::now);
-}
-
 /// How long the next command may run, and the limit that says so: its own, or what is left
 /// before the deadline twice as long after klin started. A command with no time left never
 /// starts. Spec 9.3.
 fn bound() -> Result<(Duration, String)> {
     let limit = limit()?;
     let deadline = limit * 2;
-    let left = deadline.saturating_sub(START.get_or_init(Instant::now).elapsed());
+    let left = deadline.saturating_sub(STARTED.elapsed());
     let named = format!(
         "the {} second deadline from klin's start",
         deadline.as_secs()
