@@ -1028,7 +1028,7 @@ fn ended_by(name: &str, number: i32) {
 }
 
 #[test]
-fn a_terminate_signal_that_ends_klin_ends_the_build_it_runs() {
+fn a_signal_that_ends_klin_ends_the_build_it_runs() {
     ended_by("TERM", 15);
 }
 
