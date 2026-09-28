@@ -35,6 +35,7 @@ mod reachability;
 mod reference;
 mod sarif;
 mod scope;
+mod shell;
 mod state;
 mod stats;
 mod stubs;

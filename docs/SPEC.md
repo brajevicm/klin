@@ -2137,9 +2137,10 @@ there:
 ```
 
 With `run`, klin deletes `report`, executes the command in the working tree
-the way it runs `build`, then reads `report`. A report that is missing after
-`run` is ERR. The report path SHOULD be under `.gitignore`, so the stamp of
-6.5 does not carry it. The report is fresh by construction, because the only file at
+the way it runs `build`, under the same 300 second limit (9.3), then reads
+`report`. A report that is missing after `run` is ERR, and so is a command
+still running at the limit, named with the limit. The report path SHOULD be
+under `.gitignore`, so the stamp of 6.5 does not carry it. The report is fresh by construction, because the only file at
 that path is one the tool wrote over the tree klin is about to judge. The
 command's exit status is not judged, because a linter exits non-zero when it
 finds something. In the hook this is the RECOMMENDED form. Without `run`,
@@ -2739,6 +2740,14 @@ applies to a derived JavaScript command alone: a derived `cargo` or `go`
 command, and every command a person wrote, run exactly as they read, in the
 environment the hook itself was given. A tool a project installed but did not
 put on `PATH` is therefore found, and the NOTE below is not told for it.
+
+Each build command runs for at most 300 seconds. The host gives the Stop hook
+900 seconds, so a command that never exits still leaves most of that time to
+the rest of the stop. At the limit klin stops the command and every process it
+started, and the build fails with a message that names the command and the
+limit. `klin.json` cannot change the limit: a person whose build takes longer
+sets `build` to `false` and lets CI build. A run MAY take
+`KLIN_COMMAND_LIMIT` in seconds for tests.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
@@ -3608,8 +3617,9 @@ journal cannot prove. No word of the agent's glossary appears in the text.
 - No check MAY read the network.
 - The only clock a judgment reads is a pinned dated ceiling (5.5), read in
   UTC, and `KLIN_TODAY` overrides it. The report age check of 8.3 compares
-  file times and is the one other place time enters a verdict. The `ms` of
-  11.2 and the `time` and `timing` of 11.4 are measurements about the run,
+  file times, and the command limit of 9.3 stops a build or `run` command
+  that outlives it. These are the two other places time enters a verdict.
+  The `ms` of 11.2 and the `time` and `timing` of 11.4 are measurements about the run,
   recorded and never judged, so they do not break determinism: every field a
   verdict depends on is still a pure function of the trees.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin

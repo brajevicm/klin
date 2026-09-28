@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Output;
 use std::time::SystemTime;
 
 use serde_json::{Map, Value};
@@ -20,6 +20,7 @@ use crate::hunks::Hunks;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
+use crate::shell;
 
 pub const SECTION: &str = "sarif";
 
@@ -229,13 +230,8 @@ fn read(
 /// something. Spec 8.3.
 fn wrote(root: &Path, command: &str, report: &Path) -> Result<(), Error> {
     let _ = std::fs::remove_file(report);
-    match Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .current_dir(root)
-        .output()
-    {
-        Err(why) => Err(Error(format!("{command} could not run: {why}"))),
+    match shell::run(root, command) {
+        Err(why) => Err(Error(format!("{command}: {why}"))),
         Ok(_) if report.is_file() => Ok(()),
         Ok(done) => Err(Error(format!(
             "{command} wrote no report at {} — klin deletes the report before it runs the \

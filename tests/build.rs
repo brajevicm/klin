@@ -931,3 +931,21 @@ fn a_passing_project_local_compile_tells_no_note() {
     assert_eq!(ran(&tree), "the project compiler\n", "{}", run.out);
     assert!(!run.says("could not run"), "{}", run.out);
 }
+
+#[test]
+fn a_build_that_never_exits_is_stopped_at_the_limit_and_named() {
+    let tree = tree(r#""build": "sleep 60; echo never","#);
+
+    let started = std::time::Instant::now();
+    let run = harness::feed_with(
+        tree.root(),
+        &[("KLIN_COMMAND_LIMIT", "1")],
+        &["gate", "--hook"],
+        A_STOP,
+    );
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the tree does not build"), "{}", run.out);
+    assert!(run.says("sleep 60; echo never"), "{}", run.out);
+    assert!(run.says("the 1 second limit"), "{}", run.out);
+}

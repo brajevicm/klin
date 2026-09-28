@@ -378,3 +378,20 @@ fn an_entry_with_no_name_names_the_key_it_is_missing() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("has no \"name\""), "{}", run.out);
 }
+
+#[test]
+fn a_run_that_never_exits_is_stopped_at_the_limit_and_named() {
+    let tree = tree(
+        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "sleep 60; echo never"}]}"#,
+    );
+
+    let started = std::time::Instant::now();
+    let run = tree.run_with(
+        &[("KLIN_COMMAND_LIMIT", "1")],
+        &["gate", "--gate", "eslint"],
+    );
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("sleep 60; echo never"), "{}", run.out);
+    assert!(run.says("the 1 second limit"), "{}", run.out);
+}
