@@ -116,11 +116,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let today = today(project)?;
     said(project, out);
     let commit = base::commit(config.root(), at, out)?;
+    let mut owned = None;
+    let prior = base::laid(at.prior, &mut owned, || {
+        base::materialize(project, &commit, None)
+    })?;
     let Found {
         judged,
         mut paired,
         measured,
-    } = found(at, &commit, &today)?;
+    } = found(at, (&commit, prior), &today)?;
     let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
         measured.functions.into_iter().partition(Function::orphaned);
     if let Some(only) = at.only {
@@ -149,7 +153,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     orphaned(&orphans, out);
     Ok(syntax::unread(
         &measured.unparsed,
-        &measured.unread_at_base,
+        || prior.unread_either(&measured.unread_at_base),
         at,
         code,
         out,
@@ -166,17 +170,9 @@ struct Found {
 
 /// The base laid out, when the runner did not lay it out already, and read under the scope it
 /// records, which is also the scope the working tree is read under.
-fn found(at: &Context, commit: &str, today: &Scope) -> Result<Found, Error> {
+fn found(at: &Context, (commit, prior): (&str, &Prior), today: &Scope) -> Result<Found, Error> {
     let project = at.project;
     let config = &project.config;
-    let owned;
-    let prior = match at.prior {
-        Some(prior) => prior,
-        None => {
-            owned = base::materialize(project, commit, None)?;
-            &owned
-        }
-    };
     let tests = Tests {
         roots: &project.facts().found.test_roots,
         scope: Scope::at_base(config, SECTION, prior.root(), today),
@@ -282,12 +278,7 @@ fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Erro
             })
             .collect(),
         unparsed: after.unparsed,
-        unread_at_base: prior.unread_either(
-            &unread_at_base
-                .into_iter()
-                .map(|file| file.file)
-                .collect::<Vec<_>>(),
-        ),
+        unread_at_base: unread_at_base.into_iter().map(|file| file.file).collect(),
     })
 }
 

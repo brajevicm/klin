@@ -342,20 +342,26 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 /// What a gate does about the files no grammar read: a NOTE in the hook, and exit 2 outside
 /// it, because an agent cannot fix a grammar and a file klin cannot read is a hole in the
 /// ratchet. A file the base held and could not read either is a NOTE in every run, because the
-/// change opened no hole there. `base` names those files under today's paths. ADR 0003, ADR
-/// 0021, spec 8.6, 14.
+/// change opened no hole there. `base` names those files under today's paths, and is asked only
+/// outside the hook, when a file in scope needs it. ADR 0003, ADR 0021, spec 8.6, 14.
 pub fn unread(
     unparsed: &[Unparsed],
-    base: &[String],
+    base: impl FnOnce() -> Vec<String>,
     at: &Context,
     code: u8,
     out: &mut Sink,
 ) -> u8 {
-    let base: HashSet<&str> = base.iter().map(String::as_str).collect();
-    let (noted, refused): (Vec<&Unparsed>, Vec<&Unparsed>) = unparsed
+    let named: Vec<&Unparsed> = unparsed
         .iter()
         .filter(|file| at.only.is_none_or(|only| only.contains(&file.file)))
-        .partition(|file| at.hook() || base.contains(file.file.as_str()));
+        .collect();
+    if named.is_empty() {
+        return code;
+    }
+    let base: Option<HashSet<String>> = (!at.hook()).then(|| base().into_iter().collect());
+    let (noted, refused): (Vec<&Unparsed>, Vec<&Unparsed>) = named
+        .into_iter()
+        .partition(|file| base.as_ref().is_none_or(|base| base.contains(&file.file)));
     said("NOTE", &noted, out, |records| &mut records.notes);
     said("FAIL", &refused, out, |records| &mut records.findings);
     match refused.is_empty() {

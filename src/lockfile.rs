@@ -232,16 +232,14 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
     let commit = base::commit(config.root(), at, out)?;
-    let renamed = changed::renamed(&at.project.changes(&commit)?);
-    let was = |manifest: &str| {
-        renamed
-            .get(manifest)
-            .map_or(manifest, String::as_str)
-            .to_string()
-    };
-    let judged: Vec<(&str, String, &Format)> = judged
+    let changes = at.project.changes(&commit)?;
+    let renamed = renamed(&changes, &judged);
+    let judged: Vec<(&str, &str, &Format)> = judged
         .into_iter()
-        .map(|&(manifest, format)| (manifest, was(manifest), format))
+        .map(|&(manifest, format)| {
+            let was = renamed.get(manifest).copied().unwrap_or(manifest);
+            (manifest, was, format)
+        })
         .collect();
     let mut now = Side::working(
         config.root(),
@@ -250,11 +248,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let mut before = Side::at(
         config.root(),
         &commit,
-        &candidates(
-            judged
-                .iter()
-                .map(|(_, was, format)| (was.as_str(), *format)),
-        ),
+        &candidates(judged.iter().map(|(_, was, format)| (*was, *format))),
     )?;
     let mut sites = Sites {
         listed: found.len(),
@@ -265,6 +259,28 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
         sites.add((&mut now, &mut before), (manifest, was), format, at.hook())?;
     }
     Ok(sites)
+}
+
+/// The path the base holds each judged manifest at that the window renamed and that kept its
+/// format, read off the change set's rows for judged manifests only. A manifest renamed from
+/// another format has no comparable base, because its base bytes were written for another
+/// reader, so it is judged as one the base did not hold.
+fn renamed<'a>(
+    changes: &'a [changed::Change],
+    judged: &[&(&str, &Format)],
+) -> HashMap<&'a str, &'a str> {
+    let judged: HashSet<&str> = judged.iter().map(|(path, _)| *path).collect();
+    changes
+        .iter()
+        .filter(|change| judged.contains(change.path.as_str()))
+        .filter_map(|change| {
+            let was = change
+                .was
+                .as_deref()
+                .filter(|was| basename(was) == basename(&change.path))?;
+            Some((change.path.as_str(), was))
+        })
+        .collect()
 }
 
 /// The section's scope, refused when an `in` selects no manifest the survey found.

@@ -236,8 +236,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .cloned()
         .collect();
     held_note(&physicals, out);
-    let unread_at_base = base::whole(at, &commit)?.unread_either(&was_files.unreadable);
-    Ok(syntax::unread(&unparsed, &unread_at_base, at, code, out))
+    let prior = base::whole(at, &commit)?;
+    let unread_at_base = || prior.unread_either(&was_files.unreadable);
+    Ok(syntax::unread(&unparsed, unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured and resolved. A changed run that is not strict

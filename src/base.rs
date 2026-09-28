@@ -651,6 +651,19 @@ fn global_attributes() -> Option<PathBuf> {
     Some(config.join("git/attributes"))
 }
 
+/// The base the runner laid out, or the one `lay` lays out for this check into `own`, which the
+/// caller keeps for as long as it reads the base.
+pub fn laid<'p>(
+    prior: Option<&'p Prior>,
+    own: &'p mut Option<Prior>,
+    lay: impl FnOnce() -> Result<Prior, Error>,
+) -> Result<&'p Prior, Error> {
+    match prior {
+        Some(prior) => Ok(prior),
+        None => Ok(own.insert(lay()?)),
+    }
+}
+
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
 pub fn own(at: &Context, out: &mut Sink) -> Result<Prior, Error> {
     let base = announced(at.project.root(), at, out)?;

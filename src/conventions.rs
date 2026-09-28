@@ -305,7 +305,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = holes_said(&holes(&conventions, &places), at, code, out);
     Ok(syntax::unread(
         &after.unparsed,
-        &before.files.unreadable,
+        || before.files.unreadable,
         at,
         code,
         out,

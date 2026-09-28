@@ -491,8 +491,21 @@ fn a_lockfile_only_the_base_could_not_read_is_named_at_the_base() {
     );
 }
 
-/// The manifests are the ones the survey finds, so a manifest klin cannot parse in either tree is
-/// a fixture and a NOTE, and no person's list can claim otherwise. Spec 8.2.1, ADR 0040.
+#[test]
+fn a_manifest_renamed_to_another_format_has_no_base_to_hide_behind() {
+    let tree = derived_tree();
+    tree.base();
+    tree.git(&["mv", "Cargo.toml", "package.json"]);
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("package.json is not valid JSON")
+            && run.says("the base did not hold package.json"),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
     let tree = Tree::new();

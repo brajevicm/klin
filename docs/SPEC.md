@@ -1772,8 +1772,10 @@ fix it. A manifest that did not parse at the base and parses now is judged
 against a base that named no dependency. Every manifest and lockfile is read
 once per tree, the base's through one git process. The base judges a manifest
 the window renamed at the path it had there, beside the lockfile it had there,
-so a rename keeps its base, and a lockfile several
-manifests share is parsed once. An accepted entry that gives no `stale` holds
+so a rename keeps its base. A manifest renamed from another format, such as
+`Cargo.toml` to `package.json`, has no comparable base, because its base bytes
+were written for another reader, so it is judged as one the base did not
+hold. A lockfile several manifests share is parsed once. An accepted entry that gives no `stale` holds
 a `stale` of 0, so an entry written before the value existed stays valid and
 holds no staleness. The remedy has one part for each value that failed, in the
 text and in each finding's `fix_advice`: every nonzero value of a new finding,
@@ -1810,6 +1812,7 @@ handful of files. Pinned by
 `a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note`,
 `a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base`,
 `a_lockfile_only_the_base_could_not_read_is_named_at_the_base`,
+`a_manifest_renamed_to_another_format_has_no_base_to_hide_behind`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
 `a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
 `two_manifests_that_share_one_lockfile_are_each_judged_against_it`,

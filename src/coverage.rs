@@ -255,6 +255,9 @@ pub fn unresolved_said(
     (at, code): (&Context, u8),
     out: &mut Sink,
 ) -> u8 {
+    if now.is_empty() {
+        return code;
+    }
     let held = match at.hook() {
         true => vec![true; now.len()],
         false => held_at(now, &base()),

@@ -62,4 +62,6 @@ included. #133 noted such a manifest so that a fixture invalid on purpose
 could never keep the gate red. The base rule now covers that: only the change
 that adds the fixture fails outside the hook, a person closes it with
 `except`, and every later run notes it. In the hook it is a NOTE. A manifest
-the change only renamed is one the base held, so it keeps the NOTE.
+the change only renamed is one the base held, so it keeps the NOTE. A manifest
+renamed to another format has no comparable base, so it is judged as one the
+base did not hold.

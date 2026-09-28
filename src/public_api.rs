@@ -115,9 +115,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         })
         .cloned()
         .collect();
-    let unreadable: Vec<String> = was.unparsed.into_iter().map(|file| file.file).collect();
-    let unread_at_base = base::whole(at, &commit)?.unread_either(&unreadable);
-    Ok(syntax::unread(&inside, &unread_at_base, at, code, out))
+    let prior = base::whole(at, &commit)?;
+    let unread_at_base = || {
+        let unreadable: Vec<String> = was.unparsed.into_iter().map(|file| file.file).collect();
+        prior.unread_either(&unreadable)
+    };
+    Ok(syntax::unread(&inside, unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured, resolved and derived. A changed run that is
