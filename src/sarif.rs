@@ -230,7 +230,7 @@ fn read(
 /// something. Spec 8.3.
 fn wrote(root: &Path, command: &str, report: &Path) -> Result<(), Error> {
     let _ = std::fs::remove_file(report);
-    match shell::run(root, command) {
+    match shell::output(root, command) {
         Err(why) => Err(Error(format!("{command}: {why}"))),
         Ok(_) if report.is_file() => Ok(()),
         Ok(done) => Err(Error(format!(

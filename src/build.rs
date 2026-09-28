@@ -307,7 +307,7 @@ fn built(root: &Path, entry: &Entry) -> (Option<Failure>, Option<String>) {
 /// What the shell made of one command, which is the whole test klin applies: it reads no shell
 /// message and guesses no tool name. ADR 0048.
 fn ran(at: &Path, run: &str, how: How) -> Option<Failure> {
-    let done = match shell::run(at, run) {
+    let done = match shell::output(at, run) {
         Err(why) => return Some(Failure::Failed(format!("{run}: {why}\n"))),
         Ok(done) => done,
     };

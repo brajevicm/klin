@@ -5,13 +5,13 @@ use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::time::{Duration, Instant};
 
-const LIMIT: &str = "KLIN_COMMAND_LIMIT";
+const LIMIT: Duration = Duration::from_secs(300);
 
 /// One command a build or sarif entry names, in the shell, at the directory it runs in, in the
 /// environment the hook itself was given. A command still running at the limit is stopped with
-/// every process it started, and its output is kept in files, so a process it left behind
-/// cannot hold klin open. Spec 9.3.
-pub fn run(at: &Path, command: &str) -> Result<Output> {
+/// every process in its group, and its output is kept in files, so a process it left behind
+/// cannot hold klin open. Spec 8.3, 9.3.
+pub fn output(at: &Path, command: &str) -> Result<Output> {
     let limit = limit()?;
     let (stdout, stderr) = (tempfile::tempfile()?, tempfile::tempfile()?);
     let child = started(at, command, &stdout, &stderr)?;
@@ -35,25 +35,27 @@ fn started(at: &Path, command: &str, stdout: &File, stderr: &File) -> Result<Chi
         .spawn()
 }
 
-/// How long one command may run: 300 seconds, so one hung command leaves most of the host's
-/// 900 second stop to the rest. `KLIN_COMMAND_LIMIT` overrides it for tests. Spec 9.3.
+/// How long one command may run. `KLIN_COMMAND_LIMIT` overrides it for tests. Spec 9.3.
 fn limit() -> Result<Duration> {
-    let Ok(pinned) = std::env::var(LIMIT) else {
-        return Ok(Duration::from_secs(300));
+    let Ok(pinned) = std::env::var("KLIN_COMMAND_LIMIT") else {
+        return Ok(LIMIT);
     };
     pinned.parse().map(Duration::from_secs).map_err(|_| {
         Error::new(
             ErrorKind::InvalidInput,
-            format!("{LIMIT} is \"{pinned}\", which is not a count of seconds"),
+            format!("KLIN_COMMAND_LIMIT is \"{pinned}\", which is not a count of seconds"),
         )
     })
 }
 
 fn waited(mut child: Child, limit: Duration) -> Result<ExitStatus> {
     let started = Instant::now();
-    while started.elapsed() < limit {
+    loop {
         if let Some(status) = child.try_wait()? {
             return Ok(status);
+        }
+        if started.elapsed() >= limit {
+            break;
         }
         std::thread::sleep(Duration::from_millis(10));
     }

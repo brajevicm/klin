@@ -2742,10 +2742,11 @@ environment the hook itself was given. A tool a project installed but did not
 put on `PATH` is therefore found, and the NOTE below is not told for it.
 
 Each build command runs for at most 300 seconds. The host gives the Stop hook
-900 seconds, so a command that never exits still leaves most of that time to
-the rest of the stop. At the limit klin stops the command and every process it
-started, and the build fails with a message that names the command and the
-limit. `klin.json` cannot change the limit: a person whose build takes longer
+900 seconds, so one command that never exits still leaves most of that time to
+the rest of the stop. The limit applies to each command, so several slow
+commands in one stop can still reach the host's timeout. At the limit klin
+stops the command and every process in its process group, and the build fails
+with a message that names the command and the limit. `klin.json` cannot change the limit: a person whose build takes longer
 sets `build` to `false` and lets CI build. A run MAY take
 `KLIN_COMMAND_LIMIT` in seconds for tests.
 
