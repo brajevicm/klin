@@ -934,18 +934,19 @@ fn holes_said(
         .chain(ambiguous)
         .map(|hole| row(hole.file.clone(), hole))
         .collect();
-    let base: Vec<coverage::Unresolved> = was
-        .holes(policy)
-        .into_iter()
-        .map(|hole| row(was.current(&hole.file), hole))
-        .chain(
-            was_ambiguous
-                .iter()
-                .map(|hole| row(hole.file.clone(), hole)),
-        )
-        .collect();
+    let base = || {
+        was.holes(policy)
+            .into_iter()
+            .map(|hole| row(was.current(&hole.file), hole))
+            .chain(
+                was_ambiguous
+                    .iter()
+                    .map(|hole| row(hole.file.clone(), hole)),
+            )
+            .collect()
+    };
     coverage::unresolved_said(
-        (&named, &base),
+        (&named, base),
         (
             "dependency form(s) klin resolves could not be resolved, so what they reach was not judged",
             "Make each one name exactly one module file the tree holds, or take its file out of the section's scope.",

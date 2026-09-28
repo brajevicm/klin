@@ -3,6 +3,7 @@
 //! read. A check keeps its own policy — what it counts and what it refuses — and holds no
 //! Tree-sitter node kinds of another language's grammar. ADR 0003, ADR 0035.
 
+use std::collections::HashSet;
 use std::fmt::Write;
 
 use serde_json::Value;
@@ -350,10 +351,14 @@ pub fn unread(
     code: u8,
     out: &mut Sink,
 ) -> u8 {
+    let base: HashSet<&str> = match at.hook() {
+        true => HashSet::new(),
+        false => base.iter().map(String::as_str).collect(),
+    };
     let (noted, refused): (Vec<&Unparsed>, Vec<&Unparsed>) = unparsed
         .iter()
         .filter(|file| at.only.is_none_or(|only| only.contains(&file.file)))
-        .partition(|file| at.hook() || base.contains(&file.file));
+        .partition(|file| at.hook() || base.contains(file.file.as_str()));
     said("NOTE", &noted, out, |records| &mut records.notes);
     said("FAIL", &refused, out, |records| &mut records.findings);
     match refused.is_empty() {

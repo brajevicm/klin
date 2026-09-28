@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write;
 
 use serde_json::{Map, Value};
@@ -235,35 +235,33 @@ pub struct Unresolved {
     pub why: String,
 }
 
+impl Unresolved {
+    /// What pairs a form with one the base holds: its file, text and reason, at any line.
+    fn key(&self) -> (&str, &str, &str) {
+        (&self.file, &self.text, &self.why)
+    }
+}
+
 /// What a gate says about the forms it supports and could not resolve: a NOTE in the hook, and
 /// exit 2 elsewhere, because a green run must not imply a resolution klin did not make. A form
 /// the base holds in the same file, with the same text and reason, is a NOTE in every run,
 /// because the change opened no hole there. Each base form pairs with one form now, so a second
-/// copy of a held form is new. `what` follows the count on the first line, and
+/// copy of a held form is new. `base` is built only outside the hook, where the answer decides
+/// something. `what` follows the count on the first line, and
 /// `remedy` closes each block. ADR 0021, spec 8.6.
 pub fn unresolved_said(
-    (now, base): (&[Unresolved], &[Unresolved]),
+    (now, base): (&[Unresolved], impl FnOnce() -> Vec<Unresolved>),
     (what, remedy): (&str, &str),
     (at, code): (&Context, u8),
     out: &mut Sink,
 ) -> u8 {
-    let (noted, refused): (Vec<_>, Vec<_>) = now
-        .iter()
-        .zip(held_at(now, base))
-        .partition(|(_, held)| at.hook() || *held);
+    let held = match at.hook() {
+        true => vec![true; now.len()],
+        false => held_at(now, &base()),
+    };
+    let (noted, refused): (Vec<_>, Vec<_>) = now.iter().zip(held).partition(|(_, held)| *held);
     for (word, named) in [("NOTE", &noted), ("FAIL", &refused)] {
-        if named.is_empty() {
-            continue;
-        }
-        let _ = writeln!(out.text, "{word}: {} {what}:", named.len());
-        for (hole, _) in named.iter() {
-            let _ = writeln!(
-                out.text,
-                "  {}:{}  {}  — {}",
-                hole.file, hole.line, hole.text, hole.why
-            );
-        }
-        let _ = writeln!(out.text, "{remedy}");
+        listed(word, named, (what, remedy), out);
     }
     out.record(|records| {
         for (into, named) in [
@@ -286,21 +284,36 @@ pub fn unresolved_said(
     }
 }
 
+/// One block of forms under one word, as the report prints it, and nothing for no form.
+fn listed(word: &str, named: &[(&Unresolved, bool)], (what, remedy): (&str, &str), out: &mut Sink) {
+    if named.is_empty() {
+        return;
+    }
+    let _ = writeln!(out.text, "{word}: {} {what}:", named.len());
+    for (hole, _) in named {
+        let _ = writeln!(
+            out.text,
+            "  {}:{}  {}  — {}",
+            hole.file, hole.line, hole.text, hole.why
+        );
+    }
+    let _ = writeln!(out.text, "{remedy}");
+}
+
 /// Whether each form now pairs with a form the base holds in the same file with the same text and
 /// reason, at any line. Each base form pairs once, so a second copy of a held form is new.
 fn held_at(now: &[Unresolved], base: &[Unresolved]) -> Vec<bool> {
-    let mut taken = vec![false; base.len()];
+    let mut left: HashMap<(&str, &str, &str), usize> = HashMap::new();
+    for was in base {
+        *left.entry(was.key()).or_default() += 1;
+    }
     now.iter()
-        .map(|hole| {
-            let paired = (0..base.len()).find(|at| {
-                let was = &base[*at];
-                !taken[*at]
-                    && (&was.file, &was.text, &was.why) == (&hole.file, &hole.text, &hole.why)
-            });
-            if let Some(at) = paired {
-                taken[at] = true;
+        .map(|hole| match left.get_mut(&hole.key()) {
+            Some(count) if *count > 0 => {
+                *count -= 1;
+                true
             }
-            paired.is_some()
+            _ => false,
         })
         .collect()
 }

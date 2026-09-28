@@ -360,7 +360,7 @@ fn show(values: &Values) -> String {
 fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink) -> u8 {
     let named = holes_of(now);
     coverage::unresolved_said(
-        (&named, &holes_of(was)),
+        (&named, || holes_of(was)),
         (
             "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured",
             "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds.",
@@ -373,13 +373,17 @@ fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink
 /// Every hole inside a surface under today's paths, each once, in one order: the surface's own
 /// holes and the module graph's holes in the files the surface reaches.
 fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
+    let mut by_file: HashMap<&str, Vec<&modules::Hole>> = HashMap::new();
+    for hole in &side.graph.holes {
+        by_file.entry(hole.file.as_str()).or_default().push(hole);
+    }
     let mut named: Vec<coverage::Unresolved> = Vec::new();
     for surface in &side.derived.surfaces {
-        let inside = side
-            .graph
-            .holes
+        let inside = surface
+            .files
             .iter()
-            .filter(|hole| surface.files.binary_search(&hole.file).is_ok())
+            .filter_map(|file| by_file.get(file.as_str()))
+            .flatten()
             .map(|hole| (&hole.file, hole.line, &hole.text, &hole.why));
         let own = surface
             .holes
