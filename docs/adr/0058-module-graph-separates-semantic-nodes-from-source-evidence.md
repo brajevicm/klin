@@ -1,5 +1,8 @@
 # ModuleGraph separates semantic nodes from source evidence
 
+> Numbered 0047 until #339 gave each ADR its own number. ADR 0057 records the
+> same #219 decision without the implementation.
+>
 > Extends ADR 0043. ADR 0043 remains the Rust/TypeScript V1 history; this
 > decision removes only its accidental one-semantic-module/one-physical-file
 > assumption before structural language #3.

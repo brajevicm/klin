@@ -8,7 +8,7 @@
 //! file that writes it and text, carrying `edge` at 1, held where the base holds every semantic
 //! edge it merges and new otherwise. A renamed file is placed in the base's layers under its
 //! base path and keyed under its current one. The section is a person's policy and nothing
-//! derives it: with no section the gate does not run. Spec 8.2.1, ADR 0043, ADR 0047.
+//! derives it: with no section the gate does not run. Spec 8.2.1, ADR 0043, ADR 0058.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
@@ -122,7 +122,7 @@ struct Edge {
 
 /// The semantic edges of one side, keyed by the semantic identity of the module that writes
 /// each, that of the module it reaches, and its text, which names its kind, its layers and the
-/// module it reaches. ADR 0047.
+/// module it reaches. ADR 0058.
 type Edges = BTreeMap<(String, String, String), Edge>;
 
 /// One finding as the working tree reports it: the semantic edges one file writes under one
@@ -145,7 +145,7 @@ struct Place {
     layer: Option<usize>,
 }
 
-/// One policy fact folded over a module's files: the same for every file, or not. ADR 0047.
+/// One policy fact folded over a module's files: the same for every file, or not. ADR 0058.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Folded<T> {
     All(T),
@@ -609,7 +609,7 @@ impl Policy {
 /// write it, and every dependency the section cannot judge because the files of the module it
 /// reaches straddle the scope or the layers. A straddled module is never placed by one of its
 /// files. The sites are grouped by module pair first, and each pair's semantic identities are
-/// named once. ADR 0047.
+/// named once. ADR 0058.
 fn edges(
     policy: &Policy,
     (side, placed): (&Side, &Placed),
@@ -659,7 +659,7 @@ fn edges(
 }
 
 /// Module-pair edges keyed by the semantic identity of each module, merging the sites of any
-/// two pairs whose modules name alike. ADR 0047.
+/// two pairs whose modules name alike. ADR 0058.
 fn semantic(names: &mut Names, pairs: BTreeMap<(usize, usize, String), Edge>) -> Edges {
     let mut out = Edges::new();
     for ((from, to, text), edge) in pairs {
@@ -722,7 +722,7 @@ fn verdict(
 /// reported where they are written: one finding per file and text, held where the base holds
 /// every semantic edge it merges. Evidence that moves between the files of one module, splits
 /// across them or joins in one is held; a new semantic edge is new wherever it is written.
-/// ADR 0047.
+/// ADR 0058.
 fn physicals(now: &Edges, was: &Edges) -> Physicals {
     let mut out = Physicals::new();
     for (key, edge) in now {

@@ -117,7 +117,7 @@ The fixture holds 4,946 cyclic edges on each side, and the base holds all of
 them. For each such site, B builds the report name and the semantic identity
 of the destination module. It then groups the site under its module pair,
 and re-keys that pair under two semantic identities and the edge text. That
-re-keying is the pairing that #219 and ADR 0047 require. A built one name and
+re-keying is the pairing that #219 and ADR 0058 require. A built one name and
 one physical key per site. The added time is about 0.6 µs for each held
 cyclic edge on each side. It grows with the reported semantic edges, not
 with the repository.
@@ -191,6 +191,6 @@ no file.
    edges. The edges step takes about 6 ms more on the saved tree. The rows
    show 9 to 13 ms more `layering_ms`, which is about 1 to 1.5% of the 300k
    warm hook and under 1% at 1M. It pays for the semantic pairing that
-   ADR 0047 requires. The RSS movement is within this machine's
+   ADR 0058 requires. The RSS movement is within this machine's
    single-run noise, and 1M RSS did not move.
 9. SPEC 13 and ADR 0042 are unchanged.

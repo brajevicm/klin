@@ -1,5 +1,8 @@
 # One semantic module may have many physical sources
 
+> Numbered 0047 until #339 gave each ADR its own number. ADR 0058 records the
+> same #219 decision, with the #220 implementation, and the code cites it.
+
 Issue #219 extends ADR 0043 without replacing its Rust/TypeScript V1 history.
 ADR 0043 was correct for the shipped languages: Rust file/inline modules and
 TypeScript file modules fit a graph where one semantic node names one physical

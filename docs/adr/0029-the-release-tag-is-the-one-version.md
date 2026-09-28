@@ -1,5 +1,9 @@
 # The release tag is the one version
 
+> ADR 0040 amends this: `klin.json` has no `version` key, so nothing in a
+> repository overrides the tag the Action is pinned at. The Action's own
+> `version` input still does.
+
 klin reaches a person through several routes: the Claude Code plugin and its
 wrapper, the install script, a GitHub Action, and a release page someone
 downloads from by hand. Cursor and Codex will add hook files that call the
@@ -27,7 +31,7 @@ Each route updates with the tool the person already uses:
 - The installer and a hand download, through `klin update`, which runs the
   `klin-update` the installer placed beside the binary.
 - CI, by moving the tag in `uses: brajevicm/klin@vX.Y.Z`, which Renovate and
-  Dependabot do. The `version` key in `klin.json` overrides it.
+  Dependabot do.
 
 The plugin's hooks run the wrapper by its path under `CLAUDE_PLUGIN_ROOT`
 before any `klin` on PATH, because Claude Code appends plugin `bin/`
