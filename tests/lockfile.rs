@@ -404,11 +404,54 @@ fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("testdata/broken/package.json is not valid JSON")
-            && run.says("add it to the section's `exclude`"),
+            && run.says("add it to the section's `except`"),
         "{}",
         run.out
     );
     assert_eq!(stop.code, 0, "{}", stop.out);
+}
+
+#[test]
+fn a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note() {
+    let tree = derived_tree();
+    tree.write("tools/a/package.json", "{ not json");
+    tree.base();
+    assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
+    tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
+    let run = tree.run(&["gate", "--gate", "lockfile", "--strict"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: tools/b/package.json is not valid JSON"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base() {
+    let tree = derived_tree();
+    tree.write(
+        "tools/a/package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0"}}"#,
+    );
+    tree.write("tools/a/package-lock.json", NPM_V3);
+    tree.base();
+    assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
+    tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
+    tree.write(
+        "tools/b/package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"}}}"#,
+    );
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("1 dependenc(ies) got worse")
+            && run.says(
+                "unlocked 1, unpinned 0, stale 0, was unlocked 0, unpinned 0, stale 0  left-pad"
+            ),
+        "{}",
+        run.out
+    );
 }
 
 /// The manifests are the ones the survey finds, so a manifest klin cannot parse in either tree is

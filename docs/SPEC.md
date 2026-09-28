@@ -1762,13 +1762,15 @@ manifest's dependencies, and every other manifest is still judged, so a
 fixture that is invalid on purpose does not turn the gate red. A manifest
 klin cannot parse now that the base did not hold is a tool error outside the
 hook, because the work added the hole: the error says to make it parse or to
-add it to `exclude`. In the hook it is the same NOTE, because the agent cannot
-edit `exclude`. Once the change is in the base, the manifest is a NOTE in
+add it to `except`. In the hook it is the same NOTE, because the agent cannot
+edit `except`. Once the change is in the base, the manifest is a NOTE in
 every run. A manifest that parsed at the base and does not parse now
 is a tool error naming the file, because the work broke it and the agent can
 fix it. A manifest that did not parse at the base and parses now is judged
 against a base that named no dependency. Every manifest and lockfile is read
-once per tree, the base's through one git process, and a lockfile several
+once per tree, the base's through one git process. The base judges a manifest
+the window renamed at the path it had there, beside the lockfile it had there,
+so a rename keeps its base, and a lockfile several
 manifests share is parsed once. An accepted entry that gives no `stale` holds
 a `stale` of 0, so an entry written before the value existed stays valid and
 holds no staleness. The remedy has one part for each value that failed, in the
@@ -1803,6 +1805,8 @@ handful of files. Pinned by
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
 `a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook`,
+`a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note`,
+`a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
 `a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
 `two_manifests_that_share_one_lockfile_are_each_judged_against_it`,
@@ -2500,7 +2504,7 @@ Every check MUST:
   the hook each of them is a NOTE, because the agent has no remedy. A file the
   base did not hold stays exit 2 outside the hook, a `lockfile` manifest
   included (8.2.1): the change that adds a fixture invalid on purpose also
-  adds it to `except` or `exclude`, and once it is in the base it is a NOTE.
+  adds it to `except`, and once it is in the base it is a NOTE.
   Pinned by
   `a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict`,
   `a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand`,

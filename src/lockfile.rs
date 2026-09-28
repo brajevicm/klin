@@ -232,16 +232,37 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
     let commit = base::commit(config.root(), at, out)?;
-    let wanted = candidates(&judged);
-    let mut now = Side::working(config.root(), &wanted);
-    let mut before = Side::at(config.root(), &commit, &wanted)?;
+    let renamed = changed::renamed(&at.project.changes(&commit)?);
+    let was = |manifest: &str| {
+        renamed
+            .get(manifest)
+            .map_or(manifest, String::as_str)
+            .to_string()
+    };
+    let judged: Vec<(&str, String, &Format)> = judged
+        .into_iter()
+        .map(|&(manifest, format)| (manifest, was(manifest), format))
+        .collect();
+    let mut now = Side::working(
+        config.root(),
+        &candidates(judged.iter().map(|(now, _, format)| (*now, *format))),
+    );
+    let mut before = Side::at(
+        config.root(),
+        &commit,
+        &candidates(
+            judged
+                .iter()
+                .map(|(_, was, format)| (was.as_str(), *format)),
+        ),
+    )?;
     let mut sites = Sites {
         listed: found.len(),
         excluded: dropped.len(),
         ..Sites::default()
     };
-    for (manifest, format) in judged {
-        sites.add((&mut now, &mut before), manifest, format, at.hook())?;
+    for (manifest, was, format) in &judged {
+        sites.add((&mut now, &mut before), (manifest, was), format, at.hook())?;
     }
     Ok(sites)
 }
@@ -274,9 +295,9 @@ fn said(found: &[(&str, &Format)], out: &mut Sink) {
     );
 }
 
-/// Every path a judged manifest could read: the manifest, and each lockfile name its format
-/// knows at its own directory and at every directory above it.
-fn candidates(judged: &[&(&str, &Format)]) -> Vec<String> {
+/// Every path a judged manifest could read in one tree: the manifest, and each lockfile name its
+/// format knows at its own directory and at every directory above it.
+fn candidates<'a>(judged: impl Iterator<Item = (&'a str, &'a Format)>) -> Vec<String> {
     let mut out = BTreeSet::new();
     for (manifest, format) in judged {
         out.insert(manifest.to_string());
@@ -306,8 +327,8 @@ impl Side {
         }
     }
 
-    /// The same paths at the base commit, through one git process. A read git refuses is an
-    /// error: an empty base would read every dependency as new.
+    /// The same kind of paths at the base commit, through one git process. A read git refuses is
+    /// an error: an empty base would read every dependency as new.
     fn at(root: &std::path::Path, commit: &str, paths: &[String]) -> Result<Side, Error> {
         let mut bytes = HashMap::new();
         let names: Vec<&str> = paths.iter().map(String::as_str).collect();
@@ -455,11 +476,11 @@ impl Sites {
     fn add(
         &mut self,
         (now, before): (&mut Side, &mut Side),
-        manifest: &str,
+        (manifest, was): (&str, &str),
         format: &Format,
         hook: bool,
     ) -> Result<(), Error> {
-        let (now, before) = match reading((now, before), manifest, format, hook)? {
+        let (now, before) = match reading((now, before), (manifest, was), format, hook)? {
             Reading::Judged(now, before) => (now, before),
             Reading::Noted(at, why) => {
                 self.notes.push((at, why));
@@ -520,16 +541,18 @@ enum Reading {
     Absent,
 }
 
+/// `was` is the path the base holds the manifest at, which the window's rename may have changed,
+/// so the base judges it beside the lockfile it had there.
 fn reading(
     (now, before): (&mut Side, &mut Side),
-    manifest: &str,
+    (manifest, was): (&str, &str),
     format: &Format,
     hook: bool,
 ) -> Result<Reading, Error> {
     let Some(now) = now.state(manifest, format)? else {
         return Ok(Reading::Absent);
     };
-    let before = before.state(manifest, format)?;
+    let before = before.state(was, format)?;
     if let Some(noted) = unparseable(&now, before.as_ref(), manifest, hook)? {
         return Ok(noted);
     }
@@ -557,8 +580,8 @@ fn reading(
 
 /// A manifest klin cannot parse now is a tool error when it parsed at the base, because the work
 /// broke it. One the base did not hold is a tool error outside the hook, because the work added
-/// the hole, and a NOTE in the hook, where the agent cannot exclude it. One that did not parse at
-/// the base either is a fixture, and a NOTE. Spec 8.2.1, 8.6.
+/// the hole, and a NOTE in the hook, where the agent cannot edit `except`. One that did not parse
+/// at the base either is a fixture, and a NOTE. Spec 8.2.1, 8.6.
 fn unparseable(
     now: &State,
     before: Option<&State>,
@@ -572,7 +595,7 @@ fn unparseable(
         Some(true) => Err(Error(why.clone())),
         None if !hook => Err(Error(format!(
             "{why}, and the base did not hold {manifest}. Make it parse, or add it to the \
-             section's `exclude` if it is invalid on purpose"
+             section's `except` if it is invalid on purpose"
         ))),
         _ => Ok(Some(Reading::Noted(
             manifest.to_string(),
