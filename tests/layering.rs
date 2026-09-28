@@ -258,11 +258,30 @@ fn a_file_two_targets_reach_is_judged_as_a_module_of_each() {
 }
 
 #[test]
-fn a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook() {
+fn a_module_two_files_answered_at_the_base_too_is_a_note_by_hand_and_under_strict() {
     let tree = Tree::new();
     two_layers(&tree, "pub fn rule() {}\n");
     tree.write("src/ui.rs", "pub fn show() {}\n");
     tree.base();
+
+    for args in [&["layering"][..], &["layering", "--strict"]] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+        assert!(
+            run.says("NOTE: 1 dependency form(s) klin resolves could not be resolved")
+                && run.says("names more than one file: src/ui.rs, src/ui/mod.rs"),
+            "{args:?}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook() {
+    let tree = Tree::new();
+    two_layers(&tree, "pub fn rule() {}\n");
+    tree.base();
+    tree.write("src/ui.rs", "pub fn show() {}\n");
 
     let run = tree.run(&["layering"]);
     let hook = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
@@ -326,6 +345,31 @@ fn two_typescript_files_one_specifier_names_are_unresolved() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("names more than one TypeScript file: web/view/x.ts, web/view/x/index.ts"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_second_copy_of_a_form_the_base_could_not_resolve_is_new() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write("web/model/index.ts", "export const model = 1;\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    tree.write("web/view/x/index.ts", "export const x = 2;\n");
+    tree.write("web/view/use.ts", "import { x } from \"./x\";\n");
+    tree.base();
+    tree.write(
+        "web/view/use.ts",
+        "import { x } from \"./x\";\nimport { x as y } from \"./x\";\n",
+    );
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("NOTE: 1 dependency form(s) klin resolves could not be resolved")
+            && run.says("FAIL: 1 dependency form(s) klin resolves could not be resolved"),
         "{}",
         run.out
     );

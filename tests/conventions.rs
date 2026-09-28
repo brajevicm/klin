@@ -778,6 +778,22 @@ fn a_source_file_the_grammar_rejects_is_named_and_not_measured() {
     assert!(run.says("grammar rejected it"), "{}", run.out);
 }
 
+#[test]
+fn a_source_file_the_grammar_rejected_at_the_base_too_is_a_note() {
+    let tree = tree(GIT);
+    tree.write("src/broken.rs", "fn broken( {\n");
+    tree.base();
+
+    let run = tree.run(&["conventions", "--strict"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.rs"),
+        "{}",
+        run.out
+    );
+}
+
 const TWO_ON_ONE_LINE: &str = r#"
   "no-git": { "text": "Command::new(\"git\")", "remedy": "Use the Git boundary." },
   "no-command": { "code": "Command::new($PROGRAM)", "remedy": "Use the process boundary." }

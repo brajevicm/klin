@@ -18,7 +18,7 @@ use std::time::Instant;
 use serde_json::{Map, Value};
 
 use crate::changed;
-use crate::check::{self, Context, Sink};
+use crate::check::{Context, Sink};
 use crate::config::{self, Config, Error};
 use crate::modules::{
     self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
@@ -194,7 +194,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let now_placed = policy.placed(&now.graph);
     let was_cycles = policy.cycles(&was, &was_placed);
     let now_cycles = policy.cycles(&now, &now_placed);
-    let (was_edges, _) = edges(&policy, (&was, &was_placed), was_cycles.as_ref());
+    let (was_edges, was_ambiguous) = edges(&policy, (&was, &was_placed), was_cycles.as_ref());
     let (now_edges, ambiguous) = edges(&policy, (&now, &now_placed), now_cycles.as_ref());
     let time = started.elapsed();
     out.record(|records| {
@@ -216,14 +216,20 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         (&physicals, &was_edges, &now_edges),
         out,
     )?;
+    let was_files = was.covered(&policy);
     let code = coverage::lost_said(
-        &now.covered(&policy)
-            .lost(&was.covered(&policy), at.project, None),
+        &now.covered(&policy).lost(&was_files, at.project, None),
         at,
         code,
         out,
     );
-    let code = holes_said(&now, &policy, &ambiguous, (at, code), out);
+    let code = holes_said(
+        (&was, &now),
+        &policy,
+        (&was_ambiguous, &ambiguous),
+        (at, code),
+        out,
+    );
     let unparsed: Vec<syntax::Unparsed> = now
         .unparsed
         .iter()
@@ -231,7 +237,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .cloned()
         .collect();
     held_note(&physicals, out);
-    Ok(syntax::unread(&unparsed, at, code, out))
+    let unread_at_base = base::whole(at, &commit)?.unread_either(&was_files.unreadable);
+    Ok(syntax::unread(&unparsed, &unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured and resolved. A changed run that is not strict
@@ -906,53 +913,46 @@ impl Side {
     }
 }
 
-/// The dependency forms the working tree's resolvers support and could not resolve: a NOTE in
-/// the hook, and exit 2 elsewhere, because a green run must not imply a resolution klin did not
-/// make. ADR 0021, spec 8.6.
+/// The dependency forms the working tree's resolvers support and could not resolve, beside the
+/// ones the base could not resolve either, under today's paths. ADR 0021, spec 8.6.
 fn holes_said(
-    now: &Side,
+    (was, now): (&Side, &Side),
     policy: &Policy,
-    ambiguous: &[Hole],
+    (was_ambiguous, ambiguous): (&[Hole], &[Hole]),
     (at, code): (&Context, u8),
     out: &mut Sink,
 ) -> u8 {
-    let mut named = now.holes(policy);
-    named.extend(ambiguous);
-    if named.is_empty() {
-        return code;
-    }
-    let word = if at.hook() { "NOTE" } else { "FAIL" };
-    let _ = writeln!(
-        out.text,
-        "{word}: {} dependency form(s) klin resolves could not be resolved, so what they reach was not judged:",
-        named.len()
-    );
-    for hole in &named {
-        let _ = writeln!(
-            out.text,
-            "  {}:{}  {}  — {}",
-            hole.file, hole.line, hole.text, hole.why
-        );
-    }
-    let _ = writeln!(
-        out.text,
-        "Make each one name exactly one module file the tree holds, or take its file out of the section's scope."
-    );
-    out.record(|records| {
-        for hole in &named {
-            let record = serde_json::json!({
-                "outcome": check::UNRESOLVED,
-                "file": hole.file,
-                "line": hole.line,
-                "text": format!("{} — {}", hole.text, hole.why),
-            });
-            match at.hook() {
-                true => records.notes.push(record),
-                false => records.findings.push(record),
-            }
-        }
-    });
-    if at.hook() { code } else { 2 }
+    let row = |file: String, hole: &Hole| coverage::Unresolved {
+        file,
+        line: hole.line,
+        text: hole.text.clone(),
+        why: hole.why.clone(),
+    };
+    let named: Vec<coverage::Unresolved> = now
+        .holes(policy)
+        .into_iter()
+        .chain(ambiguous)
+        .map(|hole| row(hole.file.clone(), hole))
+        .collect();
+    let base: Vec<coverage::Unresolved> = was
+        .holes(policy)
+        .into_iter()
+        .map(|hole| row(was.current(&hole.file), hole))
+        .chain(
+            was_ambiguous
+                .iter()
+                .map(|hole| row(hole.file.clone(), hole)),
+        )
+        .collect();
+    coverage::unresolved_said(
+        (&named, &base),
+        (
+            "dependency form(s) klin resolves could not be resolved, so what they reach was not judged",
+            "Make each one name exactly one module file the tree holds, or take its file out of the section's scope.",
+        ),
+        (at, code),
+        out,
+    )
 }
 
 fn held_note(physicals: &Physicals, out: &mut Sink) {

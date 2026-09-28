@@ -226,6 +226,85 @@ pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mu
     if at.hook() { code } else { 2 }
 }
 
+/// One form a gate supports and could not resolve, and why.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct Unresolved {
+    pub file: String,
+    pub line: u64,
+    pub text: String,
+    pub why: String,
+}
+
+/// What a gate says about the forms it supports and could not resolve: a NOTE in the hook, and
+/// exit 2 elsewhere, because a green run must not imply a resolution klin did not make. A form
+/// the base holds in the same file, with the same text and reason, is a NOTE in every run,
+/// because the change opened no hole there. Each base form pairs with one form now, so a second
+/// copy of a held form is new. `what` follows the count on the first line, and
+/// `remedy` closes each block. ADR 0021, spec 8.6.
+pub fn unresolved_said(
+    (now, base): (&[Unresolved], &[Unresolved]),
+    (what, remedy): (&str, &str),
+    (at, code): (&Context, u8),
+    out: &mut Sink,
+) -> u8 {
+    let (noted, refused): (Vec<_>, Vec<_>) = now
+        .iter()
+        .zip(held_at(now, base))
+        .partition(|(_, held)| at.hook() || *held);
+    for (word, named) in [("NOTE", &noted), ("FAIL", &refused)] {
+        if named.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out.text, "{word}: {} {what}:", named.len());
+        for (hole, _) in named.iter() {
+            let _ = writeln!(
+                out.text,
+                "  {}:{}  {}  — {}",
+                hole.file, hole.line, hole.text, hole.why
+            );
+        }
+        let _ = writeln!(out.text, "{remedy}");
+    }
+    out.record(|records| {
+        for (into, named) in [
+            (&mut records.notes, &noted),
+            (&mut records.findings, &refused),
+        ] {
+            into.extend(named.iter().map(|(hole, _)| {
+                serde_json::json!({
+                    "outcome": check::UNRESOLVED,
+                    "file": hole.file,
+                    "line": hole.line,
+                    "text": format!("{} — {}", hole.text, hole.why),
+                })
+            }));
+        }
+    });
+    match refused.is_empty() {
+        true => code,
+        false => 2,
+    }
+}
+
+/// Whether each form now pairs with a form the base holds in the same file with the same text and
+/// reason, at any line. Each base form pairs once, so a second copy of a held form is new.
+fn held_at(now: &[Unresolved], base: &[Unresolved]) -> Vec<bool> {
+    let mut taken = vec![false; base.len()];
+    now.iter()
+        .map(|hole| {
+            let paired = (0..base.len()).find(|at| {
+                let was = &base[*at];
+                !taken[*at]
+                    && (&was.file, &was.text, &was.why) == (&hole.file, &hole.text, &hole.why)
+            });
+            if let Some(at) = paired {
+                taken[at] = true;
+            }
+            paired.is_some()
+        })
+        .collect()
+}
+
 /// Whether a note records a file the run could not read or stopped measuring, which the hook
 /// prints even when nothing blocks the stop.
 pub fn is_lost(note: &Value) -> bool {

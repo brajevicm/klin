@@ -95,11 +95,13 @@ impl Function {
     }
 }
 
-/// What the function level of this gate measured: every test function the base holds, and the
-/// files in the working tree no grammar read. ADR 0003.
+/// What the function level of this gate measured: every test function the base holds, the
+/// files in the working tree no grammar read, and the files the base holds that no grammar read
+/// either. ADR 0003, ADR 0021.
 struct Measured {
     functions: Vec<Function>,
     unparsed: Vec<Unparsed>,
+    unread_at_base: Vec<String>,
 }
 
 /// One tree walked for test functions: the sites it holds, and the files no grammar read.
@@ -145,7 +147,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
-    Ok(syntax::unread(&measured.unparsed, at, code, out))
+    Ok(syntax::unread(
+        &measured.unparsed,
+        &measured.unread_at_base,
+        at,
+        code,
+        out,
+    ))
 }
 
 /// What the base holds of tests: the test files it judges, the ones whose subject went too, and
@@ -252,7 +260,10 @@ fn standing(held: usize, gone: usize) -> String {
 fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Error> {
     let config = &at.project.config;
     let after = walked(tests, at.project.tree())?;
-    let before = walked(tests, prior.tree())?.tests;
+    let Walk {
+        tests: before,
+        unparsed: unread_at_base,
+    } = walked(tests, prior.tree())?;
     let found = still_there(&before, &after.tests);
     let refused: BTreeSet<&str> = after
         .unparsed
@@ -271,6 +282,12 @@ fn tests_of(tests: &Tests, at: &Context, prior: &Prior) -> Result<Measured, Erro
             })
             .collect(),
         unparsed: after.unparsed,
+        unread_at_base: prior.unread_either(
+            &unread_at_base
+                .into_iter()
+                .map(|file| file.file)
+                .collect::<Vec<_>>(),
+        ),
     })
 }
 

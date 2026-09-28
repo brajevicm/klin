@@ -536,7 +536,7 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
     });
 
     let new = "unparsed src/new_broken.rs:null the Rust grammar rejected it null";
-    let old = "unparsed src/old_broken.rs:null the Rust grammar rejected it null";
+    let old = "note src/old_broken.rs the Rust grammar rejected it";
     assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, new, old]);
     assert_eq!(lines(&seen["strict"]), [r#""ERROR" 2"#, new, old]);
     assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, new]);

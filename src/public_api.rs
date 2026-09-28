@@ -15,9 +15,9 @@ use serde_json::Value;
 
 use crate::base;
 use crate::changed;
-use crate::check::{self, Context, Sink};
+use crate::check::{Context, Sink};
 use crate::config::Error;
-use crate::coverage::Coverage;
+use crate::coverage::{self, Coverage};
 use crate::modules::{self, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
@@ -70,12 +70,13 @@ pub struct Args {
     report: bool,
 }
 
-/// One tree as the gate judges it: its surfaces, its module graph, and the files the grammar
-/// refused.
+/// One tree as the gate judges it: its surfaces, its module graph, the files the grammar refused
+/// under today's paths, and today's path of every file the base names by its path at the base.
 struct Side {
     derived: Derived,
     graph: ModuleGraph,
     unparsed: Vec<syntax::Unparsed>,
+    current: HashMap<String, String>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -102,7 +103,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     });
     let findings = breaks(&was.derived, &now.derived);
     let code = judged(at, &now, findings, out)?;
-    let code = holes_said(&now, at, code, out);
+    let code = holes_said((&was, &now), at, code, out);
     inapplicable_note(&now.derived, out);
     let inside: Vec<syntax::Unparsed> = now
         .unparsed
@@ -115,7 +116,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         })
         .cloned()
         .collect();
-    Ok(syntax::unread(&inside, at, code, out))
+    let unreadable: Vec<String> = was.unparsed.into_iter().map(|file| file.file).collect();
+    let unread_at_base = base::whole(at, &commit)?.unread_either(&unreadable);
+    Ok(syntax::unread(&inside, &unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured, resolved and derived. A changed run that is
@@ -152,16 +155,10 @@ fn side(
     Ok(Side {
         derived,
         graph,
-        unparsed: measured
-            .unparsed
+        unparsed: measured.unparsed.clone(),
+        current: renamed
             .iter()
-            .map(|file| syntax::Unparsed {
-                file: renamed
-                    .get(&file.file)
-                    .cloned()
-                    .unwrap_or_else(|| file.file.clone()),
-                language: file.language,
-            })
+            .map(|(now, was)| (was.clone(), now.clone()))
             .collect(),
     })
 }
@@ -357,50 +354,28 @@ fn show(values: &Values) -> String {
 }
 
 /// The forms klin recognizes inside a supported surface and could not resolve, the module
-/// resolution holes of #50 inside one, and the surfaces whose entry klin could not measure: a
-/// NOTE in the hook, and exit 2 elsewhere, because a green run must not imply a surface was
-/// completely measured. ADR 0021, spec 8.6.
-fn holes_said(now: &Side, at: &Context, code: u8, out: &mut Sink) -> u8 {
+/// resolution holes of #50 inside one, and the surfaces whose entry klin could not measure,
+/// beside the ones the base held too, because a green run must not imply a surface was completely
+/// measured. ADR 0021, spec 8.6.
+fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink) -> u8 {
     let named = holes_of(now);
-    if named.is_empty() {
-        return code;
-    }
-    let word = if at.hook() { "NOTE" } else { "FAIL" };
-    let _ = writeln!(
-        out.text,
-        "{word}: {} form(s) inside a supported public surface could not be resolved, so the surface is not completely measured:",
-        named.len()
-    );
-    for (file, line, text, why) in &named {
-        let _ = writeln!(out.text, "  {file}:{line}  {text}  — {why}");
-    }
-    let _ = writeln!(
-        out.text,
-        "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds."
-    );
-    out.record(|records| {
-        for (file, line, text, why) in &named {
-            let record = serde_json::json!({
-                "outcome": check::UNRESOLVED,
-                "file": file,
-                "line": line,
-                "text": format!("{text} — {why}"),
-            });
-            match at.hook() {
-                true => records.notes.push(record),
-                false => records.findings.push(record),
-            }
-        }
-    });
-    if at.hook() { code } else { 2 }
+    coverage::unresolved_said(
+        (&named, &holes_of(was)),
+        (
+            "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured",
+            "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds.",
+        ),
+        (at, code),
+        out,
+    )
 }
 
-/// Every hole inside a surface, as file, line, text and reason, each once, in one order: the
-/// surface's own holes and the module graph's holes in the files the surface reaches.
-fn holes_of(now: &Side) -> Vec<(String, u64, String, String)> {
-    let mut named: Vec<(String, u64, String, String)> = Vec::new();
-    for surface in &now.derived.surfaces {
-        let inside = now
+/// Every hole inside a surface under today's paths, each once, in one order: the surface's own
+/// holes and the module graph's holes in the files the surface reaches.
+fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
+    let mut named: Vec<coverage::Unresolved> = Vec::new();
+    for surface in &side.derived.surfaces {
+        let inside = side
             .graph
             .holes
             .iter()
@@ -411,12 +386,12 @@ fn holes_of(now: &Side) -> Vec<(String, u64, String, String)> {
             .iter()
             .map(|hole| (&hole.file, hole.line, &hole.text, &hole.why));
         for (file, line, text, why) in own.chain(inside) {
-            named.push((
-                file.clone(),
+            named.push(coverage::Unresolved {
+                file: side.current.get(file).unwrap_or(file).clone(),
                 line,
-                text.clone(),
-                format!("{} — {}", surface.id, why),
-            ));
+                text: text.clone(),
+                why: format!("{} — {}", surface.id, why),
+            });
         }
     }
     named.sort();
