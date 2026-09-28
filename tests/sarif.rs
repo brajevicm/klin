@@ -412,7 +412,26 @@ fn the_commands_of_one_run_share_twice_the_limit() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the 1 second limit"), "{}", run.out);
     assert!(
-        run.says("the 2 second limit that the commands of one run share"),
+        run.says("klin did not start it, because the 2 second limit that the commands of one run share is spent"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_build_draws_on_the_limit_the_sarif_commands_share() {
+    let tree = tree(
+        r#"{"build": "sleep 1", "sarif": [
+            {"name": "first", "report": "first.sarif", "run": "sleep 60"},
+            {"name": "second", "report": "second.sarif", "run": "sleep 60"}
+        ]}"#,
+    );
+
+    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "2")], &["gate"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("the 2 second limit"), "{}", run.out);
+    assert!(
+        run.says("the 4 second limit that the commands of one run share"),
         "{}",
         run.out
     );

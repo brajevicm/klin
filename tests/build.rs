@@ -990,9 +990,14 @@ fn a_build_that_exits_leaves_no_descendant_running() {
     assert!(gone(&tree), "{}", run.out);
 }
 
-#[test]
-fn a_signal_that_ends_klin_ends_the_build_it_runs() {
+/// klin ends by the signal it was sent while a build waits on a descendant, and the
+/// descendant ends with it, long before the build's limit.
+fn ended_by(name: &str, number: i32) {
+    use std::io::Write;
+    use std::os::unix::process::ExitStatusExt;
+
     let tree = tree(WAITS_ON_A_DESCENDANT);
+    let started = std::time::Instant::now();
     let mut klin = std::process::Command::new(harness::binary())
         .args(["gate", "--hook"])
         .env("HOME", harness::empty_home())
@@ -1002,7 +1007,6 @@ fn a_signal_that_ends_klin_ends_the_build_it_runs() {
         .stderr(std::process::Stdio::null())
         .spawn()
         .expect("klin starts");
-    use std::io::Write;
     let _ = klin
         .stdin
         .take()
@@ -1014,20 +1018,41 @@ fn a_signal_that_ends_klin_ends_the_build_it_runs() {
     assert!(recorded, "the build never started");
 
     let sent = std::process::Command::new("kill")
-        .args(["-s", "TERM", &klin.id().to_string()])
+        .args(["-s", name, &klin.id().to_string()])
         .status();
     assert!(sent.is_ok_and(|sent| sent.success()));
     let ended = klin.wait().expect("klin ends");
-    assert!(!ended.success(), "{ended:?}");
+    assert_eq!(ended.signal(), Some(number), "{ended:?}");
+    assert!(started.elapsed().as_secs() < 30);
     assert!(gone(&tree));
 }
 
 #[test]
-fn the_test_override_cannot_raise_the_limit() {
-    let tree = tree(r#""build": "true","#);
+fn a_terminate_signal_that_ends_klin_ends_the_build_it_runs() {
+    ended_by("TERM", 15);
+}
 
-    let run = limited(&tree, "301");
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("KLIN_COMMAND_LIMIT"), "{}", run.out);
-    assert!(run.says("from 1 to 300"), "{}", run.out);
+#[test]
+fn an_interrupt_that_ends_klin_ends_the_build_it_runs() {
+    ended_by("INT", 2);
+}
+
+#[test]
+fn a_hangup_that_ends_klin_ends_the_build_it_runs() {
+    ended_by("HUP", 1);
+}
+
+#[test]
+fn the_test_override_cannot_raise_the_limit() {
+    for limit in ["301", "0"] {
+        let tree = tree(r#""build": "true","#);
+        let run = limited(&tree, limit);
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert!(
+            run.says(&format!("KLIN_COMMAND_LIMIT is \"{limit}\"")),
+            "{}",
+            run.out
+        );
+        assert!(run.says("from 1 to 300"), "{}", run.out);
+    }
 }

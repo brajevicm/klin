@@ -3,8 +3,8 @@ use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom};
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::sync::OnceLock;
-use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
 use rustix::process::{Pid, Signal, WaitId, WaitIdOptions, kill_process_group, waitid};
@@ -13,8 +13,9 @@ use signal_hook::iterator::Signals;
 
 const LIMIT: Duration = Duration::from_secs(300);
 
-/// The process group of the command running now, or 0 when none runs.
-static RUNNING: AtomicI32 = AtomicI32::new(0);
+/// The process group of the command running now. Its lock is held from the spawn until the group
+/// is recorded, so a signal that arrives in between waits for the group it must kill.
+static RUNNING: Mutex<Option<Pid>> = Mutex::new(None);
 /// The milliseconds the commands of this run have taken so far.
 static SPENT: AtomicU64 = AtomicU64::new(0);
 
@@ -37,7 +38,8 @@ pub fn output(at: &Path, command: &str) -> Result<Output> {
 /// that would end it.
 fn started(at: &Path, command: &str, stdout: &File, stderr: &File) -> Result<Child> {
     watched()?;
-    Command::new("sh")
+    let mut running = running();
+    let child = Command::new("sh")
         .arg("-c")
         .arg(command)
         .current_dir(at)
@@ -45,25 +47,34 @@ fn started(at: &Path, command: &str, stdout: &File, stderr: &File) -> Result<Chi
         .stdout(stdout.try_clone()?)
         .stderr(stderr.try_clone()?)
         .process_group(0)
-        .spawn()
+        .spawn()?;
+    *running = Some(Pid::from_child(&child));
+    Ok(child)
+}
+
+fn running() -> MutexGuard<'static, Option<Pid>> {
+    RUNNING.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// How long the next command may run, and the limit that says so: its own, or what is left of
-/// the twice as long the commands of one run share. Spec 9.3.
+/// the twice as long the commands of one run share. A command with no time left never starts.
+/// Spec 9.3.
 fn bound() -> Result<(Duration, String)> {
     let limit = limit()?;
     let shared = limit * 2;
     let left = shared.saturating_sub(Duration::from_millis(SPENT.load(Ordering::SeqCst)));
-    Ok(match left < limit {
-        false => (limit, format!("the {} second limit", limit.as_secs())),
-        true => (
-            left,
-            format!(
-                "the {} second limit that the commands of one run share",
-                shared.as_secs()
-            ),
-        ),
-    })
+    let named = format!(
+        "the {} second limit that the commands of one run share",
+        shared.as_secs()
+    );
+    match left {
+        left if left >= limit => Ok((limit, format!("the {} second limit", limit.as_secs()))),
+        left if left.is_zero() => Err(Error::new(
+            ErrorKind::TimedOut,
+            format!("klin did not start it, because {named} is spent"),
+        )),
+        left => Ok((left, named)),
+    }
 }
 
 /// How long one command may run. `KLIN_COMMAND_LIMIT` shortens it for tests and can never
@@ -85,14 +96,16 @@ fn limit() -> Result<Duration> {
 }
 
 /// The command's exit status once its group is killed and its shell reaped. The shell is
-/// reaped last, so its group id names no other group while klin kills it.
-fn waited(mut child: Child, time: Duration, limit: &str) -> Result<ExitStatus> {
+/// reaped last, so its group id names no other group while klin, or a signal, kills it.
+fn waited(mut child: Child, time: Duration, named: &str) -> Result<ExitStatus> {
     let group = Pid::from_child(&child);
-    RUNNING.store(group.as_raw_nonzero().get(), Ordering::SeqCst);
     let started = Instant::now();
     let ended = ended(group, started, time);
-    let _ = kill_process_group(group, Signal::KILL);
-    RUNNING.store(0, Ordering::SeqCst);
+    {
+        let mut running = running();
+        let _ = kill_process_group(group, Signal::KILL);
+        *running = None;
+    }
     let status = child.wait();
     let taken = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
     SPENT.fetch_add(taken, Ordering::SeqCst);
@@ -100,7 +113,7 @@ fn waited(mut child: Child, time: Duration, limit: &str) -> Result<ExitStatus> {
         true => status,
         false => Err(Error::new(
             ErrorKind::TimedOut,
-            format!("klin stopped it at {limit}"),
+            format!("klin stopped it at {named}"),
         )),
     }
 }
@@ -122,23 +135,29 @@ fn ended(group: Pid, started: Instant, time: Duration) -> Result<bool> {
 /// A signal that ends klin kills the running command's group first, so a person's Ctrl-C or
 /// the host's own timeout leaves no command running behind klin.
 fn watched() -> Result<()> {
-    static WATCHED: OnceLock<bool> = OnceLock::new();
-    match WATCHED.get_or_init(|| watch().is_ok()) {
-        true => Ok(()),
-        false => Err(Error::other(
-            "klin could not watch for the signals that end it",
-        )),
-    }
+    static WATCHED: OnceLock<std::result::Result<(), String>> = OnceLock::new();
+    WATCHED
+        .get_or_init(|| watcher().map_err(|why| why.to_string()))
+        .clone()
+        .map_err(|why| {
+            Error::other(format!(
+                "klin could not watch for the signals that end it: {why}"
+            ))
+        })
 }
 
-fn watch() -> Result<()> {
+/// The thread that kills the running group and then ends klin as the signal would have. It
+/// holds the group's lock until klin ends, so no other command starts in between.
+fn watcher() -> Result<()> {
     let mut signals = Signals::new([SIGHUP, SIGINT, SIGTERM])?;
     std::thread::spawn(move || {
         for signal in signals.forever() {
-            if let Some(group) = Pid::from_raw(RUNNING.load(Ordering::SeqCst)) {
+            let running = running();
+            if let Some(group) = *running {
                 let _ = kill_process_group(group, Signal::KILL);
             }
             let _ = signal_hook::low_level::emulate_default_handler(signal);
+            drop(running);
         }
     });
     Ok(())

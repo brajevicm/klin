@@ -2743,24 +2743,24 @@ put on `PATH` is therefore found, and the NOTE below is not told for it.
 
 Each build command runs for at most 300 seconds, and the build and `run`
 commands of one klin run share 600 seconds between them, so a later command
-gets only what is left. The host gives the Stop hook 900 seconds, so the
-commands of a stop, hung or slow, leave at least 300 seconds to the rest of
-the stop.
-When a command reaches either limit, klin stops it and the build fails with a
-message that names the command and the limit it reached. `klin.json` cannot
-change either limit: a person whose build takes longer sets `build` to `false`
-and lets CI build. A run MAY take `KLIN_COMMAND_LIMIT` in seconds for tests. It
-sets the limit of each command, from 1 to 300 seconds, and the shared limit is
-twice it. Any other value is an error, so the override can shorten the limits
-and never raise them.
+gets only what is left, and a command with no time left does not start. The
+host gives the Stop hook 900 seconds, so the commands of a stop, hung or slow,
+leave at least 300 seconds to the rest of the stop. When a command reaches
+either limit, klin stops it and the build fails with a message that names the
+command and the limit it reached. `klin.json` cannot change either limit: a
+person whose build takes longer sets `build` to `false` and lets CI build. A
+run MAY take `KLIN_COMMAND_LIMIT` in seconds for tests. It sets the limit of
+each command, from 1 to 300 seconds, and the shared limit is twice it. Any
+other value is an error, so the override can shorten the limits and never raise
+them.
 
 Each command runs in a process group of its own. When the command's shell
 exits, when it reaches a limit, and when a hangup, an interrupt or a terminate
-signal ends klin, klin kills every process left in that group before it goes
-on. So a command that starts a process in the background leaves nothing
-running that could change the tree after klin judged it. A process that makes
-a group of its own leaves klin's reach, and so does every process when klin is
-killed with a signal it cannot catch.
+signal ends klin, klin sends a kill signal to every process left in that group
+before it goes on. So a command that starts a process in the background leaves
+nothing running that could change the tree after klin judged it. A process that
+makes a group of its own leaves klin's reach, and so does every process when
+klin is killed with a signal it cannot catch.
 
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
@@ -3632,12 +3632,12 @@ journal cannot prove. No word of the agent's glossary appears in the text.
   UTC, and `KLIN_TODAY` overrides it. The report age check of 8.3 compares
   file times, and the command limits of 9.3 stop a build or `run` command
   that outlives them. These are the two other places time enters a verdict,
-  and the command limits are the one place where two machines can judge one
-  tree differently: a command that ends just under its limit on one machine
-  and just over it on another passes on the first and fails on the second.
-  Every other field a verdict depends on is a pure function of the trees. The
-  `ms` of 11.2 and the `time` and `timing` of 11.4 are measurements about the
-  run, recorded and never judged, so they do not break determinism.
+  and in both two machines can judge one tree differently: file times can
+  differ between checkouts, and a command that ends just under its limit on
+  one machine and just over it on another passes on the first and fails on
+  the second. Every other field a verdict depends on is a pure function of the
+  trees. The `ms` of 11.2 and the `time` and `timing` of 11.4 are measurements
+  about the run, recorded and never judged, so they do not break determinism.
 - A `run` entry in 8.3 is deterministic only when the tool it runs is. klin
   MUST record the command it ran beside the results.
 - A derived number or reachability family is a pure function of the derivation
