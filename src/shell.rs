@@ -3,7 +3,6 @@ use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom};
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -16,8 +15,8 @@ const LIMIT: Duration = Duration::from_secs(300);
 /// The process group of the command running now. Its lock is held from the spawn until the group
 /// is recorded, so a signal that arrives in between waits for the group it must kill.
 static RUNNING: Mutex<Option<Pid>> = Mutex::new(None);
-/// The milliseconds the commands of this run have taken so far.
-static SPENT: AtomicU64 = AtomicU64::new(0);
+/// The moment klin started, which the deadline every command must end by counts from.
+static START: OnceLock<Instant> = OnceLock::new();
 
 /// One command a build or sarif entry names, in the shell, at the directory it runs in, in the
 /// environment the hook itself was given, in a process group of its own. When the command ends,
@@ -56,22 +55,27 @@ fn running() -> MutexGuard<'static, Option<Pid>> {
     RUNNING.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// How long the next command may run, and the limit that says so: its own, or what is left of
-/// the twice as long the commands of one run share. A command with no time left never starts.
-/// Spec 9.3.
+/// Marks the moment klin started. Spec 9.3.
+pub fn start() {
+    START.get_or_init(Instant::now);
+}
+
+/// How long the next command may run, and the limit that says so: its own, or what is left
+/// before the deadline twice as long after klin started. A command with no time left never
+/// starts. Spec 9.3.
 fn bound() -> Result<(Duration, String)> {
     let limit = limit()?;
-    let shared = limit * 2;
-    let left = shared.saturating_sub(Duration::from_millis(SPENT.load(Ordering::SeqCst)));
+    let deadline = limit * 2;
+    let left = deadline.saturating_sub(START.get_or_init(Instant::now).elapsed());
     let named = format!(
-        "the {} second limit that the commands of one run share",
-        shared.as_secs()
+        "the {} second deadline from klin's start",
+        deadline.as_secs()
     );
     match left {
         left if left >= limit => Ok((limit, format!("the {} second limit", limit.as_secs()))),
         left if left.is_zero() => Err(Error::new(
             ErrorKind::TimedOut,
-            format!("klin did not start it, because {named} is spent"),
+            format!("klin did not start it, because {named} passed"),
         )),
         left => Ok((left, named)),
     }
@@ -107,8 +111,6 @@ fn waited(mut child: Child, time: Duration, named: &str) -> Result<ExitStatus> {
         *running = None;
     }
     let status = child.wait();
-    let taken = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    SPENT.fetch_add(taken, Ordering::SeqCst);
     match ended? {
         true => status,
         false => Err(Error::new(

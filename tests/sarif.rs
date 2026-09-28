@@ -412,7 +412,7 @@ fn the_commands_of_one_run_share_twice_the_limit() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the 1 second limit"), "{}", run.out);
     assert!(
-        run.says("klin did not start it, because the 2 second limit that the commands of one run share is spent"),
+        run.says("klin did not start it, because the 2 second deadline from klin's start passed"),
         "{}",
         run.out
     );
@@ -431,7 +431,7 @@ fn the_build_draws_on_the_limit_the_sarif_commands_share() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the 2 second limit"), "{}", run.out);
     assert!(
-        run.says("the 4 second limit that the commands of one run share"),
+        run.says("klin stopped it at the 4 second deadline from klin's start"),
         "{}",
         run.out
     );
