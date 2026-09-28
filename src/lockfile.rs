@@ -241,7 +241,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
         ..Sites::default()
     };
     for (manifest, format) in judged {
-        sites.add(&mut now, &mut before, manifest, format)?;
+        sites.add((&mut now, &mut before), manifest, format, at.hook())?;
     }
     Ok(sites)
 }
@@ -454,12 +454,12 @@ impl Sites {
 
     fn add(
         &mut self,
-        now: &mut Side,
-        before: &mut Side,
+        (now, before): (&mut Side, &mut Side),
         manifest: &str,
         format: &Format,
+        hook: bool,
     ) -> Result<(), Error> {
-        let (now, before) = match reading(now, before, manifest, format)? {
+        let (now, before) = match reading((now, before), manifest, format, hook)? {
             Reading::Judged(now, before) => (now, before),
             Reading::Noted(at, why) => {
                 self.notes.push((at, why));
@@ -521,16 +521,16 @@ enum Reading {
 }
 
 fn reading(
-    now: &mut Side,
-    before: &mut Side,
+    (now, before): (&mut Side, &mut Side),
     manifest: &str,
     format: &Format,
+    hook: bool,
 ) -> Result<Reading, Error> {
     let Some(now) = now.state(manifest, format)? else {
         return Ok(Reading::Absent);
     };
     let before = before.state(manifest, format)?;
-    if let Some(noted) = unparseable(&now, before.as_ref(), manifest)? {
+    if let Some(noted) = unparseable(&now, before.as_ref(), manifest, hook)? {
         return Ok(noted);
     }
     let before = before.unwrap_or_default();
@@ -556,18 +556,25 @@ fn reading(
 }
 
 /// A manifest klin cannot parse now is a tool error when it parsed at the base, because the work
-/// broke it. One that never parsed is a fixture, and a NOTE. Spec 8.2.1.
+/// broke it. One the base did not hold is a tool error outside the hook, because the work added
+/// the hole, and a NOTE in the hook, where the agent cannot exclude it. One that did not parse at
+/// the base either is a fixture, and a NOTE. Spec 8.2.1, 8.6.
 fn unparseable(
     now: &State,
     before: Option<&State>,
     manifest: &str,
+    hook: bool,
 ) -> Result<Option<Reading>, Error> {
     let Some(why) = &now.unparsed else {
         return Ok(None);
     };
-    match before.is_some_and(|before| before.unparsed.is_none()) {
-        true => Err(Error(why.clone())),
-        false => Ok(Some(Reading::Noted(
+    match before.map(|before| before.unparsed.is_none()) {
+        Some(true) => Err(Error(why.clone())),
+        None if !hook => Err(Error(format!(
+            "{why}, and the base did not hold {manifest}. Make it parse, or add it to the \
+             section's `exclude` if it is invalid on purpose"
+        ))),
+        _ => Ok(Some(Reading::Noted(
             manifest.to_string(),
             format!("{why}, so the dependencies of {manifest} are not judged"),
         ))),

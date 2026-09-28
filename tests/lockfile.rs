@@ -390,6 +390,27 @@ fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() 
     );
 }
 
+#[test]
+fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook() {
+    let tree = derived_tree();
+    tree.base();
+    tree.write("testdata/broken/package.json", "{ not json");
+    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let stop = harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--gate", "lockfile"],
+        r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
+    );
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("testdata/broken/package.json is not valid JSON")
+            && run.says("add it to the section's `exclude`"),
+        "{}",
+        run.out
+    );
+    assert_eq!(stop.code, 0, "{}", stop.out);
+}
+
 /// The manifests are the ones the survey finds, so a manifest klin cannot parse in either tree is
 /// a fixture and a NOTE, and no person's list can claim otherwise. Spec 8.2.1, ADR 0040.
 #[test]

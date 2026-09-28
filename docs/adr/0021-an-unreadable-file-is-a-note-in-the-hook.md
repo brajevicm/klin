@@ -7,7 +7,8 @@
 > survey derived that did not parse at either commit is a NOTE in every run.
 >
 > The amendment below (#342) extends that narrowing to every check: a file the
-> base held and klin could not measure there either is a NOTE in every run.
+> base held and klin could not measure there either is a NOTE in every run. It
+> also ends the part of #133 that noted a manifest the base did not hold.
 
 ADR 0003 made a file the grammar cannot read a named tool error, exit 2, with
 every other finding still printed. Its reason holds: a file klin cannot
@@ -56,5 +57,8 @@ reason, paired one to one, so a second copy of a held form is new.
 A file that the base could measure and the change makes unmeasurable stays
 exit 2 outside the hook. That includes a rename from another extension,
 because the base's bytes were read under a grammar the base path may not
-select. A source file the base did not hold stays exit 2 too. Only `lockfile`
-notes a manifest the base did not hold, for the reason spec 8.2.1 gives.
+select. A file the base did not hold stays exit 2 too, a `lockfile` manifest
+included. #133 noted such a manifest so that a fixture invalid on purpose
+could never keep the gate red. The base rule now covers that: only the change
+that adds the fixture fails outside the hook, a person closes it with
+`exclude`, and every later run notes it. In the hook it is a NOTE.

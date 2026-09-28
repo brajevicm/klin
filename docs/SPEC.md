@@ -1756,11 +1756,15 @@ finding rather than an empty lockfile. A JSON lockfile klin cannot parse is a
 tool error naming the file. A manifest with no lockfile in either tree is a
 NOTE and no finding, and a lockfile only the base held makes every
 dependency of that manifest `unlocked`, so deleting a lockfile fails. A
-manifest klin cannot parse now, and that did not parse at the base or that
-the base did not hold, is a NOTE naming the manifest in every run, hook or not
-(8.6). It judges none of that manifest's dependencies, and every other
-manifest is still judged, so a fixture that is invalid on purpose does not
-turn the gate red. A manifest that parsed at the base and does not parse now
+manifest klin cannot parse now and that did not parse at the base is a NOTE
+naming the manifest in every run, hook or not (8.6). It judges none of that
+manifest's dependencies, and every other manifest is still judged, so a
+fixture that is invalid on purpose does not turn the gate red. A manifest
+klin cannot parse now that the base did not hold is a tool error outside the
+hook, because the work added the hole: the error says to make it parse or to
+add it to `exclude`. In the hook it is the same NOTE, because the agent cannot
+edit `exclude`. Once the change is in the base, the manifest is a NOTE in
+every run. A manifest that parsed at the base and does not parse now
 is a tool error naming the file, because the work broke it and the agent can
 fix it. A manifest that did not parse at the base and parses now is judged
 against a base that named no dependency. Every manifest and lockfile is read
@@ -1798,6 +1802,7 @@ handful of files. Pinned by
 `a_malformed_lockfile_is_a_tool_error_naming_the_file`,
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
+`a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook`,
 `a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses`,
 `a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error`,
 `two_manifests_that_share_one_lockfile_are_each_judged_against_it`,
@@ -2491,11 +2496,12 @@ Every check MUST:
   check but `conventions` does, does not count a file the window renamed from
   another extension, because the base may have measured it under its own
   path. So that file stays exit 2. `conventions` reads the base's copy under
-  the path the base holds it at, so its own measurement already decides. In the hook each of them is a
-  NOTE, because the agent has no remedy. A `lockfile` manifest keeps its own
-  rule (8.2.1): one klin cannot parse now is a NOTE also when the base did not
-  hold it, because a tooling repository adds such a manifest as a fixture on
-  purpose. A source file the base did not hold stays exit 2. Pinned by
+  the path the base holds it at, so its own measurement already decides. In
+  the hook each of them is a NOTE, because the agent has no remedy. A file the
+  base did not hold stays exit 2 outside the hook, a `lockfile` manifest
+  included (8.2.1): the change that adds a fixture invalid on purpose also
+  adds it to `except` or `exclude`, and once it is in the base it is a NOTE.
+  Pinned by
   `a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict`,
   `a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand`,
   `an_extension_changing_rename_reads_the_base_bytes_under_the_new_grammar`,
@@ -4310,7 +4316,8 @@ Core:
   workspace lockfile above the member manifest is found, both npm lockfile
   versions are read, an unreadable format is a NOTE, a malformed supported
   lockfile is a tool error, a manifest klin cannot parse at either commit is a
-  NOTE, a manifest the work broke is a tool error, and two manifests that
+  NOTE, a manifest the work broke or added unparseable is a tool error outside
+  the hook, and two manifests that
   share a lockfile are each judged against it.
 - `layering`: a new forbidden edge fails and a base one is held, same-layer
   and `can_use: null` dependencies pass, overlapping layers and retired keys
