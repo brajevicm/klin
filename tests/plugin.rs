@@ -16,7 +16,10 @@ const CURSOR_MANIFEST: &str = "plugins/klin/.cursor-plugin/plugin.json";
 const MARKET: &str = ".claude-plugin/marketplace.json";
 const CODEX_MARKET: &str = ".agents/plugins/marketplace.json";
 const CURSOR_MARKET: &str = ".cursor-plugin/marketplace.json";
+const TAGGED_MARKETS: [(&str, &str); 2] =
+    [(MARKET, "plugins/klin"), (CODEX_MARKET, "./plugins/klin")];
 const README: &str = "README.md";
+const DIST_WORKSPACE: &str = "dist-workspace.toml";
 const SHARED_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
@@ -93,20 +96,92 @@ fn the_cursor_manifest_names_the_cursor_hooks_file() {
     assert!(at(&format!("{PLUGIN}/{named}")).is_file(), "{named}");
 }
 
+/// Claude Code and Codex read a marketplace from the default branch, so each entry names the
+/// plugin at the release tag the manifests pin, and a commit to `main` reaches a plugin user
+/// only once `main` names the next tag. Each entry spells the path as its host documents it:
+/// Claude Code the bare path, Codex the `./` form. ADR 0029, spec 19.2.
 #[test]
-fn the_codex_marketplace_entry_points_at_the_same_plugin() {
-    let entry = json(CODEX_MARKET)["plugins"][0].clone();
-    let path = entry["source"]["path"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
+fn the_claude_code_and_codex_marketplaces_name_the_plugin_at_the_pinned_release() {
+    for (market, path) in TAGGED_MARKETS {
+        let entry = json(market)["plugins"][0].clone();
 
-    assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
-    assert_eq!(
-        entry["source"]["source"].as_str().unwrap_or_default(),
-        "local"
+        assert_eq!(entry["name"], "klin", "{market}");
+        assert_eq!(
+            entry["source"],
+            serde_json::json!({
+                "source": "git-subdir",
+                "url": "https://github.com/brajevicm/klin.git",
+                "path": path,
+                "ref": format!("v{PINNED}"),
+            }),
+            "{market}"
+        );
+    }
+}
+
+/// The release commit rewrites each marketplace ref to the new tag and nothing else. The test
+/// applies the rewrites `Cargo.toml` configures, as cargo-release does, for a version no
+/// release has. ADR 0029, spec 19.2.
+#[test]
+fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
+    let version = "9.9.9";
+
+    for (market, _) in TAGGED_MARKETS {
+        let mut tagged = json(market);
+        tagged["plugins"][0]["source"]["ref"] = Value::from(format!("v{version}"));
+
+        let rewritten = match serde_json::from_str::<Value>(&after_cargo_release(market, version)) {
+            Ok(held) => held,
+            Err(why) => panic!("the release leaves {market} unreadable: {why}"),
+        };
+        assert_eq!(rewritten, tagged, "{market}");
+    }
+}
+
+/// cargo-release pushes nothing, so the release commit reaches `main` only through the
+/// promotion after the release smoke. ADR 0029, spec 19.2.
+#[test]
+fn cargo_release_pushes_nothing_by_itself() {
+    let push = cargo_release_config()
+        .get("push")
+        .and_then(cargo_toml::Value::as_bool);
+
+    assert_eq!(push, Some(false), "cargo-release pushes the release itself");
+}
+
+/// A release stays off `releases/latest`, the installer and `klin update` until the release
+/// smoke passed: `cut-release` makes it a draft prerelease, `dist` publishes that draft and
+/// leaves both flags alone, and `promote-release` marks it Latest. ADR 0029, spec 19.2.
+#[test]
+fn a_release_becomes_latest_only_at_the_promotion() {
+    let published = text(".github/workflows/release.yml");
+    let drafted = line_with(".github/workflows/cut-release.yml", "gh release create");
+    let promoted = line_with(".github/workflows/promote-release.yml", "gh release edit");
+
+    assert!(
+        text(DIST_WORKSPACE)
+            .lines()
+            .any(|line| line.trim() == "create-release = false"),
+        "dist creates the release itself, as Latest"
     );
-    assert_eq!(at(&path), at(PLUGIN), "{path}");
+    for flag in ["gh release create", "--latest", "--prerelease=false"] {
+        assert!(
+            !published.contains(flag),
+            "dist's release workflow runs {flag}"
+        );
+    }
+    for flag in ["--draft", "--prerelease"] {
+        assert!(
+            drafted.contains(flag),
+            "cut-release omits {flag}: {drafted}"
+        );
+    }
+    for flag in ["--prerelease=false", "--latest"] {
+        assert!(
+            promoted.contains(flag),
+            "promote-release omits {flag}: {promoted}"
+        );
+    }
 }
 
 #[test]
@@ -115,41 +190,12 @@ fn the_cursor_marketplace_entry_points_at_the_same_plugin() {
     let path = entry["source"].as_str().unwrap_or_default().to_string();
 
     assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
-    assert_eq!(at(&path), at(PLUGIN), "{path}");
+    assert_eq!(path, PLUGIN, "Cursor documents the bare form");
     assert!(
         at(&path).join(".cursor-plugin/plugin.json").is_file(),
         "{}",
         path
     );
-}
-
-/// The three marketplaces name one directory in three spellings, and they are not
-/// interchangeable. Claude Code 2.1.273 refuses a relative source without the `./` prefix as
-/// `source: Invalid input`, Codex lists no plugin at all for one, and Cursor documents the bare
-/// form. A tidy-up that makes the three agree fails here rather than in a person's install.
-/// Spec 19.2.
-#[test]
-fn each_marketplace_spells_the_plugin_path_as_its_host_requires() {
-    let claude = json(MARKET)["plugins"][0]["source"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-    let codex = json(CODEX_MARKET)["plugins"][0]["source"]["path"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-    let cursor = json(CURSOR_MARKET)["plugins"][0]["source"]
-        .as_str()
-        .unwrap_or_default()
-        .to_string();
-
-    assert_eq!(
-        claude,
-        format!("./{PLUGIN}"),
-        "Claude Code needs the prefix"
-    );
-    assert_eq!(codex, format!("./{PLUGIN}"), "Codex needs the prefix");
-    assert_eq!(cursor, PLUGIN, "Cursor documents the bare form");
 }
 
 #[test]
@@ -227,7 +273,7 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
         "the README does not lead with the installer"
     );
     assert!(
-        text("dist-workspace.toml").contains(r#"install-path = "~/.local/bin""#),
+        text(DIST_WORKSPACE).contains(r#"install-path = "~/.local/bin""#),
         "the installer puts klin somewhere other than the path the README runs it from and \
          the hook lines look in"
     );
@@ -432,16 +478,6 @@ fn a_wrapper_without_its_manifest_says_so_and_lets_the_turn_end() {
         "{}",
         run.out
     );
-}
-
-#[test]
-fn the_marketplace_entry_points_at_the_plugin() {
-    let entry = json(MARKET)["plugins"][0].clone();
-    let source = entry["source"].as_str().unwrap_or_default().to_string();
-    let named = at(&source).join(".claude-plugin/plugin.json");
-
-    assert_eq!(entry["name"].as_str().unwrap_or_default(), "klin");
-    assert!(named.is_file(), "{} is missing", named.display());
 }
 
 #[test]
@@ -952,6 +988,72 @@ fn json(relative: &str) -> serde_json::Value {
         Ok(held) => held,
         Err(why) => panic!("{relative} is not JSON: {why}"),
     }
+}
+
+fn line_with(relative: &str, holds: &str) -> String {
+    match text(relative).lines().find(|line| line.contains(holds)) {
+        Some(line) => line.to_string(),
+        None => panic!("no line of {relative} holds {holds}"),
+    }
+}
+
+fn cargo_release_config() -> cargo_toml::Value {
+    let manifest = match cargo_toml::Manifest::from_str(&text("Cargo.toml")) {
+        Ok(manifest) => manifest,
+        Err(why) => panic!("Cargo.toml is not a manifest: {why}"),
+    };
+    match manifest
+        .package
+        .and_then(|package| package.metadata)
+        .and_then(|metadata| metadata.get("release").cloned())
+    {
+        Some(release) => release,
+        None => panic!("Cargo.toml has no [package.metadata.release]"),
+    }
+}
+
+fn after_cargo_release(relative: &str, version: &str) -> String {
+    let rewrites: Vec<cargo_toml::Value> = cargo_release_config()
+        .get("pre-release-replacements")
+        .and_then(cargo_toml::Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|rewrite| rewrite.get("file").and_then(cargo_toml::Value::as_str) == Some(relative))
+        .collect();
+    assert!(
+        !rewrites.is_empty(),
+        "the release does not rewrite {relative}"
+    );
+
+    rewrites.iter().fold(text(relative), |held, rewrite| {
+        let field = |key: &str| {
+            rewrite
+                .get(key)
+                .and_then(cargo_toml::Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
+        let search = match regex::Regex::new(&field("search")) {
+            Ok(search) => search,
+            Err(why) => panic!("the release searches {relative} with a bad pattern: {why}"),
+        };
+        assert_eq!(
+            rewrite
+                .get("exactly")
+                .and_then(cargo_toml::Value::as_integer),
+            Some(1),
+            "the release does not rewrite {relative} exactly once"
+        );
+        assert_eq!(
+            search.find_iter(&held).count(),
+            1,
+            "the release pattern misses {relative}"
+        );
+        search
+            .replace_all(&held, field("replace").replace("{{version}}", version))
+            .into_owned()
+    })
 }
 
 fn json_file(path: &Path, label: &str) -> Value {

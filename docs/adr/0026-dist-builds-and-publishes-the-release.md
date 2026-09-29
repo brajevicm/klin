@@ -1,9 +1,13 @@
 # dist builds and publishes the release
 
+> ADR 0029 amends this (#338): with `create-release = false`, `dist` fills
+> and publishes a draft prerelease that `cut-release` makes, and the release
+> becomes Latest at its promotion.
+
 `dist` (formerly `cargo-dist`) owns the release pipeline. A pushed tag runs
 the workflow `dist` generates, which builds the four targets, writes the
-checksums, generates the install script, and creates the GitHub release.
-klin writes no release YAML and no install script of its own.
+checksums, generates the install script, and publishes the GitHub release.
+klin writes no build or upload steps and no install script of its own.
 
 The cost is that `dist` names the artifacts, not klin. Section 19.1 once
 asked for four bare binaries called `klin-<os>-<arch>`, one `SHA256SUMS`, and
