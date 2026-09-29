@@ -254,8 +254,10 @@ export function run(into: string, clones: string, klin: string): number {
 }
 
 const FLOOR: Record<string, number> = { cc: 5, lines: 25 };
-const EXCERPT_LINES = 80;
+const EXCERPT_LINES = 40;
+const EXCERPTS = 3;
 const PROMPT_CHARS = 600;
+const MESSAGE_LINES = 30;
 
 export interface Finding {
   gate?: string;
@@ -312,6 +314,9 @@ export function groupOf(gate: string, finding: Finding, derived: Derived[]): str
   if (gate !== "complexity") {
     return gate;
   }
+  if (finding.outcome !== "new" && finding.outcome !== "worsened") {
+    return `${finding.outcome ?? "no"} record`;
+  }
   if (!derived.some((one) => one.section === "complexity" && (one.key === "cc" || one.key === "lines"))) {
     return "pinned ceiling";
   }
@@ -328,6 +333,11 @@ export function groupOf(gate: string, finding: Finding, derived: Derived[]): str
   return over
     .map((measure) => `${measure} ${ceilingOf(finding, measure) === FLOOR[measure] ? "at the floor" : "at a derived percentile"}`)
     .join(", ");
+}
+
+function clipped(message: string): string {
+  const lines = message.split("\n");
+  return lines.length <= MESSAGE_LINES ? message : [...lines.slice(0, MESSAGE_LINES), `(${lines.length - MESSAGE_LINES} more lines)`].join("\n");
 }
 
 function show(cwd: string, commit: string, file: string): string[] | null {
@@ -364,7 +374,7 @@ function gateRows(report: Report, context: Record<string, unknown>, detail: (gat
       status: gate.status,
       groups: [...new Set(own.map((finding) => groupOf(gate.name, finding, derived)))],
       derived: derivedFor(gate.name, derived),
-      findings: own.map((finding) => ({ ...finding, excerpt: detail(gate.name, finding) })),
+      findings: own.map(({ fix_advice: _advice, ...finding }, at) => ({ ...finding, excerpt: at < EXCERPTS ? detail(gate.name, finding) : undefined })),
       remedies: [...new Set(own.map((finding) => finding.fix_advice).filter((one): one is string => Boolean(one)))],
       context,
     };
@@ -393,7 +403,7 @@ export function replayRows(into: string, clones: string): Row[] {
         head: change.head,
         base: change.base,
         exit: record.exit,
-        message: git(cwd, ["log", "-1", "--format=%B", change.head]),
+        message: clipped(git(cwd, ["log", "-1", "--format=%B", change.head])),
         touched: git(cwd, ["diff", "--stat=120", "--stat-count=30", change.base, change.head]),
       };
       if (record.report === null) {
@@ -421,26 +431,30 @@ function identity(findings: Finding[]): string {
 export function journalRows(lines: string[]): Row[] {
   const rows: (Omit<Row, "id"> & { key: string })[] = [];
   const prompts = new Map<string, string>();
+  const firstPrompts = new Map<string, string>();
   const open = new Map<string, Map<string, Omit<Row, "id"> & { key: string }>>();
   for (const line of lines.filter(Boolean)) {
-    const record = JSON.parse(line) as Report & { kind: string; session: string; text?: string; time: number; version: string; host?: string };
+    const record = JSON.parse(line) as Report & { kind: string; session: string | null; text?: string; time: number; version: string; host?: string };
+    const session = record.session ?? "unknown";
     if (record.kind === "prompt" && record.text) {
-      prompts.set(record.session, record.text);
+      prompts.set(session, record.text);
+      if (!firstPrompts.has(session)) firstPrompts.set(session, record.text);
     }
     if (record.kind !== "stop") {
       continue;
     }
-    const previous = open.get(record.session) ?? new Map();
+    const previous = open.get(session) ?? new Map();
     const next = new Map<string, Omit<Row, "id"> & { key: string }>();
     if (record.status === "FAIL" || record.status === "ERROR") {
       const window = record.window ?? {};
       const context = {
-        session: record.session.slice(0, 8),
+        session: session.slice(0, 8),
         date: new Date(record.time * 1000).toISOString().slice(0, 10),
         version: record.version,
         host: record.host ?? null,
         window: `${window.kind}, before ${String(window.before ?? "").slice(0, 12)}, ${window.how}`,
-        prompt: (prompts.get(record.session) ?? "").slice(0, PROMPT_CHARS),
+        firstPrompt: (firstPrompts.get(session) ?? "").slice(0, PROMPT_CHARS),
+        prompt: (prompts.get(session) ?? "").slice(0, PROMPT_CHARS),
         stops: 1,
       };
       for (const row of gateRows(record, context, () => undefined)) {
@@ -456,7 +470,7 @@ export function journalRows(lines: string[]): Row[] {
         }
       }
     }
-    open.set(record.session, next);
+    open.set(session, next);
   }
   return numbered("J", rows.map(({ key: _key, ...row }) => row));
 }
@@ -476,7 +490,7 @@ function fence(text: string): string {
 function findingLine(finding: Finding): string {
   const site = finding.file ? `\`${finding.file}${finding.line ? `:${finding.line}` : ""}\`` : "no file";
   const parts = [`${site} ${finding.outcome ?? ""}`.trim()];
-  if (finding.condition) parts.push(finding.condition);
+  if (finding.text) parts.push(`\`${finding.text.replaceAll("`", "'").replaceAll("\n", " ").slice(0, 160)}\``);
   if (finding.values) parts.push(`values \`${JSON.stringify(finding.values)}\``);
   if (finding.ceiling) parts.push(`ceiling ${finding.ceiling}`);
   if (finding.matched) parts.push(`base site \`${finding.matched.file}:${finding.matched.line}\` with \`${JSON.stringify(finding.matched.values)}\``);
@@ -504,6 +518,9 @@ function rowMarkdown(row: Row): string {
   if (context.message !== undefined) {
     out.push("### Commit message", "", quote(String(context.message)), "", "### Files the change touched", "", fence(String(context.touched)), "");
   }
+  if (context.firstPrompt !== undefined && context.firstPrompt !== context.prompt) {
+    out.push("### First prompt of the session", "", context.firstPrompt ? quote(String(context.firstPrompt)) : "No prompt text was recorded.", "");
+  }
   if (context.prompt !== undefined) {
     out.push("### Last prompt of the session before the stop", "", context.prompt ? quote(String(context.prompt)) : "No prompt text was recorded.", "");
   }
@@ -511,13 +528,13 @@ function rowMarkdown(row: Row): string {
     out.push("### What the run printed", "", fence(`${context.stdout}\n${context.stderr}`.trim()), "");
   }
   if (row.findings.length > 0) {
-    out.push("### Findings", "");
+    const conditions = [...new Set(row.findings.map((finding) => finding.condition).filter(Boolean))];
+    out.push("### Findings", "", ...conditions.map((one) => `Condition: ${one}.`), "");
     row.findings.forEach((finding, at) => {
       out.push(`${at + 1}. ${findingLine(finding)}`);
-      if (finding.text) out.push("", `   Line text: \`${finding.text.replaceAll("`", "'").slice(0, 200)}\``);
-      if (finding.excerpt) out.push("", fence(finding.excerpt).replace(/^/gm, "   "));
-      out.push("");
+      if (finding.excerpt) out.push("", fence(finding.excerpt).replace(/^/gm, "   "), "");
     });
+    out.push("");
   }
   if (row.remedies.length > 0) {
     out.push("### Remedy klin printed", "", ...row.remedies.map((one) => quote(one) + "\n"));

@@ -17,13 +17,14 @@ test("the ten changes start at the first commit before the cutoff and each takes
 });
 
 test("a complexity finding is grouped by the ceiling it crossed", () => {
-  const floor = { ceiling: "cc 5, lines 25", values: { cc: 2, lines: 31 }, matched: { file: "a", line: 1, text: "", values: { cc: 2, lines: 22 } } };
+  const floor = { outcome: "worsened", ceiling: "cc 5, lines 25", values: { cc: 2, lines: 31 }, matched: { file: "a", line: 1, text: "", values: { cc: 2, lines: 22 } } };
   assert.equal(groupOf("complexity", floor, derivedFloor), "lines at the floor");
-  const percentile = { ceiling: "cc 7, lines 58", values: { cc: 9, lines: 10 }, matched: null };
+  const percentile = { outcome: "new", ceiling: "cc 7, lines 58", values: { cc: 9, lines: 10 }, matched: null };
   assert.equal(groupOf("complexity", percentile, derivedFloor), "cc at a derived percentile");
-  const grew = { ceiling: "cc 5, lines 25", values: { cc: 2, lines: 266 }, matched: { file: "a", line: 1, text: "", values: { cc: 2, lines: 247 } } };
+  const grew = { outcome: "worsened", ceiling: "cc 5, lines 25", values: { cc: 2, lines: 266 }, matched: { file: "a", line: 1, text: "", values: { cc: 2, lines: 247 } } };
   assert.equal(groupOf("complexity", grew, derivedFloor), "a site the base held over the ceiling grew");
-  assert.equal(groupOf("complexity", percentile, []), "pinned ceiling");
+  assert.equal(groupOf("complexity", { ...percentile, outcome: "new" }, []), "pinned ceiling");
+  assert.equal(groupOf("complexity", { outcome: "unparsed", file: "lib/a.ts" }, derivedFloor), "unparsed record");
   assert.equal(groupOf("doc-size", { file: "CHANGELOG.md" }, []), "document CHANGELOG.md");
 });
 
