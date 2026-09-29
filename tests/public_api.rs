@@ -690,6 +690,69 @@ fn a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides() {
 }
 
 #[test]
+fn an_extern_crate_alias_named_like_a_dependency_keeps_its_path_opaque() {
+    for (a, item) in [
+        (
+            "pub mod m {\n    extern crate alloc as types;\n    pub use types::Other;\n}\n",
+            "a::m::Other  item  opaque (types::Other)",
+        ),
+        (
+            "extern crate alloc as types;\npub use types::Other;\n",
+            "a::Other  item  opaque (types::Other)",
+        ),
+    ] {
+        let tree = Tree::new();
+        workspace(&tree, a, "pub struct Other;\n");
+        tree.base();
+
+        let run = report(&tree);
+
+        assert!(run.says(item), "{a}: {}", run.out);
+    }
+}
+
+#[test]
+fn only_a_module_level_binding_in_the_same_namespace_hides_a_name_a_glob_provides() {
+    for a in [
+        "pub struct X;\nimpl TryFrom<u8> for X {\n    type Error = ();\n    fn try_from(_: u8) -> Result<X, ()> {\n        Ok(X)\n    }\n}\npub use types::*;\n",
+        "mod sleep {}\nfn Error() {}\npub use types::*;\n",
+        "fn f() {\n    use std::fmt::Error;\n    use std::thread::sleep;\n}\npub use types::*;\n",
+    ] {
+        let tree = Tree::new();
+        workspace(&tree, a, "pub struct Error;\npub fn sleep() {}\n");
+        tree.base();
+
+        let run = report(&tree);
+
+        assert!(
+            run.says("a::Error  type  measured  types/src/lib.rs:1")
+                && run.says("a::sleep  function  measured  types/src/lib.rs:2"),
+            "{a}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_use_inside_a_function_named_like_a_dependency_leaves_the_dependency_followed() {
+    let tree = Tree::new();
+    workspace(
+        &tree,
+        "mod local {}\nfn f() {\n    use crate::local as types;\n}\npub use types::MapMode;\n",
+        MAP_MODE,
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_glob_of_a_workspace_sibling_lists_its_items() {
     let tree = Tree::new();
     workspace(&tree, "pub use types::*;\n", MAP_MODE);
@@ -700,6 +763,25 @@ fn a_glob_of_a_workspace_sibling_lists_its_items() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("a::MapMode  type  measured  types/src/lib.rs:1") && !run.says("globs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_item_of_an_inherent_impl_is_an_item_under_its_type() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "pub struct X;\nimpl X {\n    pub const MAX: u8 = 1;\n}\npub trait T {\n    const N: u8;\n}\n",
+    );
+
+    let run = report(&tree);
+
+    assert!(
+        run.says("core::X::MAX  constant  measured  src/lib.rs:3")
+            && !run.says("core::MAX")
+            && !run.says("core::N"),
         "{}",
         run.out
     );

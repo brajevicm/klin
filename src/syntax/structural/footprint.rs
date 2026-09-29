@@ -187,7 +187,7 @@ fn weighed(
         qualified(path, out);
     }
     for held in &facts.crates {
-        bound(held, out);
+        linked(held, out);
     }
 }
 
@@ -206,7 +206,7 @@ fn referenced(
 }
 
 /// One `extern crate`'s crate name and alias, and its nesting.
-fn bound(held: &ExternCrate, out: &mut Footprint) {
+fn linked(held: &ExternCrate, out: &mut Footprint) {
     out.extern_crate_bytes += held.name.len() + held.alias.len();
     nesting(&held.nesting, out);
 }

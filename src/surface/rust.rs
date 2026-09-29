@@ -41,14 +41,14 @@ pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Derived
     }
 }
 
-/// One library target being derived: its surface so far, the inherent methods and type
+/// One library target being derived: its surface so far, the public inherent items and type
 /// declarations of each target it reaches by that target and name, the targets indexed so far,
 /// and what has been walked or is being looked up through globs, so a cycle of re-exports ends.
 struct Derivation<'a> {
     topology: &'a Topology<'a>,
     graph: &'a ModuleGraph,
     surface: Surface,
-    methods: HashMap<(usize, &'a str), Vec<(usize, &'a Declaration)>>,
+    members: HashMap<(usize, &'a str), Vec<(usize, &'a Declaration)>>,
     types: HashMap<(usize, &'a str), Vec<usize>>,
     indexed: HashSet<usize>,
     walked: HashSet<(usize, String)>,
@@ -74,7 +74,7 @@ impl<'a> Derivation<'a> {
                 files: Vec::new(),
                 holes: Vec::new(),
             },
-            methods: HashMap::new(),
+            members: HashMap::new(),
             types: HashMap::new(),
             indexed: HashSet::new(),
             walked: HashSet::new(),
@@ -84,9 +84,10 @@ impl<'a> Derivation<'a> {
         }
     }
 
-    /// Every public inherent method of one target by the type it is added to, and every type
-    /// declaration by name, so a method finds its type wherever its `impl` sits. A target is
-    /// indexed once, when a type of it is first exposed.
+    /// Every public inherent item of one target, a method or an associated constant or type, by
+    /// the type it is added to, and every type declared as a module item by name, so an inherent
+    /// item finds its type wherever its `impl` sits. A target is indexed once, when a type of it
+    /// is first exposed.
     fn index(&mut self, target: usize) {
         if !self.indexed.insert(target) {
             return;
@@ -96,16 +97,14 @@ impl<'a> Derivation<'a> {
                 continue;
             }
             for declaration in self.declarations(at) {
-                match (declaration.kind, &declaration.owner) {
-                    (DeclarationKind::Method, Some(owner))
-                        if declaration.visibility == Visibility::Public =>
-                    {
-                        self.methods
+                match (declaration.associated, &declaration.owner) {
+                    (true, Some(owner)) if declaration.visibility == Visibility::Public => {
+                        self.members
                             .entry((target, owner))
                             .or_default()
                             .push((at, declaration));
                     }
-                    (DeclarationKind::Type, _) => {
+                    (false, _) if declaration.kind == DeclarationKind::Type => {
                         self.types
                             .entry((target, &declaration.name))
                             .or_default()
@@ -138,6 +137,12 @@ impl<'a> Derivation<'a> {
             .filter(move |declaration| declaration.nesting == module.nesting)
     }
 
+    /// The declarations that are items of one module, less the associated items a type body
+    /// holds.
+    fn items(&self, at: usize) -> impl Iterator<Item = &'a Declaration> + use<'a> {
+        self.declarations(at).filter(|held| !held.associated)
+    }
+
     fn exports(&self, at: usize) -> impl Iterator<Item = &'a Export> + use<'a> {
         let module = self.module(at);
         let topology: &'a Topology<'a> = self.topology;
@@ -167,9 +172,8 @@ impl<'a> Derivation<'a> {
     /// modules and the names its explicit re-exports bind. A glob never shadows one of these.
     fn own_names(&self, at: usize) -> HashSet<String> {
         let mut names: HashSet<String> = self
-            .declarations(at)
+            .items(at)
             .filter(|held| held.visibility == Visibility::Public)
-            .filter(|held| held.kind != DeclarationKind::Method)
             .map(|held| held.name.clone())
             .collect();
         names.extend(self.public_children(at).into_iter().map(|(name, _)| name));
@@ -181,20 +185,40 @@ impl<'a> Derivation<'a> {
         names
     }
 
-    /// Every name a module binds itself, whatever its visibility: its own names, each item it
-    /// declares, each child module and each name a `use` binds. A glob of the module never
-    /// provides one of these.
-    fn shadowing(&self, at: usize) -> HashSet<String> {
+    /// Every name a module binds itself at any visibility, in its namespace: each item it
+    /// declares, each child module and `extern crate` alias as a type, and each name a `use`
+    /// outside a function binds in both. A glob of the module never provides a name in a
+    /// namespace the module binds it in.
+    fn shadowing(&self, at: usize) -> Shadow {
         let module = self.module(at);
-        let mut names = self.own_names(at);
-        names.extend(
-            self.declarations(at)
-                .filter(|held| held.kind != DeclarationKind::Method)
-                .map(|held| held.name.clone()),
+        let facts = self.topology.facts(self.file(at));
+        let mut out: Shadow = self
+            .items(at)
+            .flat_map(|held| {
+                namespaces(held.kind)
+                    .iter()
+                    .map(|space| (held.name.clone(), *space))
+            })
+            .collect();
+        out.extend(
+            module
+                .children
+                .keys()
+                .map(|name| (name.clone(), Namespace::Type)),
         );
-        names.extend(module.children.keys().cloned());
-        names.extend(module.bound.iter().cloned());
-        names
+        let crates = facts.iter().flat_map(|facts| &facts.crates);
+        out.extend(
+            crates
+                .filter(|held| held.nesting == module.nesting)
+                .map(|held| (held.alias.clone(), Namespace::Type)),
+        );
+        let imports = facts.iter().flat_map(|facts| &facts.imports);
+        for import in imports.filter(|held| held.nesting == module.nesting && !held.in_function) {
+            for name in &import.names {
+                out.extend(BOTH.iter().map(|space| (name.clone(), *space)));
+            }
+        }
+        out
     }
 
     /// Every item reachable under `prefix` from one module: what it declares public, the public
@@ -219,11 +243,10 @@ impl<'a> Derivation<'a> {
         }
     }
 
-    /// The declarations one module exposes as items of its own: public, and not a method.
+    /// The declarations one module exposes as items of its own: public, and no associated item.
     fn public_declarations(&self, at: usize) -> Vec<&'a Declaration> {
-        self.declarations(at)
+        self.items(at)
             .filter(|held| held.visibility == Visibility::Public)
-            .filter(|held| held.kind != DeclarationKind::Method)
             .collect()
     }
 
@@ -234,7 +257,7 @@ impl<'a> Derivation<'a> {
         export: &'a Export,
         leaf: &'a ExportLeaf,
         prefix: &str,
-        own: &HashSet<String>,
+        own: &Shadow,
     ) {
         match &leaf.name {
             Some(name) => self.named(at, export, leaf, join(prefix, name)),
@@ -270,7 +293,7 @@ impl<'a> Derivation<'a> {
         };
         self.index(target);
         let key = (target, declaration.name.as_str());
-        let methods = self.methods.get(&key).cloned().unwrap_or_default();
+        let methods = self.members.get(&key).cloned().unwrap_or_default();
         let declared_in = self.types.get(&key).map_or(0, |modules| modules.len());
         for (holder, method) in methods {
             let holder_file = self.file(holder);
@@ -357,7 +380,7 @@ impl<'a> Derivation<'a> {
     /// the same lookup gives nothing.
     fn globbed_in(&mut self, module: usize, name: &str, path: String) -> bool {
         let key = (module, path);
-        if self.shadowing(module).contains(name) || !self.sought.insert(key.clone()) {
+        if hides(&self.shadowing(module), name, BOTH) || !self.sought.insert(key.clone()) {
             return false;
         }
         let providers: Vec<(&Export, usize)> = self
@@ -402,7 +425,7 @@ impl<'a> Derivation<'a> {
     fn provides(&self, module: usize, name: &str, seen: &mut HashSet<usize>) -> bool {
         seen.insert(module)
             && (self.own_names(module).contains(name)
-                || !self.shadowing(module).contains(name)
+                || !hides(&self.shadowing(module), name, BOTH)
                     && self
                         .globs(module)
                         .into_iter()
@@ -418,7 +441,7 @@ impl<'a> Derivation<'a> {
         export: &'a Export,
         leaf: &'a ExportLeaf,
         prefix: &str,
-        shadow: &HashSet<String>,
+        shadow: &Shadow,
     ) {
         let key = (from, leaf.path.clone(), prefix.to_string());
         if !self.globbed.insert(key) {
@@ -436,7 +459,7 @@ impl<'a> Derivation<'a> {
         }
         let site = (self.file(from).to_string(), export.line);
         for (name, exposure) in self.provided(reached) {
-            if !shadow.contains(&name) {
+            if !hides(shadow, &name, exposure.namespaces()) {
                 self.provide(reached, export, &site, join(prefix, &name), exposure);
             }
         }
@@ -537,6 +560,47 @@ enum Exposure<'a> {
     Declaration(&'a Declaration),
     Module(usize),
     Leaf(&'a Export, &'a ExportLeaf),
+}
+
+impl Exposure<'_> {
+    /// The namespaces the exposed name lives in, and both for a re-export klin has not followed.
+    fn namespaces(&self) -> &'static [Namespace] {
+        match self {
+            Exposure::Declaration(declaration) => namespaces(declaration.kind),
+            Exposure::Module(_) => &[Namespace::Type],
+            Exposure::Leaf(..) => BOTH,
+        }
+    }
+}
+
+/// Where a Rust name lives: types, traits and modules apart from functions and values, so a
+/// binding hides a name a glob provides only in its own namespace.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Namespace {
+    Type,
+    Value,
+}
+
+const BOTH: &[Namespace] = &[Namespace::Type, Namespace::Value];
+
+/// Each name a module binds, once for every namespace it binds the name in.
+type Shadow = HashSet<(String, Namespace)>;
+
+fn namespaces(kind: DeclarationKind) -> &'static [Namespace] {
+    match kind {
+        DeclarationKind::Type => &[Namespace::Type],
+        DeclarationKind::Function | DeclarationKind::Constant | DeclarationKind::Variable => {
+            &[Namespace::Value]
+        }
+        DeclarationKind::Method => &[],
+    }
+}
+
+/// Whether a module's bindings hide a name in any of the namespaces it lives in.
+fn hides(shadow: &Shadow, name: &str, spaces: &[Namespace]) -> bool {
+    spaces
+        .iter()
+        .any(|space| shadow.contains(&(name.to_string(), *space)))
 }
 
 fn join(prefix: &str, name: &str) -> String {

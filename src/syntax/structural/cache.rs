@@ -218,6 +218,7 @@ impl Writer {
             self.number(import.line);
             self.text(&import.text);
             self.texts(&import.nesting);
+            self.number(u64::from(import.in_function));
             self.optional(import.module.as_deref());
             self.texts(&import.names);
             self.texts(&import.paths);
@@ -262,7 +263,9 @@ impl Writer {
         self.number(declaration.end);
         self.text(&declaration.text);
         self.number(
-            u64::from(declaration.externally_visible) | u64::from(declaration.entry_point) << 1,
+            u64::from(declaration.externally_visible)
+                | u64::from(declaration.entry_point) << 1
+                | u64::from(declaration.associated) << 2,
         );
         self.texts(&declaration.nesting);
         self.number(visibility_number(declaration.visibility));
@@ -374,7 +377,7 @@ impl Reader<'_, '_> {
 
     fn declaration(&mut self) -> Option<Declaration> {
         let (name, kind, line, end, text) = self.site()?;
-        let flags = self.number().filter(|flags| *flags <= 3)?;
+        let flags = self.number().filter(|flags| *flags <= 7)?;
         self.contract(Declaration {
             name,
             kind,
@@ -384,6 +387,7 @@ impl Reader<'_, '_> {
             externally_visible: flags & 1 == 1,
             entry_point: flags & 2 == 2,
             nesting: Vec::new(),
+            associated: flags & 4 == 4,
             visibility: Visibility::Private,
             exported_as: None,
             owner: None,
@@ -446,6 +450,7 @@ impl Reader<'_, '_> {
             line: self.number()?,
             text: self.text()?,
             nesting: self.list(Reader::text)?,
+            in_function: self.number().filter(|flag| *flag <= 1)? == 1,
             module: self.optional()?,
             names: self.list(Reader::text)?,
             paths: self.list(Reader::text)?,
@@ -548,7 +553,7 @@ mod tests {
     const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
     fn outcomes() -> Vec<(String, Outcome)> {
-        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\nextern crate serde as json;\n";
+        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\nextern crate serde as json;\nimpl Charge {\n    const N: u8 = 1;\n}\nfn local() {\n    use std::fmt::Write;\n}\n";
         let typescript = "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\nexport default view;\n";
         [
             ("src/pay.rs", rust),
@@ -600,10 +605,8 @@ mod tests {
     }
 
     #[test]
-    fn every_outcome_reads_back_as_it_was_written() {
-        let (written, read) = read_back();
-        assert_eq!(read.len(), 5);
-        assert_eq!(bytes_of(&ours(), &read), written);
+    fn what_a_rust_file_binds_reads_back_as_written() {
+        let (_, read) = read_back();
         let pay = facts_of(&read, "src/pay.rs");
         let crates: Vec<(&str, &str)> = pay
             .crates
@@ -611,6 +614,28 @@ mod tests {
             .map(|held| (held.name.as_str(), held.alias.as_str()))
             .collect();
         assert_eq!(crates, vec![("serde", "json")]);
+        let associated: Vec<&str> = pay
+            .declarations
+            .iter()
+            .filter(|held| held.associated)
+            .map(|held| held.name.as_str())
+            .collect();
+        assert_eq!(associated, vec!["N"]);
+        let in_function: Vec<&str> = pay
+            .imports
+            .iter()
+            .filter(|held| held.in_function)
+            .map(|held| held.text.as_str())
+            .collect();
+        assert_eq!(in_function, vec!["use std::fmt::Write;"]);
+    }
+
+    #[test]
+    fn every_outcome_reads_back_as_it_was_written() {
+        let (written, read) = read_back();
+        assert_eq!(read.len(), 5);
+        assert_eq!(bytes_of(&ours(), &read), written);
+        let pay = facts_of(&read, "src/pay.rs");
         let modules: Vec<(&str, bool, Option<&str>)> = pay
             .module_declarations
             .iter()
@@ -636,6 +661,7 @@ mod tests {
                     ]
                 ),
                 (vec!["tests".to_string()], vec!["super::*".to_string()]),
+                (Vec::new(), vec!["std::fmt::Write".to_string()]),
             ]
         );
         let paths: Vec<(u64, &[String], &str)> = pay

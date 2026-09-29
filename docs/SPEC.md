@@ -2119,8 +2119,9 @@ check follows every plain `pub` declaration, every `pub mod`, every `pub use`
 leaf and every `pub extern crate`, which re-exports the crate under its alias:
 an alias renames the item, a glob exposes every public item of the module it
 reaches less every name the globbing module binds itself at any visibility
-(an item it declares, a child module or a name a `use` binds), a name a
-module neither declares nor re-exports by name comes from the one glob of it
+in the namespace the name lives in (an item it declares, a child module or an
+`extern crate` alias as a type, and a name a `use` outside a function binds
+in both), a name a module neither declares nor re-exports by name comes from the one glob of it
 that provides the name and is a hole where two do, a re-export of a module
 exposes everything under it, and a plain
 `pub` item inside a private module is external only where a `pub use` exposes
@@ -2139,9 +2140,12 @@ names the manifest of the library, so a crate name two libraries of the tree sha
 reaches the one the dependency names. A dependency without a path, such as a
 registry version, names a crate the tree does not hold even where a library of
 the tree has its name, and so does a name a `use` binds, which never enters
-the extern prelude. A first segment the module binds itself, by a `use` or as
-a type it declares, names a local item, so the path is opaque even where a
-dependency has that name. So an item moved into a sibling crate and
+the extern prelude. A first segment the module binds itself, by a `use`
+outside a function, as a type it declares or, below the crate root, as an
+`extern crate` alias, names a local item, so the path is opaque even where a
+dependency has that name, and so is an alias the crate root gives a crate
+that is no dependency of its manifest. An associated item of an `impl` or a
+`trait` is no item of the module, so it hides no name. So an item moved into a sibling crate and
 re-exported under its old name keeps its identity: an unchanged contract
 passes and a changed one fails as changed. A re-export of a whole crate root,
 such as that `pub extern crate` itself, is an opaque item, because the items
@@ -2162,9 +2166,14 @@ of a library the tree holds are judged under its own surface. Pinned by
 `a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it`,
 `a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque`,
 `a_local_use_named_like_a_dependency_keeps_its_path_opaque_though_its_item_changes`,
-`a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides` and
+`a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides`,
+`an_extern_crate_alias_named_like_a_dependency_keeps_its_path_opaque`,
+`only_a_module_level_binding_in_the_same_namespace_hides_a_name_a_glob_provides`,
+`a_use_inside_a_function_named_like_a_dependency_leaves_the_dependency_followed` and
 `a_glob_of_a_workspace_sibling_lists_its_items`.
-A public inherent method is an item under its type. From a TypeScript entry
+A public inherent method, associated constant or associated type is an item
+under its type, pinned by `an_item_of_an_inherent_impl_is_an_item_under_its_type`.
+From a TypeScript entry
 file the check follows exported declarations, default exports, local export
 clauses, and named, aliased,
 type-only and star re-exports through the module graph's own edges. An
@@ -2267,7 +2276,8 @@ same rule as its resolver in `layering`. Pinned by every test in
 re-exported by its bare name, a macro, a trait implementation's semantics,
 `cfg` evaluation, an attribute written through `#[cfg_attr(...)]`, a
 registry dependency that `[patch]` or `[replace]` points into the tree,
-`extern crate self as` an alias,
+`extern crate self as` an alias, a re-export by name through a glob of a
+module that binds the name in either namespace, which is opaque,
 `typesVersions`, conditional exports that do not reduce to one source file,
 `tsconfig` paths and a package alias are outside V1, and a generic parameter
 renamed is a changed contract.
@@ -3351,8 +3361,7 @@ One object on stdout. Fields:
   trees hold as one extraction counts once. It holds the populations `files`,
   `declarations`, `references`, `imports`, `module_declarations`, `exports`,
   `export_leaves`, `qualified_paths` and `extern_crates`; the owned bytes
-`path_bytes`,
-  `declaration_name_bytes`, `declaration_text_bytes` and
+  `path_bytes`, `declaration_name_bytes`, `declaration_text_bytes` and
   `reference_name_bytes`; how many declarations carry a signature, an owner or
   an exported alias, and the bytes each of those holds, as `signatures`,
   `signature_bytes`, `owners`, `owner_bytes`, `exported_aliases` and
@@ -3373,7 +3382,8 @@ One object on stdout. Fields:
   `extern crate`; and `sizes`, which includes `name` and gives the size of one
   `file_facts`,
   `declaration`, `reference`, `import`, `module_declaration`, `export`,
-  `export_leaf` and `extern_crate` without the bytes their strings and lists own. Every value
+  `export_leaf` and `extern_crate` without the bytes their strings and lists
+  own. Every value
   depends only on the trees and the selection (8.4). `footprint.references`
   counts the reference values the facts hold, so it is at least
   `names.before.references` plus `names.after.references`, which count the
@@ -4497,7 +4507,11 @@ Core:
   `extern crate` alias are followed, a name two globs provide to a re-export
   by name is a hole, a path from a name a local `use` binds stays opaque where
   a dependency has that name, a private item or import hides the name a glob
-  of a sibling provides, a glob of a sibling lists its items, a
+  of a sibling provides and an associated item, a binding in the other
+  namespace or a `use` inside a function does not, an `extern crate` alias
+  named like a dependency keeps its path opaque, an associated constant of an
+  inherent `impl` is an item under its type, a glob of a sibling lists its
+  items, a
   body, comment, format or binding-name change passes, a changed signature
   and a removed item fail and an addition passes, a removed library fails once
   at the surface, a source move behind an unchanged identity passes by hand

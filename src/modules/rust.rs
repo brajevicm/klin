@@ -108,7 +108,8 @@ pub(super) fn resolve(builder: &mut Builder) {
 /// The names of one target's extern prelude that reach a library the tree holds, each to that
 /// library's root module: every dependency its manifest takes by path, under its rename or else
 /// the library's own name, and every alias an `extern crate` at the top of its root gives one of
-/// those dependencies.
+/// those dependencies. An alias an `extern crate` gives any other crate names that crate, so it
+/// reaches no library of the tree.
 fn prelude(
     topology: &Topology,
     target: &Target,
@@ -131,9 +132,10 @@ fn prelude(
         .into_iter()
         .flat_map(|facts| &facts.crates);
     for held in crates.filter(|held| held.nesting.is_empty()) {
-        if let Some(&module) = dependencies.get(&held.name) {
-            out.insert(held.alias.clone(), module);
-        }
+        match dependencies.get(&held.name) {
+            Some(&module) => out.insert(held.alias.clone(), module),
+            None => out.remove(&held.alias),
+        };
     }
     out
 }
@@ -650,8 +652,10 @@ impl Crate<'_> {
     }
 }
 
-/// The names one module binds by a `use` or declares as a type, as its file's facts give them
-/// under its nesting.
+/// The names one module binds in the type namespace, as its file's facts give them under its
+/// nesting: each name a `use` outside a function binds, each type it declares as an item, and,
+/// below the target root, each alias an `extern crate` binds. The root's own aliases are names of
+/// the extern prelude.
 fn bound(topology: &Topology, node: &Node) -> BTreeSet<String> {
     let Some(facts) = topology.facts(&node.file) else {
         return BTreeSet::new();
@@ -659,14 +663,20 @@ fn bound(topology: &Topology, node: &Node) -> BTreeSet<String> {
     let imported = facts
         .imports
         .iter()
-        .filter(|import| import.nesting == node.nesting)
+        .filter(|import| import.nesting == node.nesting && !import.in_function)
         .flat_map(|import| import.names.iter().cloned());
     let declared = facts
         .declarations
         .iter()
-        .filter(|held| held.nesting == node.nesting && held.kind == DeclarationKind::Type)
+        .filter(|held| held.nesting == node.nesting && !held.associated)
+        .filter(|held| held.kind == DeclarationKind::Type)
         .map(|held| held.name.clone());
-    imported.chain(declared).collect()
+    let aliased = facts
+        .crates
+        .iter()
+        .filter(|held| node.parent.is_some() && held.nesting == node.nesting)
+        .map(|held| held.alias.clone());
+    imported.chain(declared).chain(aliased).collect()
 }
 
 fn listed(candidates: &[(String, String)]) -> String {

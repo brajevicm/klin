@@ -69,6 +69,9 @@ pub struct Declaration {
     /// The inline modules that hold the declaration, outermost first, and none at the top of a
     /// file.
     pub nesting: Vec<String>,
+    /// True where a type body holds the declaration, as a Rust `impl` or `trait` holds its
+    /// associated items, so it is no item of the module.
+    pub associated: bool,
     /// What the declaration's own modifier says, with no doubt read either way.
     pub visibility: Visibility,
     /// The name a consumer of the module addresses the declaration by where it differs from
@@ -132,6 +135,9 @@ pub struct Import {
     pub text: String,
     /// The inline modules that hold the import, outermost first, and none at the top of a file.
     pub nesting: Vec<String>,
+    /// True where a function body holds the import, so it binds its names in that body and not
+    /// in the module.
+    pub in_function: bool,
     pub module: Option<String>,
     pub names: Vec<String>,
     /// Every path a Rust use tree names, one per leaf, its segments joined by `::`, with `self`
@@ -1075,6 +1081,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             line: self.row(node),
             text: self.text(node),
             nesting: (self.adapter.nesting)(node, self.source),
+            in_function: inside_a_function(node, self.language),
             module: found.module,
             names: found.names,
             paths: found.paths,
@@ -1123,6 +1130,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             externally_visible: (self.adapter.visible)(node),
             entry_point,
             nesting: (self.adapter.nesting)(node, self.source),
+            associated: above(node, self.adapter.methods_in).is_some(),
             visibility: (self.adapter.visibility)(node, self.source),
             exported_as: (self.adapter.exported_as)(node, self.source),
             owner: (self.adapter.owner)(node, self.source),
@@ -1911,6 +1919,7 @@ export function charge(at: number): number {
                     externally_visible: false,
                     entry_point: false,
                     nesting: Vec::new(),
+                    associated: false,
                     visibility: Visibility::Private,
                     exported_as: None,
                     owner: None,
