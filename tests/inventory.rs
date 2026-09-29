@@ -670,8 +670,8 @@ fn deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site() {
     let tree = Tree::new();
     tree.write(
         "tests/serve.rs",
-        "#[tokio::test]\nasync fn alpha() {\n    serve(1).await;\n}\n\n#[tokio::test]\nasync fn \
-         beta() {\n    serve(2).await;\n}\n",
+        "#[tokio::test]\nasync fn alpha() {\n    serve(1).await;\n}\n\n#[tokio::test(\n    flavor = \
+         \"multi_thread\",\n)]\nasync fn beta() {\n    serve(2).await;\n}\n",
     );
     tree.base();
     tree.write(

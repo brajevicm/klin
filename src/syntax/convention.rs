@@ -18,7 +18,7 @@ const TEST_NAMES: &[&str] = &["fn test_", "def test_", "func test_", "func Test"
 const TEST_CALLS: &[&str] = &["it(", "test("];
 
 /// The markers it writes as an annotation, on the declaration line or on the run of marker lines
-/// above it. A Rust attribute marks a test by its path, which `test_marker` reads.
+/// above it. A Rust attribute marks a test by its path, which `test_attribute` reads.
 const TEST_ANNOTATIONS: &[&str] = &["@Test"];
 
 /// One test function a tree holds: the site of ADR 0008, and the body hash the cross-file pass
@@ -53,15 +53,16 @@ pub fn tests_in(file: &ParsedFile) -> Vec<Test> {
     let lines = file.lines();
     file.functions()
         .into_iter()
-        .filter_map(|node| declared(file.path, node, &lines))
+        .filter_map(|node| declared(file, node, &lines))
         .collect()
 }
 
-fn declared(path: &str, node: Node, lines: &[&str]) -> Option<Test> {
+fn declared(file: &ParsedFile, node: Node, lines: &[&str]) -> Option<Test> {
+    let path = file.path;
     let from = node.start_position().row;
     let end = node.end_position().row.min(lines.len().saturating_sub(1));
     let row = declaration_row(lines, from, end);
-    marks_a_test(lines, row).then(|| Test {
+    marks_a_test(node, file.bytes(), lines, row).then(|| Test {
         file: path.to_string(),
         line: row as u64 + 1,
         text: line_at(lines, row),
@@ -90,8 +91,9 @@ fn only_a_marker(line: &str) -> bool {
 }
 
 /// Whether the convention marks the function that starts on this row: a marker on the
-/// declaration line, or an attribute on the run of marker lines directly above it.
-fn marks_a_test(lines: &[&str], row: usize) -> bool {
+/// declaration line, an annotation on the run of marker lines directly above it, or a Rust
+/// test attribute on the function.
+fn marks_a_test(node: Node, source: &[u8], lines: &[&str], row: usize) -> bool {
     let declaration = line_at(lines, row);
     TEST_NAMES
         .iter()
@@ -99,8 +101,9 @@ fn marks_a_test(lines: &[&str], row: usize) -> bool {
         || TEST_CALLS
             .iter()
             .any(|marker| declaration.starts_with(marker))
-        || test_marker(&declaration)
+        || annotated(&declaration)
         || attributed(lines, row)
+        || test_attribute(node, source)
 }
 
 fn attributed(lines: &[&str], row: usize) -> bool {
@@ -109,20 +112,38 @@ fn attributed(lines: &[&str], row: usize) -> bool {
         .rev()
         .map(|line| line.trim())
         .take_while(|line| only_a_marker(line))
-        .any(test_marker)
+        .any(annotated)
 }
 
-/// Whether a line carries a test marker: an annotation, or a Rust attribute whose path ends in
-/// the segment `test`, with or without arguments, as `#[test]` and `#[tokio::test(...)]` do.
-fn test_marker(line: &str) -> bool {
+fn annotated(line: &str) -> bool {
     TEST_ANNOTATIONS.iter().any(|marker| line.contains(marker))
-        || line.match_indices("#[").any(|(at, _)| {
-            let path = &line[at + 2..];
-            let end = path
-                .find(|c: char| !(c.is_alphanumeric() || c == '_' || c == ':'))
-                .unwrap_or(path.len());
-            path[end..].starts_with([']', '(']) && path[..end].rsplit("::").next() == Some("test")
-        })
+}
+
+/// Whether a Rust attribute among the attributes and comments directly above this function has
+/// a path that ends in the segment `test`, with or without arguments, as `#[test]` and
+/// `#[tokio::test(...)]` do. Read from the grammar, so the lines the attribute spans and the
+/// whitespace inside it change nothing.
+fn test_attribute(node: Node, source: &[u8]) -> bool {
+    let mut above = node.prev_named_sibling();
+    while let Some(held) = above.filter(|held| PRELUDE.contains(&held.kind())) {
+        let path = held
+            .named_child(0)
+            .filter(|attribute| attribute.kind() == "attribute")
+            .and_then(|attribute| attribute.named_child(0));
+        if path.is_some_and(|path| ends_in_test(path, source)) {
+            return true;
+        }
+        above = held.prev_named_sibling();
+    }
+    false
+}
+
+fn ends_in_test(path: Node, source: &[u8]) -> bool {
+    let name = match path.kind() {
+        "scoped_identifier" => path.child_by_field_name("name"),
+        _ => Some(path),
+    };
+    name.is_some_and(|name| name.kind() == "identifier" && name.utf8_text(source) == Ok("test"))
 }
 
 /// Whether the text names this marker where no identifier runs into it, so `myfunc Test` is
@@ -230,7 +251,7 @@ fn shape(
     match statements.as_slice() {
         [only] if only.kind() == "pass_statement" => Some(PASS_BODY),
         [] if comments.iter().any(|child| elides(child, source)) => Some(ELIDED_BODY),
-        [] if marks_a_test(lines, row) => Some(EMPTY_TEST),
+        [] if marks_a_test(node, source, lines, row) => Some(EMPTY_TEST),
         _ => None,
     }
 }
@@ -366,4 +387,83 @@ fn item_after(attribute: Node) -> Node {
 fn is_cfg_test(node: Node, source: &[u8]) -> bool {
     node.utf8_text(source)
         .is_ok_and(|text| text.split_whitespace().collect::<String>() == "#[cfg(test)]")
+}
+
+/// Whether the `cfg_attr` the text starts with skips its test on every target, which a pattern
+/// cannot decide, so the Rust grammar reads the attribute. Spec 8.2.
+// ponytail: parses the rest of the file once per `cfg_attr`, one parse per file if a file of
+// many such attributes shows in a perf row.
+pub fn skips_everywhere(from: &str) -> bool {
+    let Some(file) = tolerant("site.rs", from) else {
+        return false;
+    };
+    let arguments = file
+        .root()
+        .named_child(0)
+        .filter(|item| item.kind() == "attribute_item")
+        .and_then(|item| item.named_child(0))
+        .and_then(|attribute| attribute.child_by_field_name("arguments"));
+    arguments.is_some_and(|arguments| ignores(arguments, file.bytes()))
+}
+
+/// Whether the arguments of a `cfg_attr` apply `ignore` on every target: the predicate always
+/// holds, and one attribute it applies is `ignore` or another `cfg_attr` that does the same.
+fn ignores(arguments: Node, source: &[u8]) -> bool {
+    let groups = groups(arguments);
+    let Some((predicate, applied)) = groups.split_first() else {
+        return false;
+    };
+    holds(predicate, source) == Some(true)
+        && applied.iter().any(|attribute| match attribute.as_slice() {
+            [name, ..] if word_of(*name, source) == "ignore" => true,
+            [name, inner] if word_of(*name, source) == "cfg_attr" => ignores(*inner, source),
+            _ => false,
+        })
+}
+
+/// The value of a cfg predicate on every target, and `None` where it depends on a
+/// configuration option. An option such as `windows` may hold or not, so `any(windows,
+/// not(any()))` always holds and `all(windows, not(any()))` may not.
+fn holds(predicate: &[Node], source: &[u8]) -> Option<bool> {
+    let [name, arguments] = predicate else {
+        return None;
+    };
+    if arguments.kind() != "token_tree" {
+        return None;
+    }
+    let values: Vec<Option<bool>> = groups(*arguments)
+        .iter()
+        .filter(|inner| !inner.is_empty())
+        .map(|inner| holds(inner, source))
+        .collect();
+    match (word_of(*name, source), values.as_slice()) {
+        ("all", _) if values.contains(&Some(false)) => Some(false),
+        ("all", _) => values.iter().all(Option::is_some).then_some(true),
+        ("any", _) if values.contains(&Some(true)) => Some(true),
+        ("any", _) => values.iter().all(Option::is_some).then_some(false),
+        ("not", [only]) => only.map(|held| !held),
+        _ => None,
+    }
+}
+
+/// The tokens between the delimiters of a token tree, split at each comma, with the comments
+/// left out.
+fn groups(tree: Node) -> Vec<Vec<Node>> {
+    let mut cursor = tree.walk();
+    let tokens: Vec<Node> = tree
+        .children(&mut cursor)
+        .filter(|token| !token.is_extra())
+        .collect();
+    let inside = tokens.get(1..tokens.len().saturating_sub(1)).unwrap_or(&[]);
+    inside
+        .split(|token| token.kind() == ",")
+        .map(<[Node]>::to_vec)
+        .collect()
+}
+
+fn word_of<'a>(token: Node, source: &'a [u8]) -> &'a str {
+    match token.kind() {
+        "identifier" => token.utf8_text(source).unwrap_or_default(),
+        _ => "",
+    }
 }

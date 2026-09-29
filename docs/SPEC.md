@@ -1241,13 +1241,17 @@ other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
 
 For the same reason a Rust `#[cfg_attr(P, ignore)]` or
 `#[cfg_attr(P, ignore = "...")]` is a skipped test only where `P` is always
-true under Rust's cfg rules: a predicate built of `all`, `any` and `not` alone
-that holds, such as `all()`, `not(any())` or a nest of these. Such a test
-never runs, as under a bare `#[ignore]`. A predicate that names a
-configuration option, such as `windows`, states where the test runs, and one
-that never holds, such as `any()`, skips nothing, so neither is a site. The
-pattern finds the attribute and the predicate is then evaluated, because no
-pattern counts nested parentheses.
+true under Rust's cfg rules, such as `all()`, `not(any())` or a nest of
+these. Such a test never runs, as under a bare `#[ignore]`. A configuration
+option, such as `windows` or `feature = "slow"`, may hold on one target and
+not on another. So `any(windows, not(any()))` always holds and is a site, and
+`all(windows, not(any()))` states where the test runs and is none. A
+predicate that never holds, such as `any()`, skips nothing, so it is no site
+either. `ignore` counts at any place after the predicate, and inside a nested
+`cfg_attr` whose predicate always holds too. The pattern finds `#[ignore` and
+`#[cfg_attr` with any whitespace or comment between their tokens, and the
+Rust grammar then reads the `cfg_attr` it found, so whitespace and comments
+inside the attribute change nothing.
 
 #### 8.2.1 Measurement rules of the shipped checks
 
@@ -1303,7 +1307,8 @@ judged. Every other row is judged in a test as anywhere else, so a
 `tests/escapes.rs`.
 A Rust `cfg_attr` that carries `ignore` is a skipped test only where its
 predicate always holds, as 8.2 states. Pinned by
-`a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test` and
+`a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test`,
+`a_skipped_test_is_found_through_whitespace_comments_and_nesting` and
 `a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
@@ -1719,11 +1724,14 @@ test function is a site of ADR 0008 inside such a file, in both trees, read
 off each tree's file list and kept only where the
 language's test convention marks it: a `fn`, `def` or `func` declaration
 whose name starts with `test_`, a `func Test` declaration, an `it(` or a
-`test(` call at the start of the declaration line, and a Rust attribute whose
-path ends in the segment `test`, with or without arguments, such as
-`#[test]`, `#[tokio::test]`, `#[tokio::test(flavor = "multi_thread")]` or
-`#[async_std::test]`, or an `@Test` annotation, on the declaration line or on
-the run of marker lines directly above it. `#[rstest]`, `#[test_case(...)]`
+`test(` call at the start of the declaration line, an `@Test` annotation on
+the declaration line or on the run of marker lines directly above it, and a
+Rust attribute whose path ends in the segment `test`, with or without
+arguments, such as `#[test]`, `#[tokio::test]`,
+`#[tokio::test(flavor = "multi_thread")]` or `#[async_std::test]`, among the
+attributes and comments directly above the function. The Rust grammar reads
+that attribute, so an attribute over several lines, or with whitespace or a
+comment between its tokens, marks the same test. `#[rstest]`, `#[test_case(...)]`
 and any other attribute whose last segment is not `test` mark nothing. The
 same convention decides which functions `dead-symbols` leaves unjudged and
 which empty body `stubs` calls an `empty test`. A marker an identifier runs

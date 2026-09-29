@@ -48,9 +48,9 @@ pub struct Kind {
     pub skips_literals: bool,
     /// Whether the function walk judges body shapes too, which only a parser can see. #114.
     pub reads_shapes: bool,
-    /// Whether a match stands as a site once its text is read, which a pattern cannot always
-    /// decide, such as whether a Rust `cfg_attr` predicate holds on every target.
-    pub stands: fn(&str) -> bool,
+    /// Whether a Rust `cfg_attr` a pattern finds is a site only where it skips its test on every
+    /// target, which only a parser can see. Spec 8.2.
+    pub reads_cfg_attr: bool,
     pub evaluator: Evaluator<'static>,
 }
 
@@ -109,7 +109,17 @@ struct Set {
     /// Whether the function walk judges the body shapes of the files this set reads. A set the
     /// project's own patterns make is not a language, so it names no shapes. #114.
     shapes: bool,
-    stands: fn(&str) -> bool,
+    cfg_attr: bool,
+}
+
+impl Set {
+    /// Whether a match in this text stands as a site. A Rust `cfg_attr` stands only where the
+    /// grammar reads it as skipping its test on every target. Spec 8.2.
+    fn stands(&self, text: &str, found: &regex::Match) -> bool {
+        !self.cfg_attr
+            || !found.as_str().ends_with("cfg_attr")
+            || syntax::convention::skips_everywhere(&text[found.start()..])
+    }
 }
 
 struct Spec {
@@ -304,7 +314,7 @@ fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
         .map(|set| {
             Ok(Set {
                 shapes: kind.reads_shapes,
-                stands: kind.stands,
+                cfg_attr: kind.reads_cfg_attr,
                 suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
                 patterns: compiled(
                     kind,
@@ -519,7 +529,7 @@ fn tally(
         let stands = pattern
             .regex
             .find_iter(text)
-            .filter(|found| (set.stands)(found.as_str()));
+            .filter(|found| set.stands(text, found));
         for found in stands {
             if quoted(past, found.range()) {
                 continue;
