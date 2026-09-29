@@ -353,16 +353,10 @@ impl<'a> Derivation<'a> {
             [] => false,
             [(_, at)] => self.named_in(*at, name, key.1.clone()),
             [(first, _), (second, _), ..] => {
-                let file = self.file(module);
-                self.surface.holes.push(Hole {
-                    file: file.to_string(),
-                    line: second.line,
-                    text: second.text.clone(),
-                    why: format!(
-                        "{name} is provided by this glob and by the glob at {file}:{}",
-                        first.line
-                    ),
-                });
+                let site = (self.file(module).to_string(), first.line);
+                self.surface
+                    .holes
+                    .push(twice_globbed(&site.0, second, name, &site));
                 true
             }
         };
@@ -441,17 +435,9 @@ impl<'a> Derivation<'a> {
         exposure: Exposure<'a>,
     ) {
         if let Some(other) = self.glob_names.get(&path).filter(|other| *other != site) {
-            self.surface.holes.push(Hole {
-                file: site.0.clone(),
-                line: export.line,
-                text: export.text.clone(),
-                why: format!(
-                    "{} is provided by this glob and by the glob at {}:{}",
-                    path.rsplit("::").next().unwrap_or(&path),
-                    other.0,
-                    other.1
-                ),
-            });
+            let name = path.rsplit("::").next().unwrap_or(&path);
+            let hole = twice_globbed(&site.0, export, name, other);
+            self.surface.holes.push(hole);
             return;
         }
         self.glob_names.insert(path.clone(), site.clone());
@@ -507,6 +493,20 @@ impl<'a> Derivation<'a> {
             }
         }
         out
+    }
+}
+
+/// The hole a name is where the glob `export` in `file` provides it and so does the glob at
+/// `other`.
+fn twice_globbed(file: &str, export: &Export, name: &str, other: &(String, u64)) -> Hole {
+    Hole {
+        file: file.to_string(),
+        line: export.line,
+        text: export.text.clone(),
+        why: format!(
+            "{name} is provided by this glob and by the glob at {}:{}",
+            other.0, other.1
+        ),
     }
 }
 

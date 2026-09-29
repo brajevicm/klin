@@ -120,6 +120,7 @@ pub struct ExportLeaf {
 /// which is its alias where one is written. At the top of a crate root it puts that name in the
 /// crate's extern prelude.
 pub struct ExternCrate {
+    /// The inline modules that hold the statement, outermost first.
     pub nesting: Vec<String>,
     pub name: String,
     pub alias: String,

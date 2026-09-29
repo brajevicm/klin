@@ -108,13 +108,13 @@ pub(super) fn resolve(builder: &mut Builder) {
 /// The names of one target's extern prelude that reach a library the tree holds, each to that
 /// library's root module: every dependency its manifest takes by path, under its rename or else
 /// the library's own name, and every alias an `extern crate` at the top of its root gives one of
-/// those.
+/// those dependencies.
 fn prelude(
     topology: &Topology,
     target: &Target,
     libraries: &BTreeMap<String, (String, usize)>,
 ) -> BTreeMap<String, usize> {
-    let mut out: BTreeMap<String, usize> = target
+    let dependencies: BTreeMap<String, usize> = target
         .dependencies
         .iter()
         .filter_map(|dependency| {
@@ -125,12 +125,13 @@ fn prelude(
             ))
         })
         .collect();
+    let mut out = dependencies.clone();
     let crates = topology
         .facts(&target.root)
         .into_iter()
         .flat_map(|facts| &facts.crates);
     for held in crates.filter(|held| held.nesting.is_empty()) {
-        if let Some(&module) = out.get(&held.name) {
+        if let Some(&module) = dependencies.get(&held.name) {
             out.insert(held.alias.clone(), module);
         }
     }
