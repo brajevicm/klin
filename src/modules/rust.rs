@@ -456,6 +456,7 @@ impl Crate<'_> {
             root: self.target.root.clone(),
             manifest: self.target.manifest.clone(),
             module: self.nodes[root].index,
+            aliases: aliases(builder.topology, &self.target.root),
         });
         for node in &self.nodes {
             let module = &mut builder.graph.modules[node.index];
@@ -558,6 +559,24 @@ impl Crate<'_> {
         }
         Reached::Module(at)
     }
+}
+
+/// The crate names a target root re-exports under a name of their own, by that name: each leaf
+/// of one segment, after any leading `::`, that its `pub use` and `pub extern crate` statements
+/// bind.
+fn aliases(topology: &Topology, root: &str) -> BTreeMap<String, String> {
+    topology
+        .facts(root)
+        .into_iter()
+        .flat_map(|facts| &facts.exports)
+        .filter(|export| export.nesting.is_empty())
+        .flat_map(|export| &export.leaves)
+        .filter_map(|leaf| {
+            let path = leaf.path.strip_prefix("::").unwrap_or(&leaf.path);
+            let name = leaf.name.clone().filter(|_| !path.contains("::"))?;
+            Some((name, path.to_string()))
+        })
+        .collect()
 }
 
 fn listed(candidates: &[(String, String)]) -> String {

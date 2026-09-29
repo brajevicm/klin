@@ -87,16 +87,17 @@ pub struct Declaration {
     pub signature: Option<String>,
 }
 
-/// One statement that exposes names past the module: Rust's `pub use`, and every TypeScript
-/// `export` that is not a declaration of its own. A leaf names what is exposed and under which
-/// name. The module graph resolves a path or a specifier; nothing here does.
+/// One statement that exposes names past the module: Rust's `pub use` and `pub extern crate`,
+/// and every TypeScript `export` that is not a declaration of its own. A leaf names what is
+/// exposed and under which name. The module graph resolves a path or a specifier; nothing here
+/// does.
 pub struct Export {
     pub line: u64,
     pub text: String,
     /// The inline modules that hold the statement, outermost first.
     pub nesting: Vec<String>,
     /// The module specifier a TypeScript re-export names, and none for a local export or a Rust
-    /// use tree, whose leaves carry their own paths.
+    /// statement, whose leaves carry their own paths.
     pub source: Option<String>,
     /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
     pub type_only: bool,

@@ -2,8 +2,9 @@
 //! module the derivation follows every `pub mod` and every `pub use`, so an item's path is the
 //! path a consumer writes and never the file that declares it. A plain `pub` item inside a
 //! private module is external only where a `pub use` exposes it. A restricted visibility is
-//! never external. A re-export of another crate, of an enum variant, or of a name klin cannot
-//! find is an opaque item whose clause is its contract; a glob klin cannot list is a hole.
+//! never external. A re-export that reaches a library target the tree holds is followed into
+//! its source. A re-export of any other crate, of an enum variant, or of a name klin cannot find
+//! is an opaque item whose clause is its contract; a glob klin cannot list is a hole.
 
 use std::collections::{HashMap, HashSet};
 
@@ -41,16 +42,17 @@ pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Derived
 }
 
 /// One library target being derived: its surface so far, the inherent methods and type
-/// declarations of the whole target by name, and what has been walked, so a cycle of
-/// re-exports ends.
+/// declarations of each target it reaches by that target and name, the targets indexed so far,
+/// and what has been walked or is being looked up through globs, so a cycle of re-exports ends.
 struct Derivation<'a> {
     topology: &'a Topology<'a>,
     graph: &'a ModuleGraph,
-    target: usize,
     surface: Surface,
-    methods: HashMap<String, Vec<(usize, &'a Declaration)>>,
-    types: HashMap<String, Vec<usize>>,
+    methods: HashMap<(usize, &'a str), Vec<(usize, &'a Declaration)>>,
+    types: HashMap<(usize, &'a str), Vec<usize>>,
+    indexed: HashSet<usize>,
     walked: HashSet<(usize, String)>,
+    sought: HashSet<(usize, String)>,
     globbed: HashSet<(usize, String, String)>,
     glob_names: HashMap<String, (String, u64)>,
 }
@@ -58,10 +60,9 @@ struct Derivation<'a> {
 impl<'a> Derivation<'a> {
     fn new(topology: &'a Topology<'a>, graph: &'a ModuleGraph, target: usize) -> Derivation<'a> {
         let named = &graph.targets[target];
-        let mut derivation = Derivation {
+        Derivation {
             topology,
             graph,
-            target,
             surface: Surface {
                 id: named.name.clone(),
                 language: LANGUAGE,
@@ -75,19 +76,23 @@ impl<'a> Derivation<'a> {
             },
             methods: HashMap::new(),
             types: HashMap::new(),
+            indexed: HashSet::new(),
             walked: HashSet::new(),
+            sought: HashSet::new(),
             globbed: HashSet::new(),
             glob_names: HashMap::new(),
-        };
-        derivation.index();
-        derivation
+        }
     }
 
-    /// Every public inherent method of the target by the type it is added to, and every type
-    /// declaration by name, so a method finds its type wherever its `impl` sits.
-    fn index(&mut self) {
+    /// Every public inherent method of one target by the type it is added to, and every type
+    /// declaration by name, so a method finds its type wherever its `impl` sits. A target is
+    /// indexed once, when a type of it is first exposed.
+    fn index(&mut self, target: usize) {
+        if !self.indexed.insert(target) {
+            return;
+        }
         for (at, module) in self.graph.modules.iter().enumerate() {
-            if module.target != Some(self.target) {
+            if module.target != Some(target) {
                 continue;
             }
             for declaration in self.declarations(at) {
@@ -96,13 +101,13 @@ impl<'a> Derivation<'a> {
                         if declaration.visibility == Visibility::Public =>
                     {
                         self.methods
-                            .entry(owner.clone())
+                            .entry((target, owner))
                             .or_default()
                             .push((at, declaration));
                     }
                     (DeclarationKind::Type, _) => {
                         self.types
-                            .entry(declaration.name.clone())
+                            .entry((target, &declaration.name))
                             .or_default()
                             .push(at);
                     }
@@ -233,25 +238,24 @@ impl<'a> Derivation<'a> {
     }
 
     /// One declaration as an item under `path`, with the public inherent methods of a type
-    /// under it. A method whose `impl` sits in another module attaches where the target
-    /// declares exactly one type of that name, and is a hole otherwise.
+    /// under it. A method whose `impl` sits in another module attaches where the declaring
+    /// target declares exactly one type of that name, and is a hole otherwise.
     fn expose(&mut self, at: usize, declaration: &'a Declaration, path: String) {
         let file = self.file(at);
         self.surface
             .items
             .push(declared(path.clone(), file, declaration));
-        if declaration.kind != DeclarationKind::Type {
+        let Some(target) = self
+            .module(at)
+            .target
+            .filter(|_| declaration.kind == DeclarationKind::Type)
+        else {
             return;
-        }
-        let methods = self
-            .methods
-            .get(&declaration.name)
-            .cloned()
-            .unwrap_or_default();
-        let declared_in = self
-            .types
-            .get(&declaration.name)
-            .map_or(0, |modules| modules.len());
+        };
+        self.index(target);
+        let key = (target, declaration.name.as_str());
+        let methods = self.methods.get(&key).cloned().unwrap_or_default();
+        let declared_in = self.types.get(&key).map_or(0, |modules| modules.len());
         for (holder, method) in methods {
             let holder_file = self.file(holder);
             if holder == at || declared_in == 1 {
@@ -272,13 +276,18 @@ impl<'a> Derivation<'a> {
         }
     }
 
-    /// One named leaf of a `pub use`, exposed under `path`: a module and everything under it, a
-    /// declaration of the module the path reaches, a re-export that module makes under the
-    /// name, or an opaque item where klin proves the name is exposed and no more.
+    /// One named leaf of a `pub use` or a `pub extern crate`, exposed under `path`: a module and
+    /// everything under it, a declaration of the module the path reaches, a re-export that
+    /// module makes under the name, or an opaque item where klin proves the name is exposed and
+    /// no more. A crate root is opaque, because its items are judged under its own surface.
     fn named(&mut self, from: usize, export: &'a Export, leaf: &'a ExportLeaf, path: String) {
         let file = self.file(from);
         match self.graph.resolve(from, &leaf.path) {
-            Resolved::Module { module, rest } if rest.is_empty() => self.module_item(module, &path),
+            Resolved::Module { module, rest }
+                if rest.is_empty() && self.module(module).parent.is_some() =>
+            {
+                self.module_item(module, &path)
+            }
             Resolved::Module { module, rest } if rest.len() == 1 => {
                 if !self.named_in(module, &rest[0], path.clone()) {
                     self.surface.items.push(opaque(
@@ -305,7 +314,8 @@ impl<'a> Derivation<'a> {
     }
 
     /// One name looked up in the module a path reached: its public declarations of that name,
-    /// or the re-exports it makes under that name. False where the module has neither.
+    /// the re-exports it makes under that name, or else what its globs provide under it. False
+    /// where none gives the name.
     fn named_in(&mut self, module: usize, name: &str, path: String) -> bool {
         let declarations: Vec<&Declaration> = self
             .public_declarations(module)
@@ -323,7 +333,33 @@ impl<'a> Derivation<'a> {
         for (held, inner) in &re_exported {
             self.named(module, held, inner, path.clone());
         }
-        !declarations.is_empty() || !re_exported.is_empty()
+        !declarations.is_empty() || !re_exported.is_empty() || self.globbed_in(module, name, path)
+    }
+
+    /// One name looked up through the globs of a module in source order, until a module one of
+    /// them reaches gives it. A glob that leads back into the same lookup gives nothing.
+    fn globbed_in(&mut self, module: usize, name: &str, path: String) -> bool {
+        let key = (module, path);
+        if !self.sought.insert(key.clone()) {
+            return false;
+        }
+        let reached: Vec<usize> = self
+            .exports(module)
+            .flat_map(|held| &held.leaves)
+            .filter(|leaf| leaf.name.is_none())
+            .filter_map(|leaf| {
+                let target = leaf.path.trim_end_matches("::*");
+                match self.graph.resolve(module, target) {
+                    Resolved::Module { module, rest } if rest.is_empty() => Some(module),
+                    _ => None,
+                }
+            })
+            .collect();
+        let found = reached
+            .into_iter()
+            .any(|at| self.named_in(at, name, key.1.clone()));
+        self.sought.remove(&key);
+        found
     }
 
     /// One glob of a `pub use`: every name the module it reaches exposes, under `prefix`, less
