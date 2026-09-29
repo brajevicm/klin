@@ -1349,11 +1349,12 @@ attribute itself or directly inside `cfg_attr`, the string value of `default`,
 or raw, is the path of a function the derive calls. The string is read by its
 value, every escape decoded, and a line continuation drops its newline and the
 whitespace after it. A string with an escape klin cannot decode names nothing.
-The path's last segment, once every generic argument list and any
-qualified-self prefix such as `<T as Trait>` are removed, is a reference, and
-no other segment is. A const-generic block such as `{ 1 < 2 }` is removed
-whole first, so what it holds opens no argument list. So `Accessor::<u8>::get`
-references `get` alone. It
+The Rust grammar reads the decoded value as one path expression, and the name
+that path ends in is a reference, and no other segment is. So generic
+arguments, a qualified-self prefix such as `<T as Trait>` and a const-generic
+block, with any literal or comment inside it, never change which name that
+is, and `Accessor::<u8>::get` references `get` alone. A value the grammar does
+not read as exactly one path names nothing. It
 is an ordinary reference, so a changed run widens on it and `reachability`
 counts it. The same tokens inside a macro call stay text. `with` names a
 module, which no one reference stands for, so its string stays text, as do a
@@ -1401,6 +1402,8 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_qualified_self_serde_path_references_its_terminal_callable`,
 `an_escaped_serde_string_is_read_by_its_value`,
 `a_const_generic_block_in_a_serde_path_keeps_its_terminal_callable`,
+`a_brace_in_a_char_literal_of_a_const_generic_block_keeps_the_terminal_callable`,
+`a_brace_in_a_string_or_a_comment_of_a_const_generic_block_keeps_the_terminal_callable`,
 `a_continued_serde_string_is_read_without_the_whitespace_after_the_newline` and
 `removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
 with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;

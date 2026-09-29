@@ -352,6 +352,60 @@ fn a_continued_serde_string_is_read_without_the_whitespace_after_the_newline() {
 }
 
 #[test]
+fn a_brace_in_a_char_literal_of_a_const_generic_block_keeps_the_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r##"#[derive(Deserialize)]
+pub struct Settings {
+    #[serde(default = "Accessor::<{ let _ = '}'; 1 < 2 }>::get")]
+    pub zoom: u8,
+}
+
+fn get() -> u8 {
+    3
+}
+
+struct Accessor;
+"##,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_brace_in_a_string_or_a_comment_of_a_const_generic_block_keeps_the_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r##"#[derive(Deserialize)]
+pub struct Settings {
+    #[serde(default = "Accessor::<{ /* } */ let _ = \"}\"; 1 < 2 }>::get")]
+    pub zoom: u8,
+}
+
+fn get() -> u8 {
+    3
+}
+
+struct Accessor;
+"##,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
 fn a_new_private_typescript_function_fails() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);

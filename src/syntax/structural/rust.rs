@@ -4,6 +4,8 @@
 
 use tree_sitter::Node;
 
+use crate::syntax::tolerant;
+
 use crate::syntax::structural::{
     Adapter, ExportLeaf, Exported, Imported, Spelling, Visibility, above, spelled, text_of,
 };
@@ -545,45 +547,33 @@ fn unescaped(escape: &str) -> Option<String> {
         .map(|(_, value)| value.to_string())
 }
 
-/// The last segment of a path once every generic argument list is gone, so
-/// `Accessor::<u8>::get` and `<T as Trait>::get` both name `get`. A const-generic block such as
-/// `{ 1 < 2 }` goes first, whole, so a comparison inside it opens no list, and an arrow inside the
-/// arguments does not close one.
+/// The function a decoded path names, as the Rust grammar reads the path as an expression, so
+/// generic arguments, a qualified-self prefix such as `<T as Trait>` and a const-generic block
+/// with any literal or comment inside it never change which name the path ends in. A value the
+/// grammar does not read as exactly one path names nothing.
 fn terminal(path: &str) -> Option<String> {
-    let mut depth = 0usize;
-    let mut previous = ' ';
-    let mut bare = String::new();
-    for held in outside_blocks(path).chars() {
-        match held {
-            '<' => depth += 1,
-            '>' if previous != '-' => depth = depth.saturating_sub(1),
-            _ if depth == 0 => bare.push(held),
-            _ => {}
-        }
-        previous = held;
-    }
-    bare.rsplit("::")
-        .map(str::trim)
-        .find(|segment| !segment.is_empty())
-        .map(str::to_string)
+    let snippet = format!("fn f() {{ {path}; }}");
+    let file = tolerant("path.rs", &snippet)?;
+    let root = file.root();
+    let body = root
+        .named_child(0)
+        .filter(|_| !root.has_error() && root.named_child_count() == 1)?
+        .child_by_field_name("body")
+        .filter(|body| body.named_child_count() == 1)?;
+    let statement = body
+        .named_child(0)
+        .filter(|held| held.kind() == "expression_statement")?;
+    callable(statement.named_child(0)?, file.bytes())
 }
 
-/// The path with every `{ ... }` block and what it holds removed.
-fn outside_blocks(path: &str) -> String {
-    let mut depth = 0usize;
-    path.chars()
-        .filter(|held| match held {
-            '{' => {
-                depth += 1;
-                false
-            }
-            '}' => {
-                depth = depth.saturating_sub(1);
-                false
-            }
-            _ => depth == 0,
-        })
-        .collect()
+/// The name a path expression ends in.
+fn callable(node: Node, source: &[u8]) -> Option<String> {
+    match node.kind() {
+        "identifier" => Some(text_of(node, source)),
+        "scoped_identifier" => callable(node.child_by_field_name("name")?, source),
+        "generic_function" => callable(node.child_by_field_name("function")?, source),
+        _ => None,
+    }
 }
 
 /// Whether this string follows one of `SERDE_CALLABLES` and `=` in the tokens of a `serde(...)`
