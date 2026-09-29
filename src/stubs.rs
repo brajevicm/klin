@@ -83,6 +83,7 @@ pub const KIND: Kind = Kind {
     test_idioms: &[],
     skips_literals: true,
     reads_shapes: true,
+    reads_cfg_attr: false,
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "stub site(s)",

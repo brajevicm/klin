@@ -621,9 +621,12 @@ Each check documents its rule. The rules for the shipped checks:
   index and a reference from another file. A member reached only through a
   name several files declare is not proof. `*.rs`, `*.ts` and every other
   bare extension are never a family, nor is a test root or a file under a
-  test directory. Of two candidates the broader wins where its whole cohort
-  is proven, and a narrower one survives a broader one that is not. The
-  policy is read from the derivation commit alone, never from the union with
+  test directory. A file under a test directory, or one whose basename
+  carries a test affix of 8.2, is never a member in a tree a run judges.
+  Of two candidates the
+  broader wins where its whole cohort is proven, and a narrower one survives
+  a broader one that is not. The policy is read from the derivation commit
+  alone, never from the union with
   `after`, so the tree being judged cannot widen or weaken it, and it is
   cached under that commit. When nothing is proven the gate has no families
   to judge. A person may narrow the derived families only with `in` and
@@ -1236,6 +1239,21 @@ The escapes table gains three rows for test-disabling constructs it lacks:
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
 `@Disabled`, `t.Skip` and `XCTSkip`, are already there.
 
+For the same reason a Rust `#[cfg_attr(P, ignore)]` or
+`#[cfg_attr(P, ignore = "...")]` is a skipped test only where `P` is always
+true under Rust's cfg rules, such as `all()`, `not(any())` or a nest of
+these. Such a test never runs, as under a bare `#[ignore]`. A configuration
+option, such as `windows` or `feature = "slow"`, may hold on one target and
+not on another. So `any(windows, not(any()))` always holds and is a site, and
+`all(windows, not(any()))` states where the test runs and is none. A
+predicate that never holds, such as `any()` or `false`, skips nothing, so it
+is no site either. `true` always holds, and so does `test`, because a test
+runs only where `cfg(test)` is set. `ignore` counts at any place after the predicate, and inside a nested
+`cfg_attr` whose predicate always holds too. The pattern finds `#[ignore` and
+`#[cfg_attr` with any whitespace or comment between their tokens, and the
+Rust grammar then reads the `cfg_attr` it found, so whitespace and comments
+inside the attribute change nothing.
+
 #### 8.2.1 Measurement rules of the shipped checks
 
 The table above names what each shipped check measures. This section states
@@ -1288,6 +1306,13 @@ judged. Every other row is judged in a test as anywhere else, so a
 `production_rust_beside_a_test_root_is_judged_as_before` and
 `a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged` in
 `tests/escapes.rs`.
+A Rust `cfg_attr` that carries `ignore` is a skipped test only where its
+predicate always holds, as 8.2 states. Pinned by
+`a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test`,
+`a_skipped_test_is_found_through_whitespace_comments_and_nesting`,
+`a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test` and
+`a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
+`tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
 line, judges a test module like any other code, and refuses the key. Pinned by
 `repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
@@ -1324,6 +1349,7 @@ its shape. Pinned by
 `a_pass_body_fails_and_the_same_declaration_with_a_body_stays_green`,
 `an_elided_body_fails_and_a_comment_that_elides_nothing_stays_green`,
 `an_empty_test_body_fails_and_a_test_rewritten_with_the_same_declaration_stays_green`,
+`an_empty_body_under_a_multi_line_tokio_test_is_an_empty_test`,
 `pass_on_an_exception_class_and_on_an_abstract_declaration_is_not_a_stub`,
 `a_callback_on_the_line_of_a_test_declaration_is_not_an_empty_test` and
 `a_decorator_or_a_base_whose_text_only_spells_a_marker_does_not_hide_a_pass_body`
@@ -1342,7 +1368,33 @@ resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
 globs. The check is name-only: it does not resolve imports, types, reflection,
-framework entry points or external callers. A declaration that becomes dead
+framework entry points or external callers. The index reads a string as text,
+with two exceptions. Where a Rust attribute item holds `serde(...)`, as the
+attribute itself or directly inside `cfg_attr`, the string value of `default`,
+`skip_serializing_if`, `serialize_with`, `deserialize_with` or `getter`, plain
+or raw, is the path of a function the derive calls. The string is read by its
+value, every escape decoded, and a line continuation drops its newline and the
+whitespace after it. A string with an escape klin cannot decode names nothing.
+The Rust grammar reads the decoded value as one path expression, and the name
+that path ends in is a reference, and no other segment is. So generic
+arguments, a qualified-self prefix such as `<T as Trait>` and a const-generic
+block, with any literal or comment inside it, never change which name that
+is, and `Accessor::<u8>::get` references `get` alone. A value the grammar does
+not read as exactly one path names nothing. It
+is an ordinary reference, so a changed run widens on it and `reachability`
+counts it. The same `serde` tokens inside a macro call are not an attribute,
+so no path they spell is a reference. `with` names a
+module, which no one reference stands for, so its string stays text, as do a
+`default` with no value and the string of any other key, such as `rename`.
+Inside a string literal that a Rust macro call receives or a `macro_rules!`
+body holds, plain or raw and read by the same decoded value, the name of each
+`{name}` or `{name:spec}` capture is a reference, and so is a width or a
+precision the spec names, such as `WIDTH` and `PREC` in `{v:>WIDTH$.PREC$}`.
+So a name only `format!("{name}")` or `format!(r#"{name}"#)` uses is alive. `{{` is a brace, and a position such as `{0}` or `{}` names
+nothing. The macro is not resolved, so a string any macro receives is read
+this way, and under the name-only rule an extra reference can only make a
+declaration look used. A
+declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
@@ -1372,8 +1424,32 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_private_typescript_main_is_judged`,
 `losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
 `one_typescript_reference_keeps_duplicate_names_alive` in
-`tests/dead_symbols.rs`; the report cap is covered by
-`report_lists_every_current_dead_symbol_without_the_note_cap`, and the
+`tests/dead_symbols.rs`; the `serde` strings by
+`a_private_function_only_a_serde_default_names_passes`,
+`a_private_function_only_a_serde_skip_serializing_if_names_passes`,
+`a_private_function_no_serde_key_names_still_fails`,
+`a_serde_attribute_inside_cfg_attr_names_its_function_too`,
+`a_serde_path_references_only_its_last_segment`,
+`a_serde_with_module_names_no_function`,
+`serde_tokens_inside_a_macro_call_name_no_function`,
+`a_raw_string_serde_path_names_its_function`,
+`a_generic_qualified_serde_path_references_its_terminal_callable`,
+`a_qualified_self_serde_path_references_its_terminal_callable`,
+`an_escaped_serde_string_is_read_by_its_value`,
+`a_const_generic_block_in_a_serde_path_keeps_its_terminal_callable`,
+`a_brace_in_a_char_literal_of_a_const_generic_block_keeps_the_terminal_callable`,
+`a_brace_in_a_string_or_a_comment_of_a_const_generic_block_keeps_the_terminal_callable`,
+`a_continued_serde_string_is_read_without_the_whitespace_after_the_newline` and
+`removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
+with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
+the format captures by `a_private_const_only_a_format_capture_uses_passes`,
+`a_private_const_only_a_raw_format_capture_uses_passes` and
+`a_private_const_only_a_width_or_a_macro_rules_capture_uses_passes`; the test
+convention by
+`a_tokio_test_passes_inline_and_under_a_test_directory` and
+`a_multi_line_test_attribute_marks_its_function`; the report cap
+is covered by `report_lists_every_current_dead_symbol_without_the_note_cap`,
+and the
 judgement scope by
 `a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge` and
 `unrelated_historical_debt_outside_the_changed_scope_stays_silent`, and the
@@ -1518,6 +1594,9 @@ both trees stays one NOTE under the ordinary two-tree ratchet, and never
 fails because a run re-judged it. Identity is the
 repository-relative path, so a file two families match is judged once,
 under the first family in the list, and an accepted entry names the path. A
+file under a test directory, or one a test affix marks, is no member in either
+tree a run judges (5.4), so a test written beside a family's files is judged
+by no family. A
 measured member with no eligible declaration is measured and not judged,
 and is neither unreached nor unsupported. A file that leaves the tree is
 `inventory`'s and no finding here. A new unreached member fails as new, a
@@ -1549,8 +1628,10 @@ by `a_new_command_file_nothing_references_fails_as_new`,
 `a_family_the_base_proves_is_derived_and_judges_a_new_working_tree_member`,
 `a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing`,
 `the_stop_hook_blocks_a_turn_that_left_a_member_unreached`,
-`a_changed_run_reports_one_surface_the_whole_run_reports_too` and
-`legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`
+`a_changed_run_reports_one_surface_the_whole_run_reports_too`,
+`legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`,
+`a_new_test_file_in_a_family_directory_is_no_member` and
+`a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove`
 in `tests/reachability.rs`, and by
 `a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction` in
 `tests/structural.rs`.
@@ -1649,10 +1730,18 @@ test function is a site of ADR 0008 inside such a file, in both trees, read
 off each tree's file list and kept only where the
 language's test convention marks it: a `fn`, `def` or `func` declaration
 whose name starts with `test_`, a `func Test` declaration, an `it(` or a
-`test(` call at the start of the declaration line, and a `#[test]`
-attribute or an `@Test` annotation on the declaration line or on the run of
-marker lines directly above it. A marker an identifier runs into matches
-nothing, so `myfunc Test` is not a declaration, and a call marker counts at
+`test(` call at the start of the declaration line, an `@Test` annotation on
+the declaration line or on the run of marker lines directly above it, and a
+Rust attribute whose path ends in the segment `test`, with or without
+arguments, such as `#[test]`, `#[tokio::test]`,
+`#[tokio::test(flavor = "multi_thread")]` or `#[async_std::test]`, among the
+attributes and comments directly above the function. The Rust grammar reads
+that attribute, so an attribute over several lines, or with whitespace or a
+comment between its tokens, marks the same test. `#[rstest]`, `#[test_case(...)]`
+and any other attribute whose last segment is not `test` mark nothing. The
+same convention decides which functions `dead-symbols` leaves unjudged and
+which empty body `stubs` calls an `empty test`. A marker an identifier runs
+into matches nothing, so `myfunc Test` is not a declaration, and a call marker counts at
 the start of the line only, so `def helper(test_arg): return it(test_arg)`
 is not a test. Where the grammar holds the annotation inside the function's
 own node, as it does for Java, the declaration line is the first line of
@@ -1673,6 +1762,7 @@ of ADR 0003. Pinned by
 `a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,
+`deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site`,
 `an_in_that_names_one_file_judges_the_functions_in_it`,
 `a_test_file_beside_its_source_is_judged_with_no_configuration`,
 `an_except_added_only_in_the_working_tree_does_not_let_a_deletion_through` and
@@ -2025,13 +2115,65 @@ surface, the exported path or name and the item's kind, never the file that
 declares it. In this check, *external* means outside the crate or package
 that declares the item, including a sibling in the same repository, and never
 means published. The check judges only external items. From a Rust root the
-check follows every plain `pub` declaration, every `pub mod`, and every
-`pub use` leaf: an alias renames the item, a glob exposes every public item of
-the module it reaches less the names the globbing module exposes itself, a
-re-export of a module exposes everything under it, and a plain `pub` item
-inside a private module is external only where a `pub use` exposes it.
+check follows every plain `pub` declaration, every `pub mod`, every `pub use`
+leaf and every `pub extern crate`, which re-exports the crate under its alias:
+an alias renames the item, a glob exposes every public item of the module it
+reaches less every name the globbing module binds itself at any visibility
+in the namespace the name lives in (an item it declares, a child module or an
+`extern crate` alias as a type, and a name a `use` outside a function binds
+in both), a name a module neither declares nor re-exports by name comes from the one glob of it
+that provides the name and is a hole where two do, a re-export of a module
+exposes everything under it, and a plain
+`pub` item inside a private module is external only where a `pub use` exposes
+it.
 `pub(crate)`, `pub(super)`, `pub(self)` and `pub(in ...)` are never external.
-A public inherent method is an item under its type. From a TypeScript entry
+A re-export whose path starts, with or without a leading `::`, at a name of
+the crate's extern prelude that reaches a library target the tree holds is
+followed into that library's source, globs included, and each item it
+reaches is measured there under the surface that re-exports it. Those names
+are each normal dependency the target's manifest takes by path, target-specific
+ones included, under its rename where the manifest writes `package =` and
+under the library's own crate name otherwise, and each alias an
+`extern crate`, public or private, at the top of the crate root gives one of
+those dependencies, as `pub extern crate wgpu_types as wgt;` does. The path
+names the manifest of the library, so a crate name two libraries of the tree share
+reaches the one the dependency names. A dependency without a path, such as a
+registry version, names a crate the tree does not hold even where a library of
+the tree has its name, and so does a name a `use` binds, which never enters
+the extern prelude. A first segment the module binds itself, by a `use`
+outside a function, as a type it declares or, below the crate root, as an
+`extern crate` alias, names a local item, so the path is opaque even where a
+dependency has that name, and so is an alias the crate root gives a crate
+that is no dependency of its manifest. An associated item of an `impl` or a
+`trait` is no item of the module, so it hides no name. So an item moved into a sibling crate and
+re-exported under its old name keeps its identity: an unchanged contract
+passes and a changed one fails as changed. A re-export of a whole crate root,
+such as that `pub extern crate` itself, is an opaque item, because the items
+of a library the tree holds are judged under its own surface. Pinned by
+`an_item_moved_into_a_workspace_sibling_and_re_exported_under_its_name_passes`,
+`an_item_moved_into_a_workspace_sibling_with_a_changed_contract_fails_as_changed`,
+`a_re_export_through_a_pub_extern_crate_alias_of_a_sibling_is_judged_the_same_way`,
+`a_name_a_sibling_provides_through_a_glob_is_measured_where_the_glob_reaches`,
+`a_re_export_after_a_leading_path_separator_reaches_an_extern_prelude_name_and_no_use_alias`,
+`a_crate_the_manifest_takes_from_a_registry_stays_opaque_though_the_tree_holds_its_name`,
+`a_crate_name_two_libraries_of_the_tree_share_reaches_the_one_the_manifest_names`,
+`a_dependency_the_manifest_renames_is_followed_under_its_new_name`,
+`a_dependency_inherited_from_the_workspace_is_followed_from_the_workspace_path`,
+`a_dependency_inherited_from_a_workspace_below_the_tree_root_is_followed`,
+`a_dependency_a_package_inherits_from_its_own_workspace_is_followed`,
+`a_target_specific_path_dependency_is_followed`,
+`a_private_extern_crate_alias_of_a_sibling_is_followed`,
+`a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it`,
+`a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque`,
+`a_local_use_named_like_a_dependency_keeps_its_path_opaque_though_its_item_changes`,
+`a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides`,
+`an_extern_crate_alias_named_like_a_dependency_keeps_its_path_opaque`,
+`only_a_module_level_binding_in_the_same_namespace_hides_a_name_a_glob_provides`,
+`a_use_inside_a_function_named_like_a_dependency_leaves_the_dependency_followed` and
+`a_glob_of_a_workspace_sibling_lists_its_items`.
+A public inherent method, associated constant or associated type is an item
+under its type, pinned by `an_item_of_an_inherent_impl_is_an_item_under_its_type`.
+From a TypeScript entry
 file the check follows exported declarations and namespaces, default exports,
 local export clauses, and named, aliased,
 type-only and star re-exports through the module graph's own edges. An
@@ -2082,8 +2224,9 @@ with their type alone. TypeScript covers functions and overload sets, classes
 with their heritage and public and protected members, interfaces, type
 aliases, enums and variables. A type the compiler would infer is written as
 `?`, so an inferred contract is visibly partial and never fabricated from a
-body. A re-export of another crate or package, an enum variant re-exported by
-path, a `* as ns` export and an anonymous default export are opaque, and the
+body. A re-export of a crate the tree does not hold or of another package, an
+enum variant re-exported by path, a `* as ns` export and an anonymous default
+export are opaque, and the
 normalized clause that exposes them is the contract klin compares. An exported
 TypeScript `namespace` or `declare namespace` is the item `NAME (namespace)`,
 opaque, and its normalized declaration is the clause klin compares: the
@@ -2122,10 +2265,10 @@ Outside the hook the remedy names only the person's accepted entry and CI,
 and no second stop. Pinned by
 `a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_a_person`
 and `a_break_by_hand_names_person_acceptance_and_no_second_stop`. A glob over
-another crate, a star export of another package, a name two globs or two
-stars provide, an export form klin recognizes and cannot list, such as
-TypeScript's `export =` or an exported ambient `declare module`, a path
-through a module no file answers, and an unresolved module or specifier
+a crate the tree does not hold, a star export of another package, a name two
+globs or two stars provide, an export form klin recognizes and cannot list,
+such as TypeScript's `export =` or an exported ambient `declare module`, a
+path through a module no file answers, and an unresolved module or specifier
 inside a surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while
 other findings still print, because a green run must not imply a surface it
 claims to support was completely measured. A hole the base holds too is a
@@ -2142,7 +2285,10 @@ derivation runs only over a tree that holds a path of that language, by the
 same rule as its resolver in `layering`. Pinned by every test in
 `tests/public_api.rs`. Known limits: a module bound by `use` and then
 re-exported by its bare name, a macro, a trait implementation's semantics,
-`cfg` evaluation, an attribute written through `#[cfg_attr(...)]`,
+`cfg` evaluation, an attribute written through `#[cfg_attr(...)]`, a
+registry dependency that `[patch]` or `[replace]` points into the tree,
+`extern crate self as` an alias, a re-export by name through a glob of a
+module that binds the name in either namespace, which is opaque,
 `typesVersions`, conditional exports that do not reduce to one source file,
 `tsconfig` paths and a package alias are outside V1, and a generic parameter
 renamed is a changed contract.
@@ -3225,8 +3371,8 @@ One object on stdout. Fields:
   null for any other gate or for one that never got that far. A file the two
   trees hold as one extraction counts once. It holds the populations `files`,
   `declarations`, `references`, `imports`, `module_declarations`, `exports`,
-  `export_leaves` and `qualified_paths`; the owned bytes `path_bytes`,
-  `declaration_name_bytes`, `declaration_text_bytes` and
+  `export_leaves`, `qualified_paths` and `extern_crates`; the owned bytes
+  `path_bytes`, `declaration_name_bytes`, `declaration_text_bytes` and
   `reference_name_bytes`; how many declarations carry a signature, an owner or
   an exported alias, and the bytes each of those holds, as `signatures`,
   `signature_bytes`, `owners`, `owner_bytes`, `exported_aliases` and
@@ -3243,10 +3389,12 @@ One object on stdout. Fields:
   over every value that carries inline module names; `import_text_bytes`,
   `export_text_bytes` and `module_text_bytes`, which hold each statement's own
   text and the names and paths it carries, with a qualified path under the
-  module bytes; and `sizes`, which includes `name` and gives the size of one
+  module bytes; `extern_crate_bytes`, the crate name and alias of each
+  `extern crate`; and `sizes`, which includes `name` and gives the size of one
   `file_facts`,
-  `declaration`, `reference`, `import`, `module_declaration`, `export` and
-  `export_leaf` without the bytes their strings and lists own. Every value
+  `declaration`, `reference`, `import`, `module_declaration`, `export`,
+  `export_leaf` and `extern_crate` without the bytes their strings and lists
+  own. Every value
   depends only on the trees and the selection (8.4). `footprint.references`
   counts the reference values the facts hold, so it is at least
   `names.before.references` plus `names.after.references`, which count the
@@ -4357,7 +4505,24 @@ Core:
   private module's `pub` child and restricted visibility are not, a
   binary-only package is not applicable, a custom library root and each
   workspace library are surfaces of their own, an alias renames, a glob lists
-  its module, a re-export of another crate is opaque and judged on presence, a
+  its module, a re-export of another crate is opaque and judged on presence, an
+  item moved into a workspace sibling and re-exported under its name passes
+  with its contract unchanged and fails as changed otherwise, through a
+  `pub extern crate` alias and a glob inside the sibling too, a whole crate
+  re-exported is opaque, a re-export of a crate the tree does not hold stays
+  opaque, and so does one of a registry dependency named like a library of the
+  tree or through a `use` alias after `::`, a dependency's path picks one of
+  two libraries of one name, a renamed dependency, a target-specific one, one
+  inherited from a workspace at or below the tree root or from the package's
+  own workspace, and a private
+  `extern crate` alias are followed, a name two globs provide to a re-export
+  by name is a hole, a path from a name a local `use` binds stays opaque where
+  a dependency has that name, a private item or import hides the name a glob
+  of a sibling provides and an associated item, a binding in the other
+  namespace or a `use` inside a function does not, an `extern crate` alias
+  named like a dependency keeps its path opaque, an associated constant of an
+  inherent `impl` is an item under its type, a glob of a sibling lists its
+  items, a
   body, comment, format or binding-name change passes, a changed signature
   and a removed item fail and an addition passes, a removed library fails once
   at the surface, a source move behind an unchanged identity passes by hand

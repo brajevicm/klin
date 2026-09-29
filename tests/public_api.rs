@@ -257,6 +257,536 @@ fn a_re_export_of_another_crate_is_opaque_and_judged_on_presence() {
     assert!(run.says("Serialize (item)"), "{}", run.out);
 }
 
+const MAP_MODE: &str = "pub enum MapMode {\n    Read,\n}\n\nimpl MapMode {\n    pub fn read() -> MapMode {\n        MapMode::Read\n    }\n}\n";
+
+/// A workspace of two library crates, `a`, which depends on `types` by path, and `types`, whose
+/// roots hold `a` and `types`.
+fn workspace(tree: &Tree, a: &str, types: &str) {
+    workspace_depending(tree, "types = { path = \"../types\" }", a, types);
+}
+
+/// The same workspace, with `a` declaring `dependency` in place of its path dependency.
+fn workspace_depending(tree: &Tree, dependency: &str, a: &str, types: &str) {
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"a\", \"types\"]\n");
+    tree.write(
+        "a/Cargo.toml",
+        &format!(
+            "[package]\nname = \"a\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n{dependency}\n"
+        ),
+    );
+    tree.write(
+        "types/Cargo.toml",
+        "[package]\nname = \"types\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("a/src/lib.rs", a);
+    tree.write("types/src/lib.rs", types);
+}
+
+#[test]
+fn an_item_moved_into_a_workspace_sibling_and_re_exported_under_its_name_passes() {
+    let tree = Tree::new();
+    workspace(&tree, MAP_MODE, "");
+    tree.base();
+    workspace(&tree, "pub use types::MapMode;\n", MAP_MODE);
+
+    let run = by_hand(&tree);
+    let scoped = changed(&tree);
+    let shown = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
+    assert!(
+        shown.says("a::MapMode  type  measured  types/src/lib.rs:1")
+            && shown.says("a::MapMode::read  method  measured  types/src/lib.rs:6"),
+        "{}",
+        shown.out
+    );
+}
+
+#[test]
+fn an_item_moved_into_a_workspace_sibling_with_a_changed_contract_fails_as_changed() {
+    let tree = Tree::new();
+    workspace(&tree, MAP_MODE, "");
+    tree.base();
+    workspace(
+        &tree,
+        "pub use types::MapMode;\n",
+        &MAP_MODE.replace("Read,", "Read,\n    Write,"),
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(
+        run.says("a:1  changed, declared at types/src/lib.rs:1, was `enum MapMode { Read }`, now `enum MapMode { Read, Write }`  MapMode (type)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_re_export_through_a_pub_extern_crate_alias_of_a_sibling_is_judged_the_same_way() {
+    let tree = Tree::new();
+    workspace(&tree, MAP_MODE, "");
+    tree.base();
+    let aliased = "pub extern crate types as wgt;\npub use wgt::MapMode;\n";
+    workspace(&tree, aliased, MAP_MODE);
+    let green = by_hand(&tree);
+    let shown = report(&tree);
+    workspace(
+        &tree,
+        aliased,
+        &MAP_MODE.replace("Read,", "Read,\n    Write,"),
+    );
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert!(
+        shown.says("a::MapMode  type  measured  types/src/lib.rs:1")
+            && shown.says("a::wgt  item  opaque (types)")
+            && !shown.says("a::wgt::"),
+        "{}",
+        shown.out
+    );
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(red.says("1 new compatibility break(s)"), "{}", red.out);
+    assert!(
+        red.says("was `enum MapMode { Read }`, now `enum MapMode { Read, Write }`  MapMode (type)"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn a_name_a_sibling_provides_through_a_glob_is_measured_where_the_glob_reaches() {
+    let tree = Tree::new();
+    workspace(&tree, MAP_MODE, "");
+    tree.base();
+    workspace(
+        &tree,
+        "pub extern crate types as wgt;\npub use wgt::{MapMode};\n",
+        "mod buffer;\npub use buffer::*;\n",
+    );
+    tree.write("types/src/buffer.rs", MAP_MODE);
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        report(&tree).says("a::MapMode  type  measured  types/src/buffer.rs:1"),
+        "{}",
+        report(&tree).out
+    );
+}
+
+#[test]
+fn a_re_export_after_a_leading_path_separator_reaches_an_extern_prelude_name_and_no_use_alias() {
+    let tree = Tree::new();
+    workspace(&tree, MAP_MODE, "");
+    tree.base();
+    workspace(
+        &tree,
+        "extern crate types as t;\npub use ::types as wgt;\npub use ::types::MapMode;\npub use ::t::MapMode as Other;\npub use ::wgt::MapMode as Mode;\n",
+        MAP_MODE,
+    );
+
+    let run = by_hand(&tree);
+    let shown = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        shown.says("a::MapMode  type  measured  types/src/lib.rs:1")
+            && shown.says("a::Other  type  measured  types/src/lib.rs:1")
+            && shown.says("a::Mode  item  opaque (::wgt::MapMode)"),
+        "{}",
+        shown.out
+    );
+}
+
+#[test]
+fn a_crate_the_manifest_takes_from_a_registry_stays_opaque_though_the_tree_holds_its_name() {
+    let tree = Tree::new();
+    workspace_depending(
+        &tree,
+        "types = \"1\"",
+        "pub use types::MapMode;\n",
+        MAP_MODE,
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  item  opaque (types::MapMode)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_crate_name_two_libraries_of_the_tree_share_reaches_the_one_the_manifest_names() {
+    let tree = Tree::new();
+    workspace_depending(
+        &tree,
+        "types = { path = \"../fork/types\" }",
+        "pub use types::MapMode;\n",
+        "pub struct MapMode;\n",
+    );
+    tree.write(
+        "fork/types/Cargo.toml",
+        "[package]\nname = \"types\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+    );
+    tree.write("fork/types/src/lib.rs", MAP_MODE);
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  fork/types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_dependency_the_manifest_renames_is_followed_under_its_new_name() {
+    let tree = Tree::new();
+    workspace_depending(
+        &tree,
+        "wgt = { package = \"types\", path = \"../types\" }",
+        "pub use wgt::MapMode;\n",
+        MAP_MODE,
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_dependency_inherited_from_the_workspace_is_followed_from_the_workspace_path() {
+    let tree = Tree::new();
+    workspace_depending(
+        &tree,
+        "wgt = { workspace = true }",
+        "pub use wgt::MapMode;\n",
+        MAP_MODE,
+    );
+    tree.write(
+        "Cargo.toml",
+        "[workspace]\nmembers = [\"a\", \"types\"]\n\n[workspace.dependencies]\nwgt = { package = \"types\", path = \"types\" }\n",
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_target_specific_path_dependency_is_followed() {
+    let tree = Tree::new();
+    workspace_depending(
+        &tree,
+        "\n[target.'cfg(unix)'.dependencies]\ntypes = { path = \"../types\" }",
+        "pub use types::MapMode;\n",
+        MAP_MODE,
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+const TYPES: &str = "[package]\nname = \"types\"\nversion = \"0.1.0\"\nedition = \"2024\"\n";
+
+#[test]
+fn a_dependency_inherited_from_a_workspace_below_the_tree_root_is_followed() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "sub/Cargo.toml",
+        "[workspace]\nmembers = [\"a\", \"types\"]\n\n[workspace.dependencies]\ntypes = { path = \"types\" }\n",
+    );
+    tree.write(
+        "sub/a/Cargo.toml",
+        "[package]\nname = \"a\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\ntypes = { workspace = true }\n",
+    );
+    tree.write("sub/types/Cargo.toml", TYPES);
+    tree.write("sub/a/src/lib.rs", "pub use types::MapMode;\n");
+    tree.write("sub/types/src/lib.rs", MAP_MODE);
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  sub/types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_dependency_a_package_inherits_from_its_own_workspace_is_followed() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "sub/Cargo.toml",
+        "[package]\nname = \"a\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[workspace]\nmembers = [\"types\"]\n\n[workspace.dependencies]\ntypes = { path = \"types\" }\n\n[dependencies]\ntypes = { workspace = true }\n",
+    );
+    tree.write("sub/types/Cargo.toml", TYPES);
+    tree.write("sub/src/lib.rs", "pub use types::MapMode;\n");
+    tree.write("sub/types/src/lib.rs", MAP_MODE);
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  sub/types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_private_extern_crate_alias_of_a_sibling_is_followed() {
+    let tree = Tree::new();
+    workspace(
+        &tree,
+        "extern crate types as wgt;\nextern crate wgt as again;\npub use wgt::MapMode;\npub use again::MapMode as Again;\n",
+        MAP_MODE,
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1")
+            && run.says("a::Again  item  opaque (again::MapMode)")
+            && !run.says("a::wgt"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it() {
+    let tree = Tree::new();
+    crate_of(&tree, "pub struct Mode;\n");
+    tree.write("src/lib.rs", "mod inner;\npub use inner::Mode;\n");
+    tree.write(
+        "src/inner.rs",
+        "mod one;\nmod two;\npub use one::*;\npub use two::*;\n",
+    );
+    tree.write("src/inner/one.rs", "pub struct Mode;\n");
+    tree.write("src/inner/two.rs", "pub enum Mode {\n    A,\n}\n");
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("Mode is provided by this glob and by the glob at src/inner.rs:3"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque() {
+    let tree = Tree::new();
+    workspace(
+        &tree,
+        "pub use serde::Serialize;\npub extern crate serde_json as json;\npub use json::Value;\n",
+        MAP_MODE,
+    );
+    tree.base();
+    let shown = report(&tree);
+    workspace(&tree, "pub extern crate serde_json as json;\n", MAP_MODE);
+
+    let run = by_hand(&tree);
+
+    for line in [
+        "a::Serialize  item  opaque (serde::Serialize)",
+        "a::json  item  opaque (serde_json)",
+        "a::Value  item  opaque (json::Value)",
+    ] {
+        assert!(shown.says(line), "no {line} in: {}", shown.out);
+    }
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("2 new compatibility break(s)")
+            && run.says("Serialize (item)")
+            && run.says("Value (item)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_local_use_named_like_a_dependency_keeps_its_path_opaque_though_its_item_changes() {
+    let tree = Tree::new();
+    let a = "mod local;\nuse crate::local as types;\npub use types::MapMode;\n";
+    workspace(&tree, a, MAP_MODE);
+    tree.write("a/src/local.rs", "pub struct MapMode;\n");
+    tree.base();
+    tree.write("a/src/local.rs", "pub struct MapMode(u8);\n");
+
+    let run = by_hand(&tree);
+    let shown = report(&tree);
+
+    assert!(
+        shown.says("a::MapMode  item  opaque (types::MapMode)") && !shown.says("a::MapMode  type"),
+        "{}",
+        shown.out
+    );
+    assert!(!run.says("declared at types/"), "{}", run.out);
+}
+
+#[test]
+fn a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides() {
+    for a in [
+        "struct MapMode;\npub use types::*;\n",
+        "mod local;\nuse local::MapMode;\npub use types::*;\n",
+    ] {
+        let tree = Tree::new();
+        workspace(&tree, a, MAP_MODE);
+        tree.write("a/src/local.rs", "pub struct MapMode;\n");
+        tree.base();
+
+        let run = report(&tree);
+
+        assert_eq!(run.code, 0, "{a}: {}", run.out);
+        assert!(
+            run.says("types::MapMode  type") && !run.says("a::MapMode"),
+            "{a}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn an_extern_crate_alias_named_like_a_dependency_keeps_its_path_opaque() {
+    for (a, item) in [
+        (
+            "pub mod m {\n    extern crate alloc as types;\n    pub use types::Other;\n}\n",
+            "a::m::Other  item  opaque (types::Other)",
+        ),
+        (
+            "extern crate alloc as types;\npub use types::Other;\n",
+            "a::Other  item  opaque (types::Other)",
+        ),
+    ] {
+        let tree = Tree::new();
+        workspace(&tree, a, "pub struct Other;\n");
+        tree.base();
+
+        let run = report(&tree);
+
+        assert!(run.says(item), "{a}: {}", run.out);
+    }
+}
+
+#[test]
+fn only_a_module_level_binding_in_the_same_namespace_hides_a_name_a_glob_provides() {
+    for a in [
+        "pub struct X;\nimpl TryFrom<u8> for X {\n    type Error = ();\n    fn try_from(_: u8) -> Result<X, ()> {\n        Ok(X)\n    }\n}\npub use types::*;\n",
+        "mod sleep {}\nfn Error() {}\npub use types::*;\n",
+        "fn f() {\n    use std::fmt::Error;\n    use std::thread::sleep;\n}\npub use types::*;\n",
+    ] {
+        let tree = Tree::new();
+        workspace(&tree, a, "pub struct Error;\npub fn sleep() {}\n");
+        tree.base();
+
+        let run = report(&tree);
+
+        assert!(
+            run.says("a::Error  type  measured  types/src/lib.rs:1")
+                && run.says("a::sleep  function  measured  types/src/lib.rs:2"),
+            "{a}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_use_inside_a_function_named_like_a_dependency_leaves_the_dependency_followed() {
+    let tree = Tree::new();
+    workspace(
+        &tree,
+        "mod local {}\nfn f() {\n    use crate::local as types;\n}\npub use types::MapMode;\n",
+        MAP_MODE,
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_glob_of_a_workspace_sibling_lists_its_items() {
+    let tree = Tree::new();
+    workspace(&tree, "pub use types::*;\n", MAP_MODE);
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("a::MapMode  type  measured  types/src/lib.rs:1") && !run.says("globs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_item_of_an_inherent_impl_is_an_item_under_its_type() {
+    let tree = Tree::new();
+    crate_of(
+        &tree,
+        "pub struct X;\nimpl X {\n    pub const MAX: u8 = 1;\n}\npub trait T {\n    const N: u8;\n}\n",
+    );
+
+    let run = report(&tree);
+
+    assert!(
+        run.says("core::X::MAX  constant  measured  src/lib.rs:3")
+            && !run.says("core::MAX")
+            && !run.says("core::N"),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_body_comment_format_or_binding_name_change_passes() {
     let tree = Tree::new();

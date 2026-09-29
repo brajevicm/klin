@@ -4,6 +4,8 @@
 
 use tree_sitter::Node;
 
+use crate::syntax::tolerant;
+
 use crate::syntax::structural::{
     Adapter, ExportLeaf, Exported, Imported, Spelling, Visibility, above, spelled, text_of,
 };
@@ -18,6 +20,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    quoted,
     visibility,
     exported_as,
     owner,
@@ -38,6 +41,8 @@ const PATTERNS: &str = r"
 (mod_item) @module
 (use_declaration) @import
 (use_declaration) @export
+(extern_crate_declaration) @export
+(extern_crate_declaration) @crate
 ";
 
 /// The declarations whose contract V1 canonicalizes.
@@ -68,6 +73,16 @@ const SCOPED: &[&str] = &["scoped_identifier", "scoped_type_identifier"];
 
 /// The first segments a path resolves from inside this crate.
 const RELATIVE: &[&str] = &["crate", "self", "super"];
+
+/// The `serde` keys whose string is the path of a function the derive calls. `with` names a
+/// module, which no one name stands for, so it is not here.
+const SERDE_CALLABLES: &[&str] = &[
+    "default",
+    "skip_serializing_if",
+    "serialize_with",
+    "deserialize_with",
+    "getter",
+];
 
 /// Whether this declaration is reachable past the file that holds it: it says so itself, a
 /// trait states it, or a trait implementation carries it and the trait exposes it.
@@ -308,19 +323,35 @@ fn pub_before(node: Node, source: &[u8]) -> bool {
         .is_some_and(|held| text_of(held, source) == "pub")
 }
 
-/// What a plain `pub use` exposes: every leaf of its tree under the name it binds. A restricted
-/// or private `use` exposes nothing past the module.
+/// What a plain `pub use` or `pub extern crate` exposes: every leaf of a use tree under the name
+/// it binds, or the crate under its alias. A restricted or private one exposes nothing past the
+/// module.
 fn exported(node: Node, source: &[u8]) -> Option<Exported> {
     if visibility(node, source) != Visibility::Public {
         return None;
     }
-    let argument = node.child_by_field_name("argument")?;
+    let leaves = match node.kind() {
+        "extern_crate_declaration" => vec![extern_crate(node, source)?],
+        _ => leaves(node.child_by_field_name("argument")?, source),
+    };
     Some(Exported {
         source: None,
         type_only: false,
         supported: true,
-        leaves: leaves(argument, source),
+        leaves,
         namespace: None,
+    })
+}
+
+/// The crate an `extern crate` names, bound under its alias where one is written.
+fn extern_crate(node: Node, source: &[u8]) -> Option<ExportLeaf> {
+    let path = text_of(node.child_by_field_name("name")?, source);
+    let name = node
+        .child_by_field_name("alias")
+        .map_or_else(|| path.clone(), |alias| text_of(alias, source));
+    Some(ExportLeaf {
+        path,
+        name: Some(name),
     })
 }
 
@@ -455,6 +486,193 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
     }
     let named = attribute.child_by_field_name("value")?;
     Some(text_of(named, source).trim_matches('"').to_string())
+}
+
+/// The names a string calls by its value: the terminal segment of the path the value of a
+/// `serde` key the derive calls spells, which is the one name the call resolves by, and every
+/// name a format string that a macro call or a `macro_rules!` body holds captures.
+fn quoted(node: Node, source: &[u8]) -> Vec<String> {
+    if !matches!(node.kind(), "string_literal" | "raw_string_literal") {
+        return Vec::new();
+    }
+    let read: fn(&str) -> Vec<String> = if serde_callable(node, source) {
+        |value| terminal(value).into_iter().collect()
+    } else if above(node, &["macro_invocation", "macro_definition"]).is_some() {
+        captures
+    } else {
+        return Vec::new();
+    };
+    string_value(node, source)
+        .map(|value| read(&value))
+        .unwrap_or_default()
+}
+
+/// The names the captures of a format string write: the argument of `{name}` or `{name:spec}`,
+/// and a width or a precision such as `WIDTH$` in `{:>WIDTH$.PREC$}`. `{{` is a brace, and a
+/// position such as `{0}` names nothing.
+fn captures(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(at) = rest.find('{') {
+        rest = &rest[at + 1..];
+        if let Some(after) = rest.strip_prefix('{') {
+            rest = after;
+            continue;
+        }
+        let inside = &rest[..rest.find('}').unwrap_or(rest.len())];
+        let (argument, spec) = inside.split_once(':').unwrap_or((inside, ""));
+        out.extend(named(argument.trim()));
+        for (at, _) in spec.match_indices('$') {
+            let before = &spec[..at];
+            let start = before
+                .rfind(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .map_or(0, |found| found + 1);
+            out.extend(named(&before[start..]));
+        }
+    }
+    out
+}
+
+/// This text as a name a capture writes, and `None` for a position or anything else.
+fn named(text: &str) -> Option<String> {
+    let identifier = text.chars().all(|c| c.is_alphanumeric() || c == '_');
+    (identifier && text.starts_with(|c: char| !c.is_ascii_digit())).then(|| text.to_string())
+}
+
+/// A string literal's value, its content with every escape sequence decoded, and `None` where
+/// an escape is one klin cannot decode. A line continuation drops its newline and the
+/// whitespace that follows it, as the compiler does.
+fn string_value(node: Node, source: &[u8]) -> Option<String> {
+    let mut value = String::new();
+    let mut continued = false;
+    let mut cursor = node.walk();
+    for part in node.named_children(&mut cursor) {
+        let text = text_of(part, source);
+        match part.kind() {
+            "string_content" if continued => {
+                value.push_str(text.trim_start_matches(CONTINUED_SPACE))
+            }
+            "string_content" => value.push_str(&text),
+            "escape_sequence" => value.push_str(&unescaped(&text)?),
+            _ => {}
+        }
+        continued = part.kind() == "escape_sequence" && continues(&text);
+    }
+    Some(value)
+}
+
+/// The whitespace a line continuation skips at the start of the next line.
+const CONTINUED_SPACE: &[char] = &[' ', '\t', '\n', '\r'];
+
+/// Whether an escape sequence is a line continuation, a backslash before the end of a line.
+fn continues(escape: &str) -> bool {
+    escape
+        .strip_prefix('\\')
+        .is_some_and(|body| body.starts_with(['\n', '\r']))
+}
+
+/// The escapes that stand for one fixed character.
+const SIMPLE_ESCAPES: &[(&str, char)] = &[
+    ("n", '\n'),
+    ("r", '\r'),
+    ("t", '\t'),
+    ("0", '\0'),
+    ("\\", '\\'),
+    ("'", '\''),
+    ("\"", '"'),
+];
+
+/// What one Rust escape sequence stands for: a Unicode or byte code, a fixed character, or
+/// nothing for a line continuation.
+fn unescaped(escape: &str) -> Option<String> {
+    let body = escape.strip_prefix('\\')?;
+    let code = body
+        .strip_prefix("u{")
+        .and_then(|rest| rest.strip_suffix('}'))
+        .or_else(|| body.strip_prefix('x'));
+    if let Some(code) = code {
+        let code = u32::from_str_radix(&code.replace('_', ""), 16).ok()?;
+        return char::from_u32(code).map(String::from);
+    }
+    if continues(escape) {
+        return Some(String::new());
+    }
+    SIMPLE_ESCAPES
+        .iter()
+        .find(|(written, _)| *written == body)
+        .map(|(_, value)| value.to_string())
+}
+
+/// The function a decoded path names, as the Rust grammar reads the path as an expression, so
+/// generic arguments, a qualified-self prefix such as `<T as Trait>` and a const-generic block
+/// with any literal or comment inside it never change which name the path ends in. A value the
+/// grammar does not read as exactly one path names nothing.
+fn terminal(path: &str) -> Option<String> {
+    let snippet = format!("fn f() {{ {path}; }}");
+    let file = tolerant("path.rs", &snippet)?;
+    let root = file.root();
+    let body = root
+        .named_child(0)
+        .filter(|_| !root.has_error() && root.named_child_count() == 1)?
+        .child_by_field_name("body")
+        .filter(|body| body.named_child_count() == 1)?;
+    let statement = body
+        .named_child(0)
+        .filter(|held| held.kind() == "expression_statement")?;
+    callable(statement.named_child(0)?, file.bytes())
+}
+
+/// The name a path expression ends in.
+fn callable(node: Node, source: &[u8]) -> Option<String> {
+    match node.kind() {
+        "identifier" => Some(text_of(node, source)),
+        "scoped_identifier" => callable(node.child_by_field_name("name")?, source),
+        "generic_function" => callable(node.child_by_field_name("function")?, source),
+        _ => None,
+    }
+}
+
+/// Whether this string follows one of `SERDE_CALLABLES` and `=` in the tokens of a `serde(...)`
+/// that a Rust attribute holds.
+fn serde_callable(node: Node, source: &[u8]) -> bool {
+    let key = node
+        .prev_sibling()
+        .filter(|held| held.kind() == "=")
+        .and_then(|held| held.prev_sibling());
+    let tokens = node.parent().filter(|held| held.kind() == "token_tree");
+    key.is_some_and(|held| SERDE_CALLABLES.contains(&text_of(held, source).as_str()))
+        && tokens.is_some_and(|tokens| serde_attribute(tokens, source))
+}
+
+/// Whether these tokens are the arguments of `serde`, as an attribute of its own or directly
+/// inside a `cfg_attr` attribute, so the same tokens inside a macro call never count.
+fn serde_attribute(tokens: Node, source: &[u8]) -> bool {
+    let named =
+        |held: Node, name: &str| held.kind() == "identifier" && text_of(held, source) == name;
+    if !tokens
+        .prev_sibling()
+        .is_some_and(|held| named(held, "serde"))
+    {
+        return false;
+    }
+    let attribute = match tokens.parent() {
+        Some(held) if held.kind() == "attribute" => held,
+        Some(held) if held.kind() == "token_tree" => match held.parent() {
+            Some(outer)
+                if outer.kind() == "attribute"
+                    && outer
+                        .named_child(0)
+                        .is_some_and(|name| named(name, "cfg_attr")) =>
+            {
+                outer
+            }
+            _ => return false,
+        },
+        _ => return false,
+    };
+    attribute
+        .parent()
+        .is_some_and(|item| matches!(item.kind(), "attribute_item" | "inner_attribute_item"))
 }
 
 /// The names of the inline modules above a node, outermost first.
