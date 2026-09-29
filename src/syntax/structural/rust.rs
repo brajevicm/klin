@@ -41,6 +41,8 @@ const PATTERNS: &str = r"
 (mod_item) @module
 (use_declaration) @import
 (use_declaration) @export
+(extern_crate_declaration) @export
+(extern_crate_declaration) @crate
 ";
 
 /// The declarations whose contract V1 canonicalizes.
@@ -321,18 +323,34 @@ fn pub_before(node: Node, source: &[u8]) -> bool {
         .is_some_and(|held| text_of(held, source) == "pub")
 }
 
-/// What a plain `pub use` exposes: every leaf of its tree under the name it binds. A restricted
-/// or private `use` exposes nothing past the module.
+/// What a plain `pub use` or `pub extern crate` exposes: every leaf of a use tree under the name
+/// it binds, or the crate under its alias. A restricted or private one exposes nothing past the
+/// module.
 fn exported(node: Node, source: &[u8]) -> Option<Exported> {
     if visibility(node, source) != Visibility::Public {
         return None;
     }
-    let argument = node.child_by_field_name("argument")?;
+    let leaves = match node.kind() {
+        "extern_crate_declaration" => vec![extern_crate(node, source)?],
+        _ => leaves(node.child_by_field_name("argument")?, source),
+    };
     Some(Exported {
         source: None,
         type_only: false,
         supported: true,
-        leaves: leaves(argument, source),
+        leaves,
+    })
+}
+
+/// The crate an `extern crate` names, bound under its alias where one is written.
+fn extern_crate(node: Node, source: &[u8]) -> Option<ExportLeaf> {
+    let path = text_of(node.child_by_field_name("name")?, source);
+    let name = node
+        .child_by_field_name("alias")
+        .map_or_else(|| path.clone(), |alias| text_of(alias, source));
+    Some(ExportLeaf {
+        path,
+        name: Some(name),
     })
 }
 

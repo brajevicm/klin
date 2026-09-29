@@ -2115,13 +2115,65 @@ surface, the exported path or name and the item's kind, never the file that
 declares it. In this check, *external* means outside the crate or package
 that declares the item, including a sibling in the same repository, and never
 means published. The check judges only external items. From a Rust root the
-check follows every plain `pub` declaration, every `pub mod`, and every
-`pub use` leaf: an alias renames the item, a glob exposes every public item of
-the module it reaches less the names the globbing module exposes itself, a
-re-export of a module exposes everything under it, and a plain `pub` item
-inside a private module is external only where a `pub use` exposes it.
+check follows every plain `pub` declaration, every `pub mod`, every `pub use`
+leaf and every `pub extern crate`, which re-exports the crate under its alias:
+an alias renames the item, a glob exposes every public item of the module it
+reaches less every name the globbing module binds itself at any visibility
+in the namespace the name lives in (an item it declares, a child module or an
+`extern crate` alias as a type, and a name a `use` outside a function binds
+in both), a name a module neither declares nor re-exports by name comes from the one glob of it
+that provides the name and is a hole where two do, a re-export of a module
+exposes everything under it, and a plain
+`pub` item inside a private module is external only where a `pub use` exposes
+it.
 `pub(crate)`, `pub(super)`, `pub(self)` and `pub(in ...)` are never external.
-A public inherent method is an item under its type. From a TypeScript entry
+A re-export whose path starts, with or without a leading `::`, at a name of
+the crate's extern prelude that reaches a library target the tree holds is
+followed into that library's source, globs included, and each item it
+reaches is measured there under the surface that re-exports it. Those names
+are each normal dependency the target's manifest takes by path, target-specific
+ones included, under its rename where the manifest writes `package =` and
+under the library's own crate name otherwise, and each alias an
+`extern crate`, public or private, at the top of the crate root gives one of
+those dependencies, as `pub extern crate wgpu_types as wgt;` does. The path
+names the manifest of the library, so a crate name two libraries of the tree share
+reaches the one the dependency names. A dependency without a path, such as a
+registry version, names a crate the tree does not hold even where a library of
+the tree has its name, and so does a name a `use` binds, which never enters
+the extern prelude. A first segment the module binds itself, by a `use`
+outside a function, as a type it declares or, below the crate root, as an
+`extern crate` alias, names a local item, so the path is opaque even where a
+dependency has that name, and so is an alias the crate root gives a crate
+that is no dependency of its manifest. An associated item of an `impl` or a
+`trait` is no item of the module, so it hides no name. So an item moved into a sibling crate and
+re-exported under its old name keeps its identity: an unchanged contract
+passes and a changed one fails as changed. A re-export of a whole crate root,
+such as that `pub extern crate` itself, is an opaque item, because the items
+of a library the tree holds are judged under its own surface. Pinned by
+`an_item_moved_into_a_workspace_sibling_and_re_exported_under_its_name_passes`,
+`an_item_moved_into_a_workspace_sibling_with_a_changed_contract_fails_as_changed`,
+`a_re_export_through_a_pub_extern_crate_alias_of_a_sibling_is_judged_the_same_way`,
+`a_name_a_sibling_provides_through_a_glob_is_measured_where_the_glob_reaches`,
+`a_re_export_after_a_leading_path_separator_reaches_an_extern_prelude_name_and_no_use_alias`,
+`a_crate_the_manifest_takes_from_a_registry_stays_opaque_though_the_tree_holds_its_name`,
+`a_crate_name_two_libraries_of_the_tree_share_reaches_the_one_the_manifest_names`,
+`a_dependency_the_manifest_renames_is_followed_under_its_new_name`,
+`a_dependency_inherited_from_the_workspace_is_followed_from_the_workspace_path`,
+`a_dependency_inherited_from_a_workspace_below_the_tree_root_is_followed`,
+`a_dependency_a_package_inherits_from_its_own_workspace_is_followed`,
+`a_target_specific_path_dependency_is_followed`,
+`a_private_extern_crate_alias_of_a_sibling_is_followed`,
+`a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it`,
+`a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque`,
+`a_local_use_named_like_a_dependency_keeps_its_path_opaque_though_its_item_changes`,
+`a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides`,
+`an_extern_crate_alias_named_like_a_dependency_keeps_its_path_opaque`,
+`only_a_module_level_binding_in_the_same_namespace_hides_a_name_a_glob_provides`,
+`a_use_inside_a_function_named_like_a_dependency_leaves_the_dependency_followed` and
+`a_glob_of_a_workspace_sibling_lists_its_items`.
+A public inherent method, associated constant or associated type is an item
+under its type, pinned by `an_item_of_an_inherent_impl_is_an_item_under_its_type`.
+From a TypeScript entry
 file the check follows exported declarations, default exports, local export
 clauses, and named, aliased,
 type-only and star re-exports through the module graph's own edges. An
@@ -2172,8 +2224,9 @@ with their type alone. TypeScript covers functions and overload sets, classes
 with their heritage and public and protected members, interfaces, type
 aliases, enums and variables. A type the compiler would infer is written as
 `?`, so an inferred contract is visibly partial and never fabricated from a
-body. A re-export of another crate or package, an enum variant re-exported by
-path, a `* as ns` export and an anonymous default export are opaque, and the
+body. A re-export of a crate the tree does not hold or of another package, an
+enum variant re-exported by path, a `* as ns` export and an anonymous default
+export are opaque, and the
 normalized clause that exposes them is the contract klin compares.
 
 Base and working tree are derived independently. A base surface the working
@@ -2203,7 +2256,8 @@ Outside the hook the remedy names only the person's accepted entry and CI,
 and no second stop. Pinned by
 `a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_a_person`
 and `a_break_by_hand_names_person_acceptance_and_no_second_stop`. A glob over
-another crate, a star export of another package, a name two globs or two
+a crate the tree does not hold, a star export of another package, a name two
+globs or two
 stars provide, an export form klin recognizes and cannot list, a path through
 a module no file answers, and an unresolved module or specifier inside a
 surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while other
@@ -2220,7 +2274,10 @@ derivation runs only over a tree that holds a path of that language, by the
 same rule as its resolver in `layering`. Pinned by every test in
 `tests/public_api.rs`. Known limits: a module bound by `use` and then
 re-exported by its bare name, a macro, a trait implementation's semantics,
-`cfg` evaluation, an attribute written through `#[cfg_attr(...)]`,
+`cfg` evaluation, an attribute written through `#[cfg_attr(...)]`, a
+registry dependency that `[patch]` or `[replace]` points into the tree,
+`extern crate self as` an alias, a re-export by name through a glob of a
+module that binds the name in either namespace, which is opaque,
 `typesVersions`, conditional exports that do not reduce to one source file,
 `tsconfig` paths and a package alias are outside V1, and a generic parameter
 renamed is a changed contract.
@@ -3303,8 +3360,8 @@ One object on stdout. Fields:
   null for any other gate or for one that never got that far. A file the two
   trees hold as one extraction counts once. It holds the populations `files`,
   `declarations`, `references`, `imports`, `module_declarations`, `exports`,
-  `export_leaves` and `qualified_paths`; the owned bytes `path_bytes`,
-  `declaration_name_bytes`, `declaration_text_bytes` and
+  `export_leaves`, `qualified_paths` and `extern_crates`; the owned bytes
+  `path_bytes`, `declaration_name_bytes`, `declaration_text_bytes` and
   `reference_name_bytes`; how many declarations carry a signature, an owner or
   an exported alias, and the bytes each of those holds, as `signatures`,
   `signature_bytes`, `owners`, `owner_bytes`, `exported_aliases` and
@@ -3321,10 +3378,12 @@ One object on stdout. Fields:
   over every value that carries inline module names; `import_text_bytes`,
   `export_text_bytes` and `module_text_bytes`, which hold each statement's own
   text and the names and paths it carries, with a qualified path under the
-  module bytes; and `sizes`, which includes `name` and gives the size of one
+  module bytes; `extern_crate_bytes`, the crate name and alias of each
+  `extern crate`; and `sizes`, which includes `name` and gives the size of one
   `file_facts`,
-  `declaration`, `reference`, `import`, `module_declaration`, `export` and
-  `export_leaf` without the bytes their strings and lists own. Every value
+  `declaration`, `reference`, `import`, `module_declaration`, `export`,
+  `export_leaf` and `extern_crate` without the bytes their strings and lists
+  own. Every value
   depends only on the trees and the selection (8.4). `footprint.references`
   counts the reference values the facts hold, so it is at least
   `names.before.references` plus `names.after.references`, which count the
@@ -4435,7 +4494,24 @@ Core:
   private module's `pub` child and restricted visibility are not, a
   binary-only package is not applicable, a custom library root and each
   workspace library are surfaces of their own, an alias renames, a glob lists
-  its module, a re-export of another crate is opaque and judged on presence, a
+  its module, a re-export of another crate is opaque and judged on presence, an
+  item moved into a workspace sibling and re-exported under its name passes
+  with its contract unchanged and fails as changed otherwise, through a
+  `pub extern crate` alias and a glob inside the sibling too, a whole crate
+  re-exported is opaque, a re-export of a crate the tree does not hold stays
+  opaque, and so does one of a registry dependency named like a library of the
+  tree or through a `use` alias after `::`, a dependency's path picks one of
+  two libraries of one name, a renamed dependency, a target-specific one, one
+  inherited from a workspace at or below the tree root or from the package's
+  own workspace, and a private
+  `extern crate` alias are followed, a name two globs provide to a re-export
+  by name is a hole, a path from a name a local `use` binds stays opaque where
+  a dependency has that name, a private item or import hides the name a glob
+  of a sibling provides and an associated item, a binding in the other
+  namespace or a `use` inside a function does not, an `extern crate` alias
+  named like a dependency keeps its path opaque, an associated constant of an
+  inherent `impl` is an item under its type, a glob of a sibling lists its
+  items, a
   body, comment, format or binding-name change passes, a changed signature
   and a removed item fail and an addition passes, a removed library fails once
   at the surface, a source move behind an unchanged identity passes by hand

@@ -69,6 +69,9 @@ pub struct Declaration {
     /// The inline modules that hold the declaration, outermost first, and none at the top of a
     /// file.
     pub nesting: Vec<String>,
+    /// True where a type body holds the declaration, as a Rust `impl` or `trait` holds its
+    /// associated items, so it is no item of the module.
+    pub associated: bool,
     /// What the declaration's own modifier says, with no doubt read either way.
     pub visibility: Visibility,
     /// The name a consumer of the module addresses the declaration by where it differs from
@@ -87,16 +90,17 @@ pub struct Declaration {
     pub signature: Option<String>,
 }
 
-/// One statement that exposes names past the module: Rust's `pub use`, and every TypeScript
-/// `export` that is not a declaration of its own. A leaf names what is exposed and under which
-/// name. The module graph resolves a path or a specifier; nothing here does.
+/// One statement that exposes names past the module: Rust's `pub use` and `pub extern crate`,
+/// and every TypeScript `export` that is not a declaration of its own. A leaf names what is
+/// exposed and under which name. The module graph resolves a path or a specifier; nothing here
+/// does.
 pub struct Export {
     pub line: u64,
     pub text: String,
     /// The inline modules that hold the statement, outermost first.
     pub nesting: Vec<String>,
     /// The module specifier a TypeScript re-export names, and none for a local export or a Rust
-    /// use tree, whose leaves carry their own paths.
+    /// statement, whose leaves carry their own paths.
     pub source: Option<String>,
     /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
     pub type_only: bool,
@@ -115,12 +119,25 @@ pub struct ExportLeaf {
     pub name: Option<String>,
 }
 
+/// One Rust `extern crate`, whatever its visibility: the crate it names and the name it binds,
+/// which is its alias where one is written. At the top of a crate root it puts that name in the
+/// crate's extern prelude.
+pub struct ExternCrate {
+    /// The inline modules that hold the statement, outermost first.
+    pub nesting: Vec<String>,
+    pub name: String,
+    pub alias: String,
+}
+
 /// One import, holding the specifier as it was written. The module graph resolves it to a file.
 pub struct Import {
     pub line: u64,
     pub text: String,
     /// The inline modules that hold the import, outermost first, and none at the top of a file.
     pub nesting: Vec<String>,
+    /// True where a function body holds the import, so it binds its names in that body and not
+    /// in the module.
+    pub in_function: bool,
     pub module: Option<String>,
     pub names: Vec<String>,
     /// Every path a Rust use tree names, one per leaf, its segments joined by `::`, with `self`
@@ -240,6 +257,7 @@ pub struct FileFacts {
     pub references: Vec<Reference>,
     pub paths: Vec<QualifiedPath>,
     pub exports: Vec<Export>,
+    pub crates: Vec<ExternCrate>,
 }
 
 /// What one file came to under structural analysis. Three of the four outcomes are not a
@@ -925,6 +943,7 @@ const VARIABLE: &str = "variable";
 const IMPORT: &str = "import";
 const MODULE: &str = "module";
 const EXPORT: &str = "export";
+const CRATE: &str = "crate";
 
 type Held = OnceLock<Result<Query, String>>;
 
@@ -987,6 +1006,7 @@ struct Reading<'a, 'b> {
     imports: Vec<Import>,
     modules: Vec<ModuleDecl>,
     exports: Vec<Export>,
+    crates: Vec<ExternCrate>,
     declared: BTreeSet<usize>,
     claimed: Vec<(usize, usize)>,
     names: &'b mut Names,
@@ -1007,6 +1027,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             imports: Vec::new(),
             modules: Vec::new(),
             exports: Vec::new(),
+            crates: Vec::new(),
             declared: BTreeSet::new(),
             claimed: Vec::new(),
             names,
@@ -1018,6 +1039,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             IMPORT => self.import(node),
             MODULE => self.module(node),
             EXPORT => self.export(node),
+            CRATE => self.extern_crate(node),
             _ => self.declaration(capture, node),
         }
     }
@@ -1038,6 +1060,20 @@ impl<'a, 'b> Reading<'a, 'b> {
         });
     }
 
+    fn extern_crate(&mut self, node: Node) {
+        let Some(name) = node.child_by_field_name("name") else {
+            return;
+        };
+        let name = text_of(name, self.source);
+        self.crates.push(ExternCrate {
+            nesting: (self.adapter.nesting)(node, self.source),
+            alias: node
+                .child_by_field_name("alias")
+                .map_or_else(|| name.clone(), |alias| text_of(alias, self.source)),
+            name,
+        });
+    }
+
     fn import(&mut self, node: Node) {
         let found = (self.adapter.imported)(node, self.source);
         self.claimed.push((node.start_byte(), node.end_byte()));
@@ -1045,6 +1081,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             line: self.row(node),
             text: self.text(node),
             nesting: (self.adapter.nesting)(node, self.source),
+            in_function: inside_a_function(node, self.language),
             module: found.module,
             names: found.names,
             paths: found.paths,
@@ -1093,6 +1130,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             externally_visible: (self.adapter.visible)(node),
             entry_point,
             nesting: (self.adapter.nesting)(node, self.source),
+            associated: above(node, self.adapter.methods_in).is_some(),
             visibility: (self.adapter.visibility)(node, self.source),
             exported_as: (self.adapter.exported_as)(node, self.source),
             owner: (self.adapter.owner)(node, self.source),
@@ -1191,6 +1229,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             references,
             paths,
             exports: self.exports,
+            crates: self.crates,
         }
     }
 }
@@ -1880,6 +1919,7 @@ export function charge(at: number): number {
                     externally_visible: false,
                     entry_point: false,
                     nesting: Vec::new(),
+                    associated: false,
                     visibility: Visibility::Private,
                     exported_as: None,
                     owner: None,
@@ -1890,6 +1930,7 @@ export function charge(at: number): number {
             module_declarations: Vec::new(),
             paths: Vec::new(),
             exports: Vec::new(),
+            crates: Vec::new(),
             references: names
                 .iter()
                 .enumerate()

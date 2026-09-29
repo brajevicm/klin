@@ -10,10 +10,10 @@ use std::rc::Rc;
 use std::time::SystemTime;
 
 use super::{
-    Declaration, DeclarationKind, Export, ExportLeaf, FileFacts, Import, ModuleDecl, Names,
-    Outcome, QualifiedPath, Reference, Unparsed, Visibility,
+    Declaration, DeclarationKind, Export, ExportLeaf, ExternCrate, FileFacts, Import, ModuleDecl,
+    Names, Outcome, QualifiedPath, Reference, Unparsed, Visibility,
 };
-use crate::syntax::{LANGUAGES, Language};
+use crate::syntax::{LANGUAGES, Language, LanguageId};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
@@ -218,6 +218,7 @@ impl Writer {
             self.number(import.line);
             self.text(&import.text);
             self.texts(&import.nesting);
+            self.number(u64::from(import.in_function));
             self.optional(import.module.as_deref());
             self.texts(&import.names);
             self.texts(&import.paths);
@@ -247,6 +248,12 @@ impl Writer {
         for export in &facts.exports {
             self.export(export);
         }
+        self.number(facts.crates.len() as u64);
+        for held in &facts.crates {
+            self.texts(&held.nesting);
+            self.text(&held.name);
+            self.text(&held.alias);
+        }
     }
 
     fn declaration(&mut self, declaration: &Declaration) {
@@ -256,7 +263,9 @@ impl Writer {
         self.number(declaration.end);
         self.text(&declaration.text);
         self.number(
-            u64::from(declaration.externally_visible) | u64::from(declaration.entry_point) << 1,
+            u64::from(declaration.externally_visible)
+                | u64::from(declaration.entry_point) << 1
+                | u64::from(declaration.associated) << 2,
         );
         self.texts(&declaration.nesting);
         self.number(visibility_number(declaration.visibility));
@@ -344,27 +353,31 @@ impl Reader<'_, '_> {
                     language: row.name,
                 })
             }),
-            FACTS => self.facts(file).map(|facts| Outcome::Facts(Rc::new(facts))),
+            FACTS => self
+                .language()
+                .and_then(|row| self.facts(file, row.id))
+                .map(|facts| Outcome::Facts(Rc::new(facts))),
             _ => None,
         }
     }
 
-    fn facts(&mut self, file: &str) -> Option<FileFacts> {
+    fn facts(&mut self, file: &str, language: LanguageId) -> Option<FileFacts> {
         Some(FileFacts {
             file: file.to_string(),
-            language: self.language()?.id,
+            language,
             declarations: self.list(Reader::declaration)?,
             imports: self.list(Reader::import)?,
             module_declarations: self.list(Reader::module)?,
             references: self.list(Reader::reference)?,
             paths: self.list(Reader::qualified)?,
             exports: self.list(Reader::export)?,
+            crates: self.list(Reader::extern_crate)?,
         })
     }
 
     fn declaration(&mut self) -> Option<Declaration> {
         let (name, kind, line, end, text) = self.site()?;
-        let flags = self.number().filter(|flags| *flags <= 3)?;
+        let flags = self.number().filter(|flags| *flags <= 7)?;
         self.contract(Declaration {
             name,
             kind,
@@ -374,6 +387,7 @@ impl Reader<'_, '_> {
             externally_visible: flags & 1 == 1,
             entry_point: flags & 2 == 2,
             nesting: Vec::new(),
+            associated: flags & 4 == 4,
             visibility: Visibility::Private,
             exported_as: None,
             owner: None,
@@ -423,11 +437,20 @@ impl Reader<'_, '_> {
         })
     }
 
+    fn extern_crate(&mut self) -> Option<ExternCrate> {
+        Some(ExternCrate {
+            nesting: self.list(Reader::text)?,
+            name: self.text()?,
+            alias: self.text()?,
+        })
+    }
+
     fn import(&mut self) -> Option<Import> {
         Some(Import {
             line: self.number()?,
             text: self.text()?,
             nesting: self.list(Reader::text)?,
+            in_function: self.number().filter(|flag| *flag <= 1)? == 1,
             module: self.optional()?,
             names: self.list(Reader::text)?,
             paths: self.list(Reader::text)?,
@@ -530,7 +553,7 @@ mod tests {
     const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
     fn outcomes() -> Vec<(String, Outcome)> {
-        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\n";
+        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\nextern crate serde as json;\nimpl Charge {\n    const N: u8 = 1;\n}\nfn local() {\n    use std::fmt::Write;\n}\n";
         let typescript = "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\nexport default view;\n";
         [
             ("src/pay.rs", rust),
@@ -582,6 +605,32 @@ mod tests {
     }
 
     #[test]
+    fn what_a_rust_file_binds_reads_back_as_written() {
+        let (_, read) = read_back();
+        let pay = facts_of(&read, "src/pay.rs");
+        let crates: Vec<(&str, &str)> = pay
+            .crates
+            .iter()
+            .map(|held| (held.name.as_str(), held.alias.as_str()))
+            .collect();
+        assert_eq!(crates, vec![("serde", "json")]);
+        let associated: Vec<&str> = pay
+            .declarations
+            .iter()
+            .filter(|held| held.associated)
+            .map(|held| held.name.as_str())
+            .collect();
+        assert_eq!(associated, vec!["N"]);
+        let in_function: Vec<&str> = pay
+            .imports
+            .iter()
+            .filter(|held| held.in_function)
+            .map(|held| held.text.as_str())
+            .collect();
+        assert_eq!(in_function, vec!["use std::fmt::Write;"]);
+    }
+
+    #[test]
     fn every_outcome_reads_back_as_it_was_written() {
         let (written, read) = read_back();
         assert_eq!(read.len(), 5);
@@ -612,6 +661,7 @@ mod tests {
                     ]
                 ),
                 (vec!["tests".to_string()], vec!["super::*".to_string()]),
+                (Vec::new(), vec!["std::fmt::Write".to_string()]),
             ]
         );
         let paths: Vec<(u64, &[String], &str)> = pay
