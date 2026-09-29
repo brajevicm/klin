@@ -962,13 +962,12 @@ fn name(relative: &str) -> String {
 }
 
 /// The host canary is a vendor-drift alarm, not a gate on a person's pull request: a red host
-/// is the vendor's change, not the branch's. It stays on a schedule and manual dispatch, and
-/// `docs/HOST_COMPATIBILITY.md` records what it proves.
+/// is the vendor's change, not the branch's. It runs only when a person dispatches it (#232),
+/// and `docs/HOST_COMPATIBILITY.md` records what it proves.
 #[test]
 fn the_host_canary_stays_out_of_pull_request_gating() {
     let workflow = text(".github/workflows/host-compatibility.yml");
 
-    assert!(workflow.contains("schedule:"), "the canary has no schedule");
     assert!(
         workflow.contains("workflow_dispatch:"),
         "the canary cannot be dispatched by hand"
