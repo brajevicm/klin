@@ -19,7 +19,7 @@ Label each row `appropriate` or `not-appropriate` in `labels.json`, with an opti
 
 - Session `a3e4c5a6` on 2026-09-11, klin 0.1.0, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 52 hour(s) ago
-- Stops this row stands for: 3
+- Stops this row stands for: 2
 - Gate: doc-size, FAIL
 - Decision group: document CONTEXT.md
 
@@ -41,7 +41,7 @@ Condition: over its word ceiling.
 
 - Session `a3e4c5a6` on 2026-09-11, klin 0.1.0, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 52 hour(s) ago
-- Stops this row stands for: 3
+- Stops this row stands for: 2
 - Gate: inventory, FAIL
 - Decision group: inventory
 - Derived test roots: `["tests"]`, the roots that match a language's test convention
@@ -105,7 +105,7 @@ Condition: where the base holds a test site the working tree no longer has.
 
 - Session `33551953` on 2026-09-11, klin 0.1.0, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 53 hour(s) ago
-- Stops this row stands for: 5
+- Stops this row stands for: 2
 - Gate: doc-size, FAIL
 - Decision group: document CONTEXT.md
 
@@ -127,7 +127,7 @@ Condition: over its word ceiling.
 
 - Session `33551953` on 2026-09-11, klin 0.1.0, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 53 hour(s) ago
-- Stops this row stands for: 5
+- Stops this row stands for: 4
 - Gate: inventory, FAIL
 - Decision group: inventory
 - Derived test roots: `["tests"]`, the roots that match a language's test convention
@@ -661,7 +661,7 @@ Condition: where the base holds a test site the working tree no longer has.
 
 - Session `01a0928e` on 2026-09-12, klin 0.1.0, host codex
 - Window: turn, before c97aaede8260, the turn stamp, taken 59 hour(s) ago
-- Stops this row stands for: 13
+- Stops this row stands for: 5
 - Gate: escapes, FAIL
 - Decision group: escapes
 
@@ -685,7 +685,7 @@ Condition: where the code opts out of a check.
 
 - Session `01a0928e` on 2026-09-12, klin 0.1.0, host codex
 - Window: turn, before c97aaede8260, the turn stamp, taken 59 hour(s) ago
-- Stops this row stands for: 13
+- Stops this row stands for: 5
 - Gate: inventory, FAIL
 - Decision group: inventory
 - Derived test roots: `["tests"]`, the roots that match a language's test convention
@@ -749,7 +749,7 @@ Condition: where the base holds a test site the working tree no longer has.
 
 - Session `01a0928e` on 2026-09-12, klin 0.1.0, host codex
 - Window: turn, before c97aaede8260, the turn stamp, taken 59 hour(s) ago
-- Stops this row stands for: 13
+- Stops this row stands for: 5
 - Gate: complexity, FAIL
 - Decision group: pinned ceiling
 
@@ -991,7 +991,7 @@ Condition: over the complexity gate (cyclomatic > 8 or body > 60 lines).
 
 - Session `19d886f0` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 64 hour(s) ago
-- Stops this row stands for: 10
+- Stops this row stands for: 4
 - Gate: escapes, FAIL
 - Decision group: escapes
 
@@ -1015,7 +1015,7 @@ Condition: where the code opts out of a check.
 
 - Session `19d886f0` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 64 hour(s) ago
-- Stops this row stands for: 10
+- Stops this row stands for: 4
 - Gate: inventory, FAIL
 - Decision group: inventory
 - Derived test roots: `["tests"]`, the roots that match a language's test convention
@@ -1079,7 +1079,7 @@ Condition: where the base holds a test site the working tree no longer has.
 
 - Session `19d886f0` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 64 hour(s) ago
-- Stops this row stands for: 10
+- Stops this row stands for: 4
 - Gate: complexity, FAIL
 - Decision group: pinned ceiling
 
@@ -1101,7 +1101,7 @@ Condition: over the complexity gate (cyclomatic > 8 or body > 60 lines).
 
 - Session `3dece38d` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 65 hour(s) ago
-- Stops this row stands for: 13
+- Stops this row stands for: 5
 - Gate: escapes, FAIL
 - Decision group: escapes
 
@@ -1125,7 +1125,7 @@ Condition: where the code opts out of a check.
 
 - Session `3dece38d` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 65 hour(s) ago
-- Stops this row stands for: 13
+- Stops this row stands for: 5
 - Gate: inventory, FAIL
 - Decision group: inventory
 - Derived test roots: `["tests"]`, the roots that match a language's test convention
@@ -1189,7 +1189,7 @@ Condition: where the base holds a test site the working tree no longer has.
 
 - Session `3dece38d` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 65 hour(s) ago
-- Stops this row stands for: 13
+- Stops this row stands for: 5
 - Gate: complexity, FAIL
 - Decision group: pinned ceiling
 
@@ -1211,7 +1211,7 @@ Condition: over the complexity gate (cyclomatic > 8 or body > 60 lines).
 
 - Session `8b4bf669` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 66 hour(s) ago
-- Stops this row stands for: 3
+- Stops this row stands for: 2
 - Gate: escapes, FAIL
 - Decision group: escapes
 
@@ -1235,7 +1235,7 @@ Condition: where the code opts out of a check.
 
 - Session `8b4bf669` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 66 hour(s) ago
-- Stops this row stands for: 3
+- Stops this row stands for: 1
 - Gate: inventory, FAIL
 - Decision group: inventory
 - Derived test roots: `["tests"]`, the roots that match a language's test convention
@@ -1299,7 +1299,7 @@ Condition: where the base holds a test site the working tree no longer has.
 
 - Session `8b4bf669` on 2026-09-12, klin 0.1.1, host claude
 - Window: turn, before c97aaede8260, the turn stamp, taken 66 hour(s) ago
-- Stops this row stands for: 3
+- Stops this row stands for: 2
 - Gate: complexity, FAIL
 - Decision group: pinned ceiling
 

@@ -1,30 +1,30 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { sha256 } from "./trees.ts";
 
-export const CUTOFF = "2026-09-29T00:00:00Z";
+const CUTOFF = "2026-09-29T00:00:00Z";
 const CHANGES = 10;
 const PER_LANGUAGE = 5;
 const LIMIT_MS = 600_000;
 const TIP = "refs/replay/tip";
 
-export const LANGUAGES = [
+const LANGUAGES = [
   { name: "Rust", manifest: "Cargo.toml" },
   { name: "TypeScript", manifest: "package.json" },
 ] as const;
 
-export function query(language: string): string {
+function query(language: string): string {
   return `language:${language} stars:1000..20000 pushed:>=2026-09-15 archived:false mirror:false size:<=150000`;
 }
 
-export interface Change {
+interface Change {
   head: string;
   base: string;
   subject: string;
 }
 
-export interface Repository {
+interface Repository {
   language: string;
   fullName: string;
   defaultBranch: string;
@@ -34,14 +34,14 @@ export interface Repository {
   changes: Change[];
 }
 
-export interface Selection {
+interface Selection {
   cutoff: string;
   queries: Record<string, string>;
   repositories: Repository[];
   skipped: { language: string; fullName: string; reason: string }[];
 }
 
-export interface RunRecord {
+interface RunRecord {
   language: string;
   repository: string;
   index: number;
@@ -55,6 +55,12 @@ export interface RunRecord {
   stderr: string;
 }
 
+interface Commit {
+  sha: string;
+  time: number;
+  subject: string;
+}
+
 interface SearchItem {
   full_name: string;
   default_branch: string;
@@ -62,7 +68,7 @@ interface SearchItem {
   size: number;
 }
 
-export function git(cwd: string, args: string[]): string {
+function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf8", maxBuffer: 1 << 30 }).trimEnd();
 }
 
@@ -70,7 +76,7 @@ function holds(cwd: string, commit: string, file: string): boolean {
   return spawnSync("git", ["cat-file", "-e", `${commit}:${file}`], { cwd }).status === 0;
 }
 
-export function slug(fullName: string): string {
+function slug(fullName: string): string {
   return fullName.replace("/", "__");
 }
 
@@ -91,7 +97,7 @@ function clone(clones: string, item: SearchItem): string | null {
   return into;
 }
 
-export function changesBefore(walk: { sha: string; time: number; subject: string }[], cutoff: number): Change[] | null {
+export function changesBefore(walk: Commit[], cutoff: number): Change[] | null {
   const start = walk.findIndex((one) => one.time < cutoff);
   if (start < 0 || walk.length < start + CHANGES + 1) {
     return null;
@@ -99,7 +105,7 @@ export function changesBefore(walk: { sha: string; time: number; subject: string
   return walk.slice(start, start + CHANGES).map((one, at) => ({ head: one.sha, base: walk[start + at + 1].sha, subject: one.subject }));
 }
 
-function firstParentWalk(cwd: string): { sha: string; time: number; subject: string }[] {
+function firstParentWalk(cwd: string): Commit[] {
   return git(cwd, ["log", "--first-parent", "--format=%H%x09%ct%x09%s", TIP])
     .split("\n")
     .map((line) => {
@@ -187,17 +193,16 @@ function prepare(cwd: string, change: Change): void {
 }
 
 function environment(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  delete env.GITHUB_BASE_REF;
-  delete env.GITHUB_EVENT_PATH;
-  return env;
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => name !== "GITHUB_BASE_REF" && name !== "GITHUB_EVENT_PATH" && !name.startsWith("KLIN_")),
+  );
 }
 
-export function recordPath(into: string, repository: string, index: number, head: string): string {
+function recordPath(into: string, repository: string, index: number, head: string): string {
   return path.join(into, "runs", slug(repository), `${String(index + 1).padStart(2, "0")}-${head.slice(0, 12)}.json`);
 }
 
-export function readSelection(into: string): Selection {
+function readSelection(into: string): Selection {
   return JSON.parse(fs.readFileSync(path.join(into, "selection.json"), "utf8")) as Selection;
 }
 
@@ -207,7 +212,12 @@ export function run(into: string, clones: string, klin: string): number {
     process.stdout.write(`${klin} has no provenance file; build it with benchmark/build-klin\n`);
     return 2;
   }
-  fs.copyFileSync(provenance, path.join(into, "klin.provenance.json"));
+  const recorded = path.join(into, "klin.provenance.json");
+  if (fs.existsSync(recorded) && fs.readFileSync(recorded, "utf8") !== fs.readFileSync(provenance, "utf8")) {
+    process.stdout.write(`${klin} is not the binary that ${recorded} names; a resumed replay keeps one binary\n`);
+    return 2;
+  }
+  fs.copyFileSync(provenance, recorded);
   const selection = readSelection(into);
   for (const repository of selection.repositories) {
     const cwd = path.join(clones, slug(repository.fullName));
@@ -259,7 +269,7 @@ const EXCERPTS = 3;
 const PROMPT_CHARS = 600;
 const MESSAGE_LINES = 30;
 
-export interface Finding {
+interface Finding {
   gate?: string;
   file?: string | null;
   line?: number;
@@ -287,7 +297,7 @@ interface Report {
   findings?: Finding[];
 }
 
-export interface Row {
+interface Row {
   id: string;
   gate: string;
   status: string;
@@ -307,32 +317,32 @@ function ceilingOf(finding: Finding, measure: string): number | null {
   return found ? Number(found[1]) : null;
 }
 
-export function groupOf(gate: string, finding: Finding, derived: Derived[]): string {
+export function groupOf(gate: string, finding: Finding, derived: Derived[]): string[] {
   if (gate === "doc-size") {
-    return `document ${finding.file}`;
+    return [`document ${finding.file}`];
   }
   if (gate !== "complexity") {
-    return gate;
+    return [gate];
   }
   if (finding.outcome !== "new" && finding.outcome !== "worsened") {
-    return `${finding.outcome ?? "no"} record`;
+    return [`${finding.outcome ?? "no"} record`];
   }
   if (!derived.some((one) => one.section === "complexity" && (one.key === "cc" || one.key === "lines"))) {
-    return "pinned ceiling";
+    return ["pinned ceiling"];
   }
   const over = Object.keys(FLOOR).filter((measure) => {
     const ceiling = ceilingOf(finding, measure);
     return ceiling !== null && Number(finding.values?.[measure]) > ceiling;
   });
   if (over.length === 0) {
-    return "no measure over its ceiling";
+    return ["no measure over its ceiling"];
   }
-  if (over.every((measure) => Number(finding.matched?.values?.[measure]) > (ceilingOf(finding, measure) ?? Infinity))) {
-    return "a site the base held over the ceiling grew";
-  }
-  return over
-    .map((measure) => `${measure} ${ceilingOf(finding, measure) === FLOOR[measure] ? "at the floor" : "at a derived percentile"}`)
-    .join(", ");
+  return over.map((measure) => {
+    const ceiling = ceilingOf(finding, measure);
+    const source = ceiling === FLOOR[measure] ? "at the floor" : "at a derived percentile";
+    const held = Number(finding.matched?.values?.[measure]) > (ceiling ?? Infinity) ? ", the base site already over" : "";
+    return `${measure} ${source}${held}`;
+  });
 }
 
 function clipped(message: string): string {
@@ -372,11 +382,11 @@ function gateRows(report: Report, context: Record<string, unknown>, detail: (gat
     return {
       gate: gate.name,
       status: gate.status,
-      groups: [...new Set(own.map((finding) => groupOf(gate.name, finding, derived)))],
+      groups: [...new Set(own.flatMap((finding) => groupOf(gate.name, finding, derived)))].sort(),
       derived: derivedFor(gate.name, derived),
       findings: own.map(({ fix_advice: _advice, ...finding }, at) => ({ ...finding, excerpt: at < EXCERPTS ? detail(gate.name, finding) : undefined })),
       remedies: [...new Set(own.map((finding) => finding.fix_advice).filter((one): one is string => Boolean(one)))],
-      context,
+      context: { ...context },
     };
   });
   const loose = findings.filter((finding) => !finding.gate);
@@ -390,7 +400,7 @@ function numbered(prefix: string, rows: Omit<Row, "id">[]): Row[] {
   return rows.map((row, at) => ({ id: `${prefix}${String(at + 1).padStart(3, "0")}`, ...row }));
 }
 
-export function replayRows(into: string, clones: string): Row[] {
+function replayRows(into: string, clones: string): Row[] {
   const rows: Omit<Row, "id">[] = [];
   for (const repository of readSelection(into).repositories) {
     const cwd = path.join(clones, slug(repository.fullName));
@@ -502,7 +512,7 @@ function rowMarkdown(row: Row): string {
   const context = row.context;
   const out = [`## ${row.id}`, ""];
   if (context.repository) {
-    out.push(`- Repository: \`${context.repository}\` (${context.language}), change ${context.change} of 10`);
+    out.push(`- Repository: \`${context.repository}\` (${context.language}), change ${context.change} of ${CHANGES}`);
     out.push(`- Commit: \`${String(context.head).slice(0, 12)}\`, judged against its first parent \`${String(context.base).slice(0, 12)}\`, exit ${context.exit}`);
   } else {
     out.push(`- Session \`${context.session}\` on ${context.date}, klin ${context.version}, host ${context.host ?? "unknown"}`);
@@ -542,7 +552,7 @@ function rowMarkdown(row: Row): string {
   return out.join("\n").trimEnd() + "\n";
 }
 
-export function worksheetMarkdown(title: string, preface: string[], rows: Row[]): string {
+function worksheetMarkdown(title: string, preface: string[], rows: Row[]): string {
   const byGate = new Map<string, number>();
   for (const row of rows) byGate.set(row.gate, (byGate.get(row.gate) ?? 0) + 1);
   const head = [
@@ -578,7 +588,7 @@ export function worksheets(into: string, clones: string, journal: string): numbe
     worksheetMarkdown(
       "Journal worksheet",
       [
-        `Every gate that failed or erred in the ${failing} FAIL or ERROR stops of klin's own journal, SHA-256 \`${createHash("sha256").update(text).digest("hex")}\`.`,
+        `Every gate that failed or erred in the ${failing} FAIL or ERROR stops of klin's own journal, SHA-256 \`${sha256(text)}\`.`,
         "Consecutive stops of one session with the same findings for a gate share a row.",
       ],
       own,

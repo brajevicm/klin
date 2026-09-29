@@ -18,14 +18,14 @@ test("the ten changes start at the first commit before the cutoff and each takes
 
 test("a complexity finding is grouped by the ceiling it crossed", () => {
   const floor = { outcome: "worsened", ceiling: "cc 5, lines 25", values: { cc: 2, lines: 31 }, matched: { file: "a", line: 1, text: "", values: { cc: 2, lines: 22 } } };
-  assert.equal(groupOf("complexity", floor, derivedFloor), "lines at the floor");
+  assert.deepEqual(groupOf("complexity", floor, derivedFloor), ["lines at the floor"]);
   const percentile = { outcome: "new", ceiling: "cc 7, lines 58", values: { cc: 9, lines: 10 }, matched: null };
-  assert.equal(groupOf("complexity", percentile, derivedFloor), "cc at a derived percentile");
+  assert.deepEqual(groupOf("complexity", percentile, derivedFloor), ["cc at a derived percentile"]);
   const grew = { outcome: "worsened", ceiling: "cc 5, lines 25", values: { cc: 2, lines: 266 }, matched: { file: "a", line: 1, text: "", values: { cc: 2, lines: 247 } } };
-  assert.equal(groupOf("complexity", grew, derivedFloor), "a site the base held over the ceiling grew");
-  assert.equal(groupOf("complexity", { ...percentile, outcome: "new" }, []), "pinned ceiling");
-  assert.equal(groupOf("complexity", { outcome: "unparsed", file: "lib/a.ts" }, derivedFloor), "unparsed record");
-  assert.equal(groupOf("doc-size", { file: "CHANGELOG.md" }, []), "document CHANGELOG.md");
+  assert.deepEqual(groupOf("complexity", grew, derivedFloor), ["lines at the floor, the base site already over"]);
+  assert.deepEqual(groupOf("complexity", percentile, []), ["pinned ceiling"]);
+  assert.deepEqual(groupOf("complexity", { outcome: "unparsed", file: "lib/a.ts" }, derivedFloor), ["unparsed record"]);
+  assert.deepEqual(groupOf("doc-size", { file: "CHANGELOG.md" }, []), ["document CHANGELOG.md"]);
 });
 
 test("consecutive stops of one session with the same findings share a row", () => {
@@ -59,4 +59,34 @@ test("consecutive stops of one session with the same findings share a row", () =
     ],
   );
   assert.equal(rows[0].context.prompt, "delete the old test");
+});
+
+test("a stop that fails two gates counts once in each gate's row", () => {
+  const gates = [
+    { name: "inventory", status: "FAIL" },
+    { name: "escapes", status: "FAIL" },
+  ];
+  const findings = [
+    { gate: "inventory", file: "tests/a.rs", line: 3, text: "fn a() {", outcome: "worsened", values: { missing: 1 } },
+    { gate: "escapes", file: "src/a.rs", line: 9, text: "x.unwrap()", outcome: "new", values: { count: 1 } },
+  ];
+  const stop = (only: string[]) =>
+    JSON.stringify({
+      kind: "stop",
+      session: "s1",
+      time: 0,
+      version: "0.3.0",
+      status: "FAIL",
+      window: {},
+      gates: gates.filter((gate) => only.includes(gate.name)),
+      findings: findings.filter((finding) => only.includes(finding.gate)),
+    });
+  const rows = journalRows([stop(["inventory", "escapes"]), stop(["inventory"])]);
+  assert.deepEqual(
+    rows.map((row) => [row.gate, row.context.stops]),
+    [
+      ["inventory", 2],
+      ["escapes", 1],
+    ],
+  );
 });

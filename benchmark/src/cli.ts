@@ -15,6 +15,7 @@ import * as toolchain from "./toolchain.ts";
 import * as worksheet from "./worksheet.ts";
 import * as synthesis from "./synthesis.ts";
 import * as replay from "./replay.ts";
+import * as session from "./session.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
@@ -468,16 +469,23 @@ export function main(argv: string[]): number {
   if (command === "evidence-prepare") {
     return evidencePrepare(args[0] ?? "", args.slice(1));
   }
-  if (command === "replay-select" || command === "replay-run") {
+  if (command === "replay-select") {
     const [into] = positionals(args);
     const clones = flag(args, "--clones", "");
     if (!into || clones === "") {
-      process.stdout.write(command + " needs a replay directory and --clones DIR\n\n" + USAGE);
+      process.stdout.write("replay-select needs a replay directory and --clones DIR\n\n" + USAGE);
       return 2;
     }
-    return command === "replay-select"
-      ? replay.select(path.resolve(into), path.resolve(clones))
-      : replay.run(path.resolve(into), path.resolve(clones), path.resolve(process.env.KLIN_BIN ?? path.join(paths.REPO, "target", "release", "klin")));
+    return replay.select(path.resolve(into), path.resolve(clones));
+  }
+  if (command === "replay-run") {
+    const [into] = positionals(args);
+    const clones = flag(args, "--clones", "");
+    if (!into || clones === "") {
+      process.stdout.write("replay-run needs a replay directory and --clones DIR\n\n" + USAGE);
+      return 2;
+    }
+    return replay.run(path.resolve(into), path.resolve(clones), path.resolve(session.defaults().klinBin));
   }
   if (command === "replay-worksheet") {
     const [into] = positionals(args);

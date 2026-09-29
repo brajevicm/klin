@@ -83,7 +83,7 @@ Condition: over its word ceiling.
 - Repository: `firecrawl/pdf-inspector` (Rust), change 2 of 10
 - Commit: `bf6800920a1d`, judged against its first parent `3400b4725efa`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 4,332 functions at 3400b47, floor 5; recorded scope: whole repository
 - Derived lines: `80`, 95th percentile of 4,332 functions at 3400b47, floor 25; recorded scope: whole repository
 
@@ -288,7 +288,7 @@ Condition: over its word ceiling.
 - Repository: `firecrawl/pdf-inspector` (Rust), change 3 of 10
 - Commit: `3400b4725efa`, judged against its first parent `c48b7cacc7b0`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 4,331 functions at c48b7ca, floor 5; recorded scope: whole repository
 - Derived lines: `80`, 95th percentile of 4,331 functions at c48b7ca, floor 25; recorded scope: whole repository
 
@@ -443,7 +443,7 @@ Condition: over its word ceiling.
 - Repository: `firecrawl/pdf-inspector` (Rust), change 5 of 10
 - Commit: `ac275044ed04`, judged against its first parent `e1797b1f482a`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 4,317 functions at e1797b1, floor 5; recorded scope: whole repository
 - Derived lines: `81`, 95th percentile of 4,317 functions at e1797b1, floor 25; recorded scope: whole repository
 
@@ -640,7 +640,7 @@ Condition: over its word ceiling.
 - Repository: `firecrawl/pdf-inspector` (Rust), change 6 of 10
 - Commit: `e1797b1f482a`, judged against its first parent `9a055d5f3ccd`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 4,288 functions at 9a055d5, floor 5; recorded scope: whole repository
 - Derived lines: `80`, 95th percentile of 4,288 functions at 9a055d5, floor 25; recorded scope: whole repository
 
@@ -869,7 +869,7 @@ Condition: over its word ceiling.
 - Repository: `firecrawl/pdf-inspector` (Rust), change 7 of 10
 - Commit: `9a055d5f3ccd`, judged against its first parent `2dbd16b3ea4e`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 4,280 functions at 2dbd16b, floor 5; recorded scope: whole repository
 - Derived lines: `80`, 95th percentile of 4,280 functions at 2dbd16b, floor 25; recorded scope: whole repository
 
@@ -1324,7 +1324,7 @@ Condition: where the code opts out of a check.
 - Repository: `gfx-rs/wgpu` (Rust), change 6 of 10
 - Commit: `5a7601baf4ec`, judged against its first parent `2c3e503258dd`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over
 - Derived cc: `15`, 95th percentile of 8,883 functions at 2c3e503, floor 5; recorded scope: whole repository
 - Derived lines: `107`, 95th percentile of 8,883 functions at 2c3e503, floor 25; recorded scope: whole repository
 
@@ -1408,7 +1408,7 @@ Condition: over the complexity gate (cyclomatic > 15 or body > 107 lines).
 - Repository: `gfx-rs/wgpu` (Rust), change 7 of 10
 - Commit: `2c3e503258dd`, judged against its first parent `babefc0d26f6`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew; cc at a derived percentile, lines at a derived percentile
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `15`, 95th percentile of 8,883 functions at babefc0, floor 5; recorded scope: whole repository
 - Derived lines: `107`, 95th percentile of 8,883 functions at babefc0, floor 25; recorded scope: whole repository
 
@@ -1635,7 +1635,7 @@ Condition: where the code opts out of a check.
 - Repository: `louis-e/arnis` (Rust), change 1 of 10
 - Commit: `daee5a7bff24`, judged against its first parent `d4852aa3d73d`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; lines at a derived percentile; cc at a derived percentile, lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,674 functions at d4852aa, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,674 functions at d4852aa, floor 25; recorded scope: whole repository
 
@@ -1855,7 +1855,7 @@ Condition: over the complexity gate (cyclomatic > 13 or body > 51 lines).
 - Repository: `louis-e/arnis` (Rust), change 2 of 10
 - Commit: `d4852aa3d73d`, judged against its first parent `641c2100df8c`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,623 functions at 641c210, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,623 functions at 641c210, floor 25; recorded scope: whole repository
 
@@ -2173,7 +2173,7 @@ Condition: where no reference named the declaration exists outside its own decla
 - Repository: `louis-e/arnis` (Rust), change 3 of 10
 - Commit: `641c2100df8c`, judged against its first parent `7e9a4344c53c`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,596 functions at 7e9a434, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,596 functions at 7e9a434, floor 25; recorded scope: whole repository
 
@@ -2516,7 +2516,7 @@ Condition: where the code opts out of a check.
 - Repository: `louis-e/arnis` (Rust), change 4 of 10
 - Commit: `7e9a4344c53c`, judged against its first parent `69811f59d213`, exit 1
 - Gate: complexity, FAIL
-- Decision group: lines at a derived percentile; cc at a derived percentile, lines at a derived percentile; cc at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,388 functions at 69811f5, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,388 functions at 69811f5, floor 25; recorded scope: whole repository
 
@@ -2750,7 +2750,7 @@ Condition: over the complexity gate (cyclomatic > 13 or body > 51 lines).
 - Repository: `louis-e/arnis` (Rust), change 5 of 10
 - Commit: `69811f59d213`, judged against its first parent `788d5e9ca9de`, exit 1
 - Gate: complexity, FAIL
-- Decision group: lines at a derived percentile; cc at a derived percentile, lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,336 functions at 788d5e9, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,336 functions at 788d5e9, floor 25; recorded scope: whole repository
 
@@ -2963,7 +2963,7 @@ Condition: over the complexity gate (cyclomatic > 13 or body > 51 lines).
 - Repository: `louis-e/arnis` (Rust), change 6 of 10
 - Commit: `788d5e9ca9de`, judged against its first parent `e7cdeb99e274`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,291 functions at e7cdeb9, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,291 functions at e7cdeb9, floor 25; recorded scope: whole repository
 
@@ -3267,7 +3267,7 @@ Condition: where the code opts out of a check.
 - Repository: `louis-e/arnis` (Rust), change 7 of 10
 - Commit: `e7cdeb99e274`, judged against its first parent `fc19146b3f72`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; cc at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,117 functions at fc19146, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,117 functions at fc19146, floor 25; recorded scope: whole repository
 
@@ -3507,7 +3507,7 @@ Condition: over the complexity gate (cyclomatic > 13 or body > 51 lines).
 - Repository: `louis-e/arnis` (Rust), change 8 of 10
 - Commit: `fc19146b3f72`, judged against its first parent `80553b383f85`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,071 functions at 80553b3, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,071 functions at 80553b3, floor 25; recorded scope: whole repository
 
@@ -3750,7 +3750,7 @@ Condition: where no reference named the declaration exists outside its own decla
 - Repository: `louis-e/arnis` (Rust), change 9 of 10
 - Commit: `80553b383f85`, judged against its first parent `a967f6570cde`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `13`, 95th percentile of 13,019 functions at a967f65, floor 5; recorded scope: whole repository
 - Derived lines: `51`, 95th percentile of 13,019 functions at a967f65, floor 25; recorded scope: whole repository
 
@@ -3956,7 +3956,7 @@ Condition: over the complexity gate (cyclomatic > 13 or body > 51 lines).
 - Repository: `denisidoro/navi` (Rust), change 4 of 10
 - Commit: `a171c2938d5e`, judged against its first parent `9e6e8da6f5da`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 180 functions at 9e6e8da, floor 5; recorded scope: whole repository
 - Derived lines: `45`, 95th percentile of 180 functions at 9e6e8da, floor 25; recorded scope: whole repository
 
@@ -4215,7 +4215,7 @@ Condition: where the code opts out of a check.
 - Repository: `refactoringhq/tolaria` (TypeScript), change 1 of 10
 - Commit: `04030c3e0a23`, judged against its first parent `d9e02a167907`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at the floor, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `5`, the floor of 5, over 34,768 function(s) at d9e02a1; recorded scope: whole repository
 - Derived lines: `34`, 95th percentile of 34,768 functions at d9e02a1, floor 25; recorded scope: whole repository
 
@@ -4295,7 +4295,7 @@ Condition: over the complexity gate (cyclomatic > 5 or body > 34 lines).
 - Repository: `refactoringhq/tolaria` (TypeScript), change 3 of 10
 - Commit: `44740e4ae18d`, judged against its first parent `7435ef89016d`, exit 1
 - Gate: complexity, FAIL
-- Decision group: lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at the floor, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `5`, the floor of 5, over 34,714 function(s) at 7435ef8; recorded scope: whole repository
 - Derived lines: `34`, 95th percentile of 34,714 functions at 7435ef8, floor 25; recorded scope: whole repository
 
@@ -4533,7 +4533,7 @@ Condition: where no reference named the declaration exists outside its own decla
 - Repository: `whyour/qinglong` (TypeScript), change 1 of 10
 - Commit: `44129ca0883e`, judged against its first parent `def4917447b1`, exit 1
 - Gate: complexity, FAIL
-- Decision group: lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `7`, 95th percentile of 5,056 functions at def4917, floor 5; recorded scope: whole repository
 - Derived lines: `57`, 95th percentile of 5,056 functions at def4917, floor 25; recorded scope: whole repository
 
@@ -4709,7 +4709,7 @@ Condition: where the code opts out of a check.
 - Repository: `whyour/qinglong` (TypeScript), change 3 of 10
 - Commit: `bc0f35e3f748`, judged against its first parent `f168efcdaeba`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: lines at a derived percentile, the base site already over
 - Derived cc: `7`, 95th percentile of 5,025 functions at f168efc, floor 5; recorded scope: whole repository
 - Derived lines: `57`, 95th percentile of 5,025 functions at f168efc, floor 25; recorded scope: whole repository
 
@@ -4858,7 +4858,7 @@ Condition: where the code opts out of a check.
 - Repository: `whyour/qinglong` (TypeScript), change 4 of 10
 - Commit: `f168efcdaeba`, judged against its first parent `bf63425805be`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; cc at a derived percentile, lines at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `7`, 95th percentile of 4,946 functions at bf63425, floor 5; recorded scope: whole repository
 - Derived lines: `57`, 95th percentile of 4,946 functions at bf63425, floor 25; recorded scope: whole repository
 
@@ -5038,7 +5038,7 @@ Condition: over the complexity gate (cyclomatic > 7 or body > 57 lines).
 - Repository: `whyour/qinglong` (TypeScript), change 8 of 10
 - Commit: `6c487018c2e6`, judged against its first parent `801a71d7402f`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `7`, 95th percentile of 4,861 functions at 801a71d, floor 5; recorded scope: whole repository
 - Derived lines: `58`, 95th percentile of 4,861 functions at 801a71d, floor 25; recorded scope: whole repository
 
@@ -5442,7 +5442,7 @@ Condition: where the code opts out of a check.
 - Repository: `whyour/qinglong` (TypeScript), change 9 of 10
 - Commit: `801a71d7402f`, judged against its first parent `f051135fc4ab`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; cc at a derived percentile; lines at a derived percentile
+- Decision group: cc at a derived percentile; lines at a derived percentile
 - Derived cc: `7`, 95th percentile of 3,635 functions at f051135, floor 5; recorded scope: whole repository
 - Derived lines: `48`, 95th percentile of 3,635 functions at f051135, floor 25; recorded scope: whole repository
 
@@ -5842,7 +5842,7 @@ Condition: over the complexity gate (cyclomatic > 7 or body > 48 lines).
 - Repository: `apollographql/apollo-client` (TypeScript), change 4 of 10
 - Commit: `37f700eb4c65`, judged against its first parent `d4f877012044`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at the floor; a site the base held over the ceiling grew
+- Decision group: cc at the floor; lines at a derived percentile, the base site already over
 - Derived cc: `5`, the floor of 5, over 13,259 function(s) at d4f8770; recorded scope: whole repository
 - Derived lines: `108`, 95th percentile of 13,259 functions at d4f8770, floor 25; recorded scope: whole repository
 
@@ -6537,7 +6537,7 @@ Condition: where the code stands in for work nobody did.
 - Repository: `apollographql/apollo-client` (TypeScript), change 7 of 10
 - Commit: `0c925a434823`, judged against its first parent `70e3a11d93c8`, exit 2
 - Gate: complexity, ERR
-- Decision group: cc at the floor, lines at a derived percentile; cc at the floor; lines at a derived percentile; a site the base held over the ceiling grew; unparsed record
+- Decision group: cc at the floor; cc at the floor, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over; unparsed record
 - Derived cc: `5`, the floor of 5, over 11,419 function(s) at 70e3a11; recorded scope: whole repository
 - Derived lines: `107`, 95th percentile of 11,419 functions at 70e3a11, floor 25; recorded scope: whole repository
 
@@ -7218,7 +7218,7 @@ Condition: over its word ceiling.
 - Repository: `Open-Dev-Society/OpenStock` (TypeScript), change 3 of 10
 - Commit: `87df76a2ce58`, judged against its first parent `130a69734d26`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: lines at a derived percentile, the base site already over
 - Derived cc: `6`, 95th percentile of 636 functions at 130a697, floor 5; recorded scope: whole repository
 - Derived lines: `53`, 95th percentile of 636 functions at 130a697, floor 25; recorded scope: whole repository
 
@@ -7528,7 +7528,7 @@ Condition: over its word ceiling.
 - Repository: `Open-Dev-Society/OpenStock` (TypeScript), change 5 of 10
 - Commit: `e844ac413c74`, judged against its first parent `1819bdf8a584`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `6`, 95th percentile of 628 functions at 1819bdf, floor 5; recorded scope: whole repository
 - Derived lines: `53`, 95th percentile of 628 functions at 1819bdf, floor 25; recorded scope: whole repository
 
@@ -7734,7 +7734,7 @@ Condition: over the complexity gate (cyclomatic > 6 or body > 53 lines).
 - Repository: `Open-Dev-Society/OpenStock` (TypeScript), change 8 of 10
 - Commit: `75a9ebb6f597`, judged against its first parent `3cf500ad4c82`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over
 - Derived cc: `6`, 95th percentile of 628 functions at 3cf500a, floor 5; recorded scope: whole repository
 - Derived lines: `53`, 95th percentile of 628 functions at 3cf500a, floor 25; recorded scope: whole repository
 
@@ -7981,7 +7981,7 @@ Condition: where the code opts out of a check.
 - Repository: `Open-Dev-Society/OpenStock` (TypeScript), change 9 of 10
 - Commit: `3cf500ad4c82`, judged against its first parent `eac13c65be69`, exit 2
 - Gate: complexity, ERR
-- Decision group: lines at a derived percentile; cc at a derived percentile; cc at a derived percentile, lines at a derived percentile; a site the base held over the ceiling grew; unparsed record
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over; unparsed record
 - Derived cc: `6`, 95th percentile of 444 functions at eac13c6, floor 5; recorded scope: whole repository
 - Derived lines: `75`, 95th percentile of 444 functions at eac13c6, floor 25; recorded scope: whole repository
 
@@ -8317,7 +8317,7 @@ Condition: where no reference named the declaration exists outside its own decla
 - Repository: `mountain-loop/yaak` (TypeScript), change 1 of 10
 - Commit: `7f3025361685`, judged against its first parent `6c2a18d506ae`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 8,495 functions at 6c2a18d, floor 5; recorded scope: whole repository
 - Derived lines: `52`, 95th percentile of 8,495 functions at 6c2a18d, floor 25; recorded scope: whole repository
 
@@ -8447,7 +8447,7 @@ Condition: over the complexity gate (cyclomatic > 9 or body > 52 lines).
 - Repository: `mountain-loop/yaak` (TypeScript), change 2 of 10
 - Commit: `6c2a18d506ae`, judged against its first parent `0a57d8eb6123`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 8,494 functions at 0a57d8e, floor 5; recorded scope: whole repository
 - Derived lines: `52`, 95th percentile of 8,494 functions at 0a57d8e, floor 25; recorded scope: whole repository
 
@@ -8574,7 +8574,7 @@ Condition: over the complexity gate (cyclomatic > 9 or body > 52 lines).
 - Repository: `mountain-loop/yaak` (TypeScript), change 3 of 10
 - Commit: `0a57d8eb6123`, judged against its first parent `411aa262c7a6`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 8,466 functions at 411aa26, floor 5; recorded scope: whole repository
 - Derived lines: `52`, 95th percentile of 8,466 functions at 411aa26, floor 25; recorded scope: whole repository
 
@@ -8834,7 +8834,7 @@ Condition: where the code opts out of a check.
 - Repository: `mountain-loop/yaak` (TypeScript), change 5 of 10
 - Commit: `34815f327a73`, judged against its first parent `6fc43a60e23b`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile; lines at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 8,422 functions at 6fc43a6, floor 5; recorded scope: whole repository
 - Derived lines: `52`, 95th percentile of 8,422 functions at 6fc43a6, floor 25; recorded scope: whole repository
 
@@ -9055,7 +9055,7 @@ Condition: where no reference named the declaration exists outside its own decla
 - Repository: `mountain-loop/yaak` (TypeScript), change 6 of 10
 - Commit: `6fc43a60e23b`, judged against its first parent `23d369d84e26`, exit 1
 - Gate: complexity, FAIL
-- Decision group: cc at a derived percentile, lines at a derived percentile; cc at a derived percentile; a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 8,345 functions at 23d369d, floor 5; recorded scope: whole repository
 - Derived lines: `53`, 95th percentile of 8,345 functions at 23d369d, floor 25; recorded scope: whole repository
 
@@ -9295,7 +9295,7 @@ Condition: where no reference named the declaration exists outside its own decla
 - Repository: `mountain-loop/yaak` (TypeScript), change 9 of 10
 - Commit: `b03c41b767ca`, judged against its first parent `a0d71eb486ee`, exit 1
 - Gate: complexity, FAIL
-- Decision group: a site the base held over the ceiling grew
+- Decision group: cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over
 - Derived cc: `9`, 95th percentile of 8,322 functions at a0d71eb, floor 5; recorded scope: whole repository
 - Derived lines: `53`, 95th percentile of 8,322 functions at a0d71eb, floor 25; recorded scope: whole repository
 
