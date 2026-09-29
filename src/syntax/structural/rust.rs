@@ -18,6 +18,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    quoted,
     visibility,
     exported_as,
     owner,
@@ -68,6 +69,16 @@ const SCOPED: &[&str] = &["scoped_identifier", "scoped_type_identifier"];
 
 /// The first segments a path resolves from inside this crate.
 const RELATIVE: &[&str] = &["crate", "self", "super"];
+
+/// The `serde` keys whose string is a path the derive calls: a function, and a module for `with`.
+const SERDE_PATHS: &[&str] = &[
+    "default",
+    "skip_serializing_if",
+    "serialize_with",
+    "deserialize_with",
+    "with",
+    "getter",
+];
 
 /// Whether this declaration is reachable past the file that holds it: it says so itself, a
 /// trait states it, or a trait implementation carries it and the trait exposes it.
@@ -454,6 +465,34 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
     }
     let named = attribute.child_by_field_name("value")?;
     Some(text_of(named, source).trim_matches('"').to_string())
+}
+
+/// Every segment of the path a string names where it is the value of a `serde` key the derive
+/// calls, as the same path written in code names each of them.
+fn quoted(node: Node, source: &[u8]) -> Vec<String> {
+    if node.kind() != "string_literal" || !serde_path(node, source) {
+        return Vec::new();
+    }
+    text_of(node, source)
+        .trim_matches('"')
+        .split("::")
+        .map(str::to_string)
+        .collect()
+}
+
+/// Whether this string follows one of `SERDE_PATHS` and `=` in the tokens of `serde(...)`,
+/// written as the attribute itself or inside another one such as `cfg_attr`.
+fn serde_path(node: Node, source: &[u8]) -> bool {
+    let serde = node
+        .parent()
+        .filter(|held| held.kind() == "token_tree")
+        .and_then(|held| held.prev_sibling())
+        .is_some_and(|held| held.kind() == "identifier" && text_of(held, source) == "serde");
+    let key = node
+        .prev_sibling()
+        .filter(|held| held.kind() == "=")
+        .and_then(|held| held.prev_sibling());
+    serde && key.is_some_and(|held| SERDE_PATHS.contains(&text_of(held, source).as_str()))
 }
 
 /// The names of the inline modules above a node, outermost first.

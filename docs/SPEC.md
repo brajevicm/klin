@@ -1342,7 +1342,14 @@ resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
 globs. The check is name-only: it does not resolve imports, types, reflection,
-framework entry points or external callers. A declaration that becomes dead
+framework entry points or external callers. The index reads a string as text,
+with one exception. Inside the tokens of a Rust `serde(...)` attribute,
+written as the attribute itself or inside another one such as `cfg_attr`, the
+string value of `default`, `skip_serializing_if`, `serialize_with`,
+`deserialize_with` or `getter` is the path of a function the derive calls, and
+the string value of `with` is the path of a module. Each `::` segment of such
+a path is a reference. A `default` with no value names nothing, and the string
+of any other key, such as `rename`, stays text. A declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
@@ -1372,8 +1379,13 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_private_typescript_main_is_judged`,
 `losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
 `one_typescript_reference_keeps_duplicate_names_alive` in
-`tests/dead_symbols.rs`; the report cap is covered by
-`report_lists_every_current_dead_symbol_without_the_note_cap`, and the
+`tests/dead_symbols.rs`; the `serde` strings by
+`a_private_function_only_a_serde_default_names_passes`,
+`a_private_function_only_a_serde_skip_serializing_if_names_passes`,
+`a_private_function_no_serde_key_names_still_fails` and
+`a_serde_attribute_inside_cfg_attr_names_its_function_too`; the report cap
+is covered by `report_lists_every_current_dead_symbol_without_the_note_cap`,
+and the
 judgement scope by
 `a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge` and
 `unrelated_historical_debt_outside_the_changed_scope_stays_silent`, and the

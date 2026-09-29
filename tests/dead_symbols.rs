@@ -153,6 +153,67 @@ fn configured_name_globs_are_ignored() {
 }
 
 #[test]
+fn a_private_function_only_a_serde_default_names_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"default_cell_zoom\")]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_function_only_a_serde_skip_serializing_if_names_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize, Serialize)]\npub struct Terrain {\n    #[serde(default = \"real_height\", skip_serializing_if = \"is_real_height\")]\n    pub height: u8,\n}\n\nfn real_height() -> u8 {\n    3\n}\n\nfn is_real_height(height: &u8) -> bool {\n    *height == 3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_function_no_serde_key_names_still_fails() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(rename = \"zoom_level\", default)]\n    pub zoom: u8,\n}\n\nfn zoom_level() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:7"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_attribute_inside_cfg_attr_names_its_function_too() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "pub struct Settings {\n    #[cfg_attr(feature = \"serde\", serde(default = \"default_cell_zoom\"))]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
 fn a_new_private_typescript_function_fails() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);
