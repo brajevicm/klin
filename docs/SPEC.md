@@ -1342,7 +1342,22 @@ resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
 globs. The check is name-only: it does not resolve imports, types, reflection,
-framework entry points or external callers. A declaration that becomes dead
+framework entry points or external callers. One framework is the exception:
+a Rust `#[serde(...)]` attribute names a callable in a string that the derive
+calls, so the extractor records that string as a reference. The keys are
+`default`, `skip_serializing_if`, `serialize_with`, `deserialize_with` and
+`getter`, and the value is a path in a plain or raw string. The reference is
+the path's last segment without generic arguments, so `"helpers::read"` and
+`"U16::<LittleEndian>::get"` reference `read` and `get` and no other segment.
+`with` names a module and not a callable, and it references nothing, as do
+`rename` and a bare `default`. This reference is an ordinary structural fact,
+so it keeps a file reached for `reachability` and a changed run widens on it
+as on any other reference. Pinned by
+`a_function_only_a_serde_attribute_names_passes_and_an_unnamed_one_fails`,
+`a_serde_path_references_only_its_terminal_callable`,
+`a_serde_string_that_names_no_callable_references_nothing` and
+`removing_the_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`
+in `tests/dead_symbols.rs`. A declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the

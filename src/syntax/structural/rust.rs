@@ -18,6 +18,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    named_in_string,
     visibility,
     exported_as,
     owner,
@@ -65,6 +66,16 @@ const NOISE: &[&str] = &[
 
 /// The node kinds a path of several segments is written as.
 const SCOPED: &[&str] = &["scoped_identifier", "scoped_type_identifier"];
+
+/// The keys of a `#[serde(...)]` attribute whose string value is a path to a callable. `with`
+/// names a module, not a callable, so it is left out.
+const SERDE_CALLABLES: &[&str] = &[
+    "default",
+    "skip_serializing_if",
+    "serialize_with",
+    "deserialize_with",
+    "getter",
+];
 
 /// The first segments a path resolves from inside this crate.
 const RELATIVE: &[&str] = &["crate", "self", "super"];
@@ -500,6 +511,55 @@ fn inside_a_longer_path(node: Node) -> bool {
         && holder
             .child_by_field_name("path")
             .is_some_and(|path| path.id() == part.id())
+}
+
+/// The callable a `#[serde(key = "path")]` string names for the derive to call. Only the path's
+/// last segment is kept, so no leading segment becomes a reference.
+fn named_in_string(node: Node, source: &[u8]) -> Option<String> {
+    if !matches!(node.kind(), "string_literal" | "raw_string_literal") {
+        return None;
+    }
+    if !SERDE_CALLABLES.contains(&serde_key(node, source)?.as_str()) {
+        return None;
+    }
+    terminal(&text_of(node.named_child(0)?, source))
+}
+
+/// The key a string is the value of in a `#[serde(...)]` attribute.
+fn serde_key(value: Node, source: &[u8]) -> Option<String> {
+    let equals = value.prev_sibling().filter(|held| held.kind() == "=")?;
+    let attribute = value
+        .parent()
+        .filter(|held| held.kind() == "token_tree")?
+        .parent()
+        .filter(|held| held.kind() == "attribute")?;
+    if text_of(attribute.named_child(0)?, source) != "serde" {
+        return None;
+    }
+    Some(text_of(equals.prev_sibling()?, source))
+}
+
+/// The last segment of a path, with its generic arguments dropped.
+fn terminal(path: &str) -> Option<String> {
+    let mut depth = 0usize;
+    let bare: String = path
+        .chars()
+        .filter(|held| match held {
+            '<' => {
+                depth += 1;
+                false
+            }
+            '>' => {
+                depth = depth.saturating_sub(1);
+                false
+            }
+            _ => depth == 0,
+        })
+        .collect();
+    bare.rsplit("::")
+        .map(str::trim)
+        .find(|segment| !segment.is_empty())
+        .map(str::to_string)
 }
 
 fn follow(node: Node, field: &str, source: &[u8], out: &mut Vec<String>) {

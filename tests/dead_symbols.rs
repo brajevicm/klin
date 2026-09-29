@@ -596,3 +596,98 @@ fn a_changed_file_that_keeps_its_reference_names_widens_nothing() {
         "the unchanged declarations were judged: {report}"
     );
 }
+
+const ZOOM: &str = r#"#[derive(Deserialize, Serialize)]
+pub struct M {
+    #[serde(default = "default_zoom", skip_serializing_if = "is_default_zoom")]
+    pub z: u8,
+}
+
+fn default_zoom() -> u8 { 3 }
+fn is_default_zoom(z: &u8) -> bool { *z == 3 }
+fn unused() {}
+"#;
+
+#[test]
+fn a_function_only_a_serde_attribute_names_passes_and_an_unnamed_one_fails() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/lib.rs", ZOOM);
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:9"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_path_references_only_its_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r##"pub struct M {
+    #[serde(serialize_with = "helpers::write", deserialize_with = r#"helpers::read"#)]
+    pub a: u8,
+    #[serde(getter = "U16::<LittleEndian>::get")]
+    pub b: u16,
+}
+
+fn write() {}
+fn read() {}
+fn get() {}
+fn helpers() {}
+"##,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_string_that_names_no_callable_references_nothing() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r#"pub struct M {
+    #[serde(rename = "helper", with = "codec", default)]
+    pub a: u8,
+}
+
+fn helper() {}
+fn codec() {}
+"#,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:6"), "{}", run.out);
+    assert!(run.says("src/lib.rs:7"), "{}", run.out);
+}
+
+#[test]
+fn removing_the_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write("src/service.rs", "fn default_zoom() -> u8 { 3 }\n");
+    tree.write(
+        "src/model.rs",
+        "pub struct M {\n    #[serde(default = \"default_zoom\")]\n    pub z: u8,\n}\n",
+    );
+    tree.base();
+    tree.write("src/model.rs", "pub struct M {\n    pub z: u8,\n}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+    assert!(run.says("lost reference in src/model.rs"), "{}", run.out);
+}

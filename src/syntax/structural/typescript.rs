@@ -26,6 +26,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    named_in_string,
     visibility,
     exported_as,
     owner,
@@ -131,6 +132,11 @@ fn nesting(_: Node, _: &[u8]) -> Vec<String> {
 
 /// A TypeScript file reaches another module only through an import specifier.
 fn qualified(_: Node, _: &[u8]) -> Option<String> {
+    None
+}
+
+/// No TypeScript framework attribute is read for the callables it names.
+fn named_in_string(_: Node, _: &[u8]) -> Option<String> {
     None
 }
 

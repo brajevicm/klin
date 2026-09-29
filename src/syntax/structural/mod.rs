@@ -794,6 +794,8 @@ pub(crate) struct Adapter {
     /// The path a node writes from the crate or from its own module, and `None` for any other
     /// node, including a path inside a longer one.
     pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// The callable a framework calls through generated code, where a string node names it.
+    pub named_in_string: fn(Node, &[u8]) -> Option<String>,
     /// What a declaration's or a module declaration's own modifier says.
     pub visibility: fn(Node, &[u8]) -> Visibility,
     /// The external name a declaration is exported under where it differs from its own name.
@@ -1135,6 +1137,13 @@ impl<'a, 'b> Reading<'a, 'b> {
                     name: self
                         .names
                         .intern(node.utf8_text(self.source).unwrap_or_default()),
+                    line: self.row(node),
+                });
+            } else if let Some(name) =
+                (self.adapter.named_in_string)(node, self.source).filter(|_| !self.claimed(node))
+            {
+                references.push(Reference {
+                    name: self.names.intern(&name),
                     line: self.row(node),
                 });
             } else if let Some(path) =
