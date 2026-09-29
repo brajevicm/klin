@@ -1347,10 +1347,13 @@ with one exception. Where a Rust attribute item holds `serde(...)`, as the
 attribute itself or directly inside `cfg_attr`, the string value of `default`,
 `skip_serializing_if`, `serialize_with`, `deserialize_with` or `getter`, plain
 or raw, is the path of a function the derive calls. The string is read by its
-value, every escape decoded, and a string with an escape klin cannot decode
-names nothing. The path's last segment, once every generic argument list and
-any qualified-self prefix such as `<T as Trait>` are removed, is a reference,
-and no other segment is. So `Accessor::<u8>::get` references `get` alone. It
+value, every escape decoded, and a line continuation drops its newline and the
+whitespace after it. A string with an escape klin cannot decode names nothing.
+The path's last segment, once every generic argument list and any
+qualified-self prefix such as `<T as Trait>` are removed, is a reference, and
+no other segment is. A const-generic block such as `{ 1 < 2 }` is removed
+whole first, so what it holds opens no argument list. So `Accessor::<u8>::get`
+references `get` alone. It
 is an ordinary reference, so a changed run widens on it and `reachability`
 counts it. The same tokens inside a macro call stay text. `with` names a
 module, which no one reference stands for, so its string stays text, as do a
@@ -1396,7 +1399,9 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_raw_string_serde_path_names_its_function`,
 `a_generic_qualified_serde_path_references_its_terminal_callable`,
 `a_qualified_self_serde_path_references_its_terminal_callable`,
-`an_escaped_serde_string_is_read_by_its_value` and
+`an_escaped_serde_string_is_read_by_its_value`,
+`a_const_generic_block_in_a_serde_path_keeps_its_terminal_callable`,
+`a_continued_serde_string_is_read_without_the_whitespace_after_the_newline` and
 `removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
 with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
 the report cap

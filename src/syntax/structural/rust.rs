@@ -482,18 +482,35 @@ fn quoted(node: Node, source: &[u8]) -> Vec<String> {
 }
 
 /// A string literal's value, its content with every escape sequence decoded, and `None` where
-/// an escape is one klin cannot decode.
+/// an escape is one klin cannot decode. A line continuation drops its newline and the
+/// whitespace that follows it, as the compiler does.
 fn string_value(node: Node, source: &[u8]) -> Option<String> {
     let mut value = String::new();
+    let mut continued = false;
     let mut cursor = node.walk();
     for part in node.named_children(&mut cursor) {
+        let text = text_of(part, source);
         match part.kind() {
-            "string_content" => value.push_str(&text_of(part, source)),
-            "escape_sequence" => value.push_str(&unescaped(&text_of(part, source))?),
+            "string_content" if continued => {
+                value.push_str(text.trim_start_matches(CONTINUED_SPACE))
+            }
+            "string_content" => value.push_str(&text),
+            "escape_sequence" => value.push_str(&unescaped(&text)?),
             _ => {}
         }
+        continued = part.kind() == "escape_sequence" && continues(&text);
     }
     Some(value)
+}
+
+/// The whitespace a line continuation skips at the start of the next line.
+const CONTINUED_SPACE: &[char] = &[' ', '\t', '\n', '\r'];
+
+/// Whether an escape sequence is a line continuation, a backslash before the end of a line.
+fn continues(escape: &str) -> bool {
+    escape
+        .strip_prefix('\\')
+        .is_some_and(|body| body.starts_with(['\n', '\r']))
 }
 
 /// The escapes that stand for one fixed character.
@@ -519,7 +536,7 @@ fn unescaped(escape: &str) -> Option<String> {
         let code = u32::from_str_radix(&code.replace('_', ""), 16).ok()?;
         return char::from_u32(code).map(String::from);
     }
-    if body.starts_with(['\n', '\r']) {
+    if continues(escape) {
         return Some(String::new());
     }
     SIMPLE_ESCAPES
@@ -529,13 +546,14 @@ fn unescaped(escape: &str) -> Option<String> {
 }
 
 /// The last segment of a path once every generic argument list is gone, so
-/// `Accessor::<u8>::get` and `<T as Trait>::get` both name `get`. An arrow inside the arguments
-/// does not close them.
+/// `Accessor::<u8>::get` and `<T as Trait>::get` both name `get`. A const-generic block such as
+/// `{ 1 < 2 }` goes first, whole, so a comparison inside it opens no list, and an arrow inside the
+/// arguments does not close one.
 fn terminal(path: &str) -> Option<String> {
     let mut depth = 0usize;
     let mut previous = ' ';
     let mut bare = String::new();
-    for held in path.chars() {
+    for held in outside_blocks(path).chars() {
         match held {
             '<' => depth += 1,
             '>' if previous != '-' => depth = depth.saturating_sub(1),
@@ -548,6 +566,24 @@ fn terminal(path: &str) -> Option<String> {
         .map(str::trim)
         .find(|segment| !segment.is_empty())
         .map(str::to_string)
+}
+
+/// The path with every `{ ... }` block and what it holds removed.
+fn outside_blocks(path: &str) -> String {
+    let mut depth = 0usize;
+    path.chars()
+        .filter(|held| match held {
+            '{' => {
+                depth += 1;
+                false
+            }
+            '}' => {
+                depth = depth.saturating_sub(1);
+                false
+            }
+            _ => depth == 0,
+        })
+        .collect()
 }
 
 /// Whether this string follows one of `SERDE_CALLABLES` and `=` in the tokens of a `serde(...)`
