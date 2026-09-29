@@ -621,9 +621,12 @@ Each check documents its rule. The rules for the shipped checks:
   index and a reference from another file. A member reached only through a
   name several files declare is not proof. `*.rs`, `*.ts` and every other
   bare extension are never a family, nor is a test root or a file under a
-  test directory. Of two candidates the broader wins where its whole cohort
-  is proven, and a narrower one survives a broader one that is not. The
-  policy is read from the derivation commit alone, never from the union with
+  test directory. A file under a test directory, or one whose basename
+  carries a test affix of 8.2, is never a member in a tree a run judges.
+  Of two candidates the
+  broader wins where its whole cohort is proven, and a narrower one survives
+  a broader one that is not. The policy is read from the derivation commit
+  alone, never from the union with
   `after`, so the tree being judged cannot widen or weaken it, and it is
   cached under that commit. When nothing is proven the gate has no families
   to judge. A person may narrow the derived families only with `in` and
@@ -1236,6 +1239,16 @@ The escapes table gains three rows for test-disabling constructs it lacks:
 other focus and skip markers, `.only`, `.skip`, `xit`, `#[ignore]`,
 `@Disabled`, `t.Skip` and `XCTSkip`, are already there.
 
+For the same reason a Rust `#[cfg_attr(P, ignore)]` or
+`#[cfg_attr(P, ignore = "...")]` is a skipped test only where `P` is always
+true under Rust's cfg rules: a predicate built of `all`, `any` and `not` alone
+that holds, such as `all()`, `not(any())` or a nest of these. Such a test
+never runs, as under a bare `#[ignore]`. A predicate that names a
+configuration option, such as `windows`, states where the test runs, and one
+that never holds, such as `any()`, skips nothing, so neither is a site. The
+pattern finds the attribute and the predicate is then evaluated, because no
+pattern counts nested parentheses.
+
 #### 8.2.1 Measurement rules of the shipped checks
 
 The table above names what each shipped check measures. This section states
@@ -1287,6 +1300,11 @@ judged. Every other row is judged in a test as anywhere else, so a
 `skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too` and
 `production_rust_beside_a_test_root_is_judged_as_before` and
 `a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged` in
+`tests/escapes.rs`.
+A Rust `cfg_attr` that carries `ignore` is a skipped test only where its
+predicate always holds, as 8.2 states. Pinned by
+`a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test` and
+`a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
 line, judges a test module like any other code, and refuses the key. Pinned by
@@ -1343,7 +1361,7 @@ alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
 globs. The check is name-only: it does not resolve imports, types, reflection,
 framework entry points or external callers. The index reads a string as text,
-with one exception. Where a Rust attribute item holds `serde(...)`, as the
+with two exceptions. Where a Rust attribute item holds `serde(...)`, as the
 attribute itself or directly inside `cfg_attr`, the string value of `default`,
 `skip_serializing_if`, `serialize_with`, `deserialize_with` or `getter`, plain
 or raw, is the path of a function the derive calls. The string is read by its
@@ -1356,9 +1374,17 @@ block, with any literal or comment inside it, never change which name that
 is, and `Accessor::<u8>::get` references `get` alone. A value the grammar does
 not read as exactly one path names nothing. It
 is an ordinary reference, so a changed run widens on it and `reachability`
-counts it. The same tokens inside a macro call stay text. `with` names a
+counts it. The same `serde` tokens inside a macro call are not an attribute,
+so no path they spell is a reference. `with` names a
 module, which no one reference stands for, so its string stays text, as do a
-`default` with no value and the string of any other key, such as `rename`. A
+`default` with no value and the string of any other key, such as `rename`.
+Inside a string literal that a Rust macro call receives, plain or raw and read
+by the same decoded value, the name of each `{name}` or `{name:spec}` capture
+is a reference, so a name only `format!("{name}")` or `format!(r#"{name}"#)`
+uses is alive. `{{` is a brace, and a position such as `{0}` or `{}` names
+nothing. The macro is not resolved, so a string any macro receives is read
+this way, and under the name-only rule an extra reference can only make a
+declaration look used. A
 declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
@@ -1407,7 +1433,10 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_continued_serde_string_is_read_without_the_whitespace_after_the_newline` and
 `removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
 with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
-the report cap
+the format captures by `a_private_const_only_a_format_capture_uses_passes` and
+`a_private_const_only_a_raw_format_capture_uses_passes`; the test convention by
+`a_tokio_test_passes_inline_and_under_a_test_directory` and
+`a_multi_line_test_attribute_marks_its_function`; the report cap
 is covered by `report_lists_every_current_dead_symbol_without_the_note_cap`,
 and the
 judgement scope by
@@ -1554,6 +1583,9 @@ both trees stays one NOTE under the ordinary two-tree ratchet, and never
 fails because a run re-judged it. Identity is the
 repository-relative path, so a file two families match is judged once,
 under the first family in the list, and an accepted entry names the path. A
+file under a test directory, or one a test affix marks, is no member in either
+tree a run judges (5.4), so a test written beside a family's files is judged
+by no family. A
 measured member with no eligible declaration is measured and not judged,
 and is neither unreached nor unsupported. A file that leaves the tree is
 `inventory`'s and no finding here. A new unreached member fails as new, a
@@ -1585,8 +1617,10 @@ by `a_new_command_file_nothing_references_fails_as_new`,
 `a_family_the_base_proves_is_derived_and_judges_a_new_working_tree_member`,
 `a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing`,
 `the_stop_hook_blocks_a_turn_that_left_a_member_unreached`,
-`a_changed_run_reports_one_surface_the_whole_run_reports_too` and
-`legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`
+`a_changed_run_reports_one_surface_the_whole_run_reports_too`,
+`legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`,
+`a_new_test_file_in_a_family_directory_is_no_member` and
+`a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove`
 in `tests/reachability.rs`, and by
 `a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction` in
 `tests/structural.rs`.
@@ -1685,10 +1719,15 @@ test function is a site of ADR 0008 inside such a file, in both trees, read
 off each tree's file list and kept only where the
 language's test convention marks it: a `fn`, `def` or `func` declaration
 whose name starts with `test_`, a `func Test` declaration, an `it(` or a
-`test(` call at the start of the declaration line, and a `#[test]`
-attribute or an `@Test` annotation on the declaration line or on the run of
-marker lines directly above it. A marker an identifier runs into matches
-nothing, so `myfunc Test` is not a declaration, and a call marker counts at
+`test(` call at the start of the declaration line, and a Rust attribute whose
+path ends in the segment `test`, with or without arguments, such as
+`#[test]`, `#[tokio::test]`, `#[tokio::test(flavor = "multi_thread")]` or
+`#[async_std::test]`, or an `@Test` annotation, on the declaration line or on
+the run of marker lines directly above it. `#[rstest]`, `#[test_case(...)]`
+and any other attribute whose last segment is not `test` mark nothing. The
+same convention decides which functions `dead-symbols` leaves unjudged and
+which empty body `stubs` calls an `empty test`. A marker an identifier runs
+into matches nothing, so `myfunc Test` is not a declaration, and a call marker counts at
 the start of the line only, so `def helper(test_arg): return it(test_arg)`
 is not a test. Where the grammar holds the annotation inside the function's
 own node, as it does for Java, the declaration line is the first line of
@@ -1709,6 +1748,7 @@ of ADR 0003. Pinned by
 `a_test_function_renamed_and_moved_with_its_body_unchanged_is_held`,
 `a_function_whose_name_only_holds_a_marker_is_not_a_test_site`,
 `a_test_name_with_no_attribute_above_it_is_a_test_site`,
+`deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site`,
 `an_in_that_names_one_file_judges_the_functions_in_it`,
 `a_test_file_beside_its_source_is_judged_with_no_configuration`,
 `an_except_added_only_in_the_working_tree_does_not_let_a_deletion_through` and

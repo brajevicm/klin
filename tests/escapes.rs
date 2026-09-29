@@ -866,6 +866,44 @@ fn a_skipped_test_under_a_test_root_is_still_an_escape() {
 }
 
 #[test]
+fn a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr(not(any()), ign",
+            "ore = \"slow\")]\nfn slow() {}\n\n#[test]\n#[cfg_attr(all(), ign",
+            "ore)]\nfn slower() {}\n\n#[test]\n#[cfg_attr(all(not(any()), any(all())), ign",
+            "ore)]\nfn slowest() {}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  skipped test"), "{}", run.out);
+    assert!(run.says("src/lib.rs:6  skipped test"), "{}", run.out);
+    assert!(run.says("src/lib.rs:10  skipped test"), "{}", run.out);
+}
+
+#[test]
+fn a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr(windows, ign",
+            "ore)]\nfn unix_only() {}\n\n#[test]\n#[cfg_attr(any(), ign",
+            "ore)]\nfn everywhere() {}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 escape site(s)"), "{}", run.out);
+}
+
+#[test]
 fn a_skipped_test_inside_an_inline_test_module_is_still_an_escape() {
     let tree = tree();
     tree.write(

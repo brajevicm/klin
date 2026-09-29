@@ -469,18 +469,45 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
     Some(text_of(named, source).trim_matches('"').to_string())
 }
 
-/// The function a string names where it is the value of a `serde` key the derive calls: the
-/// terminal segment of the path its value spells, which is the one name the call resolves by.
+/// The names a string calls by its value: the terminal segment of the path the value of a
+/// `serde` key the derive calls spells, which is the one name the call resolves by, and every
+/// name a format string that a macro call receives captures.
 fn quoted(node: Node, source: &[u8]) -> Vec<String> {
-    if !matches!(node.kind(), "string_literal" | "raw_string_literal")
-        || !serde_callable(node, source)
-    {
+    if !matches!(node.kind(), "string_literal" | "raw_string_literal") {
         return Vec::new();
     }
-    string_value(node, source)
-        .and_then(|value| terminal(&value))
-        .into_iter()
-        .collect()
+    let Some(value) = string_value(node, source) else {
+        return Vec::new();
+    };
+    if serde_callable(node, source) {
+        return terminal(&value).into_iter().collect();
+    }
+    match above(node, &["macro_invocation"]) {
+        Some(_) => captures(&value),
+        None => Vec::new(),
+    }
+}
+
+/// The names the `{name}` and `{name:spec}` captures of a format string write. `{{` is a brace,
+/// and a position such as `{0}` names nothing.
+fn captures(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(at) = rest.find('{') {
+        rest = &rest[at + 1..];
+        if let Some(after) = rest.strip_prefix('{') {
+            rest = after;
+            continue;
+        }
+        let end = rest
+            .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .unwrap_or(rest.len());
+        let name = &rest[..end];
+        if rest[end..].starts_with(['}', ':']) && name.starts_with(|c: char| !c.is_ascii_digit()) {
+            out.push(name.to_string());
+        }
+    }
+    out
 }
 
 /// A string literal's value, its content with every escape sequence decoded, and `None` where

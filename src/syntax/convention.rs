@@ -17,9 +17,9 @@ const TEST_NAMES: &[&str] = &["fn test_", "def test_", "func test_", "func Test"
 /// to one of these names inside a body is not a declaration.
 const TEST_CALLS: &[&str] = &["it(", "test("];
 
-/// The markers it writes as an attribute or an annotation, on the declaration line or on the
-/// run of marker lines above it.
-const TEST_ATTRIBUTES: &[&str] = &["#[test]", "@Test"];
+/// The markers it writes as an annotation, on the declaration line or on the run of marker lines
+/// above it. A Rust attribute marks a test by its path, which `test_marker` reads.
+const TEST_ANNOTATIONS: &[&str] = &["@Test"];
 
 /// One test function a tree holds: the site of ADR 0008, and the body hash the cross-file pass
 /// of spec 4.4 matches on. What `inventory` ratchets the existence of. Spec 8.2.
@@ -99,9 +99,7 @@ fn marks_a_test(lines: &[&str], row: usize) -> bool {
         || TEST_CALLS
             .iter()
             .any(|marker| declaration.starts_with(marker))
-        || TEST_ATTRIBUTES
-            .iter()
-            .any(|marker| declaration.contains(marker))
+        || test_marker(&declaration)
         || attributed(lines, row)
 }
 
@@ -111,7 +109,20 @@ fn attributed(lines: &[&str], row: usize) -> bool {
         .rev()
         .map(|line| line.trim())
         .take_while(|line| only_a_marker(line))
-        .any(|line| TEST_ATTRIBUTES.iter().any(|marker| line.contains(marker)))
+        .any(test_marker)
+}
+
+/// Whether a line carries a test marker: an annotation, or a Rust attribute whose path ends in
+/// the segment `test`, with or without arguments, as `#[test]` and `#[tokio::test(...)]` do.
+fn test_marker(line: &str) -> bool {
+    TEST_ANNOTATIONS.iter().any(|marker| line.contains(marker))
+        || line.match_indices("#[").any(|(at, _)| {
+            let path = &line[at + 2..];
+            let end = path
+                .find(|c: char| !(c.is_alphanumeric() || c == '_' || c == ':'))
+                .unwrap_or(path.len());
+            path[end..].starts_with([']', '(']) && path[..end].rsplit("::").next() == Some("test")
+        })
 }
 
 /// Whether the text names this marker where no identifier runs into it, so `myfunc Test` is

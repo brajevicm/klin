@@ -48,6 +48,9 @@ pub struct Kind {
     pub skips_literals: bool,
     /// Whether the function walk judges body shapes too, which only a parser can see. #114.
     pub reads_shapes: bool,
+    /// Whether a match stands as a site once its text is read, which a pattern cannot always
+    /// decide, such as whether a Rust `cfg_attr` predicate holds on every target.
+    pub stands: fn(&str) -> bool,
     pub evaluator: Evaluator<'static>,
 }
 
@@ -106,6 +109,7 @@ struct Set {
     /// Whether the function walk judges the body shapes of the files this set reads. A set the
     /// project's own patterns make is not a language, so it names no shapes. #114.
     shapes: bool,
+    stands: fn(&str) -> bool,
 }
 
 struct Spec {
@@ -300,6 +304,7 @@ fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
         .map(|set| {
             Ok(Set {
                 shapes: kind.reads_shapes,
+                stands: kind.stands,
                 suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
                 patterns: compiled(
                     kind,
@@ -511,7 +516,11 @@ fn tally(
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
     for pattern in &set.patterns {
-        for found in pattern.regex.find_iter(text) {
+        let stands = pattern
+            .regex
+            .find_iter(text)
+            .filter(|found| (set.stands)(found.as_str()));
+        for found in stands {
             if quoted(past, found.range()) {
                 continue;
             }

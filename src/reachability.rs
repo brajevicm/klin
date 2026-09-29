@@ -89,9 +89,11 @@ struct Family {
 }
 
 impl Family {
-    /// Whether the family's root and pattern select this path, before any exclusion.
+    /// Whether the family's root and pattern select this path, before any exclusion. A file the
+    /// test convention marks is never selected. Spec 5.4.
     fn selects(&self, path: &str) -> bool {
-        self.roots.iter().any(|root| under_or_at(path, root))
+        !survey::marked(path)
+            && self.roots.iter().any(|root| under_or_at(path, root))
             && self.extensions.iter().any(|end| path.ends_with(end))
             && files::glob_matches(self.pattern.as_bytes(), basename(path).as_bytes())
     }

@@ -665,6 +665,28 @@ fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
     );
 }
 
+#[test]
+fn deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site() {
+    let tree = Tree::new();
+    tree.write(
+        "tests/serve.rs",
+        "#[tokio::test]\nasync fn alpha() {\n    serve(1).await;\n}\n\n#[tokio::test]\nasync fn \
+         beta() {\n    serve(2).await;\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/serve.rs",
+        "#[tokio::test]\nasync fn alpha() {\n    serve(1).await;\n}\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("missing 1, was missing 0  async fn beta() {"),
+        "{}",
+        run.out
+    );
+}
+
 /// Spec 8.2: a stop that blocks records every finding it reported, so the report must name
 /// every deletion that record holds. A window of more than a screenful still names each one,
 /// and the stop after it lets all of them through.

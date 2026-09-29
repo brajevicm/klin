@@ -124,6 +124,40 @@ fn externally_visible_and_test_functions_are_not_judged() {
 }
 
 #[test]
+fn a_tokio_test_passes_inline_and_under_a_test_directory() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        "pub fn api() {}\n\n#[cfg(test)]\nmod tests {\n    #[tokio::test]\n    async fn serves() {}\n}\n",
+    );
+    tree.write(
+        "tests/serve.rs",
+        "#[tokio::test(flavor = \"multi_thread\")]\nasync fn serves_twice() {}\n\n#[async_std::test]\nasync fn serves_once() {}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_const_only_a_format_capture_uses_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "const YARN: &str = \"yarn\";\nconst PAD: usize = 4;\n\npub fn command(tool: &str) -> String {\n    format!(\"{YARN} {tool} {PAD:>2}\")\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
 fn one_reference_keeps_all_duplicate_names_alive() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);

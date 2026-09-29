@@ -795,7 +795,7 @@ pub(crate) struct Adapter {
     /// node, including a path inside a longer one.
     pub qualified: fn(Node, &[u8]) -> Option<String>,
     /// The names a node writes inside a string that the language calls by that text, such as a
-    /// function a Rust `serde` attribute names.
+    /// function a Rust `serde` attribute names or a name a format string captures.
     pub quoted: fn(Node, &[u8]) -> Vec<String>,
     /// What a declaration's or a module declaration's own modifier says.
     pub visibility: fn(Node, &[u8]) -> Visibility,

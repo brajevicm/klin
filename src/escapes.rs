@@ -72,7 +72,11 @@ const LANGUAGES: &[Language] = &[
             ("expect", r"\.expect\(", ""),
             ("unsafe", r"\bunsafe\s*\{", ""),
             ("allow", r"#!?\[allow\(", ""),
-            ("skipped test", r"#\[ignore\b", ""),
+            (
+                "skipped test",
+                r"#\[ignore\b|#\[cfg_attr\((?:\s|all|any|not|[(),])*,\s*ignore\b",
+                "",
+            ),
         ],
     },
     Language {
@@ -127,6 +131,7 @@ pub const KIND: Kind = Kind {
     test_idioms: &["unwrap", "expect"],
     skips_literals: false,
     reads_shapes: false,
+    stands,
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "escape site(s)",
@@ -152,4 +157,35 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 
 fn show(values: &Values) -> String {
     markers::show(LABEL, values)
+}
+
+/// Whether a match stands as a site. A `cfg_attr` that skips a test stands only where its
+/// predicate holds on every target, which the pattern cannot decide. Spec 8.2.
+fn stands(found: &str) -> bool {
+    found.strip_prefix("#[cfg_attr(").is_none_or(|rest| {
+        predicate(rest).is_some_and(|(holds, after)| holds && after.trim_start().starts_with(','))
+    })
+}
+
+/// The value of the cfg predicate at the front of this text, made of `all`, `any` and `not`
+/// alone, with the text after it, and `None` where no such predicate leads it.
+fn predicate(text: &str) -> Option<(bool, &str)> {
+    let text = text.trim_start();
+    let name = ["all", "any", "not"]
+        .into_iter()
+        .find(|name| text.starts_with(name))?;
+    let mut rest = text[name.len()..].trim_start().strip_prefix('(')?;
+    let mut values = Vec::new();
+    while let Some((value, after)) = predicate(rest) {
+        values.push(value);
+        rest = after.trim_start();
+        rest = rest.strip_prefix(',').unwrap_or(rest);
+    }
+    let value = match (name, values.as_slice()) {
+        ("all", _) => values.iter().all(|held| *held),
+        ("any", _) => values.iter().any(|held| *held),
+        (_, [only]) => !only,
+        _ => return None,
+    };
+    Some((value, rest.trim_start().strip_prefix(')')?))
 }
