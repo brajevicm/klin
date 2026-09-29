@@ -8,7 +8,7 @@
 //! prelude names the libraries of the tree its manifest takes by path, so a consumer that
 //! follows a path into another crate reaches the one Cargo would build.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io;
 use std::iter::Peekable;
 use std::path::{Path, PathBuf};
@@ -17,7 +17,7 @@ use cargo_toml::{AbstractFilesystem, Manifest, Value};
 
 use super::{Attachment, Builder, TargetKind, Topology, directory, joined};
 use crate::survey;
-use crate::syntax::structural::ModuleDecl;
+use crate::syntax::structural::{DeclarationKind, ModuleDecl};
 
 const MANIFEST: &str = "Cargo.toml";
 
@@ -557,6 +557,7 @@ impl Crate<'_> {
                 .map(|(name, child)| (name.clone(), self.nodes[*child].index))
                 .collect();
             module.unresolved = node.unresolved.iter().cloned().collect();
+            module.bound = bound(builder.topology, node);
         }
     }
 
@@ -647,6 +648,25 @@ impl Crate<'_> {
         }
         Reached::Module(at)
     }
+}
+
+/// The names one module binds by a `use` or declares as a type, as its file's facts give them
+/// under its nesting.
+fn bound(topology: &Topology, node: &Node) -> BTreeSet<String> {
+    let Some(facts) = topology.facts(&node.file) else {
+        return BTreeSet::new();
+    };
+    let imported = facts
+        .imports
+        .iter()
+        .filter(|import| import.nesting == node.nesting)
+        .flat_map(|import| import.names.iter().cloned());
+    let declared = facts
+        .declarations
+        .iter()
+        .filter(|held| held.nesting == node.nesting && held.kind == DeclarationKind::Type)
+        .map(|held| held.name.clone());
+    imported.chain(declared).collect()
 }
 
 fn listed(candidates: &[(String, String)]) -> String {

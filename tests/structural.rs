@@ -380,6 +380,28 @@ fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took()
 }
 
 #[test]
+fn the_structural_footprint_counts_each_extern_crate_with_its_names_and_nesting() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        "mod outer {\n    extern crate serde as json;\n}\n",
+    );
+    tree.base();
+
+    let report = judged(&tree, &[], &["dead-symbols"]);
+
+    let held = &row(&report, "dead-symbols")["footprint"];
+    assert_eq!(held["files"], 2, "{report}");
+    assert_eq!(held["extern_crates"], 2, "{report}");
+    assert_eq!(held["extern_crate_bytes"], 18, "{report}");
+    assert_eq!(held["nestings"], 2, "{report}");
+    assert_eq!(held["nesting_entries"], 2, "{report}");
+    assert_eq!(held["nesting_bytes"], 10, "{report}");
+    assert!(held["sizes"]["extern_crate"].as_u64() > Some(0), "{report}");
+}
+
+#[test]
 fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
     let tree = commands("{}");
     tree.write(

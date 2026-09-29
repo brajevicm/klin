@@ -259,6 +259,10 @@ pub struct Module {
     /// The names this module declares as modules that no file answers, so a path through one is
     /// unresolved and never external.
     pub unresolved: BTreeSet<String>,
+    /// The names this module binds in the type namespace other than its child modules: each
+    /// name a `use` binds and each type it declares. A path from one is a local item and never
+    /// reaches a crate of the same name.
+    pub bound: BTreeSet<String>,
 }
 
 /// Where a path from one module ends up. The module graph resolves the module part and hands
@@ -337,6 +341,7 @@ impl Builder<'_> {
             parent: None,
             children: BTreeMap::new(),
             unresolved: BTreeSet::new(),
+            bound: BTreeSet::new(),
         });
         self.graph.modules.len() - 1
     }
@@ -489,9 +494,10 @@ impl ModuleGraph {
 
     /// The module a path names from this module, and the segments left after it. `crate` starts
     /// at the module's target root, `self` and `super` at the module and the ones above it, a
-    /// name this module declares as a child at that child, a name of the target's extern prelude
-    /// that reaches a library the tree holds at that library's root, as does such a name after a
-    /// leading `::`, and any other first name is external.
+    /// name this module declares as a child at that child, a name it binds otherwise as a local
+    /// item, which is external, a name of the target's extern prelude that reaches a library the
+    /// tree holds at that library's root, as does such a name after a leading `::`, and any other
+    /// first name is external.
     /// Each further name descends into a child of that name until one is no module.
     pub fn resolve(&self, from: usize, path: &str) -> Resolved {
         let mut segments = path
@@ -525,6 +531,7 @@ impl ModuleGraph {
                 self.crate_root(from, segments)
             }
             first if self.modules[from].children.contains_key(first) => Some(from),
+            first if self.modules[from].bound.contains(first) => None,
             _ => self.crate_root(from, segments),
         }
     }

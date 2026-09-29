@@ -648,6 +648,48 @@ fn a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque() {
 }
 
 #[test]
+fn a_local_use_named_like_a_dependency_keeps_its_path_opaque_though_its_item_changes() {
+    let tree = Tree::new();
+    let a = "mod local;\nuse crate::local as types;\npub use types::MapMode;\n";
+    workspace(&tree, a, MAP_MODE);
+    tree.write("a/src/local.rs", "pub struct MapMode;\n");
+    tree.base();
+    tree.write("a/src/local.rs", "pub struct MapMode(u8);\n");
+
+    let run = by_hand(&tree);
+    let shown = report(&tree);
+
+    assert!(
+        shown.says("a::MapMode  item  opaque (types::MapMode)") && !shown.says("a::MapMode  type"),
+        "{}",
+        shown.out
+    );
+    assert!(!run.says("declared at types/"), "{}", run.out);
+}
+
+#[test]
+fn a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides() {
+    for a in [
+        "struct MapMode;\npub use types::*;\n",
+        "mod local;\nuse local::MapMode;\npub use types::*;\n",
+    ] {
+        let tree = Tree::new();
+        workspace(&tree, a, MAP_MODE);
+        tree.write("a/src/local.rs", "pub struct MapMode;\n");
+        tree.base();
+
+        let run = report(&tree);
+
+        assert_eq!(run.code, 0, "{a}: {}", run.out);
+        assert!(
+            run.says("types::MapMode  type") && !run.says("a::MapMode"),
+            "{a}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
 fn a_glob_of_a_workspace_sibling_lists_its_items() {
     let tree = Tree::new();
     workspace(&tree, "pub use types::*;\n", MAP_MODE);

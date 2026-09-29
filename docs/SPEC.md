@@ -2118,10 +2118,11 @@ means published. The check judges only external items. From a Rust root the
 check follows every plain `pub` declaration, every `pub mod`, every `pub use`
 leaf and every `pub extern crate`, which re-exports the crate under its alias:
 an alias renames the item, a glob exposes every public item of the module it
-reaches less the names the globbing module exposes itself, a name a module
-neither declares nor re-exports by name comes from the one glob of it that
-provides the name and is a hole where two do, a re-export of a module exposes
-everything under it, and a plain
+reaches less every name the globbing module binds itself at any visibility
+(an item it declares, a child module or a name a `use` binds), a name a
+module neither declares nor re-exports by name comes from the one glob of it
+that provides the name and is a hole where two do, a re-export of a module
+exposes everything under it, and a plain
 `pub` item inside a private module is external only where a `pub use` exposes
 it.
 `pub(crate)`, `pub(super)`, `pub(self)` and `pub(in ...)` are never external.
@@ -2138,7 +2139,9 @@ names the manifest of the library, so a crate name two libraries of the tree sha
 reaches the one the dependency names. A dependency without a path, such as a
 registry version, names a crate the tree does not hold even where a library of
 the tree has its name, and so does a name a `use` binds, which never enters
-the extern prelude. So an item moved into a sibling crate and
+the extern prelude. A first segment the module binds itself, by a `use` or as
+a type it declares, names a local item, so the path is opaque even where a
+dependency has that name. So an item moved into a sibling crate and
 re-exported under its old name keeps its identity: an unchanged contract
 passes and a changed one fails as changed. A re-export of a whole crate root,
 such as that `pub extern crate` itself, is an opaque item, because the items
@@ -2157,7 +2160,9 @@ of a library the tree holds are judged under its own surface. Pinned by
 `a_target_specific_path_dependency_is_followed`,
 `a_private_extern_crate_alias_of_a_sibling_is_followed`,
 `a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it`,
-`a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque` and
+`a_re_export_of_a_crate_the_tree_does_not_hold_stays_opaque`,
+`a_local_use_named_like_a_dependency_keeps_its_path_opaque_though_its_item_changes`,
+`a_private_item_or_import_hides_the_name_a_glob_of_a_sibling_provides` and
 `a_glob_of_a_workspace_sibling_lists_its_items`.
 A public inherent method is an item under its type. From a TypeScript entry
 file the check follows exported declarations, default exports, local export
@@ -3345,7 +3350,8 @@ One object on stdout. Fields:
   null for any other gate or for one that never got that far. A file the two
   trees hold as one extraction counts once. It holds the populations `files`,
   `declarations`, `references`, `imports`, `module_declarations`, `exports`,
-  `export_leaves` and `qualified_paths`; the owned bytes `path_bytes`,
+  `export_leaves`, `qualified_paths` and `extern_crates`; the owned bytes
+`path_bytes`,
   `declaration_name_bytes`, `declaration_text_bytes` and
   `reference_name_bytes`; how many declarations carry a signature, an owner or
   an exported alias, and the bytes each of those holds, as `signatures`,
@@ -3363,10 +3369,11 @@ One object on stdout. Fields:
   over every value that carries inline module names; `import_text_bytes`,
   `export_text_bytes` and `module_text_bytes`, which hold each statement's own
   text and the names and paths it carries, with a qualified path under the
-  module bytes; and `sizes`, which includes `name` and gives the size of one
+  module bytes; `extern_crate_bytes`, the crate name and alias of each
+  `extern crate`; and `sizes`, which includes `name` and gives the size of one
   `file_facts`,
-  `declaration`, `reference`, `import`, `module_declaration`, `export` and
-  `export_leaf` without the bytes their strings and lists own. Every value
+  `declaration`, `reference`, `import`, `module_declaration`, `export`,
+  `export_leaf` and `extern_crate` without the bytes their strings and lists own. Every value
   depends only on the trees and the selection (8.4). `footprint.references`
   counts the reference values the facts hold, so it is at least
   `names.before.references` plus `names.after.references`, which count the
@@ -4488,7 +4495,9 @@ Core:
   inherited from a workspace at or below the tree root or from the package's
   own workspace, and a private
   `extern crate` alias are followed, a name two globs provide to a re-export
-  by name is a hole, a glob of a sibling lists its items, a
+  by name is a hole, a path from a name a local `use` binds stays opaque where
+  a dependency has that name, a private item or import hides the name a glob
+  of a sibling provides, a glob of a sibling lists its items, a
   body, comment, format or binding-name change passes, a changed signature
   and a removed item fail and an addition passes, a removed library fails once
   at the surface, a source move behind an unchanged identity passes by hand

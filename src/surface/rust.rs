@@ -181,6 +181,22 @@ impl<'a> Derivation<'a> {
         names
     }
 
+    /// Every name a module binds itself, whatever its visibility: its own names, each item it
+    /// declares, each child module and each name a `use` binds. A glob of the module never
+    /// provides one of these.
+    fn shadowing(&self, at: usize) -> HashSet<String> {
+        let module = self.module(at);
+        let mut names = self.own_names(at);
+        names.extend(
+            self.declarations(at)
+                .filter(|held| held.kind != DeclarationKind::Method)
+                .map(|held| held.name.clone()),
+        );
+        names.extend(module.children.keys().cloned());
+        names.extend(module.bound.iter().cloned());
+        names
+    }
+
     /// Every item reachable under `prefix` from one module: what it declares public, the public
     /// modules below it, and what its `pub use` trees expose.
     fn walk(&mut self, at: usize, prefix: &str) {
@@ -195,7 +211,7 @@ impl<'a> Derivation<'a> {
             let path = join(prefix, &name);
             self.module_item(child, &path);
         }
-        let own = self.own_names(at);
+        let own = self.shadowing(at);
         for export in self.exports(at) {
             for leaf in &export.leaves {
                 self.leaf(at, export, leaf, prefix, &own);
@@ -341,7 +357,7 @@ impl<'a> Derivation<'a> {
     /// the same lookup gives nothing.
     fn globbed_in(&mut self, module: usize, name: &str, path: String) -> bool {
         let key = (module, path);
-        if !self.sought.insert(key.clone()) {
+        if self.shadowing(module).contains(name) || !self.sought.insert(key.clone()) {
             return false;
         }
         let providers: Vec<(&Export, usize)> = self
@@ -381,14 +397,16 @@ impl<'a> Derivation<'a> {
             .collect()
     }
 
-    /// Whether a module gives a name: as one of its own, or through a glob of it.
+    /// Whether a module gives a name: as one of its own, or through a glob of it where the
+    /// module binds no name of its own under it.
     fn provides(&self, module: usize, name: &str, seen: &mut HashSet<usize>) -> bool {
         seen.insert(module)
             && (self.own_names(module).contains(name)
-                || self
-                    .globs(module)
-                    .into_iter()
-                    .any(|(_, at)| self.provides(at, name, seen)))
+                || !self.shadowing(module).contains(name)
+                    && self
+                        .globs(module)
+                        .into_iter()
+                        .any(|(_, at)| self.provides(at, name, seen)))
     }
 
     /// One glob of a `pub use`: every name the module it reaches exposes, under `prefix`, less
@@ -410,7 +428,7 @@ impl<'a> Derivation<'a> {
             return;
         };
         let mut inner_shadow = shadow.clone();
-        inner_shadow.extend(self.own_names(reached));
+        inner_shadow.extend(self.shadowing(reached));
         for held in self.exports(reached) {
             for inner in held.leaves.iter().filter(|inner| inner.name.is_none()) {
                 self.glob(reached, held, inner, prefix, &inner_shadow);
