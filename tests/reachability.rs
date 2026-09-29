@@ -423,6 +423,41 @@ fn a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove() {
 }
 
 #[test]
+fn a_new_test_file_in_a_family_directory_is_no_member() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{}"#);
+    for name in ["Deferred", "Inline", "Nested"] {
+        tree.write(
+            &format!("src/internal/is{name}.ts"),
+            &format!("export function is{name}() {{}}\n"),
+        );
+    }
+    tree.write(
+        "src/index.ts",
+        "export const checks = [isDeferred, isInline, isNested];\n",
+    );
+    tree.base();
+    tree.write(
+        "src/internal/__tests__/isDeferred.test.ts",
+        "const deferred = {};\nit(\"reads\", () => isDeferred(deferred));\n",
+    );
+    tree.write(
+        "src/internal/isInline.spec.ts",
+        "const inline = {};\nit(\"reads\", () => isInline(inline));\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: reachability src/internal/is*.ts"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("3 file(s) judged, 0 unreached"), "{}", run.out);
+}
+
+#[test]
 fn two_members_derive_no_family_and_the_working_tree_cannot_add_the_third() {
     let tree = Tree::new();
     tree.write("src/commands/alpha_command.rs", "pub fn run_alpha() {}\n");

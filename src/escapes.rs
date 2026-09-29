@@ -72,7 +72,11 @@ const LANGUAGES: &[Language] = &[
             ("expect", r"\.expect\(", ""),
             ("unsafe", r"\bunsafe\s*\{", ""),
             ("allow", r"#!?\[allow\(", ""),
-            ("skipped test", r"#\[ignore\b", ""),
+            (
+                "skipped test",
+                r"#(?:\s|//[^\n]*|/\*(?s:.)*?\*/)*\[(?:\s|//[^\n]*|/\*(?s:.)*?\*/)*(?:ignore|cfg_attr)\b",
+                "",
+            ),
         ],
     },
     Language {
@@ -127,6 +131,7 @@ pub const KIND: Kind = Kind {
     test_idioms: &["unwrap", "expect"],
     skips_literals: false,
     reads_shapes: false,
+    reads_cfg_attr: true,
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "escape site(s)",
