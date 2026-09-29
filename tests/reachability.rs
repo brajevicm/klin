@@ -117,6 +117,22 @@ fn losing_the_last_external_reference_is_worsened() {
 }
 
 #[test]
+fn a_member_a_serde_string_names_is_reached() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
+    tree.write(
+        "src/settings.rs",
+        "pub struct Settings {\n    #[serde(default = \"run_alpha\")]\n    pub zoom: u8,\n}\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 unreached"), "{}", run.out);
+}
+
+#[test]
 fn a_reference_from_the_same_file_does_not_reach_it() {
     let tree = three_reached_commands();
     tree.base();
@@ -404,6 +420,41 @@ fn a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove() {
     tree.base();
 
     derives_no_family(&tree);
+}
+
+#[test]
+fn a_new_test_file_in_a_family_directory_is_no_member() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{}"#);
+    for name in ["Deferred", "Inline", "Nested"] {
+        tree.write(
+            &format!("src/internal/is{name}.ts"),
+            &format!("export function is{name}() {{}}\n"),
+        );
+    }
+    tree.write(
+        "src/index.ts",
+        "export const checks = [isDeferred, isInline, isNested];\n",
+    );
+    tree.base();
+    tree.write(
+        "src/internal/__tests__/isDeferred.test.ts",
+        "const deferred = {};\nit(\"reads\", () => isDeferred(deferred));\n",
+    );
+    tree.write(
+        "src/internal/isInline.spec.ts",
+        "const inline = {};\nit(\"reads\", () => isInline(inline));\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: reachability src/internal/is*.ts"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("3 file(s) judged, 0 unreached"), "{}", run.out);
 }
 
 #[test]

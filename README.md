@@ -59,7 +59,7 @@ Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ```sh
 d=$(mktemp -d) &&
-  git clone --depth 1 --branch v0.3.0 https://github.com/brajevicm/klin "$d" &&
+  git clone --depth 1 --branch v0.4.0 https://github.com/brajevicm/klin "$d" &&
   mkdir -p ~/.cursor/plugins/local &&
   rm -rf ~/.cursor/plugins/local/klin &&
   cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
@@ -138,7 +138,7 @@ While the coding agent works, klin returns regressions while the change is still
 GitHub Actions, after checkout:
 
 ```yaml
-- uses: brajevicm/klin@v0.3.0
+- uses: brajevicm/klin@v0.4.0
 ```
 
 Other CI, after installing klin:

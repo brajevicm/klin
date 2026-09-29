@@ -48,6 +48,9 @@ pub struct Kind {
     pub skips_literals: bool,
     /// Whether the function walk judges body shapes too, which only a parser can see. #114.
     pub reads_shapes: bool,
+    /// Whether a Rust `cfg_attr` a pattern finds is a site only where it skips its test on every
+    /// target, which only a parser can see. Spec 8.2.
+    pub reads_cfg_attr: bool,
     pub evaluator: Evaluator<'static>,
 }
 
@@ -106,6 +109,17 @@ struct Set {
     /// Whether the function walk judges the body shapes of the files this set reads. A set the
     /// project's own patterns make is not a language, so it names no shapes. #114.
     shapes: bool,
+    cfg_attr: bool,
+}
+
+impl Set {
+    /// Whether a match stands as a site. A Rust `cfg_attr` stands only where the grammar read
+    /// it as skipping its test on every target. Spec 8.2.
+    fn stands(&self, past: &Skipped, found: &regex::Match) -> bool {
+        !self.cfg_attr
+            || !found.as_str().ends_with("cfg_attr")
+            || past.everywhere.contains(&found.start())
+    }
 }
 
 struct Spec {
@@ -120,12 +134,14 @@ struct Search {
 }
 
 /// What one file says about where a test idiom does not count: the whole file when it sits
-/// under a test root, the inline test modules, and where a quoted span hides any match.
+/// under a test root, the inline test modules, and where a quoted span hides any match. It also
+/// holds the byte each Rust `cfg_attr` that skips its test on every target starts at.
 #[derive(Default, Clone)]
 struct Skipped {
     test_file: bool,
     tests: Vec<(u64, u64)>,
     literals: Vec<(usize, usize)>,
+    everywhere: Vec<usize>,
 }
 
 /// One tree read: the sites, how many test idioms Rust test code took out of the count, and the
@@ -300,6 +316,7 @@ fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
         .map(|set| {
             Ok(Set {
                 shapes: kind.reads_shapes,
+                cfg_attr: kind.reads_cfg_attr,
                 suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
                 patterns: compiled(
                     kind,
@@ -496,6 +513,10 @@ fn cached(
                     true => literals(text),
                     false => Vec::new(),
                 },
+                everywhere: match kind.reads_cfg_attr {
+                    true => syntax::convention::skipped_everywhere(rel, text),
+                    false => Vec::new(),
+                },
             }
         })
         .clone()
@@ -511,7 +532,11 @@ fn tally(
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
     for pattern in &set.patterns {
-        for found in pattern.regex.find_iter(text) {
+        let stands = pattern
+            .regex
+            .find_iter(text)
+            .filter(|found| set.stands(past, found));
+        for found in stands {
             if quoted(past, found.range()) {
                 continue;
             }
