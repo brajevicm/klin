@@ -569,6 +569,22 @@ Each check documents its rule. The rules for the shipped checks:
   none, so narrowing scope cannot silently erase coverage. A derived sample
   instead uses the compact scope recorded by the derivation commit, so both
   the files and the policy that select them come from that one commit.
+- Source roots and test roots: start at the directory of each source file
+  and merge upward while the directory above holds nothing but source. A
+  source root is a directory this finds that no other one holds. A source
+  file that sits directly in a directory holding something else, such as
+  `build.rs` beside a crate's `Cargo.toml`, starts at that directory, so the
+  crate directory is a source root and holds the ones beneath it. A test root
+  is a directory this finds that a test directory segment names or whose
+  every source file carries a test affix, and that no other test root holds.
+  A source root that holds it does not remove it: a crate's `build.rs` keeps
+  the crate directory a source root and leaves its `tests/` a test root.
+  Pinned by `a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root`
+  and `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`
+  in `tests/survey.rs`, and by
+  `unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default`
+  and `a_workspace_members_build_script_and_src_are_judged_beside_its_test_root`
+  in `tests/escapes.rs`.
 - `doc_size`: every Markdown file at the tree root, in the derivation commit
   and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
@@ -582,11 +598,9 @@ Each check documents its rule. The rules for the shipped checks:
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
   each read against the whole tree with the built-in extension list of 8.2.1.
   This set is the check's judgement unit on a changed run too (8.2.1).
-- `inventory`: every file under a test root the survey finds, which is a
-  source root a test directory segment names or one whose every source file
-  carries a test affix, and every source file a test directory segment or a
-  test affix of 8.2 marks wherever it sits, less the default skip set and
-  hidden directories.
+- `inventory`: every file under a test root the survey finds, and every
+  source file a test directory segment or a test affix of 8.2 marks wherever
+  it sits, less the default skip set and hidden directories.
 - `lockfile`: every manifest the survey finds that klin has a reader for,
   `Cargo.toml`, `package.json` and `go.mod`.
 - `complexity.cc` and `complexity.lines`: the 95th percentile of each measure

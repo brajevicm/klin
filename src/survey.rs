@@ -138,10 +138,11 @@ pub fn surveyed(path: &str) -> bool {
 }
 
 fn of(paths: &[String]) -> Survey {
-    let roots = roots(paths);
+    let merged = merged(paths);
+    let roots = outermost(merged.clone());
     Survey {
         documents: sorted(paths.iter().filter(|path| document(path)).cloned()),
-        test_roots: test_roots(&roots, paths),
+        test_roots: outermost(test_roots(&merged, paths)),
         manifests: sorted(
             paths
                 .iter()
@@ -164,8 +165,10 @@ fn document(path: &str) -> bool {
 }
 
 /// The shallowest directories that hold nothing but source: start at each directory that holds
-/// a source file and merge upward while the directory above holds nothing but source. Spec 5.4.
-fn roots(paths: &[String]) -> Vec<String> {
+/// a source file and merge upward while the directory above holds nothing but source. A source
+/// file in a directory that holds something else, such as a crate's `build.rs`, starts at that
+/// directory, so one merged directory may hold another. Spec 5.4.
+fn merged(paths: &[String]) -> Vec<String> {
     let mixed = mixed(paths);
     let mut found: Vec<String> = Vec::new();
     for file in paths.iter().filter(|path| source(path)) {
@@ -181,6 +184,11 @@ fn roots(paths: &[String]) -> Vec<String> {
         }
     }
     found.sort();
+    found
+}
+
+/// The directories no other one of them holds.
+fn outermost(mut found: Vec<String>) -> Vec<String> {
     let nested = found.clone();
     found.retain(|root| !nested.iter().any(|other| under(root, other)));
     found
@@ -206,10 +214,10 @@ fn source(path: &str) -> bool {
     project::language_of(path).is_some()
 }
 
-/// The roots a language's test convention marks: a directory the convention names, or a root
-/// whose every source file carries a test affix. Spec 5.4, 8.2.
-fn test_roots(roots: &[String], paths: &[String]) -> Vec<String> {
-    roots
+/// The merged directories a language's test convention marks: a directory the convention names,
+/// or one whose every source file carries a test affix. Spec 5.4, 8.2.
+fn test_roots(merged: &[String], paths: &[String]) -> Vec<String> {
+    merged
         .iter()
         .filter(|root| named_for_tests(root) || holds_only_tests(paths, root))
         .cloned()
@@ -280,7 +288,7 @@ fn union(held: &Survey, now: &Survey, root: &Path) -> Survey {
             .collect(),
         test_roots: both(&held.test_roots, &now.test_roots)
             .into_iter()
-            .filter(|at| roots.contains(at))
+            .filter(|at| root.join(at).is_dir())
             .collect(),
         manifests: both(&held.manifests, &now.manifests)
             .into_iter()

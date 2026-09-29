@@ -210,6 +210,46 @@ fn the_survey_finds_one_root_per_package_of_a_monorepo() {
     );
 }
 
+#[test]
+fn a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root() {
+    let tree = project();
+    tree.write("build.rs", "fn main() {}\n");
+    tree.base();
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: test roots tests, the roots that match a language's test convention"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"a\", \"b\"]\n");
+    tree.write("a/Cargo.toml", MANIFEST);
+    tree.write("a/build.rs", "fn main() {}\n");
+    tree.write("a/src/lib.rs", CLEAN);
+    tree.write("a/tests/lib_test.rs", CLEAN);
+    tree.write("b/Cargo.toml", MANIFEST);
+    tree.write("b/src/lib.rs", CLEAN);
+    tree.write("b/tests/lib_test.rs", CLEAN);
+    tree.base();
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(
+            "derived: test roots a/tests, b/tests, the roots that match a language's test convention"
+        ),
+        "{}",
+        run.out
+    );
+}
+
 /// The promise of ADR 0016: a tree already in debt is green against itself with no
 /// configuration at all, because a root the derivation commit held is held debt and not new.
 #[test]

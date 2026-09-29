@@ -954,6 +954,53 @@ fn production_rust_beside_a_test_root_is_judged_as_before() {
 }
 
 #[test]
+fn unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("build.rs", "fn main() {}\n");
+    tree.write(
+        "src/lib.rs",
+        "pub fn wrap(t: &str) -> Vec<String> { vec![t.to_string()] }\n",
+    );
+    tree.write("tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(2 in Rust tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"demo\"]\n");
+    tree.write(
+        "demo/Cargo.toml",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write(
+        "demo/build.rs",
+        "fn main() {\n    std::env::var(\"OUT_DIR\").unwrap();\n}\n",
+    );
+    tree.write(
+        "demo/src/lib.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write("demo/tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("demo/build.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("demo/src/lib.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("demo/tests/render.rs"), "{}", run.out);
+}
+
+#[test]
 fn a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
