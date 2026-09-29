@@ -1,0 +1,638 @@
+{
+  "language": "Rust",
+  "repository": "firecrawl/pdf-inspector",
+  "index": 5,
+  "head": "e1797b1f482a3fe02296bd9e833230e89cbee8ea",
+  "base": "9a055d5f3ccd674c9faf2f425069825302f16f54",
+  "exit": 1,
+  "signal": null,
+  "ms": 12325,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 600
+      },
+      {
+        "key": "CHANGELOG.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 7500
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 600
+      },
+      {
+        "key": "README.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1800
+      },
+      {
+        "key": "SECURITY.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 200
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "napi/Cargo.toml",
+          "napi/package.json",
+          "wasm/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 4,288 functions at 9a055d5, floor 5; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 4,288 functions at 9a055d5, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 80
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/tables/detect_*.rs",
+            "pattern": "detect_*.rs",
+            "roots": [
+              "src/tables"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "condition": "over its word ceiling",
+        "file": "CHANGELOG.md",
+        "fix_advice": "An instruction that can be a gate costs no words — encode it as a gate and point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling is a decision to say why in the commit.",
+        "gate": "doc-size",
+        "outcome": "new",
+        "values": {
+          "ceiling": 7500,
+          "words": 7740
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 80",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 80 lines)",
+        "file": "src/extractor/fonts.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5078580202c9bbe9",
+        "line": 1198,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn type1_program_under_no_named_base(",
+        "values": {
+          "cc": 14,
+          "lines": 20
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 80",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 80 lines)",
+        "file": "src/extractor/type1.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e70f92138a8dbc6c",
+        "line": 25,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub(crate) fn builtin_encoding(program: &[u8]) -> Option<BuiltinEncoding> {",
+        "values": {
+          "cc": 41,
+          "lines": 83
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 80",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 80 lines)",
+        "file": "src/extractor/type1.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9b2e0ef12cadec09",
+        "line": 167,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn next(&mut self) -> Option<Token<'a>> {",
+        "values": {
+          "cc": 20,
+          "lines": 68
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 80",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 80 lines)",
+        "file": "tests/integration_tests.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "649a694a087a681f",
+        "line": 10390,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn test_type1_programs_encoding_yields_to_the_fonts_own_readings() {",
+        "values": {
+          "cc": 3,
+          "lines": 103
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 80",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 80 lines)",
+        "file": "src/extractor/fonts.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ae0041912d92329d",
+        "line": 392,
+        "matched": {
+          "accepted": false,
+          "file": "src/extractor/fonts.rs",
+          "line": 391,
+          "text": "fn base14_fallback_widths(",
+          "values": {
+            "cc": 8,
+            "lines": 95
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn base14_fallback_widths(",
+        "values": {
+          "cc": 9,
+          "lines": 114
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 80",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 80 lines)",
+        "file": "src/extractor/fonts.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "cb567d7233f0e380",
+        "line": 900,
+        "matched": {
+          "accepted": false,
+          "file": "src/extractor/fonts.rs",
+          "line": 880,
+          "text": "pub(crate) fn build_font_encodings(",
+          "values": {
+            "cc": 16,
+            "lines": 98
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub(crate) fn build_font_encodings(",
+        "values": {
+          "cc": 12,
+          "lines": 106
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 18,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 48,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 11,
+        "ms": 9,
+        "name": "lockfile",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 101,
+          "measured": 101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 153,
+        "ms": 1374,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 175,
+          "reads": 201
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 101,
+          "measured": 101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 1248,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 201,
+          "reads": 201
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 28,
+          "measured": 28,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 439,
+        "ms": 129,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 101,
+          "measured": 101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 6,
+        "footprint": null,
+        "graph": null,
+        "held": 274,
+        "ms": 2530,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 201,
+          "reads": 201
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 88,
+          "measured": 88,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 175,
+          "ms": 3902,
+          "parses": 175,
+          "reads": 175,
+          "shared": 0,
+          "states": 3467
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 274570,
+          "declaration_text_bytes": 478091,
+          "declarations": 9291,
+          "export_leaves": 208,
+          "export_text_bytes": 11646,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 52,
+          "files": 175,
+          "import_text_bytes": 217126,
+          "imports": 1393,
+          "module_declarations": 284,
+          "module_text_bytes": 31010,
+          "nesting_bytes": 28159,
+          "nesting_entries": 4443,
+          "nestings": 4443,
+          "owner_bytes": 8638,
+          "owners": 702,
+          "path_bytes": 4126,
+          "qualified_paths": 809,
+          "reference_canonical_allocation_ratio": 1.9953675484578812,
+          "reference_canonical_allocation_ratio_milli": 1995,
+          "reference_canonical_allocations": 16368,
+          "reference_canonical_bytes": 202368,
+          "reference_distinct_names": 8203,
+          "reference_name_bytes": 2653611,
+          "reference_representation_after_bytes": 6344896,
+          "reference_representation_before_bytes": 12689792,
+          "references": 396556,
+          "signature_bytes": 549496,
+          "signatures": 9291,
+          "sizes": {
+            "declaration": 168,
+            "export": 112,
+            "export_leaf": 48,
+            "file_facts": 176,
+            "import": 128,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 21,
+        "ms": 4367,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 4663,
+            "distinct_names": 10255,
+            "files": 88,
+            "index_ms": 42,
+            "measure_ms": 1589,
+            "query_ms": 0,
+            "references": 186363
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 4628,
+            "distinct_names": 10205,
+            "files": 87,
+            "index_ms": 329,
+            "measure_ms": 2314,
+            "query_ms": 3,
+            "references": 185174
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 20,
+            "ignored_ms": 9,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 118,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 175
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 2338,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 4663,
+            "distinct_names": 10255,
+            "files": 88,
+            "index_ms": 8,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 186363
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 4628,
+            "distinct_names": 10205,
+            "files": 87,
+            "index_ms": 8,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 185174
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 3,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 175
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1431,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 652,
+          "modules": 296,
+          "ms": 2,
+          "sources": 296
+        },
+        "held": 0,
+        "ms": 4,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 842,
+          "measured": 814,
+          "ms": 1,
+          "opaque": 28,
+          "surfaces": 6
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "Cargo.toml",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "Cargo.toml has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "napi/package.json",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "napi/package.json has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "21 dead symbol(s) the base already held:\n  src/detector.rs:1589  fn page_has_only_type3_fonts(doc: &Document, page_id: ObjectId) -> bool {\n  src/extractor/content_stream.rs:4630  const UPRIGHT_BODY: &str = \"BT /F1 12 Tf 72 700 Td (Body line one) Tj ET\n  src/python.rs:92  fn __repr__(&self) -> String {\n  src/python.rs:114  fn __repr__(&self) -> String {\n  src/python.rs:145  fn __repr__(&self) -> String {\n  src/python.rs:246  fn __repr__(&self) -> String {\n  src/python.rs:278  fn __repr__(&self) -> String {\n  src/python.rs:307  fn __repr__(&self) -> String {\n  src/python.rs:330  fn __repr__(&self) -> String {\n  src/python.rs:364  fn __repr__(&self) -> String {\n  src/python.rs:400  fn __repr__(&self) -> String {\n  src/python.rs:529  fn __repr__(&self) -> String {\n  src/python.rs:558  fn __repr__(&self) -> String {\n  src/python.rs:1109  fn __repr__(&self) -> String {\n  wasm/src/lib.rs:9  const TYPESCRIPT_TYPES: &str = r#\"\n  wasm/src/lib.rs:460  fn processes_pdf_to_markdown() {\n  wasm/src/lib.rs:476  fn reports_document_information() {\n  wasm/src/lib.rs:490  fn rejects_non_pdf_bytes() {\n  wasm/src/lib.rs:495  fn classifies_and_extracts_plain_text() {\n  wasm/src/lib.rs:508  fn extracts_cjk_and_preserves_numeric_page_footer() {\n  … and 1 more"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package @firecrawl/pdf-inspector (napi/package.json): its types names no TypeScript source klin supports: index.d.ts names no file the tree holds"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "9a055d5f3ccd674c9faf2f425069825302f16f54",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

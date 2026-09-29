@@ -1,0 +1,1183 @@
+{
+  "language": "TypeScript",
+  "repository": "mountain-loop/yaak",
+  "index": 4,
+  "head": "34815f327a73e686f8d630a9847720c8291e914e",
+  "base": "6fc43a60e23b7680a31dd06ccb5e668460b9d87d",
+  "exit": 1,
+  "signal": null,
+  "ms": 9642,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": "CONTRIBUTING.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 100
+      },
+      {
+        "key": "DEVELOPMENT.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 400
+      },
+      {
+        "key": "README.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 600
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CONTRIBUTING.md",
+          "DEVELOPMENT.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "apps/yaak-client/package.json",
+          "apps/yaak-proxy/package.json",
+          "crates-cli/yaak-cli/Cargo.toml",
+          "crates-proxy/yaak-proxy-lib/Cargo.toml",
+          "crates-proxy/yaak-proxy-lib/package.json",
+          "crates-server/yaak-playground/Cargo.toml",
+          "crates-server/yaak-web/Cargo.toml",
+          "crates-server/yaak-web/package.json",
+          "crates-tauri/yaak-app-client/Cargo.toml",
+          "crates-tauri/yaak-app-client/package.json",
+          "crates-tauri/yaak-app-proxy/Cargo.toml",
+          "crates-tauri/yaak-app-proxy/package.json",
+          "crates-tauri/yaak-fonts/Cargo.toml",
+          "crates-tauri/yaak-fonts/package.json",
+          "crates-tauri/yaak-license/Cargo.toml",
+          "crates-tauri/yaak-license/package.json",
+          "crates-tauri/yaak-mac-window/Cargo.toml",
+          "crates-tauri/yaak-mac-window/package.json",
+          "crates-tauri/yaak-system-appearance/Cargo.toml",
+          "crates-tauri/yaak-tauri-utils/Cargo.toml",
+          "crates-tauri/yaak-window/Cargo.toml",
+          "crates/common/yaak-database/Cargo.toml",
+          "crates/common/yaak-rpc-schema/Cargo.toml",
+          "crates/common/yaak-rpc-schema/package.json",
+          "crates/common/yaak-rpc/Cargo.toml",
+          "crates/yaak-api/Cargo.toml",
+          "crates/yaak-commands/Cargo.toml",
+          "crates/yaak-common/Cargo.toml",
+          "crates/yaak-core/Cargo.toml",
+          "crates/yaak-crypto/Cargo.toml",
+          "crates/yaak-crypto/package.json",
+          "crates/yaak-git/Cargo.toml",
+          "crates/yaak-git/package.json",
+          "crates/yaak-grpc/Cargo.toml",
+          "crates/yaak-http/Cargo.toml",
+          "crates/yaak-lifecycle/Cargo.toml",
+          "crates/yaak-models/Cargo.toml",
+          "crates/yaak-models/package.json",
+          "crates/yaak-plugins/Cargo.toml",
+          "crates/yaak-plugins/package.json",
+          "crates/yaak-proxy/Cargo.toml",
+          "crates/yaak-sse/Cargo.toml",
+          "crates/yaak-sse/package.json",
+          "crates/yaak-sync/Cargo.toml",
+          "crates/yaak-sync/package.json",
+          "crates/yaak-templates/Cargo.toml",
+          "crates/yaak-templates/package.json",
+          "crates/yaak-templates/pkg/package.json",
+          "crates/yaak-tls/Cargo.toml",
+          "crates/yaak-wasm/Cargo.toml",
+          "crates/yaak-wasm/package.json",
+          "crates/yaak-wasm/pkg/package.json",
+          "crates/yaak-ws/Cargo.toml",
+          "crates/yaak-ws/package.json",
+          "crates/yaak/Cargo.toml",
+          "npm/cli-darwin-arm64/package.json",
+          "npm/cli-darwin-x64/package.json",
+          "npm/cli-linux-arm64/package.json",
+          "npm/cli-linux-x64/package.json",
+          "npm/cli-win32-arm64/package.json",
+          "npm/cli-win32-x64/package.json",
+          "npm/cli/package.json",
+          "package.json",
+          "packages/common-lib/package.json",
+          "packages/model-store/package.json",
+          "packages/platform/package.json",
+          "packages/plugin-runtime-types/package.json",
+          "packages/plugin-runtime/package.json",
+          "packages/tailwind-config/package.json",
+          "packages/theme/package.json",
+          "packages/ui/package.json",
+          "plugins-external/faker/package.json",
+          "plugins-external/httpsnippet/package.json",
+          "plugins-external/mcp-server/package.json",
+          "plugins/action-copy-curl/package.json",
+          "plugins/action-copy-grpcurl/package.json",
+          "plugins/action-send-folder/package.json",
+          "plugins/auth-apikey/package.json",
+          "plugins/auth-aws/package.json",
+          "plugins/auth-basic/package.json",
+          "plugins/auth-bearer/package.json",
+          "plugins/auth-digest/package.json",
+          "plugins/auth-jwt/package.json",
+          "plugins/auth-ntlm/package.json",
+          "plugins/auth-oauth1/package.json",
+          "plugins/auth-oauth2/package.json",
+          "plugins/filter-jsonpath/package.json",
+          "plugins/filter-xpath/package.json",
+          "plugins/importer-bruno/package.json",
+          "plugins/importer-curl/package.json",
+          "plugins/importer-insomnia/package.json",
+          "plugins/importer-openapi/package.json",
+          "plugins/importer-postman-environment/package.json",
+          "plugins/importer-postman/package.json",
+          "plugins/importer-yaak/package.json",
+          "plugins/template-function-1password/package.json",
+          "plugins/template-function-cookie/package.json",
+          "plugins/template-function-ctx/package.json",
+          "plugins/template-function-encode/package.json",
+          "plugins/template-function-fs/package.json",
+          "plugins/template-function-hash/package.json",
+          "plugins/template-function-json/package.json",
+          "plugins/template-function-prompt/package.json",
+          "plugins/template-function-random/package.json",
+          "plugins/template-function-regex/package.json",
+          "plugins/template-function-request/package.json",
+          "plugins/template-function-response/package.json",
+          "plugins/template-function-timestamp/package.json",
+          "plugins/template-function-uuid/package.json",
+          "plugins/template-function-xml/package.json",
+          "plugins/themes-yaak/package.json"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 8,422 functions at 6fc43a6, floor 5; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 9
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 8,422 functions at 6fc43a6, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 52
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/yaak-client/commands/open*.tsx",
+            "pattern": "open*.tsx",
+            "roots": [
+              "apps/yaak-client/commands"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Dropdown.tsx",
+            "pattern": "*Dropdown.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Layout.tsx",
+            "pattern": "*Layout.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Pane.tsx",
+            "pattern": "*Pane.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Confirm*.tsx",
+            "pattern": "Confirm*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Create*.tsx",
+            "pattern": "Create*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Environment*.tsx",
+            "pattern": "Environment*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Grpc*.tsx",
+            "pattern": "Grpc*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Http*.tsx",
+            "pattern": "Http*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Import*.tsx",
+            "pattern": "Import*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Websocket*.tsx",
+            "pattern": "Websocket*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Settings/Settings*.tsx",
+            "pattern": "Settings*.tsx",
+            "roots": [
+              "apps/yaak-client/components/Settings"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/core/*Row.tsx",
+            "pattern": "*Row.tsx",
+            "roots": [
+              "apps/yaak-client/components/core"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/core/*Tag.tsx",
+            "pattern": "*Tag.tsx",
+            "roots": [
+              "apps/yaak-client/components/core"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/core/Pair*.tsx",
+            "pattern": "Pair*.tsx",
+            "roots": [
+              "apps/yaak-client/components/core"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/git/Git*.tsx",
+            "pattern": "Git*.tsx",
+            "roots": [
+              "apps/yaak-client/components/git"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/*Actions.ts",
+            "pattern": "*Actions.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/*HttpResponse.ts",
+            "pattern": "*HttpResponse.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/*Key.ts",
+            "pattern": "*Key.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/use*.tsx",
+            "pattern": "use*.tsx",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useHttp*.ts",
+            "pattern": "useHttp*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/usePinned*.ts",
+            "pattern": "usePinned*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useRecent*.ts",
+            "pattern": "useRecent*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useResponse*.ts",
+            "pattern": "useResponse*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useSync*.ts",
+            "pattern": "useSync*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-proxy/hooks/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "apps/yaak-proxy/hooks"
+            ]
+          },
+          {
+            "name": "packages/plugin-runtime-types/src/plugins/*Plugin.ts",
+            "pattern": "*Plugin.ts",
+            "roots": [
+              "packages/plugin-runtime-types/src/plugins"
+            ]
+          },
+          {
+            "name": "packages/ui/src/components/tree/Tree*.tsx",
+            "pattern": "Tree*.tsx",
+            "roots": [
+              "packages/ui/src/components/tree"
+            ]
+          },
+          {
+            "name": "packages/ui/src/hooks/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "packages/ui/src/hooks"
+            ]
+          },
+          {
+            "name": "plugins/themes-yaak/src/themes/material-*.ts",
+            "pattern": "material-*.ts",
+            "roots": [
+              "plugins/themes-yaak/src/themes"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "plugins/importer-insomnia/src/templates.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "c1bde67835659239",
+        "line": 17,
+        "matched": null,
+        "outcome": "new",
+        "text": "const normalized = match[1]!.replace(/=+$/, \"\").replaceAll(\"+\", \"-\").replaceAll(\"/\", \"_\");",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "plugins/importer-insomnia/tests/migration.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "c3c90a9eea3b8316",
+        "line": 88,
+        "matched": null,
+        "outcome": "new",
+        "text": "const ref = `b64'${Buffer.from(login!.id).toString(\"base64url\")}'`;",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "plugins/importer-insomnia/tests/migration.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "bf2b20ec62f5feed",
+        "line": 92,
+        "matched": null,
+        "outcome": "new",
+        "text": "expect(imported.sourceKeys[login!.id]).toBe(\"req_login\");",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "plugins/importer-insomnia/tests/migration.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "986c98f90b8717e5",
+        "line": 93,
+        "matched": null,
+        "outcome": "new",
+        "text": "expect(imported.sourceKeys[query!.id]).toBe(\"req_query\");",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "crates/yaak/src/import_templates.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "aa812dc1db273191",
+        "line": 55,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn remap_text(text: &str, ids: &BTreeMap<String, String>) -> String {",
+        "values": {
+          "cc": 14,
+          "lines": 46
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/common.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "30650130ebafd84c",
+        "line": 188,
+        "matched": null,
+        "outcome": "new",
+        "text": "function readTopLevelMembers(text: string): Map<string, string> | null {",
+        "values": {
+          "cc": 14,
+          "lines": 28
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/common.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "576417320c4d1894",
+        "line": 231,
+        "matched": null,
+        "outcome": "new",
+        "text": "function scanJSONValue(text: string, start: number): number | null {",
+        "values": {
+          "cc": 12,
+          "lines": 20
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/templates.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e0814c5b88dce692",
+        "line": 24,
+        "matched": null,
+        "outcome": "new",
+        "text": "function parseArgs(input: string): string[] | null {",
+        "values": {
+          "cc": 10,
+          "lines": 24
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/templates.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "fede621bdde2f2cd",
+        "line": 49,
+        "matched": null,
+        "outcome": "new",
+        "text": "function convertTag(name: string, input: string, requestIds: Set<string>): string | null {",
+        "values": {
+          "cc": 23,
+          "lines": 37
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/tests/migration.test.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "38d494b4061d713e",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(\"imports GraphQL, credentials and forward response references together\", () => {",
+        "values": {
+          "cc": 2,
+          "lines": 88
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "crates/yaak/src/import.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "32397cefbbb17e08",
+        "line": 201,
+        "matched": {
+          "accepted": false,
+          "file": "crates/yaak/src/import.rs",
+          "line": 200,
+          "text": "pub fn plan_import_resources(",
+          "values": {
+            "cc": 29,
+            "lines": 254
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn plan_import_resources(",
+        "values": {
+          "cc": 30,
+          "lines": 258
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "crates/yaak/src/import.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1b305f16312823a5",
+        "line": 890,
+        "matched": {
+          "accepted": false,
+          "file": "crates/yaak/src/import.rs",
+          "line": 885,
+          "text": "fn merge_with_linked_source(",
+          "values": {
+            "cc": 68,
+            "lines": 324
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn merge_with_linked_source(",
+        "values": {
+          "cc": 69,
+          "lines": 331
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/common.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d65ff061805e79f0",
+        "line": 62,
+        "matched": {
+          "accepted": false,
+          "file": "plugins/importer-insomnia/src/common.ts",
+          "line": 60,
+          "text": "function importHttpBody(rawBody: any) {",
+          "values": {
+            "cc": 19,
+            "lines": 57
+          }
+        },
+        "outcome": "worsened",
+        "text": "function importHttpBody(rawBody: any) {",
+        "values": {
+          "cc": 25,
+          "lines": 86
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/v4.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5456c6a3d2941b02",
+        "line": 12,
+        "matched": {
+          "accepted": false,
+          "file": "plugins/importer-insomnia/src/v4.ts",
+          "line": 12,
+          "text": "export function convertInsomniaV4(parsed: any) {",
+          "values": {
+            "cc": 6,
+            "lines": 61
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function convertInsomniaV4(parsed: any) {",
+        "values": {
+          "cc": 6,
+          "lines": 64
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/v5.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bd8c0d4738b5e590",
+        "line": 13,
+        "matched": {
+          "accepted": false,
+          "file": "plugins/importer-insomnia/src/v5.ts",
+          "line": 13,
+          "text": "export function convertInsomniaV5(parsed: any) {",
+          "values": {
+            "cc": 12,
+            "lines": 72
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function convertInsomniaV5(parsed: any) {",
+        "values": {
+          "cc": 12,
+          "lines": 75
+        }
+      },
+      {
+        "ceiling": "cc 9, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 9 or body > 52 lines)",
+        "file": "plugins/template-function-response/src/index.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d2069ee654dbd48f",
+        "line": 282,
+        "matched": {
+          "accepted": false,
+          "file": "plugins/template-function-response/src/index.ts",
+          "line": 280,
+          "text": "async function getResponse(",
+          "values": {
+            "cc": 14,
+            "lines": 47
+          }
+        },
+        "outcome": "worsened",
+        "text": "async function getResponse(",
+        "values": {
+          "cc": 14,
+          "lines": 48
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where no reference named the declaration exists outside its own declaration",
+        "file": "crates/yaak/src/import.rs",
+        "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+        "gate": "dead-symbols",
+        "id": "fa67039813d8f37c",
+        "line": 2616,
+        "matched": null,
+        "outcome": "new",
+        "text": "async fn insomnia_plugin_output_produces_sendable_graphql_and_linked_requests() {",
+        "values": {
+          "dead": 1
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 11,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 47,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 112,
+          "measured": 112,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 699,
+        "ms": 61,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1101,
+          "measured": 1101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 4,
+        "footprint": null,
+        "graph": null,
+        "held": 474,
+        "ms": 627,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 561,
+          "reads": 2198
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1099,
+          "measured": 1099,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 30,
+        "ms": 1283,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 2194,
+          "reads": 2194
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 81,
+          "measured": 81,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 823,
+        "ms": 141,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1097,
+          "measured": 1096,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 12,
+        "footprint": null,
+        "graph": null,
+        "held": 585,
+        "ms": 2353,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 2190,
+          "reads": 2190
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1068,
+          "measured": 1067,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 2132,
+          "ms": 2826,
+          "parses": 2132,
+          "reads": 2132,
+          "shared": 0,
+          "states": 4991
+        },
+        "findings": 1,
+        "footprint": {
+          "declaration_name_bytes": 227917,
+          "declaration_text_bytes": 765584,
+          "declarations": 14385,
+          "export_leaves": 476,
+          "export_text_bytes": 28758,
+          "exported_alias_bytes": 28,
+          "exported_aliases": 4,
+          "exports": 298,
+          "files": 2130,
+          "import_text_bytes": 1259782,
+          "imports": 12135,
+          "module_declarations": 580,
+          "module_text_bytes": 17516,
+          "nesting_bytes": 9446,
+          "nesting_entries": 1288,
+          "nestings": 1288,
+          "owner_bytes": 11144,
+          "owners": 1000,
+          "path_bytes": 90631,
+          "qualified_paths": 318,
+          "reference_canonical_allocation_ratio": 1.9976680917217255,
+          "reference_canonical_allocation_ratio_milli": 1997,
+          "reference_canonical_allocations": 25700,
+          "reference_canonical_bytes": 322136,
+          "reference_distinct_names": 12865,
+          "reference_name_bytes": 3092801,
+          "reference_representation_after_bytes": 6592128,
+          "reference_representation_before_bytes": 13184256,
+          "references": 412008,
+          "signature_bytes": 1158157,
+          "signatures": 14145,
+          "sizes": {
+            "declaration": 168,
+            "export": 112,
+            "export_leaf": 48,
+            "file_facts": 176,
+            "import": 128,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 72,
+        "ms": 2885,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 7205,
+            "distinct_names": 14701,
+            "files": 1067,
+            "index_ms": 11,
+            "measure_ms": 1415,
+            "query_ms": 0,
+            "references": 193689
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 7180,
+            "distinct_names": 14662,
+            "files": 1063,
+            "index_ms": 14,
+            "measure_ms": 1416,
+            "query_ms": 0,
+            "references": 192564
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 27,
+            "ignored_ms": 16,
+            "renames_ms": 0,
+            "walk_ms": 12,
+            "worktree_add_ms": 261,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "FAIL",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 158,
+          "measured": 158,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1571
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1615,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 3983,
+            "distinct_names": 8292,
+            "files": 786,
+            "index_ms": 5,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 98467
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 3969,
+            "distinct_names": 8272,
+            "files": 783,
+            "index_ms": 5,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 97840
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 111,
+          "measured": 59,
+          "not_measured": 52,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 2132
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 5783,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 5203,
+          "modules": 2213,
+          "ms": 26,
+          "sources": 2213
+        },
+        "held": 0,
+        "ms": 50,
+        "name": "public-api",
+        "names": null,
+        "notes": 7,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 8,
+          "items": 3776,
+          "measured": 3554,
+          "ms": 20,
+          "opaque": 222,
+          "surfaces": 118
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "packages/plugin-runtime-types/src/index.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "packages/plugin-runtime-types/src/index.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "72 dead symbol(s) the base already held:\n  apps/yaak-client/components/core/Editor/filter/query.ts:132  constructor(private toks: Tok[]) {}\n  apps/yaak-client/components/core/Editor/largeValues.ts:142  constructor(\n  apps/yaak-client/components/core/Editor/largeValues.ts:160  toDOM(view: EditorView) {\n  apps/yaak-client/components/core/Editor/largeValues.ts:241  ignoreEvent() {\n  apps/yaak-client/components/core/Editor/twig/pathParameters.ts:9  constructor(\n  apps/yaak-client/components/core/Editor/twig/pathParameters.ts:24  toDOM() {\n  apps/yaak-client/components/core/Editor/twig/pathParameters.ts:37  ignoreEvent() {\n  apps/yaak-client/components/core/Editor/twig/templateTags.ts:15  constructor(\n  apps/yaak-client/components/core/Editor/twig/templateTags.ts:36  toDOM() {\n  apps/yaak-client/components/core/Editor/twig/templateTags.ts:58  ignoreEvent() {\n  apps/yaak-client/lib/resolvedModelName.test.ts:9  const { resolvedModelName } = await import(\"./resolvedModelName\");\n  apps/yaak-client/lib/router.ts:9  interface Register {\n  apps/yaak-client/routeTree.gen.ts:102  interface FileRoutesByPath {\n  crates-cli/yaak-cli/src/commands/auth.rs:483  async fn parses_callback_request() {\n  crates-cli/yaak-cli/src/commands/auth.rs:506  async fn parse_callback_request_oauth_error() {\n  crates-cli/yaak-cli/src/commands/auth.rs:529  async fn receive_oauth_code_ignores_idle_speculative_connections() {\n  crates-cli/yaak-cli/src/commands/auth.rs:560  async fn receive_oauth_code_fails_fast_on_provider_error() {\n  crates-cli/yaak-cli/src/plugin_events.rs:1043  async fn plugin_send_uses_override_and_fallback_and_rejects_invalid_ids_before_sending() {\n  crates-cli/yaak-cli/src/version_check.rs:10  const CACHE_FILE_NAME: &str = \"cli-version-check.json\";\n  crates-server/yaak-playground/tests/api.rs:60  async fn users_and_todos() {\n  … and 52 more"
+      },
+      {
+        "file": "crates/common/yaak-database/src/pool.rs",
+        "gate": "public-api",
+        "line": 53,
+        "outcome": "unresolved",
+        "text": "pub fn single(conn: Connection) -> Self { — yaak_database — an inherent impl of SqlitePool outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "crates/common/yaak-database/src/pool.rs",
+        "gate": "public-api",
+        "line": 59,
+        "outcome": "unresolved",
+        "text": "pub fn get(&self) -> Result<SqliteConn, PoolError> { — yaak_database — an inherent impl of SqlitePool outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "crates/yaak-grpc/src/lib.rs",
+        "gate": "public-api",
+        "line": 15,
+        "outcome": "unresolved",
+        "text": "pub use tonic::metadata::*; — yaak_grpc — tonic::metadata::* globs another crate, whose names klin cannot list"
+      },
+      {
+        "file": "crates/yaak-templates/index.ts",
+        "gate": "public-api",
+        "line": 3,
+        "outcome": "unresolved",
+        "text": "import { escape_template, parse_template, unescape_template } from \"./pkg\"; — @yaakapp-internal/templates \".\" — ./pkg names no TypeScript file the tree holds: crates/yaak-templates/pkg.ts, crates/yaak-templates/pkg.tsx, crates/yaak-templates/pkg/index.ts, crates/yaak-templates/pkg/index.tsx"
+      },
+      {
+        "file": "crates/yaak-wasm/index.ts",
+        "gate": "public-api",
+        "line": 6,
+        "outcome": "unresolved",
+        "text": "export { blob_delete, blob_get, blob_put, boot, prepare_http_send, rpc } from \"./pkg\"; — @yaakapp-internal/wasm \".\" — ./pkg names no TypeScript file the tree holds: crates/yaak-wasm/pkg.ts, crates/yaak-wasm/pkg.tsx, crates/yaak-wasm/pkg/index.ts, crates/yaak-wasm/pkg/index.tsx"
+      },
+      {
+        "file": "crates/yaak-wasm/index.ts",
+        "gate": "public-api",
+        "line": 6,
+        "outcome": "unresolved",
+        "text": "export { blob_delete, blob_get, blob_put, boot, prepare_http_send, rpc } from \"./pkg\"; — @yaakapp-internal/wasm \".\" — ./pkg resolves to no TypeScript module the tree holds, or to more than one"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "52 package(s) or target(s) with no supported public surface:\n  Rust package yaak-cli (crates-cli/yaak-cli/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package @yaak/action-copy-curl (plugins/action-copy-curl/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/action-copy-grpcurl (plugins/action-copy-grpcurl/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/action-send-folder (plugins/action-send-folder/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-apikey (plugins/auth-apikey/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-aws (plugins/auth-aws/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-basic (plugins/auth-basic/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-bearer (plugins/auth-bearer/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-digest (plugins/auth-digest/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-jwt (plugins/auth-jwt/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-ntlm (plugins/auth-ntlm/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-oauth1 (plugins/auth-oauth1/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-oauth2 (plugins/auth-oauth2/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/faker (plugins-external/faker/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/filter-jsonpath (plugins/filter-jsonpath/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/filter-xpath (plugins/filter-xpath/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/httpsnippet (plugins-external/httpsnippet/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/importer-bruno (plugins/importer-bruno/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/importer-curl (plugins/importer-curl/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/importer-insomnia (plugins/importer-insomnia/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  … and 32 more"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 3 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "6fc43a60e23b7680a31dd06ccb5e668460b9d87d",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}
