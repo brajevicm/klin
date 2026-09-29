@@ -1,15 +1,15 @@
 {
   "R001": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R002": {
-    "label": "appropriate",
-    "note": "New try_remap_subset_cmap, cc 17 and 113 lines. The worsened collect_cmaps_from_fonts_inner (+4 lines, same cc) is not-appropriate."
+    "label": "not-appropriate",
+    "note": "try_remap_subset_cmap existed at the base (src/tounicode.rs:1910, cc 14, 87 lines) and reads as new only because the change added <'p> to its declaration line. It grew by two early-return guards, +3 cc and +26 lines, 10 of them comments. collect_cmaps_from_fonts_inner grew 4 lines at the same cc."
   },
   "R003": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R004": {
     "label": "appropriate",
@@ -17,15 +17,15 @@
   },
   "R005": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R006": {
     "label": "not-appropriate",
-    "note": "New text_score (cc 16, 61 lines) is a flat character classifier. extract_text_from_operand grew 6 lines, same cc."
+    "note": "text_score is score_text's old body under a new name (cc 16, 61 lines), a flat character classifier. extract_text_from_operand grew 6 lines, same cc."
   },
   "R007": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R008": {
     "label": "appropriate",
@@ -33,7 +33,7 @@
   },
   "R009": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R010": {
     "label": "not-appropriate",
@@ -45,7 +45,7 @@
   },
   "R012": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R013": {
     "label": "appropriate",
@@ -53,11 +53,11 @@
   },
   "R014": {
     "label": "not-appropriate",
-    "note": "CHANGELOG.md grew by its release entry; a changelog grows by design and is not an instruction file."
+    "note": "CHANGELOG.md grew by the fix's own entry; a changelog grows by design and is not an instruction file."
   },
   "R015": {
     "label": "not-appropriate",
-    "note": "expect in naga/tests/, a crate integration test directory, the #279 class."
+    "note": "expect in a naga integration test. naga/build.rs makes naga/ one source root, so naga/tests/naga is never a test root (#385)."
   },
   "R016": {
     "label": "not-appropriate",
@@ -69,7 +69,7 @@
   },
   "R018": {
     "label": "not-appropriate",
-    "note": "A too_many_arguments allow, and #[ignore] on a test that fetches a live tile."
+    "note": "Two too_many_arguments allows, and #[ignore] on a new manual live-network test beside two such tests the base already held."
   },
   "R019": {
     "label": "appropriate",
@@ -93,7 +93,7 @@
   },
   "R024": {
     "label": "appropriate",
-    "note": "Three new unsafe libc fcntl blocks, with SAFETY comments, that a reviewer must read. The too_many_arguments allow is not-appropriate."
+    "note": "New unsafe FFI for file locking, four unsafe blocks at three sites (std::mem::zeroed twice, libc::fcntl twice), which a reviewer must read. The too_many_arguments allow is not-appropriate."
   },
   "R025": {
     "label": "appropriate",
@@ -105,7 +105,7 @@
   },
   "R027": {
     "label": "appropriate",
-    "note": "generate_world_with_options went from cc 158 to 166 and grew 55 lines; fill_from_tile went from cc 19 to 23; new assemble is 118 lines."
+    "note": "generate_world_with_options went from cc 158 to 166 and grew 55 lines; fill_from_tile went from cc 19 to 23. assemble existed at the base (cc 9, 95 lines), reads as new because it gained a parameter, and grew to cc 13 and 118 lines."
   },
   "R028": {
     "label": "not-appropriate",
@@ -140,16 +140,16 @@
     "note": "A typo fix in an existing FIXME reads as a new line."
   },
   "R036": {
-    "label": "not-appropriate",
-    "note": "#[allow(unused)] on structs whose fields only derives read."
+    "label": "appropriate",
+    "note": "The two #[allow(unused)] lines hide two dead types: nothing constructs or names UnreadableDir or TracingConfig, and cargo check without the allows reports both as never constructed."
   },
   "R037": {
     "label": "not-appropriate",
-    "note": "cc floor 5: useEditorContentModel is cc 7 and 60 lines. The derived lines ceiling of 34 fired as well."
+    "note": "useEditorContentModel is cc 7 at the base and at head, and grew from 50 to 60 lines past the derived lines ceiling of 34. It fires on lines, so a cc 10 floor would not change the row."
   },
   "R038": {
     "label": "not-appropriate",
-    "note": "cc floor 5: FilePreviewBody is cc 8 and 68 lines of JSX; the new components are cc 3 and 4."
+    "note": "FilePreviewBody (cc 8 at the base and at head) grew from 50 to 68 lines of JSX, and the new components are cc 3 and 4 but over the derived lines ceiling of 34. Every finding fires on lines, so a cc 10 floor would not change the row."
   },
   "R039": {
     "label": "not-appropriate",
@@ -177,7 +177,7 @@
   },
   "R045": {
     "label": "not-appropriate",
-    "note": "The new log paging callback is 39 linear lines whose cc comes from && chains; CronLogModal is JSX; the fixture is a test."
+    "note": "The .then paging callback existed at the base (cc 12, 28 lines) and reads as new because its declaration line gained `total`. The added drain logic is a named predicate and a ternary in a sequential handler. CronLogModal grew inside that callback, and the fixture is a test."
   },
   "R046": {
     "label": "not-appropriate",
@@ -205,11 +205,11 @@
   },
   "R052": {
     "label": "appropriate",
-    "note": "19 new any casts and a ts-expect-error in library source (readFromStore.ts, ObservableQuery.ts, QueryInfo.ts). The 131 findings in type tests and test files are not-appropriate."
+    "note": "New any escapes in library source, 6 of them `as any` casts (for example QueryInfo.ts:626 and graphql17Alpha9.ts:146), and new any annotations in the new file coerceScalarFieldsToParsed.ts. The ts-expect-error at ObservableQuery.ts:105 moved from QueryInfo.ts. The 131 findings in type tests and test files are not-appropriate."
   },
   "R053": {
     "label": "not-appropriate",
-    "note": "TODO notes in test files."
+    "note": "TODO notes in new test files, in a project that tracks work in TODO comments. A close call: four of them ask whether an asserted value is correct."
   },
   "R054": {
     "label": "appropriate",
@@ -221,11 +221,11 @@
   },
   "R056": {
     "label": "not-appropriate",
-    "note": "Two test files read as unreached, and src/utilities/internal/index.ts:65 re-exports isTypenameField.ts."
+    "note": "Two test files under __tests__ read as family members and as unreached. isTypenameField.ts has no caller left at head, but src/utilities/internal/index.ts:65 re-exports it from a published entry point, so it is public surface."
   },
   "R057": {
     "label": "not-appropriate",
-    "note": "The changed contracts of a minor release are additive or compatible (defaulted generics, new optional members); five export declare namespace forms stayed unresolved."
+    "note": "The generic findings change a constraint from ApolloCache to Cache.Implementation, which defaults to ApolloCache. Others add members or drop the underscore member _lastWrite. Five export declare namespace forms stayed unresolved (#381)."
   },
   "R058": {
     "label": "not-appropriate",
@@ -273,7 +273,7 @@
   },
   "R069": {
     "label": "appropriate",
-    "note": "SelectFieldProps, SearchCommandProps (declared twice) and WatchlistTableProps in types/global.d.ts lost their only users in the redesign. The grammar ERR is not-appropriate."
+    "note": "SelectFieldProps and SearchCommandProps (declared twice) in types/global.d.ts lost their only users in the redesign; WatchlistTableProps was already unused at the base. The grammar ERR is not-appropriate."
   },
   "R070": {
     "label": "not-appropriate",
@@ -305,7 +305,7 @@
   },
   "R077": {
     "label": "not-appropriate",
-    "note": "The quote handling went into a shared TagStrings helper; each scanner gained one small branch."
+    "note": "The Rust scanners took the quote handling through a shared TagStrings helper, one small branch each. findTemplateTags and replaceTemplateTags are new linear TypeScript scanners at cc 12."
   },
   "R078": {
     "label": "not-appropriate",
@@ -321,7 +321,7 @@
   },
   "J002": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J003": {
     "label": "appropriate",
@@ -329,47 +329,47 @@
   },
   "J004": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J005": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J006": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J007": {
     "label": "not-appropriate",
-    "note": "Stale 54-hour window: src/turn.rs run came from 0b12b644 on 2026-09-09, before this session."
+    "note": "The run finding was uncommitted work in a shared worktree, judged through a stale window. It most likely came from session 1049e0a3, whose turn holds cdc2a281, not from this session."
   },
   "J008": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J009": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J010": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J011": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J012": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J013": {
     "label": "not-appropriate",
-    "note": "Stale 2026-09-09 stamp. A reasoned #[ignore] on a perf test, expect in a test file, and an unwrap inside a fixture string."
+    "note": "A reasoned opt-in #[ignore] on a perf test the session most likely wrote (343e1100), an expect in a test file, and an unwrap inside a fixture string."
   },
   "J014": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J015": {
     "label": "not-appropriate",
@@ -381,7 +381,7 @@
   },
   "J017": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J018": {
     "label": "not-appropriate",
@@ -393,7 +393,7 @@
   },
   "J020": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J021": {
     "label": "not-appropriate",
@@ -405,7 +405,7 @@
   },
   "J023": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J024": {
     "label": "not-appropriate",
@@ -417,7 +417,7 @@
   },
   "J026": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J027": {
     "label": "not-appropriate",
@@ -429,27 +429,27 @@
   },
   "J029": {
     "label": "not-appropriate",
-    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in reviewed commits on 09-09 and 09-10 (5fee8543, 3f97abb6), not in this session."
+    "note": "Stale turn stamp from 2026-09-09 (c97aaede). The 42 tests went in commits before this session: 26 on 09-09 and 09-10, and 16 in 790bfbd9 on 09-11 at 18:57."
   },
   "J030": {
     "label": "not-appropriate",
-    "note": "Stale 66-hour window over earlier commits; ran is a command dispatch match."
+    "note": "Three of the four findings were concurrent session 1ca55e6b's uncommitted work, committed in 0a997103 after this stop. guard_event is a fixture match inherited from 343e1100."
   },
   "J031": {
-    "label": "appropriate",
-    "note": "src/lockfile.rs reading is cc 9, over the pinned cc 8."
+    "label": "not-appropriate",
+    "note": "The cc 9 of src/lockfile.rs reading was session 186619e9's #133 work in progress (committed in 78c02522), and it blocked this copy-editing session."
   },
   "J032": {
-    "label": "appropriate",
-    "note": "src/lockfile.rs reading is cc 11, over the pinned cc 8."
+    "label": "not-appropriate",
+    "note": "The cc 11 of src/lockfile.rs reading was session 186619e9's #133 work in progress, and it blocked this copy-editing session a second time."
   },
   "J033": {
     "label": "not-appropriate",
-    "note": "The missing tests came in the stamp parent (78c02522) and no commit deleted them; the tree left that branch."
+    "note": "The tree left its branch (the reflog shows a checkout to main at 13:24). The four lockfile tests came in 78c02522 and tests/catalogue.rs in 0a997103, and no commit deleted them."
   },
   "J034": {
-    "label": "not-appropriate",
-    "note": "An expect on a stated invariant in src, test expects, and an unwrap inside a fixture string."
+    "label": "appropriate",
+    "note": "A new expect in src on an invariant the caller guarantees; 83cc8a78 then turned it into an error, as klin's remedy asks. The test expects and the unwrap inside a fixture string are not-appropriate."
   },
   "J035": {
     "label": "not-appropriate",
@@ -465,35 +465,35 @@
   },
   "J038": {
     "label": "not-appropriate",
-    "note": "README.md grew in 114462f6, a person's own edit, and the person raised its ceiling to 1200 in c9423036."
+    "note": "README.md grew in 114462f6 ('Update README.md', 680 to 943 words), which fits a person's own edit, and the person raised its ceiling to 1200 in c9423036."
   },
   "J039": {
     "label": "appropriate",
     "note": "A test vanished in a session asked to add tests only; it was back before the commit."
   },
   "J040": {
-    "label": "not-appropriate",
-    "note": "A 74-line test body."
+    "label": "appropriate",
+    "note": "The session's own new 74-line test went over the pinned lines 60. The pinned complexity roots cover tests, and ADR 0051 keeps test bodies and helpers measured. 2a5b0a0e split it."
   },
   "J041": {
     "label": "appropriate",
     "note": "src/changed.rs blobs is cc 11, over the pinned cc 8."
   },
   "J042": {
-    "label": "not-appropriate",
-    "note": "Reasoned #[ignore] perf rows, a test expect and an unwrap inside a fixture string."
+    "label": "appropriate",
+    "note": "The session added four new #[ignore] tests (f6f373a6), and a person folded them into the one ignored perf test (ee82101e). The test expect and the unwrap inside a format string are not-appropriate."
   },
   "J043": {
-    "label": "not-appropriate",
-    "note": "Perf fixture and assertion helpers in a test file."
+    "label": "appropriate",
+    "note": "The session's own fixture helpers went over the pinned ceiling: with_profile at 85 lines, assert_shape at cc 10. The pinned complexity roots cover tests, and ADR 0051 keeps test bodies and helpers measured. 8e74806b reduced both."
   },
   "J044": {
     "label": "not-appropriate",
-    "note": "The #[ignore] perf test functions read as dead."
+    "note": "The perf test functions read as dead because a multi-line #[cfg_attr(not(any()), ignore = ...)] broke the test detection. That cfg_attr dodged escapes, and ee82101e removed it."
   },
   "J045": {
     "label": "not-appropriate",
-    "note": "The #[ignore] perf test functions read as dead, over 10 stops."
+    "note": "The perf test functions read as dead because a multi-line #[cfg_attr(not(any()), ignore = ...)] broke the test detection. It blocked 10 stops of a review session that did not write it."
   },
   "J046": {
     "label": "appropriate",
@@ -525,7 +525,7 @@
   },
   "J053": {
     "label": "appropriate",
-    "note": "A new #[allow(dead_code)] in src/check.rs; it never reached a commit."
+    "note": "A new #[allow(dead_code)] on an unused production field in src/check.rs (b6acd048); e8cc9445 on main dropped it."
   },
   "J054": {
     "label": "appropriate",
@@ -541,7 +541,7 @@
   },
   "J057": {
     "label": "appropriate",
-    "note": "A test the session wrote was gone before the commit."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. The agent said it duplicated a neighbouring test."
   },
   "J058": {
     "label": "appropriate",
@@ -560,8 +560,8 @@
     "note": "`src/lib.rs` is a generic Rust path in release notes, and klin has no such file."
   },
   "J062": {
-    "label": "not-appropriate",
-    "note": "A too_many_arguments allow."
+    "label": "appropriate",
+    "note": "A new clippy::too_many_arguments allow in production code; eacfdf6f then bundled the state into one struct, as klin's remedy asks."
   },
   "J063": {
     "label": "not-appropriate",
@@ -573,23 +573,23 @@
   },
   "J065": {
     "label": "not-appropriate",
-    "note": "The person's layering config names src/checks before it exists; klin.json is guarded, so the agent could not clear the error."
+    "note": "A person's klin.json edit (config hash 2c7c23e1, in no commit) made layering err, and klin.json is guarded, so the agent could not undo it. The error blocked the stop."
   },
   "J066": {
     "label": "not-appropriate",
-    "note": "The person's layering config names src/checks before it exists; klin.json is guarded, so the agent could not clear the error."
+    "note": "A person's klin.json edit (config hash 2c7c23e1, in no commit) made layering err and blocked an unrelated session, which could not edit the guarded klin.json."
   },
   "J067": {
     "label": "not-appropriate",
     "note": "A reasoned #[ignore] perf row."
   },
   "J068": {
-    "label": "not-appropriate",
-    "note": "A perf test helper grew one line."
+    "label": "appropriate",
+    "note": "The session grew measure from 60 to 80 lines past the pinned 60. The stamp had already absorbed 19 of those lines, and 941f62ac brought it back under."
   },
   "J069": {
-    "label": "not-appropriate",
-    "note": "A 77-line test body."
+    "label": "appropriate",
+    "note": "The session grew an existing test from 50 to 77 lines past the pinned 60. The pinned complexity roots cover tests, and ADR 0051 keeps test bodies and helpers measured. d808c3b9 cut it to 52."
   },
   "J070": {
     "label": "appropriate",
@@ -597,15 +597,15 @@
   },
   "J071": {
     "label": "appropriate",
-    "note": "A README test the session wrote was gone before any commit."
+    "note": "The test was in the session's own commit 73a770c2, and the session amended it away, dropping the wrapper checksum and PATH assertions."
   },
   "J072": {
     "label": "appropriate",
-    "note": "A measurement test the session wrote was gone before the commit."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. It was renamed with the same assertions."
   },
   "J073": {
     "label": "appropriate",
-    "note": "A measurement test the session wrote was gone before the commit."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. The person asked for the simplest version, and the agent reverted the files."
   },
   "J074": {
     "label": "not-appropriate",
@@ -633,19 +633,19 @@
   },
   "J080": {
     "label": "not-appropriate",
-    "note": "The person asked to reset and start from scratch; the reset dropped uncommitted work with its tests."
+    "note": "The person asked to reset and start from scratch. The reset dropped two unpushed commits (ba4575d4, 98cf56cf) with their tests."
   },
   "J081": {
     "label": "appropriate",
     "note": "The probe function in src/cursor_stop_probe.rs is dead."
   },
   "J082": {
-    "label": "not-appropriate",
-    "note": "The same reset turn as J080."
+    "label": "appropriate",
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. The session wrote it after the reset, and it duplicated cursor_reads_a_shell_command_off_the_event_itself."
   },
   "J083": {
     "label": "appropriate",
-    "note": "The refactor dropped a radius test; ce9bac1c does not hold it."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. It was replaced after the person pasted review findings."
   },
   "J084": {
     "label": "not-appropriate",
@@ -653,7 +653,7 @@
   },
   "J085": {
     "label": "appropriate",
-    "note": "b118026b replaced the init hooks tests with install tests; 33 tests vanished."
+    "note": "b118026b replaced the init hooks tests with install tests; 34 tests vanished."
   },
   "J086": {
     "label": "not-appropriate",
@@ -665,7 +665,7 @@
   },
   "J088": {
     "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. It became two tests after code review."
   },
   "J089": {
     "label": "appropriate",
@@ -673,7 +673,7 @@
   },
   "J090": {
     "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. Its assertion became false by design after a layout change."
   },
   "J091": {
     "label": "appropriate",
@@ -725,7 +725,7 @@
   },
   "J103": {
     "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. It was committed under a shorter name with the same claim."
   },
   "J104": {
     "label": "appropriate",
@@ -736,8 +736,8 @@
     "note": "src/build.rs failure is cc 9, over the pinned cc 8."
   },
   "J106": {
-    "label": "appropriate",
-    "note": "const YARN lost its last use; ae30bc54 removed it."
+    "label": "not-appropriate",
+    "note": "A false positive: YARN is used at src/build.rs:211 as format!(\"{YARN} {tool}\"), a capture that dead-symbols does not read."
   },
   "J107": {
     "label": "appropriate",
@@ -745,19 +745,19 @@
   },
   "J108": {
     "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. The vanished name was the agent's own uncommitted rename, which it reverted."
   },
   "J109": {
-    "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "label": "not-appropriate",
+    "note": "The person's prompt listed the PnP-specific tests for removal minutes earlier, and 6e3fecee removed exactly those 16."
   },
   "J110": {
     "label": "appropriate",
     "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
   },
   "J111": {
-    "label": "not-appropriate",
-    "note": "A 63-line test body."
+    "label": "appropriate",
+    "note": "The session's own new 63-line test went over the pinned 60. The pinned complexity roots cover tests, and ADR 0051 keeps test bodies and helpers measured. 1da6ea8f extracted its fixture."
   },
   "J112": {
     "label": "appropriate",
@@ -765,31 +765,31 @@
   },
   "J113": {
     "label": "appropriate",
-    "note": "Tests went with the --host generic alias (ec8fc1fa); asking once is what ADR 0031 designs."
+    "note": "The #271 rename retitled the test, and the session restored it within a minute."
   },
   "J114": {
-    "label": "appropriate",
-    "note": "Tests went with the --host generic alias (ec8fc1fa); asking once is what ADR 0031 designs."
+    "label": "not-appropriate",
+    "note": "The person asked to drop the --host generic alias, and the two tests pinned exactly that alias (ec8fc1fa)."
   },
   "J115": {
-    "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "label": "not-appropriate",
+    "note": "Another session (9e04908b) edited tests/plugin.rs 11 seconds before this stop; this session only wrote GitHub issues."
   },
   "J116": {
-    "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "label": "not-appropriate",
+    "note": "The session worked in ../klin-302. The hook judged the main checkout, where another session's work (4ba40150) changed tests/plugin.rs."
   },
   "J117": {
     "label": "appropriate",
-    "note": "The second block change (ccaf8384) rewrote the tests it made obsolete; asking once is what ADR 0031 designs."
+    "note": "The session's own commits ccaf8384 and 11694523 in ../klin-302 removed or retitled the tests. Switching them into the main checkout made the hook ask for the first time."
   },
   "J118": {
     "label": "appropriate",
     "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
   },
   "J119": {
-    "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "label": "not-appropriate",
+    "note": "A pull brought in PR #316 (4ba40150, f77106ad), which removed both tests; the session's own change was ADR-only."
   },
   "J120": {
     "label": "appropriate",
@@ -861,7 +861,7 @@
   },
   "J137": {
     "label": "appropriate",
-    "note": "The session removed or rewrote tests in its own change; asking once is what ADR 0031 designs."
+    "note": "A test the session wrote in an earlier turn and never committed was gone at the stop. Asking once is the design of ADR 0031, because klin cannot tell a reworked draft from a deleted failing test. The agent removed it because it passed on the old code too."
   },
   "J138": {
     "label": "appropriate",
