@@ -29,6 +29,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     visibility,
     exported_as,
     owner,
+    destructured,
     contract,
     exported,
 };
@@ -167,6 +168,35 @@ fn exported_as(node: Node, _: &[u8]) -> Option<String> {
 /// A member belongs to its class, so no method here has an owner of its own.
 fn owner(_: Node, _: &[u8]) -> Option<String> {
     None
+}
+
+/// Every name a destructuring pattern binds, and none for a name that is one identifier.
+fn destructured(name: Node, source: &[u8]) -> Vec<String> {
+    match name.kind() {
+        "object_pattern" | "array_pattern" => bound(name, source),
+        _ => Vec::new(),
+    }
+}
+
+/// The names one part of a pattern binds: a renamed property binds its alias, a default binds
+/// the name it assigns, and a nested pattern or a rest binds every name inside it.
+fn bound(node: Node, source: &[u8]) -> Vec<String> {
+    let part = |field| {
+        node.child_by_field_name(field)
+            .map_or_else(Vec::new, |held| bound(held, source))
+    };
+    match node.kind() {
+        "identifier" | "shorthand_property_identifier_pattern" => vec![text_of(node, source)],
+        "pair_pattern" => part("value"),
+        "assignment_pattern" | "object_assignment_pattern" => part("left"),
+        "object_pattern" | "array_pattern" | "rest_pattern" => {
+            let mut cursor = node.walk();
+            node.named_children(&mut cursor)
+                .flat_map(|held| bound(held, source))
+                .collect()
+        }
+        _ => Vec::new(),
+    }
 }
 
 fn has_token(node: Node, token: &str) -> bool {

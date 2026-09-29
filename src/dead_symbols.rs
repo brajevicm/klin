@@ -74,6 +74,7 @@ struct Spec {
 struct State {
     file: String,
     name: String,
+    bindings: Vec<String>,
     line: u64,
     end: u64,
     text: String,
@@ -419,16 +420,17 @@ fn state(
     file: &structural::FileFacts,
     declaration: &structural::Declaration,
 ) -> State {
-    let dead = !index
-        .references(file.language, &declaration.name)
-        .any(|reference| {
+    let dead = !declaration.names().any(|name| {
+        index.references(file.language, name).any(|reference| {
             reference.file != file.file
                 || reference.line < declaration.line
                 || reference.line > declaration.end
-        });
+        })
+    });
     State {
         file: file.file.clone(),
         name: declaration.name.clone(),
+        bindings: declaration.bindings.clone(),
         line: declaration.line,
         end: declaration.end,
         text: declaration.text.clone(),
@@ -487,18 +489,27 @@ fn lost_reference(
         return None;
     }
     let language = before.index().file(&state.file)?.language;
-    let old = before.index().references(language, &state.name);
-    let now: BTreeSet<(&str, u64)> = after
-        .index()
-        .references(language, &state.name)
-        .map(|reference| (reference.file, reference.line))
-        .collect();
-    old.filter(|reference| {
-        reference.file != held.file || reference.line < held.line || reference.line > held.end
-    })
-    .filter(|reference| !now.contains(&(reference.file, reference.line)))
-    .map(|reference| reference.file.to_string())
-    .next()
+    std::iter::once(&state.name)
+        .chain(&state.bindings)
+        .filter_map(|name| {
+            let now: BTreeSet<(&str, u64)> = after
+                .index()
+                .references(language, name)
+                .map(|reference| (reference.file, reference.line))
+                .collect();
+            before
+                .index()
+                .references(language, name)
+                .filter(|reference| {
+                    reference.file != held.file
+                        || reference.line < held.line
+                        || reference.line > held.end
+                })
+                .find(|reference| !now.contains(&(reference.file, reference.line)))
+                .map(|reference| reference.file)
+        })
+        .min()
+        .map(str::to_string)
 }
 
 fn evaluator() -> Evaluator<'static> {

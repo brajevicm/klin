@@ -1337,7 +1337,11 @@ does not parse can only under-report.
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and
 TypeScript, with TSX treated as TypeScript. A declaration is dead when no
-reference with the same name exists outside its own declaration. A name
+reference with the same name exists outside its own declaration. A
+TypeScript destructuring declaration is judged by the names it binds: it is
+dead only when none of them has a reference outside the declaration. A
+renamed binding such as `{ add: loaded }` is judged by its local name, and a
+nested or defaulted pattern binds every name inside it. A name
 resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
@@ -1372,7 +1376,14 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_private_typescript_main_is_judged`,
 `losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
 `one_typescript_reference_keeps_duplicate_names_alive` in
-`tests/dead_symbols.rs`; the report cap is covered by
+`tests/dead_symbols.rs`; the destructuring rule by
+`an_object_destructuring_declaration_whose_binding_is_used_passes`,
+`an_array_destructuring_declaration_whose_binding_is_used_passes`,
+`a_renamed_binding_used_by_its_local_name_passes`,
+`a_nested_or_defaulted_binding_keeps_its_declaration_alive`,
+`a_destructuring_declaration_whose_bindings_are_all_unused_still_fails` and
+`a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructuring`;
+the report cap is covered by
 `report_lists_every_current_dead_symbol_without_the_note_cap`, and the
 judgement scope by
 `a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge` and

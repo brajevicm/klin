@@ -258,6 +258,7 @@ impl Writer {
         self.number(
             u64::from(declaration.externally_visible) | u64::from(declaration.entry_point) << 1,
         );
+        self.texts(&declaration.bindings);
         self.texts(&declaration.nesting);
         self.number(visibility_number(declaration.visibility));
         self.optional(declaration.exported_as.as_deref());
@@ -365,8 +366,10 @@ impl Reader<'_, '_> {
     fn declaration(&mut self) -> Option<Declaration> {
         let (name, kind, line, end, text) = self.site()?;
         let flags = self.number().filter(|flags| *flags <= 3)?;
+        let bindings = self.list(Reader::text)?;
         self.contract(Declaration {
             name,
+            bindings,
             kind,
             line,
             end,

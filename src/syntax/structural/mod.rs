@@ -53,6 +53,9 @@ pub enum Visibility {
 
 pub struct Declaration {
     pub name: String,
+    /// The names a destructuring pattern binds, each by its local name, and none where the
+    /// declaration is named by one identifier.
+    pub bindings: Vec<String>,
     pub kind: DeclarationKind,
     pub line: u64,
     /// The last line the declaration covers, so a consumer can tell a reference written inside
@@ -85,6 +88,13 @@ pub struct Declaration {
     /// language would infer is written as `?`, so an inferred contract is visibly partial and
     /// never fabricated.
     pub signature: Option<String>,
+}
+
+impl Declaration {
+    /// Its own name and every name its pattern binds.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        std::iter::once(self.name.as_str()).chain(self.bindings.iter().map(String::as_str))
+    }
 }
 
 /// One statement that exposes names past the module: Rust's `pub use`, and every TypeScript
@@ -800,6 +810,8 @@ pub(crate) struct Adapter {
     pub exported_as: fn(Node, &[u8]) -> Option<String>,
     /// The type an inherent implementation adds a method to.
     pub owner: fn(Node, &[u8]) -> Option<String>,
+    /// The names a declaration's name binds where it is a destructuring pattern.
+    pub destructured: fn(Node, &[u8]) -> Vec<String>,
     /// The canonical declared contract of a declaration, and `None` for a form V1 does not
     /// canonicalize.
     pub contract: fn(Node, &[u8]) -> Option<String>,
@@ -1079,10 +1091,12 @@ impl<'a, 'b> Reading<'a, 'b> {
         if inside_a_function(node, self.language) {
             return;
         }
+        let bindings = (self.adapter.destructured)(name, self.source);
         let name = text_of(name, self.source);
         let entry_point = self.adapter.entry_points.contains(&name.as_str());
         self.declarations.push(Declaration {
             name,
+            bindings,
             kind: self.kind(capture, node),
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
@@ -1225,9 +1239,11 @@ impl SourceIndex {
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
             for (which, declaration) in file.declarations.iter().enumerate() {
-                record_text(named, &declaration.name, |sites| {
-                    sites.declarations.push((at, which));
-                });
+                for name in declaration.names() {
+                    record_text(named, name, |sites| {
+                        sites.declarations.push((at, which));
+                    });
+                }
             }
         }
         for sites in names.values_mut().flat_map(HashMap::values_mut) {
@@ -1863,6 +1879,7 @@ export function charge(at: number): number {
                 .enumerate()
                 .map(|(at, name)| Declaration {
                     name: name.to_string(),
+                    bindings: Vec::new(),
                     kind: DeclarationKind::Function,
                     line: at as u64 + 1,
                     end: at as u64 + 1,
