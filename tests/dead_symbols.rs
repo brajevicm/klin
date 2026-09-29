@@ -214,6 +214,67 @@ fn a_serde_attribute_inside_cfg_attr_names_its_function_too() {
 }
 
 #[test]
+fn a_serde_path_references_only_its_last_segment() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"presets::default_cell_zoom\")]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n\nfn presets() {}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_with_module_names_no_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(with = \"zoom_format\")]\n    pub zoom: u8,\n}\n\nfn zoom_format() {}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:7"), "{}", run.out);
+}
+
+#[test]
+fn serde_tokens_inside_a_macro_call_name_no_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "pub fn settings() {\n    some_macro!(serde(default = \"default_cell_zoom\"));\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:5"), "{}", run.out);
+}
+
+#[test]
+fn a_raw_string_serde_path_names_its_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = r#\"default_cell_zoom\"#)]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
 fn a_new_private_typescript_function_fails() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);
@@ -462,6 +523,32 @@ fn removing_the_last_reference_in_a_changed_caller_worsens_an_unchanged_declarat
     assert!(run.says("got worse"), "{}", run.out);
     assert!(run.says("src/service.rs:1"), "{}", run.out);
     assert!(run.says("lost reference in src/caller.rs"), "{}", run.out);
+}
+
+#[test]
+fn removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/service.rs",
+        "fn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+    tree.write(
+        "src/settings.rs",
+        "pub struct Settings {\n    #[serde(default = \"default_cell_zoom\")]\n    pub zoom: u8,\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "src/settings.rs",
+        "pub struct Settings {\n    pub zoom: u8,\n}\n",
+    );
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+    assert!(run.says("lost reference in src/settings.rs"), "{}", run.out);
 }
 
 #[test]

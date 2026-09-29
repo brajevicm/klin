@@ -70,13 +70,13 @@ const SCOPED: &[&str] = &["scoped_identifier", "scoped_type_identifier"];
 /// The first segments a path resolves from inside this crate.
 const RELATIVE: &[&str] = &["crate", "self", "super"];
 
-/// The `serde` keys whose string is a path the derive calls: a function, and a module for `with`.
-const SERDE_PATHS: &[&str] = &[
+/// The `serde` keys whose string is the path of a function the derive calls. `with` names a
+/// module, which no one name stands for, so it is not here.
+const SERDE_CALLABLES: &[&str] = &[
     "default",
     "skip_serializing_if",
     "serialize_with",
     "deserialize_with",
-    "with",
     "getter",
 ];
 
@@ -467,32 +467,76 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
     Some(text_of(named, source).trim_matches('"').to_string())
 }
 
-/// Every segment of the path a string names where it is the value of a `serde` key the derive
-/// calls, as the same path written in code names each of them.
+/// The function a string names where it is the value of a `serde` key the derive calls: the
+/// last segment of its path, with any generic arguments dropped, which is the one name the call
+/// resolves by. A raw string is read by its value like any other.
 fn quoted(node: Node, source: &[u8]) -> Vec<String> {
-    if node.kind() != "string_literal" || !serde_path(node, source) {
+    if !matches!(node.kind(), "string_literal" | "raw_string_literal")
+        || !serde_callable(node, source)
+    {
         return Vec::new();
     }
-    text_of(node, source)
-        .trim_matches('"')
-        .split("::")
+    let Some(value) = node
+        .named_child(0)
+        .filter(|held| held.kind() == "string_content")
+    else {
+        return Vec::new();
+    };
+    let text = text_of(value, source);
+    let path = text
+        .split('<')
+        .next()
+        .unwrap_or_default()
+        .trim_end_matches(':');
+    path.rsplit("::")
+        .next()
+        .filter(|name| !name.is_empty())
         .map(str::to_string)
+        .into_iter()
         .collect()
 }
 
-/// Whether this string follows one of `SERDE_PATHS` and `=` in the tokens of `serde(...)`,
-/// written as the attribute itself or inside another one such as `cfg_attr`.
-fn serde_path(node: Node, source: &[u8]) -> bool {
-    let serde = node
-        .parent()
-        .filter(|held| held.kind() == "token_tree")
-        .and_then(|held| held.prev_sibling())
-        .is_some_and(|held| held.kind() == "identifier" && text_of(held, source) == "serde");
+/// Whether this string follows one of `SERDE_CALLABLES` and `=` in the tokens of a `serde(...)`
+/// that a Rust attribute holds.
+fn serde_callable(node: Node, source: &[u8]) -> bool {
     let key = node
         .prev_sibling()
         .filter(|held| held.kind() == "=")
         .and_then(|held| held.prev_sibling());
-    serde && key.is_some_and(|held| SERDE_PATHS.contains(&text_of(held, source).as_str()))
+    let tokens = node.parent().filter(|held| held.kind() == "token_tree");
+    key.is_some_and(|held| SERDE_CALLABLES.contains(&text_of(held, source).as_str()))
+        && tokens.is_some_and(|tokens| serde_attribute(tokens, source))
+}
+
+/// Whether these tokens are the arguments of `serde`, as an attribute of its own or directly
+/// inside a `cfg_attr` attribute, so the same tokens inside a macro call never count.
+fn serde_attribute(tokens: Node, source: &[u8]) -> bool {
+    let named =
+        |held: Node, name: &str| held.kind() == "identifier" && text_of(held, source) == name;
+    if !tokens
+        .prev_sibling()
+        .is_some_and(|held| named(held, "serde"))
+    {
+        return false;
+    }
+    let attribute = match tokens.parent() {
+        Some(held) if held.kind() == "attribute" => held,
+        Some(held) if held.kind() == "token_tree" => match held.parent() {
+            Some(outer)
+                if outer.kind() == "attribute"
+                    && outer
+                        .named_child(0)
+                        .is_some_and(|name| named(name, "cfg_attr")) =>
+            {
+                outer
+            }
+            _ => return false,
+        },
+        _ => return false,
+    };
+    attribute
+        .parent()
+        .is_some_and(|item| matches!(item.kind(), "attribute_item" | "inner_attribute_item"))
 }
 
 /// The names of the inline modules above a node, outermost first.

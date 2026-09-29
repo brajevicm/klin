@@ -1343,13 +1343,16 @@ alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
 globs. The check is name-only: it does not resolve imports, types, reflection,
 framework entry points or external callers. The index reads a string as text,
-with one exception. Inside the tokens of a Rust `serde(...)` attribute,
-written as the attribute itself or inside another one such as `cfg_attr`, the
-string value of `default`, `skip_serializing_if`, `serialize_with`,
-`deserialize_with` or `getter` is the path of a function the derive calls, and
-the string value of `with` is the path of a module. Each `::` segment of such
-a path is a reference. A `default` with no value names nothing, and the string
-of any other key, such as `rename`, stays text. A declaration that becomes dead
+with one exception. Where a Rust attribute item holds `serde(...)`, as the
+attribute itself or directly inside `cfg_attr`, the string value of `default`,
+`skip_serializing_if`, `serialize_with`, `deserialize_with` or `getter`, plain
+or raw, is the path of a function the derive calls. The last segment of that
+path, without generic arguments, is a reference, and no other segment is. It
+is an ordinary reference, so a changed run widens on it and `reachability`
+counts it. The same tokens inside a macro call stay text. `with` names a
+module, which no one reference stands for, so its string stays text, as do a
+`default` with no value and the string of any other key, such as `rename`. A
+declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
@@ -1382,8 +1385,15 @@ and the check by hand build state for every eligible declaration. Pinned by
 `tests/dead_symbols.rs`; the `serde` strings by
 `a_private_function_only_a_serde_default_names_passes`,
 `a_private_function_only_a_serde_skip_serializing_if_names_passes`,
-`a_private_function_no_serde_key_names_still_fails` and
-`a_serde_attribute_inside_cfg_attr_names_its_function_too`; the report cap
+`a_private_function_no_serde_key_names_still_fails`,
+`a_serde_attribute_inside_cfg_attr_names_its_function_too`,
+`a_serde_path_references_only_its_last_segment`,
+`a_serde_with_module_names_no_function`,
+`serde_tokens_inside_a_macro_call_name_no_function`,
+`a_raw_string_serde_path_names_its_function` and
+`removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
+with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
+the report cap
 is covered by `report_lists_every_current_dead_symbol_without_the_note_cap`,
 and the
 judgement scope by

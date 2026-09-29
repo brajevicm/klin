@@ -117,6 +117,22 @@ fn losing_the_last_external_reference_is_worsened() {
 }
 
 #[test]
+fn a_member_a_serde_string_names_is_reached() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
+    tree.write(
+        "src/settings.rs",
+        "pub struct Settings {\n    #[serde(default = \"run_alpha\")]\n    pub zoom: u8,\n}\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 unreached"), "{}", run.out);
+}
+
+#[test]
 fn a_reference_from_the_same_file_does_not_reach_it() {
     let tree = three_reached_commands();
     tree.base();
