@@ -320,6 +320,7 @@ fn exported(node: Node, source: &[u8]) -> Option<Exported> {
         type_only: false,
         supported: true,
         leaves: leaves(argument, source),
+        namespace: None,
     })
 }
 

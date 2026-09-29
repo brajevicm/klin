@@ -101,9 +101,12 @@ pub struct Export {
     /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
     pub type_only: bool,
     /// False for a form V1 recognizes as an export and cannot list the names of, such as
-    /// TypeScript's `export = x` or `export namespace N`. A consumer reports it as a hole.
+    /// TypeScript's `export = x` or an ambient module. A consumer reports it as a hole.
     pub supported: bool,
     pub leaves: Vec<ExportLeaf>,
+    /// The canonical declaration of the namespace a TypeScript `export namespace N` declares,
+    /// and none for any other export.
+    pub namespace: Option<String>,
 }
 
 /// One name an export exposes. `path` is what is exposed as the source wrote it: a Rust leaf
@@ -822,6 +825,7 @@ pub(crate) struct Exported {
     pub type_only: bool,
     pub supported: bool,
     pub leaves: Vec<ExportLeaf>,
+    pub namespace: Option<String>,
 }
 
 /// How the canonical spelling treats one node: leave the subtree out, write this text for it
@@ -1032,6 +1036,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             type_only: found.type_only,
             supported: found.supported,
             leaves: found.leaves,
+            namespace: found.namespace,
         });
     }
 
@@ -2222,7 +2227,7 @@ function local() {}
                 (Some("./n"), false, true, vec![("*", None)]),
                 (Some("./o"), false, true, vec![("*", Some("ns"))]),
                 (Some("./p"), true, true, vec![("T", Some("T"))]),
-                (None, false, false, vec![]),
+                (None, false, true, vec![("NS", Some("NS"))]),
                 (None, false, false, vec![]),
                 (None, false, true, vec![("foo", Some("default"))]),
             ]

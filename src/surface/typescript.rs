@@ -3,8 +3,8 @@
 //! file the tree holds. Generated JavaScript is never reverse-mapped and no `src/index.ts` is
 //! guessed. From an entry file the derivation follows exported declarations, local export
 //! clauses, default exports and relative re-exports through the module graph's own edges. A
-//! re-export of another package is an opaque item whose clause is its contract, and a star that
-//! klin cannot list is a hole.
+//! re-export of another package and an exported namespace are opaque items whose clause is their
+//! contract, and a star that klin cannot list is a hole.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -314,12 +314,13 @@ impl<'a> Derivation<'a> {
             .map(|item| item.path.clone())
             .collect();
         for export in &facts.exports {
-            match (&export.supported, &export.source) {
-                (false, _) => exposing.unsupported(export),
-                (true, None) => {
+            match (&export.supported, &export.source, &export.namespace) {
+                (false, _, _) => exposing.unsupported(export),
+                (true, None, Some(declaration)) => exposing.namespace(export, declaration),
+                (true, None, None) => {
                     self.local(facts, &exposing.file.clone(), export, &mut exposing.items)
                 }
-                (true, Some(specifier)) => self.re_export(at, export, specifier, &mut exposing),
+                (true, Some(specifier), _) => self.re_export(at, export, specifier, &mut exposing),
             }
         }
         exposing.finish()
@@ -453,9 +454,20 @@ impl Exposing {
             file: self.file.clone(),
             line: export.line,
             text: export.text.clone(),
-            why: "an export form klin does not list: `export =`, a namespace, or an ambient module"
-                .to_string(),
+            why: "an export form klin does not list: `export =` or an ambient module".to_string(),
         });
+    }
+
+    fn namespace(&mut self, export: &Export, declaration: &str) {
+        for name in export.leaves.iter().filter_map(|leaf| leaf.name.clone()) {
+            self.items.push(opaque(
+                name,
+                NAMESPACE,
+                &self.file,
+                export.line,
+                declaration.to_string(),
+            ));
+        }
     }
 
     /// Every item a star export provides, less the names this module declares itself. A name

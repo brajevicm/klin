@@ -268,13 +268,13 @@ fn annotated(node: Node, source: &[u8]) -> String {
     }
 }
 
-/// How one node is spelled in a canonical contract: bodies, initializers, comments and
-/// decorators leave, a private member leaves, a parameter keeps its type and loses its binding
-/// name, and a class or interface body lists its members in one order.
+/// How one node is spelled in a canonical contract: bodies but a namespace's, initializers,
+/// comments and decorators leave, a private member leaves, a parameter keeps its type and loses
+/// its binding name, and a class or interface body lists its members in one order.
 fn spelling(node: Node, source: &[u8]) -> Spelling {
     match node.kind() {
         "comment" | "decorator" => Spelling::Skip,
-        "statement_block" if is_field(node, "body") => Spelling::Skip,
+        "statement_block" if is_field(node, "body") && !namespace_body(node) => Spelling::Skip,
         "required_parameter" | "optional_parameter" => Spelling::Replace(parameter(node, source)),
         "class_body" | "interface_body" => Spelling::Replace(members(node, source)),
         "string" => Spelling::Replace(text_of(node, source)),
@@ -510,15 +510,23 @@ fn is_field(node: Node, field: &str) -> bool {
         .is_some_and(|found| found.id() == node.id())
 }
 
+fn namespace_body(node: Node) -> bool {
+    node.parent()
+        .is_some_and(|held| held.kind() == "internal_module")
+}
+
 /// What one `export` statement at the top of the file exposes beyond its own declaration: a
-/// default value, a clause of local names, a re-export clause, a star, a namespace star, or a
-/// form V1 recognizes and cannot list.
+/// default value, a clause of local names, a re-export clause, a star, a namespace star, a
+/// namespace, or a form V1 recognizes and cannot list.
 fn exported(node: Node, source: &[u8]) -> Option<Exported> {
     if node.parent().is_none_or(|top| top.kind() != "program") {
         return None;
     }
     if let Some(declaration) = node.child_by_field_name("declaration") {
-        return (!declared(declaration)).then(unsupported);
+        return match namespace(declaration) {
+            Some(held) => namespace_export(held, source),
+            None => (!declared(declaration)).then(unsupported),
+        };
     }
     if has_token(node, "default") {
         return Some(default_export(node, source));
@@ -536,6 +544,23 @@ fn exported(node: Node, source: &[u8]) -> Option<Exported> {
         type_only: has_token(node, "type"),
         supported: true,
         leaves,
+        namespace: None,
+    })
+}
+
+/// `export namespace N`, through a `declare` too: the name it exposes and its whole
+/// declaration, canonical.
+fn namespace_export(node: Node, source: &[u8]) -> Option<Exported> {
+    let name = text_of(node.child_by_field_name("name")?, source);
+    Some(Exported {
+        source: None,
+        type_only: false,
+        supported: true,
+        leaves: vec![ExportLeaf {
+            path: name.clone(),
+            name: Some(name),
+        }],
+        namespace: Some(canonical(node, source)),
     })
 }
 
@@ -555,6 +580,7 @@ fn default_export(node: Node, source: &[u8]) -> Exported {
             path,
             name: Some("default".to_string()),
         }],
+        namespace: None,
     }
 }
 
@@ -591,12 +617,26 @@ fn declared(node: Node) -> bool {
     }
 }
 
+/// The namespace an exported declaration is, through a `declare` too.
+fn namespace(node: Node) -> Option<Node> {
+    match node.kind() {
+        "internal_module" => Some(node),
+        "ambient_declaration" => {
+            let mut cursor = node.walk();
+            node.named_children(&mut cursor)
+                .find(|child| child.kind() == "internal_module")
+        }
+        _ => None,
+    }
+}
+
 fn unsupported() -> Exported {
     Exported {
         source: None,
         type_only: false,
         supported: false,
         leaves: Vec::new(),
+        namespace: None,
     }
 }
 

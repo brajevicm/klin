@@ -2032,8 +2032,8 @@ re-export of a module exposes everything under it, and a plain `pub` item
 inside a private module is external only where a `pub use` exposes it.
 `pub(crate)`, `pub(super)`, `pub(self)` and `pub(in ...)` are never external.
 A public inherent method is an item under its type. From a TypeScript entry
-file the check follows exported declarations, default exports, local export
-clauses, and named, aliased,
+file the check follows exported declarations and namespaces, default exports,
+local export clauses, and named, aliased,
 type-only and star re-exports through the module graph's own edges. An
 exported file no entry reaches is not package API. TSX is TypeScript.
 
@@ -2084,7 +2084,16 @@ aliases, enums and variables. A type the compiler would infer is written as
 `?`, so an inferred contract is visibly partial and never fabricated from a
 body. A re-export of another crate or package, an enum variant re-exported by
 path, a `* as ns` export and an anonymous default export are opaque, and the
-normalized clause that exposes them is the contract klin compares.
+normalized clause that exposes them is the contract klin compares. An exported
+TypeScript `namespace` or `declare namespace` is the item `NAME (namespace)`,
+opaque, and its normalized declaration is the clause klin compares: the
+adapter spells the whole namespace, with or without `declare`, by the rules
+above, and every body inside it but a nested namespace's leaves. So a new
+namespace is a new item and passes, a namespace the base exposed that is gone
+fails as removed, and one whose clause changed fails as changed. Pinned by
+`a_new_exported_declare_namespace_in_an_entry_file_is_an_item_and_passes`,
+`an_exported_namespace_the_working_tree_lacks_fails_as_removed` and
+`an_exported_namespace_whose_declaration_changed_fails_as_changed`.
 
 Base and working tree are derived independently. A base surface the working
 tree lacks fails once, at the surface. For every item of a surface both hold,
@@ -2114,14 +2123,17 @@ and no second stop. Pinned by
 `a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_a_person`
 and `a_break_by_hand_names_person_acceptance_and_no_second_stop`. A glob over
 another crate, a star export of another package, a name two globs or two
-stars provide, an export form klin recognizes and cannot list, a path through
-a module no file answers, and an unresolved module or specifier inside a
-surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while other
-findings still print, because a green run must not imply a surface it claims
-to support was completely measured. A hole the base holds too is a NOTE in
-every run (8.6). The `OK:` line counts the items and
-surfaces judged, how many are measured and opaque, the library targets and
-entry points found, and the packages or targets with no supported surface.
+stars provide, an export form klin recognizes and cannot list, such as
+TypeScript's `export =` or an exported ambient `declare module`, a path
+through a module no file answers, and an unresolved module or specifier
+inside a surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while
+other findings still print, because a green run must not imply a surface it
+claims to support was completely measured. A hole the base holds too is a
+NOTE in every run (8.6). Pinned by
+`export_equals_and_an_ambient_module_are_still_holes`. The `OK:` line counts
+the items and surfaces judged, how many are measured and opaque, the library
+targets and entry points found, and the packages or targets with no supported
+surface.
 `klin public-api --report` prints the working tree's derived contract without
 judging it: each surface with its discovery source, each item with its
 identity, kind, origin, measured or opaque status and canonical signature,

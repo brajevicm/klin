@@ -276,6 +276,7 @@ impl Writer {
             self.text(&leaf.path);
             self.optional(leaf.name.as_deref());
         }
+        self.optional(export.namespace.as_deref());
     }
 }
 
@@ -413,6 +414,7 @@ impl Reader<'_, '_> {
             type_only: flags & 1 == 1,
             supported: flags & 2 == 2,
             leaves: self.list(Reader::leaf)?,
+            namespace: self.optional()?,
         })
     }
 

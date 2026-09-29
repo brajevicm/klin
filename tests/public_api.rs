@@ -1444,3 +1444,99 @@ fn an_object_type_literal_keeps_its_overloads_in_source_order() {
         run.out
     );
 }
+
+const NAMESPACE: &str = "export declare namespace N {\n    type T = string;\n}\n";
+
+#[test]
+fn a_new_exported_declare_namespace_in_an_entry_file_is_an_item_and_passes() {
+    let tree = Tree::new();
+    package_of(&tree, "export type A = string;\n");
+    tree.write(
+        "web/src/index.ts",
+        &format!("export type A = string;\n{NAMESPACE}"),
+    );
+
+    let run = tree.run(&["gate", "--gate", "public-api"]);
+    let listed = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("could not be resolved"), "{}", run.out);
+    assert!(
+        listed.says(
+            "a \".\" N  namespace  opaque (namespace N { type T = string; })  web/src/index.ts:2"
+        ),
+        "{}",
+        listed.out
+    );
+}
+
+#[test]
+fn an_exported_namespace_the_working_tree_lacks_fails_as_removed() {
+    let tree = Tree::new();
+    package_of(&tree, &format!("export type A = string;\n{NAMESPACE}"));
+    tree.write("web/src/index.ts", "export type A = string;\n");
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(
+        run.says("removed, declared at web/src/index.ts:2  N (namespace)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_exported_namespace_whose_declaration_changed_fails_as_changed() {
+    let tree = Tree::new();
+    package_of(&tree, NAMESPACE);
+    tree.write(
+        "web/src/index.ts",
+        "export declare namespace N {\n    // the text\n    type T =\n        string;\n}\n",
+    );
+    let green = by_hand(&tree);
+    tree.write("web/src/index.ts", &NAMESPACE.replace("string", "number"));
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says("was `namespace N { type T = string; }`, now `namespace N { type T = number; }`  N (namespace)"),
+        "{}",
+        red.out
+    );
+}
+
+#[test]
+fn export_equals_and_an_ambient_module_are_still_holes() {
+    let tree = Tree::new();
+    package_of(&tree, "export type A = string;\n");
+    tree.write(
+        "web/src/index.ts",
+        "export type A = string;\nexport declare module \"x\" {\n    const z: number;\n}\nexport = A;\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("FAIL: 2 form(s) inside a supported public surface could not be resolved"),
+        "{}",
+        run.out
+    );
+    for line in [
+        "web/src/index.ts:2  export declare module \"x\" {",
+        "web/src/index.ts:5  export = A;",
+    ] {
+        assert!(
+            run.says(&format!(
+                "{line}  — a \".\" — an export form klin does not list: `export =` or an ambient module"
+            )),
+            "no {line} in: {}",
+            run.out
+        );
+    }
+    assert!(!run.says("namespace"), "{}", run.out);
+}
