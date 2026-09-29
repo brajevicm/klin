@@ -104,6 +104,22 @@ fn a_new_member_another_file_references_passes() {
 }
 
 #[test]
+fn a_new_member_only_a_serde_attribute_names_passes() {
+    let tree = three_reached_commands();
+    tree.base();
+    tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
+    tree.write(
+        "src/other.rs",
+        "pub struct M {\n    #[serde(default = \"run_delta\")]\n    pub z: u8,\n}\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("4 file(s) judged, 0 unreached"), "{}", run.out);
+}
+
+#[test]
 fn losing_the_last_external_reference_is_worsened() {
     let tree = three_reached_commands();
     tree.base();

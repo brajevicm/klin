@@ -525,24 +525,25 @@ fn named_in_string(node: Node, source: &[u8]) -> Option<String> {
     terminal(&text_of(node.named_child(0)?, source))
 }
 
-/// The key a string is the value of in a `#[serde(...)]` attribute.
+/// The key a string is the value of in a `serde(...)` attribute, written directly or inside a
+/// `cfg_attr`.
 fn serde_key(value: Node, source: &[u8]) -> Option<String> {
     let equals = value.prev_sibling().filter(|held| held.kind() == "=")?;
-    let attribute = value
-        .parent()
-        .filter(|held| held.kind() == "token_tree")?
-        .parent()
-        .filter(|held| held.kind() == "attribute")?;
-    if text_of(attribute.named_child(0)?, source) != "serde" {
+    let arguments = value.parent().filter(|held| held.kind() == "token_tree")?;
+    if text_of(arguments.prev_sibling()?, source) != "serde"
+        || above(value, &["attribute"]).is_none()
+    {
         return None;
     }
     Some(text_of(equals.prev_sibling()?, source))
 }
 
-/// The last segment of a path, with its generic arguments dropped.
+/// The last segment of a path, with its generic arguments dropped. A `->` inside them closes
+/// nothing.
 fn terminal(path: &str) -> Option<String> {
     let mut depth = 0usize;
     let bare: String = path
+        .replace("->", "")
         .chars()
         .filter(|held| match held {
             '<' => {

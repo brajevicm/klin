@@ -661,14 +661,39 @@ fn a_serde_string_that_names_no_callable_references_nothing() {
 
 fn helper() {}
 fn codec() {}
+fn default() {}
 "#,
     );
 
     let run = tree.run(&["dead-symbols"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("2 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("3 new dead symbol(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:6"), "{}", run.out);
+    assert!(run.says("src/lib.rs:7"), "{}", run.out);
+    assert!(run.says("src/lib.rs:8"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_attribute_behind_cfg_attr_names_its_callable_too() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r#"pub struct M {
+    #[cfg_attr(feature = "serde", serde(default = "zoom::<fn() -> u8>"))]
+    pub z: u8,
+}
+
+fn zoom() -> u8 { 3 }
+fn u8() {}
+"#,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:7"), "{}", run.out);
 }
 
