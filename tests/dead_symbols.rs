@@ -275,6 +275,52 @@ fn a_raw_string_serde_path_names_its_function() {
 }
 
 #[test]
+fn a_generic_qualified_serde_path_references_its_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"Accessor::<u8>::get\")]\n    pub zoom: u8,\n}\n\nfn get() -> u8 {\n    3\n}\n\nstruct Accessor;\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_qualified_self_serde_path_references_its_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"<Settings as Presets>::zoom_preset\")]\n    pub zoom: u8,\n}\n\nfn zoom_preset() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn an_escaped_serde_string_is_read_by_its_value() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"default_\\u{7a}oom\")]\n    pub zoom: u8,\n}\n\nfn default_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
 fn a_new_private_typescript_function_fails() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);

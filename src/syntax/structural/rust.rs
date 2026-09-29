@@ -468,32 +468,86 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
 }
 
 /// The function a string names where it is the value of a `serde` key the derive calls: the
-/// last segment of its path, with any generic arguments dropped, which is the one name the call
-/// resolves by. A raw string is read by its value like any other.
+/// terminal segment of the path its value spells, which is the one name the call resolves by.
 fn quoted(node: Node, source: &[u8]) -> Vec<String> {
     if !matches!(node.kind(), "string_literal" | "raw_string_literal")
         || !serde_callable(node, source)
     {
         return Vec::new();
     }
-    let Some(value) = node
-        .named_child(0)
-        .filter(|held| held.kind() == "string_content")
-    else {
-        return Vec::new();
-    };
-    let text = text_of(value, source);
-    let path = text
-        .split('<')
-        .next()
-        .unwrap_or_default()
-        .trim_end_matches(':');
-    path.rsplit("::")
-        .next()
-        .filter(|name| !name.is_empty())
-        .map(str::to_string)
+    string_value(node, source)
+        .and_then(|value| terminal(&value))
         .into_iter()
         .collect()
+}
+
+/// A string literal's value, its content with every escape sequence decoded, and `None` where
+/// an escape is one klin cannot decode.
+fn string_value(node: Node, source: &[u8]) -> Option<String> {
+    let mut value = String::new();
+    let mut cursor = node.walk();
+    for part in node.named_children(&mut cursor) {
+        match part.kind() {
+            "string_content" => value.push_str(&text_of(part, source)),
+            "escape_sequence" => value.push_str(&unescaped(&text_of(part, source))?),
+            _ => {}
+        }
+    }
+    Some(value)
+}
+
+/// The escapes that stand for one fixed character.
+const SIMPLE_ESCAPES: &[(&str, char)] = &[
+    ("n", '\n'),
+    ("r", '\r'),
+    ("t", '\t'),
+    ("0", '\0'),
+    ("\\", '\\'),
+    ("'", '\''),
+    ("\"", '"'),
+];
+
+/// What one Rust escape sequence stands for: a Unicode or byte code, a fixed character, or
+/// nothing for a line continuation.
+fn unescaped(escape: &str) -> Option<String> {
+    let body = escape.strip_prefix('\\')?;
+    let code = body
+        .strip_prefix("u{")
+        .and_then(|rest| rest.strip_suffix('}'))
+        .or_else(|| body.strip_prefix('x'));
+    if let Some(code) = code {
+        let code = u32::from_str_radix(&code.replace('_', ""), 16).ok()?;
+        return char::from_u32(code).map(String::from);
+    }
+    if body.starts_with(['\n', '\r']) {
+        return Some(String::new());
+    }
+    SIMPLE_ESCAPES
+        .iter()
+        .find(|(written, _)| *written == body)
+        .map(|(_, value)| value.to_string())
+}
+
+/// The last segment of a path once every generic argument list is gone, so
+/// `Accessor::<u8>::get` and `<T as Trait>::get` both name `get`. An arrow inside the arguments
+/// does not close them.
+fn terminal(path: &str) -> Option<String> {
+    let mut depth = 0usize;
+    let mut previous = ' ';
+    let mut bare = String::new();
+    for held in path.chars() {
+        match held {
+            '<' => depth += 1,
+            '>' if previous != '-' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => bare.push(held),
+            _ => {}
+        }
+        previous = held;
+    }
+    bare.rsplit("::")
+        .map(str::trim)
+        .find(|segment| !segment.is_empty())
+        .map(str::to_string)
 }
 
 /// Whether this string follows one of `SERDE_CALLABLES` and `=` in the tokens of a `serde(...)`

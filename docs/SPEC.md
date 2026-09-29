@@ -1346,8 +1346,11 @@ framework entry points or external callers. The index reads a string as text,
 with one exception. Where a Rust attribute item holds `serde(...)`, as the
 attribute itself or directly inside `cfg_attr`, the string value of `default`,
 `skip_serializing_if`, `serialize_with`, `deserialize_with` or `getter`, plain
-or raw, is the path of a function the derive calls. The last segment of that
-path, without generic arguments, is a reference, and no other segment is. It
+or raw, is the path of a function the derive calls. The string is read by its
+value, every escape decoded, and a string with an escape klin cannot decode
+names nothing. The path's last segment, once every generic argument list and
+any qualified-self prefix such as `<T as Trait>` are removed, is a reference,
+and no other segment is. So `Accessor::<u8>::get` references `get` alone. It
 is an ordinary reference, so a changed run widens on it and `reachability`
 counts it. The same tokens inside a macro call stay text. `with` names a
 module, which no one reference stands for, so its string stays text, as do a
@@ -1390,7 +1393,10 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_serde_path_references_only_its_last_segment`,
 `a_serde_with_module_names_no_function`,
 `serde_tokens_inside_a_macro_call_name_no_function`,
-`a_raw_string_serde_path_names_its_function` and
+`a_raw_string_serde_path_names_its_function`,
+`a_generic_qualified_serde_path_references_its_terminal_callable`,
+`a_qualified_self_serde_path_references_its_terminal_callable`,
+`an_escaped_serde_string_is_read_by_its_value` and
 `removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
 with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
 the report cap
