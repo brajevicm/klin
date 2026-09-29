@@ -188,6 +188,21 @@ fn a_private_const_only_a_raw_format_capture_uses_passes() {
 }
 
 #[test]
+fn a_private_const_only_a_width_or_a_macro_rules_capture_uses_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "const WIDTH: usize = 8;\nconst PREC: usize = 2;\nconst INNER: &str = \"x\";\n\nmacro_rules! show {\n    () => {\n        println!(\"{INNER}\")\n    };\n}\n\npub fn render(v: f64) -> String {\n    show!();\n    format!(\"{v:>WIDTH$.PREC$}\")\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
 fn one_reference_keeps_all_duplicate_names_alive() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);

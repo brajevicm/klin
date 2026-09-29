@@ -914,6 +914,32 @@ fn a_skipped_test_is_found_through_whitespace_comments_and_nesting() {
 }
 
 #[test]
+fn a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr(test, ign",
+            "ore)]\nfn under_test() {}\n\n#[test]\n#[cfg_attr(true, ign",
+            "ore)]\nfn literal() {}\n\n#[test]\n#[cfg_attr(not(false), ign",
+            "ore)]\nfn negated() {}\n\n#[test]\n#[cfg_attr(false, ign",
+            "ore)]\nfn never() {}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+    for line in [2, 6, 10] {
+        assert!(
+            run.says(&format!("src/lib.rs:{line}  skipped test")),
+            "{}",
+            run.out
+        );
+    }
+}
+
+#[test]
 fn a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test() {
     let tree = tree();
     tree.write(

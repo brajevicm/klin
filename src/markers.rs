@@ -113,12 +113,12 @@ struct Set {
 }
 
 impl Set {
-    /// Whether a match in this text stands as a site. A Rust `cfg_attr` stands only where the
-    /// grammar reads it as skipping its test on every target. Spec 8.2.
-    fn stands(&self, text: &str, found: &regex::Match) -> bool {
+    /// Whether a match stands as a site. A Rust `cfg_attr` stands only where the grammar read
+    /// it as skipping its test on every target. Spec 8.2.
+    fn stands(&self, past: &Skipped, found: &regex::Match) -> bool {
         !self.cfg_attr
             || !found.as_str().ends_with("cfg_attr")
-            || syntax::convention::skips_everywhere(&text[found.start()..])
+            || past.everywhere.contains(&found.start())
     }
 }
 
@@ -134,12 +134,14 @@ struct Search {
 }
 
 /// What one file says about where a test idiom does not count: the whole file when it sits
-/// under a test root, the inline test modules, and where a quoted span hides any match.
+/// under a test root, the inline test modules, and where a quoted span hides any match. It also
+/// holds the byte each Rust `cfg_attr` that skips its test on every target starts at.
 #[derive(Default, Clone)]
 struct Skipped {
     test_file: bool,
     tests: Vec<(u64, u64)>,
     literals: Vec<(usize, usize)>,
+    everywhere: Vec<usize>,
 }
 
 /// One tree read: the sites, how many test idioms Rust test code took out of the count, and the
@@ -511,6 +513,10 @@ fn cached(
                     true => literals(text),
                     false => Vec::new(),
                 },
+                everywhere: match kind.reads_cfg_attr {
+                    true => syntax::convention::skipped_everywhere(rel, text),
+                    false => Vec::new(),
+                },
             }
         })
         .clone()
@@ -529,7 +535,7 @@ fn tally(
         let stands = pattern
             .regex
             .find_iter(text)
-            .filter(|found| set.stands(text, found));
+            .filter(|found| set.stands(past, found));
         for found in stands {
             if quoted(past, found.range()) {
                 continue;

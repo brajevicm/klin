@@ -1246,8 +1246,9 @@ these. Such a test never runs, as under a bare `#[ignore]`. A configuration
 option, such as `windows` or `feature = "slow"`, may hold on one target and
 not on another. So `any(windows, not(any()))` always holds and is a site, and
 `all(windows, not(any()))` states where the test runs and is none. A
-predicate that never holds, such as `any()`, skips nothing, so it is no site
-either. `ignore` counts at any place after the predicate, and inside a nested
+predicate that never holds, such as `any()` or `false`, skips nothing, so it
+is no site either. `true` always holds, and so does `test`, because a test
+runs only where `cfg(test)` is set. `ignore` counts at any place after the predicate, and inside a nested
 `cfg_attr` whose predicate always holds too. The pattern finds `#[ignore` and
 `#[cfg_attr` with any whitespace or comment between their tokens, and the
 Rust grammar then reads the `cfg_attr` it found, so whitespace and comments
@@ -1308,7 +1309,8 @@ judged. Every other row is judged in a test as anywhere else, so a
 A Rust `cfg_attr` that carries `ignore` is a skipped test only where its
 predicate always holds, as 8.2 states. Pinned by
 `a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test`,
-`a_skipped_test_is_found_through_whitespace_comments_and_nesting` and
+`a_skipped_test_is_found_through_whitespace_comments_and_nesting`,
+`a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test` and
 `a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
@@ -1347,6 +1349,7 @@ its shape. Pinned by
 `a_pass_body_fails_and_the_same_declaration_with_a_body_stays_green`,
 `an_elided_body_fails_and_a_comment_that_elides_nothing_stays_green`,
 `an_empty_test_body_fails_and_a_test_rewritten_with_the_same_declaration_stays_green`,
+`an_empty_body_under_a_multi_line_tokio_test_is_an_empty_test`,
 `pass_on_an_exception_class_and_on_an_abstract_declaration_is_not_a_stub`,
 `a_callback_on_the_line_of_a_test_declaration_is_not_an_empty_test` and
 `a_decorator_or_a_base_whose_text_only_spells_a_marker_does_not_hide_a_pass_body`
@@ -1383,10 +1386,11 @@ counts it. The same `serde` tokens inside a macro call are not an attribute,
 so no path they spell is a reference. `with` names a
 module, which no one reference stands for, so its string stays text, as do a
 `default` with no value and the string of any other key, such as `rename`.
-Inside a string literal that a Rust macro call receives, plain or raw and read
-by the same decoded value, the name of each `{name}` or `{name:spec}` capture
-is a reference, so a name only `format!("{name}")` or `format!(r#"{name}"#)`
-uses is alive. `{{` is a brace, and a position such as `{0}` or `{}` names
+Inside a string literal that a Rust macro call receives or a `macro_rules!`
+body holds, plain or raw and read by the same decoded value, the name of each
+`{name}` or `{name:spec}` capture is a reference, and so is a width or a
+precision the spec names, such as `WIDTH` and `PREC` in `{v:>WIDTH$.PREC$}`.
+So a name only `format!("{name}")` or `format!(r#"{name}"#)` uses is alive. `{{` is a brace, and a position such as `{0}` or `{}` names
 nothing. The macro is not resolved, so a string any macro receives is read
 this way, and under the name-only rule an extra reference can only make a
 declaration look used. A
@@ -1438,8 +1442,10 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_continued_serde_string_is_read_without_the_whitespace_after_the_newline` and
 `removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
 with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
-the format captures by `a_private_const_only_a_format_capture_uses_passes` and
-`a_private_const_only_a_raw_format_capture_uses_passes`; the test convention by
+the format captures by `a_private_const_only_a_format_capture_uses_passes`,
+`a_private_const_only_a_raw_format_capture_uses_passes` and
+`a_private_const_only_a_width_or_a_macro_rules_capture_uses_passes`; the test
+convention by
 `a_tokio_test_passes_inline_and_under_a_test_directory` and
 `a_multi_line_test_attribute_marks_its_function`; the report cap
 is covered by `report_lists_every_current_dead_symbol_without_the_note_cap`,

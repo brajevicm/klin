@@ -6,7 +6,9 @@
 use tree_sitter::Node;
 
 use crate::ratchet;
-use crate::syntax::{Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read, tolerant};
+use crate::syntax::{
+    Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read, tolerant, walk,
+};
 
 /// The declaration a language's test convention names a test function by, anywhere on the
 /// declaration line, so a modifier before it is allowed. Fixed in the binary, the way the
@@ -389,21 +391,32 @@ fn is_cfg_test(node: Node, source: &[u8]) -> bool {
         .is_ok_and(|text| text.split_whitespace().collect::<String>() == "#[cfg(test)]")
 }
 
-/// Whether the `cfg_attr` the text starts with skips its test on every target, which a pattern
-/// cannot decide, so the Rust grammar reads the attribute. Spec 8.2.
-// ponytail: parses the rest of the file once per `cfg_attr`, one parse per file if a file of
-// many such attributes shows in a perf row.
-pub fn skips_everywhere(from: &str) -> bool {
-    let Some(file) = tolerant("site.rs", from) else {
-        return false;
+/// The byte each Rust `cfg_attr` in this text starts at where it skips its test on every
+/// target, which a pattern cannot decide, so the Rust grammar reads each one. One parse per
+/// file, and none for a file that writes no `cfg_attr`. Spec 8.2.
+pub fn skipped_everywhere(path: &str, source: &str) -> Vec<usize> {
+    let Some(file) = tolerant(path, source).filter(|_| source.contains("cfg_attr")) else {
+        return Vec::new();
     };
-    let arguments = file
-        .root()
-        .named_child(0)
-        .filter(|item| item.kind() == "attribute_item")
-        .and_then(|item| item.named_child(0))
-        .and_then(|attribute| attribute.child_by_field_name("arguments"));
-    arguments.is_some_and(|arguments| ignores(arguments, file.bytes()))
+    let bytes = file.bytes();
+    let mut out = Vec::new();
+    walk(file.root(), &mut |node| {
+        let attribute = node
+            .named_child(0)
+            .filter(|_| node.kind() == "attribute_item")
+            .filter(|attribute| attribute.kind() == "attribute");
+        let arguments = attribute
+            .filter(|attribute| {
+                attribute
+                    .named_child(0)
+                    .is_some_and(|path| word_of(path, bytes) == "cfg_attr")
+            })
+            .and_then(|attribute| attribute.child_by_field_name("arguments"));
+        if arguments.is_some_and(|arguments| ignores(arguments, bytes)) {
+            out.push(node.start_byte());
+        }
+    });
+    out
 }
 
 /// Whether the arguments of a `cfg_attr` apply `ignore` on every target: the predicate always
@@ -425,12 +438,11 @@ fn ignores(arguments: Node, source: &[u8]) -> bool {
 /// configuration option. An option such as `windows` may hold or not, so `any(windows,
 /// not(any()))` always holds and `all(windows, not(any()))` may not.
 fn holds(predicate: &[Node], source: &[u8]) -> Option<bool> {
-    let [name, arguments] = predicate else {
-        return None;
+    let (name, arguments) = match predicate {
+        [only] => return option(*only, source),
+        [name, arguments] if arguments.kind() == "token_tree" => (name, arguments),
+        _ => return None,
     };
-    if arguments.kind() != "token_tree" {
-        return None;
-    }
     let values: Vec<Option<bool>> = groups(*arguments)
         .iter()
         .filter(|inner| !inner.is_empty())
@@ -442,6 +454,16 @@ fn holds(predicate: &[Node], source: &[u8]) -> Option<bool> {
         ("any", _) if values.contains(&Some(true)) => Some(true),
         ("any", _) => values.iter().all(Option::is_some).then_some(false),
         ("not", [only]) => only.map(|held| !held),
+        _ => None,
+    }
+}
+
+/// The value of one cfg option on every target: `test` holds wherever a test runs, `true` and
+/// `false` are what they say, and any other option may hold or not.
+fn option(token: Node, source: &[u8]) -> Option<bool> {
+    match token.utf8_text(source).unwrap_or_default() {
+        "test" | "true" => Some(true),
+        "false" => Some(false),
         _ => None,
     }
 }

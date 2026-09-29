@@ -471,25 +471,26 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
 
 /// The names a string calls by its value: the terminal segment of the path the value of a
 /// `serde` key the derive calls spells, which is the one name the call resolves by, and every
-/// name a format string that a macro call receives captures.
+/// name a format string that a macro call or a `macro_rules!` body holds captures.
 fn quoted(node: Node, source: &[u8]) -> Vec<String> {
     if !matches!(node.kind(), "string_literal" | "raw_string_literal") {
         return Vec::new();
     }
-    let Some(value) = string_value(node, source) else {
+    let read: fn(&str) -> Vec<String> = if serde_callable(node, source) {
+        |value| terminal(value).into_iter().collect()
+    } else if above(node, &["macro_invocation", "macro_definition"]).is_some() {
+        captures
+    } else {
         return Vec::new();
     };
-    if serde_callable(node, source) {
-        return terminal(&value).into_iter().collect();
-    }
-    match above(node, &["macro_invocation"]) {
-        Some(_) => captures(&value),
-        None => Vec::new(),
-    }
+    string_value(node, source)
+        .map(|value| read(&value))
+        .unwrap_or_default()
 }
 
-/// The names the `{name}` and `{name:spec}` captures of a format string write. `{{` is a brace,
-/// and a position such as `{0}` names nothing.
+/// The names the captures of a format string write: the argument of `{name}` or `{name:spec}`,
+/// and a width or a precision such as `WIDTH$` in `{:>WIDTH$.PREC$}`. `{{` is a brace, and a
+/// position such as `{0}` names nothing.
 fn captures(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut rest = text;
@@ -499,15 +500,24 @@ fn captures(text: &str) -> Vec<String> {
             rest = after;
             continue;
         }
-        let end = rest
-            .find(|c: char| !(c.is_alphanumeric() || c == '_'))
-            .unwrap_or(rest.len());
-        let name = &rest[..end];
-        if rest[end..].starts_with(['}', ':']) && name.starts_with(|c: char| !c.is_ascii_digit()) {
-            out.push(name.to_string());
+        let inside = &rest[..rest.find('}').unwrap_or(rest.len())];
+        let (argument, spec) = inside.split_once(':').unwrap_or((inside, ""));
+        out.extend(named(argument.trim()));
+        for (at, _) in spec.match_indices('$') {
+            let before = &spec[..at];
+            let start = before
+                .rfind(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .map_or(0, |found| found + 1);
+            out.extend(named(&before[start..]));
         }
     }
     out
+}
+
+/// This text as a name a capture writes, and `None` for a position or anything else.
+fn named(text: &str) -> Option<String> {
+    let identifier = text.chars().all(|c| c.is_alphanumeric() || c == '_');
+    (identifier && text.starts_with(|c: char| !c.is_ascii_digit())).then(|| text.to_string())
 }
 
 /// A string literal's value, its content with every escape sequence decoded, and `None` where
