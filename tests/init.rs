@@ -27,7 +27,7 @@ fn in_debt() -> Tree {
     tree.write("src/knot.rs", TANGLED);
     tree.write("src/lib.rs", text::WRAPPED);
     tree.write("tests/knot.rs", TANGLED);
-    tree.words("README.md", 400);
+    tree.words("AGENTS.md", 400);
     tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
     tree.base();
     tree
@@ -179,12 +179,33 @@ fn pin_writes_only_stable_guardrails() {
         "{config}"
     );
     assert!(
-        config["doc_size"]["README.md"].as_u64().unwrap_or_default() >= 400,
+        config["doc_size"]["AGENTS.md"].as_u64().unwrap_or_default() >= 400,
         "{config}"
     );
 
     let gated = tree.run(&["gate", "--strict"]);
     assert_eq!(gated.code, 0, "{}", gated.out);
+}
+
+/// `--pin` pins what a run derives, so a README gets no ceiling beside the instruction files.
+/// #382.
+#[test]
+fn pin_writes_a_document_ceiling_only_for_the_instruction_files() {
+    let tree = Tree::bare();
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.words("AGENTS.md", 120);
+    tree.words("CLAUDE.md", 20);
+    tree.words("README.md", 400);
+    tree.base();
+
+    let run = tree.run(&["init", "--pin"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        config(&tree)["doc_size"],
+        serde_json::json!({"AGENTS.md": 150, "CLAUDE.md": 50}),
+        "{}",
+        run.out
+    );
 }
 
 /// `init` pins what history says, so a person can see the two numbers, edit them and put them

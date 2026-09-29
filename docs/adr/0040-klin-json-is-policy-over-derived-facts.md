@@ -3,6 +3,12 @@
 > ADR 0048 amends this: the derived build line names the manifest each
 > command came from, and the hook prints it when the build fails too.
 >
+> #382 amends the `doc_size` bullet: only `AGENTS.md` and `CLAUDE.md` at the
+> tree root keep a derived ceiling, and the map must pin any other document.
+> None of the 16 doc-size rows of the #343 replay was appropriate, and all of
+> them were changelogs, READMEs or other reader documents
+> (`docs/false-alarms-2026-09-29.md`).
+>
 > Amends ADR 0005, 0012 and 0016 where they have `init` write derived
 > sections, and completes ADR 0038 and 0039.
 

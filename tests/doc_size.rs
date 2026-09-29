@@ -220,27 +220,27 @@ fn an_empty_map_of_documents_is_a_config_error() {
     assert!(run.says("must pin at least one document"), "{}", run.out);
 }
 
-/// A pin names one document, and every other document at the tree root keeps the ceiling the
+/// A pin names one document, and every instruction file at the tree root keeps the ceiling the
 /// derivation commit gives it rather than leaving scrutiny. ADR 0040.
 #[test]
 fn a_pinned_document_sits_beside_the_derived_ones_it_does_not_name() {
     let tree = Tree::new();
     tree.words("README.md", 120);
-    tree.words("CONTEXT.md", 20);
+    tree.words("AGENTS.md", 20);
     tree.base();
     tree.write("klin.json", r#"{"doc_size": {"README.md": 1200}}"#);
-    tree.words("CONTEXT.md", 60);
+    tree.words("AGENTS.md", 60);
 
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("pinned: doc_size README.md 1200"), "{}", run.out);
     assert!(
-        run.says("derived: doc_size CONTEXT.md 50, the word count at the derivation commit"),
+        run.says("derived: doc_size AGENTS.md 50, the word count at the derivation commit"),
         "{}",
         run.out
     );
     assert!(
-        run.says("FAIL: CONTEXT.md is 60 words, over its ceiling of 50."),
+        run.says("FAIL: AGENTS.md is 60 words, over its ceiling of 50."),
         "{}",
         run.out
     );
@@ -251,16 +251,70 @@ fn a_pinned_document_sits_beside_the_derived_ones_it_does_not_name() {
     );
 }
 
+/// With `{}` a ceiling is derived only for the agent instruction files, so a README that grows
+/// past its word count at the base is not judged. #382.
+#[test]
+fn a_readme_that_grows_past_its_base_word_count_passes_with_no_pin() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("README.md", 120);
+    tree.base();
+    tree.words("README.md", 400);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("README.md"), "{}", run.out);
+}
+
+#[test]
+fn an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin() {
+    for name in ["AGENTS.md", "CLAUDE.md"] {
+        let tree = Tree::new();
+        tree.write("klin.json", "{}");
+        tree.words(name, 120);
+        tree.base();
+        tree.words(name, 400);
+
+        let run = tree.run(&["doc-size"]);
+        assert_eq!(run.code, 1, "{name}: {}", run.out);
+        assert!(
+            run.says(&format!(
+                "FAIL: {name} is 400 words, over its ceiling of 150."
+            )),
+            "{name}: {}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_pinned_readme_is_judged_under_its_pin() {
+    let tree = Tree::new();
+    tree.words("README.md", 120);
+    tree.base();
+    tree.write("klin.json", r#"{"doc_size": {"README.md": 200}}"#);
+    tree.words("README.md", 400);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("pinned: doc_size README.md 200"), "{}", run.out);
+    assert!(
+        run.says("FAIL: README.md is 400 words, over its ceiling of 200."),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn file_alone_takes_the_derived_ceiling_of_a_document_the_derivation_commit_holds() {
     let tree = Tree::new();
-    let doc = tree.words("README.md", 70);
+    let doc = tree.words("AGENTS.md", 70);
     tree.base();
 
     let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("README.md is 70 words, ceiling 100"),
+        run.says("AGENTS.md is 70 words, ceiling 100"),
         "{}",
         run.out
     );

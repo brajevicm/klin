@@ -549,10 +549,10 @@ binary and tree, not knobs in `klin.json`.
 `doc_size`, `doc_citations`, `inventory` and `lockfile` are Automatic too.
 `doc_size` is a map of document path, from the configuration's directory, to
 a ceiling, a whole number or a dated schedule (5.5). A document the map names
-is judged under that ceiling, and every document at the tree root the map does
-not name keeps its derived ceiling (5.4), so a pin never takes another
-document out of scrutiny. An empty map is exit 2. `doc_citations` reads no
-policy: its section is absent or `false`. `inventory` and `lockfile` read only
+is judged under that ceiling, and `AGENTS.md` and `CLAUDE.md` at the tree root
+keep their derived ceilings where the map does not name them (5.4), so a pin
+never takes an instruction file out of scrutiny. An empty map is exit 2.
+`doc_citations` reads no policy: its section is absent or `false`. `inventory` and `lockfile` read only
 `in` and `except`. The retired `doc_size` entry list of `file` and `ceiling`,
 the `file`, `roots` and `extensions` of `doc_citations`, the `name`, `path` and
 `pattern` of `inventory`, and the `manifests` and `exclude` of `lockfile` MUST
@@ -569,19 +569,29 @@ Each check documents its rule. The rules for the shipped checks:
   none, so narrowing scope cannot silently erase coverage. A derived sample
   instead uses the compact scope recorded by the derivation commit, so both
   the files and the policy that select them come from that one commit.
-- `doc_size`: every Markdown file at the tree root, in the derivation commit
-  and in `after`. The
+- `doc_size`: the agent instruction files `AGENTS.md` and `CLAUDE.md` at the
+  tree root, in the derivation commit and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
   50 and never below 50, so an empty document gets 50 rather than a ceiling
-  its first word breaks. A document the derivation commit lacks is not judged
-  on that run. A
+  its first word breaks. An instruction file the derivation commit lacks is
+  not judged on that run. A
   NOTE names it and its word count, and it gets a ceiling when the stamp
   moves and the derivation commit holds it. Any other rule would read the
-  ceiling from `after`, which 4.3 forbids. A document the section pins takes
-  its pinned ceiling instead, and is judged wherever it sits.
+  ceiling from `after`, which 4.3 forbids. Every other document, such as a
+  README or a changelog, grows by design and is judged only when the section
+  pins it, because the gate exists for the instruction file that grows every
+  turn (8.2, #343). A document the section pins takes its pinned ceiling
+  instead, and is judged wherever it sits. Pinned by
+  `a_readme_that_grows_past_its_base_word_count_passes_with_no_pin`,
+  `an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin`
+  and `a_pinned_readme_is_judged_under_its_pin` in `tests/doc_size.rs`.
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
   each read against the whole tree with the built-in extension list of 8.2.1.
-  This set is the check's judgement unit on a changed run too (8.2.1).
+  This set is the check's judgement unit on a changed run too (8.2.1). It is
+  wider than the documents `doc_size` derives a ceiling for, so a README is
+  read for its citations with no pin. Pinned by
+  `a_root_readme_doc_size_does_not_judge_is_still_read_for_citations` in
+  `tests/doc_citations.rs`.
 - `inventory`: every file under a test root the survey finds, which is a
   source root a test directory segment names or one whose every source file
   carries a test affix, and every source file a test directory segment or a
@@ -689,8 +699,11 @@ existing configuration.
 
 `init --pin` writes today's suggested guardrails as policy a person reviews:
 the complexity `cc` and `lines` the derivation commit gives, a `doc_size`
-ceiling for each document at the tree root that commit holds, and the `radius`
-values history gives. It writes a value only where the configuration states
+ceiling for each instruction file of 5.4 that commit holds at the tree root and
+for no other document, because it pins what a run derives, and the `radius`
+values history gives. The `doc_size` rule is pinned by
+`pin_writes_a_document_ceiling_only_for_the_instruction_files` in
+`tests/init.rs`. It writes a value only where the configuration states
 none, so a pinned number, a dated schedule, a section set to `false`, the
 `accepted` list and the `journal` preference stay as a person wrote them. It
 creates the file when there is none. It MUST NOT write repository topology: no

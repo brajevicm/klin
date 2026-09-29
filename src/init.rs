@@ -68,9 +68,10 @@ struct Pin {
 }
 
 /// Today's guardrails, written where the configuration states none: the complexity ceilings,
-/// a ceiling per document at the tree root, and the change radius. A value the file holds, a
-/// `false`, a dated schedule, the accepted list and the journal preference are a person's and
-/// stay as they are. Nothing that describes the repository is written. Spec 5.7, ADR 0040.
+/// a ceiling per instruction file at the tree root, and the change radius. A value the file
+/// holds, a `false`, a dated schedule, the accepted list and the journal preference are a
+/// person's and stay as they are. Nothing that describes the repository is written. Spec 5.7,
+/// ADR 0040.
 fn pin(
     file: &Path,
     root: &Path,
@@ -125,7 +126,7 @@ fn complexity_pins(project: &Project) -> Vec<Pin> {
         .collect()
 }
 
-/// A ceiling for every document at the tree root the derivation commit holds.
+/// A ceiling for every instruction file at the tree root the derivation commit holds.
 fn document_pins(project: &Project) -> Vec<Pin> {
     let documents = &project.facts().found.documents;
     doc_size::derived_ceilings(project)

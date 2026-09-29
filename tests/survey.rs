@@ -17,7 +17,7 @@ const MANIFEST: &str = "[package]\nname = \"t\"\nversion = \"0.1.0\"\n";
 /// whole of it already at the base so nothing in it is new.
 fn project() -> Tree {
     let tree = Tree::new();
-    tree.words("README.md", 5);
+    tree.words("AGENTS.md", 5);
     tree.write("Cargo.toml", MANIFEST);
     tree.write("src/lib.rs", CLEAN);
     tree.write("tests/lib_test.rs", CLEAN);
@@ -62,7 +62,7 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
     assert!(!run.says("derived: escapes"), "{}", run.out);
     assert!(!run.says("derived: dead_symbols"), "{}", run.out);
     assert!(
-        run.says("derived: doc_size README.md 50, the word count at the derivation commit"),
+        run.says("derived: doc_size AGENTS.md 50, the word count at the derivation commit"),
         "{}",
         run.out
     );
@@ -125,7 +125,7 @@ fn every_derived_line_has_a_matching_json_entry() {
     assert!(rule.contains("the floor of 5"), "{report}");
 
     let doc_size = find(derived, |e| e["section"] == "doc_size");
-    assert_eq!(doc_size["key"], "README.md", "{report}");
+    assert_eq!(doc_size["key"], "AGENTS.md", "{report}");
     assert_eq!(doc_size["value"], 50, "{report}");
     assert!(
         !derived.iter().any(|entry| entry["section"] == "build"),
@@ -235,16 +235,16 @@ fn a_derived_document_ceiling_comes_from_the_derivation_commit() {
     let green = tree.run(&["doc-size"]);
     assert_eq!(green.code, 0, "{}", green.out);
     assert!(
-        green.says("README.md is 5 words, ceiling 50"),
+        green.says("AGENTS.md is 5 words, ceiling 50"),
         "{}",
         green.out
     );
 
-    tree.words("README.md", 400);
+    tree.words("AGENTS.md", 400);
     let grown = tree.run(&["doc-size"]);
     assert_eq!(grown.code, 1, "{}", grown.out);
     assert!(
-        grown.says("README.md is 400 words, over its ceiling of 50"),
+        grown.says("AGENTS.md is 400 words, over its ceiling of 50"),
         "{}",
         grown.out
     );
@@ -385,7 +385,7 @@ fn pin_writes_the_ceilings_the_run_derives_and_no_topology() {
     let config: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
     assert_eq!(config["complexity"]["cc"], 5, "{config}");
     assert_eq!(config["complexity"]["lines"], 25, "{config}");
-    assert_eq!(config["doc_size"]["README.md"], 50, "{config}");
+    assert_eq!(config["doc_size"]["AGENTS.md"], 50, "{config}");
     for retired in ["escapes", "doc_citations", "build", "lockfile", "inventory"] {
         assert!(config.get(retired).is_none(), "{retired}: {config}");
     }
@@ -523,13 +523,13 @@ fn a_push_run_derives_from_the_commit_the_push_started_from() {
 #[test]
 fn a_document_ceiling_comes_from_the_same_base_as_the_complexity_ceiling() {
     let tree = project();
-    tree.words("README.md", 400);
+    tree.words("AGENTS.md", 400);
     tree.commit("a document that would raise its own ceiling");
 
     let run = gate(&tree);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("README.md is 400 words, over its ceiling of 50"),
+        run.says("AGENTS.md is 400 words, over its ceiling of 50"),
         "{}",
         run.out
     );
@@ -551,13 +551,13 @@ fn a_check_run_on_its_own_derives_from_the_same_base_as_the_gate() {
 #[test]
 fn doc_size_run_on_its_own_derives_from_the_base() {
     let tree = project();
-    tree.words("README.md", 400);
+    tree.words("AGENTS.md", 400);
     tree.commit("a document that would raise its own ceiling");
 
     let run = tree.run(&["doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("README.md is 400 words, over its ceiling of 50"),
+        run.says("AGENTS.md is 400 words, over its ceiling of 50"),
         "{}",
         run.out
     );
@@ -664,32 +664,28 @@ fn a_function_only_in_the_working_tree_does_not_move_the_percentile() {
 #[test]
 fn a_document_the_derivation_commit_lacks_is_a_note_and_is_not_judged() {
     let tree = project();
-    tree.words("CHANGELOG.md", 400);
+    tree.words("CLAUDE.md", 400);
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: doc_size CHANGELOG.md is 400 words and is not judged"),
+        run.says("NOTE: doc_size CLAUDE.md is 400 words and is not judged"),
         "{}",
         run.out
     );
-    assert!(!run.says("CHANGELOG.md is 400 words, over"), "{}", run.out);
+    assert!(!run.says("CLAUDE.md is 400 words, over"), "{}", run.out);
 
-    tree.write("klin.json", r#"{ "doc_size": {"CHANGELOG.md": 900} }"#);
+    tree.write("klin.json", r#"{ "doc_size": {"CLAUDE.md": 900} }"#);
     let stated = gate(&tree);
     assert_eq!(stated.code, 0, "{}", stated.out);
-    assert!(
-        !stated.says("NOTE: doc_size CHANGELOG.md"),
-        "{}",
-        stated.out
-    );
+    assert!(!stated.says("NOTE: doc_size CLAUDE.md"), "{}", stated.out);
     tree.remove("klin.json");
 
     tree.base();
     let held = tree.run(&["doc-size"]);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(
-        held.says("CHANGELOG.md is 400 words, ceiling 450"),
+        held.says("CLAUDE.md is 400 words, ceiling 450"),
         "{}",
         held.out
     );
@@ -743,13 +739,13 @@ fn a_tree_whose_documents_are_all_new_still_gates_on_doc_size() {
     let tree = Tree::new();
     tree.write("src/lib.rs", CLEAN);
     tree.base();
-    tree.words("README.md", 80);
+    tree.words("AGENTS.md", 80);
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(
-        run.says("NOTE: doc_size README.md is 80 words"),
+        run.says("NOTE: doc_size AGENTS.md is 80 words"),
         "{}",
         run.out
     );
