@@ -485,11 +485,16 @@ fn measured(line: &Value, gate: &str) -> bool {
 }
 
 /// Whether this stop recorded the site as one it let through after an earlier stop asked about
-/// it, which is a note and not a finding. Spec 8.2.
+/// it, or as a test function that went with its file, which is a note and not a finding.
+/// Spec 8.2.
 fn let_through(line: &Value, one: &Regression) -> bool {
     list(line, "notes").iter().any(|note| {
         word(note, "gate") == one.gate
-            && word(note, "outcome") == "deleted"
+            && match word(note, "outcome") {
+                "deleted" => true,
+                "note" => note.get("line").is_some(),
+                _ => false,
+            }
             && word(note, "file") == one.file
             && note.get("line").and_then(Value::as_u64) == one.line
     })
