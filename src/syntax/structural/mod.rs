@@ -794,6 +794,9 @@ pub(crate) struct Adapter {
     /// The path a node writes from the crate or from its own module, and `None` for any other
     /// node, including a path inside a longer one.
     pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// The names a node writes inside a string that the language calls by that text, such as a
+    /// function a Rust `serde` attribute names.
+    pub quoted: fn(Node, &[u8]) -> Vec<String>,
     /// What a declaration's or a module declaration's own modifier says.
     pub visibility: fn(Node, &[u8]) -> Visibility,
     /// The external name a declaration is exported under where it differs from its own name.
@@ -1118,11 +1121,11 @@ impl<'a, 'b> Reading<'a, 'b> {
         line_at(&self.lines, node.start_position().row)
     }
 
-    /// Every use of a name the declarations and the imports did not already claim, and every
-    /// qualified path outside them, from one walk. An import binding is not a reference to what
-    /// it binds, so the whole import is stepped over. A name a binding site writes — a parameter,
-    /// a `let`, a field — is kept, because no adapter states its language's binding sites in V1
-    /// and keeping it errs toward "referenced".
+    /// Every use of a name the declarations and the imports did not already claim, every name a
+    /// string calls by its text, and every qualified path outside them, from one walk. An import
+    /// binding is not a reference to what it binds, so the whole import is stepped over. A name a
+    /// binding site writes — a parameter, a `let`, a field — is kept, because no adapter states
+    /// its language's binding sites in V1 and keeping it errs toward "referenced".
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
@@ -1145,6 +1148,13 @@ impl<'a, 'b> Reading<'a, 'b> {
                     nesting: (self.adapter.nesting)(node, self.source),
                     path,
                 });
+            } else {
+                for name in (self.adapter.quoted)(node, self.source) {
+                    references.push(Reference {
+                        name: self.names.intern(&name),
+                        line: self.row(node),
+                    });
+                }
             }
         });
         (references, paths)

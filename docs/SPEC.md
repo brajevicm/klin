@@ -1342,7 +1342,24 @@ resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
 globs. The check is name-only: it does not resolve imports, types, reflection,
-framework entry points or external callers. A declaration that becomes dead
+framework entry points or external callers. The index reads a string as text,
+with one exception. Where a Rust attribute item holds `serde(...)`, as the
+attribute itself or directly inside `cfg_attr`, the string value of `default`,
+`skip_serializing_if`, `serialize_with`, `deserialize_with` or `getter`, plain
+or raw, is the path of a function the derive calls. The string is read by its
+value, every escape decoded, and a line continuation drops its newline and the
+whitespace after it. A string with an escape klin cannot decode names nothing.
+The Rust grammar reads the decoded value as one path expression, and the name
+that path ends in is a reference, and no other segment is. So generic
+arguments, a qualified-self prefix such as `<T as Trait>` and a const-generic
+block, with any literal or comment inside it, never change which name that
+is, and `Accessor::<u8>::get` references `get` alone. A value the grammar does
+not read as exactly one path names nothing. It
+is an ordinary reference, so a changed run widens on it and `reachability`
+counts it. The same tokens inside a macro call stay text. `with` names a
+module, which no one reference stands for, so its string stays text, as do a
+`default` with no value and the string of any other key, such as `rename`. A
+declaration that becomes dead
 after being referenced at the base is `worsened`; a dead declaration already
 held at the base is one NOTE and never fails. When it can, a worsened finding
 names the first base file that held a lost reference. `--report` prints the
@@ -1372,8 +1389,27 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_private_typescript_main_is_judged`,
 `losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
 `one_typescript_reference_keeps_duplicate_names_alive` in
-`tests/dead_symbols.rs`; the report cap is covered by
-`report_lists_every_current_dead_symbol_without_the_note_cap`, and the
+`tests/dead_symbols.rs`; the `serde` strings by
+`a_private_function_only_a_serde_default_names_passes`,
+`a_private_function_only_a_serde_skip_serializing_if_names_passes`,
+`a_private_function_no_serde_key_names_still_fails`,
+`a_serde_attribute_inside_cfg_attr_names_its_function_too`,
+`a_serde_path_references_only_its_last_segment`,
+`a_serde_with_module_names_no_function`,
+`serde_tokens_inside_a_macro_call_name_no_function`,
+`a_raw_string_serde_path_names_its_function`,
+`a_generic_qualified_serde_path_references_its_terminal_callable`,
+`a_qualified_self_serde_path_references_its_terminal_callable`,
+`an_escaped_serde_string_is_read_by_its_value`,
+`a_const_generic_block_in_a_serde_path_keeps_its_terminal_callable`,
+`a_brace_in_a_char_literal_of_a_const_generic_block_keeps_the_terminal_callable`,
+`a_brace_in_a_string_or_a_comment_of_a_const_generic_block_keeps_the_terminal_callable`,
+`a_continued_serde_string_is_read_without_the_whitespace_after_the_newline` and
+`removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper`,
+with `a_member_a_serde_string_names_is_reached` in `tests/reachability.rs`;
+the report cap
+is covered by `report_lists_every_current_dead_symbol_without_the_note_cap`,
+and the
 judgement scope by
 `a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge` and
 `unrelated_historical_debt_outside_the_changed_scope_stays_silent`, and the

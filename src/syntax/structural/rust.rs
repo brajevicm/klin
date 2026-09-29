@@ -4,6 +4,8 @@
 
 use tree_sitter::Node;
 
+use crate::syntax::tolerant;
+
 use crate::syntax::structural::{
     Adapter, ExportLeaf, Exported, Imported, Spelling, Visibility, above, spelled, text_of,
 };
@@ -18,6 +20,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    quoted,
     visibility,
     exported_as,
     owner,
@@ -68,6 +71,16 @@ const SCOPED: &[&str] = &["scoped_identifier", "scoped_type_identifier"];
 
 /// The first segments a path resolves from inside this crate.
 const RELATIVE: &[&str] = &["crate", "self", "super"];
+
+/// The `serde` keys whose string is the path of a function the derive calls. `with` names a
+/// module, which no one name stands for, so it is not here.
+const SERDE_CALLABLES: &[&str] = &[
+    "default",
+    "skip_serializing_if",
+    "serialize_with",
+    "deserialize_with",
+    "getter",
+];
 
 /// Whether this declaration is reachable past the file that holds it: it says so itself, a
 /// trait states it, or a trait implementation carries it and the trait exposes it.
@@ -454,6 +467,156 @@ fn sends_to(item: Node, source: &[u8]) -> Option<String> {
     }
     let named = attribute.child_by_field_name("value")?;
     Some(text_of(named, source).trim_matches('"').to_string())
+}
+
+/// The function a string names where it is the value of a `serde` key the derive calls: the
+/// terminal segment of the path its value spells, which is the one name the call resolves by.
+fn quoted(node: Node, source: &[u8]) -> Vec<String> {
+    if !matches!(node.kind(), "string_literal" | "raw_string_literal")
+        || !serde_callable(node, source)
+    {
+        return Vec::new();
+    }
+    string_value(node, source)
+        .and_then(|value| terminal(&value))
+        .into_iter()
+        .collect()
+}
+
+/// A string literal's value, its content with every escape sequence decoded, and `None` where
+/// an escape is one klin cannot decode. A line continuation drops its newline and the
+/// whitespace that follows it, as the compiler does.
+fn string_value(node: Node, source: &[u8]) -> Option<String> {
+    let mut value = String::new();
+    let mut continued = false;
+    let mut cursor = node.walk();
+    for part in node.named_children(&mut cursor) {
+        let text = text_of(part, source);
+        match part.kind() {
+            "string_content" if continued => {
+                value.push_str(text.trim_start_matches(CONTINUED_SPACE))
+            }
+            "string_content" => value.push_str(&text),
+            "escape_sequence" => value.push_str(&unescaped(&text)?),
+            _ => {}
+        }
+        continued = part.kind() == "escape_sequence" && continues(&text);
+    }
+    Some(value)
+}
+
+/// The whitespace a line continuation skips at the start of the next line.
+const CONTINUED_SPACE: &[char] = &[' ', '\t', '\n', '\r'];
+
+/// Whether an escape sequence is a line continuation, a backslash before the end of a line.
+fn continues(escape: &str) -> bool {
+    escape
+        .strip_prefix('\\')
+        .is_some_and(|body| body.starts_with(['\n', '\r']))
+}
+
+/// The escapes that stand for one fixed character.
+const SIMPLE_ESCAPES: &[(&str, char)] = &[
+    ("n", '\n'),
+    ("r", '\r'),
+    ("t", '\t'),
+    ("0", '\0'),
+    ("\\", '\\'),
+    ("'", '\''),
+    ("\"", '"'),
+];
+
+/// What one Rust escape sequence stands for: a Unicode or byte code, a fixed character, or
+/// nothing for a line continuation.
+fn unescaped(escape: &str) -> Option<String> {
+    let body = escape.strip_prefix('\\')?;
+    let code = body
+        .strip_prefix("u{")
+        .and_then(|rest| rest.strip_suffix('}'))
+        .or_else(|| body.strip_prefix('x'));
+    if let Some(code) = code {
+        let code = u32::from_str_radix(&code.replace('_', ""), 16).ok()?;
+        return char::from_u32(code).map(String::from);
+    }
+    if continues(escape) {
+        return Some(String::new());
+    }
+    SIMPLE_ESCAPES
+        .iter()
+        .find(|(written, _)| *written == body)
+        .map(|(_, value)| value.to_string())
+}
+
+/// The function a decoded path names, as the Rust grammar reads the path as an expression, so
+/// generic arguments, a qualified-self prefix such as `<T as Trait>` and a const-generic block
+/// with any literal or comment inside it never change which name the path ends in. A value the
+/// grammar does not read as exactly one path names nothing.
+fn terminal(path: &str) -> Option<String> {
+    let snippet = format!("fn f() {{ {path}; }}");
+    let file = tolerant("path.rs", &snippet)?;
+    let root = file.root();
+    let body = root
+        .named_child(0)
+        .filter(|_| !root.has_error() && root.named_child_count() == 1)?
+        .child_by_field_name("body")
+        .filter(|body| body.named_child_count() == 1)?;
+    let statement = body
+        .named_child(0)
+        .filter(|held| held.kind() == "expression_statement")?;
+    callable(statement.named_child(0)?, file.bytes())
+}
+
+/// The name a path expression ends in.
+fn callable(node: Node, source: &[u8]) -> Option<String> {
+    match node.kind() {
+        "identifier" => Some(text_of(node, source)),
+        "scoped_identifier" => callable(node.child_by_field_name("name")?, source),
+        "generic_function" => callable(node.child_by_field_name("function")?, source),
+        _ => None,
+    }
+}
+
+/// Whether this string follows one of `SERDE_CALLABLES` and `=` in the tokens of a `serde(...)`
+/// that a Rust attribute holds.
+fn serde_callable(node: Node, source: &[u8]) -> bool {
+    let key = node
+        .prev_sibling()
+        .filter(|held| held.kind() == "=")
+        .and_then(|held| held.prev_sibling());
+    let tokens = node.parent().filter(|held| held.kind() == "token_tree");
+    key.is_some_and(|held| SERDE_CALLABLES.contains(&text_of(held, source).as_str()))
+        && tokens.is_some_and(|tokens| serde_attribute(tokens, source))
+}
+
+/// Whether these tokens are the arguments of `serde`, as an attribute of its own or directly
+/// inside a `cfg_attr` attribute, so the same tokens inside a macro call never count.
+fn serde_attribute(tokens: Node, source: &[u8]) -> bool {
+    let named =
+        |held: Node, name: &str| held.kind() == "identifier" && text_of(held, source) == name;
+    if !tokens
+        .prev_sibling()
+        .is_some_and(|held| named(held, "serde"))
+    {
+        return false;
+    }
+    let attribute = match tokens.parent() {
+        Some(held) if held.kind() == "attribute" => held,
+        Some(held) if held.kind() == "token_tree" => match held.parent() {
+            Some(outer)
+                if outer.kind() == "attribute"
+                    && outer
+                        .named_child(0)
+                        .is_some_and(|name| named(name, "cfg_attr")) =>
+            {
+                outer
+            }
+            _ => return false,
+        },
+        _ => return false,
+    };
+    attribute
+        .parent()
+        .is_some_and(|item| matches!(item.kind(), "attribute_item" | "inner_attribute_item"))
 }
 
 /// The names of the inline modules above a node, outermost first.
