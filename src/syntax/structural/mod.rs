@@ -116,6 +116,15 @@ pub struct ExportLeaf {
     pub name: Option<String>,
 }
 
+/// One Rust `extern crate`, whatever its visibility: the crate it names and the name it binds,
+/// which is its alias where one is written. At the top of a crate root it puts that name in the
+/// crate's extern prelude.
+pub struct ExternCrate {
+    pub nesting: Vec<String>,
+    pub name: String,
+    pub alias: String,
+}
+
 /// One import, holding the specifier as it was written. The module graph resolves it to a file.
 pub struct Import {
     pub line: u64,
@@ -241,6 +250,7 @@ pub struct FileFacts {
     pub references: Vec<Reference>,
     pub paths: Vec<QualifiedPath>,
     pub exports: Vec<Export>,
+    pub crates: Vec<ExternCrate>,
 }
 
 /// What one file came to under structural analysis. Three of the four outcomes are not a
@@ -926,6 +936,7 @@ const VARIABLE: &str = "variable";
 const IMPORT: &str = "import";
 const MODULE: &str = "module";
 const EXPORT: &str = "export";
+const CRATE: &str = "crate";
 
 type Held = OnceLock<Result<Query, String>>;
 
@@ -988,6 +999,7 @@ struct Reading<'a, 'b> {
     imports: Vec<Import>,
     modules: Vec<ModuleDecl>,
     exports: Vec<Export>,
+    crates: Vec<ExternCrate>,
     declared: BTreeSet<usize>,
     claimed: Vec<(usize, usize)>,
     names: &'b mut Names,
@@ -1008,6 +1020,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             imports: Vec::new(),
             modules: Vec::new(),
             exports: Vec::new(),
+            crates: Vec::new(),
             declared: BTreeSet::new(),
             claimed: Vec::new(),
             names,
@@ -1019,6 +1032,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             IMPORT => self.import(node),
             MODULE => self.module(node),
             EXPORT => self.export(node),
+            CRATE => self.extern_crate(node),
             _ => self.declaration(capture, node),
         }
     }
@@ -1036,6 +1050,20 @@ impl<'a, 'b> Reading<'a, 'b> {
             type_only: found.type_only,
             supported: found.supported,
             leaves: found.leaves,
+        });
+    }
+
+    fn extern_crate(&mut self, node: Node) {
+        let Some(name) = node.child_by_field_name("name") else {
+            return;
+        };
+        let name = text_of(name, self.source);
+        self.crates.push(ExternCrate {
+            nesting: (self.adapter.nesting)(node, self.source),
+            alias: node
+                .child_by_field_name("alias")
+                .map_or_else(|| name.clone(), |alias| text_of(alias, self.source)),
+            name,
         });
     }
 
@@ -1192,6 +1220,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             references,
             paths,
             exports: self.exports,
+            crates: self.crates,
         }
     }
 }
@@ -1891,6 +1920,7 @@ export function charge(at: number): number {
             module_declarations: Vec::new(),
             paths: Vec::new(),
             exports: Vec::new(),
+            crates: Vec::new(),
             references: names
                 .iter()
                 .enumerate()

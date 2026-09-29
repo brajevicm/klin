@@ -225,8 +225,10 @@ impl TargetKind {
 
 /// One Cargo target, or one conventional root standing in for it: the package that owns it, the
 /// crate name a consumer addresses it by, its kind, its root file, the manifest that named it,
-/// its root module in the graph, and the crate names its root re-exports under a name of their
-/// own, such as `pub extern crate wgpu_types as wgt;`, by that name.
+/// its root module in the graph, and the names of its extern prelude that reach a library the
+/// tree holds, each to that library's root module: a dependency its manifest names by path, and
+/// an alias an `extern crate` at the top of its root gives one, such as
+/// `pub extern crate wgpu_types as wgt;`.
 pub struct Target {
     pub package: String,
     pub name: String,
@@ -234,7 +236,7 @@ pub struct Target {
     pub root: String,
     pub manifest: Option<String>,
     pub module: usize,
-    pub aliases: BTreeMap<String, String>,
+    pub crates: BTreeMap<String, usize>,
 }
 
 /// One module: the name a report prints, which is its resolver's identity for it, and the
@@ -266,8 +268,8 @@ pub enum Resolved {
         module: usize,
         rest: Vec<String>,
     },
-    /// The path starts at a name that is no module here: a crate the tree holds no one library
-    /// target of, or a local item.
+    /// The path starts at a name that is no module here: a crate that reaches no library the
+    /// tree holds, or a local item.
     External,
     /// The path goes above the crate root or through a module no file answers.
     Unresolved,
@@ -487,9 +489,9 @@ impl ModuleGraph {
 
     /// The module a path names from this module, and the segments left after it. `crate` starts
     /// at the module's target root, `self` and `super` at the module and the ones above it, a
-    /// name this module declares as a child at that child, the crate name of the one library
-    /// target the tree holds under it, or an alias the target root gives it, at that library's
-    /// root, as does such a name after a leading `::`, and any other first name is external.
+    /// name this module declares as a child at that child, a name of the target's extern prelude
+    /// that reaches a library the tree holds at that library's root, as does such a name after a
+    /// leading `::`, and any other first name is external.
     /// Each further name descends into a child of that name until one is no module.
     pub fn resolve(&self, from: usize, path: &str) -> Resolved {
         let mut segments = path
@@ -539,20 +541,13 @@ impl ModuleGraph {
         Some(library)
     }
 
-    /// The root module of the one library target the tree holds under a crate name, or under
-    /// the crate an alias of this module's target root names, and `None` where no library or
-    /// more than one has that name.
+    /// The root module of the library a name of this module's extern prelude reaches, and `None`
+    /// where the name reaches no library the tree holds.
     fn library(&self, from: usize, name: &str) -> Option<usize> {
-        let aliases = &self.targets[self.modules[from].target?].aliases;
-        let name = aliases.get(name).map_or(name, String::as_str);
-        let mut named = self
-            .targets
-            .iter()
-            .filter(|target| target.kind == TargetKind::Library && target.name == name);
-        match (named.next(), named.next()) {
-            (Some(target), None) => Some(target.module),
-            _ => None,
-        }
+        self.targets[self.modules[from].target?]
+            .crates
+            .get(name)
+            .copied()
     }
 
     /// The module the leading `self` and `super` segments climb to, and `None` above the root.

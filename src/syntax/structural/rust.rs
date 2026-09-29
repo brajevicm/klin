@@ -42,6 +42,7 @@ const PATTERNS: &str = r"
 (use_declaration) @import
 (use_declaration) @export
 (extern_crate_declaration) @export
+(extern_crate_declaration) @crate
 ";
 
 /// The declarations whose contract V1 canonicalizes.

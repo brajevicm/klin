@@ -10,10 +10,10 @@ use std::rc::Rc;
 use std::time::SystemTime;
 
 use super::{
-    Declaration, DeclarationKind, Export, ExportLeaf, FileFacts, Import, ModuleDecl, Names,
-    Outcome, QualifiedPath, Reference, Unparsed, Visibility,
+    Declaration, DeclarationKind, Export, ExportLeaf, ExternCrate, FileFacts, Import, ModuleDecl,
+    Names, Outcome, QualifiedPath, Reference, Unparsed, Visibility,
 };
-use crate::syntax::{LANGUAGES, Language};
+use crate::syntax::{LANGUAGES, Language, LanguageId};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
@@ -247,6 +247,12 @@ impl Writer {
         for export in &facts.exports {
             self.export(export);
         }
+        self.number(facts.crates.len() as u64);
+        for held in &facts.crates {
+            self.texts(&held.nesting);
+            self.text(&held.name);
+            self.text(&held.alias);
+        }
     }
 
     fn declaration(&mut self, declaration: &Declaration) {
@@ -344,21 +350,25 @@ impl Reader<'_, '_> {
                     language: row.name,
                 })
             }),
-            FACTS => self.facts(file).map(|facts| Outcome::Facts(Rc::new(facts))),
+            FACTS => self
+                .language()
+                .and_then(|row| self.facts(file, row.id))
+                .map(|facts| Outcome::Facts(Rc::new(facts))),
             _ => None,
         }
     }
 
-    fn facts(&mut self, file: &str) -> Option<FileFacts> {
+    fn facts(&mut self, file: &str, language: LanguageId) -> Option<FileFacts> {
         Some(FileFacts {
             file: file.to_string(),
-            language: self.language()?.id,
+            language,
             declarations: self.list(Reader::declaration)?,
             imports: self.list(Reader::import)?,
             module_declarations: self.list(Reader::module)?,
             references: self.list(Reader::reference)?,
             paths: self.list(Reader::qualified)?,
             exports: self.list(Reader::export)?,
+            crates: self.list(Reader::extern_crate)?,
         })
     }
 
@@ -420,6 +430,14 @@ impl Reader<'_, '_> {
         Some(ExportLeaf {
             path: self.text()?,
             name: self.optional()?,
+        })
+    }
+
+    fn extern_crate(&mut self) -> Option<ExternCrate> {
+        Some(ExternCrate {
+            nesting: self.list(Reader::text)?,
+            name: self.text()?,
+            alias: self.text()?,
         })
     }
 
@@ -530,7 +548,7 @@ mod tests {
     const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
     fn outcomes() -> Vec<(String, Outcome)> {
-        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\n";
+        let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\nextern crate serde as json;\n";
         let typescript = "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\nexport default view;\n";
         [
             ("src/pay.rs", rust),
@@ -587,6 +605,12 @@ mod tests {
         assert_eq!(read.len(), 5);
         assert_eq!(bytes_of(&ours(), &read), written);
         let pay = facts_of(&read, "src/pay.rs");
+        let crates: Vec<(&str, &str)> = pay
+            .crates
+            .iter()
+            .map(|held| (held.name.as_str(), held.alias.as_str()))
+            .collect();
+        assert_eq!(crates, vec![("serde", "json")]);
         let modules: Vec<(&str, bool, Option<&str>)> = pay
             .module_declarations
             .iter()

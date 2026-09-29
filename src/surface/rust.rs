@@ -336,30 +336,65 @@ impl<'a> Derivation<'a> {
         !declarations.is_empty() || !re_exported.is_empty() || self.globbed_in(module, name, path)
     }
 
-    /// One name looked up through the globs of a module in source order, until a module one of
-    /// them reaches gives it. A glob that leads back into the same lookup gives nothing.
+    /// One name looked up through the globs of a module: what the one glob that provides it
+    /// gives, and a hole where two do, as a glob walk reports them. A glob that leads back into
+    /// the same lookup gives nothing.
     fn globbed_in(&mut self, module: usize, name: &str, path: String) -> bool {
         let key = (module, path);
         if !self.sought.insert(key.clone()) {
             return false;
         }
-        let reached: Vec<usize> = self
-            .exports(module)
-            .flat_map(|held| &held.leaves)
-            .filter(|leaf| leaf.name.is_none())
-            .filter_map(|leaf| {
-                let target = leaf.path.trim_end_matches("::*");
-                match self.graph.resolve(module, target) {
-                    Resolved::Module { module, rest } if rest.is_empty() => Some(module),
+        let providers: Vec<(&Export, usize)> = self
+            .globs(module)
+            .into_iter()
+            .filter(|(_, at)| self.provides(*at, name, &mut HashSet::new()))
+            .collect();
+        let found = match providers.as_slice() {
+            [] => false,
+            [(_, at)] => self.named_in(*at, name, key.1.clone()),
+            [(first, _), (second, _), ..] => {
+                let file = self.file(module);
+                self.surface.holes.push(Hole {
+                    file: file.to_string(),
+                    line: second.line,
+                    text: second.text.clone(),
+                    why: format!(
+                        "{name} is provided by this glob and by the glob at {file}:{}",
+                        first.line
+                    ),
+                });
+                true
+            }
+        };
+        self.sought.remove(&key);
+        found
+    }
+
+    /// Each glob of a module whose path reaches a module, with that module.
+    fn globs(&self, module: usize) -> Vec<(&'a Export, usize)> {
+        self.exports(module)
+            .flat_map(|held| held.leaves.iter().map(move |leaf| (held, leaf)))
+            .filter(|(_, leaf)| leaf.name.is_none())
+            .filter_map(|(held, leaf)| {
+                match self
+                    .graph
+                    .resolve(module, leaf.path.trim_end_matches("::*"))
+                {
+                    Resolved::Module { module, rest } if rest.is_empty() => Some((held, module)),
                     _ => None,
                 }
             })
-            .collect();
-        let found = reached
-            .into_iter()
-            .any(|at| self.named_in(at, name, key.1.clone()));
-        self.sought.remove(&key);
-        found
+            .collect()
+    }
+
+    /// Whether a module gives a name: as one of its own, or through a glob of it.
+    fn provides(&self, module: usize, name: &str, seen: &mut HashSet<usize>) -> bool {
+        seen.insert(module)
+            && (self.own_names(module).contains(name)
+                || self
+                    .globs(module)
+                    .into_iter()
+                    .any(|(_, at)| self.provides(at, name, seen)))
     }
 
     /// One glob of a `pub use`: every name the module it reaches exposes, under `prefix`, less
