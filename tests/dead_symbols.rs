@@ -634,6 +634,97 @@ fn a_destructuring_declaration_whose_bindings_are_all_unused_still_fails() {
 }
 
 #[test]
+fn a_destructuring_declaration_with_one_used_binding_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/limit.ts",
+        "import { settings } from \"./settings\";\n\nconst { limit, name } = settings;\n\nexport function base(): number {\n  return limit;\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_property_key_a_computed_key_and_a_default_value_bind_nothing() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/math.ts",
+        "import { fallback, key, math } from \"./lib\";\n\nconst { add: loaded, [key]: value = fallback } = math;\n\nexport function run(): number {\n  return math.add(key.length, fallback);\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/math.ts:3"), "{}", run.out);
+}
+
+#[test]
+fn two_unused_destructurings_of_one_name_do_not_keep_each_other_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/a.ts",
+        "import { math } from \"./math\";\n\nconst [first] = [1, 2];\nconst { add: loaded } = math;\n",
+    );
+    tree.write(
+        "src/b.ts",
+        "import { math } from \"./math\";\n\nconst [first, second] = [3, 4];\nconst { sub: loaded } = math;\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("4 new dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_destructuring_inside_a_function_keeps_no_declaration_of_its_names_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/a.ts",
+        "import { math } from \"./math\";\n\nconst [first] = [1, 2];\nconst { add: loaded } = math;\n",
+    );
+    tree.write(
+        "src/b.ts",
+        "import { load } from \"./load\";\n\nexport function f(): void {\n  const [first] = load();\n  const { sub: loaded } = load();\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/a.ts:3"), "{}", run.out);
+    assert!(run.says("src/a.ts:4"), "{}", run.out);
+}
+
+#[test]
+fn ignore_globs_match_every_name_a_destructuring_binds() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"dead_symbols":{"in":"src","ignore":["_*"]}}"#,
+    );
+    tree.write(
+        "src/unused.ts",
+        "import { settings } from \"./settings\";\n\nconst { _limit } = settings;\nconst [_first, second] = [1, 2];\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(!run.says("src/unused.ts:3"), "{}", run.out);
+    assert!(run.says("src/unused.ts:4"), "{}", run.out);
+}
+
+#[test]
 fn a_retired_language_selector_is_rejected() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"dead_symbols":{"languages":["tsx"]}}"#);
@@ -865,11 +956,14 @@ fn a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructur
     tree.base();
     tree.write("src/caller.ts", "export function call() {}\n");
 
-    let run = changed(&tree);
+    let cold = changed(&tree);
+    let warm = changed(&tree);
 
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/service.ts:1"), "{}", run.out);
-    assert!(run.says("lost reference in src/caller.ts"), "{}", run.out);
+    assert_eq!(cold.code, 1, "{}", cold.out);
+    assert!(cold.says("src/service.ts:1"), "{}", cold.out);
+    assert!(cold.says("lost reference in src/caller.ts"), "{}", cold.out);
+    assert_eq!(warm.code, cold.code, "{}", warm.out);
+    assert_eq!(warm.out, cold.out);
 }
 
 #[test]

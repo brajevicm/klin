@@ -247,6 +247,31 @@ fn a_typescript_family_is_derived_and_judged_in_its_language() {
 }
 
 #[test]
+fn a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it() {
+    let tree = three_reached_handlers();
+    tree.write(
+        "web/lazy.ts",
+        "const { Login } = await import(\"./handlers/LoginHandler\");\n",
+    );
+    tree.base();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export function Profile() {}\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("derived: reachability web/handlers/*Handler.ts"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("1 new unreached file(s)"), "{}", run.out);
+    assert!(run.says("web/handlers/ProfileHandler.ts"), "{}", run.out);
+}
+
+#[test]
 fn two_members_do_not_derive_a_family() {
     let tree = Tree::new();
     tree.write("src/commands/alpha_command.rs", "pub fn run_alpha() {}\n");

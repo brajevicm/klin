@@ -173,7 +173,7 @@ fn type_name(node: Node, source: &[u8]) -> Option<String> {
 }
 
 /// A Rust item is named by one identifier, so none destructures.
-fn destructured(_: Node, _: &[u8]) -> Vec<String> {
+fn destructured(_: Node) -> Vec<Node> {
     Vec::new()
 }
 

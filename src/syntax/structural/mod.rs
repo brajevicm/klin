@@ -55,7 +55,7 @@ pub struct Declaration {
     pub name: String,
     /// The names a destructuring pattern binds, each by its local name, and none where the
     /// declaration is named by one identifier.
-    pub bindings: Vec<String>,
+    pub bindings: Box<[String]>,
     pub kind: DeclarationKind,
     pub line: u64,
     /// The last line the declaration covers, so a consumer can tell a reference written inside
@@ -94,9 +94,15 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    /// Its own name and every name its pattern binds.
+    /// The names it declares: every name its pattern binds, and its own name where it binds
+    /// none.
     pub fn names(&self) -> impl Iterator<Item = &str> {
-        std::iter::once(self.name.as_str()).chain(self.bindings.iter().map(String::as_str))
+        let names: &[String] = if self.bindings.is_empty() {
+            std::slice::from_ref(&self.name)
+        } else {
+            &self.bindings
+        };
+        names.iter().map(String::as_str)
     }
 }
 
@@ -322,7 +328,7 @@ impl Measurement {
         let index = timed(&mut cost.index, || self.index());
         let sites = || index.names.values().flat_map(HashMap::values);
         cost.files = index.files.len();
-        cost.declarations = sites().map(|held| held.declarations.len()).sum();
+        cost.declarations = index.files.iter().map(|file| file.declarations.len()).sum();
         cost.references = sites().map(|held| held.references.len()).sum();
         cost.distinct_names = index.names.values().map(HashMap::len).sum();
         index
@@ -834,8 +840,9 @@ pub(crate) struct Adapter {
     pub exported_as: fn(Node, &[u8]) -> Option<String>,
     /// The type an inherent implementation adds a method to.
     pub owner: fn(Node, &[u8]) -> Option<String>,
-    /// The names a declaration's name binds where it is a destructuring pattern.
-    pub destructured: fn(Node, &[u8]) -> Vec<String>,
+    /// The nodes that write each name a declaration's name binds where it is a destructuring
+    /// pattern.
+    pub destructured: fn(Node) -> Vec<Node>,
     /// The canonical declared contract of a declaration, and `None` for a form V1 does not
     /// canonicalize.
     pub contract: fn(Node, &[u8]) -> Option<String>,
@@ -1134,16 +1141,20 @@ impl<'a, 'b> Reading<'a, 'b> {
         let Some(name) = node.child_by_field_name("name") else {
             return;
         };
+        let bindings = (self.adapter.destructured)(name);
         self.declared.insert(name.start_byte());
+        self.declared.extend(bindings.iter().map(Node::start_byte));
         if inside_a_function(node, self.language) {
             return;
         }
-        let bindings = (self.adapter.destructured)(name, self.source);
         let name = text_of(name, self.source);
         let entry_point = self.adapter.entry_points.contains(&name.as_str());
         self.declarations.push(Declaration {
             name,
-            bindings,
+            bindings: bindings
+                .into_iter()
+                .map(|binding| text_of(binding, self.source))
+                .collect(),
             kind: self.kind(capture, node),
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
@@ -1935,7 +1946,7 @@ export function charge(at: number): number {
                 .enumerate()
                 .map(|(at, name)| Declaration {
                     name: name.to_string(),
-                    bindings: Vec::new(),
+                    bindings: Box::default(),
                     kind: DeclarationKind::Function,
                     line: at as u64 + 1,
                     end: at as u64 + 1,

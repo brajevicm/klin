@@ -427,13 +427,18 @@ fn reached(index: &SourceIndex, file: &structural::FileFacts) -> bool {
 }
 
 /// Whether one eligible declaration of this file is the only one of its name under the index
-/// and another file references it, which is evidence no ambiguity could have produced.
+/// and another file references it, which is evidence no ambiguity could have produced. A
+/// destructuring that binds the name is no declaration of that name here. Spec 5.4.
 fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
     file.declarations
         .iter()
         .filter(|declaration| eligible(declaration))
         .any(|declaration| {
-            index.declarations(file.language, &declaration.name).count() == 1
+            index
+                .declarations(file.language, &declaration.name)
+                .filter(|held| held.declaration.name == declaration.name)
+                .count()
+                == 1
                 && referenced_elsewhere(index, file, declaration)
         })
 }

@@ -619,7 +619,10 @@ Each check documents its rule. The rules for the shipped checks:
   every one with an eligible declaration, and every one proven reached: an
   eligible declaration whose name has exactly one declaration under the
   index and a reference from another file. A member reached only through a
-  name several files declare is not proof. `*.rs`, `*.ts` and every other
+  name several files declare is not proof. A TypeScript destructuring that
+  binds the name is no declaration of it here, pinned by
+  `a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it`
+  in `tests/reachability.rs`. `*.rs`, `*.ts` and every other
   bare extension are never a family, nor is a test root or a file under a
   test directory. A file under a test directory, or one whose basename
   carries a test affix of 8.2, is never a member in a tree a run judges.
@@ -1368,11 +1371,15 @@ TypeScript destructuring declaration is judged by the names it binds: it is
 dead only when none of them has a reference outside the declaration. A
 renamed binding such as `{ add: loaded }` is judged by its local name, and a
 nested or defaulted pattern binds every name inside it, never a default value
-or a computed key. A name
+or a computed key. A name a pattern binds is no reference to that name, in a
+function body too, so a destructuring keeps no other declaration of a name it
+binds alive. A name
 resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
-globs. The check is name-only: it does not resolve imports, types, reflection,
+globs. A glob is matched against each name a declaration binds, so a
+destructuring declaration is left out only when every name it binds matches
+one. The check is name-only: it does not resolve imports, types, reflection,
 framework entry points or external callers. The index reads a string as text,
 with two exceptions. Where a Rust attribute item holds `serde(...)`, as the
 attribute itself or directly inside `cfg_attr`, the string value of `default`,
@@ -1434,8 +1441,14 @@ and the check by hand build state for every eligible declaration. Pinned by
 `an_array_destructuring_declaration_whose_binding_is_used_passes`,
 `a_renamed_binding_used_by_its_local_name_passes`,
 `a_nested_or_defaulted_binding_keeps_its_declaration_alive`,
-`a_destructuring_declaration_whose_bindings_are_all_unused_still_fails` and
-`a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructuring`;
+`a_destructuring_declaration_whose_bindings_are_all_unused_still_fails`,
+`a_destructuring_declaration_with_one_used_binding_passes`,
+`a_property_key_a_computed_key_and_a_default_value_bind_nothing`,
+`two_unused_destructurings_of_one_name_do_not_keep_each_other_alive`,
+`a_destructuring_inside_a_function_keeps_no_declaration_of_its_names_alive`,
+`ignore_globs_match_every_name_a_destructuring_binds` and
+`a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructuring`,
+which also requires a second run over the structural cache to print the same;
 the `serde` strings by
 `a_private_function_only_a_serde_default_names_passes`,
 `a_private_function_only_a_serde_skip_serializing_if_names_passes`,

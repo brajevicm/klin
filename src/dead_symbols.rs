@@ -74,7 +74,6 @@ struct Spec {
 struct State {
     file: String,
     name: String,
-    bindings: Vec<String>,
     line: u64,
     end: u64,
     text: String,
@@ -410,9 +409,11 @@ fn states(
 fn eligible(declaration: &structural::Declaration, ignore: &[String]) -> bool {
     !declaration.externally_visible
         && !declaration.entry_point
-        && !ignore
-            .iter()
-            .any(|glob| files::glob_matches(glob.as_bytes(), declaration.name.as_bytes()))
+        && !declaration.names().all(|name| {
+            ignore
+                .iter()
+                .any(|glob| files::glob_matches(glob.as_bytes(), name.as_bytes()))
+        })
 }
 
 fn state(
@@ -430,7 +431,6 @@ fn state(
     State {
         file: file.file.clone(),
         name: declaration.name.clone(),
-        bindings: declaration.bindings.clone(),
         line: declaration.line,
         end: declaration.end,
         text: declaration.text.clone(),
@@ -488,18 +488,22 @@ fn lost_reference(
     if held.dead {
         return None;
     }
-    let language = before.index().file(&state.file)?.language;
-    std::iter::once(&state.name)
-        .chain(&state.bindings)
+    let file = before.index().file(&state.file)?;
+    let declaration = file.declarations.iter().find(|declaration| {
+        (declaration.line, &declaration.name, &declaration.text)
+            == (held.line, &held.name, &held.text)
+    })?;
+    declaration
+        .names()
         .filter_map(|name| {
             let now: BTreeSet<(&str, u64)> = after
                 .index()
-                .references(language, name)
+                .references(file.language, name)
                 .map(|reference| (reference.file, reference.line))
                 .collect();
             before
                 .index()
-                .references(language, name)
+                .references(file.language, name)
                 .filter(|reference| {
                     reference.file != held.file
                         || reference.line < held.line
