@@ -990,7 +990,9 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
     let plan = text(".github/workflows/release-plan.yml");
 
     assert!(
-        !text(".github/workflows/quality.yml").contains("paths"),
+        !text(".github/workflows/quality.yml")
+            .lines()
+            .any(|line| line.trim() == "paths:"),
         "a path filter can skip the quality check"
     );
     assert!(
@@ -1004,6 +1006,7 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
         "Cargo.lock",
         DIST_WORKSPACE,
         ".github/workflows/release.yml",
+        "action.yml",
     ] {
         assert!(
             plan.contains(&format!("\"{input}\"")),

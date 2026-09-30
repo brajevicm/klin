@@ -12,14 +12,14 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: benchmark-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   compare:
-    # Any other label is not a request to measure.
+    # Any other label is not a request to measure. The group sits on the job, so a run for another
+    # label skips without cancelling a measurement in progress.
     if: github.event.label.name == 'benchmark'
+    concurrency:
+      group: benchmark-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
