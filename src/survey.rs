@@ -170,9 +170,9 @@ fn merged(paths: &[String]) -> Vec<String> {
     let mixed = holding(paths.iter().filter(|path| !source(path)));
     let mut found = BTreeSet::new();
     for file in paths.iter().filter(|path| source(path)) {
-        let mut up = ancestors(file);
-        let start = up.next().unwrap_or(ROOT);
-        let end = up.take_while(|next| !mixed.contains(next)).last();
+        let mut upward = ancestors(file);
+        let start = upward.next().unwrap_or(ROOT);
+        let end = upward.take_while(|up| !mixed.contains(up)).last();
         found.insert(end.unwrap_or(start));
     }
     found.into_iter().map(str::to_string).collect()
@@ -217,14 +217,14 @@ fn test_roots(merged: &[String], manifests: &[String], paths: &[String]) -> Vec<
         .iter()
         .filter_map(|path| ancestors(path).next())
         .collect();
-    let found: HashSet<&str> = merged.iter().map(String::as_str).collect();
+    let ends: HashSet<&str> = merged.iter().map(String::as_str).collect();
     let candidates: Vec<String> = merged
         .iter()
         .filter(|at| named_for_tests(at) || !production.contains(at.as_str()))
         .filter(|at| {
             !ancestors(at)
                 .take_while(|up| !packages.contains(up))
-                .any(|up| found.contains(up))
+                .any(|up| ends.contains(up))
         })
         .cloned()
         .collect();
