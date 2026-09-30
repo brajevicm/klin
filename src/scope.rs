@@ -208,6 +208,12 @@ pub fn under_or_at(path: &str, directory: &str) -> bool {
 /// Spec 5.4.
 pub struct Roots(HashSet<String>);
 
+impl FromIterator<String> for Roots {
+    fn from_iter<I: IntoIterator<Item = String>>(paths: I) -> Roots {
+        Roots(paths.into_iter().collect())
+    }
+}
+
 impl Roots {
     pub fn new(directories: &[String]) -> Roots {
         Roots(directories.iter().cloned().collect())

@@ -351,6 +351,16 @@ fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Erro
 }
 
 fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
+    debug_assert_eq!(
+        kind.languages
+            .iter()
+            .any(|language| language.test_idioms.is_some()),
+        kind.keys
+            .iter()
+            .any(|key| key.name == SKIP_TEST_IDIOMS.name),
+        "{}: a language names test idioms exactly when the section reads the key",
+        kind.section,
+    );
     kind.languages
         .iter()
         .map(|set| {

@@ -135,7 +135,7 @@ impl Tree {
     /// What spec 5.4 calls the tests of this tree alone, off its one file list.
     pub fn tests(&self) -> Tests {
         Tests {
-            roots: scope::Roots::new(&self.test_roots()),
+            roots: self.test_roots().into_iter().collect(),
         }
     }
 
