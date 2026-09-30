@@ -54,12 +54,12 @@ pub struct Facts {
 }
 
 impl Facts {
-    /// Whether the derivation commit's survey held the path: under a root it held, or under no
-    /// root it did not hold. A root that moves up to a crate directory keeps the debt below the
+    /// Whether the derivation commit's survey held the path: under no root it did not hold, or
+    /// under a root it held. A root that moves up to a crate directory keeps the debt below the
     /// root it replaced held. Spec 7.1.
     pub fn was_held(&self, file: &str) -> bool {
         let under = |roots: &[String]| roots.iter().any(|root| under_or_at(file, root));
-        self.held.as_ref().is_some_and(|held| under(&held.roots)) || !under(&self.unheld)
+        !under(&self.unheld) || self.held.as_ref().is_some_and(|held| under(&held.roots))
     }
 
     pub fn at_commit(&self) -> Option<(&Survey, &str)> {
