@@ -20,7 +20,7 @@ Pull requests from agents working alone are closed.
 cargo fmt --check
 cargo clippy --all-targets --locked -- -D warnings
 cargo nextest run --locked
-cargo build --release --locked && ./target/release/klin gate --strict
+cargo build --locked && ./target/debug/klin gate --strict
 ```
 
 If a gate fails, fix the code it points to. Leave `klin.json`, the hooks and the `accepted` list alone. Only the maintainer changes them, in a reviewed commit.

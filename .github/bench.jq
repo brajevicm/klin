@@ -102,15 +102,15 @@ def details($summary; $body):
     "<summary>\($summary)</summary>",
     "" ] + $body + [ "", "</details>", "" ];
 
-def header($has_dense):
+def header:
   [ "<!-- klin-benchmark -->",
     "## ⚡ Benchmark: base vs this branch",
     "",
     "Both binaries ran the same measurements on this runner, so only the binary differs.",
     "",
-    (if $has_dense
-     then "> 🧪 Same `structural_300k` fixture on `ubuntu-latest`"
-     else "> 🧪 Dense fixture skipped; add the `benchmark` label to run it." end),
+    "> 📌 Measured `\($merge)`, head `\($head)` merged onto base `\($base)`",
+    "> 🔁 A later push leaves this stale; remove and re-add the `benchmark` label to measure again",
+    "> 🧪 Same `structural_300k` fixture on `ubuntu-latest`",
     "> ⏱️ Times are 5-run medians · 🧠 RSS is a single-run diagnostic",
     "> ℹ️ Performance values are informational; they do not fail the workflow.",
     "" ];
@@ -121,32 +121,19 @@ def header($has_dense):
 | ($dense_head[0] | counters) as $dense_after
 | ($dense_base[0]) as $perf_before
 | ($dense_head[0]) as $perf_after
-| (($dense_base[0] | length) > 0) as $has_dense
-| (moved($strict_before; $strict_after)
-   + (if $has_dense then moved($dense_before; $dense_after) else [] end)) as $moved
-| header($has_dense)
+| (moved($strict_before; $strict_after) + moved($dense_before; $dense_after)) as $moved
+| header
   + [ "### 🧭 At a glance", "",
       "| Signal | Base | This branch | Change |",
-      "| --- | ---: | ---: | ---: |" ]
-  + (if $has_dense
-     then [ metric_row("🔥 Warm hook · 20 changed files"; "warm20_ms"; "ms"; $perf_before; $perf_after),
-            metric_row("🧠 Warm hook peak RSS"; "warm_hook_peak_rss_kb"; "kB"; $perf_before; $perf_after),
-            "| 🧮 Deterministic counters | — | — | " +
-              (if ($moved | length) == 0 then "✅ unchanged" else "⚠️ \($moved | length) moved" end) + " |",
-            "" ]
-     else [ "| 🧮 Deterministic counters | — | — | " +
-              (if ($moved | length) == 0 then "✅ unchanged" else "⚠️ \($moved | length) moved" end) + " |",
-            "" ]
-     end)
-  + (if $has_dense
-     then details("⏱️ Time breakdown"; metric_table(time_rows; $perf_before; $perf_after))
-          + details("🧠 Peak RSS"; metric_table(rss_rows; $perf_before; $perf_after))
-     else []
-     end)
+      "| --- | ---: | ---: | ---: |",
+      metric_row("🔥 Warm hook · 20 changed files"; "warm20_ms"; "ms"; $perf_before; $perf_after),
+      metric_row("🧠 Warm hook peak RSS"; "warm_hook_peak_rss_kb"; "kB"; $perf_before; $perf_after),
+      "| 🧮 Deterministic counters | — | — | " +
+        (if ($moved | length) == 0 then "✅ unchanged" else "⚠️ \($moved | length) moved" end) + " |",
+      "" ]
+  + details("⏱️ Time breakdown"; metric_table(time_rows; $perf_before; $perf_after))
+  + details("🧠 Peak RSS"; metric_table(rss_rows; $perf_before; $perf_after))
   + details("🧮 Deterministic counter comparison";
       counter_lines("klin on klin, strict run"; $strict_before; $strict_after)
-      + (if $has_dense
-         then [ "" ] + counter_lines("Dense 300k fixture"; $dense_before; $dense_after)
-         else []
-         end))
+      + [ "" ] + counter_lines("Dense 300k fixture"; $dense_before; $dense_after))
   | .[]

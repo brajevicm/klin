@@ -3,6 +3,10 @@
 > ADR 0029 amends this (#338): with `create-release = false`, `dist` fills
 > and publishes a draft prerelease that `cut-release` makes, and the release
 > becomes Latest at its promotion.
+>
+> #368 amends the paragraph on `dist plan`. The generated workflow skips pull
+> requests (`pr-run-mode = "skip"`), and `release-plan.yml` runs `dist plan`
+> on the pull requests that touch a release input.
 
 `dist` (formerly `cargo-dist`) owns the release pipeline. A pushed tag runs
 the workflow `dist` generates, which builds the four targets, writes the

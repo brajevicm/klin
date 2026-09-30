@@ -982,6 +982,40 @@ fn the_host_canary_stays_out_of_pull_request_gating() {
     );
 }
 
+/// The quality check runs on every pull request, so a change to a doc, the config or a workflow
+/// cannot skip it. `dist plan` runs only on the pull requests that touch a release input, in its
+/// own workflow, because dist's `release.yml` skips pull requests. #368.
+#[test]
+fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan() {
+    let plan = text(".github/workflows/release-plan.yml");
+
+    assert!(
+        !text(".github/workflows/quality.yml")
+            .lines()
+            .any(|line| line.trim_start().starts_with("paths")),
+        "a path filter can skip the quality check"
+    );
+    assert!(
+        !text(".github/workflows/release.yml")
+            .lines()
+            .any(|line| line.trim() == "pull_request:"),
+        "dist's release workflow runs on every pull request"
+    );
+    for input in [
+        "Cargo.toml",
+        "Cargo.lock",
+        DIST_WORKSPACE,
+        ".github/workflows/release.yml",
+        "action.yml",
+    ] {
+        assert!(
+            plan.contains(&format!("\"{input}\"")),
+            "{input} skips dist plan"
+        );
+    }
+    assert!(plan.contains("dist plan"), "release-plan runs no dist plan");
+}
+
 fn json(relative: &str) -> serde_json::Value {
     match serde_json::from_str(&text(relative)) {
         Ok(held) => held,

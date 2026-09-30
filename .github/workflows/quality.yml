@@ -1,30 +1,30 @@
 name: quality
 
+# No path filter: klin measures docs, config and workflows too, and a required check that a filter
+# skips never reports.
 on:
   pull_request:
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "Cargo.toml"
   push:
     branches: [main]
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "Cargo.toml"
+
+# A newer push to a pull request cancels its older run. Each push to main keeps its own run.
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   gates:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
-      - run: cargo build --release --locked
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest@0.9.143
       - run: cargo nextest run --locked
-      - run: ./target/release/klin gate --strict
+      - run: cargo build --locked
+      - run: ./target/debug/klin gate --strict
