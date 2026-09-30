@@ -144,20 +144,27 @@ baseline table.
   is not worth it. The three signal tests take under 0.2 s each on CI. The
   other tests already use the 1 s limit, which is the shortest that
   `KLIN_COMMAND_LIMIT` accepts.
-## Still to measure on CI
+## Not benchmarked, to save CI minutes
 
-These need repeated runs on the CI runner class. Local runs on 8 cores do not
-predict a 2-vCPU runner.
+These comparisons need repeated runs on the CI runner class, because local
+runs on 8 cores do not predict a 2-vCPU runner. The Actions budget is tight,
+so this PR runs neither. Each item names the reason and the method, for a
+later run.
 
-- **nextest concurrency.** Run `cargo nextest run --locked -j N` for N = 2, 3
-  and 4, 3 runs each, on one branch. Compare the median and the slowest
-  execution time and any flake. Many tests wait on sleeps and locks, so N > 2
-  may overlap them. Keep the default unless one setting is about 10 % faster
-  in every run.
-- **nextest against libtest.** After one build, compare
-  `cargo nextest run --locked` with `cargo test --locked -- --test-threads=2`,
-  3 runs each. libtest runs the tests of one binary as threads of one process,
-  and the signal, process-group and lock tests depend on process isolation.
+- **nextest concurrency.** The 2 slots stay full with CPU-bound tests, so a
+  higher `-j` can overlap only the tests that sleep or wait on a lock. Those
+  hold about 20 s of summed CI time, so the best case is about 10 s of 119.5 s,
+  below the 10 % bar of #367. Method: build once, then run
+  `cargo nextest run --locked -j N` for N = 2 and 4, twice each, in one job.
+- **nextest against libtest.** Rejected without a benchmark. libtest runs the
+  tests of one binary as threads of one process, and the signal,
+  process-group and lock tests depend on one process for each test. #367 also
+  says not to switch runners for a small gain. Method: after one build,
+  compare `cargo nextest run --locked` with
+  `cargo test --locked -- --test-threads=2`.
+
+## Deferred
+
 - **Consolidation of the integration-test binaries.** Deferred, not done. A
   cold local `cargo test --locked --no-run --timings` took 20.1 s wall and
   130.4 CPU-s. The 125 dependency units took 75.2 CPU-s, the `klin` binary
