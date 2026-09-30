@@ -503,8 +503,9 @@ fn exclusion(out: &mut String) {
          `exclude`, `exclude_except`, `ceilings`, `name`, `path`, `pattern` and `manifests` \
          topology keys with a migration error. A file measured under the base scope and \
          omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.\n\n\
-         `doc_size` maps a document path to its ceiling, and every document at the tree root it \
-         does not name keeps a derived ceiling. `doc_citations` reads every Markdown file at the \
+         `doc_size` maps a document path to its ceiling, and `AGENTS.md` and `CLAUDE.md` at the \
+         tree root keep a derived ceiling where it does not name them; every other document is \
+         judged only when the map names it. `doc_citations` reads every Markdown file at the \
          tree root and resolves a citation against the whole tree; a citation names one of the \
          built-in extensions {}.",
         listed(&crate::files::default_skip_dirs()),

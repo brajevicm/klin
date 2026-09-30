@@ -91,6 +91,11 @@ A value klin computed because the config did not pin the value. A number
 comes from one commit; a set of paths adds what the tree holds.
 _Avoid_: default, inferred
 
+**Instruction file**:
+An agent instruction file at the tree root, `AGENTS.md` or `CLAUDE.md`. It is
+the only document `doc-size` derives a ceiling for.
+_Avoid_: agent doc, prompt file
+
 **Pin**:
 A value a person wrote into `klin.json` in place of the one klin would
 derive: a ceiling, a scope, a build command. A pin is policy, never a fact

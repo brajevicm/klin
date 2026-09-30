@@ -21,7 +21,7 @@ One key per gate, named for its section. Every check discovers what it applies t
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `<document path>` | the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. Every other document at the tree root keeps a derived ceiling | no | derived when absent | every Markdown file at the tree root that the derivation commit holds: its word count there, rounded up to the next 50 and never below 50 | — |
+| `<document path>` | the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; every other document is judged only when the map names it | no | derived when absent | `AGENTS.md` and `CLAUDE.md` at the tree root, where the derivation commit holds them: the word count there, rounded up to the next 50 and never below 50 | — |
 
 ### `doc_citations`
 
@@ -201,7 +201,7 @@ Every source check discovers supported files from one repository walk, skips the
 
 `complexity`, `escapes`, `stubs`, `dead_symbols`, `reachability`, `inventory` and `lockfile` reject the retired `roots`, `languages`, `patterns`, `skip_dirs`, `exclude`, `exclude_except`, `ceilings`, `name`, `path`, `pattern` and `manifests` topology keys with a migration error. A file measured under the base scope and omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.
 
-`doc_size` maps a document path to its ceiling, and every document at the tree root it does not name keeps a derived ceiling. `doc_citations` reads every Markdown file at the tree root and resolves a citation against the whole tree; a citation names one of the built-in extensions `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`.
+`doc_size` maps a document path to its ceiling, and `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where it does not name them; every other document is judged only when the map names it. `doc_citations` reads every Markdown file at the tree root and resolves a citation against the whole tree; a citation names one of the built-in extensions `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`.
 
 ## Ceilings
 

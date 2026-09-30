@@ -363,7 +363,7 @@ pub const CATALOGUE: &[Row] = &[
         keys: doc_size::KEYS,
         reference_text: None,
         languages: None,
-        available: |project| !project.facts().found.documents.is_empty(),
+        available: doc_size::applies,
         run: doc_size::gate,
         needs: Needs::Nothing,
         takes_scope: false,

@@ -257,6 +257,30 @@ fn a_citation_added_in_the_working_tree_that_resolves_nowhere_fails() {
     );
 }
 
+/// `doc-size` derives no ceiling for a README, and `doc-citations` still reads every Markdown
+/// file at the tree root. #382.
+#[test]
+fn a_root_readme_doc_size_does_not_judge_is_still_read_for_citations() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("README.md", "Nothing is cited here.\n");
+    tree.base();
+    tree.write(
+        "README.md",
+        "Nothing is cited here.\nThe store is `src/store.py`.\n",
+    );
+
+    let run = tree.run(&["gate"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  doc-citations"), "{}", run.out);
+    assert!(
+        run.says("README.md:2  not under the roots  src/store.py"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("derived: doc_size"), "{}", run.out);
+}
+
 #[test]
 fn a_citation_whose_target_moved_fails_and_the_remedy_names_the_moved_file() {
     let tree = Tree::new();

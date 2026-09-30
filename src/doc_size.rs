@@ -1,7 +1,7 @@
-//! `doc-size` judges each document's word count against a ceiling. Every Markdown file at the
-//! tree root is judged under a ceiling derived from the derivation commit, and a person may pin
-//! a document's ceiling in a map of path to ceiling. A pin names its document by path, which
-//! is how a document outside the tree root is judged too. The identity is the document's path;
+//! `doc-size` judges each document's word count against a ceiling. The agent instruction files
+//! at the tree root are judged under a ceiling derived from the derivation commit, and a person
+//! may pin a document's ceiling in a map of path to ceiling. A pin names its document by path,
+//! which is how any other document is judged. The identity is the document's path;
 //! nothing here is ratcheted beyond the base's own word count. Spec 5.4, 8.2.1, ADR 0040.
 
 use std::collections::BTreeMap;
@@ -27,15 +27,32 @@ pub const KEYS: &[Key] = &[DOCUMENT];
 
 pub const DOCUMENT: Key = Key {
     name: "<document path>",
-    holds: "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. Every other document at the tree root keeps a derived ceiling",
+    holds: "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; every other document is judged only when the map names it",
     required: false,
     rule: Some(
-        "every Markdown file at the tree root that the derivation commit holds: its word count there, rounded up to the next 50 and never below 50",
+        "`AGENTS.md` and `CLAUDE.md` at the tree root, where the derivation commit holds them: the word count there, rounded up to the next 50 and never below 50",
     ),
     default: "",
     shape: crate::reference::Shape::Ceiling,
 };
 
+/// The documents a ceiling is derived for when the map does not name them. Spec 5.4.
+const INSTRUCTION_FILES: &[&str] = &["AGENTS.md", "CLAUDE.md"];
+
+fn is_instruction_file(name: &str) -> bool {
+    INSTRUCTION_FILES.contains(&name)
+}
+
+/// Whether the tree holds an instruction file at its root, which is when this check runs with no
+/// section. Spec 5.4.
+pub fn applies(project: &Project) -> bool {
+    project
+        .facts()
+        .found
+        .documents
+        .iter()
+        .any(|name| is_instruction_file(name))
+}
 const CEILING_STEP: u64 = 50;
 pub const RULE: &str = "the word count at the derivation commit, rounded up to the next 50";
 const MARGIN_FRACTION: f64 = 0.02;
@@ -301,16 +318,16 @@ fn documents(
         .map(|document| vec![document])
         .ok_or_else(|| {
             Error(format!(
-                "{}: no \"{SECTION}\" ceiling for {} — it is neither pinned nor a document the \
-                 derivation commit holds at the tree root; pass --ceiling N",
+                "{}: no \"{SECTION}\" ceiling for {} — it is neither pinned nor an instruction \
+                 file the derivation commit holds at the tree root; pass --ceiling N",
                 at.config().file.display(),
                 named.display()
             ))
         })
 }
 
-/// Every pinned document under its pin, then every discovered document the config does not pin
-/// under its derived ceiling. A discovered document the derivation commit lacks has no ceiling
+/// Every pinned document under its pin, then every instruction file the config does not pin
+/// under its derived ceiling. An instruction file the derivation commit lacks has no ceiling
 /// that is not read out of the working tree, which 4.3 forbids, so a NOTE names it and it is not
 /// judged. Spec 4.3, 5.4.
 fn listing(project: &Project) -> Result<Listing, Error> {
@@ -326,6 +343,7 @@ fn listing(project: &Project) -> Result<Listing, Error> {
         .found
         .documents
         .iter()
+        .filter(|name| is_instruction_file(name))
         .filter(|name| {
             !pins
                 .keys()
@@ -354,7 +372,7 @@ fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> 
     Ok(listing)
 }
 
-/// Every discovered document the config does not pin, under the ceiling the derivation commit
+/// Every instruction file the config does not pin, under the ceiling the derivation commit
 /// gives it, or named in a NOTE when that commit lacks it.
 fn derived(project: &Project, unpinned: &[&String], listing: &mut Listing) {
     let config = &project.config;
@@ -402,7 +420,7 @@ fn document(config: &Config, name: &str, ceiling: Ceiling) -> Document {
     }
 }
 
-/// One word ceiling per document the derivation commit holds at the tree root: its word count
+/// One word ceiling per instruction file the derivation commit holds at the tree root: its count
 /// there, rounded up to the next 50, so an empty document gets 50 rather than a ceiling its
 /// first word breaks. Read through one git process once per commit and cached under it. A
 /// document the commit lacks is not here. Spec 5.4.
@@ -417,7 +435,12 @@ pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
         return cached;
     }
     let mut out = BTreeMap::new();
-    let names: Vec<&str> = held.documents.iter().map(String::as_str).collect();
+    let names: Vec<&str> = held
+        .documents
+        .iter()
+        .map(String::as_str)
+        .filter(|name| is_instruction_file(name))
+        .collect();
     let read = changed::blobs(project.root(), commit, &names, |name, bytes| {
         let words = bytes.map(words_in).unwrap_or_default();
         out.insert(name.to_string(), (words / CEILING_STEP + 1) * CEILING_STEP);
@@ -435,13 +458,17 @@ pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
     out
 }
 
-/// The cached ceilings when every one of them is a number, because a file another hand edited
-/// is no more this commit's derivation than one another version wrote.
+/// The cached ceilings when every one of them is a number for an instruction file, because a
+/// file another hand edited, or one that names any other document, is no more this commit's
+/// derivation than one another version wrote.
 fn read_ceilings(cached: &Value) -> Option<BTreeMap<String, u64>> {
     cached
         .as_object()?
         .iter()
-        .map(|(name, words)| Some((name.clone(), words.as_u64()?)))
+        .map(|(name, words)| match is_instruction_file(name) {
+            true => Some((name.clone(), words.as_u64()?)),
+            false => None,
+        })
         .collect()
 }
 

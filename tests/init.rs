@@ -27,7 +27,7 @@ fn in_debt() -> Tree {
     tree.write("src/knot.rs", TANGLED);
     tree.write("src/lib.rs", text::WRAPPED);
     tree.write("tests/knot.rs", TANGLED);
-    tree.words("README.md", 400);
+    tree.words("AGENTS.md", 400);
     tree.write("Cargo.toml", "[package]\nname = \"t\"\n");
     tree.base();
     tree
@@ -179,12 +179,71 @@ fn pin_writes_only_stable_guardrails() {
         "{config}"
     );
     assert!(
-        config["doc_size"]["README.md"].as_u64().unwrap_or_default() >= 400,
+        config["doc_size"]["AGENTS.md"].as_u64().unwrap_or_default() >= 400,
         "{config}"
     );
 
     let gated = tree.run(&["gate", "--strict"]);
     assert_eq!(gated.code, 0, "{}", gated.out);
+}
+
+/// `--pin` pins what a run derives, so a README gets no ceiling beside the instruction files.
+/// #382.
+#[test]
+fn pin_writes_a_document_ceiling_only_for_the_instruction_files() {
+    let tree = Tree::bare();
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.words("AGENTS.md", 120);
+    tree.words("CLAUDE.md", 20);
+    tree.words("README.md", 400);
+    tree.base();
+
+    let run = tree.run(&["init", "--pin"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        config(&tree)["doc_size"],
+        serde_json::json!({"AGENTS.md": 150, "CLAUDE.md": 50}),
+        "{}",
+        run.out
+    );
+}
+
+/// A cache of this version that names a README is not this commit's derivation, so `--pin`
+/// derives again, writes no README ceiling and leaves none in the cache. #382.
+#[test]
+fn pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds() {
+    let tree = Tree::bare();
+    tree.write("src/lib.rs", "fn f() {}\n");
+    tree.words("AGENTS.md", 120);
+    tree.words("README.md", 400);
+    tree.base();
+    let cache = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
+    let stale = format!(
+        "{{\"version\":\"{}\",\"doc_size\":{{\"AGENTS.md\":999,\"README.md\":450}}}}\n",
+        env!("CARGO_PKG_VERSION")
+    );
+    assert!(
+        cache
+            .parent()
+            .is_some_and(|under| std::fs::create_dir_all(under).is_ok())
+    );
+    assert!(std::fs::write(&cache, stale).is_ok());
+
+    let run = tree.run(&["init", "--pin"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        config(&tree)["doc_size"],
+        serde_json::json!({"AGENTS.md": 150}),
+        "{}",
+        run.out
+    );
+    let held: Value = serde_json::from_str(&std::fs::read_to_string(&cache).unwrap_or_default())
+        .unwrap_or_default();
+    assert_eq!(
+        held["doc_size"],
+        serde_json::json!({"AGENTS.md": 150}),
+        "{held}"
+    );
 }
 
 /// `init` pins what history says, so a person can see the two numbers, edit them and put them
