@@ -12,7 +12,7 @@ use crate::check::{self, ContentCost, Context, Sink};
 use crate::config::Error;
 use crate::coverage::{self, Files};
 use crate::files;
-use crate::project::{Project, Tree};
+use crate::project::{Project, Tests, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
@@ -26,7 +26,7 @@ const SAMPLE_SIZE: usize = 50;
 const PERCENTILE: usize = 95;
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[CC, LINES, scope::IN, scope::EXCEPT];
+pub const KEYS: &[Key] = &[CC, LINES, TEST_LINES, scope::IN, scope::EXCEPT];
 
 pub const CC: Key = Key {
     name: "cc",
@@ -43,10 +43,23 @@ pub const CC: Key = Key {
 
 pub const LINES: Key = Key {
     name: "lines",
-    holds: "the body length a function may not pass",
+    holds: "the body length a function outside test code may not pass",
     required: false,
-    rule: Some("the 95th percentile of `lines`, by the same rule as `cc`, with a floor of 25"),
+    rule: Some(
+        "the 95th percentile of `lines`, by the same rule as `cc`, test code included, with a \
+         floor of 25",
+    ),
     default: "",
+    shape: crate::reference::Shape::Ceiling,
+};
+
+pub const TEST_LINES: Key = Key {
+    name: "test_lines",
+    holds: "the body length a function in test code may not pass: in a test file of spec 5.4, \
+            or in an inline Rust `#[cfg(test)]` module",
+    required: false,
+    rule: None,
+    default: "test code is not judged on length",
     shape: crate::reference::Shape::Ceiling,
 };
 
@@ -270,6 +283,7 @@ struct Function {
     cc: u64,
     text: String,
     body: u64,
+    test: bool,
 }
 
 impl Function {
@@ -277,14 +291,26 @@ impl Function {
         self.end - self.line + 1
     }
 
-    fn over(&self, ceilings: &Ceilings) -> bool {
-        self.cc > ceilings.cc.value || self.length() > ceilings.lines.value
+    fn length_ceiling<'a>(&self, ceilings: &'a Ceilings) -> Option<&'a Ceiling> {
+        match self.test {
+            true => ceilings.test_lines.as_ref(),
+            false => Some(&ceilings.lines),
+        }
     }
 
-    fn finding(&self) -> Finding {
+    fn over(&self, ceilings: &Ceilings) -> bool {
+        self.cc > ceilings.cc.value
+            || self
+                .length_ceiling(ceilings)
+                .is_some_and(|ceiling| self.length() > ceiling.value)
+    }
+
+    fn finding(&self, ceilings: &Ceilings) -> Finding {
         let mut values = Values::new();
         values.insert("cc".into(), self.cc.into());
-        values.insert("lines".into(), self.length().into());
+        if self.length_ceiling(ceilings).is_some() {
+            values.insert("lines".into(), self.length().into());
+        }
         Finding {
             file: self.file.clone(),
             line: self.line,
@@ -298,6 +324,19 @@ impl Function {
 struct Ceilings {
     cc: Ceiling,
     lines: Ceiling,
+    test_lines: Option<Ceiling>,
+}
+
+impl Ceilings {
+    fn named(&self) -> Vec<(&'static str, &Ceiling)> {
+        let mut named = vec![(CC.name, &self.cc), (LINES.name, &self.lines)];
+        named.extend(
+            self.test_lines
+                .iter()
+                .map(|ceiling| (TEST_LINES.name, ceiling)),
+        );
+        named
+    }
 }
 
 /// One tree walked: its functions, the files no grammar read, and the files the walk reached,
@@ -347,6 +386,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         at.changes.filter(|_| !at.strict),
     )?;
     let now = over(&sweep.functions, &spec);
+    let tests = unjudged_tests(&sweep.functions, &spec.ceilings, at);
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = sweep.files.coverage(at.only).said(out);
@@ -355,6 +395,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
+    let unjudged = tests.said(&before, laid);
     let code = evaluator(&spec).evaluate(
         now,
         prior,
@@ -363,9 +404,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         Line {
             state: &format!(
                 "{judged} function(s) judged, {count} over the gate{}",
-                ceiling::in_force(&[("cc", &spec.ceilings.cc), ("lines", &spec.ceilings.lines)])
+                ceiling::in_force(&spec.ceilings.named())
             ),
-            tail: &said,
+            tail: &format!("{unjudged}{said}"),
         },
         out,
     );
@@ -404,8 +445,55 @@ fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
     functions
         .iter()
         .filter(|function| function.over(&spec.ceilings))
-        .map(Function::finding)
+        .map(|function| function.finding(&spec.ceilings))
         .collect()
+}
+
+struct Unjudged<'a> {
+    functions: usize,
+    files: BTreeSet<&'a str>,
+}
+
+fn unjudged_tests<'a>(
+    functions: &'a [Function],
+    ceilings: &Ceilings,
+    at: &Context,
+) -> Unjudged<'a> {
+    let tests: Vec<&Function> = functions
+        .iter()
+        .filter(|function| function.test && function.length_ceiling(ceilings).is_none())
+        .filter(|function| at.only.is_none_or(|only| only.contains(&function.file)))
+        .collect();
+    Unjudged {
+        functions: tests.len(),
+        files: tests
+            .iter()
+            .map(|function| function.file.as_str())
+            .collect(),
+    }
+}
+
+impl Unjudged<'_> {
+    fn said(&self, before: &Files, prior: &base::Prior) -> String {
+        if self.functions == 0 {
+            return String::new();
+        }
+        let held: BTreeSet<&str> = before.measured.iter().map(String::as_str).collect();
+        let arrived: Vec<&str> = self
+            .files
+            .iter()
+            .filter(|file| prior.renamed().contains_key(**file) || !held.contains(**file))
+            .copied()
+            .collect();
+        let named = match arrived.is_empty() {
+            true => String::new(),
+            false => format!("; added or renamed: {}", arrived.join(", ")),
+        };
+        format!(
+            "; {} test function(s) not judged on length, with no test_lines pinned{named}",
+            self.functions
+        )
+    }
 }
 
 fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
@@ -458,16 +546,29 @@ fn spec(project: &Project) -> Result<Spec, Error> {
     Ok(Spec {
         selection,
         gate_text: format!(
-            "over the complexity gate (cyclomatic > {}{} or body > {} lines{})",
+            "over the complexity gate (cyclomatic > {}{} or body > {} lines{}{})",
             resolved.ceilings.cc.value,
             resolved.ceilings.cc.note(),
             resolved.ceilings.lines.value,
-            resolved.ceilings.lines.note()
+            resolved.ceilings.lines.note(),
+            resolved
+                .ceilings
+                .test_lines
+                .as_ref()
+                .map(|ceiling| format!(
+                    ", or test body > {} lines{}",
+                    ceiling.value,
+                    ceiling.note()
+                ))
+                .unwrap_or_default()
         ),
-        ceiling_text: format!(
-            "cc {}, lines {}",
-            resolved.ceilings.cc, resolved.ceilings.lines
-        ),
+        ceiling_text: resolved
+            .ceilings
+            .named()
+            .iter()
+            .map(|(key, ceiling)| format!("{key} {ceiling}"))
+            .collect::<Vec<_>>()
+            .join(", "),
         ceilings: resolved.ceilings,
         provenance: resolved.provenance,
         notes: resolved.notes,
@@ -480,14 +581,21 @@ struct Resolved {
     notes: Notes,
 }
 
+fn pinned(
+    project: &Project,
+    key: Key,
+    value: &Value,
+) -> Result<(Ceiling, (String, Option<Value>)), Error> {
+    let ceiling = ceiling::read(&project.config, SECTION, key.name, value, "a whole number")?;
+    let line = format!("pinned: {SECTION} {} {ceiling}", key.name);
+    Ok((ceiling, (line, None)))
+}
+
 fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolved, Error> {
     let sample = OnceCell::new();
     let resolve = |key: Key, floor: u64, measure: fn(&Sample) -> u64| -> Result<_, Error> {
         if let Some(value) = section.get(key.name) {
-            let ceiling =
-                ceiling::read(&project.config, SECTION, key.name, value, "a whole number")?;
-            let line = format!("pinned: {SECTION} {} {ceiling}", key.name);
-            return Ok((ceiling, (line, None)));
+            return pinned(project, key, value);
         }
         let (found, commit) = sample.get_or_init(|| derived_sample(project));
         let value = measure(found).max(floor);
@@ -507,14 +615,27 @@ fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolv
     };
     let (cc, cc_said) = resolve(CC, CC_FLOOR, |found| found.cc)?;
     let (lines, lines_said) = resolve(LINES, LINES_FLOOR, |found| found.lines)?;
+    let mut provenance = vec![cc_said, lines_said];
+    let test_lines = match section.get(TEST_LINES.name) {
+        Some(value) => {
+            let (ceiling, said) = pinned(project, TEST_LINES, value)?;
+            provenance.push(said);
+            Some(ceiling)
+        }
+        None => None,
+    };
     let file = config_name(&project.config.file);
     let notes = sample
         .get()
         .map(|(found, commit)| sample_notes(found, commit.as_deref(), scope, file))
         .unwrap_or_default();
     Ok(Resolved {
-        ceilings: Ceilings { cc, lines },
-        provenance: vec![cc_said, lines_said],
+        ceilings: Ceilings {
+            cc,
+            lines,
+            test_lines,
+        },
+        provenance,
         notes,
     })
 }
@@ -787,7 +908,8 @@ fn measure(
         .iter()
         .map(|file| files::relative(file, repo_root))
         .collect();
-    let (out, unparsed, work) = read_current(found.kept, selection, repo_root, changes)?;
+    let (out, unparsed, work) =
+        read_current(found.kept, selection, &tree.tests(), repo_root, changes)?;
     measured.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
     let files = Files {
         measured,
@@ -810,6 +932,7 @@ fn measure(
 fn read_current(
     kept: Vec<PathBuf>,
     selection: &Selection,
+    tests: &Tests,
     repo_root: &Path,
     changes: Option<&[Change]>,
 ) -> Result<(Vec<Function>, Vec<Unparsed>, ContentCost), Error> {
@@ -837,7 +960,7 @@ fn read_current(
         };
         work.reads += 1;
         work.parses += 1;
-        out.extend(functions(&file, repo_root, language, &mut unparsed)?);
+        out.extend(functions(&file, repo_root, language, tests, &mut unparsed)?);
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
     Ok((out, unparsed, work))
@@ -857,13 +980,18 @@ fn functions(
     path: &Path,
     repo_root: &Path,
     language: &'static Language,
+    tests: &Tests,
     unparsed: &mut Vec<Unparsed>,
 ) -> Result<Vec<Function>, Error> {
     let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
     let source = String::from_utf8_lossy(&bytes).to_string();
     let file = files::relative(path, repo_root);
     match syntax::read(&file, &source, language)? {
-        Parsed::Read(read) => Ok(parsed(&read)),
+        Parsed::Read(read) => {
+            let mut found = parsed(&read);
+            marked_as_tests(&mut found, tests.file_holds(&file), &read);
+            Ok(found)
+        }
         Parsed::Rejected(refused) => {
             unparsed.push(refused);
             Ok(Vec::new())
@@ -884,6 +1012,21 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
     let mut out = Vec::new();
     collect(file.root(), &at, &mut out);
     out
+}
+
+fn marked_as_tests(found: &mut [Function], test_file: bool, file: &ParsedFile) {
+    let modules = match (test_file, file.language.id) {
+        (false, LanguageId::Rust) => {
+            syntax::convention::test_modules(file.root(), file.source.as_bytes())
+        }
+        _ => Vec::new(),
+    };
+    for function in found {
+        function.test = test_file
+            || modules
+                .iter()
+                .any(|(from, to)| (*from..=*to).contains(&function.line));
+    }
 }
 
 /// What one function comes to under this check, for a caller that measures a tree it does not
@@ -931,6 +1074,7 @@ fn collect(node: Node, at: &Walked, out: &mut Vec<Function>) {
             cc: 1 + decisions(node, at),
             text: site(node, &at.lines),
             body: ratchet::body_hash(node.utf8_text(at.source.as_bytes()).unwrap_or_default()),
+            test: false,
         });
     }
     let mut cursor = node.walk();
@@ -1086,5 +1230,8 @@ fn show(values: &Values) -> String {
             .and_then(Value::as_u64)
             .map_or("?".to_string(), |value| value.to_string())
     };
-    format!("cc {}, {} lines", number("cc"), number("lines"))
+    match values.contains_key("lines") {
+        true => format!("cc {}, {} lines", number("cc"), number("lines")),
+        false => format!("cc {}", number("cc")),
+    }
 }

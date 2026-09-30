@@ -144,7 +144,27 @@
                   "type": "object"
                 }
               ],
-              "description": "the body length a function may not pass"
+              "description": "the body length a function outside test code may not pass"
+            },
+            "test_lines": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": false,
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^[0-9]{4}-[0-9]{2}-[0-9]{2}$": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              ],
+              "description": "the body length a function in test code may not pass: in a test file of spec 5.4, or in an inline Rust `#[cfg(test)]` module"
             }
           },
           "type": "object"

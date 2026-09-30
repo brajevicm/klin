@@ -795,7 +795,7 @@ fn typescript_functions_carry_their_hand_checked_numbers() {
 #[test]
 fn a_growing_suite_callback_in_a_test_file_is_not_a_complexity_finding() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"test_lines":25}}"#);
     let fillers = "  void 0;\n".repeat(30);
     let containers = [
         "describe('suite',",
@@ -841,7 +841,7 @@ fn a_growing_suite_callback_in_a_test_file_is_not_a_complexity_finding() {
 #[test]
 fn a_long_test_callback_inside_a_suite_is_still_measured() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"test_lines":25}}"#);
     let fillers = "    void 0;\n".repeat(30);
     tree.write(
         "src/suite.test.ts",
@@ -896,7 +896,7 @@ fn a_suite_callback_in_a_production_file_is_still_measured() {
 #[test]
 fn a_call_returned_by_a_suite_name_is_not_a_suite_container() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"test_lines":25}}"#);
     let fillers = "  void 0;\n".repeat(30);
     for (file, call) in [
         ("tests/returned.test.ts", "describe()"),
@@ -917,7 +917,7 @@ fn a_call_returned_by_a_suite_name_is_not_a_suite_container() {
 #[test]
 fn typescript_wrappers_do_not_change_suite_callback_classification() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{"complexity":{"cc":8,"lines":25}}"#);
+    tree.write("klin.json", r#"{"complexity":{"cc":8,"test_lines":25}}"#);
     let fillers = "  void 0;\n".repeat(30);
     tree.write(
         "tests/wrapped.test.ts",
@@ -1607,6 +1607,161 @@ fn failure_output_asks_for_a_design_fix_and_not_a_split_to_the_number() {
     );
     assert!(
         run.says("policy decision for a person, in the config, in a reviewed commit."),
+        "{}",
+        run.out
+    );
+}
+
+/// A Rust function of `lines` lines that decides nothing.
+fn long(name: &str, lines: usize) -> String {
+    format!(
+        "fn {name}() {{\n{}}}\n",
+        "    let a = 1;\n".repeat(lines - 2)
+    )
+}
+
+/// A Rust function of cc 11, over the derived floor of 10, in 13 lines.
+fn knotted(name: &str) -> String {
+    TANGLED
+        .replace("a == 0 ||", "a == 0 || a == -2 || a == -3 ||")
+        .replacen("fn tangled", &format!("fn {name}"), 1)
+}
+
+fn inline_tests(body: &str) -> String {
+    format!("fn production() -> i32 {{ 1 }}\n\n#[cfg(test)]\nmod tests {{\n{body}}}\n")
+}
+
+#[test]
+fn with_no_test_lines_a_test_function_past_the_lines_ceiling_does_not_fail() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("tests/long.rs", &long("long_test", 40));
+    tree.write("src/lib.rs", &inline_tests(&long("long_inline_test", 40)));
+    tree.write(
+        "web/long.test.ts",
+        &format!("function longCase() {{\n{}}}\n", "  void 0;\n".repeat(38)),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: complexity lines 25"), "{}", run.out);
+}
+
+#[test]
+fn with_no_test_lines_a_test_function_past_the_cc_ceiling_still_fails() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("tests/knot.rs", &knotted("knot_test"));
+    tree.write("src/lib.rs", &inline_tests(&knotted("inline_knot")));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("tests/knot.rs:1  cc 11"), "{}", run.out);
+    assert!(run.says("src/lib.rs:5  cc 11"), "{}", run.out);
+}
+
+#[test]
+fn a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lines() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let knot = knotted("knot_test");
+    tree.write("tests/knot.rs", &knot);
+    tree.base();
+    tree.write(
+        "tests/knot.rs",
+        &knot.replace(
+            "    match a {",
+            &format!("{}    match a {{", "    let _ = a;\n".repeat(20)),
+        ),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn with_test_lines_pinned_a_test_function_past_it_fails() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "test_lines": 30 } }"#);
+    tree.write("tests/long.rs", &long("long_test", 40));
+    tree.write("src/lib.rs", &inline_tests(&long("long_inline_test", 40)));
+    tree.write("tests/short.rs", &long("short_test", 28));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("pinned: complexity test_lines 30"), "{}", run.out);
+    assert!(run.says("tests/long.rs:1  cc 1, 40 lines"), "{}", run.out);
+    assert!(run.says("src/lib.rs:5  cc 1, 40 lines"), "{}", run.out);
+    assert!(!run.says("tests/short.rs:1"), "{}", run.out);
+    assert!(!run.says("not judged on length"), "{}", run.out);
+}
+
+#[test]
+fn with_only_lines_pinned_a_production_function_is_judged_and_a_test_function_is_not() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "lines": 30 } }"#);
+    tree.write("src/long.rs", &long("long_production", 40));
+    tree.write("tests/long.rs", &long("long_test", 40));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/long.rs:1  cc 1, 40 lines"), "{}", run.out);
+    assert!(!run.says("tests/long.rs:1"), "{}", run.out);
+}
+
+#[test]
+fn with_no_test_lines_the_coverage_line_says_test_code_was_not_judged_on_length() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("tests/old.rs", &long("old_test", 5));
+    tree.write("tests/before.rs", &long("renamed_test", 5));
+    tree.write("src/lib.rs", &inline_tests(&long("inline_test", 5)));
+    tree.base();
+    tree.write("tests/new.rs", &long("new_test", 5));
+    tree.git(&["mv", "tests/before.rs", "tests/after.rs"]);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("4 test function(s) not judged on length, with no test_lines pinned"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("added or renamed: tests/after.rs, tests/new.rs"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("tests/old.rs"), "{}", run.out);
+}
+
+#[test]
+fn test_code_stays_in_the_derived_sample_for_both_ceilings() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let simple = (0..47)
+        .map(|at| format!("fn simple_{at}() -> i32 {{ 1 }}\n"))
+        .collect::<String>();
+    tree.write("src/simple.rs", &simple);
+    let tests = (0..3)
+        .map(|at| {
+            knotted(&format!("knot_{at}")).replace(
+                "    match a {",
+                &format!("{}    match a {{", "    let _ = a;\n".repeat(20)),
+            )
+        })
+        .collect::<String>();
+    tree.write("tests/knots.rs", &tests);
+    tree.base();
+
+    let run = tree.run(&["complexity"]);
+    assert!(
+        run.says("derived: complexity cc 11 (95th percentile of 50"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("derived: complexity lines 33 (95th percentile of 50"),
         "{}",
         run.out
     );

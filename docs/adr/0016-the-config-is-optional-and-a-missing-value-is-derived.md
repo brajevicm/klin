@@ -7,6 +7,9 @@
 >
 > The amendment below (#385) restates the source root rule as the survey
 > applies it, and lets a test root sit inside a package's source root.
+>
+> ADR 0063 amends the decision for one key: a missing `complexity.test_lines`
+> is not derived, and test code is then not judged on length.
 
 ADR 0005 held two rules apart. A key a gate needs and does not find is an
 error naming the key, never a default. And `init` writes every section it can

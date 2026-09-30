@@ -356,8 +356,13 @@ pub fn test_module_ranges(path: &str, source: &str) -> Vec<(u64, u64)> {
     let Some(file) = tolerant(path, source) else {
         return Vec::new();
     };
+    test_modules(file.root(), file.bytes())
+}
+
+/// The line ranges an inline Rust test module covers in a tree already parsed.
+pub fn test_modules(root: Node, source: &[u8]) -> Vec<(u64, u64)> {
     let mut out = Vec::new();
-    marked_ranges(file.root(), file.bytes(), &mut out);
+    marked_ranges(root, source, &mut out);
     out
 }
 

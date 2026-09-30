@@ -535,7 +535,10 @@ non-empty list, selecting that path and everything below it. They are paths,
 not globs. An explicit `in` with no applicable file is exit 2.
 
 `complexity` additionally reads `cc` and `lines`; either is a whole number or
-a dated ceiling schedule and either may be omitted for derivation. `escapes`
+a dated ceiling schedule and either may be omitted for derivation. It also
+reads `test_lines`, of the same shape, which only a person pins, and which
+holds the length of test code as `lines` holds the length of production code
+(5.4, 8.2.1, ADR 0063). `escapes`
 additionally reads `skip_test_idioms`, default `true`, which leaves `unwrap` and
 `expect` out of Rust test code and `@ts-expect-error` out of TypeScript and
 JavaScript test files, and nothing else (8.2, ADR 0049, ADR 0060). The key was
@@ -657,8 +660,13 @@ Each check documents its rule. The rules for the shipped checks:
   floor is the ceiling. A pinned `cc` wins over the floor, whatever its value
   (ADR 0059). Pinned by `a_percentile_below_ten_derives_a_cc_ceiling_of_ten`
   and `a_pinned_cc_below_ten_still_judges_at_the_pinned_value` in
-  `tests/complexity.rs`. A function found only in `after` never enters the
-  percentile. No recorded section, or a recorded object with neither `in` nor
+  `tests/complexity.rs`. Test code of 8.2.1 stays in the sample of both
+  measures, so no derived ceiling moves when tests are judged apart. Pinned
+  by `test_code_stays_in_the_derived_sample_for_both_ceilings`. `lines`
+  judges only production code. `complexity.test_lines` is never derived: a
+  missing `test_lines` means test code is not judged on length, and not that
+  a ceiling is derived for it (ADR 0063). A function found only in `after`
+  never enters the percentile. No recorded section, or a recorded object with neither `in` nor
   `except`, selects the whole repository. A recorded scope that selects no
   supported function derives the floors and names its zero-function sample.
   A recorded configuration or complexity section that exists but cannot be
@@ -774,7 +782,9 @@ nothing, because a run derives what the file leaves out. It MUST NOT change an
 existing configuration.
 
 `init --pin` writes today's suggested guardrails as policy a person reviews:
-the complexity `cc` and `lines` the derivation commit gives, a `doc_size`
+the complexity `cc` and `lines` the derivation commit gives, and no
+`test_lines`, which nothing derives (pinned by
+`pin_writes_no_test_lines_because_klin_never_derives_it` in `tests/init.rs`), a `doc_size`
 ceiling for each instruction file of 5.4 that commit holds at the tree root and
 for no other document, because it pins what a run derives, and the `radius`
 values history gives. The `doc_size` rule is pinned by
@@ -1099,7 +1109,9 @@ Three outcomes (ADR 0009):
 
 A `complexity` site ratchets both `cc` and `lines`, so a function over its
 `cc` ceiling is `worsened` when only its `lines` rise, even under the `lines`
-ceiling. No `+N` or percentage tolerance applies (ADR 0062). Pinned by
+ceiling. A function in test code with no `test_lines` pinned ratchets `cc`
+alone, because nothing judges its length (8.2.1). Pinned by
+`a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lines`. No `+N` or percentage tolerance applies (ADR 0062). Pinned by
 `a_function_whose_length_grew_since_the_base_fails_too` in
 `tests/complexity.rs`.
 
@@ -1890,8 +1902,29 @@ measured as before. A test file is one that
 `switch`, the `else` arm of a Kotlin `when`, and a single unguarded
 catch-all arm of a `match` or `case` add nothing. `lines` is the
 count of source lines from the first line of the declaration to the last
-line of its body, both inclusive, so a one-line function is 1. The
-hand-checked numbers per language are the contract, in
+line of its body, both inclusive, so a one-line function is 1.
+
+Test code is judged on `cc` as production code is, and on length only
+against `test_lines`. Test code is every function in a test file of 5.4, one
+under a test root or one a test directory segment or a test affix marks, and
+every function inside an inline Rust `#[cfg(test)]` module, helpers and
+fixtures included. Each tree is classified over its own files. With
+`test_lines` pinned, a function in test code over it is a finding, and
+`lines` judges only the rest. With no `test_lines`, no function in test code
+fails on length, its finding carries no `lines`, and the `OK:` line says how
+many test functions were not judged on length and names each file that holds
+one and that the change added or renamed, since nothing else checks how long
+those tests are. A failure names the ceilings in force, with `test_lines`
+only where one is pinned. Pinned by
+`with_no_test_lines_a_test_function_past_the_lines_ceiling_does_not_fail`,
+`with_no_test_lines_a_test_function_past_the_cc_ceiling_still_fails`,
+`with_test_lines_pinned_a_test_function_past_it_fails`,
+`with_only_lines_pinned_a_production_function_is_judged_and_a_test_function_is_not`
+and
+`with_no_test_lines_the_coverage_line_says_test_code_was_not_judged_on_length`
+in `tests/complexity.rs`.
+
+The hand-checked numbers per language are the contract, in
 `*_functions_carry_their_hand_checked_numbers` for Rust, Python, TypeScript,
 Go, Java, Ruby, Swift and Kotlin, with
 `a_nested_function_is_measured_on_its_own_not_folded_into_the_one_around_it`,
