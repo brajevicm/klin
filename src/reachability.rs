@@ -662,7 +662,7 @@ pub fn derived(root: &Path, at: Option<&Path>, commit: &str, held: &Survey) -> O
 /// those of them that are test roots. Spec 5.4, 8.2.
 fn members_at(root: &Path, commit: &str, held: &Survey) -> Option<Vec<String>> {
     let extensions = structural::selected_extensions(&[]).unwrap_or_default();
-    let test_roots: Vec<&String> = held
+    let source_test_roots: Vec<&String> = held
         .test_roots
         .iter()
         .filter(|at| held.roots.contains(at))
@@ -672,7 +672,7 @@ fn members_at(root: &Path, commit: &str, held: &Survey) -> Option<Vec<String>> {
             .into_iter()
             .filter(|path| extensions.iter().any(|end| path.ends_with(end)))
             .filter(|path| held.roots.iter().any(|at| under_or_at(path, at)))
-            .filter(|path| !test_roots.iter().any(|at| under_or_at(path, at)))
+            .filter(|path| !source_test_roots.iter().any(|at| under_or_at(path, at)))
             .collect(),
     )
 }

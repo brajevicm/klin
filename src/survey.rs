@@ -18,7 +18,8 @@ use crate::{cache, files, git, state, turn};
 /// commit. Spec 6.6.
 const KEY: &str = "survey";
 
-/// The basenames the survey calls a manifest. A check that reads one owns what it means.
+/// The basenames the survey calls a manifest. A directory that directly holds one is a package
+/// directory to the test roots of spec 5.4, and a check that reads one owns what it says.
 const MANIFESTS: &[&str] = &["Cargo.toml", "go.mod", "package.json", "tsconfig.json"];
 
 /// The directory segments a language's test convention uses, and the affixes that mark one file
@@ -170,41 +171,33 @@ fn merged(paths: &[String]) -> Vec<String> {
     let mixed = holding(paths.iter().filter(|path| !source(path)));
     let mut found = BTreeSet::new();
     for file in paths.iter().filter(|path| source(path)) {
-        let mut at = parent(file);
-        while let Some(up) = above(&at) {
-            if mixed.contains(up.as_str()) {
-                break;
-            }
-            at = up;
-        }
-        found.insert(at);
+        let mut up = ancestors(file);
+        let start = up.next().unwrap_or(ROOT);
+        let end = up.take_while(|next| !mixed.contains(next)).last();
+        found.insert(end.unwrap_or(start));
     }
-    found.into_iter().collect()
+    found.into_iter().map(str::to_string).collect()
 }
 
 /// Spec 5.4.
-fn outermost(found: &[String]) -> Vec<String> {
-    let held: HashSet<&str> = found.iter().map(String::as_str).collect();
-    found
+fn outermost(directories: &[String]) -> Vec<String> {
+    let found: HashSet<&str> = directories.iter().map(String::as_str).collect();
+    directories
         .iter()
-        .filter(|at| !ancestors(at).any(|up| held.contains(up)))
+        .filter(|at| !ancestors(at).any(|up| found.contains(up)))
         .cloned()
         .collect()
 }
 
-/// Every directory that holds one of these paths somewhere beneath it, from one pass over them,
-/// so what a directory holds is a lookup and not another scan.
+/// Spec 5.4.
 fn holding<'a>(paths: impl Iterator<Item = &'a String>) -> HashSet<&'a str> {
     let mut found = HashSet::new();
     for path in paths {
-        let mut at = path.as_str();
-        while let Some((up, _)) = at.rsplit_once('/') {
+        for up in ancestors(path) {
             if !found.insert(up) {
                 break;
             }
-            at = up;
         }
-        found.insert(ROOT);
     }
     found
 }
@@ -221,19 +214,22 @@ fn test_roots(merged: &[String], manifests: &[String], paths: &[String]) -> Vec<
             .iter()
             .filter(|path| source(path) && !test_affix(basename(path))),
     );
-    let packages: HashSet<String> = manifests.iter().map(|path| parent(path)).collect();
+    let packages: HashSet<&str> = manifests
+        .iter()
+        .filter_map(|path| ancestors(path).next())
+        .collect();
     let found: HashSet<&str> = merged.iter().map(String::as_str).collect();
-    let marked: Vec<String> = merged
+    let candidates: Vec<String> = merged
         .iter()
         .filter(|at| named_for_tests(at) || !production.contains(at.as_str()))
         .filter(|at| {
             !ancestors(at)
-                .take_while(|up| !packages.contains(*up))
+                .take_while(|up| !packages.contains(up))
                 .any(|up| found.contains(up))
         })
         .cloned()
         .collect();
-    outermost(&marked)
+    outermost(&candidates)
 }
 
 pub fn named_for_tests(directory: &str) -> bool {
@@ -256,13 +252,6 @@ fn basename(path: &str) -> &str {
 pub fn parent(path: &str) -> String {
     path.rsplit_once('/')
         .map_or_else(|| ROOT.to_string(), |(at, _)| at.to_string())
-}
-
-fn above(directory: &str) -> Option<String> {
-    match directory {
-        ROOT => None,
-        other => Some(parent(other)),
-    }
 }
 
 pub fn ancestors(path: &str) -> impl Iterator<Item = &str> {
