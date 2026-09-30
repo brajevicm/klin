@@ -4,7 +4,7 @@
 //! `klin.json` is manufactured here: each check reads these facts and resolves its own policy.
 //! Spec 4.3, ADR 0038, ADR 0040.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::iter::successors;
 use std::path::{Path, PathBuf};
 
@@ -168,7 +168,7 @@ fn document(path: &str) -> bool {
 /// Spec 5.4.
 fn merged(paths: &[String]) -> Vec<String> {
     let mixed = holding(paths.iter().filter(|path| !source(path)));
-    let mut found: Vec<String> = Vec::new();
+    let mut found = BTreeSet::new();
     for file in paths.iter().filter(|path| source(path)) {
         let mut at = parent(file);
         while let Some(up) = above(&at) {
@@ -177,12 +177,9 @@ fn merged(paths: &[String]) -> Vec<String> {
             }
             at = up;
         }
-        if !found.contains(&at) {
-            found.push(at);
-        }
+        found.insert(at);
     }
-    found.sort();
-    found
+    found.into_iter().collect()
 }
 
 /// Spec 5.4.
