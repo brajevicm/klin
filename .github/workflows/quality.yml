@@ -4,13 +4,11 @@ name: quality
 # skips never reports.
 on:
   pull_request:
-  push:
-    branches: [main]
 
-# A newer push to a pull request cancels its older run. Each push to main keeps its own run.
+# A newer push to a pull request cancels its older run.
 concurrency:
-  group: quality-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: quality-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   gates:
@@ -20,11 +18,12 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
-      # Only a push to main saves the cache. A cache saved on one merge ref serves no sibling pull
-      # request, and every pull request restores main's cache.
+      # rust-cache.yml saves this cache on main. A cache saved on one merge ref serves no sibling
+      # pull request.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          shared-key: gates
+          save-if: false
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22

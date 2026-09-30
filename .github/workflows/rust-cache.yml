@@ -1,0 +1,33 @@
+name: rust cache
+
+# quality runs on pull requests only and saves nothing, so this run on main saves the dependency
+# cache that every pull request restores. The cache key hashes Cargo.toml, Cargo.lock and
+# rust-toolchain.toml, so a push that changes none of them has nothing new to save. The weekly run
+# reads the cache, so GitHub does not evict it after 7 days without a pull request.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/rust-cache.yml"
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: rust-cache
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: gates
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked --no-run

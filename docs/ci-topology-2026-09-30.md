@@ -9,7 +9,8 @@ design, the release verification and the measurements. It follows
 
 | Workflow | Trigger | Work |
 | --- | --- | --- |
-| `quality` | each pull request push, each push to `main` | fmt, clippy, nextest, debug build, `klin gate --strict` |
+| `quality` | each pull request push | fmt, clippy, nextest, debug build, `klin gate --strict` |
+| `rust cache` | a push to `main` that changes a cache key input, weekly, manual dispatch | clippy and the test build, to save the dependency cache |
 | `release plan` | a pull request that touches a release input | `dist plan` |
 | `Release` | a pushed version tag | the dist builds, with the `quality` work on the exact tag in the x86_64 Linux build, then host and announce |
 | `benchmark` | the `benchmark` label on a pull request | release builds of base and head, perf rows |
@@ -22,38 +23,43 @@ repository allows merge commits, squash and rebase, and a person can push to
 `main` directly. No check is required, and no merge must be up to date with
 `main`.
 
-`quality` therefore keeps its run on each push to `main`. That run is the only
-run over the exact tree that `main` holds after a merge. It also saves the
-Rust cache that pull requests restore.
+On 2026-09-30, the repository owner decided to remove the `quality` run on
+each push to `main` before the protection exists. The owner plans to protect
+`main` soon. Until then, nothing checks the exact tree that `main` holds
+after a merge. Two pull requests that each pass `quality` can merge into a
+`main` that fails, and the next pull request run shows the failure.
 
-The push run on `main` stops being correctness work when all of these hold:
+The protection that makes a push run on `main` redundant has all of these:
 
 - `main` accepts changes only through pull requests, with no bypass.
 - `quality / gates` is a required check.
 - A merge must be up to date with `main`, or a merge queue tests the merged
   tree.
 
-Then the push run on `main` can shrink to the cache work, if the measurements
-below show that the cache saves more than the run costs. The protection is a
-decision for the repository owner, and #369 does not make it.
+The protection is a decision for the repository owner, and #369 does not
+make it.
 
 ## Rust cache
 
 `quality` uses `Swatinem/rust-cache`. It caches `~/.cargo` and the
 dependency artifacts under `target`, and it drops the artifacts of the klin
-crate itself before it saves.
+crate itself before it saves. Both workflows set `shared-key: gates`, so they
+compute the same key.
 
-- Only a push to `main` saves the cache (`save-if`). GitHub scopes a cache
-  that a pull request saves to that pull request's merge ref, so a sibling
-  pull request cannot restore it. A pull request restores the cache of
-  `main`, which GitHub allows for every branch.
-- GitHub scopes each cache to the ref that saved it, so `main` never reads
-  a cache from a pull request. With `save-if`, pull requests save nothing,
-  which keeps the cache storage to the entries of `main`.
-- The key holds the rustc version, the job and a hash of `Cargo.toml`,
-  `Cargo.lock` and `rust-toolchain.toml`. With an exact hit, the action does
-  not save again. `main` therefore saves a new entry only when one of those
-  files changes, and GitHub evicts an entry that no run reads for 7 days.
+- `quality` restores the cache and saves nothing (`save-if: false`). GitHub
+  scopes a cache that a pull request saves to that pull request's merge ref,
+  so a sibling pull request cannot restore it. A pull request can restore
+  the cache of `main`.
+- `rust cache` saves the cache on `main`. It runs clippy and the test build,
+  which compile the same dependencies as `quality`, and it runs no tests.
+- GitHub scopes each cache to the ref that saved it, so `main` never reads a
+  cache from a pull request.
+- The key holds the rustc version and a hash of `Cargo.toml`, `Cargo.lock`
+  and `rust-toolchain.toml`. With an exact hit, the action does not save
+  again. `rust cache` therefore runs on `main` only when one of those files,
+  or its own workflow, changes.
+- GitHub evicts a cache that no run reads for 7 days. The weekly run reads
+  the cache, and it saves a new one when GitHub evicted the old one.
 
 The `Release` workflow uses no cache. It runs a few times each month, on a
 different runner image, and a tag run is the last check before a publish.
@@ -91,9 +97,9 @@ Every workflow names each Action by a commit SHA. The hand-written files
 give the release tag in a comment. `github-action-commits` in
 `dist-workspace.toml` pins the Actions of the generated `release.yml`, and
 the release tags are comments there, because dist writes bare SHAs. `dist
-plan` still finds no drift. nextest,
-cargo-release and dist keep their pinned versions. No bot updates the pins. A
-person moves a pin to a newer release tag by hand.
+plan` still finds no drift. nextest, cargo-release and dist keep their pinned
+versions. No bot updates the pins. A person moves a pin to a newer release
+tag by hand.
 
 ## Measurements
 
@@ -130,7 +136,7 @@ These values need CI runs of this topology, and none has run yet:
 
 - The median `quality` job on pull requests, over the first 20 runs.
 - Cache hits and misses on pull requests, from the `rust-cache` step output.
-- The job time of a push to `main` with an exact cache hit.
+- The job time of `rust cache` with a cold cache and with an exact hit.
 - The added time of the verification steps in the x86_64 Linux release job.
 
 The estimate: clippy and the test build spend most of their 113 s on
@@ -144,19 +150,21 @@ cache.
 The cadence from 2026-09-16 to 2026-09-30 was 254 pull request pushes, at
 most 115 pushes to `main`, about 15 `release plan` runs and 3 releases in 15
 days. A month holds about twice that. A newer push cancels an older pull
-request run, so the real counts may be lower.
+request run, so the real counts may be lower. `rust cache` runs about 4 times
+a month on its schedule, and once for each change to a cache key input. The
+estimate is 8 runs of 3 minutes.
 
 | | `quality` bills 5 min | `quality` bills 4 min |
 | --- | ---: | ---: |
 | Pull requests, 508 runs | 2,540 | 2,032 |
-| `main`, 230 runs | 1,150 | 920 |
+| `rust cache`, about 8 runs | 24 | 24 |
 | `release plan`, 30 runs | 30 | 30 |
 | 6 releases, with the verification | 90 | 90 |
-| Linux minutes in a month | 3,810 | 3,072 |
+| Linux minutes in a month | 2,684 | 2,176 |
 
 The 6 releases also use about 42 macOS minutes. The GitHub Free plan
 includes 2,000 minutes each month, and GitHub Pro includes 3,000. At the
-cadence of the second half of September, neither plan has headroom, with or
-without the cache. Without the push run on `main`, and with a 4-minute
-`quality` run, the month uses about 2,150 Linux minutes. That needs the
-branch protection above first.
+cadence of the second half of September, the month fits GitHub Pro with
+about 300 to 800 minutes of headroom, and it does not fit GitHub Free. The
+push run on `main` that this topology removed cost about 920 to 1,150
+minutes a month.
