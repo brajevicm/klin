@@ -265,8 +265,8 @@ fn above(directory: &str) -> Option<String> {
     }
 }
 
-fn ancestors(directory: &str) -> impl Iterator<Item = &str> {
-    successors(Some(directory), |at| {
+pub fn ancestors(path: &str) -> impl Iterator<Item = &str> {
+    successors(Some(path), |at| {
         (*at != ROOT).then(|| at.rsplit_once('/').map_or(ROOT, |(up, _)| up))
     })
     .skip(1)
