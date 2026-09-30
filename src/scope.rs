@@ -5,6 +5,7 @@
 //! Spec 8.4, ADR 0038.
 
 use serde_json::{Map, Value};
+use std::collections::HashSet;
 use std::path::Path;
 
 use crate::config::{Config, Error};
@@ -202,4 +203,26 @@ pub fn under_or_at(path: &str, directory: &str) -> bool {
         || path
             .strip_prefix(directory)
             .is_some_and(|rest| rest.starts_with('/'))
+}
+
+/// Spec 5.4.
+pub struct Roots<'a>(HashSet<&'a str>);
+
+impl<'a> Roots<'a> {
+    pub fn new(directories: &'a [String]) -> Roots<'a> {
+        Roots(directories.iter().map(String::as_str).collect())
+    }
+
+    pub fn holds(&self, path: &str) -> bool {
+        std::iter::once(path)
+            .chain(ancestors(path))
+            .any(|at| self.0.contains(at))
+    }
+}
+
+pub fn ancestors(path: &str) -> impl Iterator<Item = &str> {
+    std::iter::successors(Some(path), |at| {
+        (*at != ROOT).then(|| at.rsplit_once('/').map_or(ROOT, |(up, _)| up))
+    })
+    .skip(1)
 }

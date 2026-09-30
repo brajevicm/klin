@@ -569,6 +569,40 @@ Each check documents its rule. The rules for the shipped checks:
   none, so narrowing scope cannot silently erase coverage. A derived sample
   instead uses the compact scope recorded by the derivation commit, so both
   the files and the policy that select them come from that one commit.
+- Source roots and test roots: start at the directory of each source file
+  and merge upward while the directory above holds nothing but source. A
+  source root is a directory this finds that no other one holds. A source
+  file that sits directly in a directory holding something else, such as
+  `build.rs` beside a crate's `Cargo.toml`, starts at that directory, so the
+  crate directory is a source root and holds the ones beneath it. A test root
+  is a directory this finds that a test directory segment names or whose
+  every source file carries a test affix, that no other test root holds, and
+  that no other directory this finds holds unless that one is, or holds, the
+  nearest directory above the test root that directly holds a `Cargo.toml`,
+  `go.mod`, `package.json` or `tsconfig.json`. So a crate's `build.rs`, or a
+  `jest.config.js` beside a package's `package.json`, keeps the package
+  directory a source root and leaves its `tests/` a test root. Nor does a
+  source file in a directory above the package remove that test root, such
+  as a root `install.sh` above `rust/Cargo.toml` or a `crates/check.sh`
+  above a workspace member, with or without a `build.rs` in the crate.
+  `src/spec/` beside `src/schema.sql` and `src/lib.rs` is no test root,
+  because `src`, which holds `lib.rs`, is a directory this finds between it
+  and the crate directory, and it stays in its crate's source root. The
+  survey knows no other manifest, so `Tests/` beside a Swift package's
+  `Package.swift`, or `tests/` beside a Python project's `setup.py` and
+  `pyproject.toml`, is no test root. Pinned by
+  `a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root`,
+  `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`,
+  `a_crate_below_a_directory_that_holds_a_script_keeps_its_tests_as_a_test_root`,
+  `a_config_file_beside_a_packages_manifest_keeps_its_tests_as_a_test_root`
+  and `a_directory_another_test_root_holds_is_no_test_root_of_its_own` in
+  `tests/survey.rs`, and by
+  `unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default`,
+  `a_workspace_members_build_script_and_src_are_judged_beside_its_test_root`,
+  `a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_tests_left_out`,
+  `a_directory_inside_src_is_no_test_root_beside_a_non_source_file` and
+  `removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held` in
+  `tests/escapes.rs`.
 - `doc_size`: every Markdown file at the tree root, in the derivation commit
   and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
@@ -582,11 +616,9 @@ Each check documents its rule. The rules for the shipped checks:
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
   each read against the whole tree with the built-in extension list of 8.2.1.
   This set is the check's judgement unit on a changed run too (8.2.1).
-- `inventory`: every file under a test root the survey finds, which is a
-  source root a test directory segment names or one whose every source file
-  carries a test affix, and every source file a test directory segment or a
-  test affix of 8.2 marks wherever it sits, less the default skip set and
-  hidden directories.
+- `inventory`: every file under a test root the survey finds, and every
+  source file a test directory segment or a test affix of 8.2 marks wherever
+  it sits, less the default skip set and hidden directories.
 - `lockfile`: every manifest the survey finds that klin has a reader for,
   `Cargo.toml`, `package.json` and `go.mod`.
 - `complexity.cc` and `complexity.lines`: the 95th percentile of each measure
@@ -631,9 +663,19 @@ Each check documents its rule. The rules for the shipped checks:
   `a_member_only_a_destructuring_in_another_file_binds_still_proves_its_family`
   and `a_shorthand_binding_in_another_file_reaches_and_proves_a_member` in
   `tests/reachability.rs`. `*.rs`, `*.ts` and every other
-  bare extension are never a family, nor is a test root or a file under a
-  test directory. A file under a test directory, or one whose basename
-  carries a test affix of 8.2, is never a member in a tree a run judges.
+  bare extension are never a family. The derivation reads the structural
+  files under the derivation commit's source roots, less those under a
+  source root that is also a test root, and a file under a test directory
+  seeds no family. A test root inside a source root, such as a crate's
+  `tests/` beside its `build.rs`, stays among the files read, so a reference
+  from it can prove a member, and a test directory under a family's root
+  stays in the cohort the family must prove. Pinned by
+  `a_crates_integration_tests_beside_its_build_script_still_prove_a_family`
+  and
+  `a_test_directory_under_a_family_root_stays_in_the_cohort_beside_a_non_source_file`
+  in `tests/reachability.rs`. A file under a test directory, or one whose
+  basename carries a test affix of 8.2, is never a member in a tree a run
+  judges.
   Of two candidates the
   broader wins where its whole cohort is proven, and a narrower one survives
   a broader one that is not. The policy is read from the derivation commit

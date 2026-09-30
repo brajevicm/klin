@@ -1045,6 +1045,130 @@ fn production_rust_beside_a_test_root_is_judged_as_before() {
     assert!(!run.says("tests/render.rs"), "{}", run.out);
 }
 
+const MANIFEST: &str = "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n";
+
+#[test]
+fn unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write("build.rs", "fn main() {}\n");
+    tree.write(
+        "src/lib.rs",
+        "pub fn wrap(t: &str) -> Vec<String> { vec![t.to_string()] }\n",
+    );
+    tree.write("tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(2 in Rust tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"demo\"]\n");
+    tree.write("demo/Cargo.toml", MANIFEST);
+    tree.write(
+        "demo/build.rs",
+        "fn main() {\n    std::env::var(\"OUT_DIR\").unwrap();\n}\n",
+    );
+    tree.write(
+        "demo/src/lib.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write("demo/tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("demo/build.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("demo/src/lib.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("demo/tests/render.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_tests_left_out() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"top\"\nversion = \"0.1.0\"\n\n[workspace]\nmembers = [\"crates/foo\"]\n",
+    );
+    tree.write("build.rs", "fn main() {}\n");
+    tree.write("src/lib.rs", "pub fn top() -> i32 {\n    1\n}\n");
+    tree.write(
+        "crates/foo/Cargo.toml",
+        "[package]\nname = \"foo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write(
+        "crates/foo/src/lib.rs",
+        "pub fn one() -> Option<i32> {\n    Some(1)\n}\n",
+    );
+    tree.write(
+        "crates/foo/tests/it.rs",
+        "#[test]\nfn t() {\n    assert_eq!(foo::one().unwrap(), 1);\n}\n",
+    );
+    tree.base();
+    tree.write("crates/check.sh", "echo hi\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(1 in Rust tests skipped)"), "{}", run.out);
+    assert!(!run.says("crates/foo/tests/it.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write("src/lib.rs", "mod spec;\n");
+    tree.write("src/schema.sql", "create table t (id int);\n");
+    tree.write(
+        "src/spec/mod.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write(
+        "src/bin/load_test.rs",
+        "fn main() {\n    std::env::args().next().unwrap();\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/spec/mod.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("src/bin/load_test.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write(
+        "src/lib.rs",
+        "pub fn one() -> Option<i32> {\n    Some(1)\n}\n\n#[cfg(test)]\nmod tests;\n",
+    );
+    tree.write("src/grammar.lalrpop", "grammar;\n");
+    tree.write(
+        "src/tests/mod.rs",
+        "#[test]\nfn reads() {\n    use super::one;\n    one().unwrap();\n}\n",
+    );
+    tree.base();
+    tree.remove("src/grammar.lalrpop");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 escape site(s) in the tree, all held at the base"),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged() {
     let tree = Tree::new();

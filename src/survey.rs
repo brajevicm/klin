@@ -1,23 +1,24 @@
 //! What a repository says about itself, and nothing a check decides. The survey of one tree is
-//! its source roots, the documents at its top, the roots its test convention marks and its
-//! manifests. `Facts` holds the derivation commit's survey beside the working tree's, read once
-//! per run. No section of `klin.json` is manufactured here: each check reads these facts and
-//! resolves its own policy. Spec 4.3, ADR 0038, ADR 0040.
+//! its source roots, the documents at its top, its test roots and its manifests. `Facts` holds
+//! the derivation commit's survey beside the working tree's, read once per run. No section of
+//! `klin.json` is manufactured here: each check reads these facts and resolves its own policy.
+//! Spec 4.3, ADR 0038, ADR 0040.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
 use crate::project::{self, Tree};
-use crate::scope::{ROOT, under_or_at};
+use crate::scope::{ROOT, ancestors, under_or_at};
 use crate::{cache, files, git, state, turn};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
 /// commit. Spec 6.6.
 const KEY: &str = "survey";
 
-/// The basenames the survey calls a manifest. A check that reads one owns what it means.
+/// The basenames the survey calls a manifest. A directory that directly holds one is a package
+/// directory to the test roots of spec 5.4, and a check that reads one owns what it says.
 const MANIFESTS: &[&str] = &["Cargo.toml", "go.mod", "package.json", "tsconfig.json"];
 
 /// The directory segments a language's test convention uses, and the affixes that mark one file
@@ -138,18 +139,19 @@ pub fn surveyed(path: &str) -> bool {
 }
 
 fn of(paths: &[String]) -> Survey {
-    let roots = roots(paths);
+    let merged = merged(paths);
+    let manifests = sorted(
+        paths
+            .iter()
+            .filter(|path| MANIFESTS.contains(&basename(path)))
+            .cloned(),
+    );
     Survey {
+        roots: outermost(&merged),
         documents: sorted(paths.iter().filter(|path| document(path)).cloned()),
-        test_roots: test_roots(&roots, paths),
-        manifests: sorted(
-            paths
-                .iter()
-                .filter(|path| MANIFESTS.contains(&basename(path)))
-                .cloned(),
-        ),
+        test_roots: test_roots(&merged, &manifests, paths),
+        manifests,
         tests: paths.iter().any(|path| marked(path)),
-        roots,
     }
 }
 
@@ -163,40 +165,38 @@ fn document(path: &str) -> bool {
     !path.contains('/') && path.ends_with(".md")
 }
 
-/// The shallowest directories that hold nothing but source: start at each directory that holds
-/// a source file and merge upward while the directory above holds nothing but source. Spec 5.4.
-fn roots(paths: &[String]) -> Vec<String> {
-    let mixed = mixed(paths);
-    let mut found: Vec<String> = Vec::new();
+/// Spec 5.4.
+fn merged(paths: &[String]) -> Vec<String> {
+    let mixed = holding(paths.iter().filter(|path| !source(path)));
+    let mut found = BTreeSet::new();
     for file in paths.iter().filter(|path| source(path)) {
-        let mut at = parent(file);
-        while let Some(up) = above(&at) {
-            if mixed.contains(up.as_str()) {
-                break;
-            }
-            at = up;
-        }
-        if !found.contains(&at) {
-            found.push(at);
-        }
+        let mut upward = ancestors(file);
+        let start = upward.next().unwrap_or(ROOT);
+        let end = upward.take_while(|up| !mixed.contains(up)).last();
+        found.insert(end.unwrap_or(start));
     }
-    found.sort();
-    let nested = found.clone();
-    found.retain(|root| !nested.iter().any(|other| under(root, other)));
-    found
+    found.into_iter().map(str::to_string).collect()
 }
 
-/// Every directory that holds something other than source somewhere beneath it, from one pass
-/// over the paths, so merging a root upward is a lookup and not another scan.
-fn mixed(paths: &[String]) -> HashSet<&str> {
+/// Spec 5.4.
+fn outermost(directories: &[String]) -> Vec<String> {
+    let found: HashSet<&str> = directories.iter().map(String::as_str).collect();
+    directories
+        .iter()
+        .filter(|at| !ancestors(at).any(|up| found.contains(up)))
+        .cloned()
+        .collect()
+}
+
+/// Spec 5.4.
+fn holding<'a>(paths: impl Iterator<Item = &'a String>) -> HashSet<&'a str> {
     let mut found = HashSet::new();
-    for path in paths.iter().filter(|path| !source(path)) {
-        let mut at = path.as_str();
-        while let Some((up, _)) = at.rsplit_once('/') {
-            found.insert(up);
-            at = up;
+    for path in paths {
+        for up in ancestors(path) {
+            if !found.insert(up) {
+                break;
+            }
         }
-        found.insert(ROOT);
     }
     found
 }
@@ -206,28 +206,35 @@ fn source(path: &str) -> bool {
     project::language_of(path).is_some()
 }
 
-/// The roots a language's test convention marks: a directory the convention names, or a root
-/// whose every source file carries a test affix. Spec 5.4, 8.2.
-fn test_roots(roots: &[String], paths: &[String]) -> Vec<String> {
-    roots
+/// Spec 5.4, 8.2.
+fn test_roots(merged: &[String], manifests: &[String], paths: &[String]) -> Vec<String> {
+    let production = holding(
+        paths
+            .iter()
+            .filter(|path| source(path) && !test_affix(basename(path))),
+    );
+    let packages: HashSet<&str> = manifests
         .iter()
-        .filter(|root| named_for_tests(root) || holds_only_tests(paths, root))
+        .filter_map(|path| ancestors(path).next())
+        .collect();
+    let ends: HashSet<&str> = merged.iter().map(String::as_str).collect();
+    let candidates: Vec<String> = merged
+        .iter()
+        .filter(|at| named_for_tests(at) || !production.contains(at.as_str()))
+        .filter(|at| {
+            !ancestors(at)
+                .take_while(|up| !packages.contains(up))
+                .any(|up| ends.contains(up))
+        })
         .cloned()
-        .collect()
+        .collect();
+    outermost(&candidates)
 }
 
 pub fn named_for_tests(directory: &str) -> bool {
     directory
         .split('/')
         .any(|segment| TEST_DIRS.contains(&segment))
-}
-
-fn holds_only_tests(paths: &[String], root: &str) -> bool {
-    let mut under = paths
-        .iter()
-        .filter(|path| under_or_at(path, root) && source(path))
-        .peekable();
-    under.peek().is_some() && under.all(|path| test_affix(basename(path)))
 }
 
 /// Whether a basename carries one of the test affixes of spec 8.2.
@@ -244,17 +251,6 @@ fn basename(path: &str) -> &str {
 pub fn parent(path: &str) -> String {
     path.rsplit_once('/')
         .map_or_else(|| ROOT.to_string(), |(at, _)| at.to_string())
-}
-
-fn above(directory: &str) -> Option<String> {
-    match directory {
-        ROOT => None,
-        other => Some(parent(other)),
-    }
-}
-
-fn under(path: &str, directory: &str) -> bool {
-    path != directory && under_or_at(path, directory)
 }
 
 fn sorted(values: impl Iterator<Item = String>) -> Vec<String> {
@@ -280,7 +276,7 @@ fn union(held: &Survey, now: &Survey, root: &Path) -> Survey {
             .collect(),
         test_roots: both(&held.test_roots, &now.test_roots)
             .into_iter()
-            .filter(|at| roots.contains(at))
+            .filter(|at| root.join(at).is_dir())
             .collect(),
         manifests: both(&held.manifests, &now.manifests)
             .into_iter()

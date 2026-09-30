@@ -14,7 +14,7 @@ use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::{self, Key};
-use crate::scope::{Scope, under_or_at};
+use crate::scope::{Roots, Scope};
 use crate::syntax;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
@@ -163,8 +163,8 @@ struct Tally {
 /// One tree walk: the tree's test roots, and what the walk accumulates across its files. The
 /// sites, what each file said about where a match does not count, the files whose shapes were
 /// read, the tally of idioms left out, and the reads and parses the walk cost.
-struct Walk {
-    test_roots: Vec<String>,
+struct Walk<'a> {
+    test_roots: Roots<'a>,
     seen: BTreeMap<(String, String), Tally>,
     cache: BTreeMap<String, Skipped>,
     shaped: BTreeSet<String>,
@@ -383,7 +383,11 @@ fn findings(
 ) -> Result<Read, Error> {
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
-    let mut walk = Walk::over(kind, tree);
+    let test_roots = match kind.skips_tests {
+        true => tree.test_roots(),
+        false => Vec::new(),
+    };
+    let mut walk = Walk::over(&test_roots);
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search
@@ -430,13 +434,10 @@ fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>) -> Files {
     }
 }
 
-impl Walk {
-    fn over(kind: &Kind, tree: &Tree) -> Walk {
+impl<'a> Walk<'a> {
+    fn over(test_roots: &'a [String]) -> Walk<'a> {
         Walk {
-            test_roots: match kind.skips_tests {
-                true => tree.test_roots(),
-                false => Vec::new(),
-            },
+            test_roots: Roots::new(test_roots),
             seen: BTreeMap::new(),
             cache: BTreeMap::new(),
             shaped: BTreeSet::new(),
@@ -494,7 +495,7 @@ fn shapes(rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
 fn cached(
     kind: &Kind,
     search: &Search,
-    test_roots: &[String],
+    test_roots: &Roots,
     rel: &str,
     text: &str,
     cache: &mut BTreeMap<String, Skipped>,
@@ -504,7 +505,7 @@ fn cached(
         .or_insert_with(|| {
             let rust_tests = skips_rust_tests(kind, search, rel);
             Skipped {
-                test_file: rust_tests && test_roots.iter().any(|root| under_or_at(rel, root)),
+                test_file: rust_tests && test_roots.holds(rel),
                 tests: match rust_tests {
                     true => syntax::convention::test_module_ranges(rel, text),
                     false => Vec::new(),

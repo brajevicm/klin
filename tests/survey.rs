@@ -210,6 +210,85 @@ fn the_survey_finds_one_root_per_package_of_a_monorepo() {
     );
 }
 
+fn derives_test_roots(tree: &Tree, roots: &str) {
+    let run = gate(tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "derived: test roots {roots}, the roots that match a language's test convention"
+        )),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root() {
+    let tree = project();
+    tree.write("build.rs", "fn main() {}\n");
+    tree.base();
+
+    derives_test_roots(&tree, "tests");
+}
+
+#[test]
+fn a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"a\", \"b\"]\n");
+    tree.write("a/Cargo.toml", MANIFEST);
+    tree.write("a/build.rs", "fn main() {}\n");
+    tree.write("a/src/lib.rs", CLEAN);
+    tree.write("a/tests/lib_test.rs", CLEAN);
+    tree.write("b/Cargo.toml", MANIFEST);
+    tree.write("b/src/lib.rs", CLEAN);
+    tree.write("b/tests/lib_test.rs", CLEAN);
+    tree.base();
+
+    derives_test_roots(&tree, "a/tests, b/tests");
+}
+
+#[test]
+fn a_crate_below_a_directory_that_holds_a_script_keeps_its_tests_as_a_test_root() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("install.sh", "echo hi\n");
+    tree.write("rust/Cargo.toml", MANIFEST);
+    tree.write("rust/build.rs", "fn main() {}\n");
+    tree.write("rust/src/lib.rs", CLEAN);
+    tree.write("rust/tests/lib_test.rs", CLEAN);
+    tree.base();
+
+    derives_test_roots(&tree, "rust/tests");
+}
+
+#[test]
+fn a_config_file_beside_a_packages_manifest_keeps_its_tests_as_a_test_root() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("package.json", "{\"name\": \"p\"}\n");
+    tree.write("jest.config.js", "module.exports = {};\n");
+    tree.write("src/index.js", "export const one = 1;\n");
+    tree.write("tests/index.test.js", "test(\"one\", () => {});\n");
+    tree.base();
+
+    derives_test_roots(&tree, "tests");
+}
+
+#[test]
+fn a_directory_another_test_root_holds_is_no_test_root_of_its_own() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"tests\"]\n");
+    tree.write("tests/Cargo.toml", MANIFEST);
+    tree.write("tests/build.rs", "fn main() {}\n");
+    tree.write("tests/src/lib.rs", CLEAN);
+    tree.write("tests/tests/it.rs", CLEAN);
+    tree.base();
+
+    derives_test_roots(&tree, "tests");
+}
+
 /// The promise of ADR 0016: a tree already in debt is green against itself with no
 /// configuration at all, because a root the derivation commit held is held debt and not new.
 #[test]
