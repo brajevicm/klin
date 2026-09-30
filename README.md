@@ -26,6 +26,8 @@ cd your-repo
 sh -c 'i=$(curl --proto "=https" --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh) && sh -c "$i" && ~/.local/bin/klin install'
 ```
 
+Runs on macOS, Ubuntu 22.04 and later, and Debian 12 and later.
+
 This installs klin, then writes `klin.json` and the hooks for each host your repository already uses, or for Claude Code, Codex and Cursor when it shows none. Commit them, and your teammates get the same checks. `--host claude`, `--host codex` or `--host cursor` narrows the list. If the klin plugin also runs on your machine, klin runs once per event and the other copy stays quiet.
 
 Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.

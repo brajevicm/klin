@@ -5026,8 +5026,10 @@ channel is added here only once it ships.
 
 The supported binary targets are macOS and Linux, on x86_64 and arm64. The
 plugin wrapper resolves that same set, so the public contract and the release
-targets stay one list. Native Windows is not a supported target: klin builds
-no Windows binary and ships none. WSL is not a documented supported route
+targets stay one list. On Linux the install script refuses a glibc older than
+the one on the runner that built the binary, which is 2.35 on `ubuntu-22.04`.
+klin ships no musl build. Native Windows is not a supported target: klin
+builds no Windows binary and ships none. WSL is not a documented supported route
 either, because klin has no compatibility evidence for it. A person on Windows
 has no shipped klin install today.
 
