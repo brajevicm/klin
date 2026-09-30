@@ -1056,7 +1056,7 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
 fn marked_as_tests(found: &mut [Function], test_file: bool, file: &ParsedFile) {
     let modules = match (test_file, file.language.id) {
         (false, LanguageId::Rust) if file.source.contains("test") => {
-            syntax::convention::test_modules(file.root(), file.source.as_bytes())
+            syntax::convention::cfg_test_ranges(file.root(), file.source.as_bytes())
         }
         _ => Vec::new(),
     };

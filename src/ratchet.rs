@@ -179,7 +179,7 @@ fn names_every_value(
     let missing: Vec<&str> = metrics
         .iter()
         .copied()
-        .filter(|metric| !(optional.contains(metric) && !entry.contains_key(*metric)))
+        .filter(|metric| entry.contains_key(*metric) || !optional.contains(metric))
         .filter(|metric| entry.get(*metric).and_then(Value::as_f64).is_none())
         .collect();
     if missing.is_empty() {

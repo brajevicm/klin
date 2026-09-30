@@ -1808,10 +1808,19 @@ fn a_test_file_renamed_into_production_code_is_judged_as_production_code() {
     tree.base();
     tree.git(&["mv", "tests/long.rs", "src/long.rs"]);
 
-    let run = tree.run(&["complexity"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("src/long.rs:1  cc 1, 40 lines"), "{}", run.out);
-    assert!(run.says("nothing matched"), "{}", run.out);
+    for args in [
+        &["complexity"][..],
+        &["gate", "--changed", "--gate", "complexity"],
+    ] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 1, "{args:?}: {}", run.out);
+        assert!(
+            run.says("src/long.rs:1  cc 1, 40 lines"),
+            "{args:?}: {}",
+            run.out
+        );
+        assert!(run.says("nothing matched"), "{args:?}: {}", run.out);
+    }
 }
 
 #[test]
