@@ -816,7 +816,7 @@ fn namespace_members(
 
 /// Each name a variable binds: its identifier, or each name its destructuring pattern binds
 /// through a property, an element or a rest, and never a default value or a computed key.
-fn binds<'tree>(pattern: Option<Node<'tree>>, out: &mut Vec<Node<'tree>>) {
+fn binds<'a>(pattern: Option<Node<'a>>, out: &mut Vec<Node<'a>>) {
     let Some(pattern) = pattern else {
         return;
     };

@@ -967,6 +967,27 @@ fn a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructur
 }
 
 #[test]
+fn a_destructuring_that_loses_a_reference_in_two_callers_names_the_first_base_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/service.ts",
+        "const { other, helper } = await import(\"./helpers\");\n",
+    );
+    tree.write("src/a.ts", "export function a() { helper(); }\n");
+    tree.write("src/b.ts", "export function b() { other(); }\n");
+    tree.base();
+    tree.write("src/a.ts", "export function a() {}\n");
+    tree.write("src/b.ts", "export function b() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/service.ts:1"), "{}", run.out);
+    assert!(run.says("lost reference in src/a.ts"), "{}", run.out);
+}
+
+#[test]
 fn a_reference_another_unchanged_caller_still_holds_is_no_regression() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);

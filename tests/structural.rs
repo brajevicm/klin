@@ -380,6 +380,18 @@ fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took()
 }
 
 #[test]
+fn the_index_counts_a_destructuring_declaration_once_whatever_it_binds() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"dead_symbols":{"in":"src"}}"#);
+    tree.write("src/a.ts", "const { a, b } = settings;\nfunction f() {}\n");
+
+    let report = judged(&tree, &[], &["dead-symbols"]);
+
+    let names = &row(&report, "dead-symbols")["names"];
+    assert_eq!(names["after"]["declarations"], 2, "{report}");
+}
+
+#[test]
 fn the_structural_footprint_counts_each_extern_crate_with_its_names_and_nesting() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");

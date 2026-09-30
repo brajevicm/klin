@@ -134,3 +134,48 @@ that hold an import, a module declaration or a qualified path, inline module
 declarations, and every path outside an import that starts at `crate`, `self`
 or `super`. Cutting a path out of a use tree is therefore syntax, and deciding
 which module that path names is the module graph's work.
+
+## Amendment: a name a destructuring declaration binds is a write (#384)
+
+The rule above reads a name a binding site writes as a reference. #384
+narrows it for a TypeScript `const`, `let` or `var` destructuring
+declaration: a name its pattern binds is no reference to that name, at the
+top level and inside a function. The TypeScript adapter now states those
+binding sites, which is what this ADR asks of a consumer that needs a
+sharper answer.
+
+A binding writes a name and reads none. Inside a function,
+`const [first] = load()` writes a new local and never reads an outer
+`first`, yet the V1 rule kept an unused top-level `const first` alive
+through it. The same rule let two unused destructurings of one name keep
+each other alive. Parameters, `for` heads, `catch` clauses, class and struct
+fields, a Rust `let`, an assignment such as `[first] = load()`, and every
+later use of a bound name still read as references.
+
+`dead-symbols` judges a destructuring declaration by the names it binds, and
+the index files the declaration under each of them. The derivation
+`reachability` runs therefore has one exception to "a name exactly one
+declaration holds": a destructuring binding is no second declaration of a
+member's name. A lazy
+`const { Login } = await import("./handlers/LoginHandler")` binds the
+member's own export, and counting it would stop the family from being
+derived.
+
+`reachability` keeps reading those bindings as references. A destructuring
+declaration in another file that binds a member's name reaches the member
+and can prove it, because `const { default: Profile } = await import(…)`
+loads the file whether `Profile` is used or not. Reading the binding as no
+reference would report a loaded file as unreached, and a gate that fails
+more on ambiguity goes against this ADR. The rule covers shorthand bindings
+too, which V1 never read as references, so
+`const { Profile } = await import(…)` now reaches a member that V1 left
+unreached.
+
+A destructuring inside a function body is no declaration, so the index holds
+nothing for it, and a name only it binds reaches no member. For
+`function boot() { const [Login] = list; }` that is right: the binding names
+a local value, and V1's reach there was a false green. For an unused
+`const { default: Profile } = await import(…)` inside a function it is a
+false alarm, accepted as rare. Reading those bindings as well would take a
+list of binding sites in every file's facts, carried through the structural
+cache.

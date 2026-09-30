@@ -436,14 +436,15 @@ fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
         .any(|declaration| {
             index
                 .declarations(file.language, &declaration.name)
-                .filter(|held| held.declaration.name == declaration.name)
+                .filter(|held| held.declaration.bindings.is_empty())
                 .count()
                 == 1
                 && referenced_elsewhere(index, file, declaration)
         })
 }
 
-/// Whether a file other than the one that holds this declaration references its name.
+/// Whether a file other than the one that holds this declaration references its name or holds
+/// a destructuring declaration that binds it. Spec 5.4.
 fn referenced_elsewhere(
     index: &SourceIndex,
     file: &structural::FileFacts,
@@ -452,6 +453,9 @@ fn referenced_elsewhere(
     index
         .references(file.language, &declaration.name)
         .any(|site| site.file != file.file)
+        || index
+            .declarations(file.language, &declaration.name)
+            .any(|held| held.file != file.file && !held.declaration.bindings.is_empty())
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with

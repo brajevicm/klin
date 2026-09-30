@@ -326,10 +326,14 @@ impl Measurement {
 
     pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
         let index = timed(&mut cost.index, || self.index());
-        let sites = || index.names.values().flat_map(HashMap::values);
         cost.files = index.files.len();
         cost.declarations = index.files.iter().map(|file| file.declarations.len()).sum();
-        cost.references = sites().map(|held| held.references.len()).sum();
+        cost.references = index
+            .names
+            .values()
+            .flat_map(HashMap::values)
+            .map(|held| held.references.len())
+            .sum();
         cost.distinct_names = index.names.values().map(HashMap::len).sum();
         index
     }
@@ -1193,9 +1197,11 @@ impl<'a, 'b> Reading<'a, 'b> {
 
     /// Every use of a name the declarations and the imports did not already claim, every name a
     /// string calls by its text, and every qualified path outside them, from one walk. An import
-    /// binding is not a reference to what it binds, so the whole import is stepped over. A name a
-    /// binding site writes — a parameter, a `let`, a field — is kept, because no adapter states
-    /// its language's binding sites in V1 and keeping it errs toward "referenced".
+    /// binding is not a reference to what it binds, so the whole import is stepped over, and
+    /// neither is a declaration's name or a name its destructuring pattern binds. A name any
+    /// other binding site writes — a parameter, a `for` head, a `catch` clause, a field, a Rust
+    /// `let` — is kept, because no adapter states those binding sites and keeping it errs toward
+    /// "referenced".
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
@@ -1757,9 +1763,9 @@ export function charge(at: number): number {
     }
 
     /// The conservative direction of ADR 0035, pinned so it stays a decision. A name a binding
-    /// site writes reads as a reference, because no adapter states its language's binding sites
-    /// in V1. It keeps a declaration alive that nothing uses, which makes a structural gate
-    /// fail less and never more.
+    /// site other than a declaration writes reads as a reference, because no adapter states those
+    /// binding sites. It keeps a declaration alive that nothing uses, which makes a structural
+    /// gate fail less and never more.
     #[test]
     fn a_binding_site_reads_as_a_reference_and_errs_toward_referenced() {
         let facts = measured_facts("src/pay.rs", RUST);

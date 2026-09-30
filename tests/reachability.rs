@@ -272,6 +272,49 @@ fn a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it() {
 }
 
 #[test]
+fn a_destructuring_in_another_file_that_binds_a_member_name_reaches_it() {
+    let tree = three_reached_handlers();
+    tree.base();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export default function Profile() {}\n",
+    );
+    tree.write(
+        "web/lazy.ts",
+        "const { default: Profile } = await import(\"./handlers/ProfileHandler\");\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
+}
+
+#[test]
+fn a_member_only_a_destructuring_in_another_file_binds_still_proves_its_family() {
+    let tree = three_reached_handlers();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export default function Profile() {}\n",
+    );
+    tree.write(
+        "web/lazy.ts",
+        "const { default: Profile } = await import(\"./handlers/ProfileHandler\");\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: reachability web/handlers/*Handler.ts"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
+}
+
+#[test]
 fn two_members_do_not_derive_a_family() {
     let tree = Tree::new();
     tree.write("src/commands/alpha_command.rs", "pub fn run_alpha() {}\n");
