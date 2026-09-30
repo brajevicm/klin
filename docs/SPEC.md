@@ -615,10 +615,14 @@ Each check documents its rule. The rules for the shipped checks:
   README or a changelog, grows by design and is judged only when the section
   pins it, because the gate exists for the instruction file that grows every
   turn (8.2, #343). A document the section pins takes its pinned ceiling
-  instead, and is judged wherever it sits. Pinned by
+  instead, and is judged wherever it sits. A cache that holds a ceiling for any
+  other document is no derivation of that commit, so klin derives again and
+  `init --pin` never writes that ceiling into policy. Pinned by
   `a_readme_that_grows_past_its_base_word_count_passes_with_no_pin`,
   `an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin`
-  and `a_pinned_readme_is_judged_under_its_pin` in `tests/doc_size.rs`.
+  and `a_pinned_readme_is_judged_under_its_pin` in `tests/doc_size.rs`, and by
+  `pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds` in
+  `tests/init.rs`.
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
   each read against the whole tree with the built-in extension list of 8.2.1.
   This set is the check's judgement unit on a changed run too (8.2.1). It is

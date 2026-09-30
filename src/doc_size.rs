@@ -27,7 +27,7 @@ pub const KEYS: &[Key] = &[DOCUMENT];
 
 pub const DOCUMENT: Key = Key {
     name: "<document path>",
-    holds: "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; no other document is judged",
+    holds: "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; every other document is judged only when the map names it",
     required: false,
     rule: Some(
         "`AGENTS.md` and `CLAUDE.md` at the tree root, where the derivation commit holds them: the word count there, rounded up to the next 50 and never below 50",
@@ -443,13 +443,19 @@ pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
     out
 }
 
-/// The cached ceilings when every one of them is a number, because a file another hand edited
-/// is no more this commit's derivation than one another version wrote.
+/// The cached ceilings when every one of them is a number for an instruction file, because a
+/// file another hand edited, or one that names any other document, is no more this commit's
+/// derivation than one another version wrote.
 fn read_ceilings(cached: &Value) -> Option<BTreeMap<String, u64>> {
     cached
         .as_object()?
         .iter()
-        .map(|(name, words)| Some((name.clone(), words.as_u64()?)))
+        .map(
+            |(name, words)| match INSTRUCTION_FILES.contains(&name.as_str()) {
+                true => Some((name.clone(), words.as_u64()?)),
+                false => None,
+            },
+        )
         .collect()
 }
 

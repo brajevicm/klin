@@ -384,7 +384,7 @@
                 "type": "object"
               }
             ],
-            "description": "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; no other document is judged"
+            "description": "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; every other document is judged only when the map names it"
           },
           "minProperties": 1,
           "propertyNames": {
