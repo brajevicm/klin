@@ -6,7 +6,9 @@
 >
 > #368 amends the paragraph on `dist plan`. The generated workflow skips pull
 > requests (`pr-run-mode = "skip"`), and `release-plan.yml` runs `dist plan`
-> on the pull requests that touch a release input.
+> on the pull requests that touch a release input. The jobs in `release.yml`
+> keep the GitHub default timeout of 360 minutes. dist 0.32 has no setting for
+> a job timeout, and a hand edit would end the drift check of `dist plan`.
 
 `dist` (formerly `cargo-dist`) owns the release pipeline. A pushed tag runs
 the workflow `dist` generates, which builds the four targets, writes the
