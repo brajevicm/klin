@@ -24,6 +24,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     visibility,
     exported_as,
     owner,
+    destructured,
     contract,
     exported,
 };
@@ -169,6 +170,11 @@ fn type_name(node: Node, source: &[u8]) -> Option<String> {
         "scoped_type_identifier" => Some(text_of(node.child_by_field_name("name")?, source)),
         _ => None,
     }
+}
+
+/// A Rust item is named by one identifier, so none destructures.
+fn destructured(_: Node) -> Vec<Node> {
+    Vec::new()
 }
 
 /// The declared contract of one item, canonical, and `None` for a form V1 does not cover. A

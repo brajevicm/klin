@@ -619,7 +619,18 @@ Each check documents its rule. The rules for the shipped checks:
   every one with an eligible declaration, and every one proven reached: an
   eligible declaration whose name has exactly one declaration under the
   index and a reference from another file. A member reached only through a
-  name several files declare is not proof. `*.rs`, `*.ts` and every other
+  name several files declare is not proof. A TypeScript destructuring
+  declaration that binds the name is no declaration of it here, and one in
+  another file counts as a reference from that file, as a lazy
+  `const { default: Profile } = await import(…)` does for the file it loads.
+  A shorthand binding counts too, so `const { Login } = await import(…)` in
+  another file proves the member that declares `Login`. A destructuring
+  inside a function body is no declaration, so a name only it binds proves
+  nothing (8.2.1). Pinned by
+  `a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it`,
+  `a_member_only_a_destructuring_in_another_file_binds_still_proves_its_family`
+  and `a_shorthand_binding_in_another_file_reaches_and_proves_a_member` in
+  `tests/reachability.rs`. `*.rs`, `*.ts` and every other
   bare extension are never a family, nor is a test root or a file under a
   test directory. A file under a test directory, or one whose basename
   carries a test affix of 8.2, is never a member in a tree a run judges.
@@ -1363,11 +1374,26 @@ does not parse can only under-report.
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and
 TypeScript, with TSX treated as TypeScript. A declaration is dead when no
-reference with the same name exists outside its own declaration. A name
+reference with the same name exists outside its own declaration. A
+TypeScript destructuring declaration is judged by the names it binds: it is
+dead only when none of them has a reference outside the declaration. A
+renamed binding such as `{ add: loaded }` is judged by its local name, and a
+nested or defaulted pattern binds every name inside it, never a default value
+or a computed key. A name a `const`, `let` or `var` destructuring declaration
+binds is no reference to that name, at the top level and in a function body,
+so such a destructuring keeps no other declaration of a name it binds alive.
+The head of a C-style `for` is a declaration, so `for (let [first] = [0]; ; )`
+binds `first` as a `let` statement does. A name a parameter, a `for…in` or
+`for…of` head, a `catch` clause or a Rust `let` binds, or an assignment such
+as `[first] = load()` writes, still reads as a reference, unless a pattern
+writes it as a shorthand such as `{ name }`, which never reads as one. A
+field name reads as a reference too (ADR 0035). A name
 resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
-globs. The check is name-only: it does not resolve imports, types, reflection,
+globs. A glob is matched against each name a declaration binds, so a
+destructuring declaration is left out only when every name it binds matches
+one. The check is name-only: it does not resolve imports, types, reflection,
 framework entry points or external callers. The index reads a string as text,
 with two exceptions. Where a Rust attribute item holds `serde(...)`, as the
 attribute itself or directly inside `cfg_attr`, the string value of `default`,
@@ -1424,7 +1450,21 @@ and the check by hand build state for every eligible declaration. Pinned by
 `a_private_typescript_main_is_judged`,
 `losing_the_last_reference_is_worsened_and_names_the_old_reference_file` and
 `one_typescript_reference_keeps_duplicate_names_alive` in
-`tests/dead_symbols.rs`; the `serde` strings by
+`tests/dead_symbols.rs`; the destructuring rule by
+`an_object_destructuring_declaration_whose_binding_is_used_passes`,
+`an_array_destructuring_declaration_whose_binding_is_used_passes`,
+`a_renamed_binding_used_by_its_local_name_passes`,
+`a_nested_or_defaulted_binding_keeps_its_declaration_alive`,
+`a_destructuring_declaration_whose_bindings_are_all_unused_still_fails`,
+`a_destructuring_declaration_with_one_used_binding_passes`,
+`a_property_key_a_computed_key_and_a_default_value_bind_nothing`,
+`two_unused_destructurings_of_one_name_do_not_keep_each_other_alive`,
+`a_destructuring_inside_a_function_keeps_no_declaration_of_its_names_alive`,
+`ignore_globs_match_every_name_a_destructuring_binds`,
+`a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructuring`,
+which also requires a second run over the structural cache to print the same,
+and `a_destructuring_that_loses_a_reference_in_two_callers_names_the_first_base_file`;
+the `serde` strings by
 `a_private_function_only_a_serde_default_names_passes`,
 `a_private_function_only_a_serde_skip_serializing_if_names_passes`,
 `a_private_function_no_serde_key_names_still_fails`,
@@ -1577,11 +1617,15 @@ the report exposes its name, roots and pattern, while configuration may only
 narrow all derived families with `in` and `except`. A member is reached when another
 file holds a reference with the name of one of its eligible declarations:
 functions, types, constants and module-level variables that are not entry
-points. Methods are not eligible, because a name such as `run` or `get`
-recurs across unrelated types and the name-only rule would reach every file
-that declares one. Exported declarations are eligible, unlike in
-`dead-symbols`, because a family says its files are wired inside this
-repository. A reference from the file itself reaches nothing. Resolution is
+points. A TypeScript destructuring declaration in another file that binds
+that name reaches the member too, in whatever form it binds it, shorthand
+included, so `const { default: Profile } = await import(…)` reaches the file
+it loads while `Profile` is still unused. Methods are not eligible, because a
+name such as `run` or `get` recurs across unrelated types and the name-only
+rule would reach every file that declares one. Exported declarations are
+eligible, unlike in `dead-symbols`, because a family says its files are
+wired inside this repository. A reference from the file itself reaches
+nothing. Resolution is
 the structural index's name-only rule, so a name several files declare
 reaches every one of them: ambiguity makes a file look reached and never
 unreached. The index covers the whole tree in each family's language partition, so
@@ -1634,11 +1678,20 @@ by `a_new_command_file_nothing_references_fails_as_new`,
 `the_stop_hook_blocks_a_turn_that_left_a_member_unreached`,
 `a_changed_run_reports_one_surface_the_whole_run_reports_too`,
 `legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`,
-`a_new_test_file_in_a_family_directory_is_no_member` and
-`a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove`
+`a_new_test_file_in_a_family_directory_is_no_member`,
+`a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove`,
+`a_destructuring_in_another_file_that_binds_a_member_name_reaches_it` and
+`a_plain_declaration_elsewhere_or_a_destructuring_in_the_same_file_reaches_no_member`
 in `tests/reachability.rs`, and by
 `a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction` in
-`tests/structural.rs`.
+`tests/structural.rs`. Known limit: a destructuring inside a function body is
+no declaration, so a name only it binds reaches no member. That is right for
+`function boot() { const [Login] = list; }`, whose binding names a local
+value, and wrong for an unused `const { default: Profile } = await import(…)`
+inside a function, which leaves the file the import loads unreached. Second
+known limit: a member's own destructuring declaration, such as
+`export const { Profile } = factory;`, is judged by its pattern text, which
+no reference spells, so a file that uses `Profile` does not reach it.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens

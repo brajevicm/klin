@@ -33,6 +33,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     visibility,
     exported_as,
     owner,
+    destructured,
     contract,
     exported,
 };
@@ -176,6 +177,15 @@ fn exported_as(node: Node, _: &[u8]) -> Option<String> {
 /// A member belongs to its class, so no method here has an owner of its own.
 fn owner(_: Node, _: &[u8]) -> Option<String> {
     None
+}
+
+/// Every name a destructuring pattern binds, and none for a name that is one identifier.
+fn destructured(name: Node) -> Vec<Node> {
+    let mut names = Vec::new();
+    if matches!(name.kind(), "object_pattern" | "array_pattern") {
+        binds(Some(name), &mut names);
+    }
+    names
 }
 
 fn has_token(node: Node, token: &str) -> bool {
@@ -783,9 +793,13 @@ fn namespace_members(
                 .filter(|child| child.kind() == "variable_declarator")
             {
                 let mut names = Vec::new();
-                binds(variable.child_by_field_name("name"), source, &mut names);
+                binds(variable.child_by_field_name("name"), &mut names);
                 let text = declarator(variable, source);
-                out.extend(names.into_iter().map(|name| (name, None, text.clone())));
+                out.extend(
+                    names
+                        .into_iter()
+                        .map(|name| (text_of(name, source), None, text.clone())),
+                );
             }
             out
         }
@@ -802,21 +816,19 @@ fn namespace_members(
 
 /// Each name a variable binds: its identifier, or each name its destructuring pattern binds
 /// through a property, an element or a rest, and never a default value or a computed key.
-fn binds(pattern: Option<Node>, source: &[u8], out: &mut Vec<String>) {
+fn binds<'a>(pattern: Option<Node<'a>>, out: &mut Vec<Node<'a>>) {
     let Some(pattern) = pattern else {
         return;
     };
     match pattern.kind() {
-        "identifier" | "shorthand_property_identifier_pattern" => {
-            out.push(text_of(pattern, source))
-        }
+        "identifier" | "shorthand_property_identifier_pattern" => out.push(pattern),
         "assignment_pattern" | "object_assignment_pattern" => {
-            binds(pattern.child_by_field_name("left"), source, out);
+            binds(pattern.child_by_field_name("left"), out);
         }
         "object_pattern" | "array_pattern" | "pair_pattern" | "rest_pattern" => {
             let mut cursor = pattern.walk();
             for child in pattern.named_children(&mut cursor) {
-                binds(Some(child), source, out);
+                binds(Some(child), out);
             }
         }
         _ => {}

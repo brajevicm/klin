@@ -212,7 +212,7 @@ fn linked(held: &ExternCrate, out: &mut Footprint) {
 }
 
 fn declared(declaration: &Declaration, out: &mut Footprint) {
-    out.declaration_name_bytes += declaration.name.len();
+    out.declaration_name_bytes += declaration.name.len() + texts(&declaration.bindings);
     out.declaration_text_bytes += declaration.text.len();
     sparse(
         declaration.signature.as_deref(),

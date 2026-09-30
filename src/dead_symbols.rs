@@ -409,9 +409,11 @@ fn states(
 fn eligible(declaration: &structural::Declaration, ignore: &[String]) -> bool {
     !declaration.externally_visible
         && !declaration.entry_point
-        && !ignore
-            .iter()
-            .any(|glob| files::glob_matches(glob.as_bytes(), declaration.name.as_bytes()))
+        && !declaration.names().all(|name| {
+            ignore
+                .iter()
+                .any(|glob| files::glob_matches(glob.as_bytes(), name.as_bytes()))
+        })
 }
 
 fn state(
@@ -419,13 +421,13 @@ fn state(
     file: &structural::FileFacts,
     declaration: &structural::Declaration,
 ) -> State {
-    let dead = !index
-        .references(file.language, &declaration.name)
-        .any(|reference| {
+    let dead = !declaration.names().any(|name| {
+        index.references(file.language, name).any(|reference| {
             reference.file != file.file
                 || reference.line < declaration.line
                 || reference.line > declaration.end
-        });
+        })
+    });
     State {
         file: file.file.clone(),
         name: declaration.name.clone(),
@@ -486,19 +488,32 @@ fn lost_reference(
     if held.dead {
         return None;
     }
-    let language = before.index().file(&state.file)?.language;
-    let old = before.index().references(language, &state.name);
-    let now: BTreeSet<(&str, u64)> = after
-        .index()
-        .references(language, &state.name)
-        .map(|reference| (reference.file, reference.line))
-        .collect();
-    old.filter(|reference| {
-        reference.file != held.file || reference.line < held.line || reference.line > held.end
-    })
-    .filter(|reference| !now.contains(&(reference.file, reference.line)))
-    .map(|reference| reference.file.to_string())
-    .next()
+    let file = before.index().file(&state.file)?;
+    let declaration = file.declarations.iter().find(|declaration| {
+        (declaration.line, &declaration.name, &declaration.text)
+            == (held.line, &held.name, &held.text)
+    })?;
+    declaration
+        .names()
+        .filter_map(|name| {
+            let now: BTreeSet<(&str, u64)> = after
+                .index()
+                .references(file.language, name)
+                .map(|reference| (reference.file, reference.line))
+                .collect();
+            before
+                .index()
+                .references(file.language, name)
+                .filter(|reference| {
+                    reference.file != held.file
+                        || reference.line < held.line
+                        || reference.line > held.end
+                })
+                .find(|reference| !now.contains(&(reference.file, reference.line)))
+                .map(|reference| reference.file)
+        })
+        .min()
+        .map(str::to_string)
 }
 
 fn evaluator() -> Evaluator<'static> {

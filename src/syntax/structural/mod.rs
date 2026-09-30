@@ -53,6 +53,9 @@ pub enum Visibility {
 
 pub struct Declaration {
     pub name: String,
+    /// The names a destructuring pattern binds, each by its local name, and none where the
+    /// declaration is named by one identifier.
+    pub bindings: Box<[String]>,
     pub kind: DeclarationKind,
     pub line: u64,
     /// The last line the declaration covers, so a consumer can tell a reference written inside
@@ -88,6 +91,25 @@ pub struct Declaration {
     /// language would infer is written as `?`, so an inferred contract is visibly partial and
     /// never fabricated.
     pub signature: Option<String>,
+}
+
+impl Declaration {
+    /// Whether a destructuring pattern binds its names, so `name` holds the pattern text and
+    /// `names` yields the bindings.
+    pub fn destructures(&self) -> bool {
+        !self.bindings.is_empty()
+    }
+
+    /// The names it declares: every name its pattern binds, and its own name where it binds
+    /// none.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        let names: &[String] = if self.destructures() {
+            &self.bindings
+        } else {
+            std::slice::from_ref(&self.name)
+        };
+        names.iter().map(String::as_str)
+    }
 }
 
 /// One statement that exposes names past the module: Rust's `pub use` and `pub extern crate`,
@@ -310,10 +332,14 @@ impl Measurement {
 
     pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
         let index = timed(&mut cost.index, || self.index());
-        let sites = || index.names.values().flat_map(HashMap::values);
         cost.files = index.files.len();
-        cost.declarations = sites().map(|held| held.declarations.len()).sum();
-        cost.references = sites().map(|held| held.references.len()).sum();
+        cost.declarations = index.files.iter().map(|file| file.declarations.len()).sum();
+        cost.references = index
+            .names
+            .values()
+            .flat_map(HashMap::values)
+            .map(|held| held.references.len())
+            .sum();
         cost.distinct_names = index.names.values().map(HashMap::len).sum();
         index
     }
@@ -824,6 +850,9 @@ pub(crate) struct Adapter {
     pub exported_as: fn(Node, &[u8]) -> Option<String>,
     /// The type an inherent implementation adds a method to.
     pub owner: fn(Node, &[u8]) -> Option<String>,
+    /// The nodes that write each name a declaration's name binds where it is a destructuring
+    /// pattern.
+    pub destructured: fn(Node) -> Vec<Node>,
     /// The canonical declared contract of a declaration, and `None` for a form V1 does not
     /// canonicalize.
     pub contract: fn(Node, &[u8]) -> Option<String>,
@@ -1122,7 +1151,9 @@ impl<'a, 'b> Reading<'a, 'b> {
         let Some(name) = node.child_by_field_name("name") else {
             return;
         };
+        let bindings = (self.adapter.destructured)(name);
         self.declared.insert(name.start_byte());
+        self.declared.extend(bindings.iter().map(Node::start_byte));
         if inside_a_function(node, self.language) {
             return;
         }
@@ -1130,6 +1161,10 @@ impl<'a, 'b> Reading<'a, 'b> {
         let entry_point = self.adapter.entry_points.contains(&name.as_str());
         self.declarations.push(Declaration {
             name,
+            bindings: bindings
+                .into_iter()
+                .map(|binding| text_of(binding, self.source))
+                .collect(),
             kind: self.kind(capture, node),
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
@@ -1168,9 +1203,13 @@ impl<'a, 'b> Reading<'a, 'b> {
 
     /// Every use of a name the declarations and the imports did not already claim, every name a
     /// string calls by its text, and every qualified path outside them, from one walk. An import
-    /// binding is not a reference to what it binds, so the whole import is stepped over. A name a
-    /// binding site writes — a parameter, a `let`, a field — is kept, because no adapter states
-    /// its language's binding sites in V1 and keeping it errs toward "referenced".
+    /// binding is not a reference to what it binds, so the whole import is stepped over, and
+    /// neither is a declaration's name or a name its destructuring pattern binds. The head of a
+    /// C-style `for` is a declaration. A name any other binding site writes — a parameter, a
+    /// `for…in` or `for…of` head, a `catch` clause, an assignment, a field, a Rust `let` — is
+    /// kept, because no adapter states those binding sites and keeping it errs toward
+    /// "referenced", unless a pattern writes it as a shorthand such as `{ name }`, which is no
+    /// identifier the adapter lists.
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
@@ -1281,9 +1320,11 @@ impl SourceIndex {
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
             for (which, declaration) in file.declarations.iter().enumerate() {
-                record_text(named, &declaration.name, |sites| {
-                    sites.declarations.push((at, which));
-                });
+                for name in declaration.names() {
+                    record_text(named, name, |sites| {
+                        sites.declarations.push((at, which));
+                    });
+                }
             }
         }
         for sites in names.values_mut().flat_map(HashMap::values_mut) {
@@ -1327,7 +1368,9 @@ impl SourceIndex {
             })
     }
 
-    /// Every declaration of this name and logical language, in file and line order.
+    /// Every declaration of this name and logical language, in file and line order. A
+    /// destructuring declaration is listed under each name it binds, and its `name` is still the
+    /// pattern text.
     pub fn declarations(
         &self,
         language: LanguageId,
@@ -1730,9 +1773,9 @@ export function charge(at: number): number {
     }
 
     /// The conservative direction of ADR 0035, pinned so it stays a decision. A name a binding
-    /// site writes reads as a reference, because no adapter states its language's binding sites
-    /// in V1. It keeps a declaration alive that nothing uses, which makes a structural gate
-    /// fail less and never more.
+    /// site other than a declaration writes reads as a reference, because no adapter states those
+    /// binding sites. It keeps a declaration alive that nothing uses, which makes a structural
+    /// gate fail less and never more.
     #[test]
     fn a_binding_site_reads_as_a_reference_and_errs_toward_referenced() {
         let facts = measured_facts("src/pay.rs", RUST);
@@ -1919,6 +1962,7 @@ export function charge(at: number): number {
                 .enumerate()
                 .map(|(at, name)| Declaration {
                     name: name.to_string(),
+                    bindings: Box::default(),
                     kind: DeclarationKind::Function,
                     line: at as u64 + 1,
                     end: at as u64 + 1,
