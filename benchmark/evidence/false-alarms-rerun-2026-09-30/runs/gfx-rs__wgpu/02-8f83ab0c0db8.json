@@ -1,0 +1,3004 @@
+{
+  "language": "Rust",
+  "repository": "gfx-rs/wgpu",
+  "index": 1,
+  "head": "8f83ab0c0db87be475309c5d444ca94261734308",
+  "base": "c9eb295ef0620ae8e8ca6edaaa5404aef3143d7f",
+  "exit": 0,
+  "signal": null,
+  "ms": 27174,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1150
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1150
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md",
+          "GOVERNANCE.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "benches/Cargo.toml",
+          "cts_runner/Cargo.toml",
+          "deno_webgpu/Cargo.toml",
+          "examples/bug-repro/01_texture_atomic_bug/Cargo.toml",
+          "examples/bug-repro/02_present_bugs/Cargo.toml",
+          "examples/features/Cargo.toml",
+          "examples/standalone/01_hello_compute/Cargo.toml",
+          "examples/standalone/02_hello_window/Cargo.toml",
+          "examples/standalone/03_hdr_surface/Cargo.toml",
+          "examples/standalone/custom_backend/Cargo.toml",
+          "lock-analyzer/Cargo.toml",
+          "naga-cli/Cargo.toml",
+          "naga-test/Cargo.toml",
+          "naga-types/Cargo.toml",
+          "naga/Cargo.toml",
+          "naga/fuzz/Cargo.toml",
+          "naga/hlsl-snapshots/Cargo.toml",
+          "naga/xtask/Cargo.toml",
+          "player/Cargo.toml",
+          "tests/Cargo.toml",
+          "tests/wasm/runner/package.json",
+          "wgpu-core-remote-types/Cargo.toml",
+          "wgpu-core-remote/Cargo.toml",
+          "wgpu-core/Cargo.toml",
+          "wgpu-core/platform-deps/apple/Cargo.toml",
+          "wgpu-core/platform-deps/emscripten/Cargo.toml",
+          "wgpu-core/platform-deps/linux-android-bsd/Cargo.toml",
+          "wgpu-core/platform-deps/wasm/Cargo.toml",
+          "wgpu-core/platform-deps/windows/Cargo.toml",
+          "wgpu-hal/Cargo.toml",
+          "wgpu-info/Cargo.toml",
+          "wgpu-naga-bridge/Cargo.toml",
+          "wgpu-sync/Cargo.toml",
+          "wgpu-types/Cargo.toml",
+          "wgpu/Cargo.toml",
+          "xtask/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "cts_runner/tests",
+          "naga/tests/naga",
+          "player/tests/player",
+          "tests/src",
+          "tests/tests",
+          "tests/wasm/runner",
+          "tests/wasm/web",
+          "wgpu/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 8,886 functions at c9eb295, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 15
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 8,886 functions at c9eb295, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 107
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "deno_webgpu/render_*.rs",
+            "pattern": "render_*.rs",
+            "roots": [
+              "deno_webgpu"
+            ]
+          },
+          {
+            "name": "wgpu-core/src/command/*_command.rs",
+            "pattern": "*_command.rs",
+            "roots": [
+              "wgpu-core/src/command"
+            ]
+          },
+          {
+            "name": "wgpu/src/backend/webgpu/webgpu_sys/*Format.rs",
+            "pattern": "*Format.rs",
+            "roots": [
+              "wgpu/src/backend/webgpu/webgpu_sys"
+            ]
+          },
+          {
+            "name": "wgpu/src/backend/webgpu/webgpu_sys/*Mode.rs",
+            "pattern": "*Mode.rs",
+            "roots": [
+              "wgpu/src/backend/webgpu/webgpu_sys"
+            ]
+          },
+          {
+            "name": "wgpu/src/backend/webgpu/webgpu_sys/*Type.rs",
+            "pattern": "*Type.rs",
+            "roots": [
+              "wgpu/src/backend/webgpu/webgpu_sys"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 8,
+          "measured": 8,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 67,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 37,
+          "measured": 37,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 525,
+        "ms": 16,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 866,
+          "measured": 866,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 3196,
+        "ms": 3932,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1710,
+          "reads": 1732
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 862,
+          "measured": 862,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 359,
+        "ms": 2150,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1724,
+          "reads": 1724
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 228,
+          "measured": 228,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 631,
+        "ms": 277,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 862,
+          "measured": 765,
+          "not_measured": 0,
+          "unreadable": 97
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 607,
+        "ms": 4110,
+        "name": "complexity",
+        "names": null,
+        "notes": 97,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1724,
+          "reads": 1724
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 855,
+          "measured": 758,
+          "not_measured": 0,
+          "unreadable": 97
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1710,
+          "ms": 10684,
+          "parses": 1710,
+          "reads": 1710,
+          "shared": 0,
+          "states": 7418
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 406056,
+          "declaration_text_bytes": 1172672,
+          "declarations": 26154,
+          "export_leaves": 1260,
+          "export_text_bytes": 65116,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 662,
+          "extern_crate_bytes": 796,
+          "extern_crates": 76,
+          "files": 1516,
+          "import_text_bytes": 1125882,
+          "imports": 7290,
+          "module_declarations": 1712,
+          "module_text_bytes": 566586,
+          "nesting_bytes": 10788,
+          "nesting_entries": 1190,
+          "nestings": 1136,
+          "owner_bytes": 94546,
+          "owners": 8756,
+          "path_bytes": 51464,
+          "qualified_paths": 22312,
+          "reference_canonical_allocation_ratio": 2,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 48960,
+          "reference_canonical_bytes": 755352,
+          "reference_distinct_names": 24480,
+          "reference_name_bytes": 8614500,
+          "reference_representation_after_bytes": 16695744,
+          "reference_representation_before_bytes": 33391488,
+          "references": 1043484,
+          "signature_bytes": 2070836,
+          "signatures": 26154,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 12,
+        "ms": 10781,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 13077,
+            "distinct_names": 25391,
+            "files": 758,
+            "index_ms": 21,
+            "measure_ms": 5325,
+            "query_ms": 0,
+            "references": 499612
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 13077,
+            "distinct_names": 25391,
+            "files": 758,
+            "index_ms": 22,
+            "measure_ms": 5363,
+            "query_ms": 0,
+            "references": 499612
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 23,
+            "ignored_ms": 14,
+            "renames_ms": 0,
+            "walk_ms": 10,
+            "worktree_add_ms": 345,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 98,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 22,
+          "measured": 22,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1710
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 5126,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 13077,
+            "distinct_names": 25391,
+            "files": 758,
+            "index_ms": 20,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 499612
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 13077,
+            "distinct_names": 25391,
+            "files": 758,
+            "index_ms": 20,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 499612
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 36,
+          "measured": 22,
+          "not_measured": 14,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1710
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 23872,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 2944,
+          "modules": 1502,
+          "ms": 25,
+          "sources": 1502
+        },
+        "held": 0,
+        "ms": 66,
+        "name": "public-api",
+        "names": null,
+        "notes": 182,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 360,
+          "items": 7342,
+          "measured": 6874,
+          "ms": 33,
+          "opaque": 468,
+          "surfaces": 44
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "AGENTS.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 1150,
+          "words": 1130
+        }
+      },
+      {
+        "file": "CLAUDE.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 1150,
+          "words": 1130
+        }
+      },
+      {
+        "file": "naga/src/proc/constant_evaluator.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_Gpu.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuAdapter.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuAdapterInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroup.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupEntry.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupLayoutDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupLayoutEntry.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBlendComponent.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBlendState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBuffer.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBufferBinding.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBufferBindingLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBufferDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCanvasConfiguration.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCanvasContext.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCanvasToneMapping.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuColorDict.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuColorTargetState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandBuffer.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandBufferDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandEncoder.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandEncoderDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCompilationInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCompilationMessage.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePassDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePassEncoder.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePassTimestampWrites.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePipeline.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePipelineDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCopyExternalImageDestInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCopyExternalImageSourceInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDepthStencilState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDevice.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDeviceDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDeviceLostInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuError.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExtent3dDict.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExternalTexture.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExternalTextureBindingLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExternalTextureDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuFragmentState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuInternalError.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuMultisampleState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuObjectDescriptorBase.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuOrigin2dDict.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuOrigin3dDict.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuOutOfMemoryError.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPipelineDescriptorBase.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPipelineLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPipelineLayoutDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPrimitiveState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuProgrammableStage.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQuerySet.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQuerySetDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQueue.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQueueDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundle.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundleDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundleEncoder.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundleEncoderDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassColorAttachment.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassDepthStencilAttachment.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassEncoder.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassTimestampWrites.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPipeline.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPipelineDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRequestAdapterOptions.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSampler.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSamplerBindingLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSamplerDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuShaderModule.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuShaderModuleCompilationHint.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuShaderModuleDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuStencilFaceState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuStorageTextureBindingLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSupportedFeatures.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSupportedLimits.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexelCopyBufferInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexelCopyBufferLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexelCopyTextureInfo.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexture.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureBindingLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureView.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureViewDescriptor.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuUncapturedErrorEvent.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuUncapturedErrorEventInit.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuValidationError.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuVertexAttribute.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuVertexBufferLayout.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuVertexState.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_WgslLanguageFeatures.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu-core/src/command/mod.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "naga/src/proc/constant_evaluator.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_Gpu.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuAdapter.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuAdapterInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroup.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupEntry.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupLayoutDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBindGroupLayoutEntry.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBlendComponent.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBlendState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBuffer.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBufferBinding.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBufferBindingLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuBufferDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCanvasConfiguration.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCanvasContext.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCanvasToneMapping.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuColorDict.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuColorTargetState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandBuffer.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandBufferDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandEncoder.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCommandEncoderDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCompilationInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCompilationMessage.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePassDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePassEncoder.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePassTimestampWrites.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePipeline.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuComputePipelineDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCopyExternalImageDestInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuCopyExternalImageSourceInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDepthStencilState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDevice.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDeviceDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuDeviceLostInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuError.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExtent3dDict.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExternalTexture.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExternalTextureBindingLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuExternalTextureDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuFragmentState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuInternalError.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuMultisampleState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuObjectDescriptorBase.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuOrigin2dDict.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuOrigin3dDict.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuOutOfMemoryError.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPipelineDescriptorBase.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPipelineLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPipelineLayoutDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuPrimitiveState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuProgrammableStage.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQuerySet.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQuerySetDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQueue.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuQueueDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundle.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundleDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundleEncoder.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderBundleEncoderDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassColorAttachment.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassDepthStencilAttachment.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassEncoder.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPassTimestampWrites.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPipeline.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRenderPipelineDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuRequestAdapterOptions.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSampler.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSamplerBindingLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSamplerDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuShaderModule.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuShaderModuleCompilationHint.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuShaderModuleDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuStencilFaceState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuStorageTextureBindingLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSupportedFeatures.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuSupportedLimits.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexelCopyBufferInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexelCopyBufferLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexelCopyTextureInfo.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTexture.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureBindingLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureView.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuTextureViewDescriptor.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuUncapturedErrorEvent.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuUncapturedErrorEventInit.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuValidationError.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuVertexAttribute.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuVertexBufferLayout.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_GpuVertexState.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu/src/backend/webgpu/webgpu_sys/gen_WgslLanguageFeatures.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "wgpu-core/src/command/mod.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "12 dead symbol(s) the base already held:\n  deno_webgpu/adapter.rs:543  fn maxImmediateSize(&self) -> u32 {\n  deno_webgpu/adapter.rs:613  fn architecture(&self) -> &'static str {\n  deno_webgpu/device.rs:461  fn create_compute_pipeline_async(\n  deno_webgpu/device.rs:499  fn create_render_pipeline_async(\n  deno_webgpu/device.rs:705  fn start_capture(&self) {\n  deno_webgpu/device.rs:709  fn stop_capture(&self) {\n  deno_webgpu/lib.rs:265  fn getPreferredCanvasFormat(&self) -> &'static str {\n  deno_webgpu/lib.rs:276  fn wgslLanguageFeatures(\n  tests/tests/wgpu-gpu/device.rs:57  static SINGLE_DEVICES: GpuTestConfiguration = GpuTestConfiguration::new()\n  tests/tests/wgpu-gpu/external_image_copy.rs:8  static IMAGE_BITMAP_IMPORT: GpuTestConfiguration =\n  wgpu-core/src/lib.rs:158  const DOWNLEVEL_ERROR_MESSAGE: &str = concat!(\n  wgpu/src/macros/mod.rs:163  static SPIRV_RAW: crate::ShaderModuleDescriptorPassthrough<'_> ="
+      },
+      {
+        "file": "naga/src/back/glsl/writer.rs",
+        "gate": "public-api",
+        "line": 57,
+        "outcome": "unresolved",
+        "text": "pub fn new( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/glsl/writer.rs",
+        "gate": "public-api",
+        "line": 132,
+        "outcome": "unresolved",
+        "text": "pub fn write(&mut self) -> Result<ReflectionInfo, Error> { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/hlsl/writer.rs",
+        "gate": "public-api",
+        "line": 155,
+        "outcome": "unresolved",
+        "text": "pub fn new(out: W, options: &'a Options, pipeline_options: &'a PipelineOptions) -> Self { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/hlsl/writer.rs",
+        "gate": "public-api",
+        "line": 324,
+        "outcome": "unresolved",
+        "text": "pub fn write( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/mod.rs",
+        "gate": "public-api",
+        "line": 299,
+        "outcome": "unresolved",
+        "text": "pub const fn bake_ref_count(&self) -> usize { — naga — an inherent impl of Expression outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/mod.rs",
+        "gate": "public-api",
+        "line": 356,
+        "outcome": "unresolved",
+        "text": "pub const fn is_terminator(&self) -> bool { — naga — an inherent impl of Statement outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/msl/writer.rs",
+        "gate": "public-api",
+        "line": 948,
+        "outcome": "unresolved",
+        "text": "pub fn new(out: W) -> Self { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/msl/writer.rs",
+        "gate": "public-api",
+        "line": 964,
+        "outcome": "unresolved",
+        "text": "pub fn finish(self) -> W { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/msl/writer.rs",
+        "gate": "public-api",
+        "line": 4561,
+        "outcome": "unresolved",
+        "text": "pub fn write( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/msl/writer.rs",
+        "gate": "public-api",
+        "line": 8508,
+        "outcome": "unresolved",
+        "text": "pub fn write_workgroup_variables_initialization( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 69,
+        "outcome": "unresolved",
+        "text": "pub fn new(options: &Options) -> Result<Self, Error> { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 127,
+        "outcome": "unresolved",
+        "text": "pub fn set_options(&mut self, options: &Options) -> Result<(), Error> { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 148,
+        "outcome": "unresolved",
+        "text": "pub const fn lang_version(&self) -> (u8, u8) { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 3038,
+        "outcome": "unresolved",
+        "text": "pub fn write_binding(&mut self, id: Word, binding: BindingDecorations) { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 3063,
+        "outcome": "unresolved",
+        "text": "pub fn write_binding_struct_member( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 3118,
+        "outcome": "unresolved",
+        "text": "pub fn map_binding( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 3947,
+        "outcome": "unresolved",
+        "text": "pub fn write( — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 3979,
+        "outcome": "unresolved",
+        "text": "pub const fn get_capabilities_used(&self) -> &crate::FastIndexSet<spirv::Capability> { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/spv/writer.rs",
+        "gate": "public-api",
+        "line": 3983,
+        "outcome": "unresolved",
+        "text": "pub fn decorate_non_uniform_binding_array_access(&mut self, id: Word) -> Result<(), Error> { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/wgsl/writer.rs",
+        "gate": "public-api",
+        "line": 92,
+        "outcome": "unresolved",
+        "text": "pub fn new(out: W, flags: WriterFlags) -> Self { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/wgsl/writer.rs",
+        "gate": "public-api",
+        "line": 143,
+        "outcome": "unresolved",
+        "text": "pub fn write(&mut self, module: &Module, info: &valid::ModuleInfo) -> BackendResult { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/back/wgsl/writer.rs",
+        "gate": "public-api",
+        "line": 2138,
+        "outcome": "unresolved",
+        "text": "pub fn finish(self) -> W { — naga — an inherent impl of Writer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/common/predeclared.rs",
+        "gate": "public-api",
+        "line": 9,
+        "outcome": "unresolved",
+        "text": "pub fn struct_name(&self) -> String { — naga — an inherent impl of PredeclaredType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/glsl/error.rs",
+        "gate": "public-api",
+        "line": 157,
+        "outcome": "unresolved",
+        "text": "pub fn location(&self, source: &str) -> Option<SourceLocation> { — naga — an inherent impl of Error outside the module that declares it, and 9 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/glsl/mod.rs",
+        "gate": "public-api",
+        "line": 197,
+        "outcome": "unresolved",
+        "text": "pub fn parse( — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/glsl/mod.rs",
+        "gate": "public-api",
+        "line": 231,
+        "outcome": "unresolved",
+        "text": "pub const fn metadata(&self) -> &ShaderMetadata { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/spv/error.rs",
+        "gate": "public-api",
+        "line": 161,
+        "outcome": "unresolved",
+        "text": "pub fn emit_to_writer(&self, writer: &mut impl ErrorWrite, source: &str) { — naga — an inherent impl of Error outside the module that declares it, and 9 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/spv/error.rs",
+        "gate": "public-api",
+        "line": 166,
+        "outcome": "unresolved",
+        "text": "pub fn emit_to_writer_with_path(&self, writer: &mut impl ErrorWrite, source: &str, path: &str) { — naga — an inherent impl of Error outside the module that declares it, and 9 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/spv/error.rs",
+        "gate": "public-api",
+        "line": 176,
+        "outcome": "unresolved",
+        "text": "pub fn emit_to_string(&self, source: &str) -> String { — naga — an inherent impl of Error outside the module that declares it, and 9 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/spv/error.rs",
+        "gate": "public-api",
+        "line": 180,
+        "outcome": "unresolved",
+        "text": "pub fn emit_to_string_with_path(&self, source: &str, path: &str) -> String { — naga — an inherent impl of Error outside the module that declares it, and 9 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/spv/mod.rs",
+        "gate": "public-api",
+        "line": 679,
+        "outcome": "unresolved",
+        "text": "pub fn new(data: I, options: &Options) -> Self { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/spv/mod.rs",
+        "gate": "public-api",
+        "line": 1714,
+        "outcome": "unresolved",
+        "text": "pub fn parse(mut self) -> Result<crate::Module, Error> { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/wgsl/mod.rs",
+        "gate": "public-api",
+        "line": 44,
+        "outcome": "unresolved",
+        "text": "pub const fn new() -> Self { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/wgsl/mod.rs",
+        "gate": "public-api",
+        "line": 51,
+        "outcome": "unresolved",
+        "text": "pub const fn new_with_options(options: Options) -> Self { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/wgsl/mod.rs",
+        "gate": "public-api",
+        "line": 58,
+        "outcome": "unresolved",
+        "text": "pub const fn set_options(&mut self, options: Options) { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/wgsl/mod.rs",
+        "gate": "public-api",
+        "line": 62,
+        "outcome": "unresolved",
+        "text": "pub fn parse(&mut self, source: &str) -> core::result::Result<crate::Module, ParseError> { — naga — an inherent impl of Frontend outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/front/wgsl/parse/mod.rs",
+        "gate": "public-api",
+        "line": 292,
+        "outcome": "unresolved",
+        "text": "pub const fn new() -> Self { — naga — an inherent impl of Options outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 167,
+        "outcome": "unresolved",
+        "text": "pub const fn new(value: u8, scalar: crate::Scalar) -> Option<Self> { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 188,
+        "outcome": "unresolved",
+        "text": "pub const fn zero(scalar: crate::Scalar) -> Option<Self> { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 192,
+        "outcome": "unresolved",
+        "text": "pub const fn one(scalar: crate::Scalar) -> Option<Self> { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 196,
+        "outcome": "unresolved",
+        "text": "pub const fn minus_one(scalar: crate::Scalar) -> Option<Self> { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 209,
+        "outcome": "unresolved",
+        "text": "pub const fn width(&self) -> crate::Bytes { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 218,
+        "outcome": "unresolved",
+        "text": "pub const fn scalar(&self) -> crate::Scalar { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 234,
+        "outcome": "unresolved",
+        "text": "pub const fn scalar_kind(&self) -> crate::ScalarKind { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 237,
+        "outcome": "unresolved",
+        "text": "pub const fn ty_inner(&self) -> crate::TypeInner { — naga — an inherent impl of Literal outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 385,
+        "outcome": "unresolved",
+        "text": "pub const fn needs_pre_emit(&self) -> bool { — naga — an inherent impl of Expression outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 411,
+        "outcome": "unresolved",
+        "text": "pub const fn is_dynamic_index(&self) -> bool { — naga — an inherent impl of Expression outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 428,
+        "outcome": "unresolved",
+        "text": "pub fn originating_global( — naga — an inherent impl of Function outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "naga/src/proc/mod.rs",
+        "gate": "public-api",
+        "line": 454,
+        "outcome": "unresolved",
+        "text": "pub const fn to_built_in(&self) -> Option<crate::BuiltIn> { — naga — an inherent impl of Binding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/adapter.rs",
+        "gate": "public-api",
+        "line": 49,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn report_live_objects(&self) { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/adapter.rs",
+        "gate": "public-api",
+        "line": 60,
+        "outcome": "unresolved",
+        "text": "pub fn raw_adapter(&self) -> &DxgiAdapter { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/device.rs",
+        "gate": "public-api",
+        "line": 457,
+        "outcome": "unresolved",
+        "text": "pub fn raw_device(&self) -> &Direct3D12::ID3D12Device { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/device.rs",
+        "gate": "public-api",
+        "line": 461,
+        "outcome": "unresolved",
+        "text": "pub fn raw_queue(&self) -> &Direct3D12::ID3D12CommandQueue { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/device.rs",
+        "gate": "public-api",
+        "line": 481,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/device.rs",
+        "gate": "public-api",
+        "line": 516,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn buffer_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 436,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_factory4(&self) -> &Dxgi::IDXGIFactory4 { — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 440,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn create_surface_from_visual(&self, visual: *mut ffi::c_void) -> Surface { — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 454,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn create_surface_from_surface_handle( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 473,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn create_surface_from_swap_chain_panel( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 539,
+        "outcome": "unresolved",
+        "text": "pub fn swap_chain(&self) -> Option<Dxgi::IDXGISwapChain3> { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 545,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn waitable_handle(&self) -> Option<Foundation::HANDLE> { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 607,
+        "outcome": "unresolved",
+        "text": "pub fn as_raw(&self) -> &Dxgi::IDXGIAdapter3 { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 705,
+        "outcome": "unresolved",
+        "text": "pub fn as_raw(&self) -> &Direct3D12::ID3D12CommandQueue { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 713,
+        "outcome": "unresolved",
+        "text": "pub fn add_wait_fence(&self, fence: Direct3D12::ID3D12Fence, value: u64) { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 719,
+        "outcome": "unresolved",
+        "text": "pub fn remove_wait_fence(&self, fence: &Direct3D12::ID3D12Fence) -> bool { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 731,
+        "outcome": "unresolved",
+        "text": "pub fn add_signal_fence(&self, fence: Direct3D12::ID3D12Fence, value: u64) { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 737,
+        "outcome": "unresolved",
+        "text": "pub fn remove_signal_fence(&self, fence: &Direct3D12::ID3D12Fence) -> bool { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 937,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_resource(&self) -> &Direct3D12::ID3D12Resource { — wgpu_hal — an inherent impl of Buffer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 976,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_resource(&self) -> &Direct3D12::ID3D12Resource { — wgpu_hal — an inherent impl of Texture outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 1005,
+        "outcome": "unresolved",
+        "text": "pub fn with_plane_slice(mut self, plane_slice: u32) -> Self { — wgpu_hal — an inherent impl of Texture outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dx12/mod.rs",
+        "gate": "public-api",
+        "line": 1122,
+        "outcome": "unresolved",
+        "text": "pub fn raw_fence(&self) -> &Direct3D12::ID3D12Fence { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/dynamic/mod.rs",
+        "gate": "public-api",
+        "line": 120,
+        "outcome": "unresolved",
+        "text": "pub fn expect_downcast<B: DynBuffer>(self) -> BufferBinding<'a, B, S> { — wgpu_hal — an inherent impl of BufferBinding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/adapter.rs",
+        "gate": "public-api",
+        "line": 16,
+        "outcome": "unresolved",
+        "text": "pub fn get_glsl_version(&self) -> naga::back::glsl::Version { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/device.rs",
+        "gate": "public-api",
+        "line": 134,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/device.rs",
+        "gate": "public-api",
+        "line": 161,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_raw_renderbuffer( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/device.rs",
+        "gate": "public-api",
+        "line": 199,
+        "outcome": "unresolved",
+        "text": "pub fn texture_from_webgl_handle( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/device.rs",
+        "gate": "public-api",
+        "line": 240,
+        "outcome": "unresolved",
+        "text": "pub fn webgl_texture_handle(&self, texture: &super::Texture) -> Option<web_sys::WebGlTexture> { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/device.rs",
+        "gate": "public-api",
+        "line": 263,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn buffer_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 214,
+        "outcome": "unresolved",
+        "text": "pub fn is_owned(&self) -> bool { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 221,
+        "outcome": "unresolved",
+        "text": "pub fn egl_instance(&self) -> Option<&EglInstance> { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 228,
+        "outcome": "unresolved",
+        "text": "pub fn raw_display(&self) -> Option<&khronos_egl::Display> { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 235,
+        "outcome": "unresolved",
+        "text": "pub fn egl_version(&self) -> Option<(i32, i32)> { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 239,
+        "outcome": "unresolved",
+        "text": "pub fn raw_context(&self) -> *mut ffi::c_void { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 314,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn get_without_egl_lock(&self) -> MappedMutexGuard<'_, glow::Context> { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 325,
+        "outcome": "unresolved",
+        "text": "pub fn lock<'a>(&'a self) -> AdapterContextLock<'a> { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 701,
+        "outcome": "unresolved",
+        "text": "pub fn raw_display(&self) -> khronos_egl::Display { — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 710,
+        "outcome": "unresolved",
+        "text": "pub fn egl_version(&self) -> (i32, i32) { — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 1080,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn new_external( — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 1096,
+        "outcome": "unresolved",
+        "text": "pub fn adapter_context(&self) -> &AdapterContext { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 1103,
+        "outcome": "unresolved",
+        "text": "pub fn context(&self) -> &AdapterContext { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/egl.rs",
+        "gate": "public-api",
+        "line": 1232,
+        "outcome": "unresolved",
+        "text": "pub fn supports_srgb(&self) -> bool { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 38,
+        "outcome": "unresolved",
+        "text": "pub fn new(options: &wgt::GlBackendOptions) -> Self { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 46,
+        "outcome": "unresolved",
+        "text": "pub fn signal( — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 66,
+        "outcome": "unresolved",
+        "text": "pub fn satisfied(&self, value: crate::FenceValue) -> bool { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 70,
+        "outcome": "unresolved",
+        "text": "pub fn get_latest(&self, gl: &glow::Context) -> crate::FenceValue { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 100,
+        "outcome": "unresolved",
+        "text": "pub fn maintain(&self, gl: &glow::Context) { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 125,
+        "outcome": "unresolved",
+        "text": "pub fn wait( — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/fence.rs",
+        "gate": "public-api",
+        "line": 184,
+        "outcome": "unresolved",
+        "text": "pub fn destroy(self, gl: &glow::Context) { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/mod.rs",
+        "gate": "public-api",
+        "line": 494,
+        "outcome": "unresolved",
+        "text": "pub fn default_framebuffer(format: wgt::TextureFormat) -> Self { — wgpu_hal — an inherent impl of Texture outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 18,
+        "outcome": "unresolved",
+        "text": "pub fn is_owned(&self) -> bool { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 25,
+        "outcome": "unresolved",
+        "text": "pub fn lock(&self) -> &glow::Context { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 36,
+        "outcome": "unresolved",
+        "text": "pub fn create_surface_from_canvas( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 45,
+        "outcome": "unresolved",
+        "text": "pub fn create_surface_from_offscreen_canvas( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 191,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn new_external( — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 207,
+        "outcome": "unresolved",
+        "text": "pub fn adapter_context(&self) -> &AdapterContext { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 214,
+        "outcome": "unresolved",
+        "text": "pub fn context(&self) -> &AdapterContext { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/web.rs",
+        "gate": "public-api",
+        "line": 341,
+        "outcome": "unresolved",
+        "text": "pub fn supports_srgb(&self) -> bool { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 50,
+        "outcome": "unresolved",
+        "text": "pub fn is_owned(&self) -> bool { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 54,
+        "outcome": "unresolved",
+        "text": "pub fn raw_context(&self) -> *mut c_void { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 64,
+        "outcome": "unresolved",
+        "text": "pub fn lock(&self) -> AdapterContextLock<'_> { — wgpu_hal — an inherent impl of AdapterContext outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 617,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn new_external( — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 636,
+        "outcome": "unresolved",
+        "text": "pub fn adapter_context(&self) -> &AdapterContext { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 643,
+        "outcome": "unresolved",
+        "text": "pub fn context(&self) -> &AdapterContext { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/gles/wgl.rs",
+        "gate": "public-api",
+        "line": 754,
+        "outcome": "unresolved",
+        "text": "pub fn supports_srgb(&self) -> bool { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/adapter.rs",
+        "gate": "public-api",
+        "line": 89,
+        "outcome": "unresolved",
+        "text": "pub fn raw_device(&self) -> &ProtocolObject<dyn MTLDevice> { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/command.rs",
+        "gate": "public-api",
+        "line": 157,
+        "outcome": "unresolved",
+        "text": "pub fn raw_command_buffer(&self) -> Option<&ProtocolObject<dyn MTLCommandBuffer>> { — wgpu_hal — an inherent impl of CommandEncoder outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/device.rs",
+        "gate": "public-api",
+        "line": 418,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/device.rs",
+        "gate": "public-api",
+        "line": 438,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn device_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/device.rs",
+        "gate": "public-api",
+        "line": 453,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn buffer_from_raw(raw: Retained<ProtocolObject<dyn MTLBuffer>>) -> super::Buffer { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/device.rs",
+        "gate": "public-api",
+        "line": 457,
+        "outcome": "unresolved",
+        "text": "pub fn raw_device(&self) -> &Retained<ProtocolObject<dyn MTLDevice>> { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 144,
+        "outcome": "unresolved",
+        "text": "pub fn create_surface_from_layer(&self, layer: &CAMetalLayer) -> Surface { — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 481,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn queue_from_raw( — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 497,
+        "outcome": "unresolved",
+        "text": "pub fn as_raw(&self) -> &ProtocolObject<dyn MTLCommandQueue> { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 527,
+        "outcome": "unresolved",
+        "text": "pub fn enable_strict_event_sync(&self) -> Result<(), crate::DeviceError> { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 562,
+        "outcome": "unresolved",
+        "text": "pub fn add_wait_event(&self, event: Retained<ProtocolObject<dyn MTLSharedEvent>>, value: u64) { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 568,
+        "outcome": "unresolved",
+        "text": "pub fn remove_wait_event(&self, event: &ProtocolObject<dyn MTLSharedEvent>) -> bool { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 583,
+        "outcome": "unresolved",
+        "text": "pub fn add_signal_event( — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 593,
+        "outcome": "unresolved",
+        "text": "pub fn remove_signal_event(&self, event: &ProtocolObject<dyn MTLSharedEvent>) -> bool { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 879,
+        "outcome": "unresolved",
+        "text": "pub fn raw_handle(&self) -> &ProtocolObject<dyn MTLTexture> { — wgpu_hal — an inherent impl of Texture outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/mod.rs",
+        "gate": "public-api",
+        "line": 1304,
+        "outcome": "unresolved",
+        "text": "pub fn raw_shared_event(&self) -> Option<&ProtocolObject<dyn MTLSharedEvent>> { — wgpu_hal — an inherent impl of Fence outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/surface.rs",
+        "gate": "public-api",
+        "line": 36,
+        "outcome": "unresolved",
+        "text": "pub fn new(layer: Retained<CAMetalLayer>) -> Self { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/surface.rs",
+        "gate": "public-api",
+        "line": 44,
+        "outcome": "unresolved",
+        "text": "pub fn from_layer(layer: &CAMetalLayer) -> Self { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/metal/surface.rs",
+        "gate": "public-api",
+        "line": 49,
+        "outcome": "unresolved",
+        "text": "pub fn render_layer(&self) -> &Mutex<Retained<CAMetalLayer>> { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2299,
+        "outcome": "unresolved",
+        "text": "pub fn expose_adapter( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2597,
+        "outcome": "unresolved",
+        "text": "pub fn raw_physical_device(&self) -> vk::PhysicalDevice { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2601,
+        "outcome": "unresolved",
+        "text": "pub fn get_physical_device_features(&self) -> &PhysicalDeviceFeatures { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2605,
+        "outcome": "unresolved",
+        "text": "pub fn physical_device_capabilities(&self) -> &PhysicalDeviceProperties { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2609,
+        "outcome": "unresolved",
+        "text": "pub fn shared_instance(&self) -> &super::InstanceShared { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2613,
+        "outcome": "unresolved",
+        "text": "pub fn required_device_extensions(&self, features: wgt::Features) -> Vec<&'static CStr> { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2644,
+        "outcome": "unresolved",
+        "text": "pub fn physical_device_features( — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 2667,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn device_from_raw( — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 3108,
+        "outcome": "unresolved",
+        "text": "pub fn texture_format_as_raw(&self, texture_format: wgt::TextureFormat) -> vk::Format { — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/adapter.rs",
+        "gate": "public-api",
+        "line": 3116,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn open_with_callback<'a>( — wgpu_hal — an inherent impl of Adapter outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 312,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_raw( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 487,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_d3d11_shared_handle( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 559,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn texture_from_dmabuf_fd( — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 852,
+        "outcome": "unresolved",
+        "text": "pub fn queue_family_index(&self) -> u32 { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 856,
+        "outcome": "unresolved",
+        "text": "pub fn queue_index(&self) -> u32 { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 860,
+        "outcome": "unresolved",
+        "text": "pub fn raw_device(&self) -> &ash::Device { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 864,
+        "outcome": "unresolved",
+        "text": "pub fn raw_physical_device(&self) -> vk::PhysicalDevice { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 868,
+        "outcome": "unresolved",
+        "text": "pub fn raw_queue(&self) -> vk::Queue { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 872,
+        "outcome": "unresolved",
+        "text": "pub fn enabled_device_extensions(&self) -> &[&'static CStr] { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/device.rs",
+        "gate": "public-api",
+        "line": 876,
+        "outcome": "unresolved",
+        "text": "pub fn shared_instance(&self) -> &super::InstanceShared { — wgpu_hal — an inherent impl of Device outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/drm.rs",
+        "gate": "public-api",
+        "line": 38,
+        "outcome": "unresolved",
+        "text": "pub fn create_surface_from_drm_plane( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/drm.rs",
+        "gate": "public-api",
+        "line": 109,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn create_surface_from_drm( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/instance.rs",
+        "gate": "public-api",
+        "line": 276,
+        "outcome": "unresolved",
+        "text": "pub fn shared_instance(&self) -> &super::InstanceShared { — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/instance.rs",
+        "gate": "public-api",
+        "line": 309,
+        "outcome": "unresolved",
+        "text": "pub fn desired_extensions( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/instance.rs",
+        "gate": "public-api",
+        "line": 407,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn from_raw( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/instance.rs",
+        "gate": "public-api",
+        "line": 765,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn init_with_callback( — wgpu_hal — an inherent impl of Instance outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 236,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_native_handle(&self) -> Option<vk::SurfaceKHR> { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 249,
+        "outcome": "unresolved",
+        "text": "pub fn raw_native_swapchain(&self) -> Option<vk::SwapchainKHR> { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 277,
+        "outcome": "unresolved",
+        "text": "pub fn set_next_present_time(&self, present_timing: vk::PresentTimeGOOGLE) { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 315,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn set_next_present_chain(&self, chain: *mut c_void) { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 354,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn set_next_swapchain_create_chain(&self, chain: *mut c_void) { — wgpu_hal — an inherent impl of Surface outside the module that declares it, and 8 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 787,
+        "outcome": "unresolved",
+        "text": "pub fn as_raw(&self) -> vk::Queue { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 854,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn from_raw(vk_buffer: vk::Buffer) -> Self { — wgpu_hal — an inherent impl of Buffer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 866,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn from_raw_externally_owned( — wgpu_hal — an inherent impl of Buffer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 880,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn from_raw_managed( — wgpu_hal — an inherent impl of Buffer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 898,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_handle(&self) -> vk::Buffer { — wgpu_hal — an inherent impl of Buffer outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 937,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_handle(&self) -> vk::AccelerationStructureKHR { — wgpu_hal — an inherent impl of AccelerationStructure outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 973,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_handle(&self) -> vk::Image { — wgpu_hal — an inherent impl of Texture outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 981,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn memory(&self) -> &TextureMemory { — wgpu_hal — an inherent impl of Texture outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1005,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_handle(&self) -> vk::ImageView { — wgpu_hal — an inherent impl of TextureView outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1264,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn raw_handle(&self) -> vk::CommandBuffer { — wgpu_hal — an inherent impl of CommandEncoder outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1669,
+        "outcome": "unresolved",
+        "text": "pub fn raw_device(&self) -> &ash::Device { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1673,
+        "outcome": "unresolved",
+        "text": "pub fn add_signal_semaphore(&self, semaphore: vk::Semaphore, semaphore_value: Option<u64>) { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1686,
+        "outcome": "unresolved",
+        "text": "pub fn remove_signal_semaphore(&self, semaphore: vk::Semaphore) -> bool { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1701,
+        "outcome": "unresolved",
+        "text": "pub fn add_wait_semaphore( — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1719,
+        "outcome": "unresolved",
+        "text": "pub fn remove_wait_semaphore(&self, semaphore: vk::Semaphore) -> bool { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "wgpu-hal/src/vulkan/mod.rs",
+        "gate": "public-api",
+        "line": 1746,
+        "outcome": "unresolved",
+        "text": "pub unsafe fn set_next_submit_chain(&self, chain: *mut c_void) { — wgpu_hal — an inherent impl of Queue outside the module that declares it, and 5 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "14 package(s) or target(s) with no supported public surface:\n  Rust package cts_runner (cts_runner/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package lock-analyzer (lock-analyzer/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package naga-cli (naga-cli/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package naga-fuzz (naga/fuzz/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package naga-xtask (naga/xtask/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-bug-repro-01-texture-atomic-bug (examples/bug-repro/01_texture_atomic_bug/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-bug-repro-02-present-bugs (examples/bug-repro/02_present_bugs/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-example-01-hello-compute (examples/standalone/01_hello_compute/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-example-02-hello-window (examples/standalone/02_hello_window/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-example-03-hdr-surface (examples/standalone/03_hdr_surface/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-example-custom-backend (examples/standalone/custom_backend/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-info (wgpu-info/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package wgpu-xtask (xtask/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package runner (tests/wasm/runner/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "wgpu-core/src/command/mod.rs",
+        "gate": "public-api",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "c9eb295ef0620ae8e8ca6edaaa5404aef3143d7f",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

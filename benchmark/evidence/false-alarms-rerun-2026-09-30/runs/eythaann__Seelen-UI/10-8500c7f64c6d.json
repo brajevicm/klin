@@ -1,0 +1,511 @@
+{
+  "language": "Rust",
+  "repository": "eythaann/Seelen-UI",
+  "index": 9,
+  "head": "8500c7f64c6d7d4f330152a23964248c7e1d3e54",
+  "base": "057f4983de32ca05469f9098ced404437b871b1f",
+  "exit": 0,
+  "signal": null,
+  "ms": 5165,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1700
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CLA.md",
+          "README.md",
+          "SECURITY.md",
+          "changelog.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "libs/core/Cargo.toml",
+          "libs/positioning/Cargo.toml",
+          "libs/slu-ipc/Cargo.toml",
+          "libs/slu-macros/Cargo.toml",
+          "libs/utils/Cargo.toml",
+          "package.json",
+          "src/Cargo.toml",
+          "src/hook_dll/Cargo.toml"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 4,177 function(s) at 057f498; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 4,177 functions at 057f498, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 44
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "libs/core/src/state/settings/by_*.rs",
+            "pattern": "by_*.rs",
+            "roots": [
+              "libs/core/src/state/settings"
+            ]
+          },
+          {
+            "name": "libs/ui/react/components/Wallpaper/components/*Wallpaper.tsx",
+            "pattern": "*Wallpaper.tsx",
+            "roots": [
+              "libs/ui/react/components/Wallpaper/components"
+            ]
+          },
+          {
+            "name": "src/ui/svelte/apps-menu/state/*.svelte.ts",
+            "pattern": "*.svelte.ts",
+            "roots": [
+              "src/ui/svelte/apps-menu/state"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 5,
+        "ms": 46,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 9,
+          "measured": 9,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 226,
+        "ms": 14,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 636,
+          "measured": 636,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 503,
+        "ms": 758,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 636,
+          "reads": 1272
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 636,
+          "measured": 636,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 504,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1272,
+          "reads": 1272
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 13,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 636,
+          "measured": 635,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 260,
+        "ms": 995,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1272,
+          "reads": 1272
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 615,
+          "measured": 614,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1230,
+          "ms": 1378,
+          "parses": 1230,
+          "reads": 1230,
+          "shared": 0,
+          "states": 3258
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 125808,
+          "declaration_text_bytes": 414970,
+          "declarations": 9040,
+          "export_leaves": 368,
+          "export_text_bytes": 16024,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 298,
+          "extern_crate_bytes": 120,
+          "extern_crates": 8,
+          "files": 1228,
+          "import_text_bytes": 795166,
+          "imports": 4784,
+          "module_declarations": 640,
+          "module_text_bytes": 16816,
+          "nesting_bytes": 1060,
+          "nesting_entries": 212,
+          "nestings": 212,
+          "owner_bytes": 33510,
+          "owners": 2798,
+          "path_bytes": 51440,
+          "qualified_paths": 240,
+          "reference_canonical_allocation_ratio": 2,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 21500,
+          "reference_canonical_bytes": 272406,
+          "reference_distinct_names": 10750,
+          "reference_name_bytes": 1551980,
+          "reference_representation_after_bytes": 3296256,
+          "reference_representation_before_bytes": 6592512,
+          "references": 206016,
+          "signature_bytes": 508056,
+          "signatures": 8388,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 29,
+        "ms": 1404,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 4520,
+            "distinct_names": 12092,
+            "files": 614,
+            "index_ms": 5,
+            "measure_ms": 694,
+            "query_ms": 0,
+            "references": 97333
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 4520,
+            "distinct_names": 12092,
+            "files": 614,
+            "index_ms": 5,
+            "measure_ms": 686,
+            "query_ms": 0,
+            "references": 97333
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 28,
+            "ignored_ms": 17,
+            "renames_ms": 0,
+            "walk_ms": 17,
+            "worktree_add_ms": 341,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 11,
+          "measured": 11,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1230
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 767,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 4520,
+            "distinct_names": 12092,
+            "files": 614,
+            "index_ms": 5,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 97333
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 4520,
+            "distinct_names": 12092,
+            "files": 614,
+            "index_ms": 5,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 97333
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 8,
+          "measured": 6,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1230
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 2734,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 2604,
+          "modules": 1252,
+          "ms": 6,
+          "sources": 1252
+        },
+        "held": 0,
+        "ms": 11,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 1590,
+          "measured": 1494,
+          "ms": 2,
+          "opaque": 96,
+          "surfaces": 12
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "AGENTS.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 1700,
+          "words": 1682
+        }
+      },
+      {
+        "file": "src/ui/react/settings/components/navigation/index.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/ui/react/settings/components/navigation/index.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "29 dead symbol(s) the base already held:\n  libs/core/scripts/build_npm.ts:48  postBuild(): void {\n  libs/core/src/state/icon_pack.test.ts:152  constructor(initialActives: string[] = [\"b\", \"a\"]) {\n  libs/core/src/state/icon_pack.test.ts:177  constructor(packs: IconPack[], activeKeys: string[]) {\n  libs/ui/svelte/utils/scopes.svelte.ts:13  constructor(\n  scripts/PalletteGenerator.ts:77  function _maxChromaSRGB(L: number, H: number) {\n  src/background/hook.rs:119  fn log_event(event: WinEvent, origin: Window) {\n  src/background/windows_api/monitor/brightness.rs:34  fn get_file_handle(&self) -> Result<Owned<HANDLE>> {\n  src/ui/globals.d.ts:24  interface ObjectConstructor {\n  src/ui/react/settings/modules/resources/Widget/WindowManager/main/infra/LayoutSelector.tsx:50  function TwmNode({ node }: { node: TwmPluginNode | null }) {\n  src/ui/svelte/apps-menu/state/mod.svelte.ts:309  getMenuItem(id: string): StartMenuItem | undefined {\n  src/ui/svelte/bluetooth-popup/state.svelte.ts:52  get bluetoothRadio() {\n  src/ui/svelte/fancy-toolbar/state/settings.svelte.ts:45  get allByWidget() {\n  src/ui/svelte/fancy-toolbar/state/windows.svelte.ts:53  get topInteractableWindow() {\n  src/ui/svelte/icon-editor/state.svelte.ts:100  get isApproximatelySquare() {\n  src/ui/svelte/icon-editor/state.svelte.ts:103  set isApproximatelySquare(v: boolean) {\n  src/ui/svelte/media-popup/state.svelte.ts:46  get sessions(): MediaPlayer[] {\n  src/ui/svelte/media-popup/state.svelte.ts:50  get defaultInput(): MediaDevice | undefined {\n  src/ui/svelte/media-popup/state.svelte.ts:54  get defaultOutput(): MediaDevice | undefined {\n  src/ui/svelte/media-popup/state.svelte.ts:74  get selectedDevice(): MediaDevice | undefined {\n  src/ui/svelte/network-popup/state.svelte.ts:68  get wifiRadio() {\n  … and 9 more"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  Rust package seelen-ui (src/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package seelen-ui (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "057f4983de32ca05469f9098ced404437b871b1f",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}
