@@ -1719,14 +1719,22 @@ included, so `const { default: Profile } = await import(…)` reaches the file
 it loads while `Profile` is still unused. A named TypeScript re-export in
 another file, `export { x } from "./m"` or `export { x as y } from "./m"`,
 is a reference to `x` from the file that holds it, under the same name-only
-rule, so a name several files declare still reaches each of them. The rule
+rule, so a name several files declare still reaches each of them. A re-export
+names a declaration by the name a consumer addresses it by, so
+`export { default } from "./m"` and `export { default as Profile } from "./m"`
+name `export default function Profile`, and a re-export proves a member only
+where one declaration under the index answers to that name. The rule
 reads the export facts the structural extraction already holds and resolves
 no module. A star re-export, `export * from "./m"` or
 `export * as ns from "./m"`, names nothing and reaches no member (ADR 0061).
 `dead-symbols` reads no re-export as a reference, because it judges private
 declarations, which no re-export can name. Pinned by
 `a_member_only_a_named_re_export_in_another_file_names_is_reached`,
-`named_re_exports_in_another_file_prove_a_family` and
+`named_re_exports_in_another_file_prove_a_family`,
+`a_default_member_a_bare_default_re_export_names_is_reached`,
+`a_default_member_a_renamed_default_re_export_names_is_reached`,
+`a_re_export_of_the_only_default_proves_its_member`,
+`a_default_re_export_proves_no_member_while_several_files_export_a_default` and
 `a_member_only_a_star_re_export_names_stays_unreached` in
 `tests/reachability.rs`, and by
 `a_re_export_of_its_name_in_another_file_keeps_no_private_declaration_alive`

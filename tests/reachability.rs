@@ -421,6 +421,100 @@ fn named_re_exports_in_another_file_prove_a_family() {
     assert!(run.says("web/handlers/ProfileHandler.ts"), "{}", run.out);
 }
 
+/// The three handlers of the base, a new member that exports its function as the default, and a
+/// barrel that re-exports that default with the given clause.
+fn a_default_member_only_a_barrel_names(clause: &str) -> Tree {
+    let tree = three_reached_handlers();
+    tree.base();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export default function Profile() {}\n",
+    );
+    tree.write(
+        "web/index.ts",
+        &format!("export {{ {clause} }} from \"./handlers/ProfileHandler\";\n"),
+    );
+    tree
+}
+
+#[test]
+fn a_default_member_a_bare_default_re_export_names_is_reached() {
+    let tree = a_default_member_only_a_barrel_names("default");
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
+}
+
+#[test]
+fn a_default_member_a_renamed_default_re_export_names_is_reached() {
+    let tree = a_default_member_only_a_barrel_names("default as Profile");
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
+}
+
+#[test]
+fn a_re_export_of_the_only_default_proves_its_member() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{}"#);
+    tree.write(
+        "web/handlers/LoginHandler.ts",
+        "export function Login() {}\n",
+    );
+    tree.write(
+        "web/handlers/LogoutHandler.ts",
+        "export function Logout() {}\n",
+    );
+    tree.write(
+        "web/handlers/ResetHandler.ts",
+        "export default function Reset() {}\n",
+    );
+    tree.write(
+        "web/index.ts",
+        "export { Login } from \"./handlers/LoginHandler\";\n\
+         export { Logout } from \"./handlers/LogoutHandler\";\n\
+         export { default as Reset } from \"./handlers/ResetHandler\";\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: reachability web/handlers/*Handler.ts"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_default_re_export_proves_no_member_while_several_files_export_a_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{}"#);
+    for name in ["Login", "Logout", "Reset"] {
+        tree.write(
+            &format!("web/handlers/{name}Handler.ts"),
+            &format!("export default function {name}() {{}}\n"),
+        );
+    }
+    tree.write(
+        "web/index.ts",
+        "export { default as Login } from \"./handlers/LoginHandler\";\n\
+         export { default } from \"./handlers/LogoutHandler\";\n\
+         export { default as Reset } from \"./handlers/ResetHandler\";\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("derived: reachability"), "{}", run.out);
+}
+
 #[test]
 fn a_member_only_a_star_re_export_names_stays_unreached() {
     let tree = three_reached_handlers();

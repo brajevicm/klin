@@ -418,13 +418,16 @@ fn family_of(families: &[Family], path: &str) -> Option<usize> {
 }
 
 /// What names a declaration from outside its file under the name-only rule: the structural
-/// index's references and destructurings, and every named TypeScript re-export, such as
-/// `export { x as y } from "./m"`, which names `x`. The index keeps no re-export as a reference,
-/// because `dead-symbols` judges private declarations, which no re-export can name. A star
-/// re-export names nothing. Spec 8.4.
+/// index's references and destructurings, and every named TypeScript re-export. A re-export
+/// names a declaration by the name a consumer addresses it by, so `export { x as y } from "./m"`
+/// names `x`, and `export { default as Profile } from "./m"` names the default export of `m`.
+/// The index keeps no re-export as a reference, because `dead-symbols` judges private
+/// declarations, which no re-export can name. A star re-export names nothing. Spec 8.4.
 struct Naming<'a> {
     index: &'a SourceIndex,
     re_exported: HashMap<(LanguageId, &'a str), Vec<&'a str>>,
+    /// How many declarations a consumer addresses by each name some re-export names.
+    addressed: HashMap<(LanguageId, &'a str), usize>,
 }
 
 impl<'a> Naming<'a> {
@@ -444,51 +447,95 @@ impl<'a> Naming<'a> {
                     .push(&file.file);
             }
         }
-        Naming { index, re_exported }
+        let mut addressed: HashMap<(LanguageId, &str), usize> = HashMap::new();
+        if !re_exported.is_empty() {
+            for file in index.files() {
+                for declaration in file.declarations.iter().filter(|held| !held.destructures()) {
+                    let key = (file.language, address(declaration));
+                    if re_exported.contains_key(&key) {
+                        *addressed.entry(key).or_default() += 1;
+                    }
+                }
+            }
+        }
+        Naming {
+            index,
+            re_exported,
+            addressed,
+        }
     }
 
-    /// Whether another file references one of this file's eligible declarations by name. A
-    /// reference names every declaration of its name, so ambiguity reaches each of them.
+    /// Whether another file names one of this file's eligible declarations. A name reaches every
+    /// declaration it names, so ambiguity reaches each of them.
     fn reached(&self, file: &structural::FileFacts) -> bool {
         file.declarations
             .iter()
             .filter(|declaration| eligible(declaration))
-            .any(|declaration| self.named_elsewhere(file, declaration))
+            .any(|declaration| {
+                self.referenced_elsewhere(file, declaration)
+                    || self.re_exported_elsewhere(file, declaration)
+            })
     }
 
-    /// Whether one eligible declaration of this file is the only one of its name under the index
-    /// and another file names it, which is evidence no ambiguity could have produced. A
-    /// destructuring that binds the name is no declaration of that name here. Spec 5.4.
+    /// Whether another file names one eligible declaration of this file by a name no other
+    /// declaration under the index answers to, which is evidence no ambiguity could have
+    /// produced. A reference is judged by the declaration's name and a re-export by the name a
+    /// consumer addresses it by. A destructuring that binds the name is no declaration of that
+    /// name here. Spec 5.4.
     fn proven(&self, file: &structural::FileFacts) -> bool {
         file.declarations
             .iter()
             .filter(|declaration| eligible(declaration))
             .any(|declaration| {
-                self.index
+                let named = self
+                    .index
                     .declarations(file.language, &declaration.name)
                     .filter(|held| !held.declaration.destructures())
-                    .count()
-                    == 1
-                    && self.named_elsewhere(file, declaration)
+                    .count();
+                let addressed = self.addressed.get(&(file.language, address(declaration)));
+                (named == 1 && self.referenced_elsewhere(file, declaration))
+                    || (addressed == Some(&1) && self.re_exported_elsewhere(file, declaration))
             })
     }
 
-    /// Whether a file other than the one that holds this declaration references its name,
-    /// re-exports it by name, or holds a destructuring declaration that binds it. Spec 5.4.
-    fn named_elsewhere(&self, file: &structural::FileFacts, declaration: &Declaration) -> bool {
-        let elsewhere = |at: &str| at != file.file;
+    /// Whether a file other than the one that holds this declaration references its name or
+    /// holds a destructuring declaration that binds it. Spec 5.4.
+    fn referenced_elsewhere(
+        &self,
+        file: &structural::FileFacts,
+        declaration: &Declaration,
+    ) -> bool {
         self.index
             .references(file.language, &declaration.name)
-            .any(|site| elsewhere(site.file))
-            || self
-                .re_exported
-                .get(&(file.language, declaration.name.as_str()))
-                .is_some_and(|files| files.iter().any(|at| elsewhere(at)))
+            .any(|site| site.file != file.file)
             || self
                 .index
                 .declarations(file.language, &declaration.name)
-                .any(|held| elsewhere(held.file) && held.declaration.destructures())
+                .any(|held| held.file != file.file && held.declaration.destructures())
     }
+
+    /// Whether a file other than the one that holds this declaration re-exports it by the name a
+    /// consumer addresses it by.
+    fn re_exported_elsewhere(
+        &self,
+        file: &structural::FileFacts,
+        declaration: &Declaration,
+    ) -> bool {
+        !declaration.destructures()
+            && self
+                .re_exported
+                .get(&(file.language, address(declaration)))
+                .is_some_and(|files| files.iter().any(|at| *at != file.file))
+    }
+}
+
+/// The name a consumer of the module addresses a declaration by: `default` for TypeScript's
+/// `export default function Profile`, and its own name otherwise.
+fn address(declaration: &Declaration) -> &str {
+    declaration
+        .exported_as
+        .as_deref()
+        .unwrap_or(&declaration.name)
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
