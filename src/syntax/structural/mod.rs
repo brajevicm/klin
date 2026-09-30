@@ -1281,6 +1281,7 @@ impl<'a, 'b> Reading<'a, 'b> {
 }
 
 /// One declaration as the index reports it, with the file that holds it.
+#[derive(Clone, Copy)]
 pub struct Declared<'a> {
     pub file: &'a str,
     pub language: LanguageId,

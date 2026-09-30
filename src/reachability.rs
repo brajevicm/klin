@@ -22,7 +22,9 @@ use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::{self, Key};
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
-use crate::syntax::structural::{self, Declaration, DeclarationKind, Measurement, SourceIndex};
+use crate::syntax::structural::{
+    self, Declaration, DeclarationKind, Declared, Measurement, SourceIndex,
+};
 use crate::syntax::{self, LanguageId};
 use crate::{cache, changed};
 
@@ -447,12 +449,11 @@ impl<'a> Naming<'a> {
         }
         let aliased = aliased(index);
         for ((language, name), from) in &leaves {
-            let targets: Vec<(&str, &Declaration)> = index
+            let targets: Vec<Declared> = index
                 .declarations(*language, name)
                 .filter(|held| {
                     !held.declaration.destructures() && held.declaration.exported_as.is_none()
                 })
-                .map(|held| (held.file, held.declaration))
                 .chain(
                     aliased
                         .get(&(*language, *name))
@@ -462,11 +463,11 @@ impl<'a> Naming<'a> {
                 )
                 .collect();
             let only = targets.len() == 1;
-            for (file, _) in targets.iter().filter(|(_, held)| eligible(held)) {
-                if from.iter().any(|at| at != file) {
-                    naming.re_exported.insert(file);
+            for held in targets.iter().filter(|held| eligible(held.declaration)) {
+                if from.iter().any(|at| *at != held.file) {
+                    naming.re_exported.insert(held.file);
                     if only {
-                        naming.proven_by_re_export.insert(file);
+                        naming.proven_by_re_export.insert(held.file);
                     }
                 }
             }
@@ -546,15 +547,19 @@ fn re_export_leaves(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<&str
 
 /// Every declaration a consumer addresses by a name other than its own, such as `default` for
 /// TypeScript's `export default function Profile`, under that name.
-fn aliased(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<(&str, &Declaration)>> {
-    let mut aliased: HashMap<(LanguageId, &str), Vec<(&str, &Declaration)>> = HashMap::new();
+fn aliased(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<Declared<'_>>> {
+    let mut aliased: HashMap<(LanguageId, &str), Vec<Declared>> = HashMap::new();
     for file in index.files() {
         for declaration in file.declarations.iter().filter(|held| !held.destructures()) {
             if let Some(name) = declaration.exported_as.as_deref() {
                 aliased
                     .entry((file.language, name))
                     .or_default()
-                    .push((&file.file, declaration));
+                    .push(Declared {
+                        file: &file.file,
+                        language: file.language,
+                        declaration,
+                    });
             }
         }
     }

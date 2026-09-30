@@ -458,6 +458,17 @@ fn a_default_member_a_renamed_default_re_export_names_is_reached() {
 }
 
 #[test]
+fn a_default_member_a_re_export_of_its_own_name_leaves_unreached() {
+    let tree = a_default_member_only_a_barrel_names("Profile");
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new unreached file(s)"), "{}", run.out);
+    assert!(run.says("web/handlers/ProfileHandler.ts"), "{}", run.out);
+}
+
+#[test]
 fn a_re_export_of_the_only_default_proves_its_member() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{}"#);

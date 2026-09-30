@@ -1720,10 +1720,14 @@ it loads while `Profile` is still unused. A named TypeScript re-export in
 another file, `export { x } from "./m"` or `export { x as y } from "./m"`,
 is a reference to `x` from the file that holds it, under the same name-only
 rule, so a name several files declare still reaches each of them. A re-export
-names a declaration by the name a consumer addresses it by, so
-`export { default } from "./m"` and `export { default as Profile } from "./m"`
-name `export default function Profile`, and a re-export proves a member only
-where one declaration under the index answers to that name. The rule
+names a declaration by the name the declaration exports it under: `default`
+for `export default function Profile` or `export default class Profile`, and
+its own name otherwise. So `export { default } from "./m"` and
+`export { default as Profile } from "./m"` name that declaration, and
+`export { Profile } from "./m"` does not. A re-export proves a member only
+where one declaration under the index answers to that name, so a `default`
+re-export proves nothing while several files export a default, and proves the
+only default of the index wherever the re-export points. The rule
 reads the export facts the structural extraction already holds and resolves
 no module. A star re-export, `export * from "./m"` or
 `export * as ns from "./m"`, names nothing and reaches no member (ADR 0061).
@@ -1733,6 +1737,7 @@ declarations, which no re-export can name. Pinned by
 `named_re_exports_in_another_file_prove_a_family`,
 `a_default_member_a_bare_default_re_export_names_is_reached`,
 `a_default_member_a_renamed_default_re_export_names_is_reached`,
+`a_default_member_a_re_export_of_its_own_name_leaves_unreached`,
 `a_re_export_of_the_only_default_proves_its_member`,
 `a_default_re_export_proves_no_member_while_several_files_export_a_default` and
 `a_member_only_a_star_re_export_names_stays_unreached` in
@@ -1809,7 +1814,11 @@ value, and wrong for an unused `const { default: Profile } = await import(…)`
 inside a function, which leaves the file the import loads unreached. Second
 known limit: a member's own destructuring declaration, such as
 `export const { Profile } = factory;`, is judged by its pattern text, which
-no reference spells, so a file that uses `Profile` does not reach it.
+no reference spells, so a file that uses `Profile` does not reach it. Third
+known limit: a declaration that a later statement exports as the default,
+such as `function Reset() {}` with `export default Reset;` or
+`export { Reset as default };`, keeps its own name, so a `default` re-export
+does not reach it and `export { Reset } from "./m"` does.
 
 **`doc-citations` reads backticked paths, not Markdown links.** On each line,
 backticks pair from the left, and an unpaired trailing backtick opens

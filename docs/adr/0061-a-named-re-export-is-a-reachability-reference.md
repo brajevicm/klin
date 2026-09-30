@@ -22,17 +22,22 @@ Ambiguity still reads as reached: the re-export names every declaration of
 `x`. A re-export also proves a member for the family derivation, as any other
 reference does.
 
-A re-export names a declaration by the name a consumer addresses it by. For
-`export default function Profile` that name is `default`, so
+A re-export names a declaration by the name the declaration exports it under.
+For `export default function Profile` that name is `default`, so
 `export { default } from "./m"` and `export { default as Profile } from "./m"`
 both name it, and `export { Profile } from "./m"` does not. A re-export proves
 a member only where one declaration under the index answers to that name, so
 a `default` re-export proves nothing while several files export a default.
+Because no module is resolved, a `default` re-export proves the only default
+of the index even where it points at another file. A declaration that a later
+statement exports as the default, such as `export default Reset;`, keeps its
+own name, which spec 8.4 lists as a known limit.
 
 The rule reads the export facts klin already extracts. It resolves no module,
-parses nothing a second time and walks no new tree. The check builds one map
-from each re-exported name to the files that re-export it, over the index it
-already holds.
+parses nothing a second time and walks no new tree. The check starts from the
+re-export leaves, finds the declarations each one names, and records the files
+that hold them, over the index it already holds. A member then costs one set
+lookup.
 
 **`export *` stays unresolved.** A star re-export names no declaration, so
 naming one would take module resolution. It stays a known limit of spec 8.4.
