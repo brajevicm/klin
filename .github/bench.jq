@@ -108,6 +108,8 @@ def header($has_dense):
     "",
     "Both binaries ran the same measurements on this runner, so only the binary differs.",
     "",
+    "> 📌 Measured `\($merge)`, head `\($head)` merged onto base `\($base)`",
+    "> 🔁 A later push leaves this stale; remove and re-add the `benchmark` label to measure again",
     (if $has_dense
      then "> 🧪 Same `structural_300k` fixture on `ubuntu-latest`"
      else "> 🧪 Dense fixture skipped; add the `benchmark` label to run it." end),

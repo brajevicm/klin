@@ -120,7 +120,7 @@ enforcement boundary back into feedback.
 ## klin's own repository
 
 `.github/workflows/quality.yml` builds klin from the commit under review and
-runs `./target/release/klin gate --strict`. The checkout is independent of the
+runs `./target/debug/klin gate --strict`. The checkout is independent of the
 agent's worktree, but the binary is not independent of the change: a commit
 that alters a check also alters the binary that judges it. `.github/CODEOWNERS`
 over `/.github/workflows/`, `/klin.json`, `/.claude/settings.json` and

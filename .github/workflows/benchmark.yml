@@ -18,7 +18,10 @@ concurrency:
 
 jobs:
   compare:
+    # Any other label is not a request to measure.
+    if: github.event.label.name == 'benchmark'
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
@@ -62,17 +65,22 @@ jobs:
               > "$RUNNER_TEMP/$side-dense.json"
           done
 
+      # The run measures the merge ref as it stood at the labeling. A later push does not run it
+      # again, so the comment names the commits it measured.
       - name: Render the benchmark comment
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          commits=(--arg merge "$(git rev-parse HEAD)" --arg head "$HEAD_SHA" --arg base "$(git rev-parse HEAD^1)")
           if [ -f "$RUNNER_TEMP/base-dense.json" ]; then
-            jq -n -r \
+            jq -n -r "${commits[@]}" \
               --slurpfile strict_base "$RUNNER_TEMP/base.json" \
               --slurpfile strict_head "$RUNNER_TEMP/head.json" \
               --slurpfile dense_base "$RUNNER_TEMP/base-dense.json" \
               --slurpfile dense_head "$RUNNER_TEMP/head-dense.json" \
               -f .github/bench.jq
           else
-            jq -n -r \
+            jq -n -r "${commits[@]}" \
               --slurpfile strict_base "$RUNNER_TEMP/base.json" \
               --slurpfile strict_head "$RUNNER_TEMP/head.json" \
               --argjson dense_base '[{}]' \
