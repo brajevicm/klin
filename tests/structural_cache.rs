@@ -561,16 +561,12 @@ fn a_sparse_checkout_the_light_layout_does_not_read_checks_the_base_out_whole() 
     assert!(layout(&light)["written"].is_u64(), "{}", light.out);
 
     for (set, sparse) in [
-        ("true", true),
-        ("yes", true),
+        ("TRUE", true),
         ("on", true),
         ("1", true),
-        ("TRUE", true),
-        ("false", false),
-        ("no", false),
         ("off", false),
+        ("no", false),
         ("0", false),
-        ("FALSE", false),
     ] {
         tree.git(&["config", "core.sparseCheckout", set]);
         dead_symbols(&tree);

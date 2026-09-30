@@ -53,6 +53,18 @@ fn journal(tree: &Tree, kind: &str) -> Vec<Value> {
         .collect()
 }
 
+/// Every claim as the copies left it `by` ago, so the event reads as settled without a wait.
+fn aged(tree: &Tree, by: std::time::Duration) {
+    let then = std::time::SystemTime::now() - by;
+    for entry in std::fs::read_dir(tree.state("claims")).expect("claims") {
+        std::fs::File::options()
+            .write(true)
+            .open(entry.expect("claim").path())
+            .and_then(|claim| claim.set_modified(then))
+            .expect("aged");
+    }
+}
+
 fn prompts(tree: &Tree) -> u64 {
     tree.field("prompts").parse().unwrap_or(0)
 }
@@ -241,7 +253,7 @@ fn the_same_stop_again_after_the_copies_settled_is_gated() {
     );
 
     run(&tree, &["gate", "--hook", "--changed"], &stop);
-    std::thread::sleep(std::time::Duration::from_millis(2500));
+    aged(&tree, std::time::Duration::from_secs(3));
     run(&tree, &["gate", "--hook", "--changed"], &stop);
 
     assert_eq!(journal(&tree, "stop").len(), 2);
