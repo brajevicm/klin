@@ -1081,7 +1081,7 @@ fn footprint_counters(times: &mut BTreeMap<String, u64>, name: &str, gate: &Valu
 }
 
 /// The population, sparsity and byte counters of the facts one run holds. #200.
-const FOOTPRINT: [&str; 30] = [
+const FOOTPRINT: [&str; 32] = [
     "files",
     "declarations",
     "references",
@@ -1090,6 +1090,7 @@ const FOOTPRINT: [&str; 30] = [
     "exports",
     "export_leaves",
     "qualified_paths",
+    "extern_crates",
     "path_bytes",
     "declaration_name_bytes",
     "declaration_text_bytes",
@@ -1112,9 +1113,10 @@ const FOOTPRINT: [&str; 30] = [
     "import_text_bytes",
     "export_text_bytes",
     "module_text_bytes",
+    "extern_crate_bytes",
 ];
 
-const TYPE_SIZES: [&str; 8] = [
+const TYPE_SIZES: [&str; 9] = [
     "name",
     "file_facts",
     "declaration",
@@ -1123,6 +1125,7 @@ const TYPE_SIZES: [&str; 8] = [
     "module_declaration",
     "export",
     "export_leaf",
+    "extern_crate",
 ];
 
 /// The parts of one whole-base layout, on the row of the gate that laid it out. #202.

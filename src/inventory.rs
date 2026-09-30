@@ -20,7 +20,7 @@ use crate::git::Repo;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
-use crate::scope::{self, Scope, under_or_at};
+use crate::scope::{self, Roots, Scope};
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::syntax::convention::{self, Test};
 use crate::syntax::{self, Unparsed};
@@ -51,7 +51,7 @@ const RULE: &str = "the affix table: a test_ or spec_ prefix, a _test, _spec, .t
 /// source file a test directory segment or a test affix marks, within the section's scope.
 /// Spec 5.4, 8.2.
 struct Tests<'a> {
-    roots: &'a [String],
+    roots: Roots<'a>,
     scope: Scope,
 }
 
@@ -59,7 +59,7 @@ impl Tests<'_> {
     fn holds(&self, path: &str) -> bool {
         self.scope.selects(path)
             && survey::surveyed(path)
-            && (self.roots.iter().any(|root| under_or_at(path, root)) || survey::marked(path))
+            && (self.roots.holds(path) || survey::marked(path))
     }
 }
 
@@ -174,7 +174,7 @@ fn found(at: &Context, (commit, prior): (&str, &Prior), today: &Scope) -> Result
     let project = at.project;
     let config = &project.config;
     let tests = Tests {
-        roots: &project.facts().found.test_roots,
+        roots: Roots::new(&project.facts().found.test_roots),
         scope: Scope::at_base(config, SECTION, prior.root(), today),
     };
     let listed = at_the_base(config.root(), commit)?;
@@ -210,7 +210,7 @@ fn today(project: &Project) -> Result<Scope, Error> {
     let values = config.policy(SECTION, KEYS)?;
     let scope = Scope::read(config, SECTION, &values)?;
     let tests = Tests {
-        roots: &project.facts().found.test_roots,
+        roots: Roots::new(&project.facts().found.test_roots),
         scope,
     };
     if tests.scope.has_in() && !project.tree().files()?.iter().any(|path| tests.holds(path)) {

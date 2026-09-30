@@ -267,6 +267,20 @@ fn an_empty_test_body_fails_and_a_test_rewritten_with_the_same_declaration_stays
 }
 
 #[test]
+fn an_empty_body_under_a_multi_line_tokio_test_is_an_empty_test() {
+    let tree = shaped();
+    tree.write(
+        "src/a.rs",
+        "#[tokio::test(\n    flavor = \"multi_thread\",\n)]\nasync fn serves() {}\nfn main() {}\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/a.rs:4  empty test"), "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+}
+
+#[test]
 fn an_empty_test_body_a_call_declares_fails() {
     let tree = shaped();
     tree.write(

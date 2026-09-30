@@ -124,6 +124,24 @@ fn a_test_file_beside_its_source_is_judged_with_no_configuration() {
     );
 }
 
+#[test]
+fn a_file_under_a_test_root_at_the_tree_root_is_a_test_file() {
+    let tree = Tree::new();
+    tree.write("a_test.go", "package p\n");
+    tree.write("sub/b_test.go", "package p\n");
+    tree.write("notes.txt", "x\n");
+    tree.base();
+    tree.remove("notes.txt");
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("notes.txt:0  missing 1, was missing 0"),
+        "{}",
+        run.out
+    );
+}
+
 /// `except` takes a path out of the tests judged, and the base's own scope decides, so a
 /// narrowing a person committed lets a deletion under it through. Spec 8.6.
 #[test]
@@ -660,6 +678,28 @@ fn a_test_name_with_no_attribute_above_it_is_a_test_site() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("missing 1, was missing 0  pub fn test_beta() {"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn deleting_a_tokio_test_from_a_file_that_stays_is_a_vanished_test_site() {
+    let tree = Tree::new();
+    tree.write(
+        "tests/serve.rs",
+        "#[tokio::test]\nasync fn alpha() {\n    serve(1).await;\n}\n\n#[tokio::test(\n    flavor = \
+         \"multi_thread\",\n)]\nasync fn beta() {\n    serve(2).await;\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "tests/serve.rs",
+        "#[tokio::test]\nasync fn alpha() {\n    serve(1).await;\n}\n",
+    );
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("missing 1, was missing 0  async fn beta() {"),
         "{}",
         run.out
     );

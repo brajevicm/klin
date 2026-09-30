@@ -14,7 +14,7 @@ use crate::files;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Values};
 use crate::reference::{self, Key};
-use crate::scope::{Scope, under_or_at};
+use crate::scope::{Roots, Scope};
 use crate::syntax;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
@@ -48,6 +48,9 @@ pub struct Kind {
     pub skips_literals: bool,
     /// Whether the function walk judges body shapes too, which only a parser can see. #114.
     pub reads_shapes: bool,
+    /// Whether a Rust `cfg_attr` a pattern finds is a site only where it skips its test on every
+    /// target, which only a parser can see. Spec 8.2.
+    pub reads_cfg_attr: bool,
     pub evaluator: Evaluator<'static>,
 }
 
@@ -106,6 +109,17 @@ struct Set {
     /// Whether the function walk judges the body shapes of the files this set reads. A set the
     /// project's own patterns make is not a language, so it names no shapes. #114.
     shapes: bool,
+    cfg_attr: bool,
+}
+
+impl Set {
+    /// Whether a match stands as a site. A Rust `cfg_attr` stands only where the grammar read
+    /// it as skipping its test on every target. Spec 8.2.
+    fn stands(&self, past: &Skipped, found: &regex::Match) -> bool {
+        !self.cfg_attr
+            || !found.as_str().ends_with("cfg_attr")
+            || past.everywhere.contains(&found.start())
+    }
 }
 
 struct Spec {
@@ -120,12 +134,14 @@ struct Search {
 }
 
 /// What one file says about where a test idiom does not count: the whole file when it sits
-/// under a test root, the inline test modules, and where a quoted span hides any match.
+/// under a test root, the inline test modules, and where a quoted span hides any match. It also
+/// holds the byte each Rust `cfg_attr` that skips its test on every target starts at.
 #[derive(Default, Clone)]
 struct Skipped {
     test_file: bool,
     tests: Vec<(u64, u64)>,
     literals: Vec<(usize, usize)>,
+    everywhere: Vec<usize>,
 }
 
 /// One tree read: the sites, how many test idioms Rust test code took out of the count, and the
@@ -147,8 +163,8 @@ struct Tally {
 /// One tree walk: the tree's test roots, and what the walk accumulates across its files. The
 /// sites, what each file said about where a match does not count, the files whose shapes were
 /// read, the tally of idioms left out, and the reads and parses the walk cost.
-struct Walk {
-    test_roots: Vec<String>,
+struct Walk<'a> {
+    test_roots: Roots<'a>,
     seen: BTreeMap<(String, String), Tally>,
     cache: BTreeMap<String, Skipped>,
     shaped: BTreeSet<String>,
@@ -300,6 +316,7 @@ fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
         .map(|set| {
             Ok(Set {
                 shapes: kind.reads_shapes,
+                cfg_attr: kind.reads_cfg_attr,
                 suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
                 patterns: compiled(
                     kind,
@@ -366,7 +383,11 @@ fn findings(
 ) -> Result<Read, Error> {
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
-    let mut walk = Walk::over(kind, tree);
+    let test_roots = match kind.skips_tests {
+        true => tree.test_roots(),
+        false => Vec::new(),
+    };
+    let mut walk = Walk::over(&test_roots);
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search
@@ -413,13 +434,10 @@ fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>) -> Files {
     }
 }
 
-impl Walk {
-    fn over(kind: &Kind, tree: &Tree) -> Walk {
+impl<'a> Walk<'a> {
+    fn over(test_roots: &'a [String]) -> Walk<'a> {
         Walk {
-            test_roots: match kind.skips_tests {
-                true => tree.test_roots(),
-                false => Vec::new(),
-            },
+            test_roots: Roots::new(test_roots),
             seen: BTreeMap::new(),
             cache: BTreeMap::new(),
             shaped: BTreeSet::new(),
@@ -477,7 +495,7 @@ fn shapes(rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
 fn cached(
     kind: &Kind,
     search: &Search,
-    test_roots: &[String],
+    test_roots: &Roots,
     rel: &str,
     text: &str,
     cache: &mut BTreeMap<String, Skipped>,
@@ -487,13 +505,17 @@ fn cached(
         .or_insert_with(|| {
             let rust_tests = skips_rust_tests(kind, search, rel);
             Skipped {
-                test_file: rust_tests && test_roots.iter().any(|root| under_or_at(rel, root)),
+                test_file: rust_tests && test_roots.holds(rel),
                 tests: match rust_tests {
                     true => syntax::convention::test_module_ranges(rel, text),
                     false => Vec::new(),
                 },
                 literals: match kind.skips_literals {
                     true => literals(text),
+                    false => Vec::new(),
+                },
+                everywhere: match kind.reads_cfg_attr {
+                    true => syntax::convention::skipped_everywhere(rel, text),
                     false => Vec::new(),
                 },
             }
@@ -511,7 +533,11 @@ fn tally(
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
     for pattern in &set.patterns {
-        for found in pattern.regex.find_iter(text) {
+        let stands = pattern
+            .regex
+            .find_iter(text)
+            .filter(|found| set.stands(past, found));
+        for found in stands {
             if quoted(past, found.range()) {
                 continue;
             }

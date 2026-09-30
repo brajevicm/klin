@@ -407,7 +407,12 @@ fn the_commands_of_one_run_share_twice_the_limit() {
     );
 
     let started = std::time::Instant::now();
-    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "1")], &["gate"]);
+    let run = tree.run_with(
+        &[("KLIN_COMMAND_LIMIT", "1")],
+        &[
+            "gate", "--gate", "first", "--gate", "second", "--gate", "third",
+        ],
+    );
     assert!(started.elapsed().as_secs() < 30, "{}", run.out);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the 1 second limit"), "{}", run.out);

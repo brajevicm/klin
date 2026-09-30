@@ -89,9 +89,11 @@ struct Family {
 }
 
 impl Family {
-    /// Whether the family's root and pattern select this path, before any exclusion.
+    /// Whether the family's root and pattern select this path, before any exclusion. A file the
+    /// test convention marks is never selected. Spec 5.4.
     fn selects(&self, path: &str) -> bool {
-        self.roots.iter().any(|root| under_or_at(path, root))
+        !survey::marked(path)
+            && self.roots.iter().any(|root| under_or_at(path, root))
             && self.extensions.iter().any(|end| path.ends_with(end))
             && files::glob_matches(self.pattern.as_bytes(), basename(path).as_bytes())
     }
@@ -425,18 +427,24 @@ fn reached(index: &SourceIndex, file: &structural::FileFacts) -> bool {
 }
 
 /// Whether one eligible declaration of this file is the only one of its name under the index
-/// and another file references it, which is evidence no ambiguity could have produced.
+/// and another file references it, which is evidence no ambiguity could have produced. A
+/// destructuring that binds the name is no declaration of that name here. Spec 5.4.
 fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
     file.declarations
         .iter()
         .filter(|declaration| eligible(declaration))
         .any(|declaration| {
-            index.declarations(file.language, &declaration.name).count() == 1
+            index
+                .declarations(file.language, &declaration.name)
+                .filter(|held| !held.declaration.destructures())
+                .count()
+                == 1
                 && referenced_elsewhere(index, file, declaration)
         })
 }
 
-/// Whether a file other than the one that holds this declaration references its name.
+/// Whether a file other than the one that holds this declaration references its name or holds
+/// a destructuring declaration that binds it. Spec 5.4.
 fn referenced_elsewhere(
     index: &SourceIndex,
     file: &structural::FileFacts,
@@ -445,6 +453,9 @@ fn referenced_elsewhere(
     index
         .references(file.language, &declaration.name)
         .any(|site| site.file != file.file)
+        || index
+            .declarations(file.language, &declaration.name)
+            .any(|held| held.file != file.file && held.declaration.destructures())
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
@@ -648,15 +659,20 @@ pub fn derived(root: &Path, at: Option<&Path>, commit: &str, held: &Survey) -> O
 }
 
 /// Every structural file the derivation commit holds under its own source roots and outside
-/// its test roots. A test root is never a family. Spec 8.2.
+/// those of them that are test roots. Spec 5.4, 8.2.
 fn members_at(root: &Path, commit: &str, held: &Survey) -> Option<Vec<String>> {
     let extensions = structural::selected_extensions(&[]).unwrap_or_default();
+    let source_test_roots: Vec<&String> = held
+        .test_roots
+        .iter()
+        .filter(|at| held.roots.contains(at))
+        .collect();
     Some(
         survey::listed(root, commit)?
             .into_iter()
             .filter(|path| extensions.iter().any(|end| path.ends_with(end)))
             .filter(|path| held.roots.iter().any(|at| under_or_at(path, at)))
-            .filter(|path| !held.test_roots.iter().any(|at| under_or_at(path, at)))
+            .filter(|path| !source_test_roots.iter().any(|at| under_or_at(path, at)))
             .collect(),
     )
 }

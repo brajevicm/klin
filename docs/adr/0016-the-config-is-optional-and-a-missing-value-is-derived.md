@@ -4,6 +4,9 @@
 > this for the `--hook` path: there the file is the opt-in marker. ADR 0040
 > amends the `init` rule: `init` writes `{}`, `--pin` writes guardrails, and
 > `--add` and `--force` are gone.
+>
+> The amendment below (#385) restates the source root rule as the survey
+> applies it, and lets a test root sit inside a package's source root.
 
 ADR 0005 held two rules apart. A key a gate needs and does not find is an
 error naming the key, never a default. And `init` writes every section it can
@@ -92,3 +95,32 @@ own paths and never over a path found only in `after`, and a site under a
 path the survey did not hold is `new`. So the union can only widen a gate. The
 fourth review of `docs/SPEC.md` found the purity sentence and the union rule
 in conflict, and 4.3, 5.4 and 7.1 carry the resolution.
+
+## Amendment: a test root may sit inside a package's source root (#385)
+
+The decision above calls source roots the shallowest directories that hold
+nothing but source. The survey instead starts at the directory of each
+source file and merges upward while the directory above holds nothing but
+source, so a source file directly in a directory that holds anything else
+starts its root in that directory. A crate's `build.rs` beside its
+`Cargo.toml` makes the crate directory a source root, and the directories
+beneath it are no roots of their own. SPEC.md 5.4 states this rule.
+
+A test root used to be a source root that a test directory segment names or
+whose every source file carries a test affix. The crate directory then held
+`tests/`, so a crate with a `build.rs` had no test root, and `escapes` judged
+`unwrap` and `expect` in its integration tests. The wgpu replay of #343 found
+this in `naga/tests/naga`. The survey now looks for a test root among every
+directory the merge ends at. A test root may sit inside another such
+directory only when that directory is, or holds, the nearest directory above
+the test root that directly holds a `Cargo.toml`, `go.mod`, `package.json`
+or `tsconfig.json`, and a test root another test root holds is not listed.
+So `tests/` beside a crate's `build.rs`, or beside a package's
+`jest.config.js`, is a test root, and so is a crate's `tests/` below a
+directory that holds a script such as `install.sh`. `src/spec/` beside
+`src/schema.sql` and `src/lib.rs` stays in its crate's source root, as
+before.
+
+Source roots do not change. `reachability` still derives its families from
+the files under the source roots, less the source roots that are test roots,
+so a test root inside a package's source root changes no family.

@@ -866,6 +866,98 @@ fn a_skipped_test_under_a_test_root_is_still_an_escape() {
 }
 
 #[test]
+fn a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr(not(any()), ign",
+            "ore = \"slow\")]\nfn slow() {}\n\n#[test]\n#[cfg_attr(all(), ign",
+            "ore)]\nfn slower() {}\n\n#[test]\n#[cfg_attr(all(not(any()), any(all())), ign",
+            "ore)]\nfn slowest() {}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  skipped test"), "{}", run.out);
+    assert!(run.says("src/lib.rs:6  skipped test"), "{}", run.out);
+    assert!(run.says("src/lib.rs:10  skipped test"), "{}", run.out);
+}
+
+#[test]
+fn a_skipped_test_is_found_through_whitespace_comments_and_nesting() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr (not(any()), ign",
+            "ore)]\nfn spaced() {}\n\n#[test]\n#[cfg_attr(\n    not(/* never */ any()), // always\n    ign",
+            "ore\n)]\nfn commented() {}\n\n#[test]\n# [ ign",
+            "ore ]\nfn bare() {}\n\n#[test]\n#[cfg_attr(any(unix, not(any())), ign",
+            "ore)]\nfn either() {}\n\nmod slow {\n    #[test]\n    #[cfg_attr(all(), cfg_attr(all(), ign",
+            "ore))]\n    fn nested() {}\n}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("5 new escape site(s)"), "{}", run.out);
+    for line in [2, 6, 13, 17, 22] {
+        assert!(
+            run.says(&format!("src/lib.rs:{line}  skipped test")),
+            "{}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr(test, ign",
+            "ore)]\nfn under_test() {}\n\n#[test]\n#[cfg_attr(true, ign",
+            "ore)]\nfn literal() {}\n\n#[test]\n#[cfg_attr(not(false), ign",
+            "ore)]\nfn negated() {}\n\n#[test]\n#[cfg_attr(false, ign",
+            "ore)]\nfn never() {}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("3 new escape site(s)"), "{}", run.out);
+    for line in [2, 6, 10] {
+        assert!(
+            run.says(&format!("src/lib.rs:{line}  skipped test")),
+            "{}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test() {
+    let tree = tree();
+    tree.write(
+        "src/lib.rs",
+        concat!(
+            "#[test]\n#[cfg_attr(windows, ign",
+            "ore)]\nfn unix_only() {}\n\n#[test]\n#[cfg_attr(any(), ign",
+            "ore)]\nfn everywhere() {}\n\n#[test]\n#[cfg_attr(all(unix, not(any())), ign",
+            "ore)]\nfn unix_skipped() {}\n"
+        ),
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 escape site(s)"), "{}", run.out);
+}
+
+#[test]
 fn a_skipped_test_inside_an_inline_test_module_is_still_an_escape() {
     let tree = tree();
     tree.write(
@@ -951,6 +1043,130 @@ fn production_rust_beside_a_test_root_is_judged_as_before() {
     assert!(run.says("src/lib.rs:2  unwrap"), "{}", run.out);
     assert!(run.says("src/other.rs:2  expect"), "{}", run.out);
     assert!(!run.says("tests/render.rs"), "{}", run.out);
+}
+
+const MANIFEST: &str = "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n";
+
+#[test]
+fn unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write("build.rs", "fn main() {}\n");
+    tree.write(
+        "src/lib.rs",
+        "pub fn wrap(t: &str) -> Vec<String> { vec![t.to_string()] }\n",
+    );
+    tree.write("tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(2 in Rust tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"demo\"]\n");
+    tree.write("demo/Cargo.toml", MANIFEST);
+    tree.write(
+        "demo/build.rs",
+        "fn main() {\n    std::env::var(\"OUT_DIR\").unwrap();\n}\n",
+    );
+    tree.write(
+        "demo/src/lib.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write("demo/tests/render.rs", INTEGRATION_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("demo/build.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("demo/src/lib.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("demo/tests/render.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_tests_left_out() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"top\"\nversion = \"0.1.0\"\n\n[workspace]\nmembers = [\"crates/foo\"]\n",
+    );
+    tree.write("build.rs", "fn main() {}\n");
+    tree.write("src/lib.rs", "pub fn top() -> i32 {\n    1\n}\n");
+    tree.write(
+        "crates/foo/Cargo.toml",
+        "[package]\nname = \"foo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write(
+        "crates/foo/src/lib.rs",
+        "pub fn one() -> Option<i32> {\n    Some(1)\n}\n",
+    );
+    tree.write(
+        "crates/foo/tests/it.rs",
+        "#[test]\nfn t() {\n    assert_eq!(foo::one().unwrap(), 1);\n}\n",
+    );
+    tree.base();
+    tree.write("crates/check.sh", "echo hi\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(1 in Rust tests skipped)"), "{}", run.out);
+    assert!(!run.says("crates/foo/tests/it.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write("src/lib.rs", "mod spec;\n");
+    tree.write("src/schema.sql", "create table t (id int);\n");
+    tree.write(
+        "src/spec/mod.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write(
+        "src/bin/load_test.rs",
+        "fn main() {\n    std::env::args().next().unwrap();\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/spec/mod.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("src/bin/load_test.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write(
+        "src/lib.rs",
+        "pub fn one() -> Option<i32> {\n    Some(1)\n}\n\n#[cfg(test)]\nmod tests;\n",
+    );
+    tree.write("src/grammar.lalrpop", "grammar;\n");
+    tree.write(
+        "src/tests/mod.rs",
+        "#[test]\nfn reads() {\n    use super::one;\n    one().unwrap();\n}\n",
+    );
+    tree.base();
+    tree.remove("src/grammar.lalrpop");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 escape site(s) in the tree, all held at the base"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]

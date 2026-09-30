@@ -53,6 +53,9 @@ pub enum Visibility {
 
 pub struct Declaration {
     pub name: String,
+    /// The names a destructuring pattern binds, each by its local name, and none where the
+    /// declaration is named by one identifier.
+    pub bindings: Box<[String]>,
     pub kind: DeclarationKind,
     pub line: u64,
     /// The last line the declaration covers, so a consumer can tell a reference written inside
@@ -69,6 +72,9 @@ pub struct Declaration {
     /// The inline modules that hold the declaration, outermost first, and none at the top of a
     /// file.
     pub nesting: Vec<String>,
+    /// True where a type body holds the declaration, as a Rust `impl` or `trait` holds its
+    /// associated items, so it is no item of the module.
+    pub associated: bool,
     /// What the declaration's own modifier says, with no doubt read either way.
     pub visibility: Visibility,
     /// The name a consumer of the module addresses the declaration by where it differs from
@@ -87,23 +93,46 @@ pub struct Declaration {
     pub signature: Option<String>,
 }
 
-/// One statement that exposes names past the module: Rust's `pub use`, and every TypeScript
-/// `export` that is not a declaration of its own. A leaf names what is exposed and under which
-/// name. The module graph resolves a path or a specifier; nothing here does.
+impl Declaration {
+    /// Whether a destructuring pattern binds its names, so `name` holds the pattern text and
+    /// `names` yields the bindings.
+    pub fn destructures(&self) -> bool {
+        !self.bindings.is_empty()
+    }
+
+    /// The names it declares: every name its pattern binds, and its own name where it binds
+    /// none.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        let names: &[String] = if self.destructures() {
+            &self.bindings
+        } else {
+            std::slice::from_ref(&self.name)
+        };
+        names.iter().map(String::as_str)
+    }
+}
+
+/// One statement that exposes names past the module: Rust's `pub use` and `pub extern crate`,
+/// and every TypeScript `export` that is not a declaration of its own. A leaf names what is
+/// exposed and under which name. The module graph resolves a path or a specifier; nothing here
+/// does.
 pub struct Export {
     pub line: u64,
     pub text: String,
     /// The inline modules that hold the statement, outermost first.
     pub nesting: Vec<String>,
     /// The module specifier a TypeScript re-export names, and none for a local export or a Rust
-    /// use tree, whose leaves carry their own paths.
+    /// statement, whose leaves carry their own paths.
     pub source: Option<String>,
     /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
     pub type_only: bool,
     /// False for a form V1 recognizes as an export and cannot list the names of, such as
-    /// TypeScript's `export = x` or `export namespace N`. A consumer reports it as a hole.
+    /// TypeScript's `export = x` or an ambient module. A consumer reports it as a hole.
     pub supported: bool,
     pub leaves: Vec<ExportLeaf>,
+    /// The canonical contract of what the statement declares where no declaration fact holds
+    /// it: the namespace a TypeScript `export namespace N` declares. None for any other export.
+    pub contract: Option<String>,
 }
 
 /// One name an export exposes. `path` is what is exposed as the source wrote it: a Rust leaf
@@ -115,12 +144,25 @@ pub struct ExportLeaf {
     pub name: Option<String>,
 }
 
+/// One Rust `extern crate`, whatever its visibility: the crate it names and the name it binds,
+/// which is its alias where one is written. At the top of a crate root it puts that name in the
+/// crate's extern prelude.
+pub struct ExternCrate {
+    /// The inline modules that hold the statement, outermost first.
+    pub nesting: Vec<String>,
+    pub name: String,
+    pub alias: String,
+}
+
 /// One import, holding the specifier as it was written. The module graph resolves it to a file.
 pub struct Import {
     pub line: u64,
     pub text: String,
     /// The inline modules that hold the import, outermost first, and none at the top of a file.
     pub nesting: Vec<String>,
+    /// True where a function body holds the import, so it binds its names in that body and not
+    /// in the module.
+    pub in_function: bool,
     pub module: Option<String>,
     pub names: Vec<String>,
     /// Every path a Rust use tree names, one per leaf, its segments joined by `::`, with `self`
@@ -240,6 +282,7 @@ pub struct FileFacts {
     pub references: Vec<Reference>,
     pub paths: Vec<QualifiedPath>,
     pub exports: Vec<Export>,
+    pub crates: Vec<ExternCrate>,
 }
 
 /// What one file came to under structural analysis. Three of the four outcomes are not a
@@ -289,10 +332,14 @@ impl Measurement {
 
     pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
         let index = timed(&mut cost.index, || self.index());
-        let sites = || index.names.values().flat_map(HashMap::values);
         cost.files = index.files.len();
-        cost.declarations = sites().map(|held| held.declarations.len()).sum();
-        cost.references = sites().map(|held| held.references.len()).sum();
+        cost.declarations = index.files.iter().map(|file| file.declarations.len()).sum();
+        cost.references = index
+            .names
+            .values()
+            .flat_map(HashMap::values)
+            .map(|held| held.references.len())
+            .sum();
         cost.distinct_names = index.names.values().map(HashMap::len).sum();
         index
     }
@@ -794,18 +841,24 @@ pub(crate) struct Adapter {
     /// The path a node writes from the crate or from its own module, and `None` for any other
     /// node, including a path inside a longer one.
     pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// The names a node writes inside a string that the language calls by that text, such as a
+    /// function a Rust `serde` attribute names or a name a format string captures.
+    pub quoted: fn(Node, &[u8]) -> Vec<String>,
     /// What a declaration's or a module declaration's own modifier says.
     pub visibility: fn(Node, &[u8]) -> Visibility,
     /// The external name a declaration is exported under where it differs from its own name.
     pub exported_as: fn(Node, &[u8]) -> Option<String>,
     /// The type an inherent implementation adds a method to.
     pub owner: fn(Node, &[u8]) -> Option<String>,
+    /// The nodes that write each name a declaration's name binds where it is a destructuring
+    /// pattern.
+    pub destructured: fn(Node) -> Vec<Node>,
     /// The canonical declared contract of a declaration, and `None` for a form V1 does not
     /// canonicalize.
     pub contract: fn(Node, &[u8]) -> Option<String>,
-    /// What an `@export` capture exposes, and `None` where the node exports nothing a
-    /// declaration does not already say for itself.
-    pub exported: fn(Node, &[u8]) -> Option<Exported>,
+    /// What an `@export` capture in the file at this path exposes, and `None` where the node
+    /// exports nothing a declaration does not already say for itself.
+    pub exported: fn(Node, &[u8], &str) -> Option<Exported>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept
@@ -822,6 +875,7 @@ pub(crate) struct Exported {
     pub type_only: bool,
     pub supported: bool,
     pub leaves: Vec<ExportLeaf>,
+    pub contract: Option<String>,
 }
 
 /// How the canonical spelling treats one node: leave the subtree out, write this text for it
@@ -922,6 +976,7 @@ const VARIABLE: &str = "variable";
 const IMPORT: &str = "import";
 const MODULE: &str = "module";
 const EXPORT: &str = "export";
+const CRATE: &str = "crate";
 
 type Held = OnceLock<Result<Query, String>>;
 
@@ -978,12 +1033,14 @@ fn harvest(
 struct Reading<'a, 'b> {
     language: &'static Language,
     adapter: &'static Adapter,
+    path: &'a str,
     source: &'a [u8],
     lines: Vec<&'a str>,
     declarations: Vec<Declaration>,
     imports: Vec<Import>,
     modules: Vec<ModuleDecl>,
     exports: Vec<Export>,
+    crates: Vec<ExternCrate>,
     declared: BTreeSet<usize>,
     claimed: Vec<(usize, usize)>,
     names: &'b mut Names,
@@ -998,12 +1055,14 @@ impl<'a, 'b> Reading<'a, 'b> {
         Reading {
             language: file.language,
             adapter,
+            path: file.path,
             source: file.source.as_bytes(),
             lines: file.source.lines().collect(),
             declarations: Vec::new(),
             imports: Vec::new(),
             modules: Vec::new(),
             exports: Vec::new(),
+            crates: Vec::new(),
             declared: BTreeSet::new(),
             claimed: Vec::new(),
             names,
@@ -1015,13 +1074,14 @@ impl<'a, 'b> Reading<'a, 'b> {
             IMPORT => self.import(node),
             MODULE => self.module(node),
             EXPORT => self.export(node),
+            CRATE => self.extern_crate(node),
             _ => self.declaration(capture, node),
         }
     }
 
     /// One statement that exposes names, where the adapter says the node does so on its own.
     fn export(&mut self, node: Node) {
-        let Some(found) = (self.adapter.exported)(node, self.source) else {
+        let Some(found) = (self.adapter.exported)(node, self.source, self.path) else {
             return;
         };
         self.exports.push(Export {
@@ -1032,6 +1092,21 @@ impl<'a, 'b> Reading<'a, 'b> {
             type_only: found.type_only,
             supported: found.supported,
             leaves: found.leaves,
+            contract: found.contract,
+        });
+    }
+
+    fn extern_crate(&mut self, node: Node) {
+        let Some(name) = node.child_by_field_name("name") else {
+            return;
+        };
+        let name = text_of(name, self.source);
+        self.crates.push(ExternCrate {
+            nesting: (self.adapter.nesting)(node, self.source),
+            alias: node
+                .child_by_field_name("alias")
+                .map_or_else(|| name.clone(), |alias| text_of(alias, self.source)),
+            name,
         });
     }
 
@@ -1042,6 +1117,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             line: self.row(node),
             text: self.text(node),
             nesting: (self.adapter.nesting)(node, self.source),
+            in_function: inside_a_function(node, self.language),
             module: found.module,
             names: found.names,
             paths: found.paths,
@@ -1075,7 +1151,9 @@ impl<'a, 'b> Reading<'a, 'b> {
         let Some(name) = node.child_by_field_name("name") else {
             return;
         };
+        let bindings = (self.adapter.destructured)(name);
         self.declared.insert(name.start_byte());
+        self.declared.extend(bindings.iter().map(Node::start_byte));
         if inside_a_function(node, self.language) {
             return;
         }
@@ -1083,6 +1161,10 @@ impl<'a, 'b> Reading<'a, 'b> {
         let entry_point = self.adapter.entry_points.contains(&name.as_str());
         self.declarations.push(Declaration {
             name,
+            bindings: bindings
+                .into_iter()
+                .map(|binding| text_of(binding, self.source))
+                .collect(),
             kind: self.kind(capture, node),
             line: self.row(node),
             end: node.end_position().row as u64 + 1,
@@ -1090,6 +1172,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             externally_visible: (self.adapter.visible)(node),
             entry_point,
             nesting: (self.adapter.nesting)(node, self.source),
+            associated: above(node, self.adapter.methods_in).is_some(),
             visibility: (self.adapter.visibility)(node, self.source),
             exported_as: (self.adapter.exported_as)(node, self.source),
             owner: (self.adapter.owner)(node, self.source),
@@ -1118,11 +1201,15 @@ impl<'a, 'b> Reading<'a, 'b> {
         line_at(&self.lines, node.start_position().row)
     }
 
-    /// Every use of a name the declarations and the imports did not already claim, and every
-    /// qualified path outside them, from one walk. An import binding is not a reference to what
-    /// it binds, so the whole import is stepped over. A name a binding site writes — a parameter,
-    /// a `let`, a field — is kept, because no adapter states its language's binding sites in V1
-    /// and keeping it errs toward "referenced".
+    /// Every use of a name the declarations and the imports did not already claim, every name a
+    /// string calls by its text, and every qualified path outside them, from one walk. An import
+    /// binding is not a reference to what it binds, so the whole import is stepped over, and
+    /// neither is a declaration's name or a name its destructuring pattern binds. The head of a
+    /// C-style `for` is a declaration. A name any other binding site writes — a parameter, a
+    /// `for…in` or `for…of` head, a `catch` clause, an assignment, a field, a Rust `let` — is
+    /// kept, because no adapter states those binding sites and keeping it errs toward
+    /// "referenced", unless a pattern writes it as a shorthand such as `{ name }`, which is no
+    /// identifier the adapter lists.
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
@@ -1145,6 +1232,13 @@ impl<'a, 'b> Reading<'a, 'b> {
                     nesting: (self.adapter.nesting)(node, self.source),
                     path,
                 });
+            } else {
+                for name in (self.adapter.quoted)(node, self.source) {
+                    references.push(Reference {
+                        name: self.names.intern(&name),
+                        line: self.row(node),
+                    });
+                }
             }
         });
         (references, paths)
@@ -1181,6 +1275,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             references,
             paths,
             exports: self.exports,
+            crates: self.crates,
         }
     }
 }
@@ -1225,9 +1320,11 @@ impl SourceIndex {
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
             for (which, declaration) in file.declarations.iter().enumerate() {
-                record_text(named, &declaration.name, |sites| {
-                    sites.declarations.push((at, which));
-                });
+                for name in declaration.names() {
+                    record_text(named, name, |sites| {
+                        sites.declarations.push((at, which));
+                    });
+                }
             }
         }
         for sites in names.values_mut().flat_map(HashMap::values_mut) {
@@ -1271,7 +1368,9 @@ impl SourceIndex {
             })
     }
 
-    /// Every declaration of this name and logical language, in file and line order.
+    /// Every declaration of this name and logical language, in file and line order. A
+    /// destructuring declaration is listed under each name it binds, and its `name` is still the
+    /// pattern text.
     pub fn declarations(
         &self,
         language: LanguageId,
@@ -1674,9 +1773,9 @@ export function charge(at: number): number {
     }
 
     /// The conservative direction of ADR 0035, pinned so it stays a decision. A name a binding
-    /// site writes reads as a reference, because no adapter states its language's binding sites
-    /// in V1. It keeps a declaration alive that nothing uses, which makes a structural gate
-    /// fail less and never more.
+    /// site other than a declaration writes reads as a reference, because no adapter states those
+    /// binding sites. It keeps a declaration alive that nothing uses, which makes a structural
+    /// gate fail less and never more.
     #[test]
     fn a_binding_site_reads_as_a_reference_and_errs_toward_referenced() {
         let facts = measured_facts("src/pay.rs", RUST);
@@ -1863,6 +1962,7 @@ export function charge(at: number): number {
                 .enumerate()
                 .map(|(at, name)| Declaration {
                     name: name.to_string(),
+                    bindings: Box::default(),
                     kind: DeclarationKind::Function,
                     line: at as u64 + 1,
                     end: at as u64 + 1,
@@ -1870,6 +1970,7 @@ export function charge(at: number): number {
                     externally_visible: false,
                     entry_point: false,
                     nesting: Vec::new(),
+                    associated: false,
                     visibility: Visibility::Private,
                     exported_as: None,
                     owner: None,
@@ -1880,6 +1981,7 @@ export function charge(at: number): number {
             module_declarations: Vec::new(),
             paths: Vec::new(),
             exports: Vec::new(),
+            crates: Vec::new(),
             references: names
                 .iter()
                 .enumerate()
@@ -2222,7 +2324,7 @@ function local() {}
                 (Some("./n"), false, true, vec![("*", None)]),
                 (Some("./o"), false, true, vec![("*", Some("ns"))]),
                 (Some("./p"), true, true, vec![("T", Some("T"))]),
-                (None, false, false, vec![]),
+                (None, false, true, vec![("NS", Some("NS"))]),
                 (None, false, false, vec![]),
                 (None, false, true, vec![("foo", Some("default"))]),
             ]
