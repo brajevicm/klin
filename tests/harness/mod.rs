@@ -203,41 +203,81 @@ impl Tree {
 /// directory, then `small` commits that add one line in one directory, then `big` commits that
 /// add ten lines in each of three. #92.
 pub fn history(small: usize, big: usize) -> Tree {
-    let tree = Tree::bare();
-    tree.repository();
-    tree.write("README.md", "one\ntwo\nthree\n");
-    tree.commit("a first commit");
-    small_commits(&tree, small);
-    big_commits(&tree, big);
-    tree
+    imported(
+        std::iter::once(opening())
+            .chain(small_commits(small))
+            .chain(big_commits(big)),
+    )
 }
 
 /// The same two kinds the other way round, so the big commits are the oldest and a sample that
 /// stops short of them does not hold them.
 pub fn history_from(big: usize, small: usize) -> Tree {
+    imported(
+        std::iter::once(opening())
+            .chain(big_commits(big))
+            .chain(small_commits(small)),
+    )
+}
+
+type Commit = (&'static str, Vec<(String, String)>);
+
+fn opening() -> Commit {
+    (
+        "a first commit",
+        vec![("README.md".into(), "one\ntwo\nthree\n".into())],
+    )
+}
+
+fn small_commits(many: usize) -> impl Iterator<Item = Commit> {
+    (0..many).map(|at| {
+        (
+            "a small commit",
+            vec![(format!("small/{at}.txt"), "one line\n".into())],
+        )
+    })
+}
+
+fn big_commits(many: usize) -> impl Iterator<Item = Commit> {
+    (0..many).map(|at| {
+        let files = ["a", "b", "c"]
+            .map(|under| (format!("{under}/{at}.txt"), "line\n".repeat(10)))
+            .to_vec();
+        ("a big commit", files)
+    })
+}
+
+/// A repository on `main` that holds `commits` in order, written by one `git fast-import`
+/// rather than a pair of processes per commit, and checked out.
+fn imported(commits: impl Iterator<Item = Commit>) -> Tree {
     let tree = Tree::bare();
     tree.repository();
-    tree.write("README.md", "one\ntwo\nthree\n");
-    tree.commit("a first commit");
-    big_commits(&tree, big);
-    small_commits(&tree, small);
-    tree
-}
-
-fn small_commits(tree: &Tree, many: usize) {
-    for at in 0..many {
-        tree.write(&format!("small/{at}.txt"), "one line\n");
-        tree.commit("a small commit");
-    }
-}
-
-fn big_commits(tree: &Tree, many: usize) {
-    for at in 0..many {
-        for under in ["a", "b", "c"] {
-            tree.write(&format!("{under}/{at}.txt"), &"line\n".repeat(10));
+    let mut stream = String::new();
+    for (message, files) in commits {
+        stream += &format!(
+            "commit refs/heads/main\ncommitter klin <klin@example.com> 1700000000 +0000\ndata {}\n{message}\n",
+            message.len()
+        );
+        for (path, text) in files {
+            stream += &format!("M 100644 inline {path}\ndata {}\n{text}\n", text.len());
         }
-        tree.commit("a big commit");
     }
+    let mut import = Command::new("git")
+        .arg("-C")
+        .arg(tree.root())
+        .args(["fast-import", "--quiet"])
+        .stdin(Stdio::piped())
+        .spawn()
+        .expect("git fast-import");
+    import
+        .stdin
+        .take()
+        .expect("stdin")
+        .write_all(stream.as_bytes())
+        .expect("the stream");
+    assert!(import.wait().expect("git fast-import").success());
+    tree.git(&["reset", "-q", "--hard"]);
+    tree
 }
 
 pub fn run_from(cwd: &Path, args: &[&str]) -> Run {
