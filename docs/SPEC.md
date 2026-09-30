@@ -447,7 +447,7 @@ only a finding that carries no `lines`, because a value a finding carries and
 its entry does not is a rise (7.1). Pinned by
 `an_accepted_entry_without_lines_holds_a_test_function_on_its_cc`,
 `an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function`
-and `an_accepted_entry_that_names_no_cc_is_a_tool_error` in
+and `an_accepted_entry_that_names_some_of_the_values_is_a_tool_error` in
 `tests/complexity.rs`. An entry that matches nothing is a NOTE, and a failure
 under `--strict`.
 

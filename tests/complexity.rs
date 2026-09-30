@@ -468,7 +468,7 @@ fn an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function()
 }
 
 #[test]
-fn an_accepted_entry_that_names_no_cc_is_a_tool_error() {
+fn an_accepted_entry_that_names_some_of_the_values_is_a_tool_error() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write(
         "klin.json",

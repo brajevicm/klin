@@ -926,14 +926,7 @@ fn measure(
         .iter()
         .map(|file| files::relative(file, repo_root))
         .collect();
-    let tests = tree.tests();
-    let test_file = |file: &str| {
-        tests.file_holds(
-            renamed
-                .and_then(|renamed| renamed.get(file))
-                .map_or(file, String::as_str),
-        )
-    };
+    let test_file = test_files(tree, renamed);
     let (out, unparsed, work) =
         read_current(found.kept, selection, &test_file, repo_root, changes)?;
     measured.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
@@ -953,6 +946,20 @@ fn measure(
         files,
         work,
     })
+}
+
+fn test_files<'a>(
+    tree: &Tree,
+    renamed: Option<&'a HashMap<String, String>>,
+) -> impl Fn(&str) -> bool + 'a {
+    let tests = tree.tests();
+    move |file| {
+        tests.file_holds(
+            renamed
+                .and_then(|renamed| renamed.get(file))
+                .map_or(file, String::as_str),
+        )
+    }
 }
 
 fn read_current(
