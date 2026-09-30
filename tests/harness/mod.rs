@@ -34,10 +34,8 @@ impl Tree {
     /// A tree inside a repository whose base commit holds nothing, so every finding is new.
     pub fn new() -> Tree {
         let tree = Tree::bare();
-        tree.repository();
-        tree.commit_empty("an empty base");
-        tree.git(&["checkout", "-q", "-B", "work"]);
-        tree.commit_empty("on the branch");
+        tree.git(&["init", "-q", "-b", "work"]);
+        tree.import(&(made("main", "an empty base", "") + &on_the_branch()));
         tree
     }
 
@@ -138,6 +136,15 @@ impl Tree {
         if !self.path(".git").is_dir() {
             self.repository();
         }
+        if self.level_with_main() {
+            self.git(&["add", "-A"]);
+            let root = format!(
+                "from refs/heads/main^0\nM 040000 {} \"\"\n",
+                self.read(&["write-tree"])
+            );
+            self.import(&(made("main", "the base", &root) + &on_the_branch()));
+            return;
+        }
         if !self.revision("main").is_empty() {
             self.git(&["checkout", "-q", "main"]);
         }
@@ -197,6 +204,64 @@ impl Tree {
     pub fn repository(&self) {
         self.git(&["init", "-q", "-b", "main"]);
     }
+
+    /// Whether the tree is on `work` and `work` holds the files of `main`, so a checkout of
+    /// `main` would change nothing and the base can be written without one.
+    fn level_with_main(&self) -> bool {
+        let head = fs::read_to_string(self.path(".git/HEAD")).unwrap_or_default();
+        let trees = self.read(&["rev-parse", "HEAD^{tree}", "main^{tree}"]);
+        head == "ref: refs/heads/work\n"
+            && matches!(trees.split_once('\n'), Some((ours, theirs)) if ours == theirs)
+    }
+
+    /// What one git command printed, trimmed, and empty when it failed.
+    fn read(&self, args: &[&str]) -> String {
+        match Command::new("git")
+            .arg("-C")
+            .arg(self.root())
+            .args(args)
+            .output()
+        {
+            Ok(done) if done.status.success() => {
+                String::from_utf8_lossy(&done.stdout).trim().to_string()
+            }
+            _ => String::new(),
+        }
+    }
+
+    /// The commits a `git fast-import` stream names, written by one process where `git commit`
+    /// takes one or two for each. A branch the stream moves back is moved anyway.
+    fn import(&self, stream: &str) {
+        let mut import = Command::new("git")
+            .arg("-C")
+            .arg(self.root())
+            .args(["fast-import", "--quiet", "--force", "--date-format=now"])
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("git fast-import");
+        import
+            .stdin
+            .take()
+            .expect("stdin")
+            .write_all(stream.as_bytes())
+            .expect("the stream");
+        assert!(import.wait().expect("git fast-import").success());
+    }
+}
+
+/// One commit on `branch` for a `git fast-import` stream, dated now, with `rest` after its
+/// message: a parent, and the files it changes. The message ends in a newline, as `git commit -m`
+/// writes it.
+fn made(branch: &str, message: &str, rest: &str) -> String {
+    format!(
+        "commit refs/heads/{branch}\ncommitter klin <klin@example.com> now\ndata {}\n{message}\n{rest}\n",
+        message.len() + 1
+    )
+}
+
+/// The empty commit `work` starts with, on the commit `main` holds in the stream.
+fn on_the_branch() -> String {
+    made("work", "on the branch", "from refs/heads/main\n")
 }
 
 /// A history whose percentile has a known answer: an opening commit of three lines in one
@@ -249,35 +314,20 @@ fn big_commits(many: usize) -> impl Iterator<Item = Commit> {
     })
 }
 
-/// A repository on `main` that holds `commits` in order, written by one `git fast-import`
-/// rather than a pair of processes per commit, and checked out.
+/// A repository on `main` that holds `commits` in order, written by one `git fast-import`,
+/// and checked out.
 fn imported(commits: impl Iterator<Item = Commit>) -> Tree {
     let tree = Tree::bare();
     tree.repository();
     let mut stream = String::new();
     for Commit { message, files } in commits {
-        stream += &format!(
-            "commit refs/heads/main\ncommitter klin <klin@example.com> 1700000000 +0000\ndata {}\n{message}\n",
-            message.len()
-        );
-        for (path, text) in files {
-            stream += &format!("M 100644 inline {path}\ndata {}\n{text}\n", text.len());
-        }
+        let changed: String = files
+            .iter()
+            .map(|(path, text)| format!("M 100644 inline {path}\ndata {}\n{text}\n", text.len()))
+            .collect();
+        stream += &made("main", message, &changed);
     }
-    let mut import = Command::new("git")
-        .arg("-C")
-        .arg(tree.root())
-        .args(["fast-import", "--quiet"])
-        .stdin(Stdio::piped())
-        .spawn()
-        .expect("git fast-import");
-    import
-        .stdin
-        .take()
-        .expect("stdin")
-        .write_all(stream.as_bytes())
-        .expect("the stream");
-    assert!(import.wait().expect("git fast-import").success());
+    tree.import(&stream);
     tree.git(&["reset", "-q", "--hard"]);
     tree
 }

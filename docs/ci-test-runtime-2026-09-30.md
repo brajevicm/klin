@@ -60,6 +60,14 @@ The slowest binaries by summed test time in attempt 4 are `gate` (18.6 s),
   radius and init tests that use these histories see the same commits, paths
   and file contents. All commits carry one fixed committer time, no message
   ends in a newline, and no test reads either.
+- `Tree::new()` runs `git init` and one `git fast-import`: 2 processes where
+  it ran 4. `tree.base()` writes its two commits through one
+  `git fast-import` when the tree is on `work` and `work` holds the files of
+  `main`. It then runs 4 processes where it ran 6. In that state, the old
+  checkout of `main` changed no file. In every other state, `base()` runs
+  the old commands. The branches, parents, messages and trees are the same as
+  before, and the commits are dated now, as before. fast-import writes no
+  reflog, and no klin code or test reads one.
 - The sparse-checkout test keeps 6 spellings: `TRUE`, `on`, `1`, `off`,
   `no` and `0`. It dropped `true`, `yes`, `false` and `FALSE`. klin reads the
   value through `git config --type=bool`, so git itself normalizes case and
@@ -80,6 +88,23 @@ final branch holds `TRUE` and `off`.
 | --- | ---: | ---: |
 | Before | 78.3, 78.7, 78.9 s | 39.8, 40.0, 40.1 s |
 | After | 47.9, 48.2, 48.0 s | 24.4, 24.5, 24.4 s |
+
+The cheaper `Tree::new()` and `base()` were measured separately over five
+light binaries (`config`, `doc_size`, `lockfile`, `escapes`, `stats`, 216
+tests), at `-j2`, 3 runs each. These tests mostly build a tree, run klin once
+and assert, so the setup is a large part of each test.
+
+| | Summed test time | Wall time |
+| --- | ---: | ---: |
+| Before, `d4f07584` | 62.1, 62.4, 62.3 s | 31.3, 31.4, 31.4 s |
+| After | 48.3, 51.4, 49.0 s | 24.3, 25.9, 24.7 s |
+
+That is about 62 ms less for each test locally. Most of the 1336 integration
+tests start from `Tree::new()`. If 1200 of them do, at the CI-to-local ratio
+of about 0.45, the change saves about 33 s of summed CI time, about 17 s of
+wall time. This is an
+estimate from a sample of light tests. Heavier tests spend a smaller share on
+setup, so the real saving may be lower.
 
 Single tests, locally:
 
