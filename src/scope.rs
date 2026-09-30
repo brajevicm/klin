@@ -206,6 +206,7 @@ pub fn under_or_at(path: &str, directory: &str) -> bool {
 }
 
 /// Spec 5.4.
+#[derive(Clone)]
 pub struct Roots(HashSet<String>);
 
 impl FromIterator<String> for Roots {

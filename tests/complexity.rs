@@ -450,7 +450,7 @@ fn an_accepted_entry_the_base_also_holds_stays_matched_under_strict() {
 }
 
 #[test]
-fn an_accepted_entry_that_names_some_of_the_values_is_a_tool_error() {
+fn an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write(
         "klin.json",
@@ -462,8 +462,26 @@ fn an_accepted_entry_that_names_some_of_the_values_is_a_tool_error() {
     tree.write("src/knot.rs", RUST);
 
     let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("cc 9, 13 lines, was cc 9"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_that_names_no_cc_is_a_tool_error() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "complexity", "file": "src/knot.rs",
+                "text": "fn tangled(a: i32) -> i32 {", "lines": 13}"#,
+        ),
+    );
+    tree.write("src/knot.rs", RUST);
+
+    let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("does not give a number for lines"), "{}", run.out);
+    assert!(run.says("does not give a number for cc"), "{}", run.out);
 }
 
 #[test]
@@ -1625,6 +1643,13 @@ fn knotted(name: &str) -> String {
         .replacen("fn tangled", &format!("fn {name}"), 1)
 }
 
+fn stretched(knot: &str, lines: usize) -> String {
+    knot.replace(
+        "    match a {",
+        &format!("{}    match a {{", "    let _ = a;\n".repeat(lines)),
+    )
+}
+
 fn inline_tests(body: &str) -> String {
     format!("fn production() -> i32 {{ 1 }}\n\n#[cfg(test)]\nmod tests {{\n{body}}}\n")
 }
@@ -1665,13 +1690,7 @@ fn a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lin
     let knot = knotted("knot_test");
     tree.write("tests/knot.rs", &knot);
     tree.base();
-    tree.write(
-        "tests/knot.rs",
-        &knot.replace(
-            "    match a {",
-            &format!("{}    match a {{", "    let _ = a;\n".repeat(20)),
-        ),
-    );
+    tree.write("tests/knot.rs", &stretched(&knot, 20));
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -1747,12 +1766,7 @@ fn test_code_stays_in_the_derived_sample_for_both_ceilings() {
         .collect::<String>();
     tree.write("src/simple.rs", &simple);
     let tests = (0..3)
-        .map(|at| {
-            knotted(&format!("knot_{at}")).replace(
-                "    match a {",
-                &format!("{}    match a {{", "    let _ = a;\n".repeat(20)),
-            )
-        })
+        .map(|at| stretched(&knotted(&format!("knot_{at}")), 20))
         .collect::<String>();
     tree.write("tests/knots.rs", &tests);
     tree.base();
@@ -1765,6 +1779,73 @@ fn test_code_stays_in_the_derived_sample_for_both_ceilings() {
     );
     assert!(
         run.says("derived: complexity lines 33 (95th percentile of 50"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_test_function_that_becomes_production_code_is_judged_on_its_length() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "cc": 8, "lines": 60 } }"#);
+    let source = inline_tests(&stretched(&knotted("knot"), 90));
+    tree.write("src/lib.rs", &source);
+    tree.base();
+    tree.write("src/lib.rs", &source.replace("#[cfg(test)]\n", ""));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("cc 11, 103 lines, was cc 11"), "{}", run.out);
+}
+
+#[test]
+fn a_test_file_renamed_into_production_code_is_judged_as_production_code() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "lines": 30 } }"#);
+    tree.write("tests/long.rs", &long("moved_test", 40));
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.base();
+    tree.git(&["mv", "tests/long.rs", "src/long.rs"]);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/long.rs:1  cc 1, 40 lines"), "{}", run.out);
+    assert!(run.says("nothing matched"), "{}", run.out);
+}
+
+#[test]
+fn an_accepted_entry_without_lines_holds_a_test_function_on_its_cc() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "complexity", "file": "tests/knot.rs",
+                           "text": "fn knot_test(a: i32) -> i32 {", "cc": 11}],
+             "complexity": { "cc": 8, "lines": 60 } }"#,
+    );
+    tree.write("tests/knot.rs", &knotted("knot_test"));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("all on the accepted list"), "{}", run.out);
+}
+
+#[test]
+fn a_function_marked_cfg_test_outside_a_module_is_test_code() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "lines": 30 } }"#);
+    tree.write(
+        "src/lib.rs",
+        &format!(
+            "fn production() -> i32 {{ 1 }}\n\n#[cfg(test)]\n{}",
+            long("helper", 40)
+        ),
+    );
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 test function(s) not judged on length"),
         "{}",
         run.out
     );

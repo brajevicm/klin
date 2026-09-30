@@ -1,5 +1,5 @@
 use std::cell::OnceCell;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
@@ -12,7 +12,7 @@ use crate::check::{self, ContentCost, Context, Sink};
 use crate::config::Error;
 use crate::coverage::{self, Files};
 use crate::files;
-use crate::project::{Project, Tests, Tree};
+use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
@@ -56,7 +56,7 @@ pub const LINES: Key = Key {
 pub const TEST_LINES: Key = Key {
     name: "test_lines",
     holds: "the body length a function in test code may not pass: in a test file of spec 5.4, \
-            or in an inline Rust `#[cfg(test)]` module",
+            or in a Rust item marked `#[cfg(test)]`, such as an inline test module",
     required: false,
     rule: None,
     default: "test code is not judged on length",
@@ -384,6 +384,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         &spec.selection,
         project.root(),
         at.changes.filter(|_| !at.strict),
+        None,
     )?;
     let now = over(&sweep.functions, &spec);
     let tests = unjudged_tests(&sweep.functions, &spec.ceilings, at);
@@ -399,7 +400,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = evaluator(&spec).evaluate(
         now,
         prior,
-        ratchet::accepted(&project.config, at.gate, evaluator(&spec).metrics)?,
+        ratchet::accepted_leaving_out(
+            &project.config,
+            at.gate,
+            evaluator(&spec).metrics,
+            &[LINES.name],
+        )?,
         at,
         Line {
             state: &format!(
@@ -435,7 +441,13 @@ fn at_the_base(
         ),
         ..spec.selection.clone()
     };
-    let before = measure(prior.tree(), &selection, prior.root(), None)?;
+    let before = measure(
+        prior.tree(),
+        &selection,
+        prior.root(),
+        None,
+        Some(prior.renamed()),
+    )?;
     let mut found = over(&before.functions, spec);
     found.retain(|finding| project.was_held(&finding.file));
     Ok((found, before.files, before.work))
@@ -882,6 +894,7 @@ fn measure(
     selection: &Selection,
     repo_root: &Path,
     changes: Option<&[Change]>,
+    renamed: Option<&HashMap<String, String>>,
 ) -> Result<Sweep, Error> {
     let extensions: Vec<&str> = selection
         .languages
@@ -913,8 +926,16 @@ fn measure(
         .iter()
         .map(|file| files::relative(file, repo_root))
         .collect();
+    let tests = tree.tests();
+    let test_file = |file: &str| {
+        tests.file_holds(
+            renamed
+                .and_then(|renamed| renamed.get(file))
+                .map_or(file, String::as_str),
+        )
+    };
     let (out, unparsed, work) =
-        read_current(found.kept, selection, &tree.tests(), repo_root, changes)?;
+        read_current(found.kept, selection, &test_file, repo_root, changes)?;
     measured.retain(|file| !unparsed.iter().any(|unread| &unread.file == file));
     let files = Files {
         measured,
@@ -937,7 +958,7 @@ fn measure(
 fn read_current(
     kept: Vec<PathBuf>,
     selection: &Selection,
-    tests: &Tests,
+    test_file: &dyn Fn(&str) -> bool,
     repo_root: &Path,
     changes: Option<&[Change]>,
 ) -> Result<(Vec<Function>, Vec<Unparsed>, ContentCost), Error> {
@@ -965,7 +986,13 @@ fn read_current(
         };
         work.reads += 1;
         work.parses += 1;
-        out.extend(functions(&file, repo_root, language, tests, &mut unparsed)?);
+        out.extend(functions(
+            &file,
+            repo_root,
+            language,
+            test_file,
+            &mut unparsed,
+        )?);
     }
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
     Ok((out, unparsed, work))
@@ -985,7 +1012,7 @@ fn functions(
     path: &Path,
     repo_root: &Path,
     language: &'static Language,
-    tests: &Tests,
+    test_file: &dyn Fn(&str) -> bool,
     unparsed: &mut Vec<Unparsed>,
 ) -> Result<Vec<Function>, Error> {
     let bytes = std::fs::read(path).map_err(|why| Error::unreadable(path, why))?;
@@ -994,7 +1021,7 @@ fn functions(
     match syntax::read(&file, &source, language)? {
         Parsed::Read(read) => {
             let mut found = parsed(&read);
-            marked_as_tests(&mut found, tests.file_holds(&file), &read);
+            marked_as_tests(&mut found, test_file(&file), &read);
             Ok(found)
         }
         Parsed::Rejected(refused) => {
@@ -1021,7 +1048,7 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
 
 fn marked_as_tests(found: &mut [Function], test_file: bool, file: &ParsedFile) {
     let modules = match (test_file, file.language.id) {
-        (false, LanguageId::Rust) => {
+        (false, LanguageId::Rust) if file.source.contains("test") => {
             syntax::convention::test_modules(file.root(), file.source.as_bytes())
         }
         _ => Vec::new(),

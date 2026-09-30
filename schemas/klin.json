@@ -164,7 +164,7 @@
                   "type": "object"
                 }
               ],
-              "description": "the body length a function in test code may not pass: in a test file of spec 5.4, or in an inline Rust `#[cfg(test)]` module"
+              "description": "the body length a function in test code may not pass: in a test file of spec 5.4, or in a Rust item marked `#[cfg(test)]`, such as an inline test module"
             }
           },
           "type": "object"

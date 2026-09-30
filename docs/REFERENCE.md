@@ -62,7 +62,7 @@ No keys: the section is absent, or `false` to exclude the gate.
 | --- | --- | --- | --- | --- | --- |
 | `cc` | the cyclomatic complexity a function may not pass | no | derived when absent | the 95th percentile of `cc` over every supported function selected by the compact scope recorded at the derivation commit, rounded up to the next whole number, with a floor of 10, and the floor itself below 50 functions | — |
 | `lines` | the body length a function outside test code may not pass | no | derived when absent | the 95th percentile of `lines`, by the same rule as `cc`, test code included, with a floor of 25 | — |
-| `test_lines` | the body length a function in test code may not pass: in a test file of spec 5.4, or in an inline Rust `#[cfg(test)]` module | no | pinned only | — | test code is not judged on length |
+| `test_lines` | the body length a function in test code may not pass: in a test file of spec 5.4, or in a Rust item marked `#[cfg(test)]`, such as an inline test module | no | pinned only | — | test code is not judged on length |
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
 

@@ -440,7 +440,15 @@ Debt a person allows, keyed like a site, with every value the gate ratchets
 and the amount of each they allow. Only a person writes one, in a reviewed
 commit (ADR 0009). An entry that does not give a number for each of those
 values is a config error, because a value it leaves out would grow unjudged
-at that site. An entry that matches nothing is a NOTE, and a failure
+at that site. The one exception is a value a site of that gate may carry
+or not: `lines` of `complexity`, which a function in test code with no
+`test_lines` does not carry (8.2.1). An entry may leave it out. It then holds
+only a finding that carries no `lines`, because a value a finding carries and
+its entry does not is a rise (7.1). Pinned by
+`an_accepted_entry_without_lines_holds_a_test_function_on_its_cc`,
+`an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function`
+and `an_accepted_entry_that_names_no_cc_is_a_tool_error` in
+`tests/complexity.rs`. An entry that matches nothing is a NOTE, and a failure
 under `--strict`.
 
 The accepted entry takes the match when the finding holds against it, unless
@@ -1104,14 +1112,20 @@ Three outcomes (ADR 0009):
 
 - `new`: over the ceiling in `after`, no matching site in `before` or in the
   accepted list. FAIL.
-- `worsened`: matched, and a ratcheted value rose. FAIL.
+- `worsened`: matched, and a ratcheted value rose. FAIL. A value the finding
+  carries and the matched entry does not counts as a rise, so a value that
+  starts to be judged at a site is judged from nothing.
 - `held`: matched, no ratcheted value rose. Pass.
 
 A `complexity` site ratchets both `cc` and `lines`, so a function over its
 `cc` ceiling is `worsened` when only its `lines` rise, even under the `lines`
 ceiling. A function in test code with no `test_lines` pinned ratchets `cc`
 alone, because nothing judges its length (8.2.1). Pinned by
-`a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lines`. No `+N` or percentage tolerance applies (ADR 0062). Pinned by
+`a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lines`.
+A function over its `cc` ceiling that leaves test code, such as one whose
+`#[cfg(test)]` is removed, carries `lines` again, and the base entry does
+not, so it is `worsened`. Pinned by
+`a_test_function_that_becomes_production_code_is_judged_on_its_length`. No `+N` or percentage tolerance applies (ADR 0062). Pinned by
 `a_function_whose_length_grew_since_the_base_fails_too` in
 `tests/complexity.rs`.
 
@@ -1907,8 +1921,13 @@ line of its body, both inclusive, so a one-line function is 1.
 Test code is judged on `cc` as production code is, and on length only
 against `test_lines`. Test code is every function in a test file of 5.4, one
 under a test root or one a test directory segment or a test affix marks, and
-every function inside an inline Rust `#[cfg(test)]` module, helpers and
-fixtures included. Each tree is classified over its own files. With
+every function inside a Rust item marked `#[cfg(test)]`, such as an inline
+test module or a lone helper function, helpers and fixtures included. Each
+tree is classified over its own files, and a file the change renamed is
+classified at the base under the path the base holds it at, so a test moved
+into production code is new production code there. Pinned by
+`a_function_marked_cfg_test_outside_a_module_is_test_code` and
+`a_test_file_renamed_into_production_code_is_judged_as_production_code`. With
 `test_lines` pinned, a function in test code over it is a finding, and
 `lines` judges only the rest. With no `test_lines`, no function in test code
 fails on length, its finding carries no `lines`, and the `OK:` line says how

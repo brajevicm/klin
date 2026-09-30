@@ -15,8 +15,9 @@ agent drafted those labels and agents reviewed them.
 
 **Test code is judged on `cc` as before, and on length only against
 `complexity.test_lines`.** Test code is a test file of spec 5.4, one under a
-test root or one a test directory segment or a test affix marks, and an
-inline Rust `#[cfg(test)]` module, helpers and fixtures included. It is the
+test root or one a test directory segment or a test affix marks, and a Rust
+item marked `#[cfg(test)]`, such as an inline test module, helpers and
+fixtures included. Such an item is compiled only for tests. It is the
 code `skip_test_idioms` reads as test code (ADR 0060), with a test file of
 5.4 counted in every language.
 
@@ -27,6 +28,14 @@ code `skip_test_idioms` reads as test code (ADR 0060), with a test file of
 - With no `test_lines`, a function in test code ratchets `cc` alone, so a
   test over its `cc` ceiling does not worsen when only its length grows. ADR
   0062 Q2 still holds wherever a length ceiling judges the function.
+- A value a finding carries and its matched entry does not is a rise. A
+  function that leaves test code starts to carry `lines`, and it is judged on
+  its length from that point, so leaving test code cannot keep a length the
+  production ceiling refuses.
+- Each tree is classified over its own files, and a renamed file is
+  classified at the base under its base path.
+- An accepted `complexity` entry may leave out `lines`. It then holds only a
+  finding that carries no `lines`.
 - Test code stays in the derived sample of `cc` and `lines`, so no derived
   ceiling moves.
 - With no `test_lines`, the `OK:` line of `complexity` says how many test
