@@ -10,6 +10,7 @@
 
 use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::base::{self, Prior, Window};
@@ -130,6 +131,13 @@ impl Tree {
     /// The test roots of this tree alone, off its one file list. Spec 5.4.
     pub fn test_roots(&self) -> Vec<String> {
         survey::test_roots_of(self)
+    }
+
+    /// What spec 5.4 calls the tests of this tree alone, off its one file list.
+    pub fn tests(&self) -> Tests {
+        Tests {
+            roots: self.test_roots().into_iter().collect(),
+        }
     }
 
     /// Every file, read on the first call and held for the run. A directory the walk could not
@@ -338,5 +346,25 @@ impl Project {
     /// whichever gates run, so the answer does not depend on the selection. Spec 7.1.
     pub fn was_held(&self, file: &str) -> bool {
         self.facts().was_held(file)
+    }
+}
+
+/// The tests of one tree: every file under one of its test roots, and every source file a test
+/// directory segment or a test affix marks, wherever it sits. Spec 5.4, 8.2.
+pub struct Tests {
+    roots: HashSet<String>,
+}
+
+impl Tests {
+    /// Whether one of the tree's test roots holds this path.
+    pub fn root_holds(&self, path: &str) -> bool {
+        std::iter::once(path)
+            .chain(scope::ancestors(path))
+            .any(|at| self.roots.contains(at))
+    }
+
+    /// Whether spec 5.4 calls this path a test file.
+    pub fn file_holds(&self, path: &str) -> bool {
+        self.root_holds(path) || survey::marked(path)
     }
 }

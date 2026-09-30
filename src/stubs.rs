@@ -38,6 +38,7 @@ const LANGUAGES: &[Language] = &[
             ),
             ("comment marker", SLASH, NOTE),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["python"],
@@ -46,6 +47,7 @@ const LANGUAGES: &[Language] = &[
             ("not implemented", r"\braise\s+NotImplementedError", BODY),
             ("comment marker", HASH, NOTE),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["rust"],
@@ -54,6 +56,7 @@ const LANGUAGES: &[Language] = &[
             ("not implemented", r"\b(?:todo|unimplemented)!\(", BODY),
             ("comment marker", SLASH, NOTE),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["javascript", "typescript"],
@@ -66,6 +69,7 @@ const LANGUAGES: &[Language] = &[
             ),
             ("comment marker", SLASH, NOTE),
         ],
+        test_idioms: None,
     },
 ];
 
@@ -79,8 +83,6 @@ pub const KIND: Kind = Kind {
     languages: LANGUAGES,
     keys: KEYS,
     label: LABEL,
-    skips_tests: false,
-    test_idioms: &[],
     skips_literals: true,
     reads_shapes: true,
     reads_cfg_attr: false,

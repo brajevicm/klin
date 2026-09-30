@@ -10,7 +10,7 @@ const SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 const STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const TANGLED: &str = "pub fn knot(a: i32) -> i32 {\n    if a > 0 && a < 10 {\n        for x in 0..a {\n            if x == 3 { return 1; }\n        }\n    } else if a == 0 || a == -1 {\n        return 2;\n    }\n    match a {\n        1 => 1,\n        2 => 2,\n        3 => 3,\n        4 => 4,\n        5 => 5,\n        _ => 0,\n    }\n}\n";
-const MIDDLING: &str = "pub fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    0\n}\n";
+const MIDDLING: &str = "pub fn mid(a: i32) -> i32 {\n    if a > 1 { return 1; }\n    if a > 2 { return 2; }\n    if a > 3 { return 3; }\n    if a > 4 { return 4; }\n    if a > 5 { return 5; }\n    if a > 6 { return 6; }\n    if a > 7 { return 7; }\n    if a > 8 { return 8; }\n    if a > 9 { return 9; }\n    if a > 10 { return 10; }\n    0\n}\n";
 const MANIFEST: &str = "[package]\nname = \"t\"\nversion = \"0.1.0\"\n";
 
 /// A project klin can survey whole: source, a test root, a document and a manifest, with the
@@ -57,7 +57,7 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("derived: complexity cc 5"), "{}", run.out);
+    assert!(run.says("derived: complexity cc 10"), "{}", run.out);
     assert!(run.says("derived: complexity lines 25"), "{}", run.out);
     assert!(!run.says("derived: escapes"), "{}", run.out);
     assert!(!run.says("derived: dead_symbols"), "{}", run.out);
@@ -122,7 +122,7 @@ fn every_derived_line_has_a_matching_json_entry() {
         e["section"] == "complexity" && e["key"] == "cc"
     });
     let rule = cc["rule"].as_str().unwrap_or_default();
-    assert!(rule.contains("the floor of 5"), "{report}");
+    assert!(rule.contains("the floor of 10"), "{report}");
 
     let doc_size = find(derived, |e| e["section"] == "doc_size");
     assert_eq!(doc_size["key"], "AGENTS.md", "{report}");
@@ -465,7 +465,7 @@ fn a_cache_another_version_wrote_and_one_that_is_unreadable_are_surveyed_again()
         written(&file, text);
         let run = gate(&tree);
         assert_eq!(run.code, 0, "{}", run.out);
-        assert!(run.says("derived: complexity cc 5"), "{}", run.out);
+        assert!(run.says("derived: complexity cc 10"), "{}", run.out);
     }
 }
 
@@ -499,7 +499,7 @@ fn pin_writes_the_ceilings_the_run_derives_and_no_topology() {
     assert_eq!(written.code, 0, "{}", written.out);
     let held = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     let config: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
-    assert_eq!(config["complexity"]["cc"], 5, "{config}");
+    assert_eq!(config["complexity"]["cc"], 10, "{config}");
     assert_eq!(config["complexity"]["lines"], 25, "{config}");
     assert_eq!(config["doc_size"]["AGENTS.md"], 50, "{config}");
     for retired in ["escapes", "doc_citations", "build", "lockfile", "inventory"] {
@@ -508,7 +508,7 @@ fn pin_writes_the_ceilings_the_run_derives_and_no_topology() {
 
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("pinned: complexity cc 5"), "{}", run.out);
+    assert!(run.says("pinned: complexity cc 10"), "{}", run.out);
     assert!(!run.says("derived: complexity"), "{}", run.out);
 }
 
@@ -567,7 +567,7 @@ fn a_derived_ceiling_is_the_percentile_of_the_derivation_commit() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says(&format!(
-            "derived: complexity cc 9 (95th percentile of 50 functions at {at}, floor 5)"
+            "derived: complexity cc 11 (95th percentile of 50 functions at {at}, floor 10)"
         )),
         "{}",
         run.out
@@ -581,7 +581,7 @@ fn a_derived_ceiling_is_the_percentile_of_the_derivation_commit() {
     );
 }
 
-/// Fifty functions whose 95th percentile is cc 9, committed as the base, and a committed change
+/// Fifty functions whose 95th percentile is cc 11, committed as the base, and a committed change
 /// that would put the percentile at the tangled functions' cc 12.
 fn a_change_that_would_raise_its_own_ceiling() -> Tree {
     let tree = Tree::new();
@@ -599,7 +599,7 @@ fn derived_at_the_base(tree: &Tree, run: &Run) {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(&format!(
-            "derived: complexity cc 9 (95th percentile of 50 functions at {}, floor 5)",
+            "derived: complexity cc 11 (95th percentile of 50 functions at {}, floor 10)",
             short(tree)
         )),
         "{}",
@@ -700,7 +700,7 @@ fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent
     assert!(run.says("window: turn"), "{}", run.out);
     assert!(
         run.says(&format!(
-            "derived: complexity cc 9 (95th percentile of 50 functions at {parent}, floor 5)"
+            "derived: complexity cc 11 (95th percentile of 50 functions at {parent}, floor 10)"
         )),
         "{}",
         run.out
@@ -741,7 +741,7 @@ fn below_fifty_functions_the_floor_is_the_ceiling() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says(&format!(
-            "derived: complexity cc 5 (the floor of 5, over 2 function(s) at {at})"
+            "derived: complexity cc 10 (the floor of 10, over 2 function(s) at {at})"
         )),
         "{}",
         run.out
@@ -768,7 +768,7 @@ fn a_function_only_in_the_working_tree_does_not_move_the_percentile() {
     let run = gate(&tree);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        run.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
         "{}",
         run.out
     );
@@ -884,7 +884,7 @@ fn a_file_the_section_excludes_is_out_of_the_percentile_too() {
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        run.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
         "{}",
         run.out
     );
@@ -905,7 +905,7 @@ fn an_uncommitted_scope_edit_changes_judgment_but_not_the_ceiling() {
     let run = gate(&tree);
     assert_ne!(run.code, 2, "{}", run.out);
     assert!(
-        run.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        run.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
         "{}",
         run.out
     );
@@ -956,7 +956,7 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
 
     let held = stop(&tree);
     assert!(
-        held.says("derived: complexity cc 5 (the floor of 5, over 50 function(s) at"),
+        held.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
         "{}",
         held.out
     );
@@ -1022,7 +1022,7 @@ fn a_complexity_sample_is_read_back_from_the_cache_whatever_its_scope() {
 
         let first = gate(&tree);
         assert_eq!(first.code, 0, "{config}: {}", first.out);
-        assert!(first.says("derived: complexity cc 5 ("), "{}", first.out);
+        assert!(first.says("derived: complexity cc 10 ("), "{}", first.out);
         let file = cache(&tree);
         let mut held: Value =
             serde_json::from_str(&std::fs::read_to_string(&file).unwrap_or_default())
@@ -1068,7 +1068,7 @@ fn narrowing_today_keeps_the_recorded_ceiling_and_strict_lost_coverage() {
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("derived: complexity cc 5"), "{}", run.out);
+    assert!(run.says("derived: complexity cc 10"), "{}", run.out);
     assert!(run.says("today's complexity scope"), "{}", run.out);
     assert!(run.says("src/a.rs was measured at the base"), "{}", run.out);
 }
@@ -1109,7 +1109,7 @@ fn a_recorded_scope_that_selects_no_function_derives_the_floors() {
     let run = gate(&tree);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("derived: complexity cc 5 (the floor of 5, over 0 function(s) at"),
+        run.says("derived: complexity cc 10 (the floor of 10, over 0 function(s) at"),
         "{}",
         run.out
     );

@@ -66,7 +66,7 @@ fn a_marker_inside_an_inline_test_module_is_a_stub() {
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:5"), "{}", run.out);
-    assert!(!run.says("in inline Rust tests skipped"), "{}", run.out);
+    assert!(!run.says("in tests skipped"), "{}", run.out);
 }
 
 #[test]
@@ -179,17 +179,17 @@ fn a_quoted_slash_ahead_of_a_comment_marker_does_not_hide_it() {
 }
 
 #[test]
-fn skip_rust_tests_is_refused_because_a_stub_in_a_test_is_a_stub() {
+fn skip_test_idioms_is_refused_because_a_stub_in_a_test_is_a_stub() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "stubs": { "in": "src", "skip_rust_tests": true } }"#,
+        r#"{ "stubs": { "in": "src", "skip_test_idioms": true } }"#,
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("skip_rust_tests"), "{}", run.out);
+    assert!(run.says("skip_test_idioms"), "{}", run.out);
     assert!(run.says("it reads only: in, except"), "{}", run.out);
 }
 

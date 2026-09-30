@@ -536,8 +536,13 @@ not globs. An explicit `in` with no applicable file is exit 2.
 
 `complexity` additionally reads `cc` and `lines`; either is a whole number or
 a dated ceiling schedule and either may be omitted for derivation. `escapes`
-additionally reads `skip_rust_tests`, default `true`, which leaves `unwrap` and
-`expect` out of Rust test code and nothing else (8.2, ADR 0049). `dead_symbols`
+additionally reads `skip_test_idioms`, default `true`, which leaves `unwrap` and
+`expect` out of Rust test code and `@ts-expect-error` out of TypeScript and
+JavaScript test files, and nothing else (8.2, ADR 0049, ADR 0060). The key was
+`skip_rust_tests`, and a section that still names it MUST get the migration
+error of 5.2 naming `skip_test_idioms`. Pinned by
+`the_retired_skip_rust_tests_key_names_the_key_that_replaced_it` in
+`tests/escapes.rs`. `dead_symbols`
 additionally reads name globs in `ignore`. `stubs` and `reachability` read no
 other policy.
 
@@ -647,9 +652,12 @@ Each check documents its rule. The rules for the shipped checks:
   over every supported function selected by the compact scope recorded at the
   derivation commit, with the TypeScript and JavaScript suite callbacks in test
   files omitted as 8.2.1 states,
-  rounded up to the next whole number, with a floor of `cc 5` and `lines 25`
+  rounded up to the next whole number, with a floor of `cc 10` and `lines 25`
   so a small clean tree is not held to a ceiling of 1. Below 50 functions the
-  floor is the ceiling. A function found only in `after` never enters the
+  floor is the ceiling. A pinned `cc` wins over the floor, whatever its value
+  (ADR 0059). Pinned by `a_percentile_below_ten_derives_a_cc_ceiling_of_ten`
+  and `a_pinned_cc_below_ten_still_judges_at_the_pinned_value` in
+  `tests/complexity.rs`. A function found only in `after` never enters the
   percentile. No recorded section, or a recorded object with neither `in` nor
   `except`, selects the whole repository. A recorded scope that selects no
   supported function derives the floors and names its zero-function sample.
@@ -1089,6 +1097,12 @@ Three outcomes (ADR 0009):
 - `worsened`: matched, and a ratcheted value rose. FAIL.
 - `held`: matched, no ratcheted value rose. Pass.
 
+A `complexity` site ratchets both `cc` and `lines`, so a function over its
+`cc` ceiling is `worsened` when only its `lines` rise, even under the `lines`
+ceiling. No `+N` or percentage tolerance applies (ADR 0062). Pinned by
+`a_function_whose_length_grew_since_the_base_fails_too` in
+`tests/complexity.rs`.
+
 Below the ceiling nothing is judged. An accepted entry is a `before` entry. A
 finding matches at most one entry, and an entry at most one finding.
 Identical sites match in the rank order of 4.4.
@@ -1371,21 +1385,31 @@ carries two kinds is one site labelled by
 the earlier row, and a second copy of that line, indented differently, adds
 its matches to the same site rather than opening another. `escapes` reads
 the text as written, so a pattern inside a string literal is a match. Unless
-`skip_rust_tests` is `false`, it leaves `unwrap` and `expect` out of Rust test
-code and counts them on the coverage line as skipped in Rust tests. Rust test
-code is an inline `#[cfg(test)]` module or a `.rs` file under a test root the
-survey finds in the tree being read (5.4). Each tree is classified over its
-own files, so a root that stops being test-only has its production sites
-judged. Every other row is judged in a test as anywhere else, so a
-`#[ignore]`, an `#[allow(...)]` or an `unsafe { }` inside a test is a site
-(ADR 0049). Pinned by
-`a_site_inside_a_cfg_test_module_is_not_a_production_site`,
-`skip_rust_tests_turned_off_judges_the_test_module_too`,
+`skip_test_idioms` is `false`, it leaves each language's test idioms out of
+that language's test code and counts them on the coverage line as skipped in
+tests. Each language's table names its test idioms and its test code, and a
+language that names none has every row judged in a test. The Rust test idioms
+are `unwrap` and `expect`, and Rust test code is an inline `#[cfg(test)]`
+module or a `.rs` file under a test root the survey finds in the tree being
+read (5.4). The TypeScript and JavaScript test idiom is `@ts-expect-error`, a
+row of its own, and their test code is a test file of 5.4: one under a test
+root, or one a test directory segment or a test affix marks. It needs no
+description, the same way a reason on `#[ignore]` silences nothing. Each tree
+is classified over its own files, so a root that stops being test-only has its
+production sites judged. Every other row is judged in a test as anywhere else,
+so a `#[ignore]`, an `#[allow(...)]`, an `unsafe { }`, a `@ts-ignore`, a
+`@ts-nocheck` or a non-null `!` inside a test is a site, and a
+`@ts-expect-error` in production code is a site (ADR 0049, ADR 0060). Pinned
+by `a_site_inside_a_cfg_test_module_is_not_a_production_site`,
+`a_ts_expect_error_in_a_typescript_test_file_is_left_out_by_default`,
+`every_other_typescript_escape_is_still_judged_in_a_test_file`,
+`skip_test_idioms_turned_off_judges_the_idioms_of_every_language`,
+`skip_test_idioms_turned_off_judges_the_test_module_too`,
 `unwrap_and_expect_in_a_file_under_a_test_root_are_left_out_by_default`,
 `a_skipped_test_under_a_test_root_is_still_an_escape`,
 `a_skipped_test_inside_an_inline_test_module_is_still_an_escape`,
 `allow_and_unsafe_in_rust_tests_remain_escapes`,
-`skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too` and
+`skip_test_idioms_turned_off_judges_a_file_under_a_test_root_too` and
 `production_rust_beside_a_test_root_is_judged_as_before` and
 `a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged` in
 `tests/escapes.rs`.
@@ -1692,7 +1716,20 @@ functions, types, constants and module-level variables that are not entry
 points. A TypeScript destructuring declaration in another file that binds
 that name reaches the member too, in whatever form it binds it, shorthand
 included, so `const { default: Profile } = await import(…)` reaches the file
-it loads while `Profile` is still unused. Methods are not eligible, because a
+it loads while `Profile` is still unused. A named TypeScript re-export in
+another file, `export { x } from "./m"` or `export { x as y } from "./m"`,
+is a reference to `x` from the file that holds it, under the same name-only
+rule, so a name several files declare still reaches each of them. The rule
+reads the export facts the structural extraction already holds and resolves
+no module. A star re-export, `export * from "./m"` or
+`export * as ns from "./m"`, names nothing and reaches no member (ADR 0061).
+`dead-symbols` reads no re-export as a reference, because it judges private
+declarations, which no re-export can name. Pinned by
+`a_member_only_a_named_re_export_in_another_file_names_is_reached` and
+`a_member_only_a_star_re_export_names_stays_unreached` in
+`tests/reachability.rs`, and by
+`a_re_export_of_its_name_in_another_file_keeps_no_private_declaration_alive`
+in `tests/dead_symbols.rs`. Methods are not eligible, because a
 name such as `run` or `get` recurs across unrelated types and the name-only
 rule would reach every file that declares one. Exported declarations are
 eligible, unlike in `dead-symbols`, because a family says its files are
@@ -1735,7 +1772,7 @@ through a caller this check does not resolve, so neither decision implies the
 other. Pinned by
 `an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_bare_delete`.
 The check does not resolve imports, `mod foo;`, side-effect imports,
-re-exports, string registries,
+star re-exports, string registries,
 dependency injection, framework discovery by name or attribute, macro or
 build-generated callers, or callers outside the tree, which belong to the
 module graph of `layering` or to no V1 check; a family wired that way is narrowed by path or accepted by a

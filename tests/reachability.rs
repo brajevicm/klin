@@ -359,6 +359,55 @@ fn a_shorthand_binding_in_another_file_reaches_and_proves_a_member() {
 }
 
 #[test]
+fn a_member_only_a_named_re_export_in_another_file_names_is_reached() {
+    let tree = three_reached_handlers();
+    tree.base();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export function Profile() {}\n",
+    );
+    tree.write(
+        "web/handlers/SettingsHandler.ts",
+        "export function Settings() {}\n",
+    );
+    tree.write(
+        "web/index.ts",
+        "export { Profile } from \"./handlers/ProfileHandler\";\n\
+         export { Settings as Preferences } from \"./handlers/SettingsHandler\";\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: reachability web/handlers/*Handler.ts"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("OK: 5 file(s) judged"), "{}", run.out);
+}
+
+#[test]
+fn a_member_only_a_star_re_export_names_stays_unreached() {
+    let tree = three_reached_handlers();
+    tree.base();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export function Profile() {}\n",
+    );
+    tree.write(
+        "web/index.ts",
+        "export * from \"./handlers/ProfileHandler\";\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new unreached file(s)"), "{}", run.out);
+    assert!(run.says("web/handlers/ProfileHandler.ts"), "{}", run.out);
+}
+
+#[test]
 fn two_members_do_not_derive_a_family() {
     let tree = Tree::new();
     tree.write("src/commands/alpha_command.rs", "pub fn run_alpha() {}\n");

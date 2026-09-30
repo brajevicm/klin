@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### A `cc` floor of 10, `@ts-expect-error` in tests, and named re-exports (#411)
+
+The derived `complexity.cc` floor rises from 5 to 10. A tree whose 95th
+percentile of `cc` is below 10, or that has fewer than 50 functions, now gets
+a ceiling of 10. A pinned `cc` wins over the floor, so `"cc": 5` keeps the old
+ceiling (ADR 0059).
+
+`@ts-expect-error` in a TypeScript or JavaScript test file no longer fails
+`escapes`. It has a row of its own, `ts-expect-error`, and production code is
+judged for it as before. `@ts-ignore`, `@ts-nocheck` and the non-null `!` are
+escapes in test files too. The key `skip_rust_tests` is renamed
+`skip_test_idioms` and covers both the Rust `unwrap`/`expect` idioms and this
+one. A `klin.json` that still names `skip_rust_tests` exits 2 and asks for the
+rename. The coverage line says `in tests skipped` (ADR 0060).
+
+`reachability` reads `export { x } from "./m"` and
+`export { x as y } from "./m"` as a reference to `x`, so a family member that
+only a re-export names is reached. `export *` names nothing, as before, and
+`dead-symbols` is unchanged (ADR 0061).
+
+ADR 0062 lists the relaxations #389 rejected and why.
+
 ### `lockfile` checks each pin against the version the lockfile records (#305)
 
 A new value, `stale`, is 1 when a dependency's specifier is exact and the

@@ -20,7 +20,7 @@ use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
 use crate::{cache, changed, survey};
 
 pub const SECTION: &str = "complexity";
-const CC_FLOOR: u64 = 5;
+const CC_FLOOR: u64 = 10;
 const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
 const PERCENTILE: usize = 95;
@@ -35,7 +35,7 @@ pub const CC: Key = Key {
     rule: Some(
         "the 95th percentile of `cc` over every supported function selected by the compact \
          scope recorded at the derivation commit, rounded up to the next whole number, with a \
-         floor of 5, and the floor itself below 50 functions",
+         floor of 10, and the floor itself below 50 functions",
     ),
     default: "",
     shape: crate::reference::Shape::Ceiling,

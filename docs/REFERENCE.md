@@ -40,7 +40,7 @@ No keys: the section is absent, or `false` to exclude the gate.
 | --- | --- | --- | --- | --- | --- |
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |
-| `skip_rust_tests` | whether `unwrap` and `expect` inside Rust test code are left out | no | pinned only | — | `true` |
+| `skip_test_idioms` | whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files | no | pinned only | — | `true` |
 
 ### `stubs`
 
@@ -60,7 +60,7 @@ No keys: the section is absent, or `false` to exclude the gate.
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `cc` | the cyclomatic complexity a function may not pass | no | derived when absent | the 95th percentile of `cc` over every supported function selected by the compact scope recorded at the derivation commit, rounded up to the next whole number, with a floor of 5, and the floor itself below 50 functions | — |
+| `cc` | the cyclomatic complexity a function may not pass | no | derived when absent | the 95th percentile of `cc` over every supported function selected by the compact scope recorded at the derivation commit, rounded up to the next whole number, with a floor of 10, and the floor itself below 50 functions | — |
 | `lines` | the body length a function may not pass | no | derived when absent | the 95th percentile of `lines`, by the same rule as `cc`, with a floor of 25 | — |
 | `in` | a repository-relative path, or a list of them, the section applies to, with everything below each | no | pinned only | — | the whole repository |
 | `except` | a repository-relative path, or a list of them, taken out of `in`, with everything below each | no | pinned only | — | nothing is taken out |

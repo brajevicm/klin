@@ -482,15 +482,15 @@ fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
     tree.base();
     let rerun = tree.run(&["escapes"]);
     assert_eq!(rerun.code, 0, "{}", rerun.out);
-    assert!(rerun.says("(2 in Rust tests skipped)"), "{}", rerun.out);
+    assert!(rerun.says("(2 in tests skipped)"), "{}", rerun.out);
 }
 
 #[test]
-fn skip_rust_tests_turned_off_judges_the_test_module_too() {
+fn skip_test_idioms_turned_off_judges_the_test_module_too() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "in": "src", "skip_rust_tests": false } }"#,
+        r#"{ "escapes": { "in": "src", "skip_test_idioms": false } }"#,
     );
     tree.write("src/lib.rs", CFG_TEST);
 
@@ -498,7 +498,7 @@ fn skip_rust_tests_turned_off_judges_the_test_module_too() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:11"), "{}", run.out);
     assert!(run.says("src/lib.rs:12"), "{}", run.out);
-    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+    assert!(!run.says("in tests skipped"), "{}", run.out);
 }
 
 #[test]
@@ -573,7 +573,7 @@ fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("(1 in Rust tests skipped)"), "{}", run.out);
+    assert!(run.says("(1 in tests skipped)"), "{}", run.out);
 }
 
 #[test]
@@ -842,7 +842,7 @@ fn unwrap_and_expect_in_a_file_under_a_test_root_are_left_out_by_default() {
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("(2 in Rust tests skipped)"), "{}", run.out);
+    assert!(run.says("(2 in tests skipped)"), "{}", run.out);
 }
 
 #[test]
@@ -1005,11 +1005,11 @@ fn allow_and_unsafe_in_rust_tests_remain_escapes() {
 }
 
 #[test]
-fn skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too() {
+fn skip_test_idioms_turned_off_judges_a_file_under_a_test_root_too() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "escapes": { "skip_rust_tests": false } }"#,
+        r#"{ "escapes": { "skip_test_idioms": false } }"#,
     );
     tree.write("src/lib.rs", CFG_TEST);
     tree.write("tests/render.rs", INTEGRATION_TEST);
@@ -1020,7 +1020,7 @@ fn skip_rust_tests_turned_off_judges_a_file_under_a_test_root_too() {
     assert!(run.says("src/lib.rs:11  unwrap"), "{}", run.out);
     assert!(run.says("tests/render.rs:6  unwrap"), "{}", run.out);
     assert!(run.says("tests/render.rs:7  expect"), "{}", run.out);
-    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+    assert!(!run.says("in tests skipped"), "{}", run.out);
 }
 
 #[test]
@@ -1061,7 +1061,7 @@ fn unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("(2 in Rust tests skipped)"), "{}", run.out);
+    assert!(run.says("(2 in tests skipped)"), "{}", run.out);
 }
 
 #[test]
@@ -1115,7 +1115,7 @@ fn a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_test
 
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("(1 in Rust tests skipped)"), "{}", run.out);
+    assert!(run.says("(1 in tests skipped)"), "{}", run.out);
     assert!(!run.says("crates/foo/tests/it.rs"), "{}", run.out);
 }
 
@@ -1140,7 +1140,7 @@ fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
     assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/spec/mod.rs:2  unwrap"), "{}", run.out);
     assert!(run.says("src/bin/load_test.rs:2  unwrap"), "{}", run.out);
-    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+    assert!(!run.says("in tests skipped"), "{}", run.out);
 }
 
 #[test]
@@ -1186,5 +1186,94 @@ fn a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged() {
     let run = tree.run(&["escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("cases/runtime.rs:2  unwrap"), "{}", run.out);
-    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+    assert!(!run.says("in tests skipped"), "{}", run.out);
+}
+
+const EXPECTED_ERROR: &str = "// @ts-expect-error\nconst n: number = \"one\";\n";
+
+#[test]
+fn a_ts_expect_error_in_a_typescript_test_file_is_left_out_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("web/src/count.ts", "export const count = 1;\n");
+    tree.write("web/src/count.test.ts", EXPECTED_ERROR);
+    tree.write("web/test/types.ts", EXPECTED_ERROR);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 escape site(s) in the tree"), "{}", run.out);
+    assert!(run.says("(2 in tests skipped)"), "{}", run.out);
+}
+
+#[test]
+fn every_other_typescript_escape_is_still_judged_in_a_test_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("web/src/count.ts", EXPECTED_ERROR);
+    tree.write(
+        "web/src/count.test.ts",
+        "// @ts-ignore\nconst a = 1;\n// @ts-nocheck\nconst b = c!.d;\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("4 new escape site(s)"), "{}", run.out);
+    assert!(
+        run.says("web/src/count.ts:1  ts-expect-error"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("web/src/count.test.ts:1  ts-ignore"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("web/src/count.test.ts:3  ts-ignore"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("web/src/count.test.ts:4  non-null assertion"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("in tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn skip_test_idioms_turned_off_judges_the_idioms_of_every_language() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "skip_test_idioms": false } }"#,
+    );
+    tree.write("src/lib.rs", CFG_TEST);
+    tree.write("web/src/count.test.ts", EXPECTED_ERROR);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:11  unwrap"), "{}", run.out);
+    assert!(
+        run.says("web/src/count.test.ts:1  ts-expect-error"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("in tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn the_retired_skip_rust_tests_key_names_the_key_that_replaced_it() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "escapes": { "skip_rust_tests": false } }"#,
+    );
+    tree.write("src/lib.rs", CFG_TEST);
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"skip_rust_tests\""), "{}", run.out);
+    assert!(run.says("\"skip_test_idioms\""), "{}", run.out);
+    assert!(run.says("Rename the key"), "{}", run.out);
 }

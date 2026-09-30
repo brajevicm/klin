@@ -6,7 +6,7 @@
 //! and never unreached. With no section, a family is derived from the derivation commit alone,
 //! and only where every member is proven reached without ambiguity. ADR 0035, spec 8.4.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -417,50 +417,84 @@ fn family_of(families: &[Family], path: &str) -> Option<usize> {
     families.iter().position(|family| family.holds(path))
 }
 
-/// Whether another file references one of this file's eligible declarations by name. A
-/// reference names every declaration of its name, so ambiguity reaches each of them.
-fn reached(index: &SourceIndex, file: &structural::FileFacts) -> bool {
-    file.declarations
-        .iter()
-        .filter(|declaration| eligible(declaration))
-        .any(|declaration| referenced_elsewhere(index, file, declaration))
+/// What names a declaration from outside its file under the name-only rule: the structural
+/// index's references and destructurings, and every named TypeScript re-export, such as
+/// `export { x as y } from "./m"`, which names `x`. The index keeps no re-export as a reference,
+/// because `dead-symbols` judges private declarations, which no re-export can name. A star
+/// re-export names nothing. Spec 8.4.
+struct Naming<'a> {
+    index: &'a SourceIndex,
+    re_exported: HashMap<(LanguageId, &'a str), Vec<&'a str>>,
 }
 
-/// Whether one eligible declaration of this file is the only one of its name under the index
-/// and another file references it, which is evidence no ambiguity could have produced. A
-/// destructuring that binds the name is no declaration of that name here. Spec 5.4.
-fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
-    file.declarations
-        .iter()
-        .filter(|declaration| eligible(declaration))
-        .any(|declaration| {
-            index
+impl<'a> Naming<'a> {
+    fn of(index: &'a SourceIndex) -> Naming<'a> {
+        let mut re_exported: HashMap<(LanguageId, &str), Vec<&str>> = HashMap::new();
+        for file in index.files() {
+            let leaves = file
+                .exports
+                .iter()
+                .filter(|export| export.source.is_some())
+                .flat_map(|export| &export.leaves)
+                .filter(|leaf| leaf.path != "*");
+            for leaf in leaves {
+                re_exported
+                    .entry((file.language, leaf.path.as_str()))
+                    .or_default()
+                    .push(&file.file);
+            }
+        }
+        Naming { index, re_exported }
+    }
+
+    /// Whether another file references one of this file's eligible declarations by name. A
+    /// reference names every declaration of its name, so ambiguity reaches each of them.
+    fn reached(&self, file: &structural::FileFacts) -> bool {
+        file.declarations
+            .iter()
+            .filter(|declaration| eligible(declaration))
+            .any(|declaration| self.named_elsewhere(file, declaration))
+    }
+
+    /// Whether one eligible declaration of this file is the only one of its name under the index
+    /// and another file names it, which is evidence no ambiguity could have produced. A
+    /// destructuring that binds the name is no declaration of that name here. Spec 5.4.
+    fn proven(&self, file: &structural::FileFacts) -> bool {
+        file.declarations
+            .iter()
+            .filter(|declaration| eligible(declaration))
+            .any(|declaration| {
+                self.index
+                    .declarations(file.language, &declaration.name)
+                    .filter(|held| !held.declaration.destructures())
+                    .count()
+                    == 1
+                    && self.named_elsewhere(file, declaration)
+            })
+    }
+
+    /// Whether a file other than the one that holds this declaration references its name,
+    /// re-exports it by name, or holds a destructuring declaration that binds it. Spec 5.4.
+    fn named_elsewhere(&self, file: &structural::FileFacts, declaration: &Declaration) -> bool {
+        let elsewhere = |at: &str| at != file.file;
+        self.index
+            .references(file.language, &declaration.name)
+            .any(|site| elsewhere(site.file))
+            || self
+                .re_exported
+                .get(&(file.language, declaration.name.as_str()))
+                .is_some_and(|files| files.iter().any(|at| elsewhere(at)))
+            || self
+                .index
                 .declarations(file.language, &declaration.name)
-                .filter(|held| !held.declaration.destructures())
-                .count()
-                == 1
-                && referenced_elsewhere(index, file, declaration)
-        })
-}
-
-/// Whether a file other than the one that holds this declaration references its name or holds
-/// a destructuring declaration that binds it. Spec 5.4.
-fn referenced_elsewhere(
-    index: &SourceIndex,
-    file: &structural::FileFacts,
-    declaration: &Declaration,
-) -> bool {
-    index
-        .references(file.language, &declaration.name)
-        .any(|site| site.file != file.file)
-        || index
-            .declarations(file.language, &declaration.name)
-            .any(|held| held.file != file.file && held.declaration.destructures())
+                .any(|held| elsewhere(held.file) && held.declaration.destructures())
+    }
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
 /// none, which are not judged and not unreached.
 fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
+    let naming = Naming::of(index);
     let mut out = Vec::new();
     let mut unjudged = 0;
     for file in index.files() {
@@ -474,8 +508,8 @@ fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
         out.push(State {
             file: file.file.clone(),
             family,
-            unreached: !reached(index, file),
-            proven: proven(index, file),
+            unreached: !naming.reached(file),
+            proven: naming.proven(file),
         });
     }
     (out, unjudged)
@@ -694,13 +728,14 @@ fn evidence(root: &Path, commit: &str, paths: &[String]) -> BTreeMap<String, Mem
         }
     });
     let index = SourceIndex::of(facts);
+    let naming = Naming::of(&index);
     index
         .files()
         .iter()
         .map(|file| {
             let member = Member {
                 eligible: file.declarations.iter().any(eligible),
-                proven: proven(&index, file),
+                proven: naming.proven(file),
                 language: file.language,
             };
             (file.file.clone(), member)
