@@ -127,6 +127,10 @@ over `/.github/workflows/`, `/klin.json`, `/.claude/settings.json` and
 `/.github/CODEOWNERS` is what covers that gap, together with review of the
 diff.
 
+Only a push to `main` saves the Rust cache that `quality` restores, so a pull
+request cannot put build artifacts into the runs of `main` or of other pull
+requests. A release tag builds and checks with no cache.
+
 ## Out of scope
 
 klin does not sandbox the coding agent, harden the developer machine, manage
