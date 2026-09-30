@@ -535,6 +535,49 @@ fn a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove() {
 }
 
 #[test]
+fn a_test_directory_under_a_family_root_stays_in_the_cohort_beside_a_non_source_file() {
+    let tree = three_reached_commands();
+    tree.write(
+        "src/commands/__tests__/delta_command.rs",
+        "pub fn run_delta() {}\n",
+    );
+    tree.words("src/commands/README.md", 5);
+    tree.base();
+
+    derives_no_family(&tree);
+}
+
+#[test]
+fn a_crates_integration_tests_beside_its_build_script_still_prove_a_family() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{}"#);
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("build.rs", "fn main() {}\n");
+    for name in ["alpha", "beta", "gamma"] {
+        tree.write(
+            &format!("src/commands/{name}_command.rs"),
+            &format!("pub fn run_{name}() {{}}\n"),
+        );
+    }
+    tree.write(
+        "tests/it.rs",
+        "#[test]\nfn runs() {\n    run_alpha();\n    run_beta();\n    run_gamma();\n}\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["reachability"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: reachability src/commands/*_command.rs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_new_test_file_in_a_family_directory_is_no_member() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{}"#);

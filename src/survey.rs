@@ -1,10 +1,11 @@
 //! What a repository says about itself, and nothing a check decides. The survey of one tree is
-//! its source roots, the documents at its top, the roots its test convention marks and its
-//! manifests. `Facts` holds the derivation commit's survey beside the working tree's, read once
-//! per run. No section of `klin.json` is manufactured here: each check reads these facts and
-//! resolves its own policy. Spec 4.3, ADR 0038, ADR 0040.
+//! its source roots, the documents at its top, its test roots and its manifests. `Facts` holds
+//! the derivation commit's survey beside the working tree's, read once per run. No section of
+//! `klin.json` is manufactured here: each check reads these facts and resolves its own policy.
+//! Spec 4.3, ADR 0038, ADR 0040.
 
 use std::collections::HashSet;
+use std::iter::successors;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
@@ -139,18 +140,18 @@ pub fn surveyed(path: &str) -> bool {
 
 fn of(paths: &[String]) -> Survey {
     let merged = merged(paths);
-    let roots = outermost(merged.clone());
+    let manifests = sorted(
+        paths
+            .iter()
+            .filter(|path| MANIFESTS.contains(&basename(path)))
+            .cloned(),
+    );
     Survey {
+        roots: outermost(&merged),
         documents: sorted(paths.iter().filter(|path| document(path)).cloned()),
-        test_roots: outermost(test_roots(&merged, paths)),
-        manifests: sorted(
-            paths
-                .iter()
-                .filter(|path| MANIFESTS.contains(&basename(path)))
-                .cloned(),
-        ),
+        test_roots: test_roots(&merged, &manifests, paths),
+        manifests,
         tests: paths.iter().any(|path| marked(path)),
-        roots,
     }
 }
 
@@ -164,12 +165,9 @@ fn document(path: &str) -> bool {
     !path.contains('/') && path.ends_with(".md")
 }
 
-/// The shallowest directories that hold nothing but source: start at each directory that holds
-/// a source file and merge upward while the directory above holds nothing but source. A source
-/// file in a directory that holds something else, such as a crate's `build.rs`, starts at that
-/// directory, so one merged directory may hold another. Spec 5.4.
+/// Spec 5.4.
 fn merged(paths: &[String]) -> Vec<String> {
-    let mixed = mixed(paths);
+    let mixed = holding(paths.iter().filter(|path| !source(path)));
     let mut found: Vec<String> = Vec::new();
     for file in paths.iter().filter(|path| source(path)) {
         let mut at = parent(file);
@@ -187,21 +185,26 @@ fn merged(paths: &[String]) -> Vec<String> {
     found
 }
 
-/// The directories no other one of them holds.
-fn outermost(mut found: Vec<String>) -> Vec<String> {
-    let nested = found.clone();
-    found.retain(|root| !nested.iter().any(|other| under(root, other)));
+/// Spec 5.4.
+fn outermost(found: &[String]) -> Vec<String> {
+    let held: HashSet<&str> = found.iter().map(String::as_str).collect();
     found
+        .iter()
+        .filter(|at| !ancestors(at).any(|up| held.contains(up)))
+        .cloned()
+        .collect()
 }
 
-/// Every directory that holds something other than source somewhere beneath it, from one pass
-/// over the paths, so merging a root upward is a lookup and not another scan.
-fn mixed(paths: &[String]) -> HashSet<&str> {
+/// Every directory that holds one of these paths somewhere beneath it, from one pass over them,
+/// so what a directory holds is a lookup and not another scan.
+fn holding<'a>(paths: impl Iterator<Item = &'a String>) -> HashSet<&'a str> {
     let mut found = HashSet::new();
-    for path in paths.iter().filter(|path| !source(path)) {
+    for path in paths {
         let mut at = path.as_str();
         while let Some((up, _)) = at.rsplit_once('/') {
-            found.insert(up);
+            if !found.insert(up) {
+                break;
+            }
             at = up;
         }
         found.insert(ROOT);
@@ -214,28 +217,32 @@ fn source(path: &str) -> bool {
     project::language_of(path).is_some()
 }
 
-/// The merged directories a language's test convention marks: a directory the convention names,
-/// or one whose every source file carries a test affix. Spec 5.4, 8.2.
-fn test_roots(merged: &[String], paths: &[String]) -> Vec<String> {
-    merged
+/// Spec 5.4, 8.2.
+fn test_roots(merged: &[String], manifests: &[String], paths: &[String]) -> Vec<String> {
+    let production = holding(
+        paths
+            .iter()
+            .filter(|path| source(path) && !test_affix(basename(path))),
+    );
+    let packages: HashSet<String> = manifests.iter().map(|path| parent(path)).collect();
+    let unpackaged: HashSet<&str> = merged
         .iter()
-        .filter(|root| named_for_tests(root) || holds_only_tests(paths, root))
+        .map(String::as_str)
+        .filter(|at| !packages.contains(*at))
+        .collect();
+    let marked: Vec<String> = merged
+        .iter()
+        .filter(|at| named_for_tests(at) || !production.contains(at.as_str()))
+        .filter(|at| !ancestors(at).any(|up| unpackaged.contains(up)))
         .cloned()
-        .collect()
+        .collect();
+    outermost(&marked)
 }
 
 pub fn named_for_tests(directory: &str) -> bool {
     directory
         .split('/')
         .any(|segment| TEST_DIRS.contains(&segment))
-}
-
-fn holds_only_tests(paths: &[String], root: &str) -> bool {
-    let mut under = paths
-        .iter()
-        .filter(|path| under_or_at(path, root) && source(path))
-        .peekable();
-    under.peek().is_some() && under.all(|path| test_affix(basename(path)))
 }
 
 /// Whether a basename carries one of the test affixes of spec 8.2.
@@ -261,8 +268,11 @@ fn above(directory: &str) -> Option<String> {
     }
 }
 
-fn under(path: &str, directory: &str) -> bool {
-    path != directory && under_or_at(path, directory)
+fn ancestors(directory: &str) -> impl Iterator<Item = &str> {
+    successors(Some(directory), |at| {
+        (*at != ROOT).then(|| at.rsplit_once('/').map_or(ROOT, |(up, _)| up))
+    })
+    .skip(1)
 }
 
 fn sorted(values: impl Iterator<Item = String>) -> Vec<String> {

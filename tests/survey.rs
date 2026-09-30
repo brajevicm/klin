@@ -250,6 +250,26 @@ fn a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root()
     );
 }
 
+#[test]
+fn a_directory_another_test_root_holds_is_no_test_root_of_its_own() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"tests\"]\n");
+    tree.write("tests/Cargo.toml", MANIFEST);
+    tree.write("tests/build.rs", "fn main() {}\n");
+    tree.write("tests/src/lib.rs", CLEAN);
+    tree.write("tests/tests/it.rs", CLEAN);
+    tree.base();
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: test roots tests, the roots that match a language's test convention"),
+        "{}",
+        run.out
+    );
+}
+
 /// The promise of ADR 0016: a tree already in debt is green against itself with no
 /// configuration at all, because a root the derivation commit held is held debt and not new.
 #[test]

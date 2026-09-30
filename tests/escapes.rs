@@ -1093,6 +1093,62 @@ fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
 }
 
 #[test]
+fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("src/lib.rs", "mod spec;\n");
+    tree.write("src/schema.sql", "create table t (id int);\n");
+    tree.write(
+        "src/spec/mod.rs",
+        "pub fn f(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+    );
+    tree.write(
+        "src/bin/load_test.rs",
+        "fn main() {\n    std::env::args().next().unwrap();\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new escape site(s)"), "{}", run.out);
+    assert!(run.says("src/spec/mod.rs:2  unwrap"), "{}", run.out);
+    assert!(run.says("src/bin/load_test.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("in Rust tests skipped"), "{}", run.out);
+}
+
+#[test]
+fn removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write(
+        "src/lib.rs",
+        "pub fn one() -> Option<i32> {\n    Some(1)\n}\n\n#[cfg(test)]\nmod tests;\n",
+    );
+    tree.write("src/grammar.lalrpop", "grammar;\n");
+    tree.write(
+        "src/tests/mod.rs",
+        "#[test]\nfn reads() {\n    use super::one;\n    one().unwrap();\n}\n",
+    );
+    tree.base();
+    tree.remove("src/grammar.lalrpop");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 escape site(s) in the tree, all held at the base"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");

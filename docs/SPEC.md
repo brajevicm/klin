@@ -576,15 +576,22 @@ Each check documents its rule. The rules for the shipped checks:
   `build.rs` beside a crate's `Cargo.toml`, starts at that directory, so the
   crate directory is a source root and holds the ones beneath it. A test root
   is a directory this finds that a test directory segment names or whose
-  every source file carries a test affix, and that no other test root holds.
-  A source root that holds it does not remove it: a crate's `build.rs` keeps
-  the crate directory a source root and leaves its `tests/` a test root.
-  Pinned by `a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root`
-  and `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`
-  in `tests/survey.rs`, and by
-  `unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default`
-  and `a_workspace_members_build_script_and_src_are_judged_beside_its_test_root`
-  in `tests/escapes.rs`.
+  every source file carries a test affix, that no other directory this finds
+  holds unless that one directly holds a `Cargo.toml`, `go.mod`,
+  `package.json` or `tsconfig.json`, and that no other test root holds. So a
+  crate's `build.rs`, or a `jest.config.js` beside a package's
+  `package.json`, keeps the package directory a source root and leaves its
+  `tests/` a test root, while `src/spec/` beside `src/schema.sql` is no test
+  root and stays in the source root `src`. Pinned by
+  `a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root`,
+  `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`
+  and `a_directory_another_test_root_holds_is_no_test_root_of_its_own` in
+  `tests/survey.rs`, and by
+  `unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default`,
+  `a_workspace_members_build_script_and_src_are_judged_beside_its_test_root`,
+  `a_directory_inside_src_is_no_test_root_beside_a_non_source_file` and
+  `removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held` in
+  `tests/escapes.rs`.
 - `doc_size`: every Markdown file at the tree root, in the derivation commit
   and in `after`. The
   ceiling is the word count at the derivation commit, rounded up to the next
@@ -645,9 +652,19 @@ Each check documents its rule. The rules for the shipped checks:
   `a_member_only_a_destructuring_in_another_file_binds_still_proves_its_family`
   and `a_shorthand_binding_in_another_file_reaches_and_proves_a_member` in
   `tests/reachability.rs`. `*.rs`, `*.ts` and every other
-  bare extension are never a family, nor is a test root or a file under a
-  test directory. A file under a test directory, or one whose basename
-  carries a test affix of 8.2, is never a member in a tree a run judges.
+  bare extension are never a family. The derivation reads the structural
+  files under the derivation commit's source roots, less those under a
+  source root that is also a test root, and a file under a test directory
+  seeds no family. A test root inside a source root, such as a crate's
+  `tests/` beside its `build.rs`, stays among the files read, so a reference
+  from it can prove a member, and a test directory under a family's root
+  stays in the cohort the family must prove. Pinned by
+  `a_crates_integration_tests_beside_its_build_script_still_prove_a_family`
+  and
+  `a_test_directory_under_a_family_root_stays_in_the_cohort_beside_a_non_source_file`
+  in `tests/reachability.rs`. A file under a test directory, or one whose
+  basename carries a test affix of 8.2, is never a member in a tree a run
+  judges.
   Of two candidates the
   broader wins where its whole cohort is proven, and a narrower one survives
   a broader one that is not. The policy is read from the derivation commit
