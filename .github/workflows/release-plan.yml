@@ -11,6 +11,7 @@ on:
       - "rust-toolchain.toml"
       - "dist-workspace.toml"
       - ".github/workflows/release.yml"
+      - ".github/verify-tag.yml"
       - ".github/workflows/release-plan.yml"
       - ".github/workflows/cut-release.yml"
       - ".github/workflows/promote-release.yml"
@@ -30,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - shell: bash
         run: |
           version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)

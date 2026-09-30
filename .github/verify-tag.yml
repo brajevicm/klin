@@ -1,0 +1,25 @@
+# dist inserts these steps into every build-local-artifacts job of release.yml. They run in the
+# x86_64 Linux job only. A failure there fails build-local-artifacts, so host and announce never
+# publish the tag. The checkout takes the full history, because `klin gate --strict` on a tag
+# compares against the merge-base with origin/main.
+- name: Check out the tag with its history
+  if: contains(matrix.targets, 'x86_64-unknown-linux-gnu')
+  uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+  with:
+    fetch-depth: 0
+    persist-credentials: false
+- name: Install nextest
+  if: contains(matrix.targets, 'x86_64-unknown-linux-gnu')
+  uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+  with:
+    tool: cargo-nextest@0.9.143
+- name: Verify the tag
+  if: contains(matrix.targets, 'x86_64-unknown-linux-gnu')
+  env:
+    GH_TOKEN: ""
+  run: |
+    cargo fmt --check
+    cargo clippy --all-targets --locked -- -D warnings
+    cargo nextest run --locked
+    cargo build --locked
+    ./target/debug/klin gate --strict
