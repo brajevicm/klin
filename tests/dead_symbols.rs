@@ -514,6 +514,24 @@ fn a_typescript_function_that_loses_its_last_reference_fails_as_worsened() {
 }
 
 #[test]
+fn a_re_export_of_its_name_in_another_file_keeps_no_private_declaration_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write("src/lib.ts", "function helper() {}\n");
+    tree.write("src/other.ts", "export function helper() {}\n");
+    tree.write(
+        "src/index.ts",
+        "export { helper } from \"./other\";\nexport { helper as aid } from \"./other\";\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.ts:1"), "{}", run.out);
+}
+
+#[test]
 fn a_dead_typescript_symbol_already_in_the_base_is_held() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);

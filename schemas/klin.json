@@ -437,8 +437,8 @@
               ],
               "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
             },
-            "skip_rust_tests": {
-              "description": "whether `unwrap` and `expect` inside Rust test code are left out",
+            "skip_test_idioms": {
+              "description": "whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files",
               "type": "boolean"
             }
           },

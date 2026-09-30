@@ -132,6 +132,13 @@ impl Tree {
         survey::test_roots_of(self)
     }
 
+    /// What spec 5.4 calls the tests of this tree alone, off its one file list.
+    pub fn tests(&self) -> Tests {
+        Tests {
+            roots: self.test_roots().into_iter().collect(),
+        }
+    }
+
     /// Every file, read on the first call and held for the run. A directory the walk could not
     /// read is an error naming it, as it was for every walk before. Spec 4.3, 14.
     pub fn files(&self) -> Result<&[String], Error> {
@@ -338,5 +345,23 @@ impl Project {
     /// whichever gates run, so the answer does not depend on the selection. Spec 7.1.
     pub fn was_held(&self, file: &str) -> bool {
         self.facts().was_held(file)
+    }
+}
+
+/// The tests of one tree: every file under one of its test roots, and every source file a test
+/// directory segment or a test affix marks, wherever it sits. Spec 5.4, 8.2.
+pub struct Tests {
+    roots: scope::Roots,
+}
+
+impl Tests {
+    /// Whether one of the tree's test roots holds this path.
+    pub fn root_holds(&self, path: &str) -> bool {
+        self.roots.holds(path)
+    }
+
+    /// Whether spec 5.4 calls this path a test file.
+    pub fn file_holds(&self, path: &str) -> bool {
+        self.root_holds(path) || survey::marked(path)
     }
 }

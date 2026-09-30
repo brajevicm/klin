@@ -6,7 +6,7 @@
 //! and never unreached. With no section, a family is derived from the derivation commit alone,
 //! and only where every member is proven reached without ambiguity. ADR 0035, spec 8.4.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -22,7 +22,9 @@ use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::{self, Key};
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
-use crate::syntax::structural::{self, Declaration, DeclarationKind, Measurement, SourceIndex};
+use crate::syntax::structural::{
+    self, Declaration, DeclarationKind, Declared, Measurement, SourceIndex,
+};
 use crate::syntax::{self, LanguageId};
 use crate::{cache, changed};
 
@@ -417,50 +419,157 @@ fn family_of(families: &[Family], path: &str) -> Option<usize> {
     families.iter().position(|family| family.holds(path))
 }
 
-/// Whether another file references one of this file's eligible declarations by name. A
-/// reference names every declaration of its name, so ambiguity reaches each of them.
-fn reached(index: &SourceIndex, file: &structural::FileFacts) -> bool {
-    file.declarations
-        .iter()
-        .filter(|declaration| eligible(declaration))
-        .any(|declaration| referenced_elsewhere(index, file, declaration))
+/// What names a declaration from outside its file under the name-only rule: the structural
+/// index's references and destructurings, and every named TypeScript re-export. A re-export
+/// names a declaration by the name a consumer addresses it by, so `export { x as y } from "./m"`
+/// names `x`, and `export { default as Profile } from "./m"` names the default export of `m`.
+/// The index keeps no re-export as a reference, because `dead-symbols` judges private
+/// declarations, which no re-export can name. A star re-export names nothing. Spec 8.4.
+struct Naming<'a> {
+    index: &'a SourceIndex,
+    /// The files that hold an eligible declaration a named re-export in another file names.
+    re_exported: HashSet<&'a str>,
+    /// The files that hold an eligible declaration a named re-export in another file names by a
+    /// name no other declaration under the index answers to.
+    proven_by_re_export: HashSet<&'a str>,
 }
 
-/// Whether one eligible declaration of this file is the only one of its name under the index
-/// and another file references it, which is evidence no ambiguity could have produced. A
-/// destructuring that binds the name is no declaration of that name here. Spec 5.4.
-fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
-    file.declarations
-        .iter()
-        .filter(|declaration| eligible(declaration))
-        .any(|declaration| {
-            index
+impl<'a> Naming<'a> {
+    /// Reads the re-exports once, from the few leaves that name something, so a member costs
+    /// one lookup here and not one for each of its declarations.
+    fn of(index: &'a SourceIndex) -> Naming<'a> {
+        let mut naming = Naming {
+            index,
+            re_exported: HashSet::new(),
+            proven_by_re_export: HashSet::new(),
+        };
+        let leaves = re_export_leaves(index);
+        if leaves.is_empty() {
+            return naming;
+        }
+        let aliased = aliased(index);
+        for ((language, name), from) in &leaves {
+            let targets: Vec<Declared> = index
+                .declarations(*language, name)
+                .filter(|held| {
+                    !held.declaration.destructures() && held.declaration.exported_as.is_none()
+                })
+                .chain(
+                    aliased
+                        .get(&(*language, *name))
+                        .into_iter()
+                        .flatten()
+                        .copied(),
+                )
+                .collect();
+            let only = targets.len() == 1;
+            for held in targets.iter().filter(|held| eligible(held.declaration)) {
+                if from.iter().any(|at| *at != held.file) {
+                    naming.re_exported.insert(held.file);
+                    if only {
+                        naming.proven_by_re_export.insert(held.file);
+                    }
+                }
+            }
+        }
+        naming
+    }
+
+    /// Whether another file names one of this file's eligible declarations. A name reaches every
+    /// declaration it names, so ambiguity reaches each of them.
+    fn reached(&self, file: &structural::FileFacts) -> bool {
+        self.re_exported.contains(file.file.as_str())
+            || file
+                .declarations
+                .iter()
+                .filter(|declaration| eligible(declaration))
+                .any(|declaration| self.referenced_elsewhere(file, declaration))
+    }
+
+    /// Whether another file names one eligible declaration of this file by a name no other
+    /// declaration under the index answers to, which is evidence no ambiguity could have
+    /// produced. A reference is judged by the declaration's name and a re-export by the name a
+    /// consumer addresses it by. A destructuring that binds the name is no declaration of that
+    /// name here. Spec 5.4.
+    fn proven(&self, file: &structural::FileFacts) -> bool {
+        self.proven_by_re_export.contains(file.file.as_str())
+            || file
+                .declarations
+                .iter()
+                .filter(|declaration| eligible(declaration))
+                .any(|declaration| {
+                    self.index
+                        .declarations(file.language, &declaration.name)
+                        .filter(|held| !held.declaration.destructures())
+                        .count()
+                        == 1
+                        && self.referenced_elsewhere(file, declaration)
+                })
+    }
+
+    /// Whether a file other than the one that holds this declaration references its name or
+    /// holds a destructuring declaration that binds it. Spec 5.4.
+    fn referenced_elsewhere(
+        &self,
+        file: &structural::FileFacts,
+        declaration: &Declaration,
+    ) -> bool {
+        self.index
+            .references(file.language, &declaration.name)
+            .any(|site| site.file != file.file)
+            || self
+                .index
                 .declarations(file.language, &declaration.name)
-                .filter(|held| !held.declaration.destructures())
-                .count()
-                == 1
-                && referenced_elsewhere(index, file, declaration)
-        })
+                .any(|held| held.file != file.file && held.declaration.destructures())
+    }
 }
 
-/// Whether a file other than the one that holds this declaration references its name or holds
-/// a destructuring declaration that binds it. Spec 5.4.
-fn referenced_elsewhere(
-    index: &SourceIndex,
-    file: &structural::FileFacts,
-    declaration: &Declaration,
-) -> bool {
-    index
-        .references(file.language, &declaration.name)
-        .any(|site| site.file != file.file)
-        || index
-            .declarations(file.language, &declaration.name)
-            .any(|held| held.file != file.file && held.declaration.destructures())
+/// Every name a named TypeScript re-export names, with the files that re-export it. A star
+/// re-export names nothing.
+fn re_export_leaves(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<&str>> {
+    let mut leaves: HashMap<(LanguageId, &str), Vec<&str>> = HashMap::new();
+    for file in index.files() {
+        let named = file
+            .exports
+            .iter()
+            .filter(|export| export.source.is_some())
+            .flat_map(|export| &export.leaves)
+            .filter(|leaf| leaf.path != "*");
+        for leaf in named {
+            leaves
+                .entry((file.language, leaf.path.as_str()))
+                .or_default()
+                .push(&file.file);
+        }
+    }
+    leaves
+}
+
+/// Every declaration a consumer addresses by a name other than its own, such as `default` for
+/// TypeScript's `export default function Profile`, under that name.
+fn aliased(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<Declared<'_>>> {
+    let mut aliased: HashMap<(LanguageId, &str), Vec<Declared>> = HashMap::new();
+    for file in index.files() {
+        for declaration in file.declarations.iter().filter(|held| !held.destructures()) {
+            if let Some(name) = declaration.exported_as.as_deref() {
+                aliased
+                    .entry((file.language, name))
+                    .or_default()
+                    .push(Declared {
+                        file: &file.file,
+                        language: file.language,
+                        declaration,
+                    });
+            }
+        }
+    }
+    aliased
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
 /// none, which are not judged and not unreached.
 fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
+    let naming = Naming::of(index);
     let mut out = Vec::new();
     let mut unjudged = 0;
     for file in index.files() {
@@ -474,8 +583,8 @@ fn states(index: &SourceIndex, families: &[Family]) -> (Vec<State>, usize) {
         out.push(State {
             file: file.file.clone(),
             family,
-            unreached: !reached(index, file),
-            proven: proven(index, file),
+            unreached: !naming.reached(file),
+            proven: naming.proven(file),
         });
     }
     (out, unjudged)
@@ -694,13 +803,14 @@ fn evidence(root: &Path, commit: &str, paths: &[String]) -> BTreeMap<String, Mem
         }
     });
     let index = SourceIndex::of(facts);
+    let naming = Naming::of(&index);
     index
         .files()
         .iter()
         .map(|file| {
             let member = Member {
                 eligible: file.declarations.iter().any(eligible),
-                proven: proven(&index, file),
+                proven: naming.proven(file),
                 language: file.language,
             };
             (file.file.clone(), member)

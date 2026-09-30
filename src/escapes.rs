@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::check::{Context, Sink};
 use crate::config::Error;
-use crate::markers::{self, Args, Kind, Language};
+use crate::markers::{self, Args, Kind, Language, TestCode, TestIdioms};
 use crate::ratchet::{Evaluator, Remedy, Values};
 use crate::reference::Key;
 use crate::scope;
@@ -10,7 +10,7 @@ use crate::scope;
 pub const SECTION: &str = "escapes";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, markers::SKIP_RUST_TESTS];
+const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, markers::SKIP_TEST_IDIOMS];
 
 const LABEL: &str = "escape";
 
@@ -22,6 +22,7 @@ const LANGUAGES: &[Language] = &[
             ("nolint", r"//\s*nolint", ""),
             ("skipped test", r"\bt\.Skip(?:Now|f)?\(", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["java"],
@@ -30,6 +31,7 @@ const LANGUAGES: &[Language] = &[
             ("suppress warnings", r"@SuppressWarnings\(", ""),
             ("skipped test", r"@(?:Ignore|Disabled)\b", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["kotlin"],
@@ -39,6 +41,7 @@ const LANGUAGES: &[Language] = &[
             ("suppress", r"@Suppress\(", ""),
             ("skipped test", r"@(?:Ignore|Disabled)\b", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["python"],
@@ -55,6 +58,7 @@ const LANGUAGES: &[Language] = &[
             ("expected failure", r"pytest\.mark\.xfail\b", ""),
             ("bare except", r"^\s*except\s*:", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["ruby"],
@@ -63,6 +67,7 @@ const LANGUAGES: &[Language] = &[
             ("rubocop:disable", r"rubocop:disable", ""),
             ("skipped test", r"\bskip\b|\bxit\b|\bpending\b", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["rust"],
@@ -78,6 +83,10 @@ const LANGUAGES: &[Language] = &[
                 "",
             ),
         ],
+        test_idioms: Some(TestIdioms {
+            rows: &["unwrap", "expect"],
+            code: TestCode::InlineModulesAndRoots,
+        }),
     },
     Language {
         names: &["shell"],
@@ -86,6 +95,7 @@ const LANGUAGES: &[Language] = &[
             ("errors ignored", r"\|\|\s*true\b|^\s*set\s+\+e\b", ""),
             ("shellcheck disable", r"shellcheck\s+disable", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["swift"],
@@ -98,13 +108,15 @@ const LANGUAGES: &[Language] = &[
             ("unchecked Sendable", r"@unchecked\s+Sendable", ""),
             ("skipped test", r"\bXCTSkip|\bthrow\s+XCTSkip", ""),
         ],
+        test_idioms: None,
     },
     Language {
         names: &["javascript", "typescript"],
         suffixes: &[".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
         patterns: &[
             ("any", r":\s*any\b|\bas\s+any\b|<any>", ""),
-            ("ts-ignore", r"@ts-(?:ignore|expect-error|nocheck)", ""),
+            ("ts-ignore", r"@ts-(?:ignore|nocheck)", ""),
+            ("ts-expect-error", r"@ts-expect-error", ""),
             ("eslint-disable", r"eslint-disable", ""),
             ("non-null assertion", r"[\w)\]]!\.", ""),
             (
@@ -114,6 +126,10 @@ const LANGUAGES: &[Language] = &[
             ),
             ("focused test", r"^[ \t]*f(?:it|describe)\(", ""),
         ],
+        test_idioms: Some(TestIdioms {
+            rows: &["ts-expect-error"],
+            code: TestCode::Files,
+        }),
     },
 ];
 
@@ -127,8 +143,6 @@ pub const KIND: Kind = Kind {
     languages: LANGUAGES,
     keys: KEYS,
     label: LABEL,
-    skips_tests: true,
-    test_idioms: &["unwrap", "expect"],
     skips_literals: false,
     reads_shapes: false,
     reads_cfg_attr: true,

@@ -357,6 +357,7 @@ fn a_function_whose_length_grew_since_the_base_fails_too() {
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
     assert!(
         run.says("cc 9, 14 lines, was cc 9, 13 lines"),
         "{}",
@@ -540,12 +541,58 @@ fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
 
     tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
     let derived_ceilings = tree.run(&["complexity"]);
-    assert_eq!(derived_ceilings.code, 1, "{}", derived_ceilings.out);
+    assert_eq!(derived_ceilings.code, 0, "{}", derived_ceilings.out);
     assert!(
-        derived_ceilings.says("derived: complexity cc 5 (the floor of 5"),
+        derived_ceilings.says("derived: complexity cc 10 (the floor of 10"),
         "{}",
         derived_ceilings.out
     );
+}
+
+/// Fifty functions whose 95th percentile is cc 9, committed as the base, and a new function
+/// of cc 10 beside them, which a floor below 10 would fail.
+fn a_percentile_below_the_floor() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let simple = (0..47)
+        .map(|at| format!("fn simple_{at}() -> i32 {{ 1 }}\n"))
+        .collect::<String>();
+    tree.write("src/simple.rs", &simple);
+    let tangled = (0..3)
+        .map(|at| TANGLED.replacen("fn tangled", &format!("fn tangled_{at}"), 1))
+        .collect::<String>();
+    tree.write("src/tangled.rs", &tangled);
+    tree.base();
+    tree.write(
+        "src/knot.rs",
+        &TANGLED.replace("a == 0 ||", "a == 0 || a == -2 ||"),
+    );
+    tree
+}
+
+#[test]
+fn a_percentile_below_ten_derives_a_cc_ceiling_of_ten() {
+    let tree = a_percentile_below_the_floor();
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: complexity cc 10 (the floor of 10, over 50 function(s) at"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("src/knot.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_pinned_cc_below_ten_still_judges_at_the_pinned_value() {
+    let tree = a_percentile_below_the_floor();
+    tree.write("klin.json", r#"{ "complexity": { "cc": 8 } }"#);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
+    assert!(run.says("src/knot.rs:1  cc 10, 13 lines"), "{}", run.out);
 }
 
 #[test]

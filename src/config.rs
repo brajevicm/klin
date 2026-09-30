@@ -860,6 +860,9 @@ const TOPOLOGY: &[&str] = &[
     "extensions",
 ];
 
+/// A section key klin renamed, and the name the section reads it by now. Spec 5.2.
+const RENAMED: &[(&str, &str)] = &[("skip_rust_tests", "skip_test_idioms")];
+
 /// What a section may say, in the words of the error that refused what it said.
 fn policy_shape(section: &str) -> &'static str {
     match section {
@@ -895,6 +898,16 @@ pub fn known_fields(
              discovered; {}",
             file.display(),
             policy_shape(section)
+        )));
+    }
+    if let Some((_, now)) = RENAMED
+        .iter()
+        .find(|(was, now)| unknown == was && known.contains(now))
+    {
+        return Err(Error(format!(
+            "{}: \"{section}\" no longer reads \"{unknown}\", which klin renamed \"{now}\". \
+             Rename the key.",
+            file.display()
         )));
     }
     Err(Error(match nearest(unknown, known.iter().copied()) {

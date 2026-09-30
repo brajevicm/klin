@@ -2,6 +2,11 @@
 
 > Amends spec 8.2. The key keeps its name and its default. What changes is
 > what it leaves out, and where.
+>
+> ADR 0060 amends this record. The key is now `skip_test_idioms`, the
+> coverage line says `in tests skipped`, `@ts-expect-error` in a TypeScript or
+> JavaScript test file is a test idiom too, and each language's table names
+> its test idioms in place of the kind.
 
 The blinded labeling of the two natural benchmark rounds (#262) put all five
 of its `undesired` labels on one class: `escapes` interrupting an agent over
