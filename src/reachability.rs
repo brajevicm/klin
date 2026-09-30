@@ -436,7 +436,7 @@ fn proven(index: &SourceIndex, file: &structural::FileFacts) -> bool {
         .any(|declaration| {
             index
                 .declarations(file.language, &declaration.name)
-                .filter(|held| held.declaration.bindings.is_empty())
+                .filter(|held| !held.declaration.destructures())
                 .count()
                 == 1
                 && referenced_elsewhere(index, file, declaration)
@@ -455,7 +455,7 @@ fn referenced_elsewhere(
         .any(|site| site.file != file.file)
         || index
             .declarations(file.language, &declaration.name)
-            .any(|held| held.file != file.file && !held.declaration.bindings.is_empty())
+            .any(|held| held.file != file.file && held.declaration.destructures())
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with

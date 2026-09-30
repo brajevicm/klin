@@ -94,13 +94,19 @@ pub struct Declaration {
 }
 
 impl Declaration {
+    /// Whether a destructuring pattern binds its names, so `name` holds the pattern text and
+    /// `names` yields the bindings.
+    pub fn destructures(&self) -> bool {
+        !self.bindings.is_empty()
+    }
+
     /// The names it declares: every name its pattern binds, and its own name where it binds
     /// none.
     pub fn names(&self) -> impl Iterator<Item = &str> {
-        let names: &[String] = if self.bindings.is_empty() {
-            std::slice::from_ref(&self.name)
-        } else {
+        let names: &[String] = if self.destructures() {
             &self.bindings
+        } else {
+            std::slice::from_ref(&self.name)
         };
         names.iter().map(String::as_str)
     }
@@ -1198,10 +1204,12 @@ impl<'a, 'b> Reading<'a, 'b> {
     /// Every use of a name the declarations and the imports did not already claim, every name a
     /// string calls by its text, and every qualified path outside them, from one walk. An import
     /// binding is not a reference to what it binds, so the whole import is stepped over, and
-    /// neither is a declaration's name or a name its destructuring pattern binds. A name any
-    /// other binding site writes — a parameter, a `for` head, a `catch` clause, a field, a Rust
-    /// `let` — is kept, because no adapter states those binding sites and keeping it errs toward
-    /// "referenced".
+    /// neither is a declaration's name or a name its destructuring pattern binds. The head of a
+    /// C-style `for` is a declaration. A name any other binding site writes — a parameter, a
+    /// `for…in` or `for…of` head, a `catch` clause, an assignment, a field, a Rust `let` — is
+    /// kept, because no adapter states those binding sites and keeping it errs toward
+    /// "referenced", unless a pattern writes it as a shorthand such as `{ name }`, which is no
+    /// identifier the adapter lists.
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
@@ -1360,7 +1368,9 @@ impl SourceIndex {
             })
     }
 
-    /// Every declaration of this name and logical language, in file and line order.
+    /// Every declaration of this name and logical language, in file and line order. A
+    /// destructuring declaration is listed under each name it binds, and its `name` is still the
+    /// pattern text.
     pub fn declarations(
         &self,
         language: LanguageId,

@@ -148,9 +148,13 @@ A binding writes a name and reads none. Inside a function,
 `const [first] = load()` writes a new local and never reads an outer
 `first`, yet the V1 rule kept an unused top-level `const first` alive
 through it. The same rule let two unused destructurings of one name keep
-each other alive. Parameters, `for` heads, `catch` clauses, class and struct
-fields, a Rust `let`, an assignment such as `[first] = load()`, and every
-later use of a bound name still read as references.
+each other alive. The head of a C-style `for` is a declaration, so
+`for (let [first] = [0]; ; )` binds `first` as a `let` statement does.
+Parameters, `for…in` and `for…of` heads, `catch` clauses, a Rust `let` and
+an assignment such as `[first] = load()` still read as references, except
+where a pattern writes a name as a shorthand such as `{ name }`, which V1
+never read as one. Class and struct fields and every later use of a bound
+name still read as references.
 
 `dead-symbols` judges a destructuring declaration by the names it binds, and
 the index files the declaration under each of them. The derivation
@@ -168,8 +172,8 @@ loads the file whether `Profile` is used or not. Reading the binding as no
 reference would report a loaded file as unreached, and a gate that fails
 more on ambiguity goes against this ADR. The rule covers shorthand bindings
 too, which V1 never read as references, so
-`const { Profile } = await import(…)` now reaches a member that V1 left
-unreached.
+`const { Profile } = await import(…)` now reaches and can prove a member
+that V1 left unreached, and its family can be derived where V1 derived none.
 
 A destructuring inside a function body is no declaration, so the index holds
 nothing for it, and a name only it binds reaches no member. For

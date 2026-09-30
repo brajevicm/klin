@@ -623,12 +623,14 @@ Each check documents its rule. The rules for the shipped checks:
   declaration that binds the name is no declaration of it here, and one in
   another file counts as a reference from that file, as a lazy
   `const { default: Profile } = await import(…)` does for the file it loads.
-  A destructuring inside a function body is no declaration, so a name only it
-  binds proves nothing (8.2.1). Pinned by
-  `a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it`
-  and
+  A shorthand binding counts too, so `const { Login } = await import(…)` in
+  another file proves the member that declares `Login`. A destructuring
+  inside a function body is no declaration, so a name only it binds proves
+  nothing (8.2.1). Pinned by
+  `a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it`,
   `a_member_only_a_destructuring_in_another_file_binds_still_proves_its_family`
-  in `tests/reachability.rs`. `*.rs`, `*.ts` and every other
+  and `a_shorthand_binding_in_another_file_reaches_and_proves_a_member` in
+  `tests/reachability.rs`. `*.rs`, `*.ts` and every other
   bare extension are never a family, nor is a test root or a file under a
   test directory. A file under a test directory, or one whose basename
   carries a test affix of 8.2, is never a member in a tree a run judges.
@@ -1380,9 +1382,12 @@ nested or defaulted pattern binds every name inside it, never a default value
 or a computed key. A name a `const`, `let` or `var` destructuring declaration
 binds is no reference to that name, at the top level and in a function body,
 so such a destructuring keeps no other declaration of a name it binds alive.
-A name a parameter, a `for` head or a `catch` clause binds still reads as a
-reference, and so do a field, a Rust `let` and a name that an assignment such
-as `[first] = load()` writes (ADR 0035). A name
+The head of a C-style `for` is a declaration, so `for (let [first] = [0]; ; )`
+binds `first` as a `let` statement does. A name a parameter, a `for…in` or
+`for…of` head, a `catch` clause or a Rust `let` binds, or an assignment such
+as `[first] = load()` writes, still reads as a reference, unless a pattern
+writes it as a shorthand such as `{ name }`, which never reads as one. A
+field name reads as a reference too (ADR 0035). A name
 resolves to every same-name declaration, so ambiguity keeps each declaration
 alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. The `ignore` list adds name
@@ -1674,8 +1679,9 @@ by `a_new_command_file_nothing_references_fails_as_new`,
 `a_changed_run_reports_one_surface_the_whole_run_reports_too`,
 `legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file`,
 `a_new_test_file_in_a_family_directory_is_no_member`,
-`a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove` and
-`a_destructuring_in_another_file_that_binds_a_member_name_reaches_it`
+`a_test_directory_under_a_family_root_stays_in_the_cohort_it_must_prove`,
+`a_destructuring_in_another_file_that_binds_a_member_name_reaches_it` and
+`a_plain_declaration_elsewhere_or_a_destructuring_in_the_same_file_reaches_no_member`
 in `tests/reachability.rs`, and by
 `a_caller_only_turn_judges_the_whole_family_off_the_shared_extraction` in
 `tests/structural.rs`. Known limit: a destructuring inside a function body is
