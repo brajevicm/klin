@@ -285,7 +285,7 @@ impl Writer {
             self.text(&leaf.path);
             self.optional(leaf.name.as_deref());
         }
-        self.optional(export.namespace.as_deref());
+        self.optional(export.contract.as_deref());
     }
 }
 
@@ -428,7 +428,7 @@ impl Reader<'_, '_> {
             type_only: flags & 1 == 1,
             supported: flags & 2 == 2,
             leaves: self.list(Reader::leaf)?,
-            namespace: self.optional()?,
+            contract: self.optional()?,
         })
     }
 
@@ -556,7 +556,7 @@ mod tests {
 
     fn outcomes() -> Vec<(String, Outcome)> {
         let rust = "pub use crate::pay::{Refund, refund};\n#[path = \"other.rs\"]\nmod moved;\npub struct Charge;\nfn main() { refund(); }\n#[test]\nfn works() {}\nmod tests {\n    use super::*;\n    fn it() { crate::pay::charge(); }\n}\nextern crate serde as json;\nimpl Charge {\n    const N: u8 = 1;\n}\nfn local() {\n    use std::fmt::Write;\n}\n";
-        let typescript = "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\nexport default view;\n";
+        let typescript = "import { refund } from \"./pay\";\nexport const view = () => <p>{refund()}</p>;\nexport default view;\nexport namespace N {\n    export type T = string;\n}\n";
         [
             ("src/pay.rs", rust),
             ("web/view.tsx", typescript),
@@ -709,9 +709,13 @@ mod tests {
             view.declarations[0].signature.as_deref(),
             Some("const view: ?")
         );
-        assert_eq!(view.exports.len(), 1);
+        assert_eq!(view.exports.len(), 2);
         assert!(view.exports[0].supported && view.exports[0].source.is_none());
         assert_eq!(view.exports[0].leaves[0].name.as_deref(), Some("default"));
+        assert_eq!(
+            view.exports[1].contract.as_deref(),
+            Some("namespace N { type T = string }")
+        );
     }
 
     #[test]

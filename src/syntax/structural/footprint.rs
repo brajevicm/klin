@@ -240,12 +240,12 @@ fn imported(import: &Import, out: &mut Footprint) {
     nesting(&import.nesting, out);
 }
 
-/// One export statement's own text, the module it names, the namespace it declares, and its
-/// leaves' paths and names.
+/// One export statement's own text, the module it names, the contract of what it declares, and
+/// its leaves' paths and names.
 fn exported(export: &Export, out: &mut Footprint) {
     out.export_text_bytes += export.text.len()
         + export.source.as_deref().map_or(0, str::len)
-        + export.namespace.as_deref().map_or(0, str::len);
+        + export.contract.as_deref().map_or(0, str::len);
     for leaf in &export.leaves {
         out.export_text_bytes += leaf.path.len() + leaf.name.as_deref().map_or(0, str::len);
     }

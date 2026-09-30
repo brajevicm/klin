@@ -1993,7 +1993,7 @@ fn a_new_exported_declare_namespace_in_an_entry_file_is_an_item_and_passes() {
     assert!(!run.says("could not be resolved"), "{}", run.out);
     assert!(
         listed.says(
-            "a \".\" N  namespace  opaque (namespace N { type T = string; })  web/src/index.ts:2"
+            "a \".\" N  namespace  opaque (declare namespace N { type T = string })  web/src/index.ts:2"
         ),
         "{}",
         listed.out
@@ -2033,10 +2033,185 @@ fn an_exported_namespace_whose_declaration_changed_fails_as_changed() {
     assert_eq!(green.code, 0, "{}", green.out);
     assert_eq!(red.code, 1, "{}", red.out);
     assert!(
-        red.says("was `namespace N { type T = string; }`, now `namespace N { type T = number; }`  N (namespace)"),
+        red.says("was `declare namespace N { type T = string }`, now `declare namespace N { type T = number }`  N (namespace)"),
         "{}",
         red.out
     );
+}
+
+const PLAIN: &str = "export namespace V {\n    const secret = 42;\n    export const v = 5;\n    export const f = (a: number) => a + 1;\n    export function g(a: number) {\n        return a;\n    }\n    if (Math.random() > 2) {\n        console.log(\"hi\");\n    }\n}\n";
+
+#[test]
+fn a_plain_namespace_shows_what_it_exports_and_an_edit_no_consumer_sees_passes() {
+    let tree = Tree::new();
+    package_of(&tree, PLAIN);
+    tree.write(
+        "web/src/index.ts",
+        &PLAIN
+            .replace("42", "43")
+            .replace("= 5", "= 6")
+            .replace("a + 1", "a + 2")
+            .replace("return a;", "return a * 2;"),
+    );
+    let green = by_hand(&tree);
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        &PLAIN.replace("g(a: number)", "g(a: string)"),
+    );
+
+    let red = by_hand(&tree);
+
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert!(
+        listed.says("a \".\" V  namespace  opaque (namespace V { const f: ?; const v: ?; function g(_: number): ? })  web/src/index.ts:1"),
+        "{}",
+        listed.out
+    );
+    assert_eq!(red.code, 1, "{}", red.out);
+    assert!(
+        red.says(
+            "now `namespace V { const f: ?; const v: ?; function g(_: string): ? }`  V (namespace)"
+        ),
+        "{}",
+        red.out
+    );
+}
+
+const AMBIENT: &str = "export declare namespace N {\n    type T = string;\n    namespace M {\n        type U = string;\n    }\n}\n";
+
+#[test]
+fn a_declare_namespace_shows_every_member_it_holds_and_dropping_declare_fails() {
+    let tree = Tree::new();
+    package_of(&tree, AMBIENT);
+    tree.write("web/src/index.ts", &AMBIENT.replace("declare ", ""));
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `declare namespace N { namespace M { type U = string }; type T = string }`, now `namespace N {  }`  N (namespace)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_export_clause_added_to_a_declare_namespace_fails_as_changed() {
+    let tree = Tree::new();
+    package_of(&tree, NAMESPACE);
+    tree.write(
+        "web/src/index.ts",
+        &NAMESPACE.replace("string;\n", "string;\n    export {};\n"),
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("now `declare namespace N { export { }; type T = string }`  N (namespace)"),
+        "{}",
+        run.out
+    );
+}
+
+const NESTED: &str = "export namespace N {\n    export namespace Inner {\n        export type T = string;\n    }\n    export module Legacy {\n        export type U = string;\n    }\n}\n";
+
+#[test]
+fn a_member_edit_inside_a_nested_namespace_or_module_fails_as_changed() {
+    let tree = Tree::new();
+    package_of(&tree, NESTED);
+    tree.write(
+        "web/src/index.ts",
+        &NESTED.replace("T = string", "T = number"),
+    );
+    let inner = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
+        &NESTED.replace("U = string", "U = number"),
+    );
+
+    let legacy = by_hand(&tree);
+
+    for (run, now) in [
+        (
+            &inner,
+            "namespace N { namespace Inner { type T = number }; namespace Legacy { type U = string } }",
+        ),
+        (
+            &legacy,
+            "namespace N { namespace Inner { type T = string }; namespace Legacy { type U = number } }",
+        ),
+    ] {
+        assert_eq!(run.code, 1, "{}", run.out);
+        assert!(
+            run.says(&format!("now `{now}`  N (namespace)")),
+            "{}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_module_with_a_name_is_a_namespace_and_a_dotted_name_is_its_first_name() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export module Legacy {\n    export type U = string;\n}\nexport namespace A.B {\n    export type T = string;\n}\n",
+    );
+
+    let listed = report(&tree);
+
+    assert_eq!(listed.code, 0, "{}", listed.out);
+    assert!(listed.says("0 hole(s)"), "{}", listed.out);
+    for line in [
+        "a \".\" Legacy  namespace  opaque (namespace Legacy { type U = string })  web/src/index.ts:1",
+        "a \".\" A  namespace  opaque (namespace A.B { type T = string })  web/src/index.ts:4",
+    ] {
+        assert!(listed.says(line), "no {line} in: {}", listed.out);
+    }
+}
+
+#[test]
+fn a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "namespace P {\n    export type T = string;\n}\nexport { P };\nexport default P;\n",
+    );
+
+    let listed = report(&tree);
+
+    assert_eq!(listed.code, 0, "{}", listed.out);
+    for line in [
+        "a \".\" P  item  opaque (P)  web/src/index.ts:4",
+        "a \".\" default  item  opaque (P as default)  web/src/index.ts:5",
+    ] {
+        assert!(listed.says(line), "no {line} in: {}", listed.out);
+    }
+}
+
+#[test]
+fn an_exported_namespace_hides_the_name_a_star_export_provides() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "web/package.json",
+        r#"{"name":"a","types":"./src/index.ts"}"#,
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export * from \"./b\";\nexport namespace N {\n    export type T = string;\n}\n",
+    );
+    tree.write("web/src/b.ts", "export type N = string;\n");
+    tree.base();
+    tree.write("web/src/b.ts", "export type N = number;\n");
+
+    let run = by_hand(&tree);
+    let listed = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!listed.says("N  type"), "{}", listed.out);
 }
 
 #[test]
@@ -2062,7 +2237,7 @@ fn export_equals_and_an_ambient_module_are_still_holes() {
     ] {
         assert!(
             run.says(&format!(
-                "{line}  — a \".\" — an export form klin does not list: `export =` or an ambient module"
+                "{line}  — a \".\" — an export form klin does not list, such as `export =` or an ambient module"
             )),
             "no {line} in: {}",
             run.out

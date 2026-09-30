@@ -2227,16 +2227,39 @@ aliases, enums and variables. A type the compiler would infer is written as
 body. A re-export of a crate the tree does not hold or of another package, an
 enum variant re-exported by path, a `* as ns` export and an anonymous default
 export are opaque, and the
-normalized clause that exposes them is the contract klin compares. An exported
-TypeScript `namespace` or `declare namespace` is the item `NAME (namespace)`,
-opaque, and its normalized declaration is the clause klin compares: the
-adapter spells the whole namespace, with or without `declare`, by the rules
-above, and every body inside it but a nested namespace's leaves. So a new
-namespace is a new item and passes, a namespace the base exposed that is gone
-fails as removed, and one whose clause changed fails as changed. Pinned by
+normalized clause that exposes them is the contract klin compares. A
+TypeScript namespace an `export` statement declares, written `namespace`, or
+`module` with a name that is no string, `declare` or not, is the item
+`NAME (namespace)`, where `NAME` is the first name a dotted name such as `A.B`
+writes, because that is the name the declaration binds. It is opaque, and its
+clause is the contract klin compares: `declare` where written, `namespace` and
+its name, and in braces each member a consumer can see, spelled by the rules
+above, so a body and an initializer leave and an inferred type is `?`. A
+namespace written with `declare`, and every namespace one holds, shows every
+declaration it holds, and any other namespace shows only what it exports. An
+import alias shows only where it is exported. An export clause such as
+`export {}` stays as written, because in an ambient namespace it stops every
+member without `export` from being exported, so adding one fails as changed. A
+statement that declares nothing leaves, a nested namespace is spelled the same
+way, the overloads of one function stay together in source order and lose
+their implementation, and the members keep one order whatever order the source
+wrote them in. So a new namespace is a new item and passes, a namespace the
+base exposed that is gone fails as removed, one whose clause changed fails as
+changed, and an edit no consumer sees, such as a function body, an initializer
+or a member the namespace does not export, passes. A namespace declared without
+`export` and exposed by a later export clause or a default export is the
+opaque item that clause exposes, judged by the clause. A namespace an `export`
+statement declares hides the name a star export provides. Pinned by
 `a_new_exported_declare_namespace_in_an_entry_file_is_an_item_and_passes`,
-`an_exported_namespace_the_working_tree_lacks_fails_as_removed` and
-`an_exported_namespace_whose_declaration_changed_fails_as_changed`.
+`an_exported_namespace_the_working_tree_lacks_fails_as_removed`,
+`an_exported_namespace_whose_declaration_changed_fails_as_changed`,
+`a_plain_namespace_shows_what_it_exports_and_an_edit_no_consumer_sees_passes`,
+`a_declare_namespace_shows_every_member_it_holds_and_dropping_declare_fails`,
+`an_export_clause_added_to_a_declare_namespace_fails_as_changed`,
+`a_member_edit_inside_a_nested_namespace_or_module_fails_as_changed`,
+`a_module_with_a_name_is_a_namespace_and_a_dotted_name_is_its_first_name`,
+`a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause` and
+`an_exported_namespace_hides_the_name_a_star_export_provides`.
 
 Base and working tree are derived independently. A base surface the working
 tree lacks fails once, at the surface. For every item of a surface both hold,
@@ -2267,7 +2290,8 @@ and no second stop. Pinned by
 and `a_break_by_hand_names_person_acceptance_and_no_second_stop`. A glob over
 a crate the tree does not hold, a star export of another package, a name two
 globs or two stars provide, an export form klin recognizes and cannot list,
-such as TypeScript's `export =` or an exported ambient `declare module`, a
+such as TypeScript's `export =` or an exported `declare module` whose name is a
+string, a
 path through a module no file answers, and an unresolved module or specifier
 inside a surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while
 other findings still print, because a green run must not imply a surface it
@@ -2290,8 +2314,9 @@ registry dependency that `[patch]` or `[replace]` points into the tree,
 `extern crate self as` an alias, a re-export by name through a glob of a
 module that binds the name in either namespace, which is opaque,
 `typesVersions`, conditional exports that do not reduce to one source file,
-`tsconfig` paths and a package alias are outside V1, and a generic parameter
-renamed is a changed contract.
+the names a declaration file exports without writing `export`, `tsconfig`
+paths and a package alias are outside V1, and a generic parameter renamed is a
+changed contract.
 
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a
