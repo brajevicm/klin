@@ -210,19 +210,25 @@ fn the_survey_finds_one_root_per_package_of_a_monorepo() {
     );
 }
 
+fn derives_test_roots(tree: &Tree, roots: &str) {
+    let run = gate(tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "derived: test roots {roots}, the roots that match a language's test convention"
+        )),
+        "{}",
+        run.out
+    );
+}
+
 #[test]
 fn a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root() {
     let tree = project();
     tree.write("build.rs", "fn main() {}\n");
     tree.base();
 
-    let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("derived: test roots tests, the roots that match a language's test convention"),
-        "{}",
-        run.out
-    );
+    derives_test_roots(&tree, "tests");
 }
 
 #[test]
@@ -239,15 +245,7 @@ fn a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root()
     tree.write("b/tests/lib_test.rs", CLEAN);
     tree.base();
 
-    let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says(
-            "derived: test roots a/tests, b/tests, the roots that match a language's test convention"
-        ),
-        "{}",
-        run.out
-    );
+    derives_test_roots(&tree, "a/tests, b/tests");
 }
 
 #[test]
@@ -261,15 +259,7 @@ fn a_crate_below_a_directory_that_holds_a_script_keeps_its_tests_as_a_test_root(
     tree.write("rust/tests/lib_test.rs", CLEAN);
     tree.base();
 
-    let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says(
-            "derived: test roots rust/tests, the roots that match a language's test convention"
-        ),
-        "{}",
-        run.out
-    );
+    derives_test_roots(&tree, "rust/tests");
 }
 
 #[test]
@@ -282,13 +272,7 @@ fn a_config_file_beside_a_packages_manifest_keeps_its_tests_as_a_test_root() {
     tree.write("tests/index.test.js", "test(\"one\", () => {});\n");
     tree.base();
 
-    let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("derived: test roots tests, the roots that match a language's test convention"),
-        "{}",
-        run.out
-    );
+    derives_test_roots(&tree, "tests");
 }
 
 #[test]
@@ -302,13 +286,7 @@ fn a_directory_another_test_root_holds_is_no_test_root_of_its_own() {
     tree.write("tests/tests/it.rs", CLEAN);
     tree.base();
 
-    let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("derived: test roots tests, the roots that match a language's test convention"),
-        "{}",
-        run.out
-    );
+    derives_test_roots(&tree, "tests");
 }
 
 /// The promise of ADR 0016: a tree already in debt is green against itself with no

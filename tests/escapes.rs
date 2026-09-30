@@ -1045,14 +1045,13 @@ fn production_rust_beside_a_test_root_is_judged_as_before() {
     assert!(!run.says("tests/render.rs"), "{}", run.out);
 }
 
+const MANIFEST: &str = "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n";
+
 #[test]
 fn unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
-    tree.write(
-        "Cargo.toml",
-        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
-    );
+    tree.write("Cargo.toml", MANIFEST);
     tree.write("build.rs", "fn main() {}\n");
     tree.write(
         "src/lib.rs",
@@ -1070,10 +1069,7 @@ fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write("Cargo.toml", "[workspace]\nmembers = [\"demo\"]\n");
-    tree.write(
-        "demo/Cargo.toml",
-        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
-    );
+    tree.write("demo/Cargo.toml", MANIFEST);
     tree.write(
         "demo/build.rs",
         "fn main() {\n    std::env::var(\"OUT_DIR\").unwrap();\n}\n",
@@ -1127,10 +1123,7 @@ fn a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_test
 fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
-    tree.write(
-        "Cargo.toml",
-        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
-    );
+    tree.write("Cargo.toml", MANIFEST);
     tree.write("src/lib.rs", "mod spec;\n");
     tree.write("src/schema.sql", "create table t (id int);\n");
     tree.write(
@@ -1154,10 +1147,7 @@ fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
 fn removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
-    tree.write(
-        "Cargo.toml",
-        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n",
-    );
+    tree.write("Cargo.toml", MANIFEST);
     tree.write(
         "src/lib.rs",
         "pub fn one() -> Option<i32> {\n    Some(1)\n}\n\n#[cfg(test)]\nmod tests;\n",
