@@ -6,7 +6,7 @@
 //! and never unreached. With no section, a family is derived from the derivation commit alone,
 //! and only where every member is proven reached without ambiguity. ADR 0035, spec 8.4.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -425,56 +425,64 @@ fn family_of(families: &[Family], path: &str) -> Option<usize> {
 /// declarations, which no re-export can name. A star re-export names nothing. Spec 8.4.
 struct Naming<'a> {
     index: &'a SourceIndex,
-    re_exported: HashMap<(LanguageId, &'a str), Vec<&'a str>>,
-    /// How many declarations a consumer addresses by each name some re-export names.
-    addressed: HashMap<(LanguageId, &'a str), usize>,
+    /// The files that hold an eligible declaration a named re-export in another file names.
+    re_exported: HashSet<&'a str>,
+    /// The files that hold an eligible declaration a named re-export in another file names by a
+    /// name no other declaration under the index answers to.
+    proven_by_re_export: HashSet<&'a str>,
 }
 
 impl<'a> Naming<'a> {
+    /// Reads the re-exports once, from the few leaves that name something, so a member costs
+    /// one lookup here and not one for each of its declarations.
     fn of(index: &'a SourceIndex) -> Naming<'a> {
-        let mut re_exported: HashMap<(LanguageId, &str), Vec<&str>> = HashMap::new();
-        for file in index.files() {
-            let leaves = file
-                .exports
-                .iter()
-                .filter(|export| export.source.is_some())
-                .flat_map(|export| &export.leaves)
-                .filter(|leaf| leaf.path != "*");
-            for leaf in leaves {
-                re_exported
-                    .entry((file.language, leaf.path.as_str()))
-                    .or_default()
-                    .push(&file.file);
-            }
+        let mut naming = Naming {
+            index,
+            re_exported: HashSet::new(),
+            proven_by_re_export: HashSet::new(),
+        };
+        let leaves = re_export_leaves(index);
+        if leaves.is_empty() {
+            return naming;
         }
-        let mut addressed: HashMap<(LanguageId, &str), usize> = HashMap::new();
-        if !re_exported.is_empty() {
-            for file in index.files() {
-                for declaration in file.declarations.iter().filter(|held| !held.destructures()) {
-                    let key = (file.language, address(declaration));
-                    if re_exported.contains_key(&key) {
-                        *addressed.entry(key).or_default() += 1;
+        let aliased = aliased(index);
+        for ((language, name), from) in &leaves {
+            let targets: Vec<(&str, &Declaration)> = index
+                .declarations(*language, name)
+                .filter(|held| {
+                    !held.declaration.destructures() && held.declaration.exported_as.is_none()
+                })
+                .map(|held| (held.file, held.declaration))
+                .chain(
+                    aliased
+                        .get(&(*language, *name))
+                        .into_iter()
+                        .flatten()
+                        .copied(),
+                )
+                .collect();
+            let only = targets.len() == 1;
+            for (file, _) in targets.iter().filter(|(_, held)| eligible(held)) {
+                if from.iter().any(|at| at != file) {
+                    naming.re_exported.insert(file);
+                    if only {
+                        naming.proven_by_re_export.insert(file);
                     }
                 }
             }
         }
-        Naming {
-            index,
-            re_exported,
-            addressed,
-        }
+        naming
     }
 
     /// Whether another file names one of this file's eligible declarations. A name reaches every
     /// declaration it names, so ambiguity reaches each of them.
     fn reached(&self, file: &structural::FileFacts) -> bool {
-        file.declarations
-            .iter()
-            .filter(|declaration| eligible(declaration))
-            .any(|declaration| {
-                self.referenced_elsewhere(file, declaration)
-                    || self.re_exported_elsewhere(file, declaration)
-            })
+        self.re_exported.contains(file.file.as_str())
+            || file
+                .declarations
+                .iter()
+                .filter(|declaration| eligible(declaration))
+                .any(|declaration| self.referenced_elsewhere(file, declaration))
     }
 
     /// Whether another file names one eligible declaration of this file by a name no other
@@ -483,19 +491,19 @@ impl<'a> Naming<'a> {
     /// consumer addresses it by. A destructuring that binds the name is no declaration of that
     /// name here. Spec 5.4.
     fn proven(&self, file: &structural::FileFacts) -> bool {
-        file.declarations
-            .iter()
-            .filter(|declaration| eligible(declaration))
-            .any(|declaration| {
-                let named = self
-                    .index
-                    .declarations(file.language, &declaration.name)
-                    .filter(|held| !held.declaration.destructures())
-                    .count();
-                let addressed = self.addressed.get(&(file.language, address(declaration)));
-                (named == 1 && self.referenced_elsewhere(file, declaration))
-                    || (addressed == Some(&1) && self.re_exported_elsewhere(file, declaration))
-            })
+        self.proven_by_re_export.contains(file.file.as_str())
+            || file
+                .declarations
+                .iter()
+                .filter(|declaration| eligible(declaration))
+                .any(|declaration| {
+                    self.index
+                        .declarations(file.language, &declaration.name)
+                        .filter(|held| !held.declaration.destructures())
+                        .count()
+                        == 1
+                        && self.referenced_elsewhere(file, declaration)
+                })
     }
 
     /// Whether a file other than the one that holds this declaration references its name or
@@ -513,29 +521,44 @@ impl<'a> Naming<'a> {
                 .declarations(file.language, &declaration.name)
                 .any(|held| held.file != file.file && held.declaration.destructures())
     }
-
-    /// Whether a file other than the one that holds this declaration re-exports it by the name a
-    /// consumer addresses it by.
-    fn re_exported_elsewhere(
-        &self,
-        file: &structural::FileFacts,
-        declaration: &Declaration,
-    ) -> bool {
-        !declaration.destructures()
-            && self
-                .re_exported
-                .get(&(file.language, address(declaration)))
-                .is_some_and(|files| files.iter().any(|at| *at != file.file))
-    }
 }
 
-/// The name a consumer of the module addresses a declaration by: `default` for TypeScript's
-/// `export default function Profile`, and its own name otherwise.
-fn address(declaration: &Declaration) -> &str {
-    declaration
-        .exported_as
-        .as_deref()
-        .unwrap_or(&declaration.name)
+/// Every name a named TypeScript re-export names, with the files that re-export it. A star
+/// re-export names nothing.
+fn re_export_leaves(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<&str>> {
+    let mut leaves: HashMap<(LanguageId, &str), Vec<&str>> = HashMap::new();
+    for file in index.files() {
+        let named = file
+            .exports
+            .iter()
+            .filter(|export| export.source.is_some())
+            .flat_map(|export| &export.leaves)
+            .filter(|leaf| leaf.path != "*");
+        for leaf in named {
+            leaves
+                .entry((file.language, leaf.path.as_str()))
+                .or_default()
+                .push(&file.file);
+        }
+    }
+    leaves
+}
+
+/// Every declaration a consumer addresses by a name other than its own, such as `default` for
+/// TypeScript's `export default function Profile`, under that name.
+fn aliased(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<(&str, &Declaration)>> {
+    let mut aliased: HashMap<(LanguageId, &str), Vec<(&str, &Declaration)>> = HashMap::new();
+    for file in index.files() {
+        for declaration in file.declarations.iter().filter(|held| !held.destructures()) {
+            if let Some(name) = declaration.exported_as.as_deref() {
+                aliased
+                    .entry((file.language, name))
+                    .or_default()
+                    .push((&file.file, declaration));
+            }
+        }
+    }
+    aliased
 }
 
 /// Every member with an eligible declaration, judged, and the count of members measured with
