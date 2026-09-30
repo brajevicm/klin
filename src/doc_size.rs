@@ -38,6 +38,21 @@ pub const DOCUMENT: Key = Key {
 
 /// The documents a ceiling is derived for when the map does not name them. Spec 5.4.
 const INSTRUCTION_FILES: &[&str] = &["AGENTS.md", "CLAUDE.md"];
+
+fn is_instruction_file(name: &str) -> bool {
+    INSTRUCTION_FILES.contains(&name)
+}
+
+/// Whether the tree holds an instruction file at its root, which is when this check runs with no
+/// section. Spec 5.4.
+pub fn applies(project: &Project) -> bool {
+    project
+        .facts()
+        .found
+        .documents
+        .iter()
+        .any(|name| is_instruction_file(name))
+}
 const CEILING_STEP: u64 = 50;
 pub const RULE: &str = "the word count at the derivation commit, rounded up to the next 50";
 const MARGIN_FRACTION: f64 = 0.02;
@@ -328,7 +343,7 @@ fn listing(project: &Project) -> Result<Listing, Error> {
         .found
         .documents
         .iter()
-        .filter(|name| INSTRUCTION_FILES.contains(&name.as_str()))
+        .filter(|name| is_instruction_file(name))
         .filter(|name| {
             !pins
                 .keys()
@@ -424,7 +439,7 @@ pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
         .documents
         .iter()
         .map(String::as_str)
-        .filter(|name| INSTRUCTION_FILES.contains(name))
+        .filter(|name| is_instruction_file(name))
         .collect();
     let read = changed::blobs(project.root(), commit, &names, |name, bytes| {
         let words = bytes.map(words_in).unwrap_or_default();
@@ -450,12 +465,10 @@ fn read_ceilings(cached: &Value) -> Option<BTreeMap<String, u64>> {
     cached
         .as_object()?
         .iter()
-        .map(
-            |(name, words)| match INSTRUCTION_FILES.contains(&name.as_str()) {
-                true => Some((name.clone(), words.as_u64()?)),
-                false => None,
-            },
-        )
+        .map(|(name, words)| match is_instruction_file(name) {
+            true => Some((name.clone(), words.as_u64()?)),
+            false => None,
+        })
         .collect()
 }
 

@@ -402,7 +402,8 @@ configured or derived instance of a check. A check declares:
   each its own gate under its own `name`, rather than one section the whole
   check runs under. Only `sarif` sets it (8.3).
 - `available`, whether the tree holds what an Automatic check applies to: a
-  source root, a document at the tree root, a test, a manifest klin reads. It
+  source root, a document at the tree root, an instruction file of 5.4 at the
+  tree root for `doc_size`, a test, a manifest klin reads. It
   is answered from the facts of 4.3 alone and never from a derived number
 - `activation`, what the section's absence means. An Automatic check runs
   over the tree's facts where it is available and derives its own policy. A
@@ -552,8 +553,8 @@ a ceiling, a whole number or a dated schedule (5.5). A document the map names
 is judged under that ceiling, and `AGENTS.md` and `CLAUDE.md` at the tree root
 keep their derived ceilings where the map does not name them (5.4), so a pin
 never takes an instruction file out of scrutiny. An empty map is exit 2.
-`doc_citations` reads no policy: its section is absent or `false`. `inventory` and `lockfile` read only
-`in` and `except`. The retired `doc_size` entry list of `file` and `ceiling`,
+`doc_citations` reads no policy: its section is absent or `false`.
+`inventory` and `lockfile` read only `in` and `except`. The retired `doc_size` entry list of `file` and `ceiling`,
 the `file`, `roots` and `extensions` of `doc_citations`, the `name`, `path` and
 `pattern` of `inventory`, and the `manifests` and `exclude` of `lockfile` MUST
 be rejected with the replacement named (ADR 0040).
@@ -615,12 +616,19 @@ Each check documents its rule. The rules for the shipped checks:
   README or a changelog, grows by design and is judged only when the section
   pins it, because the gate exists for the instruction file that grows every
   turn (8.2, #343). A document the section pins takes its pinned ceiling
-  instead, and is judged wherever it sits. A cache that holds a ceiling for any
-  other document is no derivation of that commit, so klin derives again and
-  `init --pin` never writes that ceiling into policy. Pinned by
+  instead, and is judged wherever it sits. With no section, `doc_size` runs
+  only when the tree holds an instruction file at its root, and a tree whose
+  root holds only other documents needs a section a person writes. `--file`
+  on such a document with no pin is exit 2. A cache that holds a ceiling for
+  any other document is no derivation of that commit, so klin derives again
+  and `init --pin` never writes that ceiling into policy. Pinned by
   `a_readme_that_grows_past_its_base_word_count_passes_with_no_pin`,
-  `an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin`
-  and `a_pinned_readme_is_judged_under_its_pin` in `tests/doc_size.rs`, and by
+  `an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin`,
+  `a_pinned_readme_is_judged_under_its_pin`,
+  `a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section`
+  and
+  `file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files`
+  in `tests/doc_size.rs`, and by
   `pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds` in
   `tests/init.rs`.
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,

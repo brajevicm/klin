@@ -3,11 +3,8 @@
 > ADR 0048 amends this: the derived build line names the manifest each
 > command came from, and the hook prints it when the build fails too.
 >
-> #382 amends the `doc_size` bullet: only `AGENTS.md` and `CLAUDE.md` at the
-> tree root keep a derived ceiling, and the map must pin any other document.
-> None of the 16 doc-size rows of the #343 replay was appropriate, and all of
-> them were changelogs, READMEs or other reader documents
-> (`docs/false-alarms-2026-09-29.md`).
+> The amendment below (#382) narrows the `doc_size` bullet to the agent
+> instruction files.
 >
 > Amends ADR 0005, 0012 and 0016 where they have `init` write derived
 > sections, and completes ADR 0038 and 0039.
@@ -32,7 +29,8 @@ configuration. A section is absent, `false`, or a person's policy:
 - `doc_size` is a map of document path to ceiling, a whole number or a dated
   schedule. A pin names its document by path; every Markdown file at the tree
   root the map does not name keeps its derived ceiling, so pinning one
-  document takes no other out of scrutiny.
+  document takes no other out of scrutiny. The amendment below (#382) keeps a
+  derived ceiling for the instruction files alone.
 - `doc_citations` reads no policy. Every Markdown file at the tree root is
   read against the whole tree with the built-in extension list. No
   resolution DSL replaces the retired `file`, `roots` and `extensions`; a
@@ -78,6 +76,23 @@ number, a schedule, a `false`, the accepted list and the journal preference
 stay as a person wrote them. It never writes roots, languages, document
 entries, manifests, test roots, families or build commands. `--add` and
 `--force` are gone with the snapshot they wrote.
+
+## Amendment: only the instruction files keep a derived ceiling (#382)
+
+The `doc_size` bullet above derives a ceiling for every Markdown file at the
+tree root. #382 narrows it: only `AGENTS.md` and `CLAUDE.md` at the tree root
+keep a derived ceiling where the map does not name them, and every other
+document is judged only when the map pins it. A pinned document keeps its
+pinned ceiling wherever it sits, and a pin still takes no instruction file
+out of scrutiny. With `{}`, `doc-size` runs only when the tree holds an
+instruction file at its root, and `init --pin` writes a ceiling for the
+instruction files alone.
+
+None of the 16 doc-size rows of the #343 replay was appropriate, and all of
+them were changelogs, READMEs or other reader documents
+(`docs/false-alarms-2026-09-29.md`). Those documents grow by design. The gate
+exists for the instruction file that grows every turn (SPEC 8.2).
+`doc_citations` still reads every Markdown file at the tree root.
 
 ## What this is not
 

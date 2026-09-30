@@ -266,6 +266,44 @@ fn a_readme_that_grows_past_its_base_word_count_passes_with_no_pin() {
     assert!(!run.says("README.md"), "{}", run.out);
 }
 
+/// With `{}`, a tree whose only root document is a README holds nothing `doc-size` judges, so
+/// the gate waits for a section a person writes while `doc-citations` still runs. #382.
+#[test]
+fn a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("README.md", 120);
+    tree.base();
+
+    let run = tree.run(&["gate", "--list"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("doc-size — needs a section a person writes"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("doc-citations — runs"), "{}", run.out);
+}
+
+/// With `{}`, `--file` on a README finds no derived ceiling, because only the instruction files
+/// get one. #382.
+#[test]
+fn file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    let doc = tree.words("README.md", 120);
+    tree.base();
+
+    let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("neither pinned nor an instruction file the derivation commit holds"),
+        "{}",
+        run.out
+    );
+}
+
+/// With `{}`, each instruction file keeps its derived ceiling and fails past it. #382.
 #[test]
 fn an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin() {
     for name in ["AGENTS.md", "CLAUDE.md"] {
@@ -287,6 +325,7 @@ fn an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin() {
     }
 }
 
+/// A README the section pins is judged under its pin, as before #382.
 #[test]
 fn a_pinned_readme_is_judged_under_its_pin() {
     let tree = Tree::new();
