@@ -10,7 +10,6 @@
 
 use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::base::{self, Prior, Window};
@@ -136,7 +135,7 @@ impl Tree {
     /// What spec 5.4 calls the tests of this tree alone, off its one file list.
     pub fn tests(&self) -> Tests {
         Tests {
-            roots: self.test_roots().into_iter().collect(),
+            roots: scope::Roots::new(&self.test_roots()),
         }
     }
 
@@ -352,15 +351,13 @@ impl Project {
 /// The tests of one tree: every file under one of its test roots, and every source file a test
 /// directory segment or a test affix marks, wherever it sits. Spec 5.4, 8.2.
 pub struct Tests {
-    roots: HashSet<String>,
+    roots: scope::Roots,
 }
 
 impl Tests {
     /// Whether one of the tree's test roots holds this path.
     pub fn root_holds(&self, path: &str) -> bool {
-        std::iter::once(path)
-            .chain(scope::ancestors(path))
-            .any(|at| self.roots.contains(at))
+        self.roots.holds(path)
     }
 
     /// Whether spec 5.4 calls this path a test file.

@@ -50,14 +50,14 @@ as a file under `src/spec/`, is not Rust test code, as ADR 0049 decided.
   tell the assertion apart from the escapes, and the evidence is that the
   assertion is noise in a test.
 - **Leave out every TypeScript escape in a test file.** ADR 0049 rejected the
-  same reading for Rust. A `@ts-ignore` or a non-null `!` makes a test look
-  green, and the evidence says nothing in favour of hiding it.
-- **Require a description after `@ts-expect-error`.** A description changes
-  nothing that the checker verifies, and a rule that only a comment satisfies
-  teaches an agent to write the comment.
+  same reading for Rust. The replay labeled non-null assertions in tests (R067,
+  R074) as not appropriate too, and #389 decided that `!` stays an escape in
+  test files all the same, with `@ts-ignore` and `@ts-nocheck`. A person who
+  judges one such site safe accepts it in the `accepted` list.
+- **Require a description after `@ts-expect-error`.** No description is
+  required, the same way a reason on `#[ignore]` silences nothing.
 - **Keep the name `skip_rust_tests`.** The key would govern a TypeScript
-  idiom under a Rust name. The rename happens before 0.4, while few trees
-  carry the key.
+  idiom under a Rust name. #389 chose the rename before 0.4.
 
 ## Consequences
 

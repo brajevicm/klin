@@ -46,24 +46,22 @@ a change to what klin measures would move every pin.
 ## Q8: a production non-null `!` stays an escape
 
 No local-proof exemption applies, such as for `match[1]!` after a successful
-match or `child.stdout!` after a piped spawn (R047, R067, R074). `escapes`
-matches lines. To see that a local check proves the value present, it would
-need a flow analysis per language, and a narrow one would pass the same `!`
-where no check proves anything. A person who judges one site safe accepts it
-in the `accepted` list, in a reviewed commit.
+match or `child.stdout!` after a piped spawn (R047, R067, R074).
 
 ## Q9: `|| true` stays an escape
 
-No list of commands that are safe to ignore applies, such as best-effort
-cleanup (R034, R041). Whether a failure is safe to ignore depends on the
-script, and a list in the binary would hold that policy for every tree. A
-person accepts the site instead.
+No list of commands that are safe to ignore applies, such as best-effort shell
+cleanup (R034, R041).
 
 ## Q10: `#[ignore]` and `#[allow(...)]` stay escapes
 
-`#[ignore]` stays an escape with or without a reason, such as a manual or
+`#[ignore]` stays an escape with or without a reason, such as on a manual or
 network test (R018), and so does `#[allow(...)]`, such as
 `#[allow(clippy::too_many_arguments)]` (R018, R024, R028). No tiers apply. A
-reason is text that nothing checks, so it silences nothing, as ADR 0060
-decided for `@ts-expect-error`. A tier would let the reason decide what the
-gate judges.
+reason on `#[ignore]` silences nothing.
+
+## Consequences
+
+Each of Q8, Q9 and Q10 keeps a site that a person may judge safe. That person
+accepts the site in the `accepted` list, in a reviewed commit, as for any
+other escape.

@@ -56,16 +56,15 @@ impl TestCode {
         }
     }
 
-    /// The line ranges of the test code inside one file, which only a parser sees.
-    fn ranges(self, rel: &str, text: &str) -> Vec<(u64, u64)> {
+    /// The line ranges of the test code inside one file, which only a parser sees, and none
+    /// where the rule reads no text and parses nothing.
+    fn ranges(self, rel: &str, text: &str) -> Option<Vec<(u64, u64)>> {
         match self {
-            TestCode::InlineModulesAndRoots => syntax::convention::test_module_ranges(rel, text),
-            TestCode::Files => Vec::new(),
+            TestCode::InlineModulesAndRoots => {
+                Some(syntax::convention::test_module_ranges(rel, text))
+            }
+            TestCode::Files => None,
         }
-    }
-
-    fn parses(self) -> bool {
-        matches!(self, TestCode::InlineModulesAndRoots)
     }
 }
 
@@ -89,17 +88,8 @@ pub struct Kind {
     pub evaluator: Evaluator<'static>,
 }
 
-impl Kind {
-    /// Whether a language this kind reads names test idioms, which is what makes the kind read
-    /// `skip_test_idioms`. A stub in a test is the case the spec names, so `stubs` names none.
-    fn skips_tests(&self) -> bool {
-        self.languages
-            .iter()
-            .any(|language| language.test_idioms.is_some())
-    }
-}
-
-/// The key only a kind whose languages name test idioms reads.
+/// The key only a kind whose languages name test idioms reads. A stub in a test is the case the
+/// spec names, so `stubs` names none and does not read the key.
 pub const SKIP_TEST_IDIOMS: Key = Key {
     name: "skip_test_idioms",
     holds: "whether the test idioms inside test code are left out: `unwrap` and `expect` in \
@@ -193,6 +183,8 @@ struct Search {
 /// holds the byte each Rust `cfg_attr` that skips its test on every target starts at.
 struct Skipped {
     test_file: bool,
+    /// Whether finding the test code inside the file took a parse.
+    parsed: bool,
     tests: Vec<(u64, u64)>,
     literals: Vec<(usize, usize)>,
     everywhere: Vec<usize>,
@@ -427,7 +419,11 @@ fn findings(
 ) -> Result<Read, Error> {
     let mut measured: BTreeSet<String> = BTreeSet::new();
     let mut excluded: BTreeSet<String> = BTreeSet::new();
-    let mut walk = Walk::over(kind.skips_tests().then(|| tree.tests()));
+    let skips = search
+        .sets
+        .iter()
+        .any(|set| set.skipped_tests(search).is_some());
+    let mut walk = Walk::over(skips.then(|| tree.tests()));
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search
@@ -497,10 +493,10 @@ impl Walk {
         let text = String::from_utf8_lossy(&bytes).to_string();
         for set in search.sets.iter().filter(|set| set.reads(rel)) {
             let tests = set.skipped_tests(search).zip(self.tests.as_ref());
-            if tests.is_some_and(|(code, _)| code.parses()) {
+            let past = skipped(kind, tests, rel, &text);
+            if past.parsed {
                 self.work.parses += 1;
             }
-            let past = skipped(kind, tests, rel, &text);
             self.skipped += tally(set, rel, &text, &past, &mut self.seen);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
@@ -529,9 +525,11 @@ fn shapes(rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
 }
 
 fn skipped(kind: &Kind, tests: Option<(TestCode, &Tests)>, rel: &str, text: &str) -> Skipped {
+    let ranges = tests.and_then(|(code, _)| code.ranges(rel, text));
     Skipped {
         test_file: tests.is_some_and(|(code, held)| code.holds_file(held, rel)),
-        tests: tests.map_or_else(Vec::new, |(code, _)| code.ranges(rel, text)),
+        parsed: ranges.is_some(),
+        tests: ranges.unwrap_or_default(),
         literals: match kind.skips_literals {
             true => literals(text),
             false => Vec::new(),

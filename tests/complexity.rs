@@ -550,7 +550,7 @@ fn a_key_the_section_leaves_out_is_derived_beside_the_one_it_pins() {
 }
 
 /// Fifty functions whose 95th percentile is cc 9, committed as the base, and a new function
-/// of cc 9 beside them.
+/// of cc 10 beside them, which a floor below 10 would fail.
 fn a_percentile_below_the_floor() -> Tree {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
@@ -563,7 +563,10 @@ fn a_percentile_below_the_floor() -> Tree {
         .collect::<String>();
     tree.write("src/tangled.rs", &tangled);
     tree.base();
-    tree.write("src/knot.rs", TANGLED);
+    tree.write(
+        "src/knot.rs",
+        &TANGLED.replace("a == 0 ||", "a == 0 || a == -2 ||"),
+    );
     tree
 }
 
@@ -589,7 +592,7 @@ fn a_pinned_cc_below_ten_still_judges_at_the_pinned_value() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
-    assert!(run.says("src/knot.rs:1  cc 9, 13 lines"), "{}", run.out);
+    assert!(run.says("src/knot.rs:1  cc 10, 13 lines"), "{}", run.out);
 }
 
 #[test]

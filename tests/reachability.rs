@@ -388,6 +388,40 @@ fn a_member_only_a_named_re_export_in_another_file_names_is_reached() {
 }
 
 #[test]
+fn named_re_exports_in_another_file_prove_a_family() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{}"#);
+    for name in ["Login", "Logout", "Reset"] {
+        tree.write(
+            &format!("web/handlers/{name}Handler.ts"),
+            &format!("export function {name}() {{}}\n"),
+        );
+    }
+    tree.write(
+        "web/index.ts",
+        "export { Login } from \"./handlers/LoginHandler\";\n\
+         export { Logout as SignOut } from \"./handlers/LogoutHandler\";\n\
+         export { Reset } from \"./handlers/ResetHandler\";\n",
+    );
+    tree.base();
+    tree.write(
+        "web/handlers/ProfileHandler.ts",
+        "export function Profile() {}\n",
+    );
+
+    let run = tree.run(&["reachability"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("derived: reachability web/handlers/*Handler.ts"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("1 new unreached file(s)"), "{}", run.out);
+    assert!(run.says("web/handlers/ProfileHandler.ts"), "{}", run.out);
+}
+
+#[test]
 fn a_member_only_a_star_re_export_names_stays_unreached() {
     let tree = three_reached_handlers();
     tree.base();

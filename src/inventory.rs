@@ -50,12 +50,12 @@ const RULE: &str = "the affix table: a test_ or spec_ prefix, a _test, _spec, .t
 /// What this gate calls a test: every file under a test root the survey found, and every
 /// source file a test directory segment or a test affix marks, within the section's scope.
 /// Spec 5.4, 8.2.
-struct Tests<'a> {
-    roots: Roots<'a>,
+struct Tests {
+    roots: Roots,
     scope: Scope,
 }
 
-impl Tests<'_> {
+impl Tests {
     fn holds(&self, path: &str) -> bool {
         self.scope.selects(path)
             && survey::surveyed(path)

@@ -1725,7 +1725,8 @@ no module. A star re-export, `export * from "./m"` or
 `export * as ns from "./m"`, names nothing and reaches no member (ADR 0061).
 `dead-symbols` reads no re-export as a reference, because it judges private
 declarations, which no re-export can name. Pinned by
-`a_member_only_a_named_re_export_in_another_file_names_is_reached` and
+`a_member_only_a_named_re_export_in_another_file_names_is_reached`,
+`named_re_exports_in_another_file_prove_a_family` and
 `a_member_only_a_star_re_export_names_stays_unreached` in
 `tests/reachability.rs`, and by
 `a_re_export_of_its_name_in_another_file_keeps_no_private_declaration_alive`
