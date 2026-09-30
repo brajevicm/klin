@@ -1216,6 +1216,84 @@ fn a_fix_in_a_later_prompt_of_the_same_turn_still_tells_the_count() {
     );
 }
 
+const SUITE: &str = "#[test]\nfn alpha() {\n    assert!(true);\n}\n\n#[test]\nfn beta() {\n    assert!(1 == 1);\n}\n";
+const ONE_TEST: &str = "#[test]\nfn alpha() {\n    assert!(true);\n}\n";
+
+/// A base that holds a suite of two tests, a prompt, one test deleted, and the stop that asks
+/// about it.
+fn asked_about_a_deleted_test() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", HOOKED);
+    tree.write("src/lib.rs", CLEAN);
+    tree.write("tests/suite.rs", SUITE);
+    tree.base();
+    prompt(&tree);
+    tree.write("tests/suite.rs", ONE_TEST);
+    let asked = hook(&tree, A_STOP);
+    assert_eq!(asked.code, 2, "{}", asked.out);
+    tree
+}
+
+#[test]
+fn a_deleted_test_klin_let_through_after_asking_counts_only_as_asked_once() {
+    let tree = asked_about_a_deleted_test();
+    let through = hook(&tree, A_SECOND_STOP);
+    assert_eq!(through.code, 0, "{}", through.out);
+
+    let json = tree.run(&["stats", "--turn", "--json"]).json();
+    assert_eq!(json["counts"]["asked-once"], 1, "{json}");
+    assert_eq!(json["counts"]["caught"], 0, "{json}");
+    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
+    assert_eq!(json["counts"]["fixed-later"], 0, "{json}");
+}
+
+#[test]
+fn the_stop_that_lets_a_deleted_test_through_says_no_regression_was_fixed() {
+    let tree = asked_about_a_deleted_test();
+    let through = hook(&tree, A_SECOND_STOP);
+    assert_eq!(through.code, 0, "{}", through.out);
+
+    let said = told(&through);
+    assert!(said.contains("tests/suite.rs:7  fn beta() {"), "{said}");
+    assert!(!said.contains("regression"), "{said}");
+    assert!(!said.contains("fixed"), "{said}");
+}
+
+#[test]
+fn a_deleted_test_restored_after_the_block_counts_as_caught_and_fixed_next() {
+    let tree = asked_about_a_deleted_test();
+    tree.write("tests/suite.rs", SUITE);
+    let restored = hook(&tree, A_SECOND_STOP);
+    assert_eq!(restored.code, 0, "{}", restored.out);
+    assert_eq!(
+        told(&restored),
+        "klin caught 1 regression this turn. It was fixed after klin flagged it.",
+        "{}",
+        restored.out
+    );
+
+    let json = tree.run(&["stats", "--turn", "--json"]).json();
+    assert_eq!(json["counts"]["caught"], 1, "{json}");
+    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
+    assert_eq!(json["counts"]["asked-once"], 0, "{json}");
+}
+
+#[test]
+fn a_deleted_test_whose_file_went_after_klin_asked_is_not_a_fixed_regression() {
+    let tree = asked_about_a_deleted_test();
+    tree.remove("tests/suite.rs");
+    let file = hook(&tree, A_SECOND_STOP);
+    assert_eq!(file.code, 2, "{}", file.out);
+    let through = hook(&tree, A_SECOND_STOP);
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert!(!told(&through).contains("regression"), "{}", through.out);
+
+    let json = tree.run(&["stats", "--turn", "--json"]).json();
+    assert_eq!(json["counts"]["asked-once"], 2, "{json}");
+    assert_eq!(json["counts"]["caught"], 0, "{json}");
+    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
+}
+
 /// A library crate with `lib` as its root, hooked and committed as the base.
 fn library(lib: &str) -> Tree {
     let tree = Tree::new();

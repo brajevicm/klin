@@ -3788,9 +3788,15 @@ The **outcome** is a relation between the lines, which the writer never stores:
   is still in the tree, which the report cannot see
 - `open`, no stop in the window measured its gate without it
 - `asked-once`, a later stop recorded the site, by its gate, file and line, as
-  one klin let through after it asked (8.2). The code is as the agent left it
-  and the fix is the person's to make, so it is a question and not a regression:
-  it stays out of the regression count and keeps its own audit entry
+  one klin let through after it asked (8.2), or as a deleted test function
+  whose file went too. The code is as the agent left it and the fix is the
+  person's to make, so it is a question and not a regression: it stays out of
+  the regression count and keeps its own audit entry. Pinned by
+  `a_deleted_test_klin_let_through_after_asking_counts_only_as_asked_once`,
+  `the_stop_that_lets_a_deleted_test_through_says_no_regression_was_fixed`,
+  `a_deleted_test_restored_after_the_block_counts_as_caught_and_fixed_next` and
+  `a_deleted_test_whose_file_went_after_klin_asked_is_not_a_fixed_regression`
+  in `tests/stats.rs`
 
 A gate the stop's `gates` list of 11.2 carries no row for did not run, and a
 row that says `ERR` measured nothing. Neither ends a regression, and neither
