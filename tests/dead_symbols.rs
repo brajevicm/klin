@@ -124,6 +124,85 @@ fn externally_visible_and_test_functions_are_not_judged() {
 }
 
 #[test]
+fn a_tokio_test_passes_inline_and_under_a_test_directory() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        "pub fn api() {}\n\n#[cfg(test)]\nmod tests {\n    #[tokio::test]\n    async fn serves() {}\n}\n",
+    );
+    tree.write(
+        "tests/serve.rs",
+        "#[tokio::test(flavor = \"multi_thread\")]\nasync fn serves_twice() {}\n\n#[async_std::test]\nasync fn serves_once() {}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_multi_line_test_attribute_marks_its_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "src/lib.rs",
+        "pub fn api() {}\n\n#[cfg(test)]\nmod tests {\n    #[tokio::test(\n        flavor = \"multi_thread\",\n        worker_threads = 2,\n    )]\n    async fn serves() {}\n\n    # [ tokio :: test ]\n    // one worker\n    async fn serves_once() {}\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_const_only_a_format_capture_uses_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "const YARN: &str = \"yarn\";\nconst PAD: usize = 4;\n\npub fn command(tool: &str) -> String {\n    format!(\"{YARN} {tool} {PAD:>2}\")\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_const_only_a_raw_format_capture_uses_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "const YARN: &str = \"yarn\";\nconst PAD: usize = 4;\n\npub fn command(tool: &str) -> String {\n    format!(r#\"{YARN} \"{tool}\" {PAD:>2}\"#)\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_const_only_a_width_or_a_macro_rules_capture_uses_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "const WIDTH: usize = 8;\nconst PREC: usize = 2;\nconst INNER: &str = \"x\";\n\nmacro_rules! show {\n    () => {\n        println!(\"{INNER}\")\n    };\n}\n\npub fn render(v: f64) -> String {\n    show!();\n    format!(\"{v:>WIDTH$.PREC$}\")\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
 fn one_reference_keeps_all_duplicate_names_alive() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);
@@ -150,6 +229,259 @@ fn configured_name_globs_are_ignored() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_function_only_a_serde_default_names_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"default_cell_zoom\")]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_function_only_a_serde_skip_serializing_if_names_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize, Serialize)]\npub struct Terrain {\n    #[serde(default = \"real_height\", skip_serializing_if = \"is_real_height\")]\n    pub height: u8,\n}\n\nfn real_height() -> u8 {\n    3\n}\n\nfn is_real_height(height: &u8) -> bool {\n    *height == 3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_private_function_no_serde_key_names_still_fails() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(rename = \"zoom_level\", default)]\n    pub zoom: u8,\n}\n\nfn zoom_level() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:7"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_attribute_inside_cfg_attr_names_its_function_too() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "pub struct Settings {\n    #[cfg_attr(feature = \"serde\", serde(default = \"default_cell_zoom\"))]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_path_references_only_its_last_segment() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"presets::default_cell_zoom\")]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n\nfn presets() {}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_serde_with_module_names_no_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(with = \"zoom_format\")]\n    pub zoom: u8,\n}\n\nfn zoom_format() {}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:7"), "{}", run.out);
+}
+
+#[test]
+fn serde_tokens_inside_a_macro_call_name_no_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "pub fn settings() {\n    some_macro!(serde(default = \"default_cell_zoom\"));\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/lib.rs:5"), "{}", run.out);
+}
+
+#[test]
+fn a_raw_string_serde_path_names_its_function() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = r#\"default_cell_zoom\"#)]\n    pub zoom: u8,\n}\n\nfn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_generic_qualified_serde_path_references_its_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"Accessor::<u8>::get\")]\n    pub zoom: u8,\n}\n\nfn get() -> u8 {\n    3\n}\n\nstruct Accessor;\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_qualified_self_serde_path_references_its_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"<Settings as Presets>::zoom_preset\")]\n    pub zoom: u8,\n}\n\nfn zoom_preset() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn an_escaped_serde_string_is_read_by_its_value() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"default_\\u{7a}oom\")]\n    pub zoom: u8,\n}\n\nfn default_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_const_generic_block_in_a_serde_path_keeps_its_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"Accessor::<{ 1 < 2 }>::get\")]\n    pub zoom: u8,\n}\n\nfn get() -> u8 {\n    3\n}\n\nstruct Accessor;\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_continued_serde_string_is_read_without_the_whitespace_after_the_newline() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        "#[derive(Deserialize)]\npub struct Settings {\n    #[serde(default = \"default_\\\n                       zoom\")]\n    pub zoom: u8,\n}\n\nfn default_zoom() -> u8 {\n    3\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_brace_in_a_char_literal_of_a_const_generic_block_keeps_the_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r##"#[derive(Deserialize)]
+pub struct Settings {
+    #[serde(default = "Accessor::<{ let _ = '}'; 1 < 2 }>::get")]
+    pub zoom: u8,
+}
+
+fn get() -> u8 {
+    3
+}
+
+struct Accessor;
+"##,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
+}
+
+#[test]
+fn a_brace_in_a_string_or_a_comment_of_a_const_generic_block_keeps_the_terminal_callable() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/lib.rs",
+        r##"#[derive(Deserialize)]
+pub struct Settings {
+    #[serde(default = "Accessor::<{ /* } */ let _ = \"}\"; 1 < 2 }>::get")]
+    pub zoom: u8,
+}
+
+fn get() -> u8 {
+    3
+}
+
+struct Accessor;
+"##,
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:11"), "{}", run.out);
 }
 
 #[test]
@@ -222,6 +554,174 @@ fn one_typescript_reference_keeps_duplicate_names_alive() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn an_object_destructuring_declaration_whose_binding_is_used_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/model.ts",
+        "const { resolvedModelName } = await import(\"./resolvedModelName\");\n\nexport function model(): string {\n  return resolvedModelName;\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn an_array_destructuring_declaration_whose_binding_is_used_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/first.ts",
+        "const [first] = [1, 2];\n\nexport function base(): number {\n  return first;\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_binding_used_by_its_local_name_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/sum.ts",
+        "const { add: loaded } = await import(\"./math\");\n\nexport function sum(): number {\n  return loaded(1, 2);\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_nested_or_defaulted_binding_keeps_its_declaration_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/values.ts",
+        "const { outer: { inner = 1 } } = await import(\"./values\");\nconst [, [second = 2]] = [1, [2]];\n\nexport function base(): number {\n  return inner + second;\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_destructuring_declaration_whose_bindings_are_all_unused_still_fails() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/unused.ts",
+        "import { settings } from \"./settings\";\n\nconst { limit, name } = settings;\nconst [first] = [1, 2];\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/unused.ts:3"), "{}", run.out);
+    assert!(run.says("src/unused.ts:4"), "{}", run.out);
+}
+
+#[test]
+fn a_destructuring_declaration_with_one_used_binding_passes() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/limit.ts",
+        "import { settings } from \"./settings\";\n\nconst { limit, name } = settings;\n\nexport function base(): number {\n  return limit;\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_property_key_a_computed_key_and_a_default_value_bind_nothing() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/math.ts",
+        "import { fallback, key, math } from \"./lib\";\n\nconst { add: loaded, [key]: value = fallback } = math;\n\nexport function run(): number {\n  return math.add(key.length, fallback);\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/math.ts:3"), "{}", run.out);
+}
+
+#[test]
+fn two_unused_destructurings_of_one_name_do_not_keep_each_other_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/a.ts",
+        "import { math } from \"./math\";\n\nconst [first] = [1, 2];\nconst { add: loaded } = math;\n",
+    );
+    tree.write(
+        "src/b.ts",
+        "import { math } from \"./math\";\n\nconst [first, second] = [3, 4];\nconst { sub: loaded } = math;\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("4 new dead symbol(s)"), "{}", run.out);
+}
+
+#[test]
+fn a_destructuring_inside_a_function_keeps_no_declaration_of_its_names_alive() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/a.ts",
+        "import { math } from \"./math\";\n\nconst [first] = [1, 2];\nconst { add: loaded } = math;\n",
+    );
+    tree.write(
+        "src/b.ts",
+        "import { load } from \"./load\";\n\nexport function f(): void {\n  const [first] = load();\n  const { sub: loaded } = load();\n}\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("2 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/a.ts:3"), "{}", run.out);
+    assert!(run.says("src/a.ts:4"), "{}", run.out);
+}
+
+#[test]
+fn ignore_globs_match_every_name_a_destructuring_binds() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"dead_symbols":{"in":"src","ignore":["_*"]}}"#,
+    );
+    tree.write(
+        "src/unused.ts",
+        "import { settings } from \"./settings\";\n\nconst { _limit } = settings;\nconst [_first, second] = [1, 2];\n",
+    );
+
+    let run = tree.run(&["dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(!run.says("src/unused.ts:3"), "{}", run.out);
+    assert!(run.says("src/unused.ts:4"), "{}", run.out);
 }
 
 #[test]
@@ -404,6 +904,32 @@ fn removing_the_last_reference_in_a_changed_caller_worsens_an_unchanged_declarat
 }
 
 #[test]
+fn removing_a_serde_attribute_in_a_changed_file_worsens_an_unchanged_helper() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/service.rs",
+        "fn default_cell_zoom() -> u8 {\n    3\n}\n",
+    );
+    tree.write(
+        "src/settings.rs",
+        "pub struct Settings {\n    #[serde(default = \"default_cell_zoom\")]\n    pub zoom: u8,\n}\n",
+    );
+    tree.base();
+    tree.write(
+        "src/settings.rs",
+        "pub struct Settings {\n    pub zoom: u8,\n}\n",
+    );
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(run.says("src/service.rs:1"), "{}", run.out);
+    assert!(run.says("lost reference in src/settings.rs"), "{}", run.out);
+}
+
+#[test]
 fn a_changed_typescript_caller_worsens_an_unchanged_declaration_the_same_way() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);
@@ -416,6 +942,49 @@ fn a_changed_typescript_caller_worsens_an_unchanged_declaration_the_same_way() {
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/service.ts:1"), "{}", run.out);
+}
+
+#[test]
+fn a_changed_caller_that_drops_the_last_binding_reference_worsens_the_destructuring() {
+    let tree = Tree::new();
+    tree.write("klin.json", RUST);
+    tree.write(
+        "src/service.ts",
+        "const { helper } = await import(\"./helpers\");\n",
+    );
+    tree.write("src/caller.ts", "export function call() { helper(); }\n");
+    tree.base();
+    tree.write("src/caller.ts", "export function call() {}\n");
+
+    let cold = changed(&tree);
+    let warm = changed(&tree);
+
+    assert_eq!(cold.code, 1, "{}", cold.out);
+    assert!(cold.says("src/service.ts:1"), "{}", cold.out);
+    assert!(cold.says("lost reference in src/caller.ts"), "{}", cold.out);
+    assert_eq!(warm.code, cold.code, "{}", warm.out);
+    assert_eq!(warm.out, cold.out);
+}
+
+#[test]
+fn a_destructuring_that_loses_a_reference_in_two_callers_names_the_first_base_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/service.ts",
+        "const { other, helper } = await import(\"./helpers\");\n",
+    );
+    tree.write("src/a.ts", "export function a() { helper(); }\n");
+    tree.write("src/b.ts", "export function b() { other(); }\n");
+    tree.base();
+    tree.write("src/a.ts", "export function a() {}\n");
+    tree.write("src/b.ts", "export function b() {}\n");
+
+    let run = changed(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/service.ts:1"), "{}", run.out);
+    assert!(run.says("lost reference in src/a.ts"), "{}", run.out);
 }
 
 #[test]

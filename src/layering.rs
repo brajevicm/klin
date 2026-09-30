@@ -992,6 +992,7 @@ mod tests {
             parent: None,
             children: BTreeMap::new(),
             unresolved: BTreeSet::new(),
+            bound: BTreeSet::new(),
         }
     }
 
