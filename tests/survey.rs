@@ -251,6 +251,47 @@ fn a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root()
 }
 
 #[test]
+fn a_crate_below_a_directory_that_holds_a_script_keeps_its_tests_as_a_test_root() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("install.sh", "echo hi\n");
+    tree.write("rust/Cargo.toml", MANIFEST);
+    tree.write("rust/build.rs", "fn main() {}\n");
+    tree.write("rust/src/lib.rs", CLEAN);
+    tree.write("rust/tests/lib_test.rs", CLEAN);
+    tree.base();
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(
+            "derived: test roots rust/tests, the roots that match a language's test convention"
+        ),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_config_file_beside_a_packages_manifest_keeps_its_tests_as_a_test_root() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("package.json", "{\"name\": \"p\"}\n");
+    tree.write("jest.config.js", "module.exports = {};\n");
+    tree.write("src/index.js", "export const one = 1;\n");
+    tree.write("tests/index.test.js", "test(\"one\", () => {});\n");
+    tree.base();
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("derived: test roots tests, the roots that match a language's test convention"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_directory_another_test_root_holds_is_no_test_root_of_its_own() {
     let tree = Tree::new();
     tree.words("README.md", 5);

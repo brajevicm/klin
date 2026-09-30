@@ -222,15 +222,15 @@ fn test_roots(merged: &[String], manifests: &[String], paths: &[String]) -> Vec<
             .filter(|path| source(path) && !test_affix(basename(path))),
     );
     let packages: HashSet<String> = manifests.iter().map(|path| parent(path)).collect();
-    let unpackaged: HashSet<&str> = merged
-        .iter()
-        .map(String::as_str)
-        .filter(|at| !packages.contains(*at))
-        .collect();
+    let found: HashSet<&str> = merged.iter().map(String::as_str).collect();
     let marked: Vec<String> = merged
         .iter()
         .filter(|at| named_for_tests(at) || !production.contains(at.as_str()))
-        .filter(|at| !ancestors(at).any(|up| unpackaged.contains(up)))
+        .filter(|at| {
+            !ancestors(at)
+                .take_while(|up| !packages.contains(*up))
+                .any(|up| found.contains(up))
+        })
         .cloned()
         .collect();
     outermost(&marked)

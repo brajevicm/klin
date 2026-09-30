@@ -576,19 +576,29 @@ Each check documents its rule. The rules for the shipped checks:
   `build.rs` beside a crate's `Cargo.toml`, starts at that directory, so the
   crate directory is a source root and holds the ones beneath it. A test root
   is a directory this finds that a test directory segment names or whose
-  every source file carries a test affix, that no other directory this finds
-  holds unless that one directly holds a `Cargo.toml`, `go.mod`,
-  `package.json` or `tsconfig.json`, and that no other test root holds. So a
-  crate's `build.rs`, or a `jest.config.js` beside a package's
-  `package.json`, keeps the package directory a source root and leaves its
-  `tests/` a test root, while `src/spec/` beside `src/schema.sql` is no test
-  root and stays in the source root `src`. Pinned by
+  every source file carries a test affix, that no other test root holds, and
+  that no other directory this finds holds unless that one is, or holds, the
+  nearest directory above the test root that directly holds a `Cargo.toml`,
+  `go.mod`, `package.json` or `tsconfig.json`. So a crate's `build.rs`, or a
+  `jest.config.js` beside a package's `package.json`, keeps the package
+  directory a source root and leaves its `tests/` a test root. A source file
+  above the package does not change that either: a crate's `tests/` stays a
+  test root below a root `install.sh` or beside a workspace's
+  `crates/check.sh`, with or without a `build.rs` of its own. `src/spec/`
+  beside `src/schema.sql` is no test root, because `src` sits between it and
+  the crate directory, and it stays in its crate's source root. The survey
+  knows no other manifest, so `Tests/` beside a Swift package's
+  `Package.swift`, or `tests/` beside a Python project's `setup.py` and
+  `pyproject.toml`, is no test root. Pinned by
   `a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root`,
-  `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`
+  `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`,
+  `a_crate_below_a_directory_that_holds_a_script_keeps_its_tests_as_a_test_root`,
+  `a_config_file_beside_a_packages_manifest_keeps_its_tests_as_a_test_root`
   and `a_directory_another_test_root_holds_is_no_test_root_of_its_own` in
   `tests/survey.rs`, and by
   `unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by_default`,
   `a_workspace_members_build_script_and_src_are_judged_beside_its_test_root`,
+  `a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_tests_left_out`,
   `a_directory_inside_src_is_no_test_root_beside_a_non_source_file` and
   `removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held` in
   `tests/escapes.rs`.

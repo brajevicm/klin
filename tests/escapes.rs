@@ -1093,6 +1093,37 @@ fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
 }
 
 #[test]
+fn a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_tests_left_out() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"top\"\nversion = \"0.1.0\"\n\n[workspace]\nmembers = [\"crates/foo\"]\n",
+    );
+    tree.write("build.rs", "fn main() {}\n");
+    tree.write("src/lib.rs", "pub fn top() -> i32 {\n    1\n}\n");
+    tree.write(
+        "crates/foo/Cargo.toml",
+        "[package]\nname = \"foo\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write(
+        "crates/foo/src/lib.rs",
+        "pub fn one() -> Option<i32> {\n    Some(1)\n}\n",
+    );
+    tree.write(
+        "crates/foo/tests/it.rs",
+        "#[test]\nfn t() {\n    assert_eq!(foo::one().unwrap(), 1);\n}\n",
+    );
+    tree.base();
+    tree.write("crates/check.sh", "echo hi\n");
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("(1 in Rust tests skipped)"), "{}", run.out);
+    assert!(!run.says("crates/foo/tests/it.rs"), "{}", run.out);
+}
+
+#[test]
 fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");

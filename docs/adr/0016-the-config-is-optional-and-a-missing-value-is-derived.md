@@ -112,11 +112,13 @@ whose every source file carries a test affix. The crate directory then held
 `unwrap` and `expect` in its integration tests. The wgpu replay of #343 found
 this in `naga/tests/naga`. The survey now looks for a test root among every
 directory the merge ends at. A test root may sit inside another such
-directory only when that directory directly holds a `Cargo.toml`, `go.mod`,
-`package.json` or `tsconfig.json`, and a test root another test root holds
-is not listed. So `tests/` beside a crate's `build.rs`, or beside a
-package's `jest.config.js`, is a test root, while `src/spec/` beside
-`src/schema.sql` stays in the source root `src`, as before.
+directory only when that directory is, or holds, the nearest directory above
+the test root that directly holds a `Cargo.toml`, `go.mod`, `package.json`
+or `tsconfig.json`, and a test root another test root holds is not listed.
+So `tests/` beside a crate's `build.rs`, or beside a package's
+`jest.config.js`, is a test root, and so is a crate's `tests/` below a
+directory that holds a script such as `install.sh`. `src/spec/` beside
+`src/schema.sql` stays in its crate's source root, as before.
 
 Source roots do not change. `reachability` still derives its families from
 the files under the source roots, less the source roots that are test roots,
