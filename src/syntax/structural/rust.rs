@@ -326,7 +326,7 @@ fn pub_before(node: Node, source: &[u8]) -> bool {
 /// What a plain `pub use` or `pub extern crate` exposes: every leaf of a use tree under the name
 /// it binds, or the crate under its alias. A restricted or private one exposes nothing past the
 /// module.
-fn exported(node: Node, source: &[u8]) -> Option<Exported> {
+fn exported(node: Node, source: &[u8], _: &str) -> Option<Exported> {
     if visibility(node, source) != Visibility::Public {
         return None;
     }
@@ -339,6 +339,7 @@ fn exported(node: Node, source: &[u8]) -> Option<Exported> {
         type_only: false,
         supported: true,
         leaves,
+        contract: None,
     })
 }
 

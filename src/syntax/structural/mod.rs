@@ -105,9 +105,12 @@ pub struct Export {
     /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
     pub type_only: bool,
     /// False for a form V1 recognizes as an export and cannot list the names of, such as
-    /// TypeScript's `export = x` or `export namespace N`. A consumer reports it as a hole.
+    /// TypeScript's `export = x` or an ambient module. A consumer reports it as a hole.
     pub supported: bool,
     pub leaves: Vec<ExportLeaf>,
+    /// The canonical contract of what the statement declares where no declaration fact holds
+    /// it: the namespace a TypeScript `export namespace N` declares. None for any other export.
+    pub contract: Option<String>,
 }
 
 /// One name an export exposes. `path` is what is exposed as the source wrote it: a Rust leaf
@@ -824,9 +827,9 @@ pub(crate) struct Adapter {
     /// The canonical declared contract of a declaration, and `None` for a form V1 does not
     /// canonicalize.
     pub contract: fn(Node, &[u8]) -> Option<String>,
-    /// What an `@export` capture exposes, and `None` where the node exports nothing a
-    /// declaration does not already say for itself.
-    pub exported: fn(Node, &[u8]) -> Option<Exported>,
+    /// What an `@export` capture in the file at this path exposes, and `None` where the node
+    /// exports nothing a declaration does not already say for itself.
+    pub exported: fn(Node, &[u8], &str) -> Option<Exported>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept
@@ -843,6 +846,7 @@ pub(crate) struct Exported {
     pub type_only: bool,
     pub supported: bool,
     pub leaves: Vec<ExportLeaf>,
+    pub contract: Option<String>,
 }
 
 /// How the canonical spelling treats one node: leave the subtree out, write this text for it
@@ -1000,6 +1004,7 @@ fn harvest(
 struct Reading<'a, 'b> {
     language: &'static Language,
     adapter: &'static Adapter,
+    path: &'a str,
     source: &'a [u8],
     lines: Vec<&'a str>,
     declarations: Vec<Declaration>,
@@ -1021,6 +1026,7 @@ impl<'a, 'b> Reading<'a, 'b> {
         Reading {
             language: file.language,
             adapter,
+            path: file.path,
             source: file.source.as_bytes(),
             lines: file.source.lines().collect(),
             declarations: Vec::new(),
@@ -1046,7 +1052,7 @@ impl<'a, 'b> Reading<'a, 'b> {
 
     /// One statement that exposes names, where the adapter says the node does so on its own.
     fn export(&mut self, node: Node) {
-        let Some(found) = (self.adapter.exported)(node, self.source) else {
+        let Some(found) = (self.adapter.exported)(node, self.source, self.path) else {
             return;
         };
         self.exports.push(Export {
@@ -1057,6 +1063,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             type_only: found.type_only,
             supported: found.supported,
             leaves: found.leaves,
+            contract: found.contract,
         });
     }
 
@@ -2273,7 +2280,7 @@ function local() {}
                 (Some("./n"), false, true, vec![("*", None)]),
                 (Some("./o"), false, true, vec![("*", Some("ns"))]),
                 (Some("./p"), true, true, vec![("T", Some("T"))]),
-                (None, false, false, vec![]),
+                (None, false, true, vec![("NS", Some("NS"))]),
                 (None, false, false, vec![]),
                 (None, false, true, vec![("foo", Some("default"))]),
             ]

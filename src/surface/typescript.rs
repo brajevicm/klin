@@ -3,8 +3,8 @@
 //! file the tree holds. Generated JavaScript is never reverse-mapped and no `src/index.ts` is
 //! guessed. From an entry file the derivation follows exported declarations, local export
 //! clauses, default exports and relative re-exports through the module graph's own edges. A
-//! re-export of another package is an opaque item whose clause is its contract, and a star that
-//! klin cannot list is a hole.
+//! re-export of another package and an exported namespace are opaque items whose clause is their
+//! contract, and a star that klin cannot list is a hole.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -313,7 +313,7 @@ impl<'a> Derivation<'a> {
             .iter()
             .map(|item| item.path.clone())
             .collect();
-        for export in &facts.exports {
+        for export in facts.exports.iter().filter(|held| held.contract.is_none()) {
             match (&export.supported, &export.source) {
                 (false, _) => exposing.unsupported(export),
                 (true, None) => {
@@ -453,7 +453,7 @@ impl Exposing {
             file: self.file.clone(),
             line: export.line,
             text: export.text.clone(),
-            why: "an export form klin does not list: `export =`, a namespace, or an ambient module"
+            why: "an export form klin does not list, such as `export =` or an ambient module"
                 .to_string(),
         });
     }
@@ -528,8 +528,20 @@ impl Exposing {
     }
 }
 
-/// The items a module declares and exports itself, under their external names.
+/// The items a module declares and exports itself, under their external names, and each
+/// namespace an `export` statement declares, whose contract is its clause.
 fn own_declarations(facts: &FileFacts) -> Vec<Item> {
+    let namespaces = facts.exports.iter().filter_map(|export| {
+        let contract = export.contract.clone()?;
+        let leaf = export.leaves.first()?;
+        Some(opaque(
+            leaf.path.clone(),
+            NAMESPACE,
+            &facts.file,
+            export.line,
+            contract,
+        ))
+    });
     facts
         .declarations
         .iter()
@@ -542,6 +554,7 @@ fn own_declarations(facts: &FileFacts) -> Vec<Item> {
                 .unwrap_or_else(|| held.name.clone());
             declared(name, &facts.file, held)
         })
+        .chain(namespaces)
         .collect()
 }
 
