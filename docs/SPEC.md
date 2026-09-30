@@ -1471,7 +1471,11 @@ base does not list under the same name, such as one renamed by case alone
 where git does not see the rename, is extracted from the working tree. The
 base is laid out whole with each renamed file at its current path, so its old
 bytes are read under the grammar of that path, and an extension-changing
-rename such as `.ts` to `.tsx` reads them as TSX. Each tree still selects its
+rename such as `.ts` to `.tsx` reads them as TSX. The TypeScript rule for a
+declaration file (8.2) reads that path too, so a rename such as `.d.ts` to
+`.ts` reads the old bytes as a file that is no declaration file, pinned by
+`a_declaration_file_renamed_to_a_module_is_read_at_the_base_under_its_new_name`.
+Each tree still selects its
 own files under its own scope and keeps the facts it selected; a
 name-resolving check builds its own index lazily from those facts, and no parse
 tree outlives its extraction. A strict run, a run that
@@ -2232,12 +2236,14 @@ TypeScript namespace an `export` statement declares, written `namespace`, or
 `module` with a name that is no string, `declare` or not, is the item
 `NAME (namespace)`, where `NAME` is the first name a dotted name such as `A.B`
 writes, because that is the name the declaration binds. It is opaque, and its
-clause is the contract klin compares: `declare` where written, `namespace` and
-its name as written, and in braces each member a consumer can see, spelled by
-the rules above, so a body and an initializer leave and an inferred type is
-`?`. A namespace is ambient where `declare` makes it so, where an ambient
-namespace holds it, and in a declaration file: a file whose name ends in
-`.d.ts`, `.d.mts` or `.d.cts`, or a `.ts` file whose name holds `.d.`. The body
+clause is the contract klin compares: `declare` where written, unless a
+declaration file or an ambient namespace around it makes the namespace ambient
+already, `namespace` and its name as written, and in braces each member a
+consumer can see, spelled by the rules above, so a body and an initializer
+leave and an inferred type is `?`. A namespace is ambient where `declare`
+makes it so, where an ambient namespace holds it, and in a declaration file: a
+file whose name ends in `.d.ts`, `.d.mts` or `.d.cts`, or a `.ts` file whose
+name holds `.d.`. So `declare` added in a declaration file passes. The body
 of an ambient namespace that holds no export clause and no export assignment
 exports every declaration it holds except an import alias written without
 `export`. Any other body exports only what it writes `export` on and the names
@@ -2245,10 +2251,15 @@ its export clauses list. A name a clause lists is spelled as the member of the
 body that binds it, or as the name itself where no member binds it, followed,
 where the clause exposes it under another name or as a type only, by `as`,
 `type` where `export type` or a `type` before the name makes it type-only, and
-the name a consumer reaches it by. The export clause itself is never spelled,
+the name a consumer reaches it by. A variable that destructures binds each
+name its pattern binds, never a default value or a computed key, and is
+spelled whole for each of them, with each default its pattern writes shown as
+`= ..`, because whether a default is there can change the type of the name it
+binds. Its value never shows. The export clause itself is never spelled,
 so reordering one passes, and adding `export {}` fails as changed only where it
 hides a member. A statement that declares nothing leaves, a nested namespace is
-spelled the same way, the overloads of one function stay together in source
+spelled the same way, an import alias is spelled as written, the overloads of
+one function stay together in source
 order and lose their implementation, and the members keep one order whatever
 order the source wrote them in. So a new namespace is a new item and passes, a
 namespace the base exposed that is gone fails as removed, one whose clause
@@ -2269,11 +2280,14 @@ name a star export provides. Pinned by
 `an_export_clause_added_to_a_declare_namespace_fails_as_changed`,
 `under_an_export_clause_a_member_without_export_is_hidden_and_dropping_export_fails`,
 `a_name_an_export_clause_lists_shows_under_the_name_the_clause_gives_it`,
+`a_name_a_destructuring_declaration_binds_shows_as_that_declaration_where_a_clause_lists_it`,
 `a_namespace_in_a_declaration_file_is_ambient_and_shows_every_member`,
 `a_member_edit_inside_a_nested_namespace_or_module_fails_as_changed`,
 `a_module_with_a_name_is_a_namespace_and_a_dotted_name_is_its_first_name`,
-`a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause` and
-`an_exported_namespace_hides_the_name_a_star_export_provides`.
+`a_dotted_name_stays_as_written_so_nesting_it_fails_as_changed`,
+`a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause`,
+`a_clause_that_exports_a_function_and_a_namespace_of_one_name_exposes_the_function_alone`
+and `an_exported_namespace_hides_the_name_a_star_export_provides`.
 
 Base and working tree are derived independently. A base surface the working
 tree lacks fails once, at the surface. For every item of a surface both hold,
@@ -2329,7 +2343,10 @@ registry dependency that `[patch]` or `[replace]` points into the tree,
 module that binds the name in either namespace, which is opaque,
 `typesVersions`, conditional exports that do not reduce to one source file,
 the top-level names a declaration file exports without writing `export`,
-`tsconfig` paths and a package alias are outside V1, a declaration no surface
+`tsconfig` paths and a package alias are outside V1, a declaration file
+renamed to a name that is none, such as `index.d.ts` to `index.ts`, is read
+at the base under its new name (8.2.1), so a member only the declaration file
+exported goes unjudged, a declaration no surface
 exposes is not judged, even where an exposed contract names it, and a generic
 parameter renamed is a changed contract.
 

@@ -4,6 +4,9 @@
 //! file is what exposes a name past the module, and only an explicit type annotation is a
 //! declared contract: a type the compiler would infer is spelled `?`.
 
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+
 use tree_sitter::Node;
 
 use crate::syntax::structural::{
@@ -261,9 +264,26 @@ fn declarator(node: Node, source: &[u8]) -> String {
         .map_or_else(|| "var".to_string(), |kind| text_of(kind, source));
     let name = node
         .child_by_field_name("name")
-        .map(|name| text_of(name, source))
+        .map(|name| binding_name(name, source))
         .unwrap_or_default();
     format!("{keyword} {name}{}", annotated(node, source))
+}
+
+/// What a variable binds, as written, except that a default in a destructuring pattern shows as
+/// `= ..`: whether a default is there can change the type of the name it binds, and its value
+/// never shows.
+fn binding_name(node: Node, source: &[u8]) -> String {
+    if node.kind() == "identifier" {
+        return text_of(node, source);
+    }
+    spelled(node, source, &|held| match held.kind() {
+        "assignment_pattern" | "object_assignment_pattern" => {
+            let left = held.child_by_field_name("left");
+            let name = left.map(|left| binding_name(left, source));
+            Spelling::Replace(format!("{} = ..", name.unwrap_or_default()))
+        }
+        _ => spelling(held, source),
+    })
 }
 
 /// The type annotation a node carries, spelled, and `?` where it carries none.
@@ -406,7 +426,7 @@ fn braced(mut listed: Vec<String>) -> String {
 /// parameters.
 fn overload_sets(body: Node, source: &[u8]) -> Vec<String> {
     let mut cursor = body.walk();
-    let mut sets: Vec<(Option<String>, Vec<String>)> = Vec::new();
+    let mut sets = Overloads::default();
     let mut signed: Option<String> = None;
     for child in body
         .named_children(&mut cursor)
@@ -417,18 +437,14 @@ fn overload_sets(body: Node, source: &[u8]) -> Vec<String> {
         let follows = key.is_some() && signed == key;
         signed = key.clone().filter(|_| !implementation);
         if implementation && follows {
-            sets.extend(
-                properties(child, source)
-                    .into_iter()
-                    .map(|held| (None, vec![held])),
-            );
+            for held in properties(child, source) {
+                sets.join(None, held);
+            }
             continue;
         }
-        joined(&mut sets, key, member(child, source));
+        sets.join(key, member(child, source));
     }
-    sets.into_iter()
-        .map(|(_, texts)| texts.join("; "))
-        .collect()
+    sets.spelled()
 }
 
 /// Whether a body lists this member in its contract: a member that is not private, and a
@@ -440,14 +456,36 @@ fn listed(node: Node, source: &[u8]) -> bool {
     MEMBERS.contains(&node.kind()) && (constructor || !private(node, source))
 }
 
-/// One member's text added to the overload set its key names, or to a set of its own.
-fn joined(sets: &mut Vec<(Option<String>, Vec<String>)>, key: Option<String>, text: String) {
-    let set = key
-        .as_ref()
-        .and_then(|key| sets.iter_mut().find(|(held, _)| held.as_ref() == Some(key)));
-    match set {
-        Some((_, texts)) => texts.push(text),
-        None => sets.push((key, vec![text])),
+/// Spelled members, one entry each, except that the members of one overload set share an entry
+/// in source order.
+#[derive(Default)]
+struct Overloads {
+    entries: Vec<Vec<String>>,
+    sets: HashMap<String, usize>,
+}
+
+impl Overloads {
+    /// One member's text added to the overload set its key names, or to an entry of its own.
+    fn join(&mut self, key: Option<String>, text: String) {
+        let Some(key) = key else {
+            self.entries.push(vec![text]);
+            return;
+        };
+        match self.sets.entry(key) {
+            Entry::Occupied(set) => self.entries[*set.get()].push(text),
+            Entry::Vacant(set) => {
+                set.insert(self.entries.len());
+                self.entries.push(vec![text]);
+            }
+        }
+    }
+
+    /// Each entry, the overloads of one set joined in source order.
+    fn spelled(self) -> Vec<String> {
+        self.entries
+            .into_iter()
+            .map(|texts| texts.join("; "))
+            .collect()
     }
 }
 
@@ -598,10 +636,10 @@ fn bound(node: Node, source: &[u8]) -> Option<String> {
     Some(text_of(name, source))
 }
 
-/// A namespace as a consumer sees it: `declare` where it is written, its name, and each member
-/// it exposes spelled as its own contract, in one order whatever order the source wrote them in.
-/// A namespace is ambient where `declare` makes it so, where an ambient namespace holds it, and
-/// in a declaration file.
+/// A namespace as a consumer sees it: `declare` where it is written and the place is not ambient
+/// already, its name, and each member it exposes spelled as its own contract, in one order
+/// whatever order the source wrote them in. A namespace is ambient where `declare` makes it so,
+/// where an ambient namespace holds it, and in a declaration file.
 fn namespace_contract(declaration: Node, held: Node, ambient: bool, source: &[u8]) -> String {
     let declare = declaration.kind() == "ambient_declaration";
     let name = held
@@ -612,7 +650,7 @@ fn namespace_contract(declaration: Node, held: Node, ambient: bool, source: &[u8
         .child_by_field_name("body")
         .map(|body| exposed(body, ambient || declare, source))
         .unwrap_or_default();
-    let written = if declare { "declare " } else { "" };
+    let written = if declare && !ambient { "declare " } else { "" };
     format!("{written}namespace {name} {}", braced(members))
 }
 
@@ -625,9 +663,9 @@ fn exposed(body: Node, ambient: bool, source: &[u8]) -> Vec<String> {
     let mut cursor = body.walk();
     let statements: Vec<Node> = body.named_children(&mut cursor).collect();
     let listed = clause_names(&statements, source);
-    let context = ambient && !statements.iter().any(|statement| clause(*statement));
-    let mut sets = Vec::new();
-    let mut names = Vec::new();
+    let context = ambient && !statements.iter().copied().any(declares_nothing);
+    let mut sets = Overloads::default();
+    let mut bound = HashSet::new();
     for statement in statements {
         let Some((declaration, shown)) =
             seen(statement, context).filter(|(_, shown)| *shown || !listed.is_empty())
@@ -635,27 +673,40 @@ fn exposed(body: Node, ambient: bool, source: &[u8]) -> Vec<String> {
             continue;
         };
         for (name, key, text) in namespace_members(declaration, ambient, source) {
-            let mut ways: Vec<&str> = listed
-                .iter()
-                .filter(|(path, _)| *path == name)
-                .map(|(_, way)| way.as_str())
-                .chain(shown.then_some(""))
-                .collect();
-            ways.sort_unstable();
-            ways.dedup();
-            for way in ways {
-                let key = key.as_ref().map(|key| format!("{key}{way}"));
-                joined(&mut sets, key, format!("{text}{way}"));
-            }
-            names.push(name);
+            reached(&mut sets, key, text, shown, listed.get(&name));
+            bound.insert(name);
         }
     }
-    for (path, way) in listed.iter().filter(|(path, _)| !names.contains(path)) {
-        joined(&mut sets, None, format!("{path}{way}"));
+    for (name, ways) in listed.iter().filter(|(name, _)| !bound.contains(*name)) {
+        for way in ways {
+            sets.join(None, format!("{name}{way}"));
+        }
     }
-    sets.into_iter()
-        .map(|(_, texts)| texts.join("; "))
-        .collect()
+    sets.spelled()
+}
+
+/// One member under each way a consumer reaches it: as itself where a consumer sees it with no
+/// clause listing it, and each way the clauses list its name.
+fn reached(
+    sets: &mut Overloads,
+    key: Option<String>,
+    text: String,
+    shown: bool,
+    listed: Option<&BTreeSet<String>>,
+) {
+    let Some(ways) = listed else {
+        if shown {
+            sets.join(key, text);
+        }
+        return;
+    };
+    if shown && !ways.contains("") {
+        sets.join(key.clone(), text.clone());
+    }
+    for way in ways {
+        let key = key.as_ref().map(|key| format!("{key}{way}"));
+        sets.join(key, format!("{text}{way}"));
+    }
 }
 
 /// The declaration one statement of a namespace body makes, and whether a consumer sees it with
@@ -668,19 +719,18 @@ fn seen(statement: Node, context: bool) -> Option<(Node, bool)> {
     }
 }
 
-/// Whether a statement is an export clause or an export assignment: an `export` that declares
-/// nothing.
-fn clause(statement: Node) -> bool {
+/// Whether a statement is an export clause or an export assignment.
+fn declares_nothing(statement: Node) -> bool {
     statement.kind() == "export_statement" && statement.child_by_field_name("declaration").is_none()
 }
 
-/// Each name the export clauses of a namespace body list, with the way a clause exposes it
-/// where that is not as itself: `as`, `type` where the clause or the name is type-only, and the
-/// name a consumer reaches it by.
-fn clause_names(statements: &[Node], source: &[u8]) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    for statement in statements.iter().filter(|statement| clause(**statement)) {
-        walk(*statement, &mut |node| {
+/// Each name the export clauses of a namespace body list, with every way a clause exposes it:
+/// nothing where it is exposed as itself, and otherwise `as`, `type` where the clause or the name
+/// is type-only, and the name a consumer reaches it by.
+fn clause_names(statements: &[Node], source: &[u8]) -> BTreeMap<String, BTreeSet<String>> {
+    let mut out: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for &statement in statements.iter().filter(|held| declares_nothing(**held)) {
+        walk(statement, &mut |node| {
             if node.kind() != "export_specifier" {
                 return;
             }
@@ -689,7 +739,7 @@ fn clause_names(statements: &[Node], source: &[u8]) -> Vec<(String, String)> {
                 return;
             };
             let (name, alias) = (text_of(name, source), text_of(alias, source));
-            let only = if has_token(*statement, "type") || has_token(node, "type") {
+            let only = if has_token(statement, "type") || has_token(node, "type") {
                 "type "
             } else {
                 ""
@@ -699,16 +749,16 @@ fn clause_names(statements: &[Node], source: &[u8]) -> Vec<(String, String)> {
             } else {
                 format!(" as {only}{alias}")
             };
-            out.push((name, way));
+            out.entry(name).or_default().insert(way);
         });
     }
     out
 }
 
 /// Each member one declaration of a namespace body makes, as the name it binds, the overload set
-/// it joins and its spelling: a nested namespace spelled as one, each variable of a declaration,
-/// an import alias as written, and any other declaration as its contract. A statement that
-/// declares nothing makes none.
+/// it joins and its spelling: a nested namespace spelled as one, each variable of a declaration
+/// under each name it binds, an import alias as written, and any other declaration as its
+/// contract. A statement that declares nothing makes none.
 fn namespace_members(
     declaration: Node,
     ambient: bool,
@@ -727,10 +777,17 @@ fn namespace_members(
     match held.kind() {
         "lexical_declaration" | "variable_declaration" => {
             let mut cursor = held.walk();
-            held.named_children(&mut cursor)
+            let mut out = Vec::new();
+            for variable in held
+                .named_children(&mut cursor)
                 .filter(|child| child.kind() == "variable_declarator")
-                .filter_map(|variable| named(variable, None, declarator(variable, source)))
-                .collect()
+            {
+                let mut names = Vec::new();
+                binds(variable.child_by_field_name("name"), source, &mut names);
+                let text = declarator(variable, source);
+                out.extend(names.into_iter().map(|name| (name, None, text.clone())));
+            }
+            out
         }
         "import_alias" => named(held, None, canonical(held, source))
             .into_iter()
@@ -740,6 +797,29 @@ fn namespace_members(
             .and_then(|text| named(held, overloadable(held, source), text))
             .into_iter()
             .collect(),
+    }
+}
+
+/// Each name a variable binds: its identifier, or each name its destructuring pattern binds
+/// through a property, an element or a rest, and never a default value or a computed key.
+fn binds(pattern: Option<Node>, source: &[u8], out: &mut Vec<String>) {
+    let Some(pattern) = pattern else {
+        return;
+    };
+    match pattern.kind() {
+        "identifier" | "shorthand_property_identifier_pattern" => {
+            out.push(text_of(pattern, source))
+        }
+        "assignment_pattern" | "object_assignment_pattern" => {
+            binds(pattern.child_by_field_name("left"), source, out);
+        }
+        "object_pattern" | "array_pattern" | "pair_pattern" | "rest_pattern" => {
+            let mut cursor = pattern.walk();
+            for child in pattern.named_children(&mut cursor) {
+                binds(Some(child), source, out);
+            }
+        }
+        _ => {}
     }
 }
 

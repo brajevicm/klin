@@ -2102,11 +2102,20 @@ fn an_export_clause_added_to_a_declare_namespace_fails_as_changed() {
     package_of(&tree, NAMESPACE);
     tree.write(
         "web/src/index.ts",
+        &NAMESPACE.replace(
+            "type T = string;\n",
+            "export type T = string;\n    export {};\n",
+        ),
+    );
+    let green = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
         &NAMESPACE.replace("string;\n", "string;\n    export {};\n"),
     );
 
     let run = by_hand(&tree);
 
+    assert_eq!(green.code, 0, "{}", green.out);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("now `declare namespace N {  }`  N (namespace)"),
@@ -2172,11 +2181,44 @@ fn a_name_an_export_clause_lists_shows_under_the_name_the_clause_gives_it() {
     );
 }
 
+const DESTRUCTURED: &str = "export declare namespace A {\n    const q: number;\n    const { p, r: [s, { t = 1 }] }: { p: number; r: [number, { t?: number }] };\n    const [v = q, ...w]: number[];\n    export { p, q, t as T };\n}\n";
+
+#[test]
+fn a_name_a_destructuring_declaration_binds_shows_as_that_declaration_where_a_clause_lists_it() {
+    let tree = Tree::new();
+    package_of(&tree, DESTRUCTURED);
+    let listed = report(&tree);
+    tree.write("web/src/index.ts", &DESTRUCTURED.replace("t = 1", "t = 2"));
+    let green = by_hand(&tree);
+    tree.write(
+        "web/src/index.ts",
+        &DESTRUCTURED.replace("p: number", "p: string"),
+    );
+
+    let red = by_hand(&tree);
+
+    let bound = "const { p, r: [s, { t = .. }] }: { p: number; r: [number, { t?: number }] }";
+    assert!(
+        listed.says(&format!(
+            "opaque (declare namespace A {{ const q: number; {bound}; {bound} as T }})"
+        )),
+        "{}",
+        listed.out
+    );
+    assert_eq!(green.code, 0, "{}", green.out);
+    assert_eq!(red.code, 1, "{}", red.out);
+}
+
 const DECLARATION: &str = "export namespace N {\n    function f(a: string): void;\n    interface Opts {\n        x: number;\n    }\n}\n";
 
 #[test]
 fn a_namespace_in_a_declaration_file_is_ambient_and_shows_every_member() {
-    for entry in ["index.d.ts", "index.d.mts", "styles.d.css.ts"] {
+    for entry in [
+        "index.d.ts",
+        "index.d.mts",
+        "index.d.cts",
+        "styles.d.css.ts",
+    ] {
         let tree = Tree::new();
         tree.write("klin.json", "{}");
         tree.write(
@@ -2186,6 +2228,11 @@ fn a_namespace_in_a_declaration_file_is_ambient_and_shows_every_member() {
         tree.write(&format!("web/src/{entry}"), DECLARATION);
         tree.base();
         let listed = report(&tree);
+        tree.write(
+            &format!("web/src/{entry}"),
+            &DECLARATION.replace("export namespace", "export declare namespace"),
+        );
+        let declared = by_hand(&tree);
         tree.write(
             &format!("web/src/{entry}"),
             &DECLARATION.replace("a: string", "a: number"),
@@ -2199,8 +2246,42 @@ fn a_namespace_in_a_declaration_file_is_ambient_and_shows_every_member() {
             "{entry}: {}",
             listed.out
         );
+        assert_eq!(declared.code, 0, "{entry}: {}", declared.out);
         assert_eq!(run.code, 1, "{entry}: {}", run.out);
     }
+}
+
+const RENAMED: &str =
+    "export namespace N {\n    type Hidden = string;\n    export type T = string;\n}\n";
+
+#[test]
+fn a_declaration_file_renamed_to_a_module_is_read_at_the_base_under_its_new_name() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "web/package.json",
+        r#"{"name":"a","types":"./src/index.d.ts"}"#,
+    );
+    tree.write("web/src/index.d.ts", RENAMED);
+    tree.base();
+    tree.git(&["mv", "web/src/index.d.ts", "web/src/index.ts"]);
+    tree.write(
+        "web/package.json",
+        r#"{"name":"a","types":"./src/index.ts"}"#,
+    );
+    tree.write(
+        "web/src/index.ts",
+        &RENAMED.replace("T = string", "T = number"),
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `namespace N { type T = string }`, now `namespace N { type T = number }`  N (namespace)"),
+        "{}",
+        run.out
+    );
 }
 
 const NESTED: &str = "export namespace N {\n    export namespace Inner {\n        export type T = string;\n    }\n    export module Legacy {\n        export type U = string;\n    }\n}\n";
@@ -2261,6 +2342,28 @@ fn a_module_with_a_name_is_a_namespace_and_a_dotted_name_is_its_first_name() {
 }
 
 #[test]
+fn a_dotted_name_stays_as_written_so_nesting_it_fails_as_changed() {
+    let tree = Tree::new();
+    package_of(
+        &tree,
+        "export namespace A.B {\n    export type T = string;\n}\n",
+    );
+    tree.write(
+        "web/src/index.ts",
+        "export namespace A {\n    export namespace B {\n        export type T = string;\n    }\n}\n",
+    );
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("was `namespace A.B { type T = string }`, now `namespace A { namespace B { type T = string } }`  A (namespace)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause() {
     let tree = Tree::new();
     package_of(
@@ -2277,6 +2380,31 @@ fn a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause() {
     ] {
         assert!(listed.says(line), "no {line} in: {}", listed.out);
     }
+}
+
+const MERGED: &str =
+    "function P() {}\nnamespace P {\n    export const v: number = 1;\n}\nexport { P };\n";
+
+#[test]
+fn a_clause_that_exports_a_function_and_a_namespace_of_one_name_exposes_the_function_alone() {
+    let tree = Tree::new();
+    package_of(&tree, MERGED);
+    let listed = report(&tree);
+    tree.write(
+        "web/src/index.ts",
+        &MERGED.replace("v: number = 1", "v: string = \"\""),
+    );
+
+    let run = by_hand(&tree);
+
+    for line in [
+        "1 item(s): 1 measured, 0 opaque",
+        "a \".\" P  function  measured  web/src/index.ts:1",
+        "function P(): ?",
+    ] {
+        assert!(listed.says(line), "no {line} in: {}", listed.out);
+    }
+    assert_eq!(run.code, 0, "{}", run.out);
 }
 
 #[test]
