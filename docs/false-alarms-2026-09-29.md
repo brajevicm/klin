@@ -455,7 +455,9 @@ Each of these commits except R065's still fails on another row.
 - `dead-symbols` is ok in R021, R031 and R076.
 - `reachability` is ok in R056.
 - `public-api` in R057 went from ERROR with 26 findings to FAIL with 28. The
-  run still exits 2, because `complexity` in R054 is still an ERROR.
+  run, `apollographql/apollo-client` `0c925a4348`, still exits 2, because
+  `complexity` (R054) and `dead-symbols` (R055) of the same run still end in
+  ERROR.
 - The finding count went down in R013 (3 to 2), R044 (4 to 3), R048 (167 to
   143), R052 (150 to 146), R054 (149 to 132), R068 (30 to 16) and R075 (12
   to 11). Each gate still fails. In the `complexity` rows, every finding that
