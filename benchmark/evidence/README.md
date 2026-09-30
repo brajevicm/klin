@@ -35,7 +35,10 @@ fabricate or delete observations before packaging. The frozen protocol and
 omission auditable in the preserved dataset, but a malicious first-party
 operator could still destroy unpublished local evidence.
 
-The owner publishes the exact verified archive as an immutable GitHub release
-asset, then signs it with Sigstore/cosign where available and fills only the
-`release` and `sigstoreBundle` fields in `evidence.json`. CI does not hold
-signing credentials or publish benchmark evidence.
+The owner signs the exact verified archive with Sigstore/cosign where
+available, then publishes the archive and its bundle together as a GitHub
+prerelease (`gh release create --prerelease`). The repository makes releases
+immutable, so no asset can be added after publication. A prerelease never
+becomes Latest, so `releases/latest` keeps naming klin's own release. The owner
+then fills only the `release` and `sigstoreBundle` fields in `evidence.json`.
+CI does not hold signing credentials or publish benchmark evidence.
