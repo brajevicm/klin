@@ -1,7 +1,8 @@
 # dist inserts these steps into every build-local-artifacts job of release.yml. They run in the
 # x86_64 Linux job only. A failure there fails build-local-artifacts, so host and announce never
 # publish the tag. The checkout takes the full history, because `klin gate --strict` on a tag
-# compares against the merge-base with origin/main.
+# compares against the merge-base with origin/main. The empty GH_TOKEN keeps the job's release
+# token away from the tests, as in quality.yml.
 - name: Check out the tag with its history
   if: contains(matrix.targets, 'x86_64-unknown-linux-gnu')
   uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

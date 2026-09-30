@@ -127,9 +127,10 @@ over `/.github/workflows/`, `/klin.json`, `/.claude/settings.json` and
 `/.github/CODEOWNERS` is what covers that gap, together with review of the
 diff.
 
-Only a push to `main` saves the Rust cache that `quality` restores, so a pull
-request cannot put build artifacts into the runs of `main` or of other pull
-requests. A release tag builds and checks with no cache.
+GitHub scopes a cache to the ref that saved it, and `quality` saves its Rust
+cache only on a push to `main`. A pull request therefore cannot put build
+artifacts into the runs of `main` or of other pull requests. A release tag
+builds and checks with no cache.
 
 ## Out of scope
 

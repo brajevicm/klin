@@ -11,7 +11,7 @@ design, the release verification and the measurements. It follows
 | --- | --- | --- |
 | `quality` | each pull request push, each push to `main` | fmt, clippy, nextest, debug build, `klin gate --strict` |
 | `release plan` | a pull request that touches a release input | `dist plan` |
-| `Release` | a pushed version tag | the `quality` work on the exact tag, then the dist builds, host and announce |
+| `Release` | a pushed version tag | the dist builds, with the `quality` work on the exact tag in the x86_64 Linux build, then host and announce |
 | `benchmark` | the `benchmark` label on a pull request | release builds of base and head, perf rows |
 | `cut-release`, `promote-release`, `host compatibility` | manual dispatch | release tag, promotion, host canaries |
 
@@ -47,8 +47,9 @@ crate itself before it saves.
   that a pull request saves to that pull request's merge ref, so a sibling
   pull request cannot restore it. A pull request restores the cache of
   `main`, which GitHub allows for every branch.
-- A pull request cannot write a cache that `main` reads. A change under
-  review therefore cannot put artifacts into the build of `main`.
+- GitHub scopes each cache to the ref that saved it, so `main` never reads
+  a cache from a pull request. With `save-if`, pull requests save nothing,
+  which keeps the cache storage to the entries of `main`.
 - The key holds the rustc version, the job and a hash of `Cargo.toml`,
   `Cargo.lock` and `rust-toolchain.toml`. With an exact hit, the action does
   not save again. `main` therefore saves a new entry only when one of those
@@ -74,14 +75,23 @@ plan job skips the build jobs, and `host` accepts skipped build jobs. That
 path would publish a release with no binaries, so klin does not use it.
 
 On a tag, `klin gate --strict` finds no pull request base and no push base,
-so it compares against the merge-base with `origin/main` (SPEC 6.3). A local
-run over a release commit on `main` passed all 12 gates against that base.
+so it compares against the merge-base with `origin/main` (SPEC 6.3).
+`cut-release` pushes the tag and not `main`, so that base is the tip of
+`main` and the gate judges the release commit. A local run over a new commit
+on top of `origin/main`, with a changed `Cargo.lock`, passed all 12 gates
+against the base `ed1df6e`.
+
+The release jobs run on `ubuntu-22.04`, and `quality` runs on
+`ubuntu-latest`. The tests have not run on `ubuntu-22.04` yet, so the first
+tag may fail for a reason in the runner image.
 
 ## Action pins
 
-Every workflow names each Action by a commit SHA, with the release tag in a
-comment. `github-action-commits` in `dist-workspace.toml` pins the Actions of
-the generated `release.yml`, so `dist plan` still finds no drift. nextest,
+Every workflow names each Action by a commit SHA. The hand-written files
+give the release tag in a comment. `github-action-commits` in
+`dist-workspace.toml` pins the Actions of the generated `release.yml`, and
+the release tags are comments there, because dist writes bare SHAs. `dist
+plan` still finds no drift. nextest,
 cargo-release and dist keep their pinned versions. No bot updates the pins. A
 person moves a pin to a newer release tag by hand.
 
@@ -141,11 +151,11 @@ request run, so the real counts may be lower.
 | Pull requests, 508 runs | 2,540 | 2,032 |
 | `main`, 230 runs | 1,150 | 920 |
 | `release plan`, 30 runs | 30 | 30 |
-| Linux minutes in a month | 3,720 | 2,982 |
+| 6 releases, with the verification | 90 | 90 |
+| Linux minutes in a month | 3,810 | 3,072 |
 
-Six releases add about 90 Linux minutes, the verification included, and 42
-macOS minutes. The GitHub Free
-plan includes 2,000 minutes each month, and GitHub Pro includes 3,000. At the
+The 6 releases also use about 42 macOS minutes. The GitHub Free plan
+includes 2,000 minutes each month, and GitHub Pro includes 3,000. At the
 cadence of the second half of September, neither plan has headroom, with or
 without the cache. Without the push run on `main`, and with a 4-minute
 `quality` run, the month uses about 2,150 Linux minutes. That needs the

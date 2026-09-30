@@ -20,10 +20,8 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
-      # Only a push to main saves the cache. A pull request restores main's cache, because a cache
-      # saved on one merge ref serves no sibling pull request, and a pull request cannot write a
-      # cache that main then reads. The key hashes Cargo.toml, Cargo.lock and rust-toolchain.toml,
-      # so main saves again only when one of them changes.
+      # Only a push to main saves the cache. A cache saved on one merge ref serves no sibling pull
+      # request, and every pull request restores main's cache.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
