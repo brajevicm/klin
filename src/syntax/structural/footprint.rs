@@ -7,7 +7,7 @@ use std::mem::size_of;
 use std::rc::Rc;
 
 use super::{Declaration, Export, FileFacts, Import, ModuleDecl, Name, Reference};
-use super::{ExportLeaf, QualifiedPath};
+use super::{ExportLeaf, ExternCrate, QualifiedPath};
 
 #[derive(Default, Clone, Copy)]
 pub struct Footprint {
@@ -19,6 +19,7 @@ pub struct Footprint {
     pub exports: usize,
     pub export_leaves: usize,
     pub qualified_paths: usize,
+    pub extern_crates: usize,
     pub path_bytes: usize,
     pub declaration_name_bytes: usize,
     pub declaration_text_bytes: usize,
@@ -41,11 +42,12 @@ pub struct Footprint {
     pub import_text_bytes: usize,
     pub export_text_bytes: usize,
     pub module_text_bytes: usize,
+    pub extern_crate_bytes: usize,
 }
 
 impl Footprint {
     /// Every counter under its name, in the order the report writes them.
-    pub fn rows(&self) -> [(&'static str, usize); 30] {
+    pub fn rows(&self) -> [(&'static str, usize); 32] {
         [
             ("files", self.files),
             ("declarations", self.declarations),
@@ -55,6 +57,7 @@ impl Footprint {
             ("exports", self.exports),
             ("export_leaves", self.export_leaves),
             ("qualified_paths", self.qualified_paths),
+            ("extern_crates", self.extern_crates),
             ("path_bytes", self.path_bytes),
             ("declaration_name_bytes", self.declaration_name_bytes),
             ("declaration_text_bytes", self.declaration_text_bytes),
@@ -89,6 +92,7 @@ impl Footprint {
             ("import_text_bytes", self.import_text_bytes),
             ("export_text_bytes", self.export_text_bytes),
             ("module_text_bytes", self.module_text_bytes),
+            ("extern_crate_bytes", self.extern_crate_bytes),
         ]
     }
 }
@@ -126,7 +130,7 @@ pub fn of(trees: [&[Rc<FileFacts>]; 2]) -> Footprint {
 }
 
 /// What one of each structural value costs, without the bytes its strings and lists own.
-pub fn sizes() -> [(&'static str, usize); 8] {
+pub fn sizes() -> [(&'static str, usize); 9] {
     [
         ("name", size_of::<Name>()),
         ("file_facts", size_of::<FileFacts>()),
@@ -136,6 +140,7 @@ pub fn sizes() -> [(&'static str, usize); 8] {
         ("module_declaration", size_of::<ModuleDecl>()),
         ("export", size_of::<Export>()),
         ("export_leaf", size_of::<ExportLeaf>()),
+        ("extern_crate", size_of::<ExternCrate>()),
     ]
 }
 
@@ -152,6 +157,7 @@ fn counted(facts: &FileFacts, out: &mut Footprint) {
         .map(|held| held.leaves.len())
         .sum::<usize>();
     out.qualified_paths += facts.paths.len();
+    out.extern_crates += facts.crates.len();
 }
 
 fn weighed(
@@ -165,11 +171,7 @@ fn weighed(
         declared(declaration, out);
     }
     for reference in &facts.references {
-        out.reference_name_bytes += reference.name.len();
-        distinct_names.insert(reference.name.clone());
-        if canonical_allocations.insert(reference.name.allocation()) {
-            out.reference_canonical_bytes += reference.name.len();
-        }
+        referenced(reference, out, distinct_names, canonical_allocations);
     }
     for import in &facts.imports {
         imported(import, out);
@@ -184,6 +186,29 @@ fn weighed(
     for path in &facts.paths {
         qualified(path, out);
     }
+    for held in &facts.crates {
+        linked(held, out);
+    }
+}
+
+/// One reference name's bytes, and its canonical allocation the first time the run meets it.
+fn referenced(
+    reference: &Reference,
+    out: &mut Footprint,
+    distinct_names: &mut HashSet<Name>,
+    canonical_allocations: &mut HashSet<*const String>,
+) {
+    out.reference_name_bytes += reference.name.len();
+    distinct_names.insert(reference.name.clone());
+    if canonical_allocations.insert(reference.name.allocation()) {
+        out.reference_canonical_bytes += reference.name.len();
+    }
+}
+
+/// One `extern crate`'s crate name and alias, and its nesting.
+fn linked(held: &ExternCrate, out: &mut Footprint) {
+    out.extern_crate_bytes += held.name.len() + held.alias.len();
+    nesting(&held.nesting, out);
 }
 
 fn declared(declaration: &Declaration, out: &mut Footprint) {
@@ -215,9 +240,12 @@ fn imported(import: &Import, out: &mut Footprint) {
     nesting(&import.nesting, out);
 }
 
-/// One export statement's own text, the module it names, and its leaves' paths and names.
+/// One export statement's own text, the module it names, the contract of what it declares, and
+/// its leaves' paths and names.
 fn exported(export: &Export, out: &mut Footprint) {
-    out.export_text_bytes += export.text.len() + export.source.as_deref().map_or(0, str::len);
+    out.export_text_bytes += export.text.len()
+        + export.source.as_deref().map_or(0, str::len)
+        + export.contract.as_deref().map_or(0, str::len);
     for leaf in &export.leaves {
         out.export_text_bytes += leaf.path.len() + leaf.name.as_deref().map_or(0, str::len);
     }

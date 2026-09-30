@@ -4,9 +4,11 @@
 //! and makes every file it reaches a module of that target, so a file two targets reach is a
 //! module of each. A dependency is a path a `use` tree or a qualified path writes from `crate`,
 //! `self` or `super`, resolved to the deepest module it names. A path from any other name may be
-//! another crate or a local item, so it is counted and never resolved.
+//! another crate or a local item, so it is counted and never resolved. Each target's extern
+//! prelude names the libraries of the tree its manifest takes by path, so a consumer that
+//! follows a path into another crate reaches the one Cargo would build.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io;
 use std::iter::Peekable;
 use std::path::{Path, PathBuf};
@@ -15,7 +17,7 @@ use cargo_toml::{AbstractFilesystem, Manifest, Value};
 
 use super::{Attachment, Builder, TargetKind, Topology, directory, joined};
 use crate::survey;
-use crate::syntax::structural::ModuleDecl;
+use crate::syntax::structural::{DeclarationKind, ModuleDecl};
 
 const MANIFEST: &str = "Cargo.toml";
 
@@ -26,6 +28,15 @@ struct Target {
     name: String,
     kind: TargetKind,
     manifest: Option<String>,
+    dependencies: Vec<PathDependency>,
+}
+
+/// One normal dependency a manifest takes from the tree by path: the name a target writes for
+/// it where the manifest renames it, and the manifest of the package it names.
+#[derive(Clone)]
+struct PathDependency {
+    renamed: Option<String>,
+    manifest: String,
 }
 
 /// One lib or bin product a manifest names: what kind it is, the name a consumer addresses it
@@ -57,9 +68,11 @@ enum Reached {
 }
 
 pub(super) fn resolve(builder: &mut Builder) {
-    for target in targets(builder) {
+    let targets = targets(builder);
+    let first = builder.graph.targets.len();
+    for target in &targets {
         let mut krate = Crate {
-            target: &target,
+            target,
             nodes: Vec::new(),
             nestings: BTreeMap::new(),
         };
@@ -77,6 +90,54 @@ pub(super) fn resolve(builder: &mut Builder) {
         krate.depend(builder);
         krate.publish(builder, root);
     }
+    let libraries: BTreeMap<String, (String, usize)> = builder.graph.targets[first..]
+        .iter()
+        .filter(|target| target.kind == TargetKind::Library)
+        .filter_map(|target| {
+            Some((
+                target.manifest.clone()?,
+                (target.name.clone(), target.module),
+            ))
+        })
+        .collect();
+    for (at, target) in targets.iter().enumerate() {
+        builder.graph.targets[first + at].crates = prelude(builder.topology, target, &libraries);
+    }
+}
+
+/// The names of one target's extern prelude that reach a library the tree holds, each to that
+/// library's root module: every dependency its manifest takes by path, under its rename or else
+/// the library's own name, and every alias an `extern crate` at the top of its root gives one of
+/// those dependencies. An alias an `extern crate` gives any other crate names that crate, so it
+/// reaches no library of the tree.
+fn prelude(
+    topology: &Topology,
+    target: &Target,
+    libraries: &BTreeMap<String, (String, usize)>,
+) -> BTreeMap<String, usize> {
+    let dependencies: BTreeMap<String, usize> = target
+        .dependencies
+        .iter()
+        .filter_map(|dependency| {
+            let (name, module) = libraries.get(&dependency.manifest)?;
+            Some((
+                dependency.renamed.clone().unwrap_or_else(|| name.clone()),
+                *module,
+            ))
+        })
+        .collect();
+    let mut out = dependencies.clone();
+    let crates = topology
+        .facts(&target.root)
+        .into_iter()
+        .flat_map(|facts| &facts.crates);
+    for held in crates.filter(|held| held.nesting.is_empty()) {
+        match dependencies.get(&held.name) {
+            Some(&module) => out.insert(held.alias.clone(), module),
+            None => out.remove(&held.alias),
+        };
+    }
+    out
 }
 
 /// Every target root: the lib and bin targets each usable manifest names, then a conventional
@@ -92,7 +153,7 @@ fn targets(builder: &mut Builder) -> Vec<Target> {
     for manifest in manifests {
         let products = products(topology, manifest);
         read.push((directory(manifest), products.is_some()));
-        let Some((package, products)) = products else {
+        let Some((package, products, dependencies)) = products else {
             continue;
         };
         for product in products {
@@ -104,6 +165,7 @@ fn targets(builder: &mut Builder) -> Vec<Target> {
                     name: product.name,
                     kind: product.kind,
                     manifest: Some(manifest.clone()),
+                    dependencies: dependencies.clone(),
                 }),
                 None => builder.hole(
                     manifest,
@@ -129,9 +191,12 @@ fn word(kind: TargetKind, name: &str) -> String {
     }
 }
 
-/// The package name and the lib and bin targets of one manifest, and `None` where the manifest
-/// is not usable.
-fn products(topology: &Topology, manifest: &str) -> Option<(String, Vec<Product>)> {
+/// The package name, the lib and bin targets and the path dependencies of one manifest, and
+/// `None` where the manifest is not usable.
+fn products(
+    topology: &Topology,
+    manifest: &str,
+) -> Option<(String, Vec<Product>, Vec<PathDependency>)> {
     let mut parsed = Manifest::from_slice(&topology.read(manifest)?).ok()?;
     let listing = Listing {
         topology,
@@ -140,6 +205,7 @@ fn products(topology: &Topology, manifest: &str) -> Option<(String, Vec<Product>
     parsed
         .complete_from_abstract_filesystem::<Value, _>(listing, None)
         .ok()?;
+    let dependencies = dependencies(&parsed, manifest);
     let package = parsed
         .package
         .as_ref()
@@ -165,7 +231,30 @@ fn products(topology: &Topology, manifest: &str) -> Option<(String, Vec<Product>
             });
         }
     }
-    Some((package, out))
+    Some((package, out, dependencies))
+}
+
+/// The normal dependencies of a completed manifest that name a path, its target-specific ones
+/// included. `cargo_toml` writes a path a member inherits from another manifest's workspace from
+/// the tree root, and every other path from the manifest's own directory.
+fn dependencies(parsed: &Manifest<Value>, manifest: &str) -> Vec<PathDependency> {
+    parsed
+        .dependencies
+        .iter()
+        .chain(parsed.target.values().flat_map(|held| &held.dependencies))
+        .filter_map(|(name, dependency)| {
+            let detail = dependency.detail()?;
+            let from = match detail.inherited && parsed.workspace.is_none() {
+                true => "",
+                false => directory(manifest),
+            };
+            let package = joined(from, detail.path.as_deref()?)?;
+            Some(PathDependency {
+                renamed: detail.package.as_ref().map(|_| crate_name(name)),
+                manifest: joined(&package, MANIFEST)?,
+            })
+        })
+        .collect()
 }
 
 /// The name a consumer writes for a package's library: the package name with each `-` as `_`.
@@ -209,6 +298,7 @@ fn conventional(topology: &Topology, read: &[(&str, bool)]) -> Vec<Target> {
                 name,
                 kind,
                 manifest: None,
+                dependencies: Vec::new(),
             }
         })
         .collect()
@@ -456,6 +546,7 @@ impl Crate<'_> {
             root: self.target.root.clone(),
             manifest: self.target.manifest.clone(),
             module: self.nodes[root].index,
+            crates: BTreeMap::new(),
         });
         for node in &self.nodes {
             let module = &mut builder.graph.modules[node.index];
@@ -468,6 +559,7 @@ impl Crate<'_> {
                 .map(|(name, child)| (name.clone(), self.nodes[*child].index))
                 .collect();
             module.unresolved = node.unresolved.iter().cloned().collect();
+            module.bound = bound(builder.topology, node);
         }
     }
 
@@ -558,6 +650,33 @@ impl Crate<'_> {
         }
         Reached::Module(at)
     }
+}
+
+/// The names one module binds in the type namespace, as its file's facts give them under its
+/// nesting: each name a `use` outside a function binds, each type it declares as an item, and,
+/// below the target root, each alias an `extern crate` binds. The root's own aliases are names of
+/// the extern prelude.
+fn bound(topology: &Topology, node: &Node) -> BTreeSet<String> {
+    let Some(facts) = topology.facts(&node.file) else {
+        return BTreeSet::new();
+    };
+    let imported = facts
+        .imports
+        .iter()
+        .filter(|import| import.nesting == node.nesting && !import.in_function)
+        .flat_map(|import| import.names.iter().cloned());
+    let declared = facts
+        .declarations
+        .iter()
+        .filter(|held| held.nesting == node.nesting && !held.associated)
+        .filter(|held| held.kind == DeclarationKind::Type)
+        .map(|held| held.name.clone());
+    let aliased = facts
+        .crates
+        .iter()
+        .filter(|held| node.parent.is_some() && held.nesting == node.nesting)
+        .map(|held| held.alias.clone());
+    imported.chain(declared).chain(aliased).collect()
 }
 
 fn listed(candidates: &[(String, String)]) -> String {

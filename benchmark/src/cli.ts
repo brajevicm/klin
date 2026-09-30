@@ -14,6 +14,8 @@ import * as audit from "./audit.ts";
 import * as toolchain from "./toolchain.ts";
 import * as worksheet from "./worksheet.ts";
 import * as synthesis from "./synthesis.ts";
+import * as replay from "./replay.ts";
+import * as session from "./session.ts";
 
 const USAGE = `klin Shadow/Active benchmark
 
@@ -39,6 +41,9 @@ const USAGE = `klin Shadow/Active benchmark
   node benchmark/src/cli.ts label-synthesize <labeling-dir> <v3-evidence>
   node benchmark/src/cli.ts evidence-prepare <runs-dir> --into DIR --archive FILE
   node benchmark/src/cli.ts evidence-verify <evidence-dir> [--archive FILE]
+  node benchmark/src/cli.ts replay-select <replay-dir> --clones DIR
+  node benchmark/src/cli.ts replay-run <replay-dir> --clones DIR
+  node benchmark/src/cli.ts replay-worksheet <replay-dir> --clones DIR --journal FILE
 
 Environment:
   KLIN_BIN              the klin binary under test, default target/release/klin
@@ -463,6 +468,34 @@ export function main(argv: string[]): number {
   }
   if (command === "evidence-prepare") {
     return evidencePrepare(args[0] ?? "", args.slice(1));
+  }
+  if (command === "replay-select") {
+    const [into] = positionals(args);
+    const clones = flag(args, "--clones", "");
+    if (!into || clones === "") {
+      process.stdout.write("replay-select needs a replay directory and --clones DIR\n\n" + USAGE);
+      return 2;
+    }
+    return replay.select(path.resolve(into), path.resolve(clones));
+  }
+  if (command === "replay-run") {
+    const [into] = positionals(args);
+    const clones = flag(args, "--clones", "");
+    if (!into || clones === "") {
+      process.stdout.write("replay-run needs a replay directory and --clones DIR\n\n" + USAGE);
+      return 2;
+    }
+    return replay.run(path.resolve(into), path.resolve(clones), path.resolve(session.defaults().klinBin));
+  }
+  if (command === "replay-worksheet") {
+    const [into] = positionals(args);
+    const clones = flag(args, "--clones", "");
+    const journal = flag(args, "--journal", "");
+    if (!into || clones === "" || journal === "") {
+      process.stdout.write("replay-worksheet needs a replay directory, --clones DIR and --journal FILE\n\n" + USAGE);
+      return 2;
+    }
+    return replay.worksheets(path.resolve(into), path.resolve(clones), path.resolve(journal));
   }
   if (command === "evidence-verify") {
     return evidenceVerify(args[0] ?? "", args.slice(1));

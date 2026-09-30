@@ -225,7 +225,10 @@ impl TargetKind {
 
 /// One Cargo target, or one conventional root standing in for it: the package that owns it, the
 /// crate name a consumer addresses it by, its kind, its root file, the manifest that named it,
-/// and its root module in the graph.
+/// its root module in the graph, and the names of its extern prelude that reach a library the
+/// tree holds, each to that library's root module: a dependency its manifest names by path, and
+/// an alias an `extern crate` at the top of its root gives one, such as
+/// `pub extern crate wgpu_types as wgt;`.
 pub struct Target {
     pub package: String,
     pub name: String,
@@ -233,6 +236,7 @@ pub struct Target {
     pub root: String,
     pub manifest: Option<String>,
     pub module: usize,
+    pub crates: BTreeMap<String, usize>,
 }
 
 /// One module: the name a report prints, which is its resolver's identity for it, and the
@@ -255,6 +259,10 @@ pub struct Module {
     /// The names this module declares as modules that no file answers, so a path through one is
     /// unresolved and never external.
     pub unresolved: BTreeSet<String>,
+    /// The names this module binds in the type namespace other than its child modules: each
+    /// name a `use` binds and each type it declares. A path from one is a local item and never
+    /// reaches a crate of the same name.
+    pub bound: BTreeSet<String>,
 }
 
 /// Where a path from one module ends up. The module graph resolves the module part and hands
@@ -264,7 +272,8 @@ pub enum Resolved {
         module: usize,
         rest: Vec<String>,
     },
-    /// The path starts at a name that is no module here: another crate, or a local item.
+    /// The path starts at a name that is no module here: a crate that reaches no library the
+    /// tree holds, or a local item.
     External,
     /// The path goes above the crate root or through a module no file answers.
     Unresolved,
@@ -332,6 +341,7 @@ impl Builder<'_> {
             parent: None,
             children: BTreeMap::new(),
             unresolved: BTreeSet::new(),
+            bound: BTreeSet::new(),
         });
         self.graph.modules.len() - 1
     }
@@ -484,7 +494,10 @@ impl ModuleGraph {
 
     /// The module a path names from this module, and the segments left after it. `crate` starts
     /// at the module's target root, `self` and `super` at the module and the ones above it, a
-    /// name this module declares as a child at that child, and any other first name is external.
+    /// name this module declares as a child at that child, a name it binds otherwise as a local
+    /// item, which is external, a name of the target's extern prelude that reaches a library the
+    /// tree holds at that library's root, as does such a name after a leading `::`, and any other
+    /// first name is external.
     /// Each further name descends into a child of that name until one is no module.
     pub fn resolve(&self, from: usize, path: &str) -> Resolved {
         let mut segments = path
@@ -513,9 +526,35 @@ impl ModuleGraph {
                 Some(self.targets[self.modules[from].target?].module)
             }
             "self" | "super" => Some(from),
+            "" => {
+                segments.next();
+                self.crate_root(from, segments)
+            }
             first if self.modules[from].children.contains_key(first) => Some(from),
-            _ => None,
+            first if self.modules[from].bound.contains(first) => None,
+            _ => self.crate_root(from, segments),
         }
+    }
+
+    /// The root module of the library a path's next segment names as a crate, past that
+    /// segment.
+    fn crate_root<'p>(
+        &self,
+        from: usize,
+        segments: &mut Peekable<impl Iterator<Item = &'p str>>,
+    ) -> Option<usize> {
+        let library = self.library(from, segments.peek().copied()?)?;
+        segments.next();
+        Some(library)
+    }
+
+    /// The root module of the library a name of this module's extern prelude reaches, and `None`
+    /// where the name reaches no library the tree holds.
+    fn library(&self, from: usize, name: &str) -> Option<usize> {
+        self.targets[self.modules[from].target?]
+            .crates
+            .get(name)
+            .copied()
     }
 
     /// The module the leading `self` and `super` segments climb to, and `None` above the root.
