@@ -478,7 +478,12 @@ impl Unjudged<'_> {
         if self.functions == 0 {
             return String::new();
         }
-        let held: BTreeSet<&str> = before.measured.iter().map(String::as_str).collect();
+        let held: BTreeSet<&str> = before
+            .measured
+            .iter()
+            .chain(&before.unreadable)
+            .map(String::as_str)
+            .collect();
         let arrived: Vec<&str> = self
             .files
             .iter()

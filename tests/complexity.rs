@@ -1612,7 +1612,6 @@ fn failure_output_asks_for_a_design_fix_and_not_a_split_to_the_number() {
     );
 }
 
-/// A Rust function of `lines` lines that decides nothing.
 fn long(name: &str, lines: usize) -> String {
     format!(
         "fn {name}() {{\n{}}}\n",
@@ -1620,7 +1619,6 @@ fn long(name: &str, lines: usize) -> String {
     )
 }
 
-/// A Rust function of cc 11, over the derived floor of 10, in 13 lines.
 fn knotted(name: &str) -> String {
     TANGLED
         .replace("a == 0 ||", "a == 0 || a == -2 || a == -3 ||")
@@ -1677,6 +1675,11 @@ fn a_test_function_whose_length_grew_is_held_while_its_cc_holds_with_no_test_lin
 
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("1 over the gate, all held at the base"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
