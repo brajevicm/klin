@@ -220,30 +220,32 @@ pub fn history_from(big: usize, small: usize) -> Tree {
     )
 }
 
-type Commit = (&'static str, Vec<(String, String)>);
+/// One commit of a history: its message and the files it writes, as path and text.
+struct Commit {
+    message: &'static str,
+    files: Vec<(String, String)>,
+}
 
 fn opening() -> Commit {
-    (
-        "a first commit",
-        vec![("README.md".into(), "one\ntwo\nthree\n".into())],
-    )
+    Commit {
+        message: "a first commit",
+        files: vec![("README.md".into(), "one\ntwo\nthree\n".into())],
+    }
 }
 
 fn small_commits(many: usize) -> impl Iterator<Item = Commit> {
-    (0..many).map(|at| {
-        (
-            "a small commit",
-            vec![(format!("small/{at}.txt"), "one line\n".into())],
-        )
+    (0..many).map(|at| Commit {
+        message: "a small commit",
+        files: vec![(format!("small/{at}.txt"), "one line\n".into())],
     })
 }
 
 fn big_commits(many: usize) -> impl Iterator<Item = Commit> {
-    (0..many).map(|at| {
-        let files = ["a", "b", "c"]
+    (0..many).map(|at| Commit {
+        message: "a big commit",
+        files: ["a", "b", "c"]
             .map(|under| (format!("{under}/{at}.txt"), "line\n".repeat(10)))
-            .to_vec();
-        ("a big commit", files)
+            .to_vec(),
     })
 }
 
@@ -253,7 +255,7 @@ fn imported(commits: impl Iterator<Item = Commit>) -> Tree {
     let tree = Tree::bare();
     tree.repository();
     let mut stream = String::new();
-    for (message, files) in commits {
+    for Commit { message, files } in commits {
         stream += &format!(
             "commit refs/heads/main\ncommitter klin <klin@example.com> 1700000000 +0000\ndata {}\n{message}\n",
             message.len()

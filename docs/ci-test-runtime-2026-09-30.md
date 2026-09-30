@@ -1,11 +1,11 @@
 # CI test-suite runtime, #367
 
-This record holds the baseline, the changes, and the investigated items that
-were rejected, with the measurement for each.
+This record holds the baseline, the changes, the investigated items that were
+rejected with the measurement for each, and the items that still need CI runs.
 
 ## Runner
 
-The `quality` job runs on `ubuntu-latest`. The repository is private, so the
+The `gates` job of the `quality` workflow runs on `ubuntu-latest`. The repository is private, so the
 runner has 2 vCPUs. `cargo nextest run --locked` sets no thread count, so
 nextest runs 2 tests at a time. The summed test time divided by 2 is close to
 the execution time (236.5 s / 2 against 119.5 s in attempt 4), so the 2 slots
@@ -19,7 +19,7 @@ The sample is attempts 2, 3 and 4 of `quality` run 36752827135, commit
 
 | Step | Attempt 2 | Attempt 3 | Attempt 4 | Median |
 | --- | ---: | ---: | ---: | ---: |
-| `quality` job | 302 s | 261 s | 285 s | 285 s |
+| `gates` job | 302 s | 261 s | 285 s | 285 s |
 | `cargo nextest run --locked` step | 195 s | 162 s | 182 s | 182 s |
 | compile and list (`Finished` line) | 68 s | 60 s | 62 s | 62 s |
 | test execution (`Summary` line) | 125.9 s | 100.9 s | 119.5 s | 119.5 s |
@@ -57,20 +57,24 @@ The slowest binaries by summed test time in attempt 4 are `gate` (18.6 s),
 - `harness::history` and `harness::history_from` write their commits through
   one `git fast-import` stream and then check the tree out. Before, each commit
   cost one `git add` and one `git commit`. `Tree::commit()` is unchanged. The
-  radius, init and journal tests that use these histories see the same
-  commits, files and messages. All commits carry one fixed committer time.
-- The sparse-checkout test keeps 6 spellings: `true`, `on`, `1`, `false`,
-  `no` and `0`. It dropped `yes`, `off`, `TRUE` and `FALSE`. klin reads the
+  radius and init tests that use these histories see the same commits, paths
+  and file contents. All commits carry one fixed committer time, no message
+  ends in a newline, and no test reads either.
+- The sparse-checkout test keeps 6 spellings: `TRUE`, `on`, `1`, `off`,
+  `no` and `0`. It dropped `true`, `yes`, `false` and `FALSE`. klin reads the
   value through `git config --type=bool`, so git itself normalizes case and
-  words. Each value still has a word, an alternate word and a number.
+  words. The kept set still has an uppercase word, alternate words and
+  numbers.
 
 No test was removed, and no production code changed.
 
 ## After, local
 
-These numbers come from a MacBook with 8 cores, at `-j2`, over the five
-binaries the changes touch (`radius`, `init`, `journal`, `copies`,
-`structural_cache`), 3 runs each.
+These numbers come from a MacBook with 8 cores, at `-j2`, 3 runs each, over
+five binaries: `radius`, `init`, `copies` and `structural_cache`, which the
+changes touch, and `journal`, which they do not. Before is `2ba7cf63`. After
+is `2af51163`, whose sparse-checkout test held `true` and `false` where the
+final branch holds `TRUE` and `off`.
 
 | | Summed test time | Wall time |
 | --- | ---: | ---: |
@@ -94,7 +98,7 @@ still bills 5 minutes.
 ## After, CI
 
 Not measured yet. A `quality` run of this branch gives the numbers for the
-first table.
+baseline table.
 
 ## Rejected
 
@@ -115,16 +119,6 @@ first table.
   is not worth it. The three signal tests take under 0.2 s each on CI. The
   other tests already use the 1 s limit, which is the shortest that
   `KLIN_COMMAND_LIMIT` accepts.
-- **Consolidation of the integration-test binaries.** Not done. A cold local
-  `cargo test --locked --no-run --timings` took 20.1 s wall and 130.4 CPU-s.
-  The 125 dependency units took 75.2 CPU-s, the `klin` binary 8.9 s, its unit
-  tests 6.3 s, and the 45 integration-test targets 40.0 CPU-s together (0.5
-  to 1.6 s each). Cargo reports no link section for these units, so the link
-  share of the 40.0 s is not known. On 2 vCPUs, the test targets may account
-  for up to about 20 s of the 62 s compile. That is material enough to measure
-  on CI, but consolidation changes the layout of `tests/`, so it is a separate
-  decision.
-
 ## Still to measure on CI
 
 These need repeated runs on the CI runner class. Local runs on 8 cores do not
@@ -139,3 +133,12 @@ predict a 2-vCPU runner.
   `cargo nextest run --locked` with `cargo test --locked -- --test-threads=2`,
   3 runs each. libtest runs the tests of one binary as threads of one process,
   and the signal, process-group and lock tests depend on process isolation.
+- **Consolidation of the integration-test binaries.** Deferred, not done. A
+  cold local `cargo test --locked --no-run --timings` took 20.1 s wall and
+  130.4 CPU-s. The 125 dependency units took 75.2 CPU-s, the `klin` binary
+  8.9 s, its unit tests 6.3 s, and the 45 integration-test targets 40.0 CPU-s
+  together (0.5 to 1.6 s each). Cargo reports no link section for these
+  units, so the link share of the 40.0 s is not known. On 2 vCPUs, the test
+  targets may account for up to about 20 s of the 62 s compile. Take the same
+  timings on CI before a decision. Consolidation changes the layout of
+  `tests/`, so it is a separate ticket.

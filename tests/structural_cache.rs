@@ -561,10 +561,10 @@ fn a_sparse_checkout_the_light_layout_does_not_read_checks_the_base_out_whole() 
     assert!(layout(&light)["written"].is_u64(), "{}", light.out);
 
     for (set, sparse) in [
-        ("true", true),
+        ("TRUE", true),
         ("on", true),
         ("1", true),
-        ("false", false),
+        ("off", false),
         ("no", false),
         ("0", false),
     ] {
