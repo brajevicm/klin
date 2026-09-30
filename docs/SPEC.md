@@ -581,15 +581,15 @@ Each check documents its rule. The rules for the shipped checks:
   nearest directory above the test root that directly holds a `Cargo.toml`,
   `go.mod`, `package.json` or `tsconfig.json`. So a crate's `build.rs`, or a
   `jest.config.js` beside a package's `package.json`, keeps the package
-  directory a source root and leaves its `tests/` a test root. A source file
-  above the package does not change that either: a crate's `tests/` stays a
-  test root below a root `install.sh` or beside a workspace's
-  `crates/check.sh`, with or without a `build.rs` of its own. `src/spec/`
-  beside `src/schema.sql` is no test root, because `src` sits between it and
-  the crate directory, and it stays in its crate's source root. The survey
-  knows no other manifest, so `Tests/` beside a Swift package's
-  `Package.swift`, or `tests/` beside a Python project's `setup.py` and
-  `pyproject.toml`, is no test root. Pinned by
+  directory a source root and leaves its `tests/` a test root. Nor does a
+  source file in a directory above the package remove that test root, such
+  as a root `install.sh` above `rust/Cargo.toml` or a `crates/check.sh`
+  above a workspace member, with or without a `build.rs` in the crate.
+  `src/spec/` beside `src/schema.sql` is no test root, because `src` sits
+  between it and the crate directory, and it stays in its crate's source
+  root. The survey knows no other manifest, so `Tests/` beside a Swift
+  package's `Package.swift`, or `tests/` beside a Python project's
+  `setup.py` and `pyproject.toml`, is no test root. Pinned by
   `a_build_script_at_a_crate_root_keeps_its_tests_as_a_test_root`,
   `a_workspace_member_with_its_own_build_script_keeps_its_tests_as_a_test_root`,
   `a_crate_below_a_directory_that_holds_a_script_keeps_its_tests_as_a_test_root`,
