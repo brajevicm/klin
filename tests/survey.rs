@@ -363,6 +363,43 @@ fn a_site_under_a_root_the_derivation_commit_did_not_hold_is_new_whatever_the_ba
     assert!(run.says("parked/risky.rs"), "{}", run.out);
 }
 
+/// A crate whose base holds debt in `src`, the root its derivation commit's survey held.
+fn crate_in_debt() -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("README.md", 5);
+    tree.write("Cargo.toml", MANIFEST);
+    tree.write("src/lib.rs", &format!("{}{TANGLED}", text::WRAPPED));
+    tree.base();
+    tree
+}
+
+#[test]
+fn a_build_script_that_makes_the_crate_a_root_keeps_the_sites_in_src_held() {
+    let tree = crate_in_debt();
+    tree.write("build.rs", "fn main() {}\n");
+
+    let run = gate(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+    assert!(run.says("ok    complexity"), "{}", run.out);
+}
+
+#[test]
+fn an_escape_in_a_new_build_script_is_the_only_new_site() {
+    let tree = crate_in_debt();
+    tree.write(
+        "build.rs",
+        "fn main() {\n    std::env::var(\"OUT_DIR\").unwrap();\n}\n",
+    );
+
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new escape site(s)"), "{}", run.out);
+    assert!(run.says("build.rs:2  unwrap"), "{}", run.out);
+    assert!(!run.says("src/lib.rs"), "{}", run.out);
+}
+
 #[test]
 fn a_language_that_first_appears_in_the_working_tree_is_measured_on_that_run() {
     let tree = project();

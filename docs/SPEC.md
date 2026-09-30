@@ -1100,6 +1100,11 @@ path without a number (4.3, 5.4). A path that was not measured was never
 held, so a directory that becomes a root, or a file that becomes a known
 language, cannot bring inherited debt with it.
 
+A path under a root the derivation commit's survey held stays held when a
+root that survey did not hold also contains it: a root `build.rs` that makes
+the crate directory a root keeps the base's sites in `src` held, and only the
+paths outside `src`, such as the `build.rs` itself, match nothing in `before`.
+
 ### 7.2 Scope
 
 `--changed` restricts both findings and entries to the changed files, so an

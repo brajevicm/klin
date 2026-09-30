@@ -337,10 +337,6 @@ impl Project {
     /// directory that becomes a root cannot bring inherited debt with it. The facts are read
     /// whichever gates run, so the answer does not depend on the selection. Spec 7.1.
     pub fn was_held(&self, file: &str) -> bool {
-        !self
-            .facts()
-            .unheld
-            .iter()
-            .any(|root| scope::under_or_at(file, root))
+        self.facts().was_held(file)
     }
 }

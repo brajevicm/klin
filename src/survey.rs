@@ -47,13 +47,21 @@ pub struct Facts {
     /// The derivation commit's own survey, and `None` where there is no commit to survey.
     pub held: Option<Survey>,
     pub found: Survey,
-    /// The derived roots the derivation commit's survey did not hold. A site under one matches
-    /// nothing in `before`, so a directory that becomes a root brings no inherited debt with
-    /// it. Empty when there is no commit to survey. Spec 7.1.
+    /// The derived roots the derivation commit's survey did not hold. A site under one and
+    /// under no root the survey held matches nothing in `before`, so a directory that becomes a
+    /// root brings no inherited debt with it. Empty when there is no commit to survey. Spec 7.1.
     pub unheld: Vec<String>,
 }
 
 impl Facts {
+    /// Whether the derivation commit's survey held the path: under a root it held, or under no
+    /// root it did not hold. A root that moves up to a crate directory keeps the debt below the
+    /// root it replaced held. Spec 7.1.
+    pub fn was_held(&self, file: &str) -> bool {
+        let under = |roots: &[String]| roots.iter().any(|root| under_or_at(file, root));
+        self.held.as_ref().is_some_and(|held| under(&held.roots)) || !under(&self.unheld)
+    }
+
     pub fn at_commit(&self) -> Option<(&Survey, &str)> {
         self.held.as_ref().zip(self.commit.as_deref())
     }
