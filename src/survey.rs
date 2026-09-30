@@ -5,13 +5,12 @@
 //! Spec 4.3, ADR 0038, ADR 0040.
 
 use std::collections::{BTreeSet, HashSet};
-use std::iter::successors;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
 use crate::project::{self, Tree};
-use crate::scope::{ROOT, under_or_at};
+use crate::scope::{ROOT, ancestors, under_or_at};
 use crate::{cache, files, git, state, turn};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -252,13 +251,6 @@ fn basename(path: &str) -> &str {
 pub fn parent(path: &str) -> String {
     path.rsplit_once('/')
         .map_or_else(|| ROOT.to_string(), |(at, _)| at.to_string())
-}
-
-pub fn ancestors(path: &str) -> impl Iterator<Item = &str> {
-    successors(Some(path), |at| {
-        (*at != ROOT).then(|| at.rsplit_once('/').map_or(ROOT, |(up, _)| up))
-    })
-    .skip(1)
 }
 
 fn sorted(values: impl Iterator<Item = String>) -> Vec<String> {

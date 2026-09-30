@@ -6,9 +6,8 @@
 //! marks, narrowed only by `in` and `except` under the scope the base records. Spec 5.4, 8.2,
 //! 8.2.1, ADR 0040.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 use std::fmt::Write;
-use std::iter::once;
 use std::path::Path;
 
 use serde_json::{Map, Value};
@@ -21,7 +20,7 @@ use crate::git::Repo;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
 use crate::reference::Key;
-use crate::scope::{self, Scope};
+use crate::scope::{self, Roots, Scope};
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::syntax::convention::{self, Test};
 use crate::syntax::{self, Unparsed};
@@ -52,28 +51,15 @@ const RULE: &str = "the affix table: a test_ or spec_ prefix, a _test, _spec, .t
 /// source file a test directory segment or a test affix marks, within the section's scope.
 /// Spec 5.4, 8.2.
 struct Tests<'a> {
-    roots: HashSet<&'a str>,
+    roots: Roots<'a>,
     scope: Scope,
 }
 
-impl<'a> Tests<'a> {
-    fn new(roots: &'a [String], scope: Scope) -> Tests<'a> {
-        Tests {
-            roots: roots.iter().map(String::as_str).collect(),
-            scope,
-        }
-    }
-
+impl Tests<'_> {
     fn holds(&self, path: &str) -> bool {
         self.scope.selects(path)
             && survey::surveyed(path)
-            && (self.under_a_root(path) || survey::marked(path))
-    }
-
-    fn under_a_root(&self, path: &str) -> bool {
-        once(path)
-            .chain(survey::ancestors(path))
-            .any(|at| self.roots.contains(at))
+            && (self.roots.holds(path) || survey::marked(path))
     }
 }
 
@@ -187,10 +173,10 @@ struct Found {
 fn found(at: &Context, (commit, prior): (&str, &Prior), today: &Scope) -> Result<Found, Error> {
     let project = at.project;
     let config = &project.config;
-    let tests = Tests::new(
-        &project.facts().found.test_roots,
-        Scope::at_base(config, SECTION, prior.root(), today),
-    );
+    let tests = Tests {
+        roots: Roots::new(&project.facts().found.test_roots),
+        scope: Scope::at_base(config, SECTION, prior.root(), today),
+    };
     let listed = at_the_base(config.root(), commit)?;
     let (judged, paired) = sites(&tests, &listed, config.root())
         .into_iter()
@@ -223,7 +209,10 @@ fn today(project: &Project) -> Result<Scope, Error> {
     let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
     let scope = Scope::read(config, SECTION, &values)?;
-    let tests = Tests::new(&project.facts().found.test_roots, scope);
+    let tests = Tests {
+        roots: Roots::new(&project.facts().found.test_roots),
+        scope,
+    };
     if tests.scope.has_in() && !project.tree().files()?.iter().any(|path| tests.holds(path)) {
         return Err(Error(format!(
             "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
