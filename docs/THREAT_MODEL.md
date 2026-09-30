@@ -127,6 +127,11 @@ over `/.github/workflows/`, `/klin.json`, `/.claude/settings.json` and
 `/.github/CODEOWNERS` is what covers that gap, together with review of the
 diff.
 
+GitHub scopes a cache to the ref that saved it, and only the `rust cache`
+workflow on `main` saves the Rust cache that `quality` restores. A pull request therefore cannot put build
+artifacts into the runs of `main` or of other pull requests. A release tag
+builds and checks with no cache.
+
 ## Out of scope
 
 klin does not sandbox the coding agent, harden the developer machine, manage

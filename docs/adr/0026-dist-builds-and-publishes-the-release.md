@@ -9,6 +9,14 @@
 > on the pull requests that touch a release input. The jobs in `release.yml`
 > keep the GitHub default timeout of 360 minutes. dist 0.32 has no setting for
 > a job timeout, and a hand edit would end the drift check of `dist plan`.
+>
+> #369 adds a check of the exact tag before a publish. `github-build-setup`
+> puts the steps of `.github/verify-tag.yml` into the x86_64 Linux build job:
+> fmt, clippy, the tests, a debug build and `klin gate --strict`. A failure
+> fails `build-local-artifacts`, so `host` and `announce` do not run. dist's
+> `plan-jobs` is not used, because a failed plan job skips the build jobs and
+> `host` accepts skipped build jobs. `github-action-commits` pins the Actions
+> of `release.yml` to commit SHAs.
 
 `dist` (formerly `cargo-dist`) owns the release pipeline. A pushed tag runs
 the workflow `dist` generates, which builds the four targets, writes the
