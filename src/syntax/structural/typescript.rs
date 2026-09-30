@@ -526,13 +526,13 @@ fn is_field(node: Node, field: &str) -> bool {
 /// What one `export` statement at the top of the file exposes beyond its own declaration: a
 /// default value, a clause of local names, a re-export clause, a star, a namespace star, a
 /// namespace, or a form V1 recognizes and cannot list.
-fn exported(node: Node, source: &[u8]) -> Option<Exported> {
+fn exported(node: Node, source: &[u8], path: &str) -> Option<Exported> {
     if node.parent().is_none_or(|top| top.kind() != "program") {
         return None;
     }
     if let Some(declaration) = node.child_by_field_name("declaration") {
         return match namespace(declaration) {
-            Some(held) => namespace_export(declaration, held, source),
+            Some(held) => namespace_export(declaration, held, declaration_file(path), source),
             None => (!declared(declaration)).then(unsupported),
         };
     }
@@ -556,14 +556,15 @@ fn exported(node: Node, source: &[u8]) -> Option<Exported> {
     })
 }
 
-/// `export namespace N`, through a `declare` too: the name it binds, which is the first a dotted
-/// name writes, and the namespace as a consumer sees it.
-fn namespace_export(declaration: Node, held: Node, source: &[u8]) -> Option<Exported> {
-    let mut name = held.child_by_field_name("name")?;
-    while let Some(object) = name.child_by_field_name("object") {
-        name = object;
-    }
-    let name = text_of(name, source);
+/// `export namespace N`, through a `declare` too: the name it binds and the namespace as a
+/// consumer sees it.
+fn namespace_export(
+    declaration: Node,
+    held: Node,
+    ambient: bool,
+    source: &[u8],
+) -> Option<Exported> {
+    let name = bound(held, source)?;
     Some(Exported {
         source: None,
         type_only: false,
@@ -572,85 +573,173 @@ fn namespace_export(declaration: Node, held: Node, source: &[u8]) -> Option<Expo
             path: name.clone(),
             name: Some(name),
         }],
-        contract: Some(namespace_contract(declaration, held, false, source)),
+        contract: Some(namespace_contract(declaration, held, ambient, source)),
     })
+}
+
+/// Whether `tsc` reads the file at this path as a declaration file, where every namespace is
+/// ambient: a `.d.ts`, `.d.mts` or `.d.cts` file, or a `.ts` file whose name holds `.d.`.
+fn declaration_file(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    name.ends_with(".d.mts")
+        || name.ends_with(".d.cts")
+        || (name.ends_with(".ts") && name.contains(".d."))
+}
+
+/// The name a declaration binds: its own, the first a dotted name writes, or the one an import
+/// alias gives.
+fn bound(node: Node, source: &[u8]) -> Option<String> {
+    let mut name = node
+        .child_by_field_name("name")
+        .or_else(|| node.named_child(0))?;
+    while let Some(object) = name.child_by_field_name("object") {
+        name = object;
+    }
+    Some(text_of(name, source))
 }
 
 /// A namespace as a consumer sees it: `declare` where it is written, its name, and each member
 /// it exposes spelled as its own contract, in one order whatever order the source wrote them in.
-/// A namespace `declare` makes ambient, and any namespace an ambient one holds, exposes every
-/// declaration it holds, and any other only the ones it exports.
+/// A namespace is ambient where `declare` makes it so, where an ambient namespace holds it, and
+/// in a declaration file.
 fn namespace_contract(declaration: Node, held: Node, ambient: bool, source: &[u8]) -> String {
-    let declared = declaration.kind() == "ambient_declaration";
+    let declare = declaration.kind() == "ambient_declaration";
     let name = held
         .child_by_field_name("name")
         .map(|name| canonical(name, source))
         .unwrap_or_default();
     let members = held
         .child_by_field_name("body")
-        .map(|body| exposed(body, ambient || declared, source))
+        .map(|body| exposed(body, ambient || declare, source))
         .unwrap_or_default();
-    let written = if declared { "declare " } else { "" };
+    let written = if declare { "declare " } else { "" };
     format!("{written}namespace {name} {}", braced(members))
 }
 
 /// Every member one namespace body exposes, spelled, with the overloads of one function together
-/// in source order. An import alias is exposed only where it is exported, even in an ambient
-/// namespace, and an export clause stays as written, because it decides which members an
-/// ambient namespace exports.
+/// in source order. An ambient body that holds no export clause or assignment exposes every
+/// declaration it holds except an import alias written without `export`. Any other body exposes
+/// what it writes `export` on and each name its export clauses list: a member followed by the
+/// way a clause exposes it where that is not as itself, and a name no member binds as that name.
 fn exposed(body: Node, ambient: bool, source: &[u8]) -> Vec<String> {
-    let mut sets = Vec::new();
     let mut cursor = body.walk();
-    for statement in body.named_children(&mut cursor) {
-        let declaration = match statement.kind() {
-            "export_statement" => statement
-                .child_by_field_name("declaration")
-                .or(Some(statement)),
-            "import_alias" => None,
-            _ => ambient.then_some(statement),
+    let statements: Vec<Node> = body.named_children(&mut cursor).collect();
+    let listed = clause_names(&statements, source);
+    let context = ambient && !statements.iter().any(|statement| clause(*statement));
+    let mut sets = Vec::new();
+    let mut names = Vec::new();
+    for statement in statements {
+        let Some((declaration, shown)) =
+            seen(statement, context).filter(|(_, shown)| *shown || !listed.is_empty())
+        else {
+            continue;
         };
-        if let Some(declaration) = declaration {
-            namespace_member(declaration, ambient, source, &mut sets);
+        for (name, key, text) in namespace_members(declaration, ambient, source) {
+            let mut ways: Vec<&str> = listed
+                .iter()
+                .filter(|(path, _)| *path == name)
+                .map(|(_, way)| way.as_str())
+                .chain(shown.then_some(""))
+                .collect();
+            ways.sort_unstable();
+            ways.dedup();
+            for way in ways {
+                let key = key.as_ref().map(|key| format!("{key}{way}"));
+                joined(&mut sets, key, format!("{text}{way}"));
+            }
+            names.push(name);
         }
+    }
+    for (path, way) in listed.iter().filter(|(path, _)| !names.contains(path)) {
+        joined(&mut sets, None, format!("{path}{way}"));
     }
     sets.into_iter()
         .map(|(_, texts)| texts.join("; "))
         .collect()
 }
 
-/// One declaration a namespace exposes, into the set its overloads share: a nested namespace
-/// spelled as one, each variable of a declaration, an import alias or an export clause as
-/// written, and any other declaration as its contract. A statement that declares nothing adds
+/// The declaration one statement of a namespace body makes, and whether a consumer sees it with
+/// no clause listing it: where it is written with `export`, and in an export context unless it is
+/// an import alias. An export clause makes none.
+fn seen(statement: Node, context: bool) -> Option<(Node, bool)> {
+    match statement.kind() {
+        "export_statement" => Some((statement.child_by_field_name("declaration")?, true)),
+        kind => Some((statement, context && kind != "import_alias")),
+    }
+}
+
+/// Whether a statement is an export clause or an export assignment: an `export` that declares
 /// nothing.
-fn namespace_member(
+fn clause(statement: Node) -> bool {
+    statement.kind() == "export_statement" && statement.child_by_field_name("declaration").is_none()
+}
+
+/// Each name the export clauses of a namespace body list, with the way a clause exposes it
+/// where that is not as itself: `as`, `type` where the clause or the name is type-only, and the
+/// name a consumer reaches it by.
+fn clause_names(statements: &[Node], source: &[u8]) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for statement in statements.iter().filter(|statement| clause(**statement)) {
+        walk(*statement, &mut |node| {
+            if node.kind() != "export_specifier" {
+                return;
+            }
+            let (Some(name), Some(alias)) = (node.child_by_field_name("name"), alias_or_name(node))
+            else {
+                return;
+            };
+            let (name, alias) = (text_of(name, source), text_of(alias, source));
+            let only = if has_token(*statement, "type") || has_token(node, "type") {
+                "type "
+            } else {
+                ""
+            };
+            let way = if name == alias && only.is_empty() {
+                String::new()
+            } else {
+                format!(" as {only}{alias}")
+            };
+            out.push((name, way));
+        });
+    }
+    out
+}
+
+/// Each member one declaration of a namespace body makes, as the name it binds, the overload set
+/// it joins and its spelling: a nested namespace spelled as one, each variable of a declaration,
+/// an import alias as written, and any other declaration as its contract. A statement that
+/// declares nothing makes none.
+fn namespace_members(
     declaration: Node,
     ambient: bool,
     source: &[u8],
-    sets: &mut Vec<(Option<String>, Vec<String>)>,
-) {
+) -> Vec<(String, Option<String>, String)> {
+    let named = |held: Node, key: Option<String>, text: String| {
+        bound(held, source).map(|name| (name, key, text))
+    };
     if let Some(held) = namespace(declaration) {
         let text = namespace_contract(declaration, held, ambient, source);
-        return joined(sets, None, text);
+        return named(held, None, text).into_iter().collect();
     }
     let Some(held) = made(declaration) else {
-        return;
+        return Vec::new();
     };
     match held.kind() {
         "lexical_declaration" | "variable_declaration" => {
             let mut cursor = held.walk();
-            for variable in held
-                .named_children(&mut cursor)
+            held.named_children(&mut cursor)
                 .filter(|child| child.kind() == "variable_declarator")
-            {
-                joined(sets, None, declarator(variable, source));
-            }
+                .filter_map(|variable| named(variable, None, declarator(variable, source)))
+                .collect()
         }
-        "import_alias" | "export_statement" => joined(sets, None, canonical(held, source)),
-        _ => {
-            if let Some(text) = contract(held, source).filter(|text| !text.is_empty()) {
-                joined(sets, overloadable(held, source), text);
-            }
-        }
+        "import_alias" => named(held, None, canonical(held, source))
+            .into_iter()
+            .collect(),
+        _ => contract(held, source)
+            .filter(|text| !text.is_empty())
+            .and_then(|text| named(held, overloadable(held, source), text))
+            .into_iter()
+            .collect(),
     }
 }
 

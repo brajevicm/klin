@@ -2233,29 +2233,43 @@ TypeScript namespace an `export` statement declares, written `namespace`, or
 `NAME (namespace)`, where `NAME` is the first name a dotted name such as `A.B`
 writes, because that is the name the declaration binds. It is opaque, and its
 clause is the contract klin compares: `declare` where written, `namespace` and
-its name, and in braces each member a consumer can see, spelled by the rules
-above, so a body and an initializer leave and an inferred type is `?`. A
-namespace written with `declare`, and every namespace one holds, shows every
-declaration it holds, and any other namespace shows only what it exports. An
-import alias shows only where it is exported. An export clause such as
-`export {}` stays as written, because in an ambient namespace it stops every
-member without `export` from being exported, so adding one fails as changed. A
-statement that declares nothing leaves, a nested namespace is spelled the same
-way, the overloads of one function stay together in source order and lose
-their implementation, and the members keep one order whatever order the source
-wrote them in. So a new namespace is a new item and passes, a namespace the
-base exposed that is gone fails as removed, one whose clause changed fails as
-changed, and an edit no consumer sees, such as a function body, an initializer
-or a member the namespace does not export, passes. A namespace declared without
-`export` and exposed by a later export clause or a default export is the
-opaque item that clause exposes, judged by the clause. A namespace an `export`
-statement declares hides the name a star export provides. Pinned by
+its name as written, and in braces each member a consumer can see, spelled by
+the rules above, so a body and an initializer leave and an inferred type is
+`?`. A namespace is ambient where `declare` makes it so, where an ambient
+namespace holds it, and in a declaration file: a file whose name ends in
+`.d.ts`, `.d.mts` or `.d.cts`, or a `.ts` file whose name holds `.d.`. The body
+of an ambient namespace that holds no export clause and no export assignment
+exports every declaration it holds except an import alias written without
+`export`. Any other body exports only what it writes `export` on and the names
+its export clauses list. A name a clause lists is spelled as the member of the
+body that binds it, or as the name itself where no member binds it, followed,
+where the clause exposes it under another name or as a type only, by `as`,
+`type` where `export type` or a `type` before the name makes it type-only, and
+the name a consumer reaches it by. The export clause itself is never spelled,
+so reordering one passes, and adding `export {}` fails as changed only where it
+hides a member. A statement that declares nothing leaves, a nested namespace is
+spelled the same way, the overloads of one function stay together in source
+order and lose their implementation, and the members keep one order whatever
+order the source wrote them in. So a new namespace is a new item and passes, a
+namespace the base exposed that is gone fails as removed, one whose clause
+changed fails as changed, and an edit to a function body, an initializer or a
+member the namespace does not export passes. A dotted name stays as written, so
+rewriting `namespace A.B` as a namespace `B` inside `A` fails as changed. A
+namespace declared without `export` and exposed by a later export clause or a
+default export is the opaque item that clause exposes, judged by the clause,
+except where the file also declares a function, class or other declaration of
+that name: the clause then exposes that declaration alone, and the members of
+the namespace go unjudged. A namespace an `export` statement declares hides the
+name a star export provides. Pinned by
 `a_new_exported_declare_namespace_in_an_entry_file_is_an_item_and_passes`,
 `an_exported_namespace_the_working_tree_lacks_fails_as_removed`,
 `an_exported_namespace_whose_declaration_changed_fails_as_changed`,
 `a_plain_namespace_shows_what_it_exports_and_an_edit_no_consumer_sees_passes`,
 `a_declare_namespace_shows_every_member_it_holds_and_dropping_declare_fails`,
 `an_export_clause_added_to_a_declare_namespace_fails_as_changed`,
+`under_an_export_clause_a_member_without_export_is_hidden_and_dropping_export_fails`,
+`a_name_an_export_clause_lists_shows_under_the_name_the_clause_gives_it`,
+`a_namespace_in_a_declaration_file_is_ambient_and_shows_every_member`,
 `a_member_edit_inside_a_nested_namespace_or_module_fails_as_changed`,
 `a_module_with_a_name_is_a_namespace_and_a_dotted_name_is_its_first_name`,
 `a_namespace_a_later_clause_exports_is_the_opaque_item_of_that_clause` and
@@ -2314,9 +2328,10 @@ registry dependency that `[patch]` or `[replace]` points into the tree,
 `extern crate self as` an alias, a re-export by name through a glob of a
 module that binds the name in either namespace, which is opaque,
 `typesVersions`, conditional exports that do not reduce to one source file,
-the names a declaration file exports without writing `export`, `tsconfig`
-paths and a package alias are outside V1, and a generic parameter renamed is a
-changed contract.
+the top-level names a declaration file exports without writing `export`,
+`tsconfig` paths and a package alias are outside V1, a declaration no surface
+exposes is not judged, even where an exposed contract names it, and a generic
+parameter renamed is a changed contract.
 
 None of these rules asks another implementation to agree with klin. They
 state what klin's own tests hold, per ADR 0025, so a change to one is a

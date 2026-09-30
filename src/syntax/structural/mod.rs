@@ -827,9 +827,9 @@ pub(crate) struct Adapter {
     /// The canonical declared contract of a declaration, and `None` for a form V1 does not
     /// canonicalize.
     pub contract: fn(Node, &[u8]) -> Option<String>,
-    /// What an `@export` capture exposes, and `None` where the node exports nothing a
-    /// declaration does not already say for itself.
-    pub exported: fn(Node, &[u8]) -> Option<Exported>,
+    /// What an `@export` capture in the file at this path exposes, and `None` where the node
+    /// exports nothing a declaration does not already say for itself.
+    pub exported: fn(Node, &[u8], &str) -> Option<Exported>,
 }
 
 /// What one import states, before the shared reader puts it at a line. The specifier is kept
@@ -1004,6 +1004,7 @@ fn harvest(
 struct Reading<'a, 'b> {
     language: &'static Language,
     adapter: &'static Adapter,
+    path: &'a str,
     source: &'a [u8],
     lines: Vec<&'a str>,
     declarations: Vec<Declaration>,
@@ -1025,6 +1026,7 @@ impl<'a, 'b> Reading<'a, 'b> {
         Reading {
             language: file.language,
             adapter,
+            path: file.path,
             source: file.source.as_bytes(),
             lines: file.source.lines().collect(),
             declarations: Vec::new(),
@@ -1050,7 +1052,7 @@ impl<'a, 'b> Reading<'a, 'b> {
 
     /// One statement that exposes names, where the adapter says the node does so on its own.
     fn export(&mut self, node: Node) {
-        let Some(found) = (self.adapter.exported)(node, self.source) else {
+        let Some(found) = (self.adapter.exported)(node, self.source, self.path) else {
             return;
         };
         self.exports.push(Export {
