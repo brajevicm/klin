@@ -992,7 +992,7 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
     assert!(
         !text(".github/workflows/quality.yml")
             .lines()
-            .any(|line| line.trim() == "paths:"),
+            .any(|line| line.trim_start().starts_with("paths")),
         "a path filter can skip the quality check"
     );
     assert!(

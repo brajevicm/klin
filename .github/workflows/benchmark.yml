@@ -12,14 +12,15 @@ permissions:
   contents: read
   pull-requests: write
 
+# The label is part of the group, so a run for another label cannot cancel a benchmark.
+concurrency:
+  group: benchmark-${{ github.event.pull_request.number }}-${{ github.event.label.name }}
+  cancel-in-progress: true
+
 jobs:
   compare:
-    # Any other label is not a request to measure. The group sits on the job, so a run for another
-    # label skips without cancelling a measurement in progress.
+    # Any other label is not a request to measure.
     if: github.event.label.name == 'benchmark'
-    concurrency:
-      group: benchmark-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -46,10 +47,8 @@ jobs:
               gate --strict --json > "$RUNNER_TEMP/$side.json" || true
           done
 
-      # The dense fixture takes tens of minutes, so a pull request opts in with the `benchmark`
-      # label. `KLIN_BIN` is set on both sides, so both rows build the same fixture sections.
+      # `KLIN_BIN` is set on both sides, so both rows build the same fixture sections.
       - name: Measure the dense 300k fixture with each binary
-        if: contains(github.event.pull_request.labels.*.name, 'benchmark')
         env:
           KLIN_PERF_ROW: structural_300k
           KLIN_PERF_CASE: full
@@ -71,22 +70,16 @@ jobs:
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          commits=(--arg merge "$(git rev-parse HEAD)" --arg head "$HEAD_SHA" --arg base "$(git rev-parse HEAD^1)")
-          if [ -f "$RUNNER_TEMP/base-dense.json" ]; then
-            jq -n -r "${commits[@]}" \
-              --slurpfile strict_base "$RUNNER_TEMP/base.json" \
-              --slurpfile strict_head "$RUNNER_TEMP/head.json" \
-              --slurpfile dense_base "$RUNNER_TEMP/base-dense.json" \
-              --slurpfile dense_head "$RUNNER_TEMP/head-dense.json" \
-              -f .github/bench.jq
-          else
-            jq -n -r "${commits[@]}" \
-              --slurpfile strict_base "$RUNNER_TEMP/base.json" \
-              --slurpfile strict_head "$RUNNER_TEMP/head.json" \
-              --argjson dense_base '[{}]' \
-              --argjson dense_head '[{}]' \
-              -f .github/bench.jq
-          fi | tee -a "$GITHUB_STEP_SUMMARY" > "$RUNNER_TEMP/bench.md"
+          jq -n -r \
+            --arg merge "$(git rev-parse HEAD)" \
+            --arg head "$HEAD_SHA" \
+            --arg base "$(git rev-parse HEAD^1)" \
+            --slurpfile strict_base "$RUNNER_TEMP/base.json" \
+            --slurpfile strict_head "$RUNNER_TEMP/head.json" \
+            --slurpfile dense_base "$RUNNER_TEMP/base-dense.json" \
+            --slurpfile dense_head "$RUNNER_TEMP/head-dense.json" \
+            -f .github/bench.jq \
+            | tee -a "$GITHUB_STEP_SUMMARY" > "$RUNNER_TEMP/bench.md"
 
       - if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
