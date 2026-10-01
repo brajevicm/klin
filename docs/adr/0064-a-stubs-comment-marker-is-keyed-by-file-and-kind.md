@@ -45,4 +45,9 @@ a line is an edit to code. The body shapes keep their declaration line.
 - A line that holds a marker and a code stub, such as `todo!() // TODO`, is
   now two sites.
 - An accepted entry that keyed a marker by its line text matches nothing,
-  and the marker fails as new until a person rewrites the entry.
+  and the marker fails as new until a person rewrites the entry. When that
+  line also holds a code stub or a body shape, the entry keeps matching the
+  code stub's site, which now counts the code stub alone. The entry holds
+  that site, `--strict` does not name it as stale, and the marker still
+  fails as new. The entry may allow a higher count than the code stub's
+  site holds, and only a person who reads the config sees that.

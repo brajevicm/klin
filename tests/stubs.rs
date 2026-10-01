@@ -542,3 +542,45 @@ fn an_accepted_marker_entry_names_the_row_and_holds_at_its_count() {
     assert_eq!(worse.code, 1, "{}", worse.out);
     assert!(worse.says("got worse"), "{}", worse.out);
 }
+
+#[test]
+fn an_accepted_entry_for_a_line_that_held_a_marker_and_a_body_shape_holds_the_body_shape() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "stubs", "file": "src/a.py", "text": "def save(key):  # TODO write it", "count": 2}],
+             "stubs": { "in": "src" } }"#,
+    );
+    tree.write("src/a.py", "def save(key):  # TODO write it\n    pass\n");
+
+    let run = tree.run(&["stubs", "--strict"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(
+        run.says("src/a.py:1  comment marker, new on line 1"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("matched nothing this run"), "{}", run.out);
+}
+
+#[test]
+fn a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds() {
+    let tree = tree();
+    let markers: String = (0..200_000)
+        .map(|at| format!("// TODO item {at}\n"))
+        .collect();
+    tree.write("src/lib.rs", &markers);
+    tree.base();
+    tree.write("src/lib.rs", &format!("{markers}// TODO one more\n"));
+
+    let started = std::time::Instant::now();
+    let run = tree.run(&["stubs"]);
+    assert!(started.elapsed().as_secs() < 30, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/lib.rs:200001  comment marker x200001, new on line 200001"),
+        "{}",
+        run.out
+    );
+}

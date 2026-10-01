@@ -1472,16 +1472,22 @@ The site's line is the first of them, and its `new_lines` value lists them
 all as one string, such as `"1, 3"`, so a failure names each one. The first
 named line may be an edited marker and not the new one. A line that holds a
 marker and a code stub is two sites, and a code stub keeps its line text, so
-an edited `todo!()` line is a new site. Known limit: a reworded marker, or a
-marker deleted while another is added in the same file, holds the count.
+an edited `todo!()` line is a new site. An accepted entry written for such a
+line before ADR 0064 keys the code stub's site and holds it, so `--strict`
+does not name it, and the marker fails as new. The pairing, the line count
+and the quoted-span lookup are each linear or `n log n` in the matches of a
+file. Known limit: a reworded marker, or a marker deleted while another is
+added in the same file, holds the count.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
 `a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
 `every_marker_line_the_base_file_lacks_is_named`,
 `an_edited_not_implemented_line_is_a_new_site`,
 `a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there`,
-`a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites` and
-`an_accepted_marker_entry_names_the_row_and_holds_at_its_count` in
-`tests/stubs.rs`.
+`a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites`,
+`an_accepted_marker_entry_names_the_row_and_holds_at_its_count`,
+`an_accepted_entry_for_a_line_that_held_a_marker_and_a_body_shape_holds_the_body_shape`
+and `a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds`
+in `tests/stubs.rs`.
 
 **`stubs` judges three body shapes.** The function walk of `complexity`
 reads them, over every grammar the built-in stubs table supports, and

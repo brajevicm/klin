@@ -352,17 +352,18 @@ fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding
         let Some(marks) = now.get(&key) else {
             continue;
         };
-        let mut held: Vec<&str> = before.get(&key).map_or_else(Vec::new, |was| {
-            was.iter().map(|(_, text)| text.as_str()).collect()
-        });
+        let mut held: BTreeMap<&str, usize> = BTreeMap::new();
+        for (_, text) in before.get(&key).into_iter().flatten() {
+            *held.entry(text.as_str()).or_default() += 1;
+        }
         let fresh: Vec<u64> = marks
             .iter()
-            .filter(|(_, text)| match held.iter().position(|was| was == text) {
-                Some(at) => {
-                    held.swap_remove(at);
+            .filter(|(_, text)| match held.get_mut(text.as_str()) {
+                Some(left) if *left > 0 => {
+                    *left -= 1;
                     false
                 }
-                None => true,
+                _ => true,
             })
             .map(|(line, _)| *line)
             .collect();
@@ -639,11 +640,13 @@ fn tally(
             .regex
             .find_iter(text)
             .filter(|found| set.stands(past, found));
+        let (mut from, mut line) = (0, 1);
         for found in stands {
             if quoted(past, found.range()) {
                 continue;
             }
-            let line = text[..found.start()].matches('\n').count() as u64 + 1;
+            line += text[from..found.start()].matches('\n').count() as u64;
+            from = found.start();
             if pattern.test_idiom
                 && (past.test_file
                     || past
@@ -662,11 +665,11 @@ fn tally(
 }
 
 /// Whether one quoted span holds the whole match. A match that only starts in one, such as the
-/// `//` of a URL in a string ahead of a real comment marker, is a site.
+/// `//` of a URL in a string ahead of a real comment marker, is a site. The spans come in order
+/// and never overlap, so only the last one to start at or before the match can hold it.
 fn quoted(past: &Skipped, at: std::ops::Range<usize>) -> bool {
-    past.literals
-        .iter()
-        .any(|(from, to)| *from <= at.start && at.end <= *to)
+    let before = past.literals.partition_point(|(from, _)| *from <= at.start);
+    before > 0 && at.end <= past.literals[before - 1].1
 }
 
 fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {
