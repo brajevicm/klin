@@ -18,6 +18,10 @@ const BODY: &str = "implement the body";
 const NOTE: &str = "do the work the comment names, or record it in the tracker and delete the \
                     comment";
 
+/// The row whose matches in one file are one site, because a comment is not a declaration.
+/// ADR 0064.
+const MARKER: &str = "comment marker";
+
 /// A comment marker in a language whose comments start with `//` or `/*`.
 const SLASH: &str = r"(?://|/\*)[^\n]*\b(?:TODO|FIXME|XXX|HACK)\b";
 /// The same, for a language whose comments start with `#`.
@@ -36,7 +40,7 @@ const LANGUAGES: &[Language] = &[
                 r#"panic\(\s*"[^"]*(?i:not implemented)"#,
                 BODY,
             ),
-            ("comment marker", SLASH, NOTE),
+            (MARKER, SLASH, NOTE),
         ],
         test_idioms: None,
     },
@@ -45,7 +49,7 @@ const LANGUAGES: &[Language] = &[
         suffixes: &[".py"],
         patterns: &[
             ("not implemented", r"\braise\s+NotImplementedError", BODY),
-            ("comment marker", HASH, NOTE),
+            (MARKER, HASH, NOTE),
         ],
         test_idioms: None,
     },
@@ -54,7 +58,7 @@ const LANGUAGES: &[Language] = &[
         suffixes: &[".rs"],
         patterns: &[
             ("not implemented", r"\b(?:todo|unimplemented)!\(", BODY),
-            ("comment marker", SLASH, NOTE),
+            (MARKER, SLASH, NOTE),
         ],
         test_idioms: None,
     },
@@ -67,7 +71,7 @@ const LANGUAGES: &[Language] = &[
                 r#"throw new [A-Za-z]*Error\(\s*['"`][^'"`]*(?i:not implemented)"#,
                 BODY,
             ),
-            ("comment marker", SLASH, NOTE),
+            (MARKER, SLASH, NOTE),
         ],
         test_idioms: None,
     },
@@ -86,6 +90,7 @@ pub const KIND: Kind = Kind {
     skips_literals: true,
     reads_shapes: true,
     reads_cfg_attr: false,
+    counted: &[MARKER],
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "stub site(s)",

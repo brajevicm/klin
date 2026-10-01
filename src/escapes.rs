@@ -146,6 +146,7 @@ pub const KIND: Kind = Kind {
     skips_literals: false,
     reads_shapes: false,
     reads_cfg_attr: true,
+    counted: &[],
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "escape site(s)",

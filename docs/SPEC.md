@@ -1258,7 +1258,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
-| `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
+| `stubs` | placeholder left behind | file + line text, a comment marker file + kind | `count` rises | yes | **new** |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
 | `lockfile` | dependency added without a lockfile entry, pin removed, pin the lockfile does not record | manifest + name | `unlocked`, `unpinned`, `stale` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
@@ -1356,8 +1356,10 @@ that tracks work in such comments sees a new one fail once, and a person
 accepts it or the agent moves the note to the tracker. An abstract
 declaration whose body is meant to be empty, such as a trait method or a
 protocol, MUST NOT match. Identity is file plus line text, ratcheted on
-`count`, exactly like escapes. It SHOULD share the escapes engine and differ
-only in the table. #106 shipped the line patterns and #114 the body shapes,
+`count`, exactly like escapes, except for a comment marker. A comment is not
+a declaration, so every comment marker in one file is one site, keyed by the
+file and the row kind and ratcheted on its count (4.4, 8.2.1, ADR 0064). It
+SHOULD share the escapes engine and differ only in the table. #106 shipped the line patterns and #114 the body shapes,
 which the function walk reads.
 
 The escapes table gains three rows for test-disabling constructs it lacks:
@@ -1450,7 +1452,27 @@ predicate always holds, as 8.2 states. Pinned by
 `a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
-line, judges a test module like any other code, and refuses the key. Pinned by
+line, judges a test module like any other code, and refuses the key.
+`stubs` keys a comment marker by its file and the row kind, `comment marker`,
+in place of a line text (ADR 0064). Every marker match in one file lands on
+that one site, its `count` is the number of matches, and an accepted entry
+names `comment marker` as its `text`. So a typo fix inside a marker, a
+change from `TODO` to `FIXME` and a move within the file hold the count,
+and a new marker or one moved in from another file raises it. The gate pairs
+each marker match with one base match of the same trimmed text in the same
+file, and the matches left over are the lines the base file lacks. The
+site's line is the first of them, and its `lines` value lists them all, so a
+failure names each one. A line that holds a marker and a code stub is two
+sites, and a code stub keeps its line text, so an edited `todo!()` line is a
+new site. Known limit: a reworded marker, or a marker deleted while another
+is added in the same file, holds the count. Pinned by
+`a_typo_fix_inside_an_existing_marker_is_held`,
+`a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
+`every_marker_line_the_base_file_lacks_is_named`,
+`an_edited_not_implemented_line_is_a_new_site`,
+`a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there`
+and `a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites` in
+`tests/stubs.rs`. The rules of the quoted span and the shared line are pinned by
 `repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
 `a_line_carrying_two_escape_kinds_counts_both_under_the_first` and
 `the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in

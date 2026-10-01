@@ -85,6 +85,9 @@ pub struct Kind {
     /// Whether a Rust `cfg_attr` a pattern finds is a site only where it skips its test on every
     /// target, which only a parser can see. Spec 8.2.
     pub reads_cfg_attr: bool,
+    /// The rows whose matches in one file are one site, keyed by the row and not by a line,
+    /// because a comment is not a declaration. Spec 8.2.1, ADR 0064.
+    pub counted: &'static [&'static str],
     pub evaluator: Evaluator<'static>,
 }
 
@@ -135,6 +138,23 @@ struct Pattern {
     remedy: String,
     /// Whether `skip_test_idioms` leaves a match of this row out inside test code.
     test_idiom: bool,
+    /// Whether this row's matches in one file are one site, keyed by the row.
+    counted: bool,
+}
+
+impl Pattern {
+    /// The text a match on this line is keyed by: the row for a counted row, which marks the
+    /// line it matched, and the line's own text for any other.
+    fn key<'a>(&'a self, rel: &str, line: u64, body: &'a str, marks: &mut Marks) -> &'a str {
+        if !self.counted {
+            return body;
+        }
+        marks
+            .entry((rel.to_string(), self.name.clone()))
+            .or_default()
+            .push((line, body.to_string()));
+        &self.name
+    }
 }
 
 #[derive(Clone)]
@@ -190,10 +210,14 @@ struct Skipped {
     everywhere: Vec<usize>,
 }
 
+/// The line and trimmed text of each match a counted site holds, by the site's file and text.
+type Marks = BTreeMap<(String, String), Vec<(u64, String)>>;
+
 /// One tree read: the sites, how many test idioms test code took out of the count, and the
 /// files the walk reached, which is what the gate's coverage counts.
 struct Read {
     findings: Vec<Finding>,
+    marks: Marks,
     skipped: u64,
     files: Files,
     work: ContentCost,
@@ -212,6 +236,7 @@ struct Tally {
 struct Walk {
     tests: Option<Tests>,
     seen: BTreeMap<(String, String), Tally>,
+    marks: Marks,
     shaped: BTreeSet<String>,
     skipped: u64,
     work: ContentCost,
@@ -233,10 +258,14 @@ pub fn run(kind: &Kind, args: &Args, start: &Path, out: &mut String) -> Result<u
 /// A matched row's name, its count and its remedy, as one report column.
 pub fn show(label: &str, values: &Values) -> String {
     let name = values.get(label).and_then(Value::as_str).unwrap_or("?");
-    let named = match values.get("count").and_then(Value::as_u64) {
+    let mut named = match values.get("count").and_then(Value::as_u64) {
         Some(count) if count > 1 => format!("{name} x{count}"),
         _ => name.to_string(),
     };
+    if let Some(lines) = values.get("lines").and_then(Value::as_str) {
+        let plural = if lines.contains(',') { "s" } else { "" };
+        let _ = write!(named, ", new on line{plural} {lines}");
+    }
     match values.get("remedy").and_then(Value::as_str) {
         Some(remedy) if !remedy.is_empty() => format!("{named} — {remedy}"),
         _ => named,
@@ -260,12 +289,12 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     };
     let unit = kind.evaluator.unit;
     let said = read.files.coverage(at.only).said(out);
-    let (prior, before, before_work) = at_the_base(kind, &spec, at, out)?;
-    out.record(|records| records.work = Some(read.work + before_work));
-    let lost = read.files.lost(&before, project, at.only);
+    let before = at_the_base(kind, &spec, at, out)?;
+    out.record(|records| records.work = Some(read.work + before.work));
+    let lost = read.files.lost(&before.files, project, at.only);
     let code = kind.evaluator.evaluate(
-        read.findings,
-        prior,
+        named(read.findings, &read.marks, &before.marks),
+        before.findings,
         ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
         at,
         Line {
@@ -277,12 +306,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(coverage::lost_said(&lost, at, code, out))
 }
 
-fn at_the_base(
-    kind: &Kind,
-    spec: &Spec,
-    at: &Context,
-    out: &mut Sink,
-) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
+fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {
     let owned;
     let prior = match at.prior {
         Some(prior) => prior,
@@ -301,10 +325,46 @@ fn at_the_base(
         ),
         ..spec.search.clone()
     };
-    let before = findings(kind, &search, prior.tree(), prior.root(), None)?;
-    let mut held = before.findings;
-    held.retain(|finding| project.was_held(&finding.file));
-    Ok((held, before.files, before.work))
+    let mut before = findings(kind, &search, prior.tree(), prior.root(), None)?;
+    before
+        .findings
+        .retain(|finding| project.was_held(&finding.file));
+    before.marks.retain(|(file, _), _| project.was_held(file));
+    Ok(before)
+}
+
+/// Each counted site's lines whose text the base file lacks, one base line taken per match, so
+/// a failure names them. The site moves to the first, and its values list them all. Spec 8.2.1.
+fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding> {
+    for finding in &mut findings {
+        let key = (finding.file.clone(), finding.text.clone());
+        let Some(marks) = now.get(&key) else {
+            continue;
+        };
+        let mut held: Vec<&str> = before.get(&key).map_or_else(Vec::new, |was| {
+            was.iter().map(|(_, text)| text.as_str()).collect()
+        });
+        let fresh: Vec<u64> = marks
+            .iter()
+            .filter(|(_, text)| match held.iter().position(|was| was == text) {
+                Some(at) => {
+                    held.swap_remove(at);
+                    false
+                }
+                None => true,
+            })
+            .map(|(line, _)| *line)
+            .collect();
+        if let Some(first) = fresh.first() {
+            finding.line = *first;
+            let lines: Vec<String> = fresh.iter().map(u64::to_string).collect();
+            finding
+                .values
+                .insert("lines".into(), lines.join(", ").into());
+        }
+    }
+    findings.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+    findings
 }
 
 fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<'a> {
@@ -394,6 +454,7 @@ fn compiled(
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
                     test_idiom: idioms.contains(&name.as_str()),
+                    counted: kind.counted.contains(&name.as_str()),
                     name: name.clone(),
                     regex: compiled,
                     remedy,
@@ -465,6 +526,7 @@ fn findings(
     }
     Ok(Read {
         findings: collected(kind, walk.seen),
+        marks: walk.marks,
         skipped: walk.skipped,
         files: covered(measured, excluded),
         work: walk.work,
@@ -485,6 +547,7 @@ impl Walk {
         Walk {
             tests,
             seen: BTreeMap::new(),
+            marks: Marks::new(),
             shaped: BTreeSet::new(),
             skipped: 0,
             work: ContentCost::default(),
@@ -507,7 +570,7 @@ impl Walk {
             if past.parsed {
                 self.work.parses += 1;
             }
-            self.skipped += tally(set, rel, &text, &past, &mut self.seen);
+            self.skipped += tally(set, rel, &text, &past, &mut self.seen, &mut self.marks);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
                 shapes(rel, &text, &mut self.seen);
@@ -557,6 +620,7 @@ fn tally(
     text: &str,
     past: &Skipped,
     seen: &mut BTreeMap<(String, String), Tally>,
+    marks: &mut Marks,
 ) -> u64 {
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
@@ -581,7 +645,8 @@ fn tally(
                 continue;
             }
             let body = lines.get(line as usize - 1).unwrap_or(&"").trim();
-            record(seen, rel, line, body, &pattern.name, &pattern.remedy);
+            let key = pattern.key(rel, line, body, marks);
+            record(seen, rel, line, key, &pattern.name, &pattern.remedy);
         }
     }
     skipped

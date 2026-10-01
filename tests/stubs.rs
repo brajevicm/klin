@@ -331,14 +331,19 @@ fn pass_on_an_exception_class_and_on_an_abstract_declaration_is_not_a_stub() {
 }
 
 #[test]
-fn a_marker_and_a_body_shape_on_one_declaration_line_are_one_site() {
+fn a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites() {
     let tree = shaped();
     tree.write("src/a.py", "def save(key):  # TODO write it\n    pass\n");
 
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 new stub site(s)"), "{}", run.out);
-    assert!(run.says("src/a.py:1  comment marker x2"), "{}", run.out);
+    assert!(run.says("2 new stub site(s)"), "{}", run.out);
+    assert!(
+        run.says("src/a.py:1  comment marker, new on line 1"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("src/a.py:1  pass body"), "{}", run.out);
 }
 
 #[test]
@@ -430,4 +435,87 @@ fn a_compact_scope_limits_the_built_in_detector() {
     let run = tree.run(&["stubs"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("lib/todo.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_typo_fix_inside_an_existing_marker_is_held() {
+    let tree = tree();
+    tree.write("src/lib.rs", "// FIXME: hadnle the error\nfn f() {}\n");
+    tree.base();
+    tree.write("src/lib.rs", "// FIXME: handle the error\nfn f() {}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("all held at the base"), "{}", run.out);
+}
+
+#[test]
+fn a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line() {
+    let tree = tree();
+    tree.write("src/lib.rs", "// FIXME: handle the error\nfn f() {}\n");
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        "// FIXME: handle the error\nfn f() {}\n\n// TODO: log it\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 stub site(s) got worse"), "{}", run.out);
+    assert!(
+        run.says("src/lib.rs:4  comment marker x2, new on line 4"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn every_marker_line_the_base_file_lacks_is_named() {
+    let tree = tree();
+    tree.write("src/lib.rs", "// TODO: one\nfn f() {}\n");
+    tree.base();
+    tree.write(
+        "src/lib.rs",
+        "// TODO: uno\nfn f() {}\n// TODO: two\n// TODO: three\n",
+    );
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/lib.rs:1  comment marker x3, new on lines 1, 3, 4"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_edited_not_implemented_line_is_a_new_site() {
+    let tree = tree();
+    tree.write("src/lib.rs", "fn f() {\n    todo!()\n}\n");
+    tree.base();
+    tree.write("src/lib.rs", "fn f() {\n    todo!(\"later\")\n}\n");
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(run.says("src/lib.rs:2  not implemented"), "{}", run.out);
+}
+
+#[test]
+fn a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there() {
+    let tree = tree();
+    tree.write("src/a.rs", "// TODO: split this\nfn f() {}\n");
+    tree.write("src/b.rs", "fn g() {}\n");
+    tree.base();
+    tree.write("src/a.rs", "fn f() {}\n// TODO: split this\n");
+
+    let moved = tree.run(&["stubs"]);
+    assert_eq!(moved.code, 0, "{}", moved.out);
+
+    tree.write("src/a.rs", "fn f() {}\n");
+    tree.write("src/b.rs", "// TODO: split this\nfn g() {}\n");
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(run.says("src/b.rs:1  comment marker"), "{}", run.out);
 }
