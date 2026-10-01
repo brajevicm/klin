@@ -2247,12 +2247,13 @@ the directory of the file or of the inline module that holds it. A file two
 targets reach is a module of each. A dependency is a path a `use` tree or a
 path outside an import writes from `crate`, `self` or `super`, resolved to the
 deepest module it names. A path whose first segment names a module the same
-file declares at that path's nesting, with `mod name;` or inline and outside a
-function body, resolves as if it started with `self::`, so `pub use inner::X;`
-and `inner::f()` beside `mod inner;` depend on `inner`. A module a function
-body declares is reached by no bare path. A target's edition comes from its
-manifest, where Cargo's default is 2015, and a conventional root is read as a
-current edition. In a `use` tree of an edition 2015 target, a first segment
+file declares at that path's nesting, with `mod name;` or inline and directly
+in a module rather than inside a block, resolves as if it started with
+`self::`, so `pub use inner::X;` and `inner::f()` beside `mod inner;` depend on
+`inner`. A module any block declares, a function body or a `const` or `static`
+initializer alike, is an item of that block and is reached by no bare path. A
+target's edition comes from its manifest, where Cargo's default is 2015, and a
+conventional root is read as edition 2024. In a `use` tree of an edition 2015 target, a first segment
 starts at the target root instead, and resolves only where the root declares a
 module of that name. A Rust path that resolves to its own module
 names that module's items and is no edge, so `use self::Kind::*` closes no
@@ -2362,6 +2363,7 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_first_segment_that_names_no_declared_module_stays_external`,
 `a_child_declared_inside_an_inline_module_is_not_reached_from_beside_it`,
 `a_module_declared_inside_a_function_is_not_reached_by_a_bare_path_beside_it`,
+`a_module_declared_inside_a_constant_initializer_is_not_reached_by_a_bare_path`,
 `a_bare_use_path_in_edition_2015_starts_at_the_crate_root`,
 `a_bare_use_path_from_edition_2018_starts_at_the_declared_child`,
 `a_file_renamed_inside_its_layer_keeps_its_base_debt`,
@@ -2782,7 +2784,7 @@ resolves an import or a Rust `mod foo;` to a file. The extractor keeps each
 specifier as written for it, with the inline modules that hold an import, a
 module declaration or a qualified path, every leaf path of a Rust use tree, and
 every path outside an import that starts at `crate`, `self`, `super` or the
-name of a module the file declares outside a function at that path's nesting.
+name of a module the file declares outside a block at that path's nesting.
 
 A `test-hygiene` check, a count of habits across the test roots against a
 dated ceiling, was considered and is not a check. A habit that rose is an

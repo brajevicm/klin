@@ -139,7 +139,7 @@ as external and never resolves it, and lists a bare Rust path as a known
 limit. Since the 2018 edition a path may start with the name of a child
 module, so a cycle closed through `pub use inner::X;` beside `mod inner;` went
 unseen. A path whose first segment names a module the same file declares at
-that path's nesting, outside a function body, now resolves as if it started
+that path's nesting, directly in a module rather than inside a block, now resolves as if it started
 with `self::`, in a `use` tree and outside an import. In a `use` tree of an
 edition 2015 target the first segment starts at the target root, as rustc
 reads it. Any other first segment stays external. A bare path through a name

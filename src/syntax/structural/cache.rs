@@ -230,7 +230,7 @@ impl Writer {
             self.text(&module.name);
             self.texts(&module.nesting);
             self.number(u64::from(module.inline));
-            self.number(u64::from(module.in_function));
+            self.number(u64::from(module.in_block));
             self.optional(module.path.as_deref());
             self.number(visibility_number(module.visibility));
         }
@@ -484,7 +484,7 @@ impl Reader<'_, '_> {
             name,
             nesting,
             inline,
-            in_function: self.number().filter(|flag| *flag <= 1)? == 1,
+            in_block: self.number().filter(|flag| *flag <= 1)? == 1,
             path: self.optional()?,
             visibility: visibility_of(self.number()?)?,
         })

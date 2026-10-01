@@ -181,8 +181,9 @@ pub struct ModuleDecl {
     pub nesting: Vec<String>,
     /// True where the declaration holds its module's body, so no file is named for it.
     pub inline: bool,
-    /// True where a function body holds the declaration, so no path outside that body names it.
-    pub in_function: bool,
+    /// True where a block holds the declaration, so the module is an item of that block and no
+    /// path outside it names it.
+    pub in_block: bool,
     /// The file the declaration names instead of its own name, where the language can say so.
     /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
     pub path: Option<String>,
@@ -846,6 +847,8 @@ pub(crate) struct Adapter {
     /// The first segments a qualified path resolves from inside the crate. A path that starts
     /// with any other name is kept only where it names a module the file declares beside it.
     pub rooted: &'static [&'static str],
+    /// The node kinds of a block, whose items are local to it.
+    pub blocks: &'static [&'static str],
     /// The names a node writes inside a string that the language calls by that text, such as a
     /// function a Rust `serde` attribute names or a name a format string captures.
     pub quoted: fn(Node, &[u8]) -> Vec<String>,
@@ -1145,7 +1148,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             name: text_of(name, self.source),
             nesting: (self.adapter.nesting)(node, self.source),
             inline,
-            in_function: inside_a_function(node, self.language),
+            in_block: above(node, self.adapter.blocks).is_some(),
             path: (!inline)
                 .then(|| (self.adapter.remapped)(node, self.source))
                 .flatten(),
@@ -1221,7 +1224,7 @@ impl<'a, 'b> Reading<'a, 'b> {
         let mut paths = Vec::new();
         let declarations = std::mem::take(&mut self.modules);
         let mut modules: HashMap<&str, Vec<&[String]>> = HashMap::new();
-        for module in declarations.iter().filter(|module| !module.in_function) {
+        for module in declarations.iter().filter(|module| !module.in_block) {
             modules
                 .entry(&module.name)
                 .or_default()
@@ -1258,7 +1261,7 @@ impl<'a, 'b> Reading<'a, 'b> {
     }
 
     /// The qualified path a node writes where it starts at a rooted segment or at a module the
-    /// file declares outside a function at the path's own nesting. `modules` holds the nestings
+    /// file declares outside a block at the path's own nesting. `modules` holds the nestings
     /// each such name is declared at, and the nesting is read only for a path whose first segment
     /// could qualify.
     fn resolvable(

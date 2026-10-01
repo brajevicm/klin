@@ -3,7 +3,7 @@
 //! usable. From each root the resolver follows `mod` declarations to files, `#[path]` included,
 //! and makes every file it reaches a module of that target, so a file two targets reach is a
 //! module of each. A dependency is a path a `use` tree or a qualified path writes from `crate`,
-//! `self`, `super` or a module its file declares outside a function, resolved to the deepest
+//! `self`, `super` or a module its file declares outside a block, resolved to the deepest
 //! module it names. An import of an edition 2015 target reads a bare first name from the target
 //! root. A path from any other name may be another crate or a local item, so it is counted and
 //! never resolved. Each target's extern
@@ -61,8 +61,7 @@ struct Node {
     parent: Option<usize>,
     children: BTreeMap<String, usize>,
     unresolved: HashSet<String>,
-    /// The module names the module declares outside a function, which a bare path may start
-    /// with.
+    /// The module names the module declares outside a block, which a bare path may start with.
     named: HashSet<String>,
     directory: String,
     file: String,
@@ -316,7 +315,7 @@ fn conventional(topology: &Topology, read: &[(&str, bool)]) -> Vec<Target> {
                 kind,
                 manifest: None,
                 dependencies: Vec::new(),
-                edition: Edition::E2021,
+                edition: Edition::E2024,
             }
         })
         .collect()
@@ -450,7 +449,7 @@ impl Crate<'_> {
                 continue;
             };
             let name = declaration.name.trim_start_matches("r#");
-            if !declaration.in_function {
+            if !declaration.in_block {
                 self.nodes[parent].named.insert(name.to_string());
             }
             if declaration.inline {

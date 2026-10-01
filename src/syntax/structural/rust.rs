@@ -21,6 +21,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     nesting,
     qualified,
     rooted: &["crate", "self", "super"],
+    blocks: &["block"],
     quoted,
     visibility,
     exported_as,
