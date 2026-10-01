@@ -138,12 +138,12 @@ pub struct Found {
 }
 
 pub fn under<'a>(
-    tree: &Path,
+    tree_root: &Path,
     files: impl Fn() -> Result<&'a [String], Error>,
     roots: &[PathBuf],
     wanted: &Wanted,
 ) -> Result<Vec<PathBuf>, Error> {
-    Ok(found(tree, files, roots, wanted)?.kept)
+    Ok(found(tree_root, files, roots, wanted)?.kept)
 }
 
 /// The files under each root that the check wants, read off the tree's one file list, so
@@ -152,15 +152,15 @@ pub fn under<'a>(
 /// reach — outside the tree, under a directory every walk skips, or behind a symbolic link —
 /// is walked on its own, as every root once was. ADR 0038.
 pub fn found<'a>(
-    tree: &Path,
+    tree_root: &Path,
     files: impl Fn() -> Result<&'a [String], Error>,
     roots: &[PathBuf],
     wanted: &Wanted,
 ) -> Result<Found, Error> {
     let mut found = Found::default();
     for root in roots {
-        match covers(tree, root) {
-            Some(directory) => select(tree, files()?, &directory, wanted, &mut found),
+        match covers(tree_root, root) {
+            Some(directory) => select(tree_root, files()?, &directory, wanted, &mut found),
             None => walk(root, wanted, &ignored(root), &mut found)?,
         }
     }
@@ -175,13 +175,13 @@ pub fn found<'a>(
 /// walk did not reach: outside the root, not a directory, under a directory every walk skips,
 /// or behind a symbolic link, which the walk does not follow and a root named through one
 /// still reads.
-fn covers(tree: &Path, directory: &Path) -> Option<String> {
+fn covers(tree_root: &Path, directory: &Path) -> Option<String> {
     if !directory.is_dir() {
         return None;
     }
-    let inside = directory.strip_prefix(tree).ok()?;
+    let inside = directory.strip_prefix(tree_root).ok()?;
     let named = inside.to_str()?;
-    if named.split('/').any(skipped) || linked(tree, inside) {
+    if named.split('/').any(skipped) || linked(tree_root, inside) {
         return None;
     }
     Some(match named.is_empty() {
@@ -191,8 +191,8 @@ fn covers(tree: &Path, directory: &Path) -> Option<String> {
 }
 
 /// Whether any directory between the root and this one is a symbolic link.
-fn linked(tree: &Path, inside: &Path) -> bool {
-    let mut at = tree.to_path_buf();
+fn linked(tree_root: &Path, inside: &Path) -> bool {
+    let mut at = tree_root.to_path_buf();
     inside.components().any(|part| {
         at.push(part);
         at.symlink_metadata()
@@ -203,7 +203,7 @@ fn linked(tree: &Path, inside: &Path) -> bool {
 /// One root's files out of the tree's list, under the same rules the walk applies below a
 /// root: a hidden or skipped directory below it is not descended, and the file's name and its
 /// path decide the rest. Spec 5.6, ADR 0038.
-fn select(tree: &Path, files: &[String], directory: &str, wanted: &Wanted, into: &mut Found) {
+fn select(tree_root: &Path, files: &[String], directory: &str, wanted: &Wanted, into: &mut Found) {
     for file in files {
         if !scope::under_or_at(file, directory) {
             continue;
@@ -216,7 +216,7 @@ fn select(tree: &Path, files: &[String], directory: &str, wanted: &Wanted, into:
         if !parents.is_empty() && !parents.split('/').all(|segment| wanted.descends(segment)) {
             continue;
         }
-        keep(tree.join(file), name, wanted, into);
+        keep(tree_root.join(file), name, wanted, into);
     }
 }
 

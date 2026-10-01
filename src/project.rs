@@ -170,8 +170,8 @@ impl Tree {
 
 /// Whether a walk of a tree reaches a file at this path: it descends no directory of the
 /// default skip set. A walk keeps a file whatever the file itself is called, so only the
-/// directories above it decide. This is `files::found`'s coverage for a file the tree does not list yet,
-/// which is what the base laid out from an index has. Spec 4.3.
+/// directories above it decide. This is `files::found`'s coverage for a file the tree does
+/// not list yet, which is what the base laid out from an index has. Spec 4.3.
 pub fn reached(path: &str) -> bool {
     path.rsplit_once('/')
         .is_none_or(|(parents, _)| !parents.split('/').any(files::skipped))
