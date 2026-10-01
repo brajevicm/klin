@@ -712,6 +712,22 @@ fn a_module_declared_inside_a_constant_initializer_is_not_reached_by_a_bare_path
     assert!(run.says("0 cyclic"), "{}", run.out);
 }
 
+#[test]
+fn a_child_of_a_block_local_module_is_reached_from_that_module() {
+    let tree = Tree::new();
+    tree.write("klin.json", ACYCLIC);
+    tree.write("src/lib.rs", "mod a;\n");
+    tree.write(
+        "src/a.rs",
+        "const _: () = {\n    mod outer {\n        mod inner {\n            pub fn helper() {}\n        }\n        pub fn call() { inner::helper(); }\n    }\n};\n",
+    );
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("1 dependency site(s) judged"), "{}", run.out);
+}
+
 fn renamed_layers(tree: &Tree) {
     tree.write("klin.json", LAYERS);
     tree.write("src/lib.rs", "mod domain;\nmod ui;\n");

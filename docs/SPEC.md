@@ -2250,8 +2250,9 @@ deepest module it names. A path whose first segment names a module the same
 file declares at that path's nesting, with `mod name;` or inline and directly
 in a module rather than inside a block, resolves as if it started with
 `self::`, so `pub use inner::X;` and `inner::f()` beside `mod inner;` depend on
-`inner`. A module any block declares, a function body or a `const` or `static`
-initializer alike, is an item of that block and is reached by no bare path. A
+`inner`. A module a block declares directly, a function body or a `const` or
+`static` initializer alike, is an item of that block and is reached by no bare
+path from outside it. A module that module declares is its child as usual. A
 target's edition comes from its manifest, where Cargo's default is 2015, and a
 conventional root is read as edition 2024. In a `use` tree of an edition 2015 target, a first segment
 starts at the target root instead, and resolves only where the root declares a
@@ -2364,6 +2365,7 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_child_declared_inside_an_inline_module_is_not_reached_from_beside_it`,
 `a_module_declared_inside_a_function_is_not_reached_by_a_bare_path_beside_it`,
 `a_module_declared_inside_a_constant_initializer_is_not_reached_by_a_bare_path`,
+`a_child_of_a_block_local_module_is_reached_from_that_module`,
 `a_bare_use_path_in_edition_2015_starts_at_the_crate_root`,
 `a_bare_use_path_from_edition_2018_starts_at_the_declared_child`,
 `a_file_renamed_inside_its_layer_keeps_its_base_debt`,

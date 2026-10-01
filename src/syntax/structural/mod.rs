@@ -181,8 +181,8 @@ pub struct ModuleDecl {
     pub nesting: Vec<String>,
     /// True where the declaration holds its module's body, so no file is named for it.
     pub inline: bool,
-    /// True where a block holds the declaration, so the module is an item of that block and no
-    /// path outside it names it.
+    /// True where a block holds the declaration with no module between them, so the module is
+    /// an item of that block and no path outside it names it.
     pub in_block: bool,
     /// The file the declaration names instead of its own name, where the language can say so.
     /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
@@ -1148,7 +1148,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             name: text_of(name, self.source),
             nesting: (self.adapter.nesting)(node, self.source),
             inline,
-            in_block: above(node, self.adapter.blocks).is_some(),
+            in_block: held_by_a_block(node, self.adapter.blocks),
             path: (!inline)
                 .then(|| (self.adapter.remapped)(node, self.source))
                 .flatten(),
@@ -1457,6 +1457,22 @@ fn record_name(named: &mut HashMap<Name, Sites>, name: Name, into: impl FnOnce(&
 /// function rather than a declaration of the file.
 fn inside_a_function(node: Node, language: &Language) -> bool {
     above(node, language.functions).is_some()
+}
+
+/// Whether a block holds this module declaration directly, and not through a module of the same
+/// kind as the declaration that a block may in turn hold.
+fn held_by_a_block(node: Node, blocks: &[&str]) -> bool {
+    let mut holder = node.parent();
+    while let Some(found) = holder {
+        if found.kind() == node.kind() {
+            return false;
+        }
+        if blocks.contains(&found.kind()) {
+            return true;
+        }
+        holder = found.parent();
+    }
+    false
 }
 
 /// The nearest node above this one whose kind is one of these.
