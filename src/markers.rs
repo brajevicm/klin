@@ -85,6 +85,9 @@ pub struct Kind {
     /// Whether a Rust `cfg_attr` a pattern finds is a site only where it skips its test on every
     /// target, which only a parser can see. Spec 8.2.
     pub reads_cfg_attr: bool,
+    /// The rows whose matches in one file are one site, keyed by the row and not by a line,
+    /// because a comment is not a declaration. Spec 8.2.1, ADR 0064.
+    pub keyed_by_row: &'static [&'static str],
     pub evaluator: Evaluator<'static>,
 }
 
@@ -135,6 +138,28 @@ struct Pattern {
     remedy: String,
     /// Whether `skip_test_idioms` leaves a match of this row out inside test code.
     test_idiom: bool,
+    /// Whether this row's matches in one file are one site, keyed by the row.
+    keyed_by_row: bool,
+}
+
+impl Pattern {
+    /// One match on a line, at the site of that line's text, or at the site of this row with
+    /// the line marked where the row keys the site.
+    fn record(
+        &self,
+        seen: &mut BTreeMap<(String, String), Tally>,
+        rel: &str,
+        line: u64,
+        body: &str,
+    ) {
+        if !self.keyed_by_row {
+            record(seen, rel, line, body, &self.name, &self.remedy);
+            return;
+        }
+        record(seen, rel, line, &self.name, &self.name, &self.remedy)
+            .marks
+            .push((line, body.to_string()));
+    }
 }
 
 #[derive(Clone)]
@@ -190,10 +215,18 @@ struct Skipped {
     everywhere: Vec<usize>,
 }
 
+/// The line and trimmed text of each match a site keyed by its row holds, by the site's file
+/// and text.
+type Marks = BTreeMap<(String, String), Vec<(u64, String)>>;
+
+/// The value that lists the lines of a site keyed by its row whose text the base file lacks.
+const NEW_LINES: &str = "new_lines";
+
 /// One tree read: the sites, how many test idioms test code took out of the count, and the
 /// files the walk reached, which is what the gate's coverage counts.
 struct Read {
     findings: Vec<Finding>,
+    marks: Marks,
     skipped: u64,
     files: Files,
     work: ContentCost,
@@ -204,6 +237,8 @@ struct Tally {
     name: String,
     remedy: String,
     count: u64,
+    /// The line and trimmed text of each match, for a site keyed by its row.
+    marks: Vec<(u64, String)>,
 }
 
 /// One tree walk: the tree's tests, and what the walk accumulates across its files. The
@@ -233,10 +268,14 @@ pub fn run(kind: &Kind, args: &Args, start: &Path, out: &mut String) -> Result<u
 /// A matched row's name, its count and its remedy, as one report column.
 pub fn show(label: &str, values: &Values) -> String {
     let name = values.get(label).and_then(Value::as_str).unwrap_or("?");
-    let named = match values.get("count").and_then(Value::as_u64) {
+    let mut named = match values.get("count").and_then(Value::as_u64) {
         Some(count) if count > 1 => format!("{name} x{count}"),
         _ => name.to_string(),
     };
+    if let Some(lines) = values.get(NEW_LINES).and_then(Value::as_str) {
+        let plural = if lines.contains(',') { "s" } else { "" };
+        let _ = write!(named, ", new on line{plural} {lines}");
+    }
     match values.get("remedy").and_then(Value::as_str) {
         Some(remedy) if !remedy.is_empty() => format!("{named} — {remedy}"),
         _ => named,
@@ -260,12 +299,12 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     };
     let unit = kind.evaluator.unit;
     let said = read.files.coverage(at.only).said(out);
-    let (prior, before, before_work) = at_the_base(kind, &spec, at, out)?;
-    out.record(|records| records.work = Some(read.work + before_work));
-    let lost = read.files.lost(&before, project, at.only);
+    let before = at_the_base(kind, &spec, at, out)?;
+    out.record(|records| records.work = Some(read.work + before.work));
+    let lost = read.files.lost(&before.files, project, at.only);
     let code = kind.evaluator.evaluate(
-        read.findings,
-        prior,
+        named(read.findings, &read.marks, &before.marks),
+        before.findings,
         ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
         at,
         Line {
@@ -277,12 +316,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(coverage::lost_said(&lost, at, code, out))
 }
 
-fn at_the_base(
-    kind: &Kind,
-    spec: &Spec,
-    at: &Context,
-    out: &mut Sink,
-) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
+fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {
     let owned;
     let prior = match at.prior {
         Some(prior) => prior,
@@ -301,10 +335,48 @@ fn at_the_base(
         ),
         ..spec.search.clone()
     };
-    let before = findings(kind, &search, prior.tree(), prior.root(), None)?;
-    let mut held = before.findings;
-    held.retain(|finding| project.was_held(&finding.file));
-    Ok((held, before.files, before.work))
+    let mut before = findings(kind, &search, prior.tree(), prior.root(), None)?;
+    before
+        .findings
+        .retain(|finding| project.was_held(&finding.file));
+    before.marks.retain(|(file, _), _| project.was_held(file));
+    Ok(before)
+}
+
+/// The lines of each site keyed by its row whose text the base file lacks, one base line taken
+/// per match, so a failure names them. The site moves to the first, and its values list them
+/// all. Spec 8.2.1.
+fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding> {
+    for finding in &mut findings {
+        let key = (finding.file.clone(), finding.text.clone());
+        let Some(marks) = now.get(&key) else {
+            continue;
+        };
+        let mut held: BTreeMap<&str, usize> = BTreeMap::new();
+        for (_, text) in before.get(&key).into_iter().flatten() {
+            *held.entry(text.as_str()).or_default() += 1;
+        }
+        let fresh: Vec<u64> = marks
+            .iter()
+            .filter(|(_, text)| match held.get_mut(text.as_str()) {
+                Some(left) if *left > 0 => {
+                    *left -= 1;
+                    false
+                }
+                _ => true,
+            })
+            .map(|(line, _)| *line)
+            .collect();
+        if let Some(first) = fresh.first() {
+            finding.line = *first;
+            let lines: Vec<String> = fresh.iter().map(u64::to_string).collect();
+            finding
+                .values
+                .insert(NEW_LINES.into(), lines.join(", ").into());
+        }
+    }
+    findings.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+    findings
 }
 
 fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<'a> {
@@ -394,6 +466,7 @@ fn compiled(
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
                     test_idiom: idioms.contains(&name.as_str()),
+                    keyed_by_row: kind.keyed_by_row.contains(&name.as_str()),
                     name: name.clone(),
                     regex: compiled,
                     remedy,
@@ -463,8 +536,10 @@ fn findings(
         }
         walk.read(kind, search, &file, &rel)?;
     }
+    let (findings, marks) = collected(kind, walk.seen);
     Ok(Read {
-        findings: collected(kind, walk.seen),
+        findings,
+        marks,
         skipped: walk.skipped,
         files: covered(measured, excluded),
         work: walk.work,
@@ -565,11 +640,13 @@ fn tally(
             .regex
             .find_iter(text)
             .filter(|found| set.stands(past, found));
+        let (mut scanned, mut line) = (0, 1);
         for found in stands {
             if quoted(past, found.range()) {
                 continue;
             }
-            let line = text[..found.start()].matches('\n').count() as u64 + 1;
+            line += text[scanned..found.start()].matches('\n').count() as u64;
+            scanned = found.start();
             if pattern.test_idiom
                 && (past.test_file
                     || past
@@ -581,24 +658,28 @@ fn tally(
                 continue;
             }
             let body = lines.get(line as usize - 1).unwrap_or(&"").trim();
-            record(seen, rel, line, body, &pattern.name, &pattern.remedy);
+            pattern.record(seen, rel, line, body);
         }
     }
     skipped
 }
 
 /// Whether one quoted span holds the whole match. A match that only starts in one, such as the
-/// `//` of a URL in a string ahead of a real comment marker, is a site.
+/// `//` of a URL in a string ahead of a real comment marker, is a site. The spans come in order
+/// and never overlap, so only the last one to start at or before the match can hold it.
 fn quoted(past: &Skipped, at: std::ops::Range<usize>) -> bool {
-    past.literals
-        .iter()
-        .any(|(from, to)| *from <= at.start && at.end <= *to)
+    let started = past.literals.partition_point(|(from, _)| *from <= at.start);
+    started > 0 && at.end <= past.literals[started - 1].1
 }
 
-fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
+fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {
+    let mut marks = Marks::new();
     let mut out: Vec<Finding> = seen
         .into_iter()
         .map(|((file, text), tally)| {
+            if !tally.marks.is_empty() {
+                marks.insert((file.clone(), text.clone()), tally.marks);
+            }
             let mut values = Values::new();
             values.insert(kind.label.into(), tally.name.into());
             values.insert("count".into(), tally.count.into());
@@ -615,17 +696,17 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> Vec<Findin
         })
         .collect();
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    out
+    (out, marks)
 }
 
-fn record(
-    seen: &mut BTreeMap<(String, String), Tally>,
+fn record<'a>(
+    seen: &'a mut BTreeMap<(String, String), Tally>,
     file: &str,
     line: u64,
     text: &str,
     name: &str,
     remedy: &str,
-) {
+) -> &'a mut Tally {
     seen.entry((file.to_string(), text.to_string()))
         .and_modify(|tally| tally.count += 1)
         .or_insert(Tally {
@@ -633,7 +714,8 @@ fn record(
             name: name.to_string(),
             remedy: remedy.to_string(),
             count: 1,
-        });
+            marks: Vec::new(),
+        })
 }
 
 /// The quoted spans of this text, so a match that starts inside one is not a site. A quote that

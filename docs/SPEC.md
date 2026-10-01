@@ -1258,7 +1258,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
-| `stubs` | placeholder left behind | file + line text | `count` rises | yes | **new** |
+| `stubs` | placeholder left behind | file + line text, or file + kind for a comment marker | `count` rises | yes | **new** |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
 | `lockfile` | dependency added without a lockfile entry, pin removed, pin the lockfile does not record | manifest + name | `unlocked`, `unpinned`, `stale` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
@@ -1356,9 +1356,11 @@ that tracks work in such comments sees a new one fail once, and a person
 accepts it or the agent moves the note to the tracker. An abstract
 declaration whose body is meant to be empty, such as a trait method or a
 protocol, MUST NOT match. Identity is file plus line text, ratcheted on
-`count`, exactly like escapes. It SHOULD share the escapes engine and differ
-only in the table. #106 shipped the line patterns and #114 the body shapes,
-which the function walk reads.
+`count`, exactly like escapes, except for a comment marker. A comment is not
+a declaration, so every comment marker in one file is one site, keyed by the
+file and the row kind and ratcheted on its count (4.4, 8.2.1, ADR 0064). It
+SHOULD share the escapes engine and differ only in the table. #106 shipped
+the line patterns and #114 the body shapes, which the function walk reads.
 
 The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
@@ -1404,7 +1406,8 @@ punishes fenced examples equally. That is a design choice for a separate
 ticket, not a defect of the rule.
 
 **`escapes` and `stubs` aggregate matches into sites.** A site is one file
-plus the text of one line with leading and trailing whitespace trimmed. Every
+plus the text of one line with leading and trailing whitespace trimmed, except
+for a `stubs` comment marker, whose site is keyed by its file and kind. Every
 match of every pattern in the language's table, on every line whose trimmed
 text is equal, lands on that one site. Its `count` is the number of those
 matches. Its label and remedy are the ones of the first pattern, in table
@@ -1457,10 +1460,45 @@ line, judges a test module like any other code, and refuses the key. Pinned by
 `tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
 line. A finding that says `unwrap x4` may hold two `expect` calls.
 
+`stubs` keys a comment marker by its file and the row kind,
+`comment marker`, in place of a line text (ADR 0064). Every marker match in
+one file lands on that one site, its `count` is the number of matches, and
+an accepted entry names `comment marker` as its `text`. So a typo fix inside
+a marker, a change from `TODO` to `FIXME` and a move within the file hold
+the count, and a new marker or one moved in from another file raises it. The
+gate pairs each marker match with one base match of the same trimmed text in
+the same file, and the matches left over are the lines the base file lacks.
+The site's line is the first of them, and its `new_lines` value lists them
+all as one string, such as `"1, 3"`, so a failure names each one. The first
+named line may be an edited marker and not the new one. A line that holds a
+marker and a code stub is two sites, and a code stub keeps its line text, so
+an edited `todo!()` line is a new site. An accepted entry written before
+ADR 0064 for a line that holds a marker and a code stub or a body shape keys
+the site of that code stub or body shape. Where the base holds that site,
+the base entry shares the exact count and takes the match (4.4), so the
+accepted entry matches nothing: a NOTE, and a failure under `--strict`. The
+marker is then held at the base. Where the base does not hold that site, the
+accepted entry holds it, `--strict` does not name it, and the marker fails
+as new. The pairing is `n log n` in the marks of a file, the line count is
+linear in the file for each pattern, and the quoted-span lookup is a binary
+search. Known limit: a reworded marker, or a marker deleted while another is
+added in the same file, holds the count.
+Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
+`a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
+`every_marker_line_the_base_file_lacks_is_named`,
+`an_edited_not_implemented_line_is_a_new_site`,
+`a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there`,
+`a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites`,
+`an_accepted_marker_entry_names_the_row_and_holds_at_its_count`,
+`an_accepted_entry_for_a_line_that_held_a_marker_and_a_code_stub_holds_the_code_stub`,
+`an_accepted_entry_for_a_mixed_line_the_base_holds_is_stale_and_the_base_holds_both_sites`
+and `a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds`
+in `tests/stubs.rs`.
+
 **`stubs` judges three body shapes.** The function walk of `complexity`
 reads them, over every grammar the built-in stubs table supports, and
 `stubs` records each one at the declaration line of the function that holds
-it, as one more match on that site. A shape is read off a body that
+it, as one more match on the site of that line. A shape is read off a body that
 holds a run of statements, so a concise arrow body such as `() => value` is
 one expression and does the work of one. A function whose body holds one
 `pass` statement is a `pass body`. A function whose body holds no statement,
