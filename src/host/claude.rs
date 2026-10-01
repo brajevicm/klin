@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
+use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
 
 /// A field only Claude Code sends. One of them is enough to place the event.
 const FIELDS: &[&str] = &[
@@ -37,7 +37,7 @@ impl Adapter for Claude {
     }
 
     fn matcher(&self) -> &'static str {
-        super::CLAUDE_CODE_AND_CODEX_MATCHER
+        super::adapter::CLAUDE_CODE_AND_CODEX_MATCHER
     }
 
     /// A write into a tree is covered by that tree's settings, the local settings beside them

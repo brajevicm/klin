@@ -9,9 +9,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use tree_sitter::Node;
 
-use crate::syntax::structural::{
-    Adapter, ExportLeaf, Exported, Imported, Spelling, Visibility, above, spelled, text_of,
+use crate::syntax::structural::adapter::{
+    Adapter, Exported, Imported, Spelling, above, spelled, text_of,
 };
+use crate::syntax::structural::facts::{ExportLeaf, Visibility};
 use crate::syntax::walk;
 
 pub(crate) const ADAPTER: Adapter = Adapter {

@@ -1,7 +1,8 @@
 use std::cell::OnceCell;
 use std::path::{Component, Path, PathBuf};
 
-use crate::host::{self, Decision, Event};
+use crate::host;
+use crate::host::adapter::{Decision, Event};
 use crate::journal;
 use crate::state;
 

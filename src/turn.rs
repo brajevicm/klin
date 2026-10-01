@@ -10,6 +10,7 @@ use crate::error::Error;
 use crate::git::Repo;
 use crate::handoff;
 use crate::host;
+use crate::host::adapter::Event;
 use crate::journal;
 use crate::key::Section;
 use crate::radius;
@@ -80,7 +81,7 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
 fn opening(
     start: &Path,
     out: &mut String,
-) -> Option<(Option<host::Event>, PathBuf, PathBuf, state::Claim)> {
+) -> Option<(Option<Event>, PathBuf, PathBuf, state::Claim)> {
     let event = host::read(None);
     let root = event
         .as_ref()

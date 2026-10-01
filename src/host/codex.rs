@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
+use super::adapter::{Adapter, Decision, Event, flag, input, plugin_named_klin, refused, text};
 
 /// The field Codex CLI adds to every turn-scoped event and Claude Code never sends.
 /// `permission_mode` is not it: both hosts send that one.
@@ -38,7 +38,7 @@ impl Adapter for Codex {
     /// The shared matcher also names Claude Code's tools; Codex never emits those alternatives,
     /// so they are dead text here while the two install routes stay in step.
     fn matcher(&self) -> &'static str {
-        super::CLAUDE_CODE_AND_CODEX_MATCHER
+        super::adapter::CLAUDE_CODE_AND_CODEX_MATCHER
     }
 
     /// A write into a tree is covered by the tree's config and the user's. A write into the

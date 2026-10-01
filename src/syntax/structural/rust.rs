@@ -6,9 +6,10 @@ use tree_sitter::Node;
 
 use crate::syntax::tolerant;
 
-use crate::syntax::structural::{
-    Adapter, ExportLeaf, Exported, Imported, Spelling, Visibility, above, spelled, text_of,
+use crate::syntax::structural::adapter::{
+    Adapter, Exported, Imported, Spelling, above, spelled, text_of,
 };
+use crate::syntax::structural::facts::{ExportLeaf, Visibility};
 
 pub(crate) const ADAPTER: Adapter = Adapter {
     patterns: PATTERNS,

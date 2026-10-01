@@ -3,10 +3,9 @@
 //! module declarations and references, and a file it did not measure says so. Rust and TypeScript
 //! are the structural languages of V1, and TSX is TypeScript. ADR 0035.
 
-use std::borrow::Borrow;
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::ops::{Add, Deref};
+use std::ops::Add;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::OnceLock;
@@ -19,292 +18,22 @@ use crate::config::Config;
 use crate::error::Error;
 pub use crate::syntax::LanguageId;
 use crate::syntax::convention;
-use crate::syntax::{LANGUAGES, Language, Parsed, ParsedFile, Unparsed, line_at, parse, walk};
+use crate::syntax::{LANGUAGES, Language, Parsed, ParsedFile, line_at, parse, walk};
 
+mod adapter;
 mod cache;
+pub mod facts;
 pub mod footprint;
 mod rust;
 mod typescript;
 
 pub use cache::Cache;
 
-/// What a declaration is, as far as V1 tells them apart. A language's own word for one is not
-/// here: a Rust `struct` and a TypeScript `interface` are both a type.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum DeclarationKind {
-    Function,
-    Method,
-    Type,
-    Constant,
-    Variable,
-}
-
-/// What a declaration's own syntax says about who may reach it. Rust writes `pub`, a restricted
-/// `pub(crate)`, `pub(super)`, `pub(self)` or `pub(in ...)`, or nothing. TypeScript writes
-/// `export` at the top of a file or nothing. Only `Public` can be part of a consumer's contract.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum Visibility {
-    Private,
-    Restricted,
-    Public,
-}
-
-pub struct Declaration {
-    pub name: String,
-    /// The names a destructuring pattern binds, each by its local name, and none where the
-    /// declaration is named by one identifier.
-    pub bindings: Box<[String]>,
-    pub kind: DeclarationKind,
-    pub line: u64,
-    /// The last line the declaration covers, so a consumer can tell a reference written inside
-    /// the declaration from one written outside it. A declaration with no body ends where it
-    /// starts.
-    pub end: u64,
-    pub text: String,
-    /// True where the syntax alone shows the declaration is exposed past the file that holds
-    /// it. A doubt reads as exposed, so a dead-symbol check under-reports and never over-reports.
-    pub externally_visible: bool,
-    /// True where syntax or the shared test convention proves that the runtime or a framework
-    /// calls this declaration without a source reference.
-    pub entry_point: bool,
-    /// The inline modules that hold the declaration, outermost first, and none at the top of a
-    /// file.
-    pub nesting: Vec<String>,
-    /// True where a type body holds the declaration, as a Rust `impl` or `trait` holds its
-    /// associated items, so it is no item of the module.
-    pub associated: bool,
-    /// What the declaration's own modifier says, with no doubt read either way.
-    pub visibility: Visibility,
-    /// The name a consumer of the module addresses the declaration by where it differs from
-    /// `name`: TypeScript's `export default class Client` is addressed as `default`.
-    pub exported_as: Option<String>,
-    /// The type an inherent implementation adds this method to, for a language that writes
-    /// methods outside the type's own body, as Rust's `impl Client { pub fn new() }` does. A
-    /// trait's method, a trait implementation's method and a member of a class carry none.
-    pub owner: Option<String>,
-    /// The declared contract, canonical: no body, no comment, no attribute but a directly
-    /// written `#[non_exhaustive]`, one space between tokens, and a parameter binding that is
-    /// not contract written as `_`. `None` where the syntax is a form V1 does not canonicalize,
-    /// and empty for a TypeScript implementation that follows its overloads. A type the
-    /// language would infer is written as `?`, so an inferred contract is visibly partial and
-    /// never fabricated.
-    pub signature: Option<String>,
-}
-
-impl Declaration {
-    /// Whether a destructuring pattern binds its names, so `name` holds the pattern text and
-    /// `names` yields the bindings.
-    pub fn destructures(&self) -> bool {
-        !self.bindings.is_empty()
-    }
-
-    /// The names it declares: every name its pattern binds, and its own name where it binds
-    /// none.
-    pub fn names(&self) -> impl Iterator<Item = &str> {
-        let names: &[String] = if self.destructures() {
-            &self.bindings
-        } else {
-            std::slice::from_ref(&self.name)
-        };
-        names.iter().map(String::as_str)
-    }
-}
-
-/// One statement that exposes names past the module: Rust's `pub use` and `pub extern crate`,
-/// and every TypeScript `export` that is not a declaration of its own. A leaf names what is
-/// exposed and under which name. The module graph resolves a path or a specifier; nothing here
-/// does.
-pub struct Export {
-    pub line: u64,
-    pub text: String,
-    /// The inline modules that hold the statement, outermost first.
-    pub nesting: Vec<String>,
-    /// The module specifier a TypeScript re-export names, and none for a local export or a Rust
-    /// statement, whose leaves carry their own paths.
-    pub source: Option<String>,
-    /// True where the syntax proves only a type is exposed: TypeScript's `export type { T }`.
-    pub type_only: bool,
-    /// False for a form V1 recognizes as an export and cannot list the names of, such as
-    /// TypeScript's `export = x` or an ambient module. A consumer reports it as a hole.
-    pub supported: bool,
-    pub leaves: Vec<ExportLeaf>,
-    /// The canonical contract of what the statement declares where no declaration fact holds
-    /// it: the namespace a TypeScript `export namespace N` declares. None for any other export.
-    pub contract: Option<String>,
-}
-
-/// One name an export exposes. `path` is what is exposed as the source wrote it: a Rust leaf
-/// path with `*` for a glob, a TypeScript local or source name, `*` for a star export, and
-/// empty for an anonymous default export. `name` is the external name, and `None` for a glob
-/// that exposes every name of its target.
-pub struct ExportLeaf {
-    pub path: String,
-    pub name: Option<String>,
-}
-
-/// One Rust `extern crate`, whatever its visibility: the crate it names and the name it binds,
-/// which is its alias where one is written. At the top of a crate root it puts that name in the
-/// crate's extern prelude.
-pub struct ExternCrate {
-    /// The inline modules that hold the statement, outermost first.
-    pub nesting: Vec<String>,
-    pub name: String,
-    pub alias: String,
-}
-
-/// One import, holding the specifier as it was written. The module graph resolves it to a file.
-pub struct Import {
-    pub line: u64,
-    pub text: String,
-    /// The inline modules that hold the import, outermost first, and none at the top of a file.
-    pub nesting: Vec<String>,
-    /// True where a function body holds the import, so it binds its names in that body and not
-    /// in the module.
-    pub in_function: bool,
-    pub module: Option<String>,
-    pub names: Vec<String>,
-    /// Every path a Rust use tree names, one per leaf, its segments joined by `::`, with `self`
-    /// in a list read as the path above it and a glob kept as `*`. A language whose import names
-    /// a module specifier keeps none.
-    pub paths: Vec<String>,
-}
-
-/// One module declaration, such as Rust's `mod foo;` or `mod foo { }`. A language without that
-/// syntax declares none.
-pub struct ModuleDecl {
-    pub line: u64,
-    pub text: String,
-    pub name: String,
-    /// The inline modules that hold the declaration, outermost first.
-    pub nesting: Vec<String>,
-    /// True where the declaration holds its module's body, so no file is named for it.
-    pub inline: bool,
-    /// True where a block holds the declaration with no module between them, so the module is
-    /// an item of that block and no path outside it names it.
-    pub in_block: bool,
-    /// The file the declaration names instead of its own name, where the language can say so.
-    /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
-    pub path: Option<String>,
-    /// What the declaration's own modifier says: `pub mod` is `Public`, `mod` is `Private`.
-    pub visibility: Visibility,
-}
-
-/// A path written outside every import that starts at the crate or at the module that holds it,
-/// such as Rust's `crate::a::b` or `super::c`. A path that starts at any other name is not kept,
-/// because a name alone may be an external crate or a local item.
-pub struct QualifiedPath {
-    pub line: u64,
-    pub nesting: Vec<String>,
-    pub path: String,
-}
-
-/// A thin, value-semantic owner of one canonical reference name.
-#[repr(transparent)]
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Name(Rc<String>);
-
-impl Name {
-    /// A self-owning name for synthetic facts and other values outside a parsing pool.
-    pub fn new(text: impl AsRef<str>) -> Name {
-        Name(Rc::new(text.as_ref().to_owned()))
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-
-    /// The physical canonical allocation, used only by representation diagnostics.
-    pub(crate) fn allocation(&self) -> *const String {
-        Rc::as_ptr(&self.0)
-    }
-}
-
-impl Borrow<str> for Name {
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl Deref for Name {
-    type Target = str;
-
-    fn deref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl PartialEq<str> for Name {
-    fn eq(&self, other: &str) -> bool {
-        self.as_str() == other
-    }
-}
-
-impl PartialEq<&str> for Name {
-    fn eq(&self, other: &&str) -> bool {
-        self.as_str() == *other
-    }
-}
-
-/// One tree or cache decode's local canonicalization pool.
-#[derive(Default)]
-pub(crate) struct Names {
-    held: HashSet<Name>,
-}
-
-impl Names {
-    pub(crate) fn intern(&mut self, text: &str) -> Name {
-        if let Some(name) = self.held.get(text) {
-            return name.clone();
-        }
-        let name = Name::new(text);
-        self.held.insert(name.clone());
-        name
-    }
-}
-
-pub struct Reference {
-    pub name: Name,
-    pub line: u64,
-}
-
-/// One source location whose name the index can resolve to declarations.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ReferenceSite<'a> {
-    pub file: &'a str,
-    pub line: u64,
-}
-
-pub struct FileFacts {
-    pub file: String,
-    pub language: LanguageId,
-    pub declarations: Vec<Declaration>,
-    pub imports: Vec<Import>,
-    pub module_declarations: Vec<ModuleDecl>,
-    pub references: Vec<Reference>,
-    pub paths: Vec<QualifiedPath>,
-    pub exports: Vec<Export>,
-    pub crates: Vec<ExternCrate>,
-}
-
-/// What one file came to under structural analysis. Three of the four outcomes are not a
-/// measurement, and each says so in its own name, so no consumer can read an empty set of
-/// facts as a file it measured. The fourth, a file the mode rule could not read, is an error
-/// where every other check raises one. ADR 0003, ADR 0035, spec 8.6.
-#[derive(Clone)]
-pub enum Outcome {
-    Facts(Rc<FileFacts>),
-    /// A grammar read the file and no structural adapter reads its language.
-    Unsupported(&'static str),
-    /// The grammar rejected the text.
-    Unparsed(Unparsed),
-    /// No grammar here reads the path at all.
-    Foreign,
-}
-
-pub struct Unsupported {
-    pub file: String,
-    pub language: &'static str,
-}
+use adapter::{Adapter, above, text_of};
+use facts::{
+    Declaration, DeclarationKind, Export, ExternCrate, FileFacts, Import, ModuleDecl, Name, Names,
+    Outcome, QualifiedPath, Reference, ReferenceSite,
+};
 
 /// What a name-resolving gate's evidence cost: the base it laid out, each tree's part, and the
 /// lost references `dead-symbols` explained. Spec 11.2.
@@ -677,159 +406,6 @@ pub fn known_languages() -> Vec<&'static str> {
     known.sort_unstable();
     known.dedup();
     known
-}
-
-/// What one language adapter states. A query names the node kinds that declare something, and
-/// the capture name says what kind of thing; everything else is the handful of judgments a
-/// query cannot make.
-pub(crate) struct Adapter {
-    pub patterns: &'static str,
-    /// The node kinds that are a use of a name.
-    pub identifiers: &'static [&'static str],
-    /// The node kinds that turn a function into a method when one holds it.
-    pub methods_in: &'static [&'static str],
-    /// Names invoked by the runtime without a source reference.
-    pub entry_points: &'static [&'static str],
-    pub visible: fn(Node) -> bool,
-    pub imported: fn(Node, &[u8]) -> Imported,
-    /// The file a module declaration was remapped to, for a language that writes such a thing.
-    pub remapped: fn(Node, &[u8]) -> Option<String>,
-    /// The inline modules that hold a node, outermost first.
-    pub nesting: fn(Node, &[u8]) -> Vec<String>,
-    /// The segments of the whole path a node writes, and `None` for any other node, including a
-    /// path inside a longer one.
-    pub qualified: fn(Node, &[u8]) -> Option<Vec<String>>,
-    /// The first segments a qualified path resolves from inside the crate. A path that starts
-    /// with any other name is kept only where it names a module the file declares beside it.
-    pub rooted: &'static [&'static str],
-    /// The node kinds of a block, whose items are local to it.
-    pub blocks: &'static [&'static str],
-    /// The names a node writes inside a string that the language calls by that text, such as a
-    /// function a Rust `serde` attribute names or a name a format string captures.
-    pub quoted: fn(Node, &[u8]) -> Vec<String>,
-    /// What a declaration's or a module declaration's own modifier says.
-    pub visibility: fn(Node, &[u8]) -> Visibility,
-    /// The external name a declaration is exported under where it differs from its own name.
-    pub exported_as: fn(Node, &[u8]) -> Option<String>,
-    /// The type an inherent implementation adds a method to.
-    pub owner: fn(Node, &[u8]) -> Option<String>,
-    /// The nodes that write each name a declaration's name binds where it is a destructuring
-    /// pattern.
-    pub destructured: fn(Node) -> Vec<Node>,
-    /// The canonical declared contract of a declaration, and `None` for a form V1 does not
-    /// canonicalize.
-    pub contract: fn(Node, &[u8]) -> Option<String>,
-    /// What an `@export` capture in the file at this path exposes, and `None` where the node
-    /// exports nothing a declaration does not already say for itself.
-    pub exported: fn(Node, &[u8], &str) -> Option<Exported>,
-}
-
-/// What one import states, before the shared reader puts it at a line. The specifier is kept
-/// as it was written, and the module graph resolves it.
-pub(crate) struct Imported {
-    pub module: Option<String>,
-    pub names: Vec<String>,
-    pub paths: Vec<String>,
-}
-
-/// What one export statement states, before the shared reader puts it at a line.
-pub(crate) struct Exported {
-    pub source: Option<String>,
-    pub type_only: bool,
-    pub supported: bool,
-    pub leaves: Vec<ExportLeaf>,
-    pub contract: Option<String>,
-}
-
-/// How the canonical spelling treats one node: leave the subtree out, write this text for it
-/// and go no deeper, or spell it token by token.
-pub(crate) enum Spelling {
-    Skip,
-    Replace(String),
-    Keep,
-}
-
-/// The canonical text of one node: every token the rule keeps, one space apart, with the
-/// spacing a reader expects around punctuation. Comments never reach it, because a rule skips
-/// them, and the rule decides what a body, an attribute or a binding name becomes.
-pub(crate) fn spelled(node: Node, source: &[u8], rule: &dyn Fn(Node) -> Spelling) -> String {
-    let mut tokens = Vec::new();
-    collect_tokens(node, source, rule, &mut tokens);
-    tidy(&tokens)
-}
-
-fn collect_tokens(
-    node: Node,
-    source: &[u8],
-    rule: &dyn Fn(Node) -> Spelling,
-    out: &mut Vec<String>,
-) {
-    match rule(node) {
-        Spelling::Skip => {}
-        Spelling::Replace(text) => out.push(text),
-        Spelling::Keep if node.child_count() == 0 => out.push(text_of(node, source)),
-        Spelling::Keep => {
-            let mut cursor = node.walk();
-            for child in node.children(&mut cursor) {
-                collect_tokens(child, source, rule, out);
-            }
-        }
-    }
-}
-
-/// Tokens joined by one space, less the space a reader would not write: before a closing
-/// bracket or a separator, after an opening bracket, around a path separator or a member dot,
-/// and between a name and the bracket that opens its arguments. A separator left dangling
-/// before a closing bracket, where a skipped token stood after it, is dropped.
-fn tidy(tokens: &[String]) -> String {
-    let tokens: Vec<&str> = tokens
-        .iter()
-        .map(String::as_str)
-        .filter(|token| !token.is_empty())
-        .collect();
-    let mut out = String::new();
-    let mut last: Option<&str> = None;
-    for (at, token) in tokens.iter().enumerate() {
-        if dangling(&tokens, at) {
-            continue;
-        }
-        if !last.is_none_or(|last| glued(last, token)) {
-            out.push(' ');
-        }
-        out.push_str(token);
-        last = Some(token);
-    }
-    out
-}
-
-/// Whether the token at `at` is a separator nothing follows but a closing bracket or another
-/// separator.
-fn dangling(tokens: &[&str], at: usize) -> bool {
-    const CLOSES: &[&str] = &[")", "]", "}", ">"];
-    tokens[at] == ","
-        && tokens
-            .get(at + 1)
-            .is_none_or(|next| CLOSES.contains(next) || *next == ",")
-}
-
-/// Whether no space stands between these two tokens.
-fn glued(last: &str, token: &str) -> bool {
-    const NO_SPACE_BEFORE: &[&str] = &[",", ";", ")", "]", ">", ":", "?", ".", "::", "!"];
-    const NO_SPACE_AFTER: &[&str] = &["(", "[", "<", "&", "::", ".", "#", "*", "..."];
-    const OPENS: &[&str] = &["(", "[", "<"];
-    NO_SPACE_AFTER.contains(&last)
-        || NO_SPACE_BEFORE.contains(&token)
-        || (OPENS.contains(&token) && ends_a_name(last))
-}
-
-/// Whether a token is one an argument bracket attaches to directly: a name, a closing bracket
-/// or a closing angle.
-fn ends_a_name(token: &str) -> bool {
-    token == ">"
-        || token
-            .chars()
-            .last()
-            .is_some_and(|last| last.is_alphanumeric() || matches!(last, '_' | ')' | ']'))
 }
 
 const METHOD: &str = "method";
@@ -1343,25 +919,9 @@ fn held_by_a_block(node: Node, blocks: &[&str]) -> bool {
     false
 }
 
-/// The nearest node above this one whose kind is one of these.
-pub(crate) fn above<'a>(node: Node<'a>, kinds: &[&str]) -> Option<Node<'a>> {
-    let mut holder = node.parent();
-    while let Some(found) = holder {
-        if kinds.contains(&found.kind()) {
-            return Some(found);
-        }
-        holder = found.parent();
-    }
-    None
-}
-
-/// The text one node covers, and the empty string when it is not valid UTF-8.
-pub(crate) fn text_of(node: Node, source: &[u8]) -> String {
-    node.utf8_text(source).unwrap_or_default().to_string()
-}
-
 #[cfg(test)]
 mod tests {
+    use super::facts::Visibility;
     use super::*;
 
     const RUST: &str = r#"
@@ -1972,6 +1532,7 @@ export function charge(at: number): number {
 
 #[cfg(test)]
 mod contract_tests {
+    use super::facts::Visibility;
     use super::*;
 
     fn measured_facts(path: &str, source: &str) -> Rc<FileFacts> {

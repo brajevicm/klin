@@ -274,9 +274,9 @@ pub const CATALOGUE: &[Row] = &[
     },
     Row {
         name: "conventions",
-        section: conventions::SECTION,
+        section: conventions::rules::SECTION,
         activation: Activation::Policy,
-        keys: conventions::KEYS,
+        keys: conventions::rules::KEYS,
         reference_text: None,
         languages: Some(syntax::pattern::language_extensions),
         available: |_| false,
@@ -288,7 +288,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "convention breaches",
         },
         gate_per_entry: false,
-        shape: SectionShape::Conventions(conventions::INSTEAD),
+        shape: SectionShape::Conventions(conventions::rules::INSTEAD),
     },
     Row {
         name: "sarif",

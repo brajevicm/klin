@@ -8,13 +8,16 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::{Derived, Hole, ITEM, Inapplicable, Item, MODULE, Surface, declared, opaque};
-use crate::modules::{Module, ModuleGraph, Resolved, TargetKind, Topology};
-use crate::syntax::structural::{Declaration, DeclarationKind, Export, ExportLeaf, Visibility};
+use super::item::{Found, Hole, ITEM, Inapplicable, Item, MODULE, Surface, declared, opaque};
+use crate::modules::resolver::{Module, TargetKind, Topology};
+use crate::modules::{ModuleGraph, Resolved};
+use crate::syntax::structural::facts::{
+    Declaration, DeclarationKind, Export, ExportLeaf, Visibility,
+};
 
 const LANGUAGE: &str = "Rust";
 
-pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Derived) {
+pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Found) {
     let mut packages: Vec<(String, bool)> = Vec::new();
     for (at, target) in graph.targets.iter().enumerate() {
         let package = match &target.manifest {
@@ -271,7 +274,7 @@ impl<'a> Derivation<'a> {
             path: path.to_string(),
             kind: MODULE,
             origin: Some((self.file(at).to_string(), 1)),
-            contract: super::Contract::Opaque(None),
+            contract: super::item::Contract::Opaque(None),
         });
         self.walk(at, path);
     }

@@ -6,8 +6,8 @@ use std::collections::HashSet;
 use std::mem::size_of;
 use std::rc::Rc;
 
-use super::{Declaration, Export, FileFacts, Import, ModuleDecl, Name, Reference};
-use super::{ExportLeaf, ExternCrate, QualifiedPath};
+use super::facts::{Declaration, Export, FileFacts, Import, ModuleDecl, Name, Reference};
+use super::facts::{ExportLeaf, ExternCrate, QualifiedPath};
 
 #[derive(Default, Clone, Copy)]
 pub struct Footprint {

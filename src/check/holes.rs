@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 
 use crate::check::contract::{Context, LOST, NOT_MEASURED, Records, Sink, UNPARSED, UNRESOLVED};
 use crate::coverage::{Lost, Unresolved, held_at, in_scope};
-use crate::syntax::structural::Unsupported;
+use crate::syntax::structural::facts::Unsupported;
 use crate::syntax::{self, Unparsed};
 
 const LOST_REMEDY: &str = "Drop the exclusion or restore the rule that reached it, or exclude it \

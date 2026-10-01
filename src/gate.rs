@@ -14,7 +14,8 @@ use crate::check::contract::{
 use crate::check::{catalogue, holes};
 use crate::config;
 use crate::error::Error;
-use crate::host::{self, Stop};
+use crate::host;
+use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
 use crate::{build, handoff, journal, stamp, state, stats, turn, write};
@@ -151,7 +152,7 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// One stop in the hook: the lock, the turn window, the build, the gates, and the verdict the
 /// next prompt reads. The lock is held from before the run measures until after the verdict is
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
-fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: &mut String) -> u8 {
+fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut String) -> u8 {
     let begun = std::time::Instant::now();
     let root = &project.root().to_path_buf();
     let mut log = journal::Stop::begun(event.as_ref(), config_hash(project));
@@ -215,7 +216,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<host::Event>, out: 
 /// repeat carries `told-before`. Spec 9.1, ADR 0052.
 fn keeps_quiet(
     root: &Path,
-    event: Option<&host::Event>,
+    event: Option<&Event>,
     lost: bool,
     said: &str,
     log: &mut journal::Stop,
@@ -246,13 +247,13 @@ fn heard(said: &str) -> String {
 }
 
 /// The host session an event names, and none for a stop no event placed.
-fn session(event: Option<&host::Event>) -> &str {
+fn session(event: Option<&Event>) -> &str {
     event.map_or("", |event| event.session.as_str())
 }
 
 /// The exit code a stop ends with: the host's own code for a block where the run blocked, and
 /// the run's code otherwise. Spec 9.1.
-fn exit_code(code: u8, event: Option<&host::Event>) -> u8 {
+fn exit_code(code: u8, event: Option<&Event>) -> u8 {
     match code {
         BLOCKED => host::answering(event).block_exit(),
         code => code,
@@ -378,7 +379,7 @@ fn ran(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
-    event: Option<&host::Event>,
+    event: Option<&Event>,
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
@@ -440,7 +441,7 @@ fn handed(
     args: &Args,
     project: &Project,
     outcome: Result<Tally, Error>,
-    event: Option<&host::Event>,
+    event: Option<&Event>,
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
@@ -670,7 +671,7 @@ impl Blocks {
 
 /// A host that cannot read stderr still has to show the build failure. An adapter whose stop
 /// already reads stderr ignores the text and returns 2.
-fn blocked_build(root: &Path, event: Option<&host::Event>, text: String, code: u8) -> u8 {
+fn blocked_build(root: &Path, event: Option<&Event>, text: String, code: u8) -> u8 {
     match code {
         2 => block(root, event, text),
         _ => code,
@@ -1093,7 +1094,7 @@ fn hook(
     tally: Tally,
     report: &str,
     root: &Path,
-    event: Option<&host::Event>,
+    event: Option<&Event>,
     lost: bool,
     log: &mut journal::Stop,
 ) -> (u8, Option<String>) {
@@ -1149,7 +1150,7 @@ fn nothing_blocks(
     args: &Args,
     told: usize,
     report: &str,
-    event: Option<&host::Event>,
+    event: Option<&Event>,
 ) -> (u8, Option<String>) {
     if told == 0 {
         return (0, None);
@@ -1266,7 +1267,7 @@ fn working_tree(root: &Path, at: &Path) -> Option<String> {
 /// not record would open a turn and a fresh budget when the host submits it, so the stop is
 /// reported and not blocked, and the block its count already took stays spent, so the budget
 /// only shrinks. ADR 0052.
-fn block(root: &Path, event: Option<&host::Event>, said: String) -> u8 {
+fn block(root: &Path, event: Option<&Event>, said: String) -> u8 {
     let host = host::answering(event);
     if host.follows_up() && !handoff::expect_followup(root, session(event), &said) {
         eprintln!(

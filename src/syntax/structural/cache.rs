@@ -9,11 +9,11 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::SystemTime;
 
-use super::{
+use super::facts::{
     Declaration, DeclarationKind, Export, ExportLeaf, ExternCrate, FileFacts, Import, ModuleDecl,
-    Names, Outcome, QualifiedPath, Reference, Unparsed, Visibility,
+    Names, Outcome, QualifiedPath, Reference, Visibility,
 };
-use crate::syntax::{LANGUAGES, Language, LanguageId};
+use crate::syntax::{LANGUAGES, Language, LanguageId, Unparsed};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.

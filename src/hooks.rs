@@ -5,7 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::config;
 use crate::error::Error;
-use crate::host::{ADAPTERS, Adapter, Filter, Hook, HookFile};
+use crate::host::ADAPTERS;
+use crate::host::adapter::{Adapter, Filter, Hook, HookFile};
 use crate::write;
 
 const HOOKS: &str = "hooks";

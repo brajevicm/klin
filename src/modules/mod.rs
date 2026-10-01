@@ -6,7 +6,7 @@
 //! guessed. Containment builds the module tree and is never an edge. A check reads modules,
 //! dependencies, holes and cycles, and never a graph library's types. ADR 0043, spec 8.4.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::iter::Peekable;
 use std::path::Path;
 use std::rc::Rc;
@@ -15,10 +15,14 @@ use std::time::{Duration, Instant};
 use petgraph::algo::tarjan_scc;
 use petgraph::graph::{DiGraph, NodeIndex};
 
-use crate::syntax::structural::{self, FileFacts, LanguageId};
+use crate::syntax::structural::facts::FileFacts;
+use crate::syntax::structural::{self, LanguageId};
 
+pub mod resolver;
 mod rust;
 mod typescript;
+
+use resolver::{Attachment, Builder, Dependency, Hole, Module, Target, Topology};
 
 type Resolve = fn(&mut Builder);
 
@@ -37,96 +41,30 @@ const MANIFESTS: &[(&str, LanguageId)] = &[
     ("package.json", LanguageId::TypeScript),
 ];
 
-/// One tree as the graph reads it: every file under the path its topology gives it, the facts of
-/// its structural files, and where each path's bytes sit. The base tree names a renamed file by
-/// the path it had at the base, so the base's topology is the base's own. Spec 8.4.
-pub struct Topology<'a> {
+/// The tree at `root`, whose file list and facts name files as the tree holds them, with
+/// `named` giving the topology path of every file the topology names differently.
+pub fn topology<'a>(
     root: &'a Path,
-    files: Vec<String>,
-    physical: HashMap<String, String>,
-    facts: HashMap<String, Rc<FileFacts>>,
-    present: Vec<LanguageId>,
-}
-
-impl<'a> Topology<'a> {
-    /// The tree at `root`, whose file list and facts name files as the tree holds them, with
-    /// `named` giving the topology path of every file the topology names differently.
-    pub fn new(
-        root: &'a Path,
-        files: &[String],
-        facts: &[Rc<FileFacts>],
-        named: &HashMap<String, String>,
-    ) -> Topology<'a> {
-        let topology = |file: &str| named.get(file).cloned().unwrap_or_else(|| file.to_string());
-        let mut listed: Vec<String> = files.iter().map(|file| topology(file)).collect();
-        listed.sort_unstable();
-        listed.dedup();
-        Topology {
-            root,
-            present: present(&listed),
-            files: listed,
-            physical: named
-                .iter()
-                .map(|(held, path)| (path.clone(), held.clone()))
-                .collect(),
-            facts: facts
-                .iter()
-                .map(|held| (topology(&held.file), Rc::clone(held)))
-                .collect(),
-        }
-    }
-
-    /// Whether the tree lists a source or manifest path of this language, which is what decides
-    /// whether a resolver or a surface derivation of it runs. A source whose grammar refused it
-    /// still counts, because a resolver still places it.
-    pub fn present(&self, language: LanguageId) -> bool {
-        self.present.contains(&language)
-    }
-
-    /// Whether the tree lists a file at this path.
-    pub fn holds(&self, path: &str) -> bool {
-        self.files
-            .binary_search_by(|held| held.as_str().cmp(path))
-            .is_ok()
-    }
-
-    /// Every file the tree lists, under its topology path, in path order.
-    pub fn files(&self) -> &[String] {
-        &self.files
-    }
-
-    /// Whether a file sits at this path on disk and the file list leaves it out, as it leaves out
-    /// a file git ignores, such as generated source.
-    fn ignored(&self, path: &str) -> bool {
-        !self.holds(path) && self.root.join(self.held_path(path)).is_file()
-    }
-
-    fn held_path<'p>(&'p self, path: &'p str) -> &'p str {
-        self.physical.get(path).map_or(path, String::as_str)
-    }
-
-    /// The bytes of one file the tree holds, read from disk. A manifest is read this way; a
-    /// source file never is, because its facts are already extracted.
-    pub fn read(&self, path: &str) -> Option<Vec<u8>> {
-        std::fs::read(self.root.join(self.held_path(path))).ok()
-    }
-
-    /// The structural facts of one file, and `None` for a file no adapter measured.
-    pub fn facts(&self, path: &str) -> Option<&FileFacts> {
-        self.facts.get(path).map(Rc::as_ref)
-    }
-
-    /// Every file below a directory, in path order, and every file for the root's empty name.
-    fn under<'s>(&'s self, directory: &str) -> impl Iterator<Item = &'s str> {
-        let prefix = match directory {
-            "" => String::new(),
-            named => format!("{named}/"),
-        };
-        let from = self.files.partition_point(|held| *held < prefix);
-        self.files[from..]
+    files: &[String],
+    facts: &[Rc<FileFacts>],
+    named: &HashMap<String, String>,
+) -> Topology<'a> {
+    let topology = |file: &str| named.get(file).cloned().unwrap_or_else(|| file.to_string());
+    let mut listed: Vec<String> = files.iter().map(|file| topology(file)).collect();
+    listed.sort_unstable();
+    listed.dedup();
+    Topology {
+        root,
+        present: present(&listed),
+        files: listed,
+        physical: named
             .iter()
-            .take_while(move |held| held.starts_with(&prefix))
-            .map(String::as_str)
+            .map(|(held, path)| (path.clone(), held.clone()))
+            .collect(),
+        facts: facts
+            .iter()
+            .map(|held| (topology(&held.file), Rc::clone(held)))
+            .collect(),
     }
 }
 
@@ -197,74 +135,6 @@ impl std::ops::Add for GraphCost {
     }
 }
 
-/// How a file came to be a module: under a target a Cargo manifest names, under a conventional
-/// root where no manifest says, or as a file that is its own module.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Attachment {
-    Manifest,
-    Convention,
-    File,
-}
-
-/// What a target is built as. A library is what another crate consumes, so only a library has
-/// a public surface.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum TargetKind {
-    Library,
-    Binary,
-}
-
-impl TargetKind {
-    pub fn word(self) -> &'static str {
-        match self {
-            TargetKind::Library => "lib",
-            TargetKind::Binary => "bin",
-        }
-    }
-}
-
-/// One Cargo target, or one conventional root standing in for it: the package that owns it, the
-/// crate name a consumer addresses it by, its kind, its root file, the manifest that named it,
-/// its root module in the graph, and the names of its extern prelude that reach a library the
-/// tree holds, each to that library's root module: a dependency its manifest names by path, and
-/// an alias an `extern crate` at the top of its root gives one, such as
-/// `pub extern crate wgpu_types as wgt;`.
-pub struct Target {
-    pub package: String,
-    pub name: String,
-    pub kind: TargetKind,
-    pub root: String,
-    pub manifest: Option<String>,
-    pub module: usize,
-    pub crates: BTreeMap<String, usize>,
-}
-
-/// One module: the name a report prints, which is its resolver's identity for it, and the
-/// physical files that hold it. A module holds at least one file, in path order, each once, and
-/// the order means nothing. One file may hold several modules, and one file under two targets is
-/// a module under each. A Rust module is one file or inline in one, and a TypeScript module is
-/// one file; a resolver for another language may group several files into one module. A Rust
-/// module also knows its place in its target's tree; a TypeScript module stands alone. ADR 0058.
-pub struct Module {
-    pub name: String,
-    pub sources: Vec<String>,
-    /// The inline modules between the file and this module, outermost first.
-    pub nesting: Vec<String>,
-    /// The target this module belongs to, and `None` for a module no target owns.
-    pub target: Option<usize>,
-    /// The module that declares this one, and `None` for a target root or a file module.
-    pub parent: Option<usize>,
-    /// Each module this one declares, by the name it declares it under.
-    pub children: BTreeMap<String, usize>,
-    /// The names this module declares as modules that no file answers, so a path through one is
-    /// unresolved and never external.
-    pub unresolved: BTreeSet<String>,
-    /// The names this module binds in the type namespace other than its child modules: each
-    /// name a `use` binds and each type it declares. A path from one is a local item and never
-    /// reaches a crate of the same name.
-    pub bound: BTreeSet<String>,
-}
-
 /// Where a path from one module ends up. The module graph resolves the module part and hands
 /// back the segments after it, which name an item of that module or nothing.
 pub enum Resolved {
@@ -277,24 +147,6 @@ pub enum Resolved {
     External,
     /// The path goes above the crate root or through a module no file answers.
     Unresolved,
-}
-
-/// One resolved dependency of one module on another, at the physical site that writes it: the
-/// position of that file among the writing module's sources, and the line. `ModuleGraph::source`
-/// names the file.
-pub struct Dependency {
-    pub from: usize,
-    pub to: usize,
-    pub source: u32,
-    pub line: u64,
-}
-
-/// One form a resolver supports and could not prove a target for.
-pub struct Hole {
-    pub file: String,
-    pub line: u64,
-    pub text: String,
-    pub why: String,
 }
 
 #[derive(Default)]
@@ -312,92 +164,39 @@ pub struct ModuleGraph {
     pub time: Duration,
 }
 
-/// What a resolver adds to the graph it builds.
-pub(crate) struct Builder<'a> {
-    topology: &'a Topology<'a>,
-    graph: ModuleGraph,
-}
-
-impl Builder<'_> {
-    /// A module of these files, each of which counts as attached on its own.
-    fn module(&mut self, name: String, files: &[&str], attachment: Attachment) -> usize {
-        let mut sources: Vec<String> = files.iter().map(|file| file.to_string()).collect();
-        sources.sort_unstable();
-        sources.dedup();
-        assert!(!sources.is_empty(), "a module holds at least one file");
-        for file in &sources {
-            let held = self
-                .graph
-                .attached
-                .entry(file.clone())
-                .or_insert(attachment);
-            *held = (*held).min(attachment);
-        }
-        self.graph.modules.push(Module {
-            name,
-            sources,
-            nesting: Vec::new(),
-            target: None,
-            parent: None,
-            children: BTreeMap::new(),
-            unresolved: BTreeSet::new(),
-            bound: BTreeSet::new(),
-        });
-        self.graph.modules.len() - 1
-    }
-
-    /// A dependency written in `file`, which is one of the writing module's own sources.
-    fn depend(&mut self, from: usize, to: usize, file: &str, line: u64) {
-        let written = self.graph.modules[from]
-            .sources
-            .binary_search_by(|held| held.as_str().cmp(file));
-        match written {
-            Ok(source) => self.graph.dependencies.push(Dependency {
-                from,
-                to,
-                source: source as u32,
-                line,
-            }),
-            Err(_) => self.hole(
-                file,
-                line,
-                &self.graph.modules[to].name.clone(),
-                "a dependency from a file that is not one of its module's files".to_string(),
-            ),
-        }
-    }
-
-    fn hole(&mut self, file: &str, line: u64, text: &str, why: String) {
-        self.graph.holes.push(Hole {
-            file: file.to_string(),
-            line,
-            text: text.to_string(),
-            why,
-        });
-    }
-}
-
 /// The graph of one tree, each resolver whose language the tree holds run over it once.
 pub fn build(topology: &Topology) -> ModuleGraph {
     let started = Instant::now();
-    let mut builder = Builder {
-        topology,
-        graph: ModuleGraph::default(),
-    };
+    let mut builder = Builder::new(topology);
+    let mut dispatches = [0; RESOLVERS.len()];
     for (at, (language, resolve)) in RESOLVERS.iter().enumerate() {
         if topology.present(*language) {
-            builder.graph.dispatches[at] += 1;
+            dispatches[at] += 1;
             resolve(&mut builder);
         }
     }
-    finished(builder, started)
+    finished(builder, dispatches, started)
 }
 
 /// The graph a builder's resolvers made, with its dependencies and holes in order and each
 /// structural file no resolver attached counted as unattached, one by one.
-fn finished(builder: Builder, started: Instant) -> ModuleGraph {
+fn finished(
+    builder: Builder,
+    dispatches: [usize; RESOLVERS.len()],
+    started: Instant,
+) -> ModuleGraph {
     let topology = builder.topology;
-    let mut graph = builder.graph;
+    let mut graph = ModuleGraph {
+        modules: builder.modules,
+        targets: builder.targets,
+        dependencies: builder.dependencies,
+        holes: builder.holes,
+        external: builder.external,
+        attached: builder.attached,
+        unattached: Vec::new(),
+        dispatches,
+        time: Duration::ZERO,
+    };
     let site = |held: &Dependency| (held.from, held.to, held.source, held.line);
     graph.dependencies.sort_unstable_by_key(site);
     graph.dependencies.dedup_by_key(|held| site(held));
@@ -679,36 +478,13 @@ impl Cycles<'_> {
     }
 }
 
-/// A path joined to a directory, with `.` and `..` read, and `None` where it leaves the tree.
-pub(crate) fn joined(directory: &str, relative: &str) -> Option<String> {
-    let mut parts: Vec<&str> = directory
-        .split('/')
-        .filter(|part| !part.is_empty())
-        .collect();
-    for part in relative.split('/') {
-        match part {
-            "" | "." => {}
-            ".." => {
-                parts.pop()?;
-            }
-            name => parts.push(name),
-        }
-    }
-    Some(parts.join("/"))
-}
-
-/// The directory a path sits in, and the empty name for the tree root.
-pub(crate) fn directory(path: &str) -> &str {
-    path.rsplit_once('/').map_or("", |(at, _)| at)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn facts(path: &str) -> Rc<FileFacts> {
         match structural::of(path, "pub fn f() {}\n") {
-            Ok(structural::Outcome::Facts(facts)) => facts,
+            Ok(structural::facts::Outcome::Facts(facts)) => facts,
             _ => panic!("{path} measures"),
         }
     }
@@ -719,16 +495,13 @@ mod tests {
     fn a_module_of_many_files_attaches_each_file_and_names_each_site() {
         let files = ["b.rs", "a.rs", "c.rs", "d.rs"].map(String::from);
         let measured = [facts("a.rs"), facts("b.rs"), facts("c.rs"), facts("d.rs")];
-        let topology = Topology::new(Path::new("."), &files, &measured, &HashMap::new());
-        let mut builder = Builder {
-            topology: &topology,
-            graph: ModuleGraph::default(),
-        };
+        let topology = super::topology(Path::new("."), &files, &measured, &HashMap::new());
+        let mut builder = Builder::new(&topology);
         let from = builder.module("p".into(), &["b.rs", "a.rs", "b.rs"], Attachment::File);
         let to = builder.module("q".into(), &["c.rs"], Attachment::File);
         builder.depend(from, to, "b.rs", 3);
         builder.depend(from, to, "a.rs", 3);
-        let graph = finished(builder, Instant::now());
+        let graph = finished(builder, [0; RESOLVERS.len()], Instant::now());
         assert_eq!(graph.modules[from].sources, ["a.rs", "b.rs"]);
         let attached: Vec<&str> = graph.attached.keys().map(String::as_str).collect();
         assert_eq!(attached, ["a.rs", "b.rs", "c.rs"]);

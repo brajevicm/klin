@@ -10,7 +10,8 @@ use crate::changed::{self, Change, blobs};
 use crate::error::Error;
 use crate::git::{Boolean, Repo, Staged};
 use crate::state;
-use crate::syntax::structural::{Cache, Outcome, same_grammar, selected_extensions};
+use crate::syntax::structural::facts::Outcome;
+use crate::syntax::structural::{Cache, same_grammar, selected_extensions};
 use crate::tree::{self, Tree};
 
 /// What laying a base out reads from the run beside it: where the configuration sits, the

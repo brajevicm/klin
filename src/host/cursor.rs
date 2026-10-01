@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::{
+use super::adapter::{
     Adapter, Decision, Event, Filter, Hook, HookFile, Stop, input, plugin_named_klin, refused, text,
 };
 
@@ -128,9 +128,9 @@ impl Adapter for Cursor {
     /// name, which costs a journal line and no refusal: every guard copy still answers. Spec 9.8.
     fn identity(&self, payload: &Value) -> String {
         if !tool(payload).eq_ignore_ascii_case("shell") {
-            return super::named(payload, IDENTITY);
+            return super::adapter::named(payload, IDENTITY);
         }
-        let mut named = super::named(payload, &["conversation_id", "generation_id"]);
+        let mut named = super::adapter::named(payload, &["conversation_id", "generation_id"]);
         named.push_str(&format!("shell={}\n", command(payload)));
         named
     }

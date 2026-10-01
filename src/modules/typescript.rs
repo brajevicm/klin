@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use super::{Attachment, Builder, Topology, directory, joined};
+use super::resolver::{Attachment, Builder, Topology, directory, joined};
 
 const SOURCE: &[&str] = &[".ts", ".tsx", ".mts", ".cts"];
 
@@ -59,7 +59,7 @@ fn resolved(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site,
         .then(|| joined(directory(site.file), specifier))
         .flatten()
     else {
-        builder.graph.external += 1;
+        builder.external += 1;
         return;
     };
     let candidates = candidates(&base);
@@ -69,7 +69,7 @@ fn resolved(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site,
         .collect();
     match held.as_slice() {
         [target] => builder.depend(site.from, modules[target.as_str()], site.file, site.line),
-        [] if another_kind(topology, &base, &candidates) => builder.graph.external += 1,
+        [] if another_kind(topology, &base, &candidates) => builder.external += 1,
         [] => builder.hole(
             site.file,
             site.line,

@@ -17,9 +17,9 @@ use std::path::{Path, PathBuf};
 
 use cargo_toml::{AbstractFilesystem, Edition, Manifest, Value};
 
-use super::{Attachment, Builder, TargetKind, Topology, directory, joined};
+use super::resolver::{Attachment, Builder, TargetKind, Topology, directory, joined};
 use crate::survey;
-use crate::syntax::structural::{DeclarationKind, ModuleDecl};
+use crate::syntax::structural::facts::{DeclarationKind, ModuleDecl};
 
 const MANIFEST: &str = "Cargo.toml";
 
@@ -77,7 +77,7 @@ enum Reached {
 
 pub(super) fn resolve(builder: &mut Builder) {
     let targets = targets(builder);
-    let first = builder.graph.targets.len();
+    let first = builder.targets.len();
     for target in &targets {
         let mut krate = Crate {
             target,
@@ -98,7 +98,7 @@ pub(super) fn resolve(builder: &mut Builder) {
         krate.depend(builder);
         krate.publish(builder, root);
     }
-    let libraries: BTreeMap<String, (String, usize)> = builder.graph.targets[first..]
+    let libraries: BTreeMap<String, (String, usize)> = builder.targets[first..]
         .iter()
         .filter(|target| target.kind == TargetKind::Library)
         .filter_map(|target| {
@@ -109,7 +109,7 @@ pub(super) fn resolve(builder: &mut Builder) {
         })
         .collect();
     for (at, target) in targets.iter().enumerate() {
-        builder.graph.targets[first + at].crates = prelude(builder.topology, target, &libraries);
+        builder.targets[first + at].crates = prelude(builder.topology, target, &libraries);
     }
 }
 
@@ -492,7 +492,7 @@ impl Crate<'_> {
             }
             [_] => "declares a module whose file already holds it".to_string(),
             [] if candidates.iter().any(|(file, _)| topology.ignored(file)) => {
-                builder.graph.external += 1;
+                builder.external += 1;
                 String::new()
             }
             [] => format!("names no file the tree holds: {}", listed(&candidates)),
@@ -559,8 +559,8 @@ impl Crate<'_> {
     /// The target and its module tree written into the graph, so a consumer reads a module's
     /// parent, children and target without the resolver's own nodes.
     fn publish(&self, builder: &mut Builder, root: usize) {
-        let target = builder.graph.targets.len();
-        builder.graph.targets.push(super::Target {
+        let target = builder.targets.len();
+        builder.targets.push(super::resolver::Target {
             package: self.target.package.clone(),
             name: self.target.name.clone(),
             kind: self.target.kind,
@@ -570,7 +570,7 @@ impl Crate<'_> {
             crates: BTreeMap::new(),
         });
         for node in &self.nodes {
-            let module = &mut builder.graph.modules[node.index];
+            let module = &mut builder.modules[node.index];
             module.nesting = node.nesting.clone();
             module.target = Some(target);
             module.parent = node.parent.map(|parent| self.nodes[parent].index);
@@ -627,7 +627,7 @@ impl Crate<'_> {
             Reached::Module(to) if to != from => {
                 builder.depend(self.nodes[from].index, self.nodes[to].index, file, line);
             }
-            Reached::External => builder.graph.external += 1,
+            Reached::External => builder.external += 1,
             Reached::Above => builder.hole(
                 &self.nodes[from].file,
                 line,

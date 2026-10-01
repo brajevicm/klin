@@ -5,7 +5,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 
 use crate::config::{self, Config};
-use crate::host;
+use crate::host::adapter::Event;
 use crate::state;
 
 /// The journal: one JSON line per hook stop, appended under the state directory. It is the
@@ -70,7 +70,7 @@ pub struct Timing {
 }
 
 impl Stop {
-    pub fn begun(event: Option<&host::Event>, config_hash: String) -> Stop {
+    pub fn begun(event: Option<&Event>, config_hash: String) -> Stop {
         Stop {
             report: None,
             host: event.map(|event| event.host.name().to_string()),
@@ -170,7 +170,7 @@ pub fn line(stop: &Stop) -> Value {
 pub fn prompt(
     root: &Path,
     counter: u64,
-    event: Option<&host::Event>,
+    event: Option<&Event>,
     enabled: bool,
     radius: Option<Value>,
 ) {
@@ -229,7 +229,7 @@ pub fn prompt_enabled(loaded: &Config) -> bool {
 /// refuses instead (9.1), and 11.4 must count that refusal as the deny it is. An allow appends
 /// nothing, because the guard runs on every tool call under its 50 ms budget and an allow tells
 /// a reader nothing. `at` is the state directory the guard resolved already. Spec 9.6, 11.4.
-pub fn guard(root: &Path, at: &Path, event: &host::Event, delivered: u8, reason: &'static str) {
+pub fn guard(root: &Path, at: &Path, event: &Event, delivered: u8, reason: &'static str) {
     let kind = match delivered {
         0 => "ask",
         _ => "deny",

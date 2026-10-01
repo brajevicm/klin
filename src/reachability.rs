@@ -26,7 +26,8 @@ use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
-use crate::syntax::structural::{self, Declaration, DeclarationKind, Declared, SourceIndex};
+use crate::syntax::structural::facts::{Declaration, DeclarationKind};
+use crate::syntax::structural::{self, Declared, SourceIndex};
 use crate::syntax::{self, LanguageId};
 use crate::tree::Tree;
 use crate::{cache, changed};
@@ -487,7 +488,7 @@ impl<'a> Naming<'a> {
 
     /// Whether another file names one of this file's eligible declarations. A name reaches every
     /// declaration it names, so ambiguity reaches each of them.
-    fn reached(&self, file: &structural::FileFacts) -> bool {
+    fn reached(&self, file: &structural::facts::FileFacts) -> bool {
         self.re_exported.contains(file.file.as_str())
             || file
                 .declarations
@@ -501,7 +502,7 @@ impl<'a> Naming<'a> {
     /// produced. A reference is judged by the declaration's name and a re-export by the name a
     /// consumer addresses it by. A destructuring that binds the name is no declaration of that
     /// name here. Spec 5.4.
-    fn proven(&self, file: &structural::FileFacts) -> bool {
+    fn proven(&self, file: &structural::facts::FileFacts) -> bool {
         self.proven_by_re_export.contains(file.file.as_str())
             || file
                 .declarations
@@ -521,7 +522,7 @@ impl<'a> Naming<'a> {
     /// holds a destructuring declaration that binds it. Spec 5.4.
     fn referenced_elsewhere(
         &self,
-        file: &structural::FileFacts,
+        file: &structural::facts::FileFacts,
         declaration: &Declaration,
     ) -> bool {
         self.index
@@ -665,11 +666,11 @@ fn coverage_result(
     (after, families): (&Measurement, &[Family]),
     out: &mut Sink,
 ) -> u8 {
-    let unsupported: Vec<structural::Unsupported> = after
+    let unsupported: Vec<structural::facts::Unsupported> = after
         .unsupported
         .iter()
         .filter(|file| family_of(families, &file.file).is_some())
-        .map(|file| structural::Unsupported {
+        .map(|file| structural::facts::Unsupported {
             file: file.file.clone(),
             language: file.language,
         })
@@ -801,12 +802,12 @@ fn members_at(root: &Path, commit: &str, held: &Survey) -> Option<Vec<String>> {
 fn evidence(root: &Path, commit: &str, paths: &[String]) -> BTreeMap<String, Member> {
     let names: Vec<&str> = paths.iter().map(String::as_str).collect();
     let mut facts = Vec::new();
-    let mut name_pool = structural::Names::default();
+    let mut name_pool = structural::facts::Names::default();
     changed::blobs(root, commit, &names, |path, bytes| {
         let Some(bytes) = bytes else {
             return;
         };
-        if let Ok(structural::Outcome::Facts(found)) =
+        if let Ok(structural::facts::Outcome::Facts(found)) =
             structural::of_with(path, &String::from_utf8_lossy(bytes), &mut name_pool)
         {
             facts.push(found);

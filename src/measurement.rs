@@ -14,9 +14,9 @@ use crate::coverage::Files;
 use crate::error::Error;
 use crate::files::{self, Found};
 use crate::syntax::Unparsed;
+use crate::syntax::structural::facts::{FileFacts, Outcome, Unsupported};
 use crate::syntax::structural::{
-    Cache, ExtractionCost, FileFacts, Outcome, SourceIndex, TreeNameCost, Unsupported,
-    selected_extensions, timed,
+    Cache, ExtractionCost, SourceIndex, TreeNameCost, selected_extensions, timed,
 };
 use crate::tree::Tree;
 

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use super::{Adapter, Decision, Event, Hook, Stop, flag, refused, text};
+use super::adapter::{Adapter, Decision, Event, Hook, Stop, flag, refused, text};
 
 /// The field that names an event klin's own, and the one protocol version klin speaks. No host
 /// klin maintains sends the field, so it places the event before any of them. Spec 19.4.

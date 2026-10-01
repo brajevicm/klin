@@ -16,8 +16,8 @@ use crate::ratchet::{self, Finding};
 use crate::scope::Selector;
 use crate::syntax::{Unparsed, pattern};
 
-use super::{
-    Args, Code, Convention, Hole, IN, METRICS, Matcher, Measured, Place, Rule, SECTION, Unresolved,
+use super::rules::{
+    Code, Convention, Hole, IN, METRICS, Matcher, Measured, Place, Rule, SECTION, Unresolved,
     at_the_base, conventions, holes, joined, measure, resolved, walked,
 };
 
@@ -48,12 +48,12 @@ struct Explained<'a> {
 
 pub(super) fn run(
     named: Option<&str>,
-    args: &Args,
+    config: Option<&Path>,
     sections: &[Section],
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
+    let project = Project::load(config, start, sections)?;
     let config = &project.config;
     let conventions = conventions(config)?;
     let places = walked(config, project.tree())?;

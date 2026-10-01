@@ -19,11 +19,13 @@ use crate::coverage::{self, Coverage};
 use crate::error::Error;
 use crate::key::{Key, Section};
 use crate::measurement;
-use crate::modules::{self, ModuleGraph, Topology};
+use crate::modules::resolver::Hole;
+use crate::modules::{self, ModuleGraph};
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::surface::{self, Contract, Derived, Item, MODULE, Surface};
+use crate::surface::item::{Contract, Item, MODULE, Surface};
+use crate::surface::{self, Derived};
 use crate::syntax::{self, structural};
 use crate::tree::Tree;
 
@@ -157,7 +159,7 @@ fn side(
     measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
 ) -> Result<Side, Error> {
-    let layout = Topology::new(tree.root(), tree.files()?, measured.facts(), renamed);
+    let layout = modules::topology(tree.root(), tree.files()?, measured.facts(), renamed);
     let graph = modules::build(&layout);
     let derived = surface::derive(&layout, &graph);
     Ok(Side {
@@ -381,7 +383,7 @@ fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink
 /// Every hole inside a surface under today's paths, each once, in one order: the surface's own
 /// holes and the module graph's holes in the files the surface reaches.
 fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
-    let mut by_file: HashMap<&str, Vec<&modules::Hole>> = HashMap::new();
+    let mut by_file: HashMap<&str, Vec<&Hole>> = HashMap::new();
     for hole in &side.graph.holes {
         by_file.entry(hole.file.as_str()).or_default().push(hole);
     }
@@ -436,7 +438,7 @@ fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     at.config().policy(SECTION, KEYS)?;
     let tree = at.project.tree();
     let measured = measurement::measure_all(tree, None)?;
-    let layout = Topology::new(
+    let layout = modules::topology(
         tree.root(),
         tree.files()?,
         measured.facts(),

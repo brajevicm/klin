@@ -24,9 +24,8 @@ use crate::coverage;
 use crate::error::Error;
 use crate::key::{Key, Section};
 use crate::measurement;
-use crate::modules::{
-    self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
-};
+use crate::modules::resolver::{Attachment, Dependency, Hole};
+use crate::modules::{self, Cycles, GraphCost, ModuleGraph};
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
@@ -278,7 +277,7 @@ fn side(
             .unwrap_or_else(|| file.to_string())
     };
     let facts = measured.facts();
-    let layout = Topology::new(tree.root(), tree.files()?, facts, renamed);
+    let layout = modules::topology(tree.root(), tree.files()?, facts, renamed);
     let mut files: Vec<String> = facts
         .iter()
         .map(|facts| topology(&facts.file))
@@ -985,7 +984,7 @@ fn held_note(physicals: &Physicals, out: &mut Sink) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modules::Module;
+    use crate::modules::resolver::Module;
     use crate::scope::Selector;
 
     fn module(name: &str, sources: &[&str]) -> Module {

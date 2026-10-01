@@ -221,7 +221,7 @@ fn affected_scope(
 
 /// Every file that declares one of these names in either tree.
 fn declaring_files(
-    names: &BTreeSet<(syntax::LanguageId, structural::Name)>,
+    names: &BTreeSet<(syntax::LanguageId, structural::facts::Name)>,
     before: &measurement::Measurement,
     after: &measurement::Measurement,
 ) -> BTreeSet<String> {
@@ -237,8 +237,8 @@ fn declaring_files(
 }
 
 fn reference_names(
-    file: Option<&structural::FileFacts>,
-) -> BTreeSet<(syntax::LanguageId, structural::Name)> {
+    file: Option<&structural::facts::FileFacts>,
+) -> BTreeSet<(syntax::LanguageId, structural::facts::Name)> {
     let Some(file) = file else {
         return BTreeSet::new();
     };
@@ -418,7 +418,7 @@ fn states(
     out
 }
 
-fn eligible(declaration: &structural::Declaration, ignore: &[String]) -> bool {
+fn eligible(declaration: &structural::facts::Declaration, ignore: &[String]) -> bool {
     !declaration.externally_visible
         && !declaration.entry_point
         && !declaration.names().all(|name| {
@@ -430,8 +430,8 @@ fn eligible(declaration: &structural::Declaration, ignore: &[String]) -> bool {
 
 fn state(
     index: &structural::SourceIndex,
-    file: &structural::FileFacts,
-    declaration: &structural::Declaration,
+    file: &structural::facts::FileFacts,
+    declaration: &structural::facts::Declaration,
 ) -> State {
     let dead = !declaration.names().any(|name| {
         index.references(file.language, name).any(|reference| {

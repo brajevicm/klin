@@ -10,16 +10,19 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde_json::Value;
 
-use super::{Derived, Hole, ITEM, Inapplicable, Item, NAMESPACE, Surface, TYPE, declared, opaque};
-use crate::modules::{ModuleGraph, Topology, directory, joined};
+use super::item::{
+    Found, Hole, ITEM, Inapplicable, Item, NAMESPACE, Surface, TYPE, declared, opaque,
+};
+use crate::modules::ModuleGraph;
+use crate::modules::resolver::{Topology, directory, joined};
 use crate::survey;
-use crate::syntax::structural::{DeclarationKind, Export, FileFacts, Visibility};
+use crate::syntax::structural::facts::{DeclarationKind, Export, FileFacts, Visibility};
 
 pub(super) const LANGUAGE: &str = "TypeScript";
 const MANIFEST: &str = "package.json";
 const SOURCE: &[&str] = &[".ts", ".tsx", ".mts", ".cts"];
 
-pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Derived) {
+pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Found) {
     let modules: HashMap<&str, usize> = graph
         .modules
         .iter()
@@ -69,7 +72,7 @@ struct Derivation<'a> {
 }
 
 impl<'a> Derivation<'a> {
-    fn package(&mut self, manifest: &str, out: &mut Derived) {
+    fn package(&mut self, manifest: &str, out: &mut Found) {
         let Some(package) = self.read(manifest, directory(manifest)) else {
             out.inapplicable.push(Inapplicable {
                 what: format!("TypeScript package ({manifest})"),
