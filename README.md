@@ -161,7 +161,58 @@ Keep your linters, type checkers, tests, security scanners, static analysis, AI 
 
 A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails on any of its results that sit on a line the change touched.
 
-[Configuration and language coverage →](docs/REFERENCE.md)
+### Language support
+
+| Language | What klin checks |
+| --- | --- |
+| Rust, TypeScript | Complexity, escape hatches, unfinished work, unused code, architecture, public API, lockfiles |
+| Go, JavaScript | Complexity, escape hatches, unfinished work, lockfiles |
+| Python | Complexity, escape hatches, unfinished work |
+| Java, Kotlin, Ruby, Swift | Complexity, escape hatches |
+| Shell | Escape hatches |
+
+Documentation links, text and file conventions, and SARIF input work in any language.
+
+[Full coverage and configuration →](docs/REFERENCE.md)
+
+## Configure
+
+`{}` runs every automatic check klin can derive from the repository. Use `klin gate --list` to see what applies and which values are derived or pinned.
+
+Policy lives in `klin.json`:
+
+```json
+{
+  "public_api": false,
+  "accepted": [
+    {
+      "gate": "complexity",
+      "file": "src/parser.rs",
+      "text": "fn parse(input: &str) -> Ast {",
+      "cc": 14,
+      "lines": 80,
+      "reason": "Legacy parser. Split tracked in #123."
+    }
+  ]
+}
+```
+
+Set a check to `false` to turn it off.
+
+To keep a finding on purpose, add it to `accepted` with the values from the FAIL output and a reason. klin holds the finding at those values. If it gets worse, the check fails again.
+
+Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
+
+[Configuration reference →](docs/REFERENCE.md)
+
+## Privacy and trust
+
+- **No telemetry.** klin reads no secrets and sends nothing anywhere.
+- **Project commands stay project commands.** klin may run the configured or derived build command and prints the derived command before running it. Set `"build": false` to disable builds.
+- **Local state stays in Git state.** klin keeps its working state under `.git/klin`, including up to 80 characters of the prompt's first line by default. Set `"journal": { "prompt": false }` to omit prompt text.
+- **Downloaded binaries are verified.** The plugin verifies the pinned release's SHA-256 before caching and running it; the release installer also verifies its release artifact.
+
+[Threat model →](docs/THREAT_MODEL.md)
 
 ## CI
 
@@ -186,8 +237,6 @@ Other CI: install klin, fetch the full Git history, then run:
 ```sh
 klin gate --strict
 ```
-
-[Trust model and enforcement boundaries →](docs/THREAT_MODEL.md)
 
 ## Learn more
 
