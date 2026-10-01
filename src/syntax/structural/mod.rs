@@ -838,9 +838,9 @@ pub(crate) struct Adapter {
     pub remapped: fn(Node, &[u8]) -> Option<String>,
     /// The inline modules that hold a node, outermost first.
     pub nesting: fn(Node, &[u8]) -> Vec<String>,
-    /// The whole path a node writes, and `None` for any other node, including a path inside a
-    /// longer one.
-    pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// The segments of the whole path a node writes, and `None` for any other node, including a
+    /// path inside a longer one.
+    pub qualified: fn(Node, &[u8]) -> Option<Vec<String>>,
     /// The first segments a qualified path resolves from inside the crate. A path that starts
     /// with any other name is kept only where it names a module the file declares beside it.
     pub rooted: &'static [&'static str],
@@ -1227,10 +1227,10 @@ impl<'a, 'b> Reading<'a, 'b> {
                         .intern(node.utf8_text(self.source).unwrap_or_default()),
                     line: self.row(node),
                 });
-            } else if let Some(path) =
+            } else if let Some(segments) =
                 (self.adapter.qualified)(node, self.source).filter(|_| !self.claimed(node))
             {
-                if let Some(path) = self.resolvable(node, path) {
+                if let Some(path) = self.resolvable(node, &segments) {
                     paths.push(path);
                 }
             } else {
@@ -1248,8 +1248,8 @@ impl<'a, 'b> Reading<'a, 'b> {
     /// The qualified path a node writes where it starts at a rooted segment or at a module the
     /// file declares at the path's own nesting. The nesting is read only for a path whose first
     /// segment could qualify.
-    fn resolvable(&self, node: Node, path: String) -> Option<QualifiedPath> {
-        let first = path.split("::").next().unwrap_or_default();
+    fn resolvable(&self, node: Node, segments: &[String]) -> Option<QualifiedPath> {
+        let first = segments.first()?.as_str();
         let rooted = self.adapter.rooted.contains(&first);
         if !rooted && !self.modules.iter().any(|module| module.name == first) {
             return None;
@@ -1263,7 +1263,7 @@ impl<'a, 'b> Reading<'a, 'b> {
         (rooted || declared()).then(|| QualifiedPath {
             line: self.row(node),
             nesting,
-            path,
+            path: segments.join("::"),
         })
     }
 

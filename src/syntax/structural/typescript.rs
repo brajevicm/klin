@@ -136,7 +136,7 @@ fn nesting(_: Node, _: &[u8]) -> Vec<String> {
 }
 
 /// A TypeScript file reaches another module only through an import specifier.
-fn qualified(_: Node, _: &[u8]) -> Option<String> {
+fn qualified(_: Node, _: &[u8]) -> Option<Vec<String>> {
     None
 }
 

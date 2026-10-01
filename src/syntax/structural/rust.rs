@@ -694,16 +694,16 @@ fn nesting(node: Node, source: &[u8]) -> Vec<String> {
     names
 }
 
-/// The path this node writes, where the node is the whole path and not a visibility such as
-/// `pub(in crate::a)`.
-fn qualified(node: Node, source: &[u8]) -> Option<String> {
+/// The segments of the path this node writes, where the node is the whole path and not a
+/// visibility such as `pub(in crate::a)`.
+fn qualified(node: Node, source: &[u8]) -> Option<Vec<String>> {
     if !SCOPED.contains(&node.kind())
         || inside_a_longer_path(node)
         || above(node, &["visibility_modifier"]).is_some()
     {
         return None;
     }
-    segments(node, source).map(|segments| segments.join("::"))
+    segments(node, source)
 }
 
 /// Whether this path is the leading part of a longer one, directly or through the generic
