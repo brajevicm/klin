@@ -158,7 +158,7 @@ pub struct Hole {
 }
 
 /// What a resolver adds to the graph it builds.
-pub struct Builder<'a> {
+pub(crate) struct Builder<'a> {
     pub(super) topology: &'a Topology<'a>,
     pub(super) modules: Vec<Module>,
     pub(super) targets: Vec<Target>,
@@ -236,7 +236,7 @@ impl<'a> Builder<'a> {
 }
 
 /// A path joined to a directory, with `.` and `..` read, and `None` where it leaves the tree.
-pub fn joined(directory: &str, relative: &str) -> Option<String> {
+pub(crate) fn joined(directory: &str, relative: &str) -> Option<String> {
     let mut parts: Vec<&str> = directory
         .split('/')
         .filter(|part| !part.is_empty())
@@ -254,6 +254,6 @@ pub fn joined(directory: &str, relative: &str) -> Option<String> {
 }
 
 /// The directory a path sits in, and the empty name for the tree root.
-pub fn directory(path: &str) -> &str {
+pub(crate) fn directory(path: &str) -> &str {
     path.rsplit_once('/').map_or("", |(at, _)| at)
 }
