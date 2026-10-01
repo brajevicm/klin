@@ -1461,11 +1461,11 @@ line, judges a test module like any other code, and refuses the key. Pinned by
 line. A finding that says `unwrap x4` may hold two `expect` calls.
 
 `stubs` keys a comment marker by its file and the row kind,
-`comment marker`, in place of a line text (ADR 0064). Every marker match in one file
-lands on that one site, its `count` is the number of matches, and an
-accepted entry names `comment marker` as its `text`. So a typo fix inside a
-marker, a change from `TODO` to `FIXME` and a move within the file hold the
-count, and a new marker or one moved in from another file raises it. The
+`comment marker`, in place of a line text (ADR 0064). Every marker match in
+one file lands on that one site, its `count` is the number of matches, and
+an accepted entry names `comment marker` as its `text`. So a typo fix inside
+a marker, a change from `TODO` to `FIXME` and a move within the file hold
+the count, and a new marker or one moved in from another file raises it. The
 gate pairs each marker match with one base match of the same trimmed text in
 the same file, and the matches left over are the lines the base file lacks.
 The site's line is the first of them, and its `new_lines` value lists them
@@ -1474,10 +1474,14 @@ named line may be an edited marker and not the new one. A line that holds a
 marker and a code stub is two sites, and a code stub keeps its line text, so
 an edited `todo!()` line is a new site. An accepted entry written before
 ADR 0064 for a line that holds a marker and a code stub or a body shape keys
-the site of that code stub or body shape and holds it, so `--strict` does
-not name it. The marker then fails as new, unless the base holds it. The pairing is `n log n` in
-the marks of a file, the line count is linear in the file for each pattern,
-and the quoted-span lookup is a binary search. Known limit: a reworded marker, or a marker deleted while another is
+the site of that code stub or body shape. Where the base holds that site,
+the base entry shares the exact count and takes the match (4.4), so the
+accepted entry matches nothing: a NOTE, and a failure under `--strict`. The
+marker is then held at the base. Where the base does not hold that site, the
+accepted entry holds it, `--strict` does not name it, and the marker fails
+as new. The pairing is `n log n` in the marks of a file, the line count is
+linear in the file for each pattern, and the quoted-span lookup is a binary
+search. Known limit: a reworded marker, or a marker deleted while another is
 added in the same file, holds the count.
 Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
 `a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
@@ -1486,7 +1490,8 @@ Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
 `a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there`,
 `a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites`,
 `an_accepted_marker_entry_names_the_row_and_holds_at_its_count`,
-`an_accepted_entry_for_a_line_that_held_a_marker_and_a_code_stub_holds_the_code_stub`
+`an_accepted_entry_for_a_line_that_held_a_marker_and_a_code_stub_holds_the_code_stub`,
+`an_accepted_entry_for_a_mixed_line_the_base_holds_is_stale_and_the_base_holds_both_sites`
 and `a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds`
 in `tests/stubs.rs`.
 

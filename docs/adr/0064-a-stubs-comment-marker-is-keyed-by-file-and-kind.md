@@ -46,8 +46,13 @@ a line is an edit to code. The body shapes keep their declaration line.
   now two sites.
 - An accepted entry that keyed a marker by its line text matches nothing,
   and the marker fails as new until a person rewrites the entry. When that
-  line also holds a code stub or a body shape, the entry keeps matching the
-  site of that code stub or body shape, which now counts it alone. The entry
-  holds that site, `--strict` does not name it as stale, and the marker
-  fails as new unless the base holds it. The entry may allow a higher count
-  than that site holds, and only a person who reads the config sees that.
+  line also holds a code stub or a body shape, the entry keys the site of
+  that code stub or body shape, which now counts it alone.
+  - Where the base holds that site, the base entry shares the exact count
+    and takes the match (spec 4.4). The accepted entry matches nothing, so
+    it is a NOTE and a failure under `--strict`, and the marker is held at
+    the base. This is the usual upgrade case.
+  - Where the base does not hold that site, the accepted entry holds it and
+    `--strict` does not name it, and the marker fails as new. The entry may
+    allow a higher count than that site holds, and only a person who reads
+    the config sees that.

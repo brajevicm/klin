@@ -576,6 +576,41 @@ fn an_accepted_entry_for_a_line_that_held_a_marker_and_a_code_stub_holds_the_cod
 }
 
 #[test]
+fn an_accepted_entry_for_a_mixed_line_the_base_holds_is_stale_and_the_base_holds_both_sites() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [
+               {"gate": "stubs", "file": "src/a.py", "text": "def save(key):  # TODO write it", "count": 2},
+               {"gate": "stubs", "file": "src/a.rs", "text": "todo!() // TODO handle errors", "count": 2}],
+             "stubs": { "in": "src" } }"#,
+    );
+    tree.write("src/a.py", "def save(key):  # TODO write it\n    pass\n");
+    tree.write(
+        "src/a.rs",
+        "fn f() {\n    todo!() // TODO handle errors\n}\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["stubs"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("all held at the base"), "{}", run.out);
+    assert!(
+        run.says("NOTE: 2 accepted entries matched nothing this run"),
+        "{}",
+        run.out
+    );
+
+    let strict = tree.run(&["stubs", "--strict"]);
+    assert_eq!(strict.code, 1, "{}", strict.out);
+    assert!(
+        strict.says("the accepted list holds 2 entries that matched nothing"),
+        "{}",
+        strict.out
+    );
+}
+
+#[test]
 fn a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds() {
     let tree = tree();
     let markers: String = (0..200_000)
